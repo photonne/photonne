@@ -75,4 +75,26 @@ class SelectionOpsTest {
     fun group_selection_state_of_an_empty_group_is_none() {
         assertEquals(GroupSelectionState.None, setOf("a").selectionStateOf(emptyList()))
     }
+
+    @Test
+    fun range_selection_covers_both_ends_in_either_direction() {
+        val ids = listOf("a", "b", "c", "d", "e")
+        assertEquals(listOf("b", "c", "d"), rangeSelectionIds(1, 3) { ids.getOrNull(it) })
+        assertEquals(listOf("b", "c", "d"), rangeSelectionIds(3, 1) { ids.getOrNull(it) })
+        // Anchor == target: a range of one.
+        assertEquals(listOf("c"), rangeSelectionIds(2, 2) { ids.getOrNull(it) })
+    }
+
+    @Test
+    fun range_selection_skips_unselectable_ordinals() {
+        // Skeleton / local-only ordinals resolve to null and simply drop out.
+        val ids = listOf("a", null, "c", null, "e")
+        assertEquals(listOf("a", "c", "e"), rangeSelectionIds(0, 4) { ids.getOrNull(it) })
+    }
+
+    @Test
+    fun range_selection_with_invalid_ordinals_is_empty() {
+        assertEquals(emptyList(), rangeSelectionIds(-1, 3) { "x" })
+        assertEquals(emptyList(), rangeSelectionIds(3, -1) { "x" })
+    }
 }

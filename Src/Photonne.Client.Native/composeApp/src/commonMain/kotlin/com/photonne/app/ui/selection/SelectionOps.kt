@@ -72,6 +72,19 @@ fun Set<String>.toggledAll(all: Collection<String>): Set<String> {
 }
 
 /**
+ * Ids del tramo [anchor]..[target] (ambos inclusive, en cualquier orden) para
+ * el Shift+clic de escritorio. [idAt] traduce ordinal a id devolviendo null en
+ * lo no seleccionable (esqueletos, ítems solo-locales), que simplemente se
+ * salta — igual que hace el arrastre en banda.
+ */
+fun rangeSelectionIds(anchor: Int, target: Int, idAt: (Int) -> String?): List<String> {
+    if (anchor < 0 || target < 0) return emptyList()
+    val lo = minOf(anchor, target)
+    val hi = maxOf(anchor, target)
+    return (lo..hi).mapNotNull(idAt)
+}
+
+/**
  * Cuántos de [ids] están seleccionados — base del checkbox tri-estado de la
  * cabecera de grupo (ninguno / parcial / todo).
  */

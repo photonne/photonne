@@ -27,7 +27,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +52,7 @@ import com.photonne.app.ui.grid.dragselect.rememberTimelineDragSelectAdapter
 import com.photonne.app.ui.haptics.rememberPhotonneHaptics
 import com.photonne.app.ui.selection.GroupSelectionState
 import com.photonne.app.ui.selection.SelectionPatch
+import com.photonne.app.ui.selection.rangeSelectionIds
 import com.photonne.app.ui.selection.selectionStateOf
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.Spacing
@@ -335,6 +339,44 @@ internal fun GroupedAssetGrid(
     // recomposición, y durante un arrastre eso es una vez por frame.
     val groupIds = remember(segments) { segments.map { selectableIdsOf(it) } }
 
+    // Ancla del Shift+clic como ordinal+id: el id valida que el ordinal siga
+    // apuntando a lo mismo cuando la lista cambia (carga de buckets, merges).
+    var rangeAnchor by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    val recordAnchor: (Int) -> Unit = { ordinal ->
+        dragSelect?.idAt?.invoke(ordinal)?.let { rangeAnchor = ordinal to it }
+    }
+    val wrappedItemClick: (Int) -> Unit = { ordinal ->
+        // Un clic con selección activa alterna la celda (lo hace el caller),
+        // así que también mueve el ancla del rango.
+        if (selectedIds.isNotEmpty()) recordAnchor(ordinal)
+        onItemClick(ordinal)
+    }
+    val wrappedLongClick: ((Int) -> Unit)? = onItemLongClick?.let { handler ->
+        { ordinal ->
+            recordAnchor(ordinal)
+            handler(ordinal)
+        }
+    }
+    // Ctrl/Cmd+clic = mismo efecto que el long-press, sin esperar.
+    val onItemToggleClick: ((Int) -> Unit)? =
+        if (dragSelect == null) null else wrappedLongClick
+    val onItemRangeClick: ((Int) -> Unit)? =
+        if (dragSelect == null || onItemLongClick == null) null else {
+            { ordinal ->
+                val anchor = rangeAnchor
+                val anchorValid = anchor != null && dragSelect.idAt(anchor.first) == anchor.second
+                if (anchorValid) {
+                    val ids = rangeSelectionIds(anchor.first, ordinal, dragSelect.idAt)
+                    if (ids.isNotEmpty()) dragSelect.onPatch(SelectionPatch(select = ids))
+                } else {
+                    // Sin ancla (o con ancla desfasada) el Shift+clic degrada a
+                    // toggle y esta celda ancla el siguiente rango.
+                    recordAnchor(ordinal)
+                    onItemLongClick(ordinal)
+                }
+            }
+        }
+
     val haptics = rememberPhotonneHaptics()
     val dragSelectAdapter = rememberTimelineDragSelectAdapter(
         listState = state,
@@ -414,11 +456,13 @@ internal fun GroupedAssetGrid(
                         row = entry.row,
                         baseUrl = baseUrl,
                         spacing = cellSpacing,
-                        onItemClick = onItemClick,
+                        onItemClick = wrappedItemClick,
                         // Con arrastre en banda el long-press lo posee la
                         // rejilla; si ambos lo escuchan se cancelan.
-                        onItemLongClick = onItemLongClick,
+                        onItemLongClick = wrappedLongClick,
                         cellLongClickEnabled = dragSelect == null,
+                        onItemRangeClick = onItemRangeClick,
+                        onItemToggleClick = onItemToggleClick,
                         selectedIds = selectedIds,
                         loadThumbnails = !suppressThumbnails,
                         // Device-only rows are merged in after the gallery
@@ -683,7 +727,9 @@ private fun UniformCellsRow(
     selectedIds: Set<String>,
     modifier: Modifier = Modifier,
     loadThumbnails: Boolean = true,
-    cellLongClickEnabled: Boolean = true
+    cellLongClickEnabled: Boolean = true,
+    onItemRangeClick: ((Int) -> Unit)? = null,
+    onItemToggleClick: ((Int) -> Unit)? = null
 ) {
     Row(
         modifier = modifier
@@ -701,6 +747,8 @@ private fun UniformCellsRow(
                 // El clic derecho se queda en la celda: en escritorio es la
                 // única entrada a la selección.
                 onSecondaryClick = onItemLongClick?.let { { it(cell.index) } },
+                onRangeClick = onItemRangeClick?.let { { it(cell.index) } },
+                onToggleClick = onItemToggleClick?.let { { it(cell.index) } },
                 isSelected = cell.item.id in selectedIds,
                 // Uniform grid: every cell carries equal weight and the row's
                 // height equals the cell width, so the tile is square without

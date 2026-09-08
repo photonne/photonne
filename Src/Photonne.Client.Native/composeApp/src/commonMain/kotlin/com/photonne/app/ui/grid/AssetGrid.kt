@@ -34,11 +34,20 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -57,6 +66,7 @@ import com.photonne.app.ui.grid.dragselect.rememberLazyGridDragSelectAdapter
 import com.photonne.app.ui.haptics.rememberPhotonneHaptics
 import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.ui.selection.SelectionPatch
+import com.photonne.app.ui.selection.rangeSelectionIds
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.PhotonneColors
@@ -115,6 +125,10 @@ fun AssetGrid(
     }
 
     val headerCount = if (header != null) 1 else 0
+    // Ancla del Shift+clic: la última celda tocada (toggle, long-press, clic
+    // derecho o clic en selección). Por id y no por índice: la paginación
+    // añade elementos y el índice del ancla se movería bajo el usuario.
+    var rangeAnchorId by remember { mutableStateOf<String?>(null) }
     val haptics = rememberPhotonneHaptics()
     val dragSelectAdapter = rememberLazyGridDragSelectAdapter(
         gridState = gridState,
@@ -167,13 +181,53 @@ fun AssetGrid(
             AssetGridCell(
                 asset = asset,
                 baseUrl = baseUrl,
-                onClick = { onItemClick(index) },
+                onClick = {
+                    // Un clic con selección activa alterna la celda (lo hace el
+                    // caller), así que también mueve el ancla del rango.
+                    if (selectedIds.isNotEmpty()) rangeAnchorId = asset.id
+                    onItemClick(index)
+                },
                 // Con arrastre en banda el long-press lo posee la rejilla.
                 onLongClick = if (dragSelect != null) null
-                else onItemLongClick?.let { { it(index) } },
+                else onItemLongClick?.let {
+                    {
+                        rangeAnchorId = asset.id
+                        it(index)
+                    }
+                },
                 // El clic derecho sigue viniendo de la celda: escritorio no
                 // tiene long-press y es su única entrada a la selección.
-                onSecondaryClick = onItemLongClick?.let { { it(index) } },
+                onSecondaryClick = onItemLongClick?.let {
+                    {
+                        rangeAnchorId = asset.id
+                        it(index)
+                    }
+                },
+                // Ctrl/Cmd+clic = mismo efecto que el long-press, sin esperar.
+                onToggleClick = onItemLongClick?.let {
+                    {
+                        rangeAnchorId = asset.id
+                        it(index)
+                    }
+                },
+                onRangeClick = if (dragSelect == null || onItemLongClick == null) null else {
+                    {
+                        val anchorIndex = rangeAnchorId
+                            ?.let { anchor -> items.indexOfFirst { it.id == anchor } }
+                            ?: -1
+                        if (anchorIndex >= 0) {
+                            val ids = rangeSelectionIds(anchorIndex, index) { ordinal ->
+                                items.getOrNull(ordinal)?.id
+                            }
+                            dragSelect.onPatch(SelectionPatch(select = ids))
+                        } else {
+                            // Sin ancla el Shift+clic degrada a toggle, y esta
+                            // celda pasa a ser el ancla del siguiente rango.
+                            rangeAnchorId = asset.id
+                            onItemLongClick(index)
+                        }
+                    }
+                },
                 isSelected = asset.id in selectedIds
             )
         }
@@ -206,6 +260,14 @@ fun AssetGridCell(
      * deja el secundario, que en escritorio es la única entrada a selección.
      */
     onSecondaryClick: (() -> Unit)? = onLongClick,
+    /**
+     * Shift+clic (escritorio): selección de rango desde el ancla de la rejilla.
+     * Cuando falta, el clic con Shift se comporta como un clic normal. En
+     * táctil los modificadores nunca están pulsados, así que no cambia nada.
+     */
+    onRangeClick: (() -> Unit)? = null,
+    /** Ctrl/Cmd+clic (escritorio): alterna la selección sin long-press. */
+    onToggleClick: (() -> Unit)? = null,
     isSelected: Boolean = false,
     modifier: Modifier = Modifier,
     /**
@@ -249,6 +311,23 @@ fun AssetGridCell(
         label = "selectionPadding"
     )
     val secondaryClick = onSecondaryClick
+    // Los modificadores de teclado no llegan al combinedClickable, así que se
+    // capturan en el Press (pase Initial, sin consumir nada — el ripple y el
+    // arrastre en banda ni se enteran) y el onClick decide con ellos. Solo se
+    // instala el observador si alguien escucha clics modificados.
+    val wantsModifiedClicks = onRangeClick != null || onToggleClick != null
+    val pressModifiers = remember { PressModifiersHolder() }
+    val clickAction: () -> Unit = if (!wantsModifiedClicks) onClick else {
+        {
+            val mods = pressModifiers.value
+            when {
+                mods != null && mods.isShiftPressed && onRangeClick != null -> onRangeClick()
+                mods != null && (mods.isCtrlPressed || mods.isMetaPressed) &&
+                    onToggleClick != null -> onToggleClick()
+                else -> onClick()
+            }
+        }
+    }
     // Una miniatura sin describir es, para un lector de pantalla, una rejilla
     // de nada. Y con selección activa lo que importa es el ESTADO: se anuncia
     // como seleccionable para que diga "seleccionado" al recorrerla.
@@ -277,7 +356,20 @@ fun AssetGridCell(
             .background(MaterialTheme.colorScheme.primary.copy(alpha = if (isSelected) 0.18f else 0f))
             .padding(selectionPadding)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .let { base ->
+                if (!wantsModifiedClicks) base
+                else base.pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            if (event.type == PointerEventType.Press) {
+                                pressModifiers.value = event.keyboardModifiers
+                            }
+                        }
+                    }
+                }
+            }
+            .combinedClickable(onClick = clickAction, onLongClick = onLongClick)
             .let { base -> if (secondaryClick != null) base.onSecondaryClick(secondaryClick) else base }
             .semantics {
                 contentDescription = cellDescription
@@ -392,6 +484,14 @@ private fun LocalSyncBadge(badge: LocalSyncBadge, modifier: Modifier = Modifier)
             modifier = Modifier.size(16.dp)
         )
     }
+}
+
+/**
+ * Últimos modificadores de teclado vistos en un Press. Var plano a propósito:
+ * solo lo lee el onClick del mismo gesto, no debe recomponer nada.
+ */
+internal class PressModifiersHolder {
+    var value: PointerKeyboardModifiers? = null
 }
 
 internal fun parseHexColor(hex: String?): Color? {
