@@ -183,6 +183,9 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Photonne"
             packageVersion = photonneVersion
+            macOS { iconFile.set(project.file("icons/photonne.icns")) }
+            windows { iconFile.set(project.file("icons/photonne.ico")) }
+            linux { iconFile.set(project.file("icons/photonne.png")) }
         }
         jvmArgs += "-Dphotonne.api.baseUrl=$apiBaseUrl"
     }
