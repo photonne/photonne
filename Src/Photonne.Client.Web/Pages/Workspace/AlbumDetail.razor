@@ -1,0 +1,155 @@
+@page "/albumes/{AlbumId:guid}"
+@using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAlbumsService AlbumsService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>@(_album?.Name ?? "Álbum") - Photonne</PageTitle>
+
+<div class="pa-4">
+    @if (_album == null)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else
+    {
+        <div class="d-flex align-center mb-1 gap-2">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => Navigation.NavigateTo("/albumes"))" />
+            <div class="flex-1">
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.h5">@_album.Name</MudText>
+                    @if (_album.IsSmart)
+                    {
+                        <MudTooltip Text="Álbum smart: su contenido lo decide la regla definida al crearlo">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Tertiary">Smart</MudChip>
+                        </MudTooltip>
+                    }
+                    @if (_album.SharedWithCount > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small">Compartido con @_album.SharedWithCount</MudChip>
+                    }
+                </div>
+                @if (!string.IsNullOrWhiteSpace(_album.Description))
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@_album.Description</MudText>
+                }
+            </div>
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                @if (_album.IsOwner)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="RenameAsync">Renombrar</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="DeleteAsync">Eliminar álbum</MudMenuItem>
+                }
+                else
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Logout" OnClick="LeaveAsync">Salir del álbum</MudMenuItem>
+                }
+            </MudMenu>
+        </div>
+
+        <WorkspaceCollection @ref="_collection"
+                             Source="LoadPage"
+                             EmptyIcon="@Icons.Material.Outlined.PhotoAlbum"
+                             EmptyTitle="Álbum vacío"
+                             EmptyDescription="Añade fotos desde la selección del timeline.">
+            <ExtraActions>
+                @if (_album is { IsSmart: false, CanWrite: true })
+                {
+                    <MudTooltip Text="Quitar del álbum">
+                        <MudIconButton Icon="@Icons.Material.Outlined.RemoveCircleOutline" Size="Size.Small"
+                                       OnClick="RemoveSelectedAsync" />
+                    </MudTooltip>
+                }
+            </ExtraActions>
+            <ViewerExtras Context="current">
+                @if (_album.CanWrite)
+                {
+                    <MudTooltip Text="Usar como portada">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Wallpaper" Style="color:#fff"
+                                       OnClick="() => SetCoverAsync(current.Id)" />
+                    </MudTooltip>
+                }
+            </ViewerExtras>
+        </WorkspaceCollection>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid AlbumId { get; set; }
+
+    private AlbumSummary? _album;
+    private WorkspaceCollection? _collection;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _album = await AlbumsService.GetAlbumAsync(AlbumId);
+    }
+
+    private async Task<WorkspaceCollection.CollectionPage> LoadPage(object? cursor)
+    {
+        var items = await AlbumsService.GetAlbumAssetsAsync(AlbumId);
+        return new WorkspaceCollection.CollectionPage(items, false, null);
+    }
+
+    private async Task RemoveSelectedAsync()
+    {
+        if (_collection == null || !_collection.Selection.IsActive) return;
+        var ids = _collection.Selection.Selected.ToList();
+        await _collection.Batch.RunAsync(async () =>
+        {
+            // Sin endpoint de lote para quitar: iterado.
+            foreach (var id in ids)
+            {
+                await AlbumsService.RemoveAssetAsync(AlbumId, id);
+            }
+            _collection.RemoveFromView(ids);
+            Snackbar.Add($"{ids.Count} quitadas del álbum", Severity.Success);
+        });
+    }
+
+    private async Task SetCoverAsync(Guid assetId)
+    {
+        await AlbumsService.SetCoverAsync(AlbumId, assetId);
+        Snackbar.Add("Portada actualizada", Severity.Success);
+    }
+
+    private async Task RenameAsync()
+    {
+        if (_album == null) return;
+        var parameters = new DialogParameters<Components.RenameAlbumDialog>
+        {
+            { d => d.Name, _album.Name },
+            { d => d.Description, _album.Description }
+        };
+        var dialog = await DialogService.ShowAsync<Components.RenameAlbumDialog>("Editar álbum", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false } && result.Data is ValueTuple<string, string?> updated)
+        {
+            await AlbumsService.UpdateAlbumAsync(AlbumId, updated.Item1, updated.Item2);
+            _album.Name = updated.Item1;
+            _album.Description = updated.Item2;
+            Snackbar.Add("Álbum actualizado", Severity.Success);
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Eliminar álbum",
+            "Se eliminará el álbum (las fotos NO se borran). ¿Continuar?",
+            yesText: "Eliminar", cancelText: "Cancelar");
+        if (confirmed != true) return;
+        await AlbumsService.DeleteAlbumAsync(AlbumId);
+        Navigation.NavigateTo("/albumes");
+    }
+
+    private async Task LeaveAsync()
+    {
+        await AlbumsService.LeaveAlbumAsync(AlbumId);
+        Navigation.NavigateTo("/albumes");
+    }
+}

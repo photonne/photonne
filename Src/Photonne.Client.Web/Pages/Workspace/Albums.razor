@@ -1,0 +1,85 @@
+@page "/albumes"
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAlbumsService AlbumsService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Álbumes - Photonne</PageTitle>
+
+<div class="pa-4">
+    <div class="d-flex align-center mb-4 gap-3">
+        <MudText Typo="Typo.h5">Álbumes</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.Add" OnClick="CreateAlbumAsync">
+            Nuevo álbum
+        </MudButton>
+    </div>
+
+    @if (_albums == null)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_albums.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Outlined.PhotoAlbum"
+                    Title="Todavía no hay álbumes"
+                    Description="Crea uno y añade fotos desde la selección del timeline." />
+    }
+    else
+    {
+        <div class="albums-grid">
+            @foreach (var album in _albums)
+            {
+                <div class="album-card" @onclick="() => OpenAlbum(album.Id)">
+                    <div class="album-cover">
+                        @if (!string.IsNullOrEmpty(album.CoverThumbnailUrl))
+                        {
+                            <img src="@album.CoverThumbnailUrl" alt="" loading="lazy" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Outlined.PhotoAlbum" Size="Size.Large" />
+                        }
+                        <div class="album-badges">
+                            @if (album.IsSmart)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary">Smart</MudChip>
+                            }
+                            @if (album.IsShared || album.SharedWithCount > 0)
+                            {
+                                <MudChip T="string" Size="Size.Small">Compartido</MudChip>
+                            }
+                        </div>
+                    </div>
+                    <div class="album-meta">
+                        <span class="album-name">@album.Name</span>
+                        <span class="album-count">@album.AssetCount elementos</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<AlbumSummary>? _albums;
+
+    private void OpenAlbum(Guid id) => Navigation.NavigateTo($"/albumes/{id}");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _albums = await AlbumsService.GetAlbumsAsync();
+    }
+
+    private async Task CreateAlbumAsync()
+    {
+        var dialog = await DialogService.ShowAsync<Components.Workspace.CreateAlbumDialog>("Nuevo álbum");
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: AlbumSummary created })
+        {
+            Navigation.NavigateTo($"/albumes/{created.Id}");
+        }
+    }
+}

@@ -1,0 +1,58 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAlbumsService AlbumsService
+@inject ISnackbar Snackbar
+
+@* Crear álbum. El modo Smart (con editor de reglas y preview) se añade en el
+   commit del editor; de momento solo el manual. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Nuevo álbum</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Nombre" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" AutoFocus="true" />
+        <MudTextField @bind-Value="_description" Label="Descripción (opcional)" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Lines="2" Class="mt-2" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="string.IsNullOrWhiteSpace(_name) || _busy"
+                   OnClick="CreateAsync">
+            Crear
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _name = string.Empty;
+    private string? _description;
+    private bool _busy;
+
+    private async Task CreateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name)) return;
+        _busy = true;
+        try
+        {
+            var created = await AlbumsService.CreateAlbumAsync(
+                _name.Trim(), string.IsNullOrWhiteSpace(_description) ? null : _description.Trim());
+            if (created != null)
+            {
+                MudDialog.Close(DialogResult.Ok(created));
+            }
+            else
+            {
+                Snackbar.Add("No se pudo crear el álbum", Severity.Error);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
