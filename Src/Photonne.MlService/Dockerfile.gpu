@@ -132,11 +132,22 @@ WORKDIR /app
 # y ese pin va una versión por detrás a propósito (CUDA 12); ver la cabecera
 # del propio requirements-gpu.txt.
 COPY requirements-gpu.txt ./requirements.txt
+# El --force-reinstall final NO es redundante. onnxruntime y onnxruntime-gpu se
+# instalan sobre el MISMO directorio site-packages/onnxruntime/, y rapidocr trae
+# el de CPU en duro, así que el orden de pip decide quién deja su
+# onnxruntime_pybind11_state.so: gana el de CPU y get_available_providers() pasa
+# a devolver solo ['AzureExecutionProvider', 'CPUExecutionProvider'] — la imagen
+# GPU se queda sin CUDAExecutionProvider aunque el libonnxruntime_providers_cuda.so
+# de 400 MB esté ahí. Reinstalando la rueda -gpu la última, sin deps para no mover
+# nada más, el pybind vuelve a ser el suyo y los providers salen
+# ['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'].
+# Si tocas el pin, tócalo en los dos sitios.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        build-essential \
     && pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir --no-deps --force-reinstall onnxruntime-gpu==1.26.0 \
     && apt-get purge -y --auto-remove build-essential \
     && rm -rf /var/lib/apt/lists/*
 

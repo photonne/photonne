@@ -23,6 +23,8 @@ onnxruntime-gpu==1.26.0
 # este pin pip cogería la 1.29.0 y dejaría ficheros de dos versiones distintas
 # mezclados bajo onnxruntime/ (los .so de capi de una con los .py de la otra). Va
 # clavado a la versión de onnxruntime-gpu; se suben los dos a la vez o ninguno.
+# Que coincidan NO basta para tener CUDA: el orden de instalación decide qué
+# pybind queda, por eso Dockerfile.gpu reinstala la rueda -gpu al final.
 onnxruntime==1.26.0
 numpy==2.5.3
 pillow==12.3.0
