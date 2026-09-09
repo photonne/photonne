@@ -1,13 +1,29 @@
-# GPU (NVIDIA/CUDA) variant of requirements.txt. Identical pins EXCEPT
-# onnxruntime -> onnxruntime-gpu, which is what registers CUDAExecutionProvider.
-# insightface and rapidocr-onnxruntime ride on whichever onnxruntime is
-# installed, so pulling the -gpu wheel here moves faces + OCR to GPU too.
-# Kept in lockstep with requirements.txt — update both together.
+# Variante GPU (NVIDIA/CUDA) de requirements.txt: los mismos pines SALVO
+# onnxruntime -> onnxruntime-gpu, que es lo que registra CUDAExecutionProvider.
+# insightface y rapidocr-onnxruntime usan el onnxruntime que haya instalado, así
+# que traer aquí la rueda -gpu mueve también caras + OCR a la GPU.
+#
+# OJO con la versión: onnxruntime-gpu se queda a propósito en la 1.26.0, mientras
+# que la imagen de CPU va en la 1.29.0. La 1.26.0 es el último release estable
+# cuyas ruedas de PyPI se compilan contra CUDA 12 (extras nvidia-*-cu12); de la
+# 1.27 en adelante piden CUDA 13, lo que obliga a una base nvidia/cuda:13.x cuyo
+# NVIDIA_REQUIRE_CUDA solo admite las ramas de driver 535 / 570 / 580+. En el
+# resto de hosts el nvidia-container-toolkit ni siquiera deja arrancar el
+# contenedor: falla el prestart hook con "unsatisfied condition: cuda>=13.3". Subir este pin implica
+# subir la base de Dockerfile.gpu y dejar fuera a esos hosts.
+#
+# El resto de pines sí van en paralelo con requirements.txt — actualízalos juntos.
 fastapi==0.141.1
 uvicorn[standard]==0.52.4
 pydantic==2.13.5
 insightface==2.0
-onnxruntime-gpu==1.29.0
+onnxruntime-gpu==1.26.0
+# rapidocr-onnxruntime depende en duro de `onnxruntime>=1.7.0`, así que la rueda de
+# CPU entra igual y se instala en el MISMO directorio de paquete que la de GPU. Sin
+# este pin pip cogería la 1.29.0 y dejaría ficheros de dos versiones distintas
+# mezclados bajo onnxruntime/ (los .so de capi de una con los .py de la otra). Va
+# clavado a la versión de onnxruntime-gpu; se suben los dos a la vez o ninguno.
+onnxruntime==1.26.0
 numpy==2.5.3
 pillow==12.3.0
 opencv-python-headless==5.0.0.93

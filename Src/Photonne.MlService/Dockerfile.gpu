@@ -87,12 +87,19 @@ RUN echo "[build] /export bake status:" \
 
 
 # ─── Stage 2: CUDA runtime ────────────────────────────────────────────────────
-# CUDA 13 + cuDNN 9: es contra lo que se compila onnxruntime-gpu 1.29 (sus extras
-# piden nvidia-cuda-runtime~=13.0 y nvidia-cudnn-cu13~=9.0), así que la base CUDA 12
-# que usábamos con onnxruntime-gpu 1.19 ya no vale — CUDAExecutionProvider no
-# cargaría. Ubuntu 24.04 trae Python 3.12 de serie, la versión que necesita numpy 2.5,
-# y eso nos quita de encima el PPA de deadsnakes que hacía falta en 22.04.
-FROM nvidia/cuda:13.3.1-cudnn-runtime-ubuntu24.04
+# CUDA 12.6 + cuDNN 9, que es contra lo que se compila onnxruntime-gpu 1.26 (el
+# último release estable con extras cu12: nvidia-cuda-runtime-cu12~=12.0 y
+# nvidia-cudnn-cu12~=9.0). Desde onnxruntime-gpu 1.27 las ruedas de PyPI piden
+# CUDA 13, lo que arrastra una base 13.x cuyo NVIDIA_REQUIRE_CUDA solo admite las
+# ramas de driver 535 / 570 / 580+: en cualquier otro host el
+# nvidia-container-toolkit rechaza el arranque del contenedor con
+# "unsatisfied condition: cuda>=13.3", antes incluso de ejecutar el entrypoint. Como esto se autoaloja en
+# máquinas cuyo driver no siempre se puede actualizar, la variante GPU se queda
+# en CUDA 12 y el pin de onnxruntime-gpu queda deliberadamente por detrás del de
+# la imagen de CPU. Ubuntu 24.04 trae Python 3.12 de serie, la versión que
+# necesita numpy 2.5, y eso nos quita de encima el PPA de deadsnakes que hacía
+# falta en 22.04.
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -121,7 +128,9 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# requirements-gpu.txt == requirements.txt with onnxruntime -> onnxruntime-gpu.
+# requirements-gpu.txt == requirements.txt con onnxruntime -> onnxruntime-gpu,
+# y ese pin va una versión por detrás a propósito (CUDA 12); ver la cabecera
+# del propio requirements-gpu.txt.
 COPY requirements-gpu.txt ./requirements.txt
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

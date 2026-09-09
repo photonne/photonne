@@ -49,8 +49,16 @@ CPU wheel), so faces/objects/scenes/embeddings/OCR all run on CPU regardless of
 
 1. **Host:** an NVIDIA driver and the [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
    (`sudo nvidia-ctk runtime configure && sudo systemctl restart docker`). Verify:
-   `docker run --rm --gpus all nvidia/cuda:12.6.2-base-ubuntu22.04 nvidia-smi`.
-2. **Image:** the `photonne-ml:latest-gpu` build (CUDA 12 + cuDNN 9 base +
+   `docker run --rm --gpus all nvidia/cuda:12.6.3-base-ubuntu24.04 nvidia-smi`.
+   The driver must satisfy the base image's `NVIDIA_REQUIRE_CUDA`: CUDA 12.6
+   means a driver exposing CUDA >= 12.6 (branch 560.28+), or one of the 470 /
+   535 / 550 branches the label also allows. With anything else the container
+   never even starts — the toolkit's prestart hook aborts with
+   `unsatisfied condition: cuda>=12.6` before the entrypoint runs. That check is
+   why the image stays on CUDA 12: `onnxruntime-gpu` >= 1.27 would force a CUDA 13
+   base, whose label only accepts the 535 / 570 / 580+ branches and locks out
+   hosts that can't upgrade.
+2. **Image:** the `photonne-ml:latest-gpu` build (CUDA 12.6 + cuDNN 9 base +
    `onnxruntime-gpu`), built from `Dockerfile.gpu`. amd64 only.
 3. **Compose:** the `docker-compose.gpu.yml` overlay, which passes the GPU
    through and sets `ONNX_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider`.
