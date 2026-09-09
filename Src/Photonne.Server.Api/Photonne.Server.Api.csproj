@@ -13,17 +13,17 @@
 
     <ItemGroup>
         <PackageReference Include="ErrorOr" Version="2.1.1" />
-        <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.16.0" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.11" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+        <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.17.1" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.12" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
         <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.17.3" />
         <PackageReference Include="SixLabors.ImageSharp" Version="4.1.1" />
         <PackageReference Include="MetadataExtractor" Version="2.9.3" />
         <PackageReference Include="Xabe.FFmpeg" Version="6.0.2" />
