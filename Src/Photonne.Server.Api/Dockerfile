@@ -35,7 +35,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
 # `|| echo` keeps the build green when download.geonames.org is unreachable, the
 # same tolerance the ML image's model bake uses. The runtime degrades to no place
 # names at all; nothing else breaks.
-FROM alpine:3.20 AS geodata
+FROM alpine:3.24 AS geodata
 RUN apk add --no-cache curl unzip gzip
 WORKDIR /opt/geo
 # Column map (cities500.txt is 19 tab-separated fields):
