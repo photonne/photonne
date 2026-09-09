@@ -66,8 +66,10 @@
 
             @if (_current.SubFolders.Count > 0)
             {
-                <FolderCardGrid Folders="_current.SubFolders" OnOpen="OpenFolder" />
-                <MudDivider Class="my-3" />
+                <MudText Typo="Typo.overline" Class="mud-text-secondary">Subcarpetas</MudText>
+                <FolderCardGrid Folders="_current.SubFolders" OnOpen="OpenFolder" Class="mt-1 mb-5" />
+                <MudText Typo="Typo.overline" Class="mud-text-secondary">Fotos</MudText>
+                <div class="mt-1"></div>
             }
 
             <WorkspaceCollection @ref="_collection"
@@ -107,12 +109,12 @@
             var crumbs = new List<BreadcrumbItem> { new("Carpetas", href: "/carpetas") };
             if (_tree != null && FolderId.HasValue)
             {
+                // Solo los ancestros: el nombre de la carpeta actual ya es el h1
+                // de la cabecera, repetirlo al final de la ruta sobra.
                 var path = FolderTreeHelper.PathTo(_tree, FolderId.Value);
-                for (var i = 0; i < path.Count; i++)
+                foreach (var ancestor in path.Take(Math.Max(0, path.Count - 1)))
                 {
-                    var last = i == path.Count - 1;
-                    crumbs.Add(new BreadcrumbItem(path[i].Name,
-                        href: last ? null : $"/carpetas/{path[i].Id}", disabled: last));
+                    crumbs.Add(new BreadcrumbItem(ancestor.Name, href: $"/carpetas/{ancestor.Id}"));
                 }
             }
             return crumbs;

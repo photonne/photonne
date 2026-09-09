@@ -1,55 +1,46 @@
 @using Photonne.Client.Web.Models
 
-@* Rejilla de tarjetas de subcarpeta (preview con collage de miniaturas,
-   nombre, contador y badges). Solo navega — las acciones de escritura viven
-   en el menú de la carpeta abierta, porque el servidor no expone CanWrite
-   en las subcarpetas de /api/folders/{id}. *@
+@* Subcarpetas de la carpeta abierta, como filas compactas en rejilla (patrón
+   Drive/Finder): miniatura pequeña, nombre, contador y badges. Compactas a
+   propósito — con tarjetas grandes, una carpeta con 8 subcarpetas llenaba la
+   pantalla antes de enseñar una sola foto. Solo navegan: el servidor no manda
+   CanWrite en las subcarpetas de /api/folders/{id}. *@
 
-<div class="fcg">
+<div class="fcg @Class">
     @foreach (var folder in Folders)
     {
-        <div class="fcg-card" role="link" tabindex="0"
-             aria-label="@($"Abrir carpeta {folder.Name}")"
+        <div class="fcg-item" role="link" tabindex="0"
+             aria-label="@($"Abrir carpeta {folder.Name}, {folder.AssetCount} elementos")"
              @key="folder.Id"
              @onclick="() => OnOpen.InvokeAsync(folder)"
              @onkeydown="e => HandleKeyAsync(e, folder)">
-            <div class="fcg-preview">
-                @if (folder.PreviewThumbnailUrls.Count >= 4)
+            <div class="fcg-thumb">
+                @if (folder.ThumbnailUrl != null)
                 {
-                    <div class="fcg-collage">
-                        @foreach (var url in folder.PreviewThumbnailUrls.Take(4))
-                        {
-                            <img src="@url" alt="" loading="lazy" />
-                        }
-                    </div>
-                }
-                else if (folder.ThumbnailUrl != null)
-                {
-                    <img class="fcg-single" src="@folder.ThumbnailUrl" alt="" loading="lazy" />
+                    <img src="@folder.ThumbnailUrl" alt="" loading="lazy" decoding="async" />
                 }
                 else
                 {
-                    <MudIcon Icon="@Icons.Material.Outlined.Folder" Class="fcg-placeholder" />
+                    <MudIcon Icon="@Icons.Material.Outlined.Folder" Size="Size.Small" />
                 }
-                <div class="fcg-badges">
-                    @if (folder.IsShared)
-                    {
-                        <MudTooltip Text="@SharedTooltip(folder)">
-                            <MudIcon Icon="@Icons.Material.Outlined.FolderShared" Size="Size.Small" />
-                        </MudTooltip>
-                    }
-                    @if (folder.ExternalLibraryId != null)
-                    {
-                        <MudTooltip Text="Biblioteca externa">
-                            <MudIcon Icon="@Icons.Material.Outlined.Storage" Size="Size.Small" />
-                        </MudTooltip>
-                    }
-                </div>
             </div>
-            <div class="fcg-meta">
-                <span class="fcg-name" title="@folder.Name">@folder.Name</span>
-                <span class="fcg-count">@folder.AssetCount</span>
-            </div>
+
+            <span class="fcg-name" title="@folder.Name">@folder.Name</span>
+
+            @if (folder.IsShared)
+            {
+                <MudTooltip Text="@SharedTooltip(folder)">
+                    <MudIcon Icon="@Icons.Material.Outlined.FolderShared" Size="Size.Small" Class="fcg-badge" />
+                </MudTooltip>
+            }
+            @if (folder.ExternalLibraryId != null)
+            {
+                <MudTooltip Text="Biblioteca externa">
+                    <MudIcon Icon="@Icons.Material.Outlined.Storage" Size="Size.Small" Class="fcg-badge" />
+                </MudTooltip>
+            }
+
+            <span class="fcg-count">@folder.AssetCount</span>
         </div>
     }
 </div>
@@ -57,6 +48,7 @@
 @code {
     [Parameter, EditorRequired] public List<FolderItem> Folders { get; set; } = new();
     [Parameter] public EventCallback<FolderItem> OnOpen { get; set; }
+    [Parameter] public string? Class { get; set; }
 
     private Task HandleKeyAsync(KeyboardEventArgs e, FolderItem folder) =>
         e.Key is "Enter" or " " ? OnOpen.InvokeAsync(folder) : Task.CompletedTask;
