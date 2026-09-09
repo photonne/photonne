@@ -66,6 +66,11 @@ def _export_image_tower() -> None:
     dummy = torch.randn(1, 3, 224, 224)
 
     print(f"[clip-export] exporting image tower to {_IMAGE_OUT}", flush=True)
+    # dynamo=False fuerza el exportador clásico (TorchScript). Desde torch 2.9 el
+    # exportador por defecto es el de torch.export, y con estos modelos deja los pesos
+    # fuera del .onnx: el fichero sale de unos pocos KB en vez de decenas o cientos de
+    # MB, y además no sabe bajar del opset 18 al que pedimos aquí. El runtime carga un
+    # único .onnx autocontenido, así que nos quedamos con el exportador clásico.
     torch.onnx.export(
         wrapped,
         dummy,
@@ -74,6 +79,7 @@ def _export_image_tower() -> None:
         input_names=["pixel_values"],
         output_names=["image_embeds"],
         dynamic_axes={"pixel_values": {0: "batch"}, "image_embeds": {0: "batch"}},
+        dynamo=False,
     )
     print(f"[clip-export] image tower done ({os.path.getsize(_IMAGE_OUT)} bytes)", flush=True)
 
@@ -134,6 +140,8 @@ def _export_text_tower() -> None:
     dummy_mask = torch.ones((1, 16), dtype=torch.long)
 
     print(f"[clip-export] exporting text tower to {_TEXT_OUT}", flush=True)
+    # dynamo=False por lo mismo que en la torre de imagen: el exportador nuevo
+    # se deja los pesos fuera del .onnx.
     torch.onnx.export(
         wrapped,
         (dummy_ids, dummy_mask),
@@ -146,6 +154,7 @@ def _export_text_tower() -> None:
             "attention_mask": {0: "batch", 1: "seq"},
             "text_embeds": {0: "batch"},
         },
+        dynamo=False,
     )
     print(f"[clip-export] text tower done ({os.path.getsize(_TEXT_OUT)} bytes)", flush=True)
 

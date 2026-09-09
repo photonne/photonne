@@ -91,6 +91,11 @@ def main() -> int:
 
     print(f"[scene-export] exporting to {_OUT}", flush=True)
     dummy = torch.randn(1, 3, 224, 224)
+    # dynamo=False fuerza el exportador clásico (TorchScript). Desde torch 2.9 el
+    # exportador por defecto es el de torch.export, y con estos modelos deja los pesos
+    # fuera del .onnx: el fichero sale de unos pocos KB en vez de decenas o cientos de
+    # MB, y además no sabe bajar del opset 18 al que pedimos aquí. El runtime carga un
+    # único .onnx autocontenido, así que nos quedamos con el exportador clásico.
     torch.onnx.export(
         model,
         dummy,
@@ -99,6 +104,7 @@ def main() -> int:
         input_names=["input"],
         output_names=["logits"],
         dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}},
+        dynamo=False,
     )
     out_size = os.path.getsize(_OUT)
     print(f"[scene-export] done — {_OUT} ({out_size} bytes)", flush=True)

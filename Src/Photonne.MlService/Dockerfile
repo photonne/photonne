@@ -3,58 +3,36 @@
 # actually consume at runtime are generated here at build time. Doing the
 # export in a dedicated stage means torch + ultralytics never reach the
 # runtime image.
-FROM python:3.11-slim AS yolo-export
+FROM python:3.12-slim AS yolo-export
 
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1
-
-# Provided automatically by BuildKit/buildx — used below to bifurcate the
-# pip install per architecture. `linux/amd64` -> "amd64"; `linux/arm64` -> "arm64".
-ARG TARGETARCH
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# On amd64 we install the slim CPU-only torch via download.pytorch.org's
-# /whl/cpu index (~200 MB vs the CUDA build's ~2 GB). That index does NOT
-# ship aarch64 wheels — there is no `torch==2.4.1+cpu` variant for ARM — so
-# on arm64 (and any other arch) we install the plain pinned versions from
-# PyPI. The ARM wheel is already CPU-only by default since no CUDA build of
-# torch is published for Linux ARM, so this is equivalent in size/perf to
-# the +cpu variant on amd64.
+# Instalamos el torch CPU-only desde el índice /whl/cpu de download.pytorch.org
+# (~200 MB frente a los ~2 GB de la variante con CUDA). Desde torch 2.14 ese índice
+# publica ruedas manylinux aarch64 además de x86_64, así que ya no hace falta
+# bifurcar el install por arquitectura como antes.
 #
-# Everything still goes in a single `pip install` so the resolver sees the
-# torch/torchvision pin at the same time as ultralytics, and doesn't silently
-# upgrade torch from a transitive dependency. onnxscript is required by
-# torch>=2.6's torch.onnx.export even when the legacy (non-dynamo) path is
-# selected.
-RUN if [ "$TARGETARCH" = "amd64" ]; then \
-        pip install \
-            --extra-index-url https://download.pytorch.org/whl/cpu \
-            torch==2.4.1+cpu \
-            torchvision==0.19.1+cpu \
-            ultralytics==8.3.0 \
-            onnx==1.16.2 \
-            onnxslim==0.1.34 \
-            onnxscript==0.1.0 \
-            onnxruntime==1.19.2 \
-            transformers==4.45.2 \
-            sentence-transformers==3.1.1 \
-            tokenizers==0.20.0 ; \
-    else \
-        pip install \
-            torch==2.4.1 \
-            torchvision==0.19.1 \
-            ultralytics==8.3.0 \
-            onnx==1.16.2 \
-            onnxslim==0.1.34 \
-            onnxscript==0.1.0 \
-            onnxruntime==1.19.2 \
-            transformers==4.45.2 \
-            sentence-transformers==3.1.1 \
-            tokenizers==0.20.0 ; \
-    fi
+# Todo va en un único `pip install` para que el resolutor vea el pin de
+# torch/torchvision a la vez que ultralytics y no suba torch por debajo desde una
+# dependencia transitiva. onnxscript lo necesita torch.onnx.export desde torch 2.6
+# incluso cuando se elige la ruta legacy (no dynamo).
+RUN pip install \
+        --extra-index-url https://download.pytorch.org/whl/cpu \
+        torch==2.14.0+cpu \
+        torchvision==0.29.0+cpu \
+        ultralytics==8.4.145 \
+        onnx==1.22.0 \
+        onnxslim==0.1.96 \
+        onnxscript==0.7.1 \
+        onnxruntime==1.29.0 \
+        transformers==5.16.1 \
+        sentence-transformers==6.0.1 \
+        tokenizers==0.23.2
 
 WORKDIR /export
 RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', dynamic=False, simplify=True, opset=12)"
@@ -83,19 +61,24 @@ RUN python /export/export_clip.py || echo "[build] WARNING: clip export failed; 
 # layers are sealed. STRICT_CLIP_BAKE=1 (build arg) flips the warning into a
 # hard failure for CI: any image you push to a registry should always have
 # CLIP baked in.
+# Cada fichero se compara además contra un tamaño mínimo: un exportador que deje
+# los pesos fuera del .onnx escribe unos pocos KB, que un simple "no está vacío"
+# daba por bueno y colaba en la imagen.
 ARG STRICT_CLIP_BAKE=0
 RUN echo "[build] /export bake status:" \
     && ls -la /export/yolov8n.onnx /export/scene_classifier.onnx /export/clip_image.onnx /export/clip_text.onnx /export/clip_tokenizer.json 2>&1 || true \
-    && for f in clip_image.onnx clip_text.onnx clip_tokenizer.json; do \
-         if [ ! -s "/export/$f" ]; then \
-           echo "[build] WARNING: /export/$f is missing or empty"; \
+    && for spec in clip_image.onnx:100000000 clip_text.onnx:100000000 clip_tokenizer.json:1000000; do \
+         f="${spec%:*}"; min="${spec#*:}"; \
+         size=$(stat -c %s "/export/$f" 2>/dev/null || echo 0); \
+         if [ "$size" -lt "$min" ]; then \
+           echo "[build] WARNING: /export/$f is missing or too small ($size bytes, expected >= $min)"; \
            if [ "$STRICT_CLIP_BAKE" = "1" ]; then echo "[build] STRICT_CLIP_BAKE=1, failing build"; exit 1; fi; \
          fi; \
        done
 
 
 # ─── Stage 2: runtime ─────────────────────────────────────────────────────────
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

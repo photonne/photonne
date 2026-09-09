@@ -43,7 +43,7 @@ Environment variables (see `app/config.py`):
 
 ## GPU acceleration (NVIDIA/CUDA)
 
-The default `photonne-ml` image is CPU-only (`python:3.11-slim` + the `onnxruntime`
+The default `photonne-ml` image is CPU-only (`python:3.12-slim` + the `onnxruntime`
 CPU wheel), so faces/objects/scenes/embeddings/OCR all run on CPU regardless of
 `ONNX_PROVIDERS`. To use an NVIDIA GPU you need three things together:
 

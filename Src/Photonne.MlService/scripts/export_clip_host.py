@@ -6,13 +6,13 @@ run this on your host machine instead. The output goes straight to the
 photonne ml_models volume's mount path so the running container picks it up
 on the next start.
 
-Quick start (Windows, with Python 3.11+ installed):
+Quick start (Windows, with Python 3.12+ installed):
 
     python -m venv .venv-clip
     .venv-clip\\Scripts\\activate
     pip install --extra-index-url https://download.pytorch.org/whl/cpu \
-        torch==2.4.1+cpu torchvision==0.19.1+cpu \
-        transformers==4.45.2 sentence-transformers==3.1.1 tokenizers==0.20.0
+        torch==2.14.0+cpu torchvision==0.29.0+cpu \
+        transformers==5.16.1 sentence-transformers==6.0.1 tokenizers==0.23.2
     python Src/Photonne.MlService/scripts/export_clip_host.py --out-dir <volume-path>
 
 Then `docker compose restart photonne-ml`.
@@ -48,6 +48,11 @@ def _export_image_tower(out_path: str) -> None:
     dummy = torch.randn(1, 3, 224, 224)
 
     print(f"[clip-export] exporting image tower to {out_path}", flush=True)
+    # dynamo=False fuerza el exportador clásico (TorchScript). Desde torch 2.9 el
+    # exportador por defecto es el de torch.export, y con estos modelos deja los pesos
+    # fuera del .onnx: el fichero sale de unos pocos KB en vez de decenas o cientos de
+    # MB, y además no sabe bajar del opset 18 al que pedimos aquí. El runtime carga un
+    # único .onnx autocontenido, así que nos quedamos con el exportador clásico.
     torch.onnx.export(
         wrapped,
         dummy,
@@ -56,6 +61,7 @@ def _export_image_tower(out_path: str) -> None:
         input_names=["pixel_values"],
         output_names=["image_embeds"],
         dynamic_axes={"pixel_values": {0: "batch"}, "image_embeds": {0: "batch"}},
+        dynamo=False,
     )
     print(f"[clip-export] image tower done ({os.path.getsize(out_path)} bytes)", flush=True)
 
@@ -118,6 +124,8 @@ def _export_text_tower(model_out: str, tokenizer_out: str) -> None:
     dummy_mask = torch.ones((1, 16), dtype=torch.long)
 
     print(f"[clip-export] exporting text tower to {model_out}", flush=True)
+    # dynamo=False por lo mismo que en la torre de imagen: el exportador nuevo
+    # se deja los pesos fuera del .onnx.
     torch.onnx.export(
         wrapped,
         (dummy_ids, dummy_mask),
@@ -130,6 +138,7 @@ def _export_text_tower(model_out: str, tokenizer_out: str) -> None:
             "attention_mask": {0: "batch", 1: "seq"},
             "text_embeds": {0: "batch"},
         },
+        dynamo=False,
     )
     print(f"[clip-export] text tower done ({os.path.getsize(model_out)} bytes)", flush=True)
 
