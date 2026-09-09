@@ -5,7 +5,7 @@ import com.photonne.app.data.models.Memory
 import com.photonne.app.data.models.MemoryDetail
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.di.PhotonneAppConfig
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class MemoriesRepository(
     private val api: PhotonneApi,

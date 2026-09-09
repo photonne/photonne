@@ -77,8 +77,8 @@ import com.photonne.app.resources.notifications_time_minutes_ago
 import com.photonne.app.resources.notifications_total
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource

@@ -104,7 +104,7 @@ import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore

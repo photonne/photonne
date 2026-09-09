@@ -1,6 +1,6 @@
 package com.photonne.app.data.models
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 /** Cursor-paginated response shared by `/api/assets/archived` and `/api/assets/trash`. */

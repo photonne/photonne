@@ -60,7 +60,7 @@ import com.photonne.app.resources.account_profile_summary_last_login
 import com.photonne.app.resources.account_profile_username
 import com.photonne.app.resources.admin_user_role_admin
 import com.photonne.app.resources.admin_user_role_user
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

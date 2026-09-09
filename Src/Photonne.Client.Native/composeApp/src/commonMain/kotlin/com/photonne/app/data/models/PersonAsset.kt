@@ -1,6 +1,6 @@
 package com.photonne.app.data.models
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 /** Slim asset row returned by `/api/search/people/{id}/assets`. The

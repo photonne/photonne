@@ -56,7 +56,7 @@ import com.photonne.app.resources.asset_description_field
 import com.photonne.app.resources.asset_trash_message
 import com.photonne.app.resources.asset_trash_title
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant

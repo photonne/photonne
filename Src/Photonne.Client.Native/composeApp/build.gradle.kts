@@ -48,8 +48,10 @@ kotlin {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
 
+    // Sin iosX64: Compose Multiplatform 1.12, lifecycle 2.11 y coil 3.6 ya no publican
+    // artefactos para el simulador de Mac Intel. iosSimulatorArm64 cubre el simulador en
+    // Apple Silicon y iosArm64 el dispositivo, que es lo único que usamos.
     listOf(
-        iosX64(),
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
@@ -150,7 +152,11 @@ kotlin {
 
 android {
     namespace = "com.photonne.app"
-    compileSdk = 35
+    // 37 es el mínimo que exigen haze 1.7, coil 3.6 y media3 1.11 para compilar contra ellas.
+    // targetSdk se queda en 35 a propósito: subirlo activa comportamientos nuevos del sistema
+    // en tiempo de ejecución y eso hay que probarlo en dispositivo, no es parte de actualizar
+    // dependencias.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.photonne.app"

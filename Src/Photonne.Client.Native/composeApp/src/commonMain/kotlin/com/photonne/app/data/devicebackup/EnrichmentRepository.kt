@@ -5,7 +5,7 @@ import com.photonne.app.data.api.PendingEnrichmentPage
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.api.RetryAllTasksResponse
 import com.photonne.app.data.api.RetryTaskResponse
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Thin wrapper around the four enrichment endpoints. Lives next to

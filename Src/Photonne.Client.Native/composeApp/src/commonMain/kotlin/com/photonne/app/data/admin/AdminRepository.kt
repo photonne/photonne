@@ -114,7 +114,7 @@ class AdminRepository(private val api: PhotonneApi) {
     // --- Shared-folder trash ---
 
     suspend fun getSharedTrash(
-        cursor: kotlinx.datetime.Instant? = null,
+        cursor: kotlin.time.Instant? = null,
         pageSize: Int = 150
     ): com.photonne.app.data.models.SharedTrashPage = api.getSharedTrash(cursor, pageSize)
 

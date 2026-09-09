@@ -4,7 +4,7 @@ import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.timeline.TimelineBucketState
 import com.photonne.app.ui.timeline.captureLocalDate
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 
 /**

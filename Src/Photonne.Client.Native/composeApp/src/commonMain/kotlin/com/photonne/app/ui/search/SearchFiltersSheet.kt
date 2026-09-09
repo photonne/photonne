@@ -45,7 +45,7 @@ import com.photonne.app.resources.search_ocr_hint
 import com.photonne.app.resources.search_ocr_title
 import com.photonne.app.resources.search_people_count
 import com.photonne.app.resources.search_scenes_count
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime

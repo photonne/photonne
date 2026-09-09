@@ -11,7 +11,7 @@ import com.photonne.app.data.models.SentShareLink
 import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineItem
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class AlbumsRepository(
     private val api: PhotonneApi

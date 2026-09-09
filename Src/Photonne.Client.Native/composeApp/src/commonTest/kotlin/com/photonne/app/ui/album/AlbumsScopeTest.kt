@@ -1,7 +1,7 @@
 package com.photonne.app.ui.album
 
 import com.photonne.app.data.models.AlbumSummary
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

@@ -8,7 +8,7 @@ import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.YearGroup
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * "Para organizar" inbox: the assets still sitting under MobileBackup (dropped

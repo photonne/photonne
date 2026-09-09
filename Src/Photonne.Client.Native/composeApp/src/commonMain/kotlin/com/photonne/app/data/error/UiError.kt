@@ -2,8 +2,8 @@ package com.photonne.app.data.error
 
 import com.photonne.app.PhotonneVersion
 import com.photonne.app.data.api.PhotonneApiException
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Error legible que un ViewModel expone a la UI. Combina un mensaje corto

@@ -56,7 +56,7 @@ import com.photonne.app.resources.timeline_memories_years_ago
 import com.photonne.app.ui.memories.MemoryCardFace
 import com.photonne.app.ui.memories.MemoryDetailContext
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource

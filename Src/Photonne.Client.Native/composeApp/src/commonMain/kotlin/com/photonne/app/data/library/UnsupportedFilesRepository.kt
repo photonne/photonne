@@ -3,7 +3,7 @@ package com.photonne.app.data.library
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.UnsupportedFilesPage
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class UnsupportedFilesRepository(
     private val api: PhotonneApi

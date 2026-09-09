@@ -6,7 +6,7 @@ import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.grid.TimelineEntry
 import com.photonne.app.ui.grid.findRowIndexForAsset
 import com.photonne.app.ui.grid.formatLocalizedMonth
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,6 +1,6 @@
 package com.photonne.app.ui.settings
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Localized rendering for the profile summary timestamps, mirroring the

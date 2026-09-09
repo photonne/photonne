@@ -811,7 +811,7 @@ private fun DatePickerSheet(initialIso: String?, onPick: (String?) -> Unit) {
             TextButton(onClick = {
                 val millis = pickerState.selectedDateMillis
                 val iso = millis?.let {
-                    kotlinx.datetime.Instant.fromEpochMilliseconds(it)
+                    kotlin.time.Instant.fromEpochMilliseconds(it)
                         .toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date.toString()
                 }
                 onPick(iso)

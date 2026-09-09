@@ -1018,7 +1018,7 @@ private fun AssetPage(
     ) {
         with(sharedScope) {
             Modifier.sharedElement(
-                state = rememberSharedContentState(key = "asset-${item.id}"),
+                sharedContentState = rememberSharedContentState(key = "asset-${item.id}"),
                 animatedVisibilityScope = animatedVisibilityScope,
                 boundsTransform = { _, _ ->
                     androidx.compose.animation.core.tween(durationMillis = 320)

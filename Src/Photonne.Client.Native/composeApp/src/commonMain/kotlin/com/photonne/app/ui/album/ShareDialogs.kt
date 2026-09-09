@@ -79,7 +79,7 @@ import com.photonne.app.resources.share_password_change
 import com.photonne.app.resources.share_password_keep
 import com.photonne.app.resources.share_password_remove
 import com.photonne.app.resources.share_title
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime

@@ -11,7 +11,7 @@ import androidx.compose.runtime.getValue
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_jump
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)

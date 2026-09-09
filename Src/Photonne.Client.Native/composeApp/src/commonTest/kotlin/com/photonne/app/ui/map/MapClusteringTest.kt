@@ -1,7 +1,7 @@
 package com.photonne.app.ui.map
 
 import com.photonne.app.data.models.MapPoint
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

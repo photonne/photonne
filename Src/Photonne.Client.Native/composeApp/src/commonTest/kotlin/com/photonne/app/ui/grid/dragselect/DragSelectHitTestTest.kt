@@ -4,7 +4,7 @@ import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.grid.groupTimelineEntries
 import com.photonne.app.ui.grid.packUniformRows
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

@@ -2,7 +2,7 @@ package com.photonne.app.data.timeline
 
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.TimelineItem
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class TimelineRepository(
     private val api: PhotonneApi,

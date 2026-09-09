@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class UnsupportedFilesUiState(
     val items: List<UnsupportedFileItem> = emptyList(),

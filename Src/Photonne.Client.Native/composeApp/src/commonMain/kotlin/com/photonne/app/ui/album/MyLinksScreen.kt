@@ -68,7 +68,7 @@ import com.photonne.app.resources.share_revoke_confirm_message
 import com.photonne.app.resources.share_revoke_confirm_title
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource

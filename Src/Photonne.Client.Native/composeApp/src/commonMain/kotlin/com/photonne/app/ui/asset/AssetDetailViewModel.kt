@@ -10,7 +10,7 @@ import com.photonne.app.data.models.ExifData
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PersonAsset
 import kotlinx.coroutines.Job
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

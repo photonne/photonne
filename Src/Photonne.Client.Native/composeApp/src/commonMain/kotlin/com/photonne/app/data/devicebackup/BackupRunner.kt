@@ -2,7 +2,7 @@ package com.photonne.app.data.devicebackup
 
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 /**
  * Stateless full-folder sync routine. Used by:

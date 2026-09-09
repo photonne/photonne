@@ -63,7 +63,7 @@ import com.photonne.app.resources.selection_group_select
 import com.photonne.app.resources.timeline_year_count
 import com.photonne.app.ui.theme.SkeletonBlock
 import org.jetbrains.compose.resources.stringResource
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 
 /**

@@ -2,7 +2,7 @@ package com.photonne.app.data.devicebackup
 
 import com.photonne.app.db.PhotonneDatabase
 import com.photonne.app.db.BackupLedger as BackupLedgerRow
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 /** Persisted verdict for one ledger row. Mirrors [DeviceMediaSyncState]
  *  minus the transient `Uploading` state, which never survives a restart. */

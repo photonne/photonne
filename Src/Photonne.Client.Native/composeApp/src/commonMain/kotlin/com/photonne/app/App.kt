@@ -432,7 +432,7 @@ private fun com.photonne.app.data.models.MapPoint.toSyntheticTimelineItem():
  * asset detail by id, so the registry's id + capture date are enough. */
 private fun com.photonne.app.data.api.AdminEnrichmentFailureDto.toSyntheticTimelineItem():
     com.photonne.app.data.models.TimelineItem {
-    val date = fileCreatedAt ?: kotlinx.datetime.Instant.DISTANT_PAST
+    val date = fileCreatedAt ?: kotlin.time.Instant.DISTANT_PAST
     return com.photonne.app.data.models.TimelineItem(
         id = assetId,
         fileName = fileName,
@@ -737,7 +737,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMergePicker by remember { mutableStateOf(false) }
     var showAssetFacesSheet by remember { mutableStateOf(false) }
     var showJumpToDate by remember { mutableStateOf(false) }
-    var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
+    var pendingJumpDate by remember { mutableStateOf<kotlin.time.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
     var showCreateFolder by remember { mutableStateOf(false) }
     var showEditFolder by remember { mutableStateOf(false) }

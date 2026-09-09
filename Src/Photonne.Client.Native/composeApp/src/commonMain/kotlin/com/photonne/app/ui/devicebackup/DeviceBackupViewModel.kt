@@ -18,7 +18,7 @@ import com.photonne.app.data.devicebackup.withBackgroundExecution
 import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.DeviceBackupRepository
 import com.photonne.app.data.devicebackup.LastBackupRun
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.devicelibrary.DeviceLibrary
@@ -39,7 +39,7 @@ import com.photonne.app.resources.backup_error_verify
 import com.photonne.app.resources.device_backup_free_space_done
 import com.photonne.app.resources.device_backup_free_space_partial
 import com.photonne.app.ui.format.humanBytes
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.compose.resources.getString
 
 /**

@@ -5,7 +5,7 @@ import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PersonAssetsPage
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class AssetDetailRepository(
     private val api: PhotonneApi
