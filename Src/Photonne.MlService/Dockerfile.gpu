@@ -87,9 +87,23 @@ RUN echo "[build] /export bake status:" \
 
 
 # ─── Stage 2: CUDA runtime ────────────────────────────────────────────────────
-# CUDA 12.6 + cuDNN 9, que es contra lo que se compila onnxruntime-gpu 1.26 (el
-# último release estable con extras cu12: nvidia-cuda-runtime-cu12~=12.0 y
-# nvidia-cudnn-cu12~=9.0). Desde onnxruntime-gpu 1.27 las ruedas de PyPI piden
+# CUDA 12.8 + cuDNN 9.8, la misma versión de CUDA con la que se compila
+# onnxruntime-gpu 1.26 (el último release estable con extras cu12:
+# nvidia-cuda-runtime-cu12~=12.0 y nvidia-cudnn-cu12~=9.0). onnxruntime no trae
+# cuBLAS ni cuDNN propios: usa los de esta base, así que la base decide qué GPUs
+# funcionan. Con la 12.6 (cuBLAS 12.6 + cuDNN 9.5, anteriores a Blackwell) una
+# RTX 50xx (sm_120) cargaba los modelos pero la primera inferencia moría en
+# cublasCreate con "CUBLAS failure 3: the resource allocation failed", con la
+# VRAM casi vacía. 12.8 es la primera con soporte de sm_120. Tiene un precio: su
+# NVIDIA_REQUIRE_CUDA pide cuda>=12.8 (driver 570.26+), y las excepciones por
+# rama de la etiqueta (470/535/550/560/565) solo valen para marcas de centro de
+# datos o profesionales (Tesla, Quadro, NVIDIA RTX, GRID...), no para GeForce.
+# Una GeForce con driver 560/565, que con la 12.6 arrancaba, con la 12.8 ya no.
+# La 12.9 además quita la rama 470, por eso no se sube más. Los kernels propios
+# de onnxruntime 1.26 llegan hasta sm_90 más PTX compute_90, que el driver
+# compila para sm_120 en la primera ejecución.
+#
+# Desde onnxruntime-gpu 1.27 las ruedas de PyPI piden
 # CUDA 13, lo que arrastra una base 13.x cuyo NVIDIA_REQUIRE_CUDA solo admite las
 # ramas de driver 535 / 570 / 580+: en cualquier otro host el
 # nvidia-container-toolkit rechaza el arranque del contenedor con
@@ -99,7 +113,7 @@ RUN echo "[build] /export bake status:" \
 # la imagen de CPU. Ubuntu 24.04 trae Python 3.12 de serie, la versión que
 # necesita numpy 2.5, y eso nos quita de encima el PPA de deadsnakes que hacía
 # falta en 22.04.
-FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

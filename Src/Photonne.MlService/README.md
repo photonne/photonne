@@ -49,17 +49,23 @@ CPU wheel), so faces/objects/scenes/embeddings/OCR all run on CPU regardless of
 
 1. **Host:** an NVIDIA driver and the [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
    (`sudo nvidia-ctk runtime configure && sudo systemctl restart docker`). Verify:
-   `docker run --rm --gpus all nvidia/cuda:12.6.3-base-ubuntu24.04 nvidia-smi`.
-   The driver must satisfy the base image's `NVIDIA_REQUIRE_CUDA`: CUDA 12.6
-   means a driver exposing CUDA >= 12.6 (branch 560.28+), or one of the 470 /
-   535 / 550 branches the label also allows. With anything else the container
-   never even starts — the toolkit's prestart hook aborts with
-   `unsatisfied condition: cuda>=12.6` before the entrypoint runs. That check is
+   `docker run --rm --gpus all nvidia/cuda:12.8.1-base-ubuntu24.04 nvidia-smi`.
+   The driver must satisfy the base image's `NVIDIA_REQUIRE_CUDA`: CUDA 12.8
+   means a driver exposing CUDA >= 12.8 (branch 570.26+). The label also allows
+   the 470 / 535 / 550 / 560 / 565 branches, but only for datacenter and
+   professional brands (Tesla, Quadro, NVIDIA RTX, GRID…) — a GeForce card needs
+   570.26+, full stop. With anything else the
+   container never even starts — the toolkit's prestart hook aborts with
+   `unsatisfied condition: cuda>=12.8` before the entrypoint runs. That check is
    why the image stays on CUDA 12: `onnxruntime-gpu` >= 1.27 would force a CUDA 13
    base, whose label only accepts the 535 / 570 / 580+ branches and locks out
    hosts that can't upgrade.
-2. **Image:** the `photonne-ml:latest-gpu` build (CUDA 12.6 + cuDNN 9 base +
-   `onnxruntime-gpu`), built from `Dockerfile.gpu`. amd64 only.
+2. **Image:** the `photonne-ml:latest-gpu` build (CUDA 12.8 + cuDNN 9.8 base +
+   `onnxruntime-gpu`), built from `Dockerfile.gpu`. amd64 only. CUDA 12.8 is the
+   floor for Blackwell cards (RTX 50xx, sm_120): on an older base the models load
+   but every inference fails with `CUBLAS failure 3: the resource allocation
+   failed`, because cuBLAS and cuDNN come from the base image, not from
+   `onnxruntime-gpu`.
 3. **Compose:** the `docker-compose.gpu.yml` overlay, which passes the GPU
    through and sets `ONNX_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider`.
 

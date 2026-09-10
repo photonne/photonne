@@ -7,11 +7,13 @@
 # CPU if the provider can't load). Everything else comes from docker-compose.yml.
 #
 # Host prerequisites: el nvidia-container-toolkit (`nvidia-ctk runtime configure`)
-# y un driver que cumpla el NVIDIA_REQUIRE_CUDA de la base CUDA 12.6 de la imagen:
-# o expone CUDA >= 12.6 (rama 560.28+), o está en las ramas 470 / 535 / 550 que la
-# etiqueta admite también. Si no, el contenedor ni arranca: el prestart hook del
-# toolkit corta con "unsatisfied condition: cuda>=12.6". Verifica con:
-#   docker run --rm --gpus all nvidia/cuda:12.6.3-base-ubuntu24.04 nvidia-smi
+# y un driver que cumpla el NVIDIA_REQUIRE_CUDA de la base CUDA 12.8 de la imagen:
+# que exponga CUDA >= 12.8 (rama 570.26+). La etiqueta admite también las ramas
+# 470 / 535 / 550 / 560 / 565, pero solo para tarjetas de centro de datos o
+# profesionales (Tesla, Quadro, NVIDIA RTX...); una GeForce necesita 570.26+ sí o
+# sí. Si no, el contenedor ni arranca: el prestart hook del toolkit corta con
+# "unsatisfied condition: cuda>=12.8". Verifica con:
+#   docker run --rm --gpus all nvidia/cuda:12.8.1-base-ubuntu24.04 nvidia-smi
 services:
   photonne-ml:
     image: ghcr.io/photonne/photonne-ml:latest-gpu
