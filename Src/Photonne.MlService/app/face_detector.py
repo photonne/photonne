@@ -21,9 +21,15 @@ class FaceDetector:
     def load(self, providers: Optional[str] = None) -> None:
         spec = providers if providers is not None else settings.face.providers
         names, opts = build_providers(spec)
+        # buffalo_l ships five models, but detect() only reads the detector's
+        # bbox/score/kps and the recognizer's embedding. Left unfiltered,
+        # FaceAnalysis also loads the 3D-68 (~140 MB) and 2D-106 landmark and
+        # gender/age models and runs them on every face — VRAM and time spent
+        # on outputs nothing consumes.
         app = FaceAnalysis(
             name=settings.face.model_name,
             root=settings.face.model_root,
+            allowed_modules=["detection", "recognition"],
             providers=names,
             provider_options=opts,
         )
