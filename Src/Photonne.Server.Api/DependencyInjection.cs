@@ -44,6 +44,10 @@ public static class DependencyInjection
         builder.Services.AddScoped<UserStorageService>();
         builder.Services.AddSingleton<EnrichmentQueue>();
         builder.Services.AddScoped<IEnrichmentService, EnrichmentService>();
+        // Answers "would this enrichment actually run?" for the producers, so a
+        // backfill against a model the admin switched off is refused instead of
+        // queueing work that completes without doing anything.
+        builder.Services.AddScoped<Shared.Services.Ml.MlEnablement>();
         builder.Services.AddHostedService<EnrichmentWorker>();
         builder.Services.AddScoped<ExternalLibraryScanService>();
         builder.Services.AddHostedService<ExternalLibrarySchedulerService>();

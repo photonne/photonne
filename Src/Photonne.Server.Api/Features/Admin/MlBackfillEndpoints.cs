@@ -4,6 +4,7 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
+using Photonne.Server.Api.Shared.Services.Ml;
 
 namespace Photonne.Server.Api.Features.Admin;
 
@@ -14,8 +15,23 @@ namespace Photonne.Server.Api.Features.Admin;
 /// <c>Completed</c> = images that already have a non-null <c>*CompletedAt</c>
 /// for this task type — drives a determinate progress bar in the admin
 /// dashboard (<c>completed / (completed + inQueue)</c> = "of what's in
-/// motion, fraction done").</summary>
-public record PendingCountResponse(int Unprocessed, int InQueue, int Completed);
+/// motion, fraction done").
+///
+/// <c>Retrying</c> and <c>Failed</c> exist because the three numbers above
+/// cannot tell a working queue from a thrashing one. An ML service that is down
+/// keeps assets cycling Failed → (backoff) → Pending → Processing → Failed, so
+/// <c>InQueue</c> stays above zero indefinitely and the admin screen reports
+/// steady progress on work that is going nowhere. <c>Retrying</c> is the
+/// assets waiting on a backoff window; <c>Failed</c> is the ones that exhausted
+/// their attempts and now need the failures registry — they are excluded from
+/// <c>Unprocessed</c>, which is why a library with thousands of unanalysed
+/// photos can otherwise report nothing left to do.</summary>
+public record PendingCountResponse(
+    int Unprocessed,
+    int InQueue,
+    int Completed,
+    int Retrying = 0,
+    int Failed = 0);
 
 /// <summary>Distinct count of image assets that are missing at least one ML
 /// enrichment (face / object / scene / OCR / embedding). Used by the admin
@@ -24,16 +40,21 @@ public record PendingCountResponse(int Unprocessed, int InQueue, int Completed);
 /// completions at once.</summary>
 public record MlPendingTotalResponse(int Count);
 
-/// <summary>Result of clearing the Pending queue for an ML task type.
-/// <c>Deleted</c> is the number of <c>AssetEnrichmentTasks</c> rows that
-/// were removed; in-flight Processing rows are not affected.</summary>
-public record CancelQueueResponse(int Deleted);
+/// <summary>Result of clearing the queue for an ML task type.
+/// <c>Deleted</c> is the number of <c>AssetEnrichmentTasks</c> rows that were
+/// removed — the Pending ones, plus the Failed ones still holding a retry slot,
+/// which would otherwise march straight back into Pending at the end of their
+/// backoff window and undo the cancellation a few minutes later.
+/// <c>StillProcessing</c> is what the workers had already claimed: we can't
+/// abort an in-flight inference, and saying so is the difference between a
+/// button that looks broken and one that explains itself.</summary>
+public record CancelQueueResponse(int Deleted, int StillProcessing = 0);
 
 /// <summary>Shared implementation for the per-job-type backfill endpoints.
 /// Selects image assets whose <c>*CompletedAt</c> is null (when
 /// <see cref="BackfillRequest.OnlyMissing"/> is true, the default) and enqueues
-/// the requested job type. Deduplication of Pending/Processing jobs lives in
-/// <see cref="IEnrichmentService.EnqueueAsync"/>.</summary>
+/// the requested job type in one bulk call. Deduplication of Pending/Processing
+/// jobs lives in <see cref="IEnrichmentService.EnqueueManyAsync"/>.</summary>
 internal static class MlBackfillRunner
 {
     public const string BackfillBatchSizeSettingKey = "TaskSettings.BackfillBatchSize";
@@ -50,12 +71,30 @@ internal static class MlBackfillRunner
         CancellationToken ct,
         Guid? ownerScope = null,
         INotificationService? notifications = null,
-        Guid? triggeredBy = null)
+        Guid? triggeredBy = null,
+        MlEnablement? enablement = null)
     {
-        var batchSize = Math.Clamp(
-            body?.BatchSize ?? await ReadGlobalBatchSizeAsync(settings),
-            MinBackfillBatchSize,
-            MaxBackfillBatchSize);
+        // Refuse rather than queue work the worker will discard. A disabled
+        // model's service returns early without stamping *CompletedAt, so the
+        // assets come straight back into the unprocessed pool: the caller sees a
+        // queue that fills, drains, and leaves exactly as much to do as before.
+        if (enablement is not null && !await enablement.IsEnabledAsync(jobType))
+        {
+            return Results.Json(
+                new { error = $"El análisis «{JobTypeLabel(jobType)}» está desactivado en Ajustes. Actívalo antes de lanzar el backfill." },
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        // "Encolar todo" is one request, not a client-side loop over batches:
+        // the loop needs the pool to shrink on every pass to terminate, and
+        // there are real states where it doesn't.
+        var queueEverything = body?.All == true;
+        int? batchSize = queueEverything
+            ? null
+            : Math.Clamp(
+                body?.BatchSize ?? await ReadGlobalBatchSizeAsync(settings),
+                MinBackfillBatchSize,
+                MaxBackfillBatchSize);
         var onlyMissing = body?.OnlyMissing ?? true;
 
         try
@@ -108,14 +147,11 @@ internal static class MlBackfillRunner
             ordered = ordered.Take(batchSize.Value);
 
         var ids = await ordered.Select(a => a.Id).ToListAsync(ct);
-        var enqueued = 0;
-        foreach (var assetId in ids)
-        {
-            if (ct.IsCancellationRequested) break;
-            await mlJobs.EnqueueAsync(assetId, jobType, ct);
-            enqueued++;
-        }
-        return new BackfillResponse(enqueued, total);
+        await mlJobs.EnqueueManyAsync(ids, jobType, ct);
+        // Every id here came out of a query that already excluded the assets
+        // with a live row, so "enqueued" is the slice we took — the bulk path's
+        // own created-count would under-report the ones it merely re-pushed.
+        return new BackfillResponse(ids.Count, total);
     }
 
     public static string JobTypeLabel(AssetEnrichmentType type) => type switch
@@ -159,7 +195,24 @@ internal static class MlBackfillRunner
         }
         var completed = await completedQuery.CountAsync(ct);
 
-        return Results.Ok(new PendingCountResponse(unprocessed, inQueue, completed));
+        // Counted per asset, not per row: a repeatedly-failing asset accumulates
+        // one Failed row per attempt, and "1.204 fotos con errores" is the
+        // number an operator can act on — "5.117 intentos fallidos" isn't.
+        var failedQuery = db.AssetEnrichmentTasks.AsNoTracking()
+            .Where(j => j.TaskType == jobType && j.Status == EnrichmentStatus.Failed);
+        if (ownerScope.HasValue)
+        {
+            failedQuery = failedQuery.Where(j => j.Asset.OwnerId == ownerScope.Value);
+        }
+        var failedGroups = await failedQuery
+            .GroupBy(j => j.NextRetryAt == null)
+            .Select(g => new { Permanent = g.Key, Assets = g.Select(j => j.AssetId).Distinct().Count() })
+            .ToListAsync(ct);
+
+        var retrying = failedGroups.FirstOrDefault(g => !g.Permanent)?.Assets ?? 0;
+        var failed = failedGroups.FirstOrDefault(g => g.Permanent)?.Assets ?? 0;
+
+        return Results.Ok(new PendingCountResponse(unprocessed, inQueue, completed, retrying, failed));
     }
 
     /// <summary>How many distinct image assets are missing at least one ML
@@ -181,21 +234,36 @@ internal static class MlBackfillRunner
         return Results.Ok(new MlPendingTotalResponse(count));
     }
 
-    /// <summary>Deletes every <see cref="EnrichmentStatus.Pending"/> job for
-    /// the given task type. Jobs that are already <see cref="EnrichmentStatus.Processing"/>
-    /// are left alone — the worker that picked them up will finish (or fail)
-    /// them on its own; we don't have a safe way to abort an in-flight
-    /// inference. Returns the number of rows actually deleted so the client
-    /// can show a meaningful confirmation.</summary>
+    /// <summary>Empties the queue for the given task type: the
+    /// <see cref="EnrichmentStatus.Pending"/> rows, and the
+    /// <see cref="EnrichmentStatus.Failed"/> rows that still have a retry
+    /// scheduled. Dropping only the Pending slice used to make this button look
+    /// broken — <see cref="EnrichmentWorker"/> walks the due Failed rows back
+    /// into Pending every five minutes, so a cancelled queue refilled itself
+    /// before the admin had finished reading the screen.
+    ///
+    /// Jobs already <see cref="EnrichmentStatus.Processing"/> are left alone —
+    /// the worker that claimed one will finish (or fail) it; there's no safe way
+    /// to abort an in-flight inference. They're counted and returned instead, so
+    /// the client can say "quedan 3 en curso" rather than appear to do nothing.
+    /// Permanently failed rows stay put: they belong to the failures registry,
+    /// which is where they get retried or suppressed one by one.</summary>
     public static async Task<IResult> CancelQueueAsync(
         ApplicationDbContext db,
         AssetEnrichmentType jobType,
         CancellationToken ct)
     {
         var deleted = await db.AssetEnrichmentTasks
-            .Where(j => j.TaskType == jobType && j.Status == EnrichmentStatus.Pending)
+            .Where(j => j.TaskType == jobType
+                && (j.Status == EnrichmentStatus.Pending
+                    || (j.Status == EnrichmentStatus.Failed && j.NextRetryAt != null)))
             .ExecuteDeleteAsync(ct);
-        return Results.Ok(new CancelQueueResponse(deleted));
+
+        var stillProcessing = await db.AssetEnrichmentTasks
+            .AsNoTracking()
+            .CountAsync(j => j.TaskType == jobType && j.Status == EnrichmentStatus.Processing, ct);
+
+        return Results.Ok(new CancelQueueResponse(deleted, stillProcessing));
     }
 
     private static IQueryable<Asset> BuildQuery(
@@ -266,9 +334,10 @@ public class ObjectDetectionBackfillEndpoint : IEndpoint
             [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
             [FromServices] INotificationService notifications,
+            [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.ObjectDetection, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.ObjectDetection, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/object-detection/pending-count", (
             [FromServices] ApplicationDbContext db,
@@ -291,9 +360,10 @@ public class SceneClassificationBackfillEndpoint : IEndpoint
             [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
             [FromServices] INotificationService notifications,
+            [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.SceneClassification, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.SceneClassification, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/scene-classification/pending-count", (
             [FromServices] ApplicationDbContext db,
@@ -316,9 +386,10 @@ public class TextRecognitionBackfillEndpoint : IEndpoint
             [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
             [FromServices] INotificationService notifications,
+            [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.TextRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.TextRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/text-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
@@ -343,9 +414,10 @@ public class ImageEmbeddingBackfillEndpoint : IEndpoint
             [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
             [FromServices] INotificationService notifications,
+            [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.ImageEmbedding, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.ImageEmbedding, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/image-embedding/pending-count", (
             [FromServices] ApplicationDbContext db,
@@ -367,6 +439,10 @@ public class MlOverviewEndpoint : IEndpoint
         ["scene-classification"]  = AssetEnrichmentType.SceneClassification,
         ["text-recognition"]      = AssetEnrichmentType.TextRecognition,
         ["image-embedding"]       = AssetEnrichmentType.ImageEmbedding,
+        // Not an ML model, but it rides the same enrichment queue and the
+        // admin hub offers it the same cancel button — which answered 404
+        // while this line was missing.
+        ["media-recognition"]     = AssetEnrichmentType.MediaRecognition,
     };
 
     public void MapEndpoint(IEndpointRouteBuilder app)

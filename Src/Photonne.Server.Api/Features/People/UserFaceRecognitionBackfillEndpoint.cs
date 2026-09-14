@@ -5,6 +5,7 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
+using Photonne.Server.Api.Shared.Services.Ml;
 
 namespace Photonne.Server.Api.Features.People;
 
@@ -26,13 +27,14 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
             [FromServices] ApplicationDbContext db,
             [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
+            [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
             if (!ListPeopleEndpoint.TryGetUserId(user, out var userId))
                 return Task.FromResult(Results.Unauthorized());
-            return MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, ownerScope: userId);
+            return MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, ownerScope: userId, enablement: enablement);
         });
 
         group.MapGet("/pending-count", (

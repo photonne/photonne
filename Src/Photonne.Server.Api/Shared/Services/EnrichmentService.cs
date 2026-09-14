@@ -10,6 +10,11 @@ public class EnrichmentService : IEnrichmentService
     private readonly EnrichmentQueue _queue;
     private readonly ILogger<EnrichmentService> _logger;
 
+    // How many asset ids travel in one round trip of the bulk path. Big enough
+    // that a 100k backfill is ~50 queries, small enough to stay well under the
+    // parameter ceiling Npgsql enforces on an IN list.
+    private const int ChunkSize = 2_000;
+
     public EnrichmentService(
         ApplicationDbContext dbContext,
         EnrichmentQueue queue,
@@ -58,6 +63,77 @@ public class EnrichmentService : IEnrichmentService
         _logger.LogInformation(
             "Enrichment task enqueued: AssetId={AssetId}, TaskType={TaskType}",
             assetId, taskType);
+    }
+
+    /// <summary>
+    /// Bulk sibling of <see cref="EnqueueAsync"/>. One query to find which of
+    /// these assets already have a live row, one insert for the rest, then the
+    /// channel pushes — instead of a SELECT + INSERT + SaveChanges per asset.
+    /// The ids go in as chunks so a backfill over a six-figure library doesn't
+    /// build a single parameter list the driver refuses.
+    /// </summary>
+    public async Task<int> EnqueueManyAsync(
+        IReadOnlyCollection<Guid> assetIds,
+        AssetEnrichmentType taskType,
+        CancellationToken cancellationToken = default)
+    {
+        if (assetIds.Count == 0) return 0;
+
+        var created = 0;
+        foreach (var chunk in assetIds.Distinct().Chunk(ChunkSize))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Existing Pending/Processing rows are reused, exactly as the
+            // single-asset path does: we still push their ids so a row the
+            // in-memory queue lost track of (server restart) gets picked up.
+            var existing = await _dbContext.AssetEnrichmentTasks
+                .AsNoTracking()
+                .Where(t => chunk.Contains(t.AssetId)
+                    && t.TaskType == taskType
+                    && (t.Status == EnrichmentStatus.Pending || t.Status == EnrichmentStatus.Processing))
+                .Select(t => new { t.Id, t.AssetId })
+                .ToListAsync(cancellationToken);
+
+            var alreadyQueued = existing.Select(e => e.AssetId).ToHashSet();
+
+            var fresh = chunk
+                .Where(id => !alreadyQueued.Contains(id))
+                .Select(id => new AssetEnrichmentTask
+                {
+                    AssetId = id,
+                    TaskType = taskType,
+                    Status = EnrichmentStatus.Pending,
+                    CreatedAt = DateTime.UtcNow,
+                })
+                .ToList();
+
+            if (fresh.Count > 0)
+            {
+                _dbContext.AssetEnrichmentTasks.AddRange(fresh);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                created += fresh.Count;
+            }
+
+            foreach (var e in existing)
+                await _queue.EnqueueAsync(taskType, e.Id, cancellationToken);
+            foreach (var t in fresh)
+                await _queue.EnqueueAsync(taskType, t.Id, cancellationToken);
+
+            // Detach what we just inserted: tracked entities pile up across
+            // chunks and EF's change detection gets quadratically slower as they
+            // do. Targeted rather than ChangeTracker.Clear() — the DbContext is
+            // scoped to the request, so clearing it would also throw away
+            // whatever the caller was tracking.
+            foreach (var t in fresh)
+                _dbContext.Entry(t).State = EntityState.Detached;
+        }
+
+        _logger.LogInformation(
+            "Enrichment tasks enqueued in bulk: Assets={Assets}, Created={Created}, TaskType={TaskType}",
+            assetIds.Count, created, taskType);
+
+        return created;
     }
 
     public async Task<bool> ResetAndEnqueueAsync(Guid taskId, CancellationToken cancellationToken = default)

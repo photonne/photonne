@@ -10,8 +10,15 @@ namespace Photonne.Server.Api.Features.Admin;
 /// <summary>Snapshot for the MediaRecognition maintenance action. <c>Unprocessed</c> =
 /// media assets a run would (re)enqueue right now, i.e. every media asset that doesn't
 /// already have a Pending/Processing MediaRecognition job. <c>InQueue</c> = media assets
-/// with a MediaRecognition job already waiting.</summary>
-public record MediaRecognitionPendingResponse(int Unprocessed, int InQueue);
+/// with a MediaRecognition job already waiting. <c>Retrying</c> / <c>Failed</c> mirror
+/// <see cref="PendingCountResponse"/> so one client-side shape covers every row of the
+/// admin hub — and so a queue that is failing rather than working says so.</summary>
+public record MediaRecognitionPendingResponse(
+    int Unprocessed,
+    int InQueue,
+    int Completed = 0,
+    int Retrying = 0,
+    int Failed = 0);
 
 /// <summary>Admin-only re-runnable maintenance action that (re)runs MediaRecognition
 /// over the existing library so the still/motion halves of Live Photos get tagged
@@ -25,7 +32,10 @@ public record MediaRecognitionPendingResponse(int Unprocessed, int InQueue);
 /// adding Live Photos, or reindexing. The task is cheap and idempotent — the worker
 /// deletes existing tags and recomputes from disk siblings (<see cref="MediaRecognitionService"/>)
 /// — and a run only skips assets that already have a MediaRecognition job queued (plain
-/// de-dup), so iterating in batches converges.</summary>
+/// de-dup). That de-dup is the only thing bounding a run, which is why a caller must not
+/// loop over batches here: the workers return each finished asset to the candidate pool,
+/// so "keep asking until there's nothing left" has no end. Ask once, with
+/// <see cref="BackfillRequest.All"/> when you mean the whole library.</summary>
 public class MediaRecognitionBackfillEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -57,10 +67,19 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
         Guid triggeredBy,
         CancellationToken ct)
     {
-        var batchSize = Math.Clamp(
-            body?.BatchSize ?? await ReadGlobalBatchSizeAsync(settings),
-            MlBackfillRunner.MinBackfillBatchSize,
-            MlBackfillRunner.MaxBackfillBatchSize);
+        // Unlike the ML backfills, this one has no completion marker: an asset
+        // that finishes is a candidate again on the next pass. A caller slicing
+        // it into batches and looping until "nothing left" therefore never
+        // finishes on a library bigger than one batch, because the workers put
+        // assets back in the pool as fast as we take them out. So "encolar todo"
+        // is one request here too, and the default stays a single slice.
+        var queueEverything = body?.All == true;
+        int? batchSize = queueEverything
+            ? null
+            : Math.Clamp(
+                body?.BatchSize ?? await ReadGlobalBatchSizeAsync(settings),
+                MlBackfillRunner.MinBackfillBatchSize,
+                MlBackfillRunner.MaxBackfillBatchSize);
         var onlyMissing = body?.OnlyMissing ?? true;
 
         try
@@ -68,19 +87,12 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
             var query = BuildQuery(db, onlyMissing);
             var total = await query.CountAsync(ct);
 
-            var ids = await query
-                .OrderBy(a => a.ScannedAt)
-                .Take(batchSize)
-                .Select(a => a.Id)
-                .ToListAsync(ct);
+            IQueryable<Asset> ordered = query.OrderBy(a => a.ScannedAt);
+            if (batchSize.HasValue) ordered = ordered.Take(batchSize.Value);
 
-            var enqueued = 0;
-            foreach (var id in ids)
-            {
-                if (ct.IsCancellationRequested) break;
-                await jobs.EnqueueAsync(id, AssetEnrichmentType.MediaRecognition, ct);
-                enqueued++;
-            }
+            var ids = await ordered.Select(a => a.Id).ToListAsync(ct);
+            await jobs.EnqueueManyAsync(ids, AssetEnrichmentType.MediaRecognition, ct);
+            var enqueued = ids.Count;
 
             if (triggeredBy != Guid.Empty && enqueued > 0)
             {
@@ -111,7 +123,18 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
                 && (j.Status == EnrichmentStatus.Pending || j.Status == EnrichmentStatus.Processing))
             .CountAsync(ct);
 
-        return Results.Ok(new MediaRecognitionPendingResponse(unprocessed, inQueue));
+        var failedGroups = await db.AssetEnrichmentTasks.AsNoTracking()
+            .Where(j => j.TaskType == AssetEnrichmentType.MediaRecognition
+                && j.Status == EnrichmentStatus.Failed)
+            .GroupBy(j => j.NextRetryAt == null)
+            .Select(g => new { Permanent = g.Key, Assets = g.Select(j => j.AssetId).Distinct().Count() })
+            .ToListAsync(ct);
+
+        return Results.Ok(new MediaRecognitionPendingResponse(
+            unprocessed,
+            inQueue,
+            Retrying: failedGroups.FirstOrDefault(g => !g.Permanent)?.Assets ?? 0,
+            Failed: failedGroups.FirstOrDefault(g => g.Permanent)?.Assets ?? 0));
     }
 
     private static IQueryable<Asset> BuildQuery(ApplicationDbContext db, bool onlyMissing)

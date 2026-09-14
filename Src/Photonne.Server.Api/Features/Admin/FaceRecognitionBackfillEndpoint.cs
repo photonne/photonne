@@ -8,10 +8,17 @@ using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
+using Photonne.Server.Api.Shared.Services.Ml;
 
 namespace Photonne.Server.Api.Features.Admin;
 
-public record BackfillRequest(int? BatchSize, bool? OnlyMissing);
+/// <summary>Body of the backfill endpoints. <c>All</c> asks the server to queue
+/// every matching asset in one request instead of handing back a slice: callers
+/// that wanted "encolar todo" used to loop on this endpoint until it said there
+/// was nothing left, which is a termination condition the server can't always
+/// honour (a disabled model never shrinks the pool) and a lot of round trips
+/// when it can. When <c>All</c> is true, <c>BatchSize</c> is ignored.</summary>
+public record BackfillRequest(int? BatchSize, bool? OnlyMissing, bool? All = null);
 
 public record BackfillResponse(int Enqueued, int Total);
 
@@ -34,9 +41,10 @@ public class FaceRecognitionBackfillEndpoint : IEndpoint
             [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
             [FromServices] INotificationService notifications,
+            [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/face-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
