@@ -700,6 +700,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // Type filter the failures registry opens with when reached from a
     // notification actionUrl ("/admin/enrichment-failures?type=Exif").
     var adminEnrichmentInitialType by remember { mutableStateOf<String?>(null) }
+    // The failures registry is reachable from three places now — the System
+    // hub, a notification's actionUrl, and a task row whose queue is stuck —
+    // so "volver" has to remember which one, instead of always landing on the
+    // hub the way it did when the hub was the only door.
+    var adminEnrichmentReturnTo by remember { mutableStateOf(MoreSubscreen.AdminSystemHub) }
     // An open memory, shown as an album. An overlay rather than a MoreSubscreen:
     // it's reached from the Fotos strip too, not just from Más → Recuerdos, so it
     // can't hang off the Más hierarchy.
@@ -2848,6 +2853,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                             .firstOrNull { it.startsWith("type=") }
                                             ?.substringAfter('=')
                                             ?.takeIf { it.isNotBlank() }
+                                        adminEnrichmentReturnTo = MoreSubscreen.AdminSystemHub
                                         moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
                                     }
                                     path == "/admin/stats" ||
@@ -3178,6 +3184,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         MoreSubscreen.AdminSystemRunTasks
                                     com.photonne.app.ui.admin.AdminSystemEntry.EnrichmentFailures -> {
                                         adminEnrichmentInitialType = null
+                                        adminEnrichmentReturnTo = MoreSubscreen.AdminSystemHub
                                         MoreSubscreen.AdminSystemEnrichmentFailures
                                     }
                                     com.photonne.app.ui.admin.AdminSystemEntry.Backup ->
@@ -3203,6 +3210,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     moreSubscreen = MoreSubscreen.AdminSystemDuplicates
                                 }
                             },
+                            // A backfill skips assets that used up their
+                            // retries, so a row whose queue is full of them has
+                            // no button left to press. The registry is the only
+                            // place they can be retried or suppressed.
+                            onOpenFailures = { type ->
+                                adminEnrichmentInitialType = type
+                                adminEnrichmentReturnTo = MoreSubscreen.AdminSystemRunTasks
+                                moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
+                            },
                         )
                     }
                     MoreSubscreen.AdminSystemDuplicates ->
@@ -3218,7 +3234,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.admin.AdminEnrichmentFailuresScreen(
                             title = stringResource(Res.string.admin_system_enrichment_failures),
                             initialType = adminEnrichmentInitialType,
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSystemHub },
+                            onBack = { moreSubscreen = adminEnrichmentReturnTo },
                             onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenAsset = { failure ->

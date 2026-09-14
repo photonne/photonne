@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Face
@@ -68,13 +69,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.models.BackgroundTaskDto
 import com.photonne.app.data.models.PendingCountResponse
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_run_tasks_action_cancel
 import com.photonne.app.resources.admin_run_tasks_action_start
-import com.photonne.app.resources.admin_run_tasks_ai_enqueuing_format
+import com.photonne.app.resources.admin_run_tasks_ai_failed_format
+import com.photonne.app.resources.admin_run_tasks_ai_open_failures
 import com.photonne.app.resources.admin_run_tasks_ai_progress_format
+import com.photonne.app.resources.admin_run_tasks_ai_retrying_format
 import com.photonne.app.resources.admin_run_tasks_last_run_format
 import com.photonne.app.resources.admin_run_tasks_last_run_never
 import com.photonne.app.resources.admin_run_tasks_pending_format
@@ -477,15 +481,9 @@ data class AdminRunTasksUiState(
     /** Tasks whose inline Start button was just tapped. The row shows an
      *  intermediate "starting" state with a spinner until the next refresh
      *  promotes it to a real running task (or rolls it back to idle if the
-     *  request failed silently). */
+     *  request failed). For ML rows this also covers the enqueue request
+     *  itself, which queues the whole remaining pool in one call. */
     val triggering: Set<AdminRunTask> = emptySet(),
-    /** ML tasks whose hub-level enqueueing loop is currently firing
-     *  `/backfill` batches against the server. Separates the "Encolando
-     *  234 / 1000" phase from the later "workers draining the queue"
-     *  phase so the progress bar doesn't have to mix two metrics on the
-     *  same row (which made the % visibly go backwards while we kept
-     *  enqueueing). */
-    val enqueuing: Map<AdminRunTask, EnqueuingProgress> = emptyMap(),
     /** Toggle persisted across the hub session: when ON, the next
      *  `triggerTask(GenerateThumbnails)` regenerates every thumbnail
      *  instead of only filling in missing ones. */
@@ -505,15 +503,23 @@ data class AdminRunTasksUiState(
     val dateRestoreWriteToFile: Boolean = true,
     val dateRestoreDryRun: Boolean = false,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
+    /** What went wrong with the last thing the admin asked for. Every action
+     *  on this screen is a fire-and-forget request whose only visible effect
+     *  arrives 10 seconds later on the next poll, so without this a refused
+     *  backfill, a 404 and a dead network all look identical to a task that
+     *  simply hasn't started yet. */
+    val errorMessage: TaskMessage? = null,
+    /** What went right, when the answer isn't visible on the rows either —
+     *  "cancelled 320, 2 still running" is the difference between a button
+     *  that did nothing and one that did what it could. */
+    val infoMessage: TaskMessage? = null,
 )
 
-/** Session-scoped snapshot of an in-flight ML enqueue loop driven by
- *  [AdminRunTasksViewModel.triggerMlBackfill]. */
-data class EnqueuingProgress(
-    val initial: Int,
-    val enqueuedSoFar: Int,
-)
+/** A line of feedback, and which row it came from. The task travels as the
+ *  enum rather than as text because the banner is rendered in a composable and
+ *  can resolve the localized title there — "ObjectDetection: …" in an otherwise
+ *  Spanish screen reads like a leaked stack trace. */
+data class TaskMessage(val task: AdminRunTask?, val text: String)
 
 /** Normalized progress event used by the live-follow plumbing — the pipeline
  *  resume streams (index / metadata / thumbnails / dates) and the maintenance
@@ -589,14 +595,6 @@ class AdminRunTasksViewModel(
         _state.update { it.copy(purgeDryRun = value) }
     }
 
-    // Active enqueuing loops keyed by ML task. The hub-level "Iniciar"
-    // mirrors the detail screen's iterative POST behaviour — we keep
-    // calling `/backfill` until the server reports no unprocessed work
-    // left. This map lets the cancel button reach in and stop the loop
-    // server-side cancellation alone can't, because the loop would
-    // otherwise immediately refill the queue we just cleared.
-    private val mlBackfillJobs = mutableMapOf<AdminRunTask, Job>()
-
     // Active live-progress followers keyed by progress key. Each subscribes to
     // `/api/tasks/{id}/stream` for one running task and pushes per-item updates
     // into `liveTasks`. Re-attached automatically by [refresh] whenever a
@@ -663,7 +661,7 @@ class AdminRunTasksViewModel(
         // every time someone smashes the button.
         if (task in _state.value.triggering) return
         val snapshot = _state.value
-        _state.update { it.copy(triggering = it.triggering + task) }
+        _state.update { it.copy(triggering = it.triggering + task, errorMessage = null, infoMessage = null) }
         viewModelScope.launch {
             runCatching {
                 withTimeoutOrNull(TriggerTimeoutMs) {
@@ -697,10 +695,31 @@ class AdminRunTasksViewModel(
                         }
                     }
                 }
+            }.onFailure { error ->
+                // A stream that never opens is the one failure mode this screen
+                // has always had and never shown: the row went back to idle and
+                // the admin was left guessing whether the task had started.
+                _state.update { it.copy(errorMessage = describeFailure(task, error)) }
             }
             refresh(showLoading = false)
             _state.update { it.copy(triggering = it.triggering - task) }
         }
+    }
+
+    /**
+     * Turns a failed request into something an admin can act on. The server
+     * answers a refused backfill with `{"error": "…"}` and the API layer
+     * surfaces it as the exception message, so its own words — "Detección de
+     * objetos está desactivado en Ajustes" — reach the screen unchanged.
+     */
+    private fun describeFailure(task: AdminRunTask?, error: Throwable): TaskMessage {
+        val detail = (error as? PhotonneApiException)?.let { api ->
+            // A 404 here means this server doesn't know the endpoint, not that
+            // something is missing — worth saying, because the fix is a deploy.
+            if (api.status == 404) "el servidor no conoce esta acción (¿versión antigua?)"
+            else api.message
+        } ?: error.message ?: "error desconocido"
+        return TaskMessage(task, detail)
     }
 
     fun setThumbnailsRegenerate(value: Boolean) {
@@ -740,101 +759,85 @@ class AdminRunTasksViewModel(
      *  client's socket timeout on large libraries. Independent from the face
      *  backfill loop — clustering operates on already-detected faces. */
     fun runFaceClustering() {
+        _state.update { it.copy(errorMessage = null, infoMessage = null) }
         viewModelScope.launch {
             runCatching {
                 withTimeoutOrNull(TriggerTimeoutMs) {
                     repository.faceClusteringStream().take(1).collect {}
                 }
+            }.onFailure { error ->
+                _state.update { it.copy(errorMessage = describeFailure(null, error)) }
             }
             refresh(showLoading = false)
         }
     }
 
     /**
-     * Enqueues every remaining unprocessed asset for an ML task. The
-     * server caps each `/backfill` POST at `TaskSettings.BackfillBatchSize`
-     * (default 500, max 5000), so "encolar todo" needs an iterative loop
-     * here — exactly what `AdminBackfillViewModel.start()` does on the
-     * detail screen. The hub favours fire-and-forget: once the first
-     * batch lands, the row flips to its running visual (`inQueue > 0`)
-     * and the loop keeps adding batches in the background. The admin
-     * goes into the detail screen for batch-size tweaks or `overwrite`.
+     * Queues every remaining unprocessed asset for an ML task, in one request.
      *
-     * The loop bails on the first response with `enqueued == 0` to avoid
-     * spinning forever if the server can't drain the unprocessed pool
-     * (e.g. every remaining asset is already Pending/Processing).
+     * This used to be a loop: ask for a batch, look at what came back, ask for
+     * another, stop when the server says there's nothing left. That termination
+     * condition assumes the pending pool shrinks on every pass, and it doesn't
+     * always. A model switched off in Ajustes completes each job instantly
+     * without recording anything, so the pool is exactly as big after a batch as
+     * before it — the loop ran forever, the row said "Encolando…" forever, and
+     * because this ViewModel outlives the screen it kept doing so after the
+     * admin had walked away. `all = true` moves the iteration server-side, where
+     * a single query knows how much work there is.
+     *
+     * The server now refuses a backfill for a disabled model instead of
+     * accepting it, which is the other half of the same fix: the request comes
+     * back with a reason the row can show.
      */
     fun triggerMlBackfill(task: AdminRunTask) {
         val kind = task.backfillKind?.apiPath ?: return
         if (task in _state.value.triggering) return
-        if (mlBackfillJobs[task]?.isActive == true) return
-        // Capture the `completed` count BEFORE the first batch goes out so
-        // the session-scoped progress (`(now - baseline) / (delta + queue)`)
-        // starts at 0 % and reaches 100 % when everything we enqueue here
-        // finishes — independently of how many assets were already done
-        // before the user tapped Iniciar.
+        // Capture the `completed` count BEFORE anything is queued so the
+        // session-scoped progress (`(now - baseline) / (delta + queue)`) starts
+        // at 0 % and reaches 100 % when this run's work finishes — independently
+        // of how much was already done before the admin tapped Iniciar.
         val baseline = _state.value.pending[task]?.completed ?: 0
         _state.update {
             it.copy(
                 triggering = it.triggering + task,
-                aiSessionBaseline = it.aiSessionBaseline + (task to baseline)
+                aiSessionBaseline = it.aiSessionBaseline + (task to baseline),
+                errorMessage = null,
+                infoMessage = null,
             )
         }
 
-        mlBackfillJobs[task] = viewModelScope.launch {
-            var totalEnqueued = 0
-            var initial = 0
-            var firstBatchSettled = false
-            try {
-                while (isActive) {
-                    val resp = runCatching {
-                        repository.backfill(kind = kind, batchSize = null, onlyMissing = true)
-                    }.getOrNull() ?: break
-
-                    totalEnqueued += resp.enqueued
-
-                    if (!firstBatchSettled) {
-                        // The server's `total` on this first response is
-                        // the unprocessed snapshot *before* this batch
-                        // enqueued anything — that's exactly the figure
-                        // we want to show as "of N".
-                        initial = resp.total
-                        _state.update {
-                            it.copy(
-                                triggering = it.triggering - task,
-                                enqueuing = it.enqueuing + (task to EnqueuingProgress(
-                                    initial = initial,
-                                    enqueuedSoFar = totalEnqueued
-                                ))
-                            )
-                        }
-                        refresh(showLoading = false)
-                        firstBatchSettled = true
-                    } else {
-                        _state.update {
-                            val current = it.enqueuing[task] ?: return@update it
-                            it.copy(
-                                enqueuing = it.enqueuing + (task to current.copy(
-                                    enqueuedSoFar = totalEnqueued
-                                ))
-                            )
-                        }
-                    }
-
-                    if (resp.enqueued == 0) break
-                    val remaining = (resp.total - resp.enqueued).coerceAtLeast(0)
-                    if (remaining == 0) break
-                }
-            } finally {
-                _state.update {
-                    it.copy(
-                        triggering = it.triggering - task,
-                        enqueuing = it.enqueuing - task,
-                    )
-                }
-                mlBackfillJobs.remove(task)
-                refresh(showLoading = false)
+        viewModelScope.launch {
+            val outcome = runCatching {
+                repository.backfill(kind = kind, batchSize = null, onlyMissing = true, all = true)
             }
+            _state.update { current ->
+                outcome.fold(
+                    onSuccess = { resp ->
+                        current.copy(
+                            triggering = current.triggering - task,
+                            // Nothing queued means nothing to track: keeping the
+                            // baseline would leave the row showing a 0 % bar for
+                            // a run that never started.
+                            aiSessionBaseline = if (resp.enqueued > 0) current.aiSessionBaseline
+                                                else current.aiSessionBaseline - task,
+                            infoMessage = TaskMessage(
+                                task,
+                                if (resp.enqueued > 0)
+                                    "encolados ${resp.enqueued} de ${resp.total}. El procesador los irá completando."
+                                else "no había nada que encolar."
+                            ),
+                        )
+                    },
+                    onFailure = { error ->
+                        current.copy(
+                            triggering = current.triggering - task,
+                            aiSessionBaseline = current.aiSessionBaseline - task,
+                            errorMessage = describeFailure(task, error),
+                        )
+                    }
+                )
+            }
+            refresh(showLoading = false)
         }
     }
 
@@ -842,27 +845,51 @@ class AdminRunTasksViewModel(
      *  the only ones with a cancel affordance (ML backfills enqueue then
      *  drop the HTTP handle — they finish on their own). */
     fun cancelTask(taskId: String) {
+        _state.update { it.copy(errorMessage = null, infoMessage = null) }
         viewModelScope.launch {
             runCatching { repository.cancelBackgroundTask(taskId) }
+                .onFailure { error ->
+                    _state.update { it.copy(errorMessage = describeFailure(null, error)) }
+                }
             refresh(showLoading = false)
         }
     }
 
-    /** Clears the Pending queue for an ML task type AND stops the local
-     *  enqueuing loop (if any), so cancelling actually halts the work
-     *  instead of letting the loop refill what we just drained. Jobs
-     *  already Processing are owned by workers and run to completion —
-     *  there's no safe way to abort an in-flight inference from here. */
+    /** Empties the queue for an ML task type: the jobs waiting, plus the ones
+     *  sitting out a retry backoff, which the server used to leave behind so
+     *  they marched back into the queue minutes later and made this button look
+     *  inert. Jobs a worker already claimed run to completion — there's no safe
+     *  way to abort an in-flight inference — so the row says how many those
+     *  were instead of pretending the queue is empty. */
     fun cancelMlQueue(task: AdminRunTask) {
         val kind = task.backfillKind?.apiPath ?: return
-        mlBackfillJobs[task]?.cancel()
-        mlBackfillJobs.remove(task)
-        // Drop the session baseline immediately — a follow-up Iniciar
-        // should snapshot a fresh `completed` value, not build on top of
-        // the cancelled session.
-        _state.update { it.copy(aiSessionBaseline = it.aiSessionBaseline - task) }
+        // Drop the session baseline immediately — a follow-up Iniciar should
+        // snapshot a fresh `completed` value, not build on the cancelled run.
+        _state.update {
+            it.copy(
+                aiSessionBaseline = it.aiSessionBaseline - task,
+                errorMessage = null,
+                infoMessage = null,
+            )
+        }
         viewModelScope.launch {
             runCatching { repository.cancelMlQueue(kind) }
+                .onSuccess { resp ->
+                    _state.update {
+                        it.copy(
+                            infoMessage = TaskMessage(task, buildString {
+                                append("cola vaciada, ${resp.deleted} trabajo(s) eliminados")
+                                if (resp.stillProcessing > 0) {
+                                    append("; ${resp.stillProcessing} ya en curso terminarán solos")
+                                }
+                                append('.')
+                            })
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update { it.copy(errorMessage = describeFailure(task, error)) }
+                }
             refresh(showLoading = false)
         }
     }
@@ -952,7 +979,7 @@ class AdminRunTasksViewModel(
     }
 
     private suspend fun refresh(showLoading: Boolean) {
-        if (showLoading) _state.update { it.copy(isLoading = true, errorMessage = null) }
+        if (showLoading) _state.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
         val pendingDeferred: kotlinx.coroutines.Deferred<Map<AdminRunTask, PendingCountResponse>>
         val tasksDeferred: kotlinx.coroutines.Deferred<List<BackgroundTaskDto>>
         coroutineScope {
@@ -969,6 +996,11 @@ class AdminRunTasksViewModel(
                     .awaitAll()
                     .filterNotNull()
                     .toMap()
+                    // Six counts go out in parallel every 10s over queries that
+                    // scan the whole asset table; one of them timing out must
+                    // not blank its row's counters and put a Play button back on
+                    // a task that's mid-run. Last known value beats no value.
+                    .let { fresh -> _state.value.pending + fresh }
             }
             tasksDeferred = async {
                 runCatching { repository.listBackgroundTasks() }
@@ -984,9 +1016,9 @@ class AdminRunTasksViewModel(
             // taps should start a fresh baseline rather than building on
             // a stale one.
             val pruned = current.aiSessionBaseline.filter { (task, _) ->
-                val stillEnqueueing = task in current.enqueuing
+                val stillQueueing = task in current.triggering
                 val stillDraining = (pending[task]?.inQueue ?: 0) > 0
-                stillEnqueueing || stillDraining
+                stillQueueing || stillDraining
             }
             current.copy(
                 pending = pending,
@@ -1007,6 +1039,10 @@ fun AdminRunTasksScreen(
     onBack: () -> Unit,
     viewModel: AdminRunTasksViewModel,
     onOpenTask: (AdminRunTask) -> Unit,
+    /** Opens the enrichment failures registry filtered to one task type (the
+     *  server's `AssetEnrichmentType` name). Reached from the rows whose queue
+     *  has assets that gave up — the only place they can be retried. */
+    onOpenFailures: (String) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
     val reservedTop = subscreenChromeReservedTop()
@@ -1058,15 +1094,19 @@ fun AdminRunTasksScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Every action here is fire-and-forget against a 10s poll, so the only
+        // place an outcome can land is a line at the top of the list.
         state.errorMessage?.let { msg ->
-            item {
-                Text(
-                    msg,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
+            item(key = "banner-error") {
+                TaskBanner(msg, MaterialTheme.colorScheme.error)
             }
         }
+        state.infoMessage?.let { msg ->
+            item(key = "banner-info") {
+                TaskBanner(msg, MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
 
         for (section in AdminRunTaskSection.entries) {
             val tasks = tasksOf(section)
@@ -1076,8 +1116,7 @@ fun AdminRunTasksScreen(
                 val anyRunning = tasks.any { task ->
                     task in state.triggering ||
                         task.progressKey?.let { runningByKey[it] } != null ||
-                        (state.pending[task]?.inQueue ?: 0) > 0 ||
-                        task in state.enqueuing
+                        (state.pending[task]?.inQueue ?: 0) > 0
                 }
                 SectionHeader(
                     title = stringResource(sectionTitleOf(section)),
@@ -1113,7 +1152,6 @@ fun AdminRunTasksScreen(
                     // completion marker), so it shows as a fire-and-forget run
                     // rather than a draining queue with a percentage.
                     pending = if (task == AdminRunTask.MediaRecognition) null else pending,
-                    enqueuingProgress = state.enqueuing[task],
                     sessionBaseline = state.aiSessionBaseline[task],
                     lastFinished = task.progressKey?.let { lastFinishedByKey[it] },
                     nowMs = nowMs,
@@ -1124,15 +1162,26 @@ fun AdminRunTasksScreen(
                         { onOpenTask(task) }
                     } else null,
                     onStart = { viewModel.start(task) },
-                    // Face recognition gets a second action: re-cluster the
-                    // existing detections without re-running the model.
-                    onSecondary = if (task == AdminRunTask.FaceRecognition) {
-                        SecondaryAction(
+                    secondaryActions = listOfNotNull(
+                        // Face recognition gets a second action: re-cluster the
+                        // existing detections without re-running the model.
+                        if (task == AdminRunTask.FaceRecognition) SecondaryAction(
                             icon = Icons.Outlined.GroupWork,
                             contentDescription = stringResource(Res.string.admin_backfill_action_clustering),
                             onClick = viewModel::runFaceClustering
-                        )
-                    } else null,
+                        ) else null,
+                        // The way out of the dead end: assets that exhausted
+                        // their retries are skipped by every future backfill, so
+                        // the row has no Start button and nothing to say. The
+                        // registry is where they get retried or suppressed.
+                        task.backfillKind?.let { kind ->
+                            if ((pending?.failed ?: 0) > 0) SecondaryAction(
+                                icon = Icons.Outlined.ErrorOutline,
+                                contentDescription = stringResource(Res.string.admin_run_tasks_ai_open_failures),
+                                onClick = { onOpenFailures(kind.name) }
+                            ) else null
+                        },
+                    ),
                     onCancelAi = if (isMl || task == AdminRunTask.MediaRecognition) {
                         { viewModel.cancelMlQueue(task) }
                     } else null,
@@ -1284,9 +1333,9 @@ private fun InlineToggle(
     }
 }
 
-/** Optional extra action surfaced on the right side of the row,
- *  alongside the main Start/Cancel button. Used today only for the
- *  face-recognition clustering pass. */
+/** Extra action surfaced on the right side of the row, alongside the main
+ *  Start/Cancel button: the face-recognition clustering pass, and the shortcut
+ *  into the failures registry for a queue that has assets stuck. */
 data class SecondaryAction(
     val icon: ImageVector,
     val contentDescription: String?,
@@ -1358,6 +1407,23 @@ private fun SectionHeader(
     }
 }
 
+/** One line of outcome at the top of the list. This screen's actions are all
+ *  fire-and-forget requests whose effect only shows up on the next 10s poll, so
+ *  a refusal, a 404 and a dead network otherwise look identical to a task that
+ *  simply hasn't started yet. */
+@Composable
+private fun TaskBanner(message: TaskMessage, color: androidx.compose.ui.graphics.Color) {
+    val text = message.task
+        ?.let { "${stringResource(it.titleRes)}: ${message.text}" }
+        ?: message.text
+    Text(
+        text,
+        color = color,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)
+    )
+}
+
 /** How many tasks live in a group, as a shape rather than a loose number —
  *  a bare "5" next to a title reads as part of the title. */
 @Composable
@@ -1398,7 +1464,6 @@ private fun TaskRow(
     task: AdminRunTask,
     running: BackgroundTaskDto?,
     aiInProgress: Boolean,
-    enqueuingProgress: EnqueuingProgress?,
     sessionBaseline: Int?,
     lastFinished: BackgroundTaskDto?,
     nowMs: Long,
@@ -1406,11 +1471,11 @@ private fun TaskRow(
     isTriggering: Boolean,
     onOpen: (() -> Unit)?,
     onStart: () -> Unit,
-    onSecondary: SecondaryAction?,
+    secondaryActions: List<SecondaryAction>,
     onCancelAi: (() -> Unit)?,
     onCancel: ((BackgroundTaskDto) -> Unit)?,
 ) {
-    val isActive = running != null || aiInProgress || enqueuingProgress != null
+    val isActive = running != null || aiInProgress
     val containerColor = when {
         isActive -> MaterialTheme.colorScheme.primaryContainer
         isTriggering -> MaterialTheme.colorScheme.secondaryContainer
@@ -1451,7 +1516,6 @@ private fun TaskRow(
                         task = task,
                         running = running,
                         aiInProgress = aiInProgress,
-                        enqueuingProgress = enqueuingProgress,
                         sessionBaseline = sessionBaseline,
                         lastFinished = lastFinished,
                         nowMs = nowMs,
@@ -1459,14 +1523,14 @@ private fun TaskRow(
                         contentColor = contentColor
                     )
                 }
-                // Secondary action (face clustering today) sits between
-                // the title block and the primary action so it never
-                // collides with the Start/Cancel slot.
-                if (onSecondary != null) {
-                    IconButton(onClick = onSecondary.onClick) {
+                // Secondary actions sit between the title block and the
+                // primary action so they never collide with the Start/Cancel
+                // slot. At most two today (re-cluster faces, open failures).
+                for (action in secondaryActions) {
+                    IconButton(onClick = action.onClick) {
                         Icon(
-                            imageVector = onSecondary.icon,
-                            contentDescription = onSecondary.contentDescription,
+                            imageVector = action.icon,
+                            contentDescription = action.contentDescription,
                             tint = contentColor
                         )
                     }
@@ -1474,7 +1538,6 @@ private fun TaskRow(
                 TaskRowAction(
                     running = running,
                     aiInProgress = aiInProgress,
-                    enqueuing = enqueuingProgress != null,
                     pending = pending,
                     isTriggering = isTriggering,
                     onStart = onStart,
@@ -1492,16 +1555,6 @@ private fun TaskRow(
                     val pct = (running.percentage / 100.0).toFloat().coerceIn(0f, 1f)
                     LinearProgressIndicator(
                         progress = { pct },
-                        modifier = Modifier.fillMaxWidth().height(4.dp)
-                    )
-                }
-                enqueuingProgress != null -> {
-                    Spacer(Modifier.size(8.dp))
-                    val pct = if (enqueuingProgress.initial > 0)
-                        enqueuingProgress.enqueuedSoFar.toFloat() / enqueuingProgress.initial.toFloat()
-                    else 0f
-                    LinearProgressIndicator(
-                        progress = { pct.coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth().height(4.dp)
                     )
                 }
@@ -1556,7 +1609,6 @@ private fun TaskRowSubtitle(
     task: AdminRunTask,
     running: BackgroundTaskDto?,
     aiInProgress: Boolean,
-    enqueuingProgress: EnqueuingProgress?,
     sessionBaseline: Int?,
     lastFinished: BackgroundTaskDto?,
     nowMs: Long,
@@ -1569,9 +1621,23 @@ private fun TaskRowSubtitle(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        if (running != null || aiInProgress || enqueuingProgress != null) {
+        if (running != null || aiInProgress) {
             LiveDot(active = true)
         }
+        // A queue that keeps failing looks exactly like a queue that keeps
+        // working if all you report is its size, and the assets that gave up
+        // for good vanish from "sin procesar" entirely — which is how a row
+        // ends up claiming there is nothing left to do on a library with
+        // thousands of unanalysed photos.
+        val troubles = pending?.let { p ->
+            listOfNotNull(
+                stringResource(Res.string.admin_run_tasks_ai_retrying_format, p.retrying)
+                    .takeIf { p.retrying > 0 },
+                stringResource(Res.string.admin_run_tasks_ai_failed_format, p.failed)
+                    .takeIf { p.failed > 0 },
+            )
+        }.orEmpty()
+
         val text: String = when {
             running != null -> {
                 val pct = running.percentage.toInt().coerceIn(0, 100)
@@ -1582,16 +1648,7 @@ private fun TaskRowSubtitle(
                 if (running.lastMessage.isNotBlank()) "$pct% — ${running.lastMessage}"
                 else stringResource(Res.string.admin_run_tasks_status_in_progress, "$pct%")
             }
-            // Phase 1: enqueuing loop is firing /backfill batches. Show
-            // the running counter rather than a percentage so the user
-            // tracks how much of the unprocessed pool is still waiting
-            // to even reach the queue.
-            enqueuingProgress != null -> stringResource(
-                Res.string.admin_run_tasks_ai_enqueuing_format,
-                enqueuingProgress.enqueuedSoFar,
-                enqueuingProgress.initial
-            )
-            // Phase 2: queue is full, workers chip away. Use the
+            // Queue is full, workers chip away. Use the
             // session-scoped delta (current.completed - baseline) so the
             // % reflects the work *this* run is doing rather than the
             // library's lifetime completion ratio.
@@ -1636,9 +1693,10 @@ private fun TaskRowSubtitle(
             task.progressKey != null -> stringResource(Res.string.admin_run_tasks_last_run_never)
             else -> ""
         }
-        if (text.isNotEmpty()) {
+        val line = (listOf(text).filter { it.isNotEmpty() } + troubles).joinToString(" · ")
+        if (line.isNotEmpty()) {
             Text(
-                text,
+                line,
                 style = MaterialTheme.typography.bodySmall,
                 color = mutedColor,
                 maxLines = 1,
@@ -1652,7 +1710,6 @@ private fun TaskRowSubtitle(
 private fun TaskRowAction(
     running: BackgroundTaskDto?,
     aiInProgress: Boolean,
-    enqueuing: Boolean,
     pending: PendingCountResponse?,
     isTriggering: Boolean,
     onStart: () -> Unit,
@@ -1675,7 +1732,7 @@ private fun TaskRowAction(
             // cancel handler — it stops the loop AND clears Pending
             // server-side, so the row drops out of every "active" state
             // in one tap.
-            (enqueuing || aiInProgress) && onCancelAi != null -> {
+            aiInProgress && onCancelAi != null -> {
                 IconButton(onClick = onCancelAi) {
                     Icon(
                         imageVector = Icons.Outlined.Stop,

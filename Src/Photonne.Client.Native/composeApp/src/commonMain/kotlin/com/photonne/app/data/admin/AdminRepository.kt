@@ -202,8 +202,16 @@ class AdminRepository(private val api: PhotonneApi) {
 
     // --- ML backfill / maintenance ---
 
-    suspend fun backfill(kind: String, batchSize: Int?, onlyMissing: Boolean): BackfillResponse =
-        api.adminBackfill(kind, BackfillRequest(batchSize = batchSize, onlyMissing = onlyMissing))
+    suspend fun backfill(
+        kind: String,
+        batchSize: Int?,
+        onlyMissing: Boolean,
+        all: Boolean = false
+    ): BackfillResponse =
+        api.adminBackfill(
+            kind,
+            BackfillRequest(batchSize = batchSize, onlyMissing = onlyMissing, all = all.takeIf { it })
+        )
 
     suspend fun pendingCount(kind: String): PendingCountResponse = api.adminPendingCount(kind)
 

@@ -169,7 +169,15 @@ data class LibraryScanProgress(
 @Serializable
 data class BackfillRequest(
     val batchSize: Int? = null,
-    val onlyMissing: Boolean? = true
+    val onlyMissing: Boolean? = true,
+    /** Queue every matching asset in this one request instead of a slice.
+     *  The alternative — asking for batches until the server says there's
+     *  nothing left — needs the pending pool to shrink on every pass, and
+     *  there are real states where it doesn't (a model switched off, a task
+     *  with no completion marker), which is how the admin hub used to end up
+     *  encolando forever. Servers older than 1.143 ignore the flag and hand
+     *  back a single batch, which is a slow run, not a wrong one. */
+    val all: Boolean? = null
 )
 
 @Serializable
@@ -186,10 +194,30 @@ data class PendingCountResponse(
     // ML task type. Used together with [inQueue] to drive a determinate
     // progress bar (`completed / (completed + inQueue)`).
     val completed: Int = 0,
-)
+    /** Assets waiting out a retry backoff. They're the reason a queue can
+     *  look busy for days without finishing: a failing ML service cycles
+     *  them Failed → Pending → Processing → Failed, and [inQueue] alone
+     *  reports that as steady progress. */
+    val retrying: Int = 0,
+    /** Assets that used up every attempt. They drop out of [unprocessed] —
+     *  a backfill won't pick them up again — so without this number a
+     *  library with thousands of unanalysed photos reports nothing to do.
+     *  Zero on servers older than 1.143. */
+    val failed: Int = 0,
+) {
+    /** Anything a run could still act on. Drives whether the row offers a
+     *  button at all. */
+    val hasWorkLeft: Boolean get() = unprocessed > 0 || failed > 0
+}
 
 @Serializable
-data class CancelQueueResponse(val deleted: Int = 0)
+data class CancelQueueResponse(
+    val deleted: Int = 0,
+    /** Jobs a worker had already claimed. There's no way to abort an
+     *  in-flight inference, so these finish on their own — saying how many
+     *  is what stops the cancel button from looking inert. */
+    val stillProcessing: Int = 0
+)
 
 @Serializable
 data class GlobalReclusterResponse(
