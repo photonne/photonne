@@ -267,15 +267,40 @@ data class AdminEnrichmentFailureDto(
     val errorMessage: String? = null,
     val attemptCount: Int = 0,
     val isPermanent: Boolean = false,
-    val lastAttemptAt: String? = null
-)
+    val lastAttemptAt: String? = null,
+    /** "Transient" / "Permanent" / "NeedsAction" / "Unknown" — whether trying
+     *  again is worth anything. [isPermanent] only says the attempts ran out,
+     *  and they run out just as surely when the ML container is down as when
+     *  the file is corrupt. Empty on servers older than 1.143. */
+    val failureKind: String = "",
+    /** The ML service's own error token (`image_unreadable`,
+     *  `model_not_loaded`, `inference_failed`…) when it sent one. */
+    val failureCode: String? = null
+) {
+    val kind: EnrichmentFailureKind get() = EnrichmentFailureKind.from(failureKind)
+}
+
+/** Mirror of the server's `EnrichmentFailureKind`. [Unknown] also covers rows
+ *  that failed before the server started classifying them, and any server too
+ *  old to send the field. */
+enum class EnrichmentFailureKind {
+    Unknown, Transient, Permanent, NeedsAction;
+
+    companion object {
+        fun from(raw: String?): EnrichmentFailureKind =
+            entries.firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: Unknown
+    }
+}
 
 @Serializable
 data class AdminEnrichmentFailuresPage(
     val items: List<AdminEnrichmentFailureDto> = emptyList(),
     val nextCursor: String? = null,
     val total: Int = 0,
-    val countsByType: Map<String, Int> = emptyMap()
+    val countsByType: Map<String, Int> = emptyMap(),
+    /** How the open problems split by cause. Drives the "merece la pena
+     *  reintentar" chips without paging through every row. */
+    val countsByKind: Map<String, Int> = emptyMap()
 )
 
 @Serializable
@@ -502,6 +527,7 @@ interface PhotonneApi {
     /** Admin-wide registry of Failed/Suppressed enrichment tasks across all users. */
     suspend fun adminEnrichmentFailures(
         type: String? = null,
+        kind: String? = null,
         cursor: String? = null,
         pageSize: Int = 50
     ): AdminEnrichmentFailuresPage
@@ -510,7 +536,10 @@ interface PhotonneApi {
     suspend fun adminRetryEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse
 
     /** Resets every Failed task (optionally of one type) back to Pending (admin). */
-    suspend fun adminRetryAllEnrichmentFailures(type: String? = null): AdminRetryAllFailuresResponse
+    suspend fun adminRetryAllEnrichmentFailures(
+        type: String? = null,
+        kind: String? = null
+    ): AdminRetryAllFailuresResponse
 
     /** Marks one Failed task as Suppressed so no sweep ever retries the asset again (admin). */
     suspend fun adminSuppressEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse
@@ -3364,12 +3393,14 @@ class PhotonneApiClient(
 
     override suspend fun adminEnrichmentFailures(
         type: String?,
+        kind: String?,
         cursor: String?,
         pageSize: Int
     ): AdminEnrichmentFailuresPage {
         val response: HttpResponse = client.get("$baseUrl/api/admin/enrichment/failures") {
             parameter("pageSize", pageSize)
             if (type != null) parameter("type", type)
+            if (kind != null) parameter("kind", kind)
             if (cursor != null) parameter("cursor", cursor)
         }
         if (response.status != HttpStatusCode.OK) {
@@ -3393,10 +3424,14 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun adminRetryAllEnrichmentFailures(type: String?): AdminRetryAllFailuresResponse {
+    override suspend fun adminRetryAllEnrichmentFailures(
+        type: String?,
+        kind: String?
+    ): AdminRetryAllFailuresResponse {
         val response: HttpResponse =
             client.post("$baseUrl/api/admin/enrichment/failures/retry-all") {
                 if (type != null) parameter("type", type)
+                if (kind != null) parameter("kind", kind)
             }
         if (response.status != HttpStatusCode.OK) {
             throw PhotonneApiException(

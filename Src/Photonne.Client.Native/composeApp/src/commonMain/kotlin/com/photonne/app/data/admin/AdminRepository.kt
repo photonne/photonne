@@ -293,15 +293,18 @@ class AdminRepository(private val api: PhotonneApi) {
 
     suspend fun enrichmentFailures(
         type: String? = null,
+        kind: String? = null,
         cursor: String? = null,
         pageSize: Int = 50
-    ): AdminEnrichmentFailuresPage = api.adminEnrichmentFailures(type, cursor, pageSize)
+    ): AdminEnrichmentFailuresPage = api.adminEnrichmentFailures(type, kind, cursor, pageSize)
 
     suspend fun retryEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse =
         api.adminRetryEnrichmentFailure(taskId)
 
-    suspend fun retryAllEnrichmentFailures(type: String? = null): AdminRetryAllFailuresResponse =
-        api.adminRetryAllEnrichmentFailures(type)
+    suspend fun retryAllEnrichmentFailures(
+        type: String? = null,
+        kind: String? = null
+    ): AdminRetryAllFailuresResponse = api.adminRetryAllEnrichmentFailures(type, kind)
 
     suspend fun suppressEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse =
         api.adminSuppressEnrichmentFailure(taskId)

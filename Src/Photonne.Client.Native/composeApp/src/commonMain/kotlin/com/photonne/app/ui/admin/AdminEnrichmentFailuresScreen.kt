@@ -43,12 +43,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.AdminEnrichmentFailureDto
+import com.photonne.app.data.api.EnrichmentFailureKind
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_enrichment_failures_attempts
 import com.photonne.app.resources.admin_enrichment_failures_badge_permanent
 import com.photonne.app.resources.admin_enrichment_failures_badge_suppressed
 import com.photonne.app.resources.admin_enrichment_failures_empty
 import com.photonne.app.resources.admin_enrichment_failures_filter_all
+import com.photonne.app.resources.admin_enrichment_failures_kind_any
+import com.photonne.app.resources.admin_enrichment_failures_kind_needs_action
+import com.photonne.app.resources.admin_enrichment_failures_kind_permanent
+import com.photonne.app.resources.admin_enrichment_failures_kind_transient
 import com.photonne.app.resources.admin_enrichment_failures_load_error
 import com.photonne.app.resources.admin_enrichment_failures_load_more
 import com.photonne.app.resources.admin_enrichment_failures_retry
@@ -134,9 +139,12 @@ fun AdminEnrichmentFailuresScreen(
                             FailuresHeader(
                                 total = state.total,
                                 countsByType = state.countsByType,
+                                countsByKind = state.countsByKind,
                                 typeFilter = state.typeFilter,
+                                kindFilter = state.kindFilter,
                                 isRetryingAll = state.isRetryingAll,
                                 onFilter = { viewModel.setFilter(it) },
+                                onKindFilter = { viewModel.setKindFilter(it) },
                                 onRetryAll = { viewModel.retryAll() }
                             )
                         }
@@ -189,9 +197,12 @@ fun AdminEnrichmentFailuresScreen(
 private fun FailuresHeader(
     total: Int,
     countsByType: Map<String, Int>,
+    countsByKind: Map<String, Int>,
     typeFilter: String?,
+    kindFilter: EnrichmentFailureKind?,
     isRetryingAll: Boolean,
     onFilter: (String?) -> Unit,
+    onKindFilter: (EnrichmentFailureKind?) -> Unit,
     onRetryAll: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -241,7 +252,65 @@ private fun FailuresHeader(
                 }
             }
         }
+
+        // A second row, by cause. It's the one that answers the question the
+        // admin actually has in front of a wall of failures — whether pressing
+        // "Reintentar todo" will achieve anything — and it scopes that button,
+        // so the transient ones can be retried without dragging along the files
+        // that will fail again identically.
+        val kinds = countsByKind.entries
+            .mapNotNull { (raw, count) ->
+                val kind = EnrichmentFailureKind.from(raw)
+                if (count > 0 && kind != EnrichmentFailureKind.Unknown) kind to count else null
+            }
+            .sortedBy { it.first.ordinal }
+        if (kinds.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FilterChip(
+                    selected = kindFilter == null,
+                    onClick = { onKindFilter(null) },
+                    label = { Text(stringResource(Res.string.admin_enrichment_failures_kind_any)) }
+                )
+                kinds.forEach { (kind, count) ->
+                    FilterChip(
+                        selected = kindFilter == kind,
+                        onClick = { onKindFilter(kind) },
+                        label = { Text("${stringResource(kindTitle(kind))} ($count)") }
+                    )
+                }
+            }
+        }
     }
+}
+
+/** Label and colour for a failure's cause, or null when there's nothing worth
+ *  saying (an unclassified row — a failure from before the server recorded
+ *  this, or one nothing recognised). */
+@Composable
+private fun kindLabel(kind: EnrichmentFailureKind): Pair<String, androidx.compose.ui.graphics.Color>? =
+    when (kind) {
+        EnrichmentFailureKind.Unknown -> null
+        EnrichmentFailureKind.Transient ->
+            stringResource(Res.string.admin_enrichment_failures_kind_transient) to
+                MaterialTheme.colorScheme.onSurfaceVariant
+        EnrichmentFailureKind.Permanent ->
+            stringResource(Res.string.admin_enrichment_failures_kind_permanent) to
+                MaterialTheme.colorScheme.error
+        EnrichmentFailureKind.NeedsAction ->
+            stringResource(Res.string.admin_enrichment_failures_kind_needs_action) to
+                MaterialTheme.colorScheme.primary
+    }
+
+private fun kindTitle(kind: EnrichmentFailureKind): StringResource = when (kind) {
+    EnrichmentFailureKind.Transient -> Res.string.admin_enrichment_failures_kind_transient
+    EnrichmentFailureKind.Permanent -> Res.string.admin_enrichment_failures_kind_permanent
+    EnrichmentFailureKind.NeedsAction -> Res.string.admin_enrichment_failures_kind_needs_action
+    EnrichmentFailureKind.Unknown -> Res.string.admin_enrichment_failures_kind_any
 }
 
 @Composable
@@ -292,6 +361,13 @@ private fun FailureCard(
                         MaterialTheme.colorScheme.error
                     )
                 }
+                // What kind of failure, which is the part that decides whether
+                // retrying is worth anything. "Agotado" only says the attempts
+                // ran out — that happens to a corrupt file and to a library
+                // whose ML container was down, and those need opposite answers.
+                kindLabel(failure.kind)?.let { (label, color) ->
+                    StatusBadge(label, color)
+                }
             }
 
             failure.errorMessage?.takeIf { it.isNotBlank() }?.let { msg ->
@@ -300,6 +376,18 @@ private fun FailureCard(
                     text = msg,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            // The service's own token, under the sentence. It's what makes a
+            // wall of failures readable as one cause repeated N times rather
+            // than N separate problems.
+            failure.failureCode?.takeIf { it.isNotBlank() }?.let { code ->
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = code,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

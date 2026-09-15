@@ -845,8 +845,12 @@
     <string name="admin_enrichment_failures_retry_all">Reintentar todo</string>
     <string name="admin_enrichment_failures_retrying_all">Reintentando…</string>
     <string name="admin_enrichment_failures_suppress">Descartar</string>
-    <string name="admin_enrichment_failures_badge_permanent">Permanente</string>
+    <string name="admin_enrichment_failures_badge_permanent">Sin reintentos</string>
     <string name="admin_enrichment_failures_badge_suppressed">Descartado</string>
+    <string name="admin_enrichment_failures_kind_any">Cualquier causa</string>
+    <string name="admin_enrichment_failures_kind_transient">Pasajero</string>
+    <string name="admin_enrichment_failures_kind_permanent">Del archivo</string>
+    <string name="admin_enrichment_failures_kind_needs_action">Requiere arreglo</string>
     <string name="admin_enrichment_failures_attempts">%1$d intento(s)</string>
     <string name="admin_enrichment_failures_load_more">Cargar más</string>
 

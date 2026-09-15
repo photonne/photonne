@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.api.AdminEnrichmentFailureDto
+import com.photonne.app.data.api.EnrichmentFailureKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +28,12 @@ data class AdminEnrichmentFailuresUiState(
     val items: List<AdminEnrichmentFailureItem> = emptyList(),
     val total: Int = 0,
     val countsByType: Map<String, Int> = emptyMap(),
+    /** How the open problems split by cause. Lets the screen say "3.412 no se
+     *  arreglan reintentando" before anyone reads a row. */
+    val countsByKind: Map<String, Int> = emptyMap(),
     val typeFilter: String? = null,
+    /** Narrows the list to one cause. Null = todas. */
+    val kindFilter: EnrichmentFailureKind? = null,
     val nextCursor: String? = null,
     val loadError: String? = null
 )
@@ -61,10 +67,21 @@ class AdminEnrichmentFailuresViewModel(
         refresh()
     }
 
+    fun setKindFilter(kind: EnrichmentFailureKind?) {
+        if (_state.value.kindFilter == kind) return
+        _state.update { it.copy(kindFilter = kind) }
+        refresh()
+    }
+
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, loadError = null) }
-            runCatching { repository.enrichmentFailures(type = _state.value.typeFilter) }
+            runCatching {
+                repository.enrichmentFailures(
+                    type = _state.value.typeFilter,
+                    kind = _state.value.kindFilter?.name
+                )
+            }
                 .onSuccess { page ->
                     _state.update {
                         it.copy(
@@ -72,6 +89,7 @@ class AdminEnrichmentFailuresViewModel(
                             items = page.items.map { dto -> AdminEnrichmentFailureItem(failure = dto) },
                             total = page.total,
                             countsByType = page.countsByType,
+                            countsByKind = page.countsByKind,
                             nextCursor = page.nextCursor
                         )
                     }
@@ -90,7 +108,11 @@ class AdminEnrichmentFailuresViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoadingMore = true) }
             runCatching {
-                repository.enrichmentFailures(type = _state.value.typeFilter, cursor = cursor)
+                repository.enrichmentFailures(
+                    type = _state.value.typeFilter,
+                    kind = _state.value.kindFilter?.name,
+                    cursor = cursor
+                )
             }
                 .onSuccess { page ->
                     _state.update {
@@ -99,6 +121,7 @@ class AdminEnrichmentFailuresViewModel(
                             items = it.items + page.items.map { dto -> AdminEnrichmentFailureItem(failure = dto) },
                             total = page.total,
                             countsByType = page.countsByType,
+                            countsByKind = page.countsByKind,
                             nextCursor = page.nextCursor
                         )
                     }
@@ -117,7 +140,14 @@ class AdminEnrichmentFailuresViewModel(
         if (_state.value.isRetryingAll) return
         viewModelScope.launch {
             _state.update { it.copy(isRetryingAll = true) }
-            runCatching { repository.retryAllEnrichmentFailures(type = _state.value.typeFilter) }
+            // Honours the cause filter too: reintentar los permanentes solo
+            // reproduce el mismo fallo y vuelve a llenar la cola.
+            runCatching {
+                repository.retryAllEnrichmentFailures(
+                    type = _state.value.typeFilter,
+                    kind = _state.value.kindFilter?.name
+                )
+            }
             _state.update { it.copy(isRetryingAll = false) }
             refresh()
         }
