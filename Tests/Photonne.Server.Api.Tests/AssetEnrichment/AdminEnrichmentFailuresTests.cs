@@ -28,13 +28,18 @@ public sealed class AdminEnrichmentFailuresTests : IntegrationTestBase
         string? ErrorMessage,
         int AttemptCount,
         bool IsPermanent,
-        DateTime? LastAttemptAt);
+        DateTime? LastAttemptAt,
+        string FailureKind = "",
+        string? FailureCode = null);
 
     private sealed record FailuresResponse(
         IReadOnlyList<FailureDto> Items,
         string? NextCursor,
         int Total,
-        IReadOnlyDictionary<string, int> CountsByType);
+        IReadOnlyDictionary<string, int> CountsByType,
+        IReadOnlyDictionary<string, int>? CountsByKind = null);
+
+    private sealed record RetryAllResponse(int Retried);
 
     private async Task<Asset> SeedMissingFileAssetAsync(Guid ownerId)
     {
@@ -163,5 +168,81 @@ public sealed class AdminEnrichmentFailuresTests : IntegrationTestBase
         var (_, client) = await CreateAuthenticatedUserAsync();
         var response = await client.GetAsync("/api/admin/enrichment/failures");
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // ─── Cause, not just "it failed" ─────────────────────────────────────────
+
+    [Fact]
+    public async Task AMissingFile_IsFiledAsTheAssetsOwnProblem()
+    {
+        // "Failed with the attempts used up" is the same row whether the photo
+        // is corrupt or the ML container was down all night, and the two need
+        // opposite responses. The kind is what separates them.
+        var (_, admin) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (owner, _) = await CreateAuthenticatedUserAsync();
+        await SeedMissingFileAssetAsync(owner.Id);
+
+        await RunMetadataSweepAsync(admin);
+
+        var body = await admin.GetFromJsonAsync<FailuresResponse>("/api/admin/enrichment/failures");
+        var row = Assert.Single(body!.Items);
+        Assert.Equal("Permanent", row.FailureKind);
+        Assert.NotNull(body.CountsByKind);
+        Assert.True(body.CountsByKind!.TryGetValue("Permanent", out var permanent) && permanent == 1);
+    }
+
+    [Fact]
+    public async Task TheKindFilter_NarrowsTheList()
+    {
+        var (_, admin) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (owner, _) = await CreateAuthenticatedUserAsync();
+        await SeedMissingFileAssetAsync(owner.Id);
+
+        await RunMetadataSweepAsync(admin);
+
+        var permanent = await admin.GetFromJsonAsync<FailuresResponse>(
+            "/api/admin/enrichment/failures?kind=Permanent");
+        Assert.Single(permanent!.Items);
+
+        var transient = await admin.GetFromJsonAsync<FailuresResponse>(
+            "/api/admin/enrichment/failures?kind=Transient");
+        Assert.Empty(transient!.Items);
+
+        // Counters stay global so switching filters never hides where the rest is.
+        Assert.True(transient.CountsByKind!.TryGetValue("Permanent", out var count) && count == 1);
+    }
+
+    [Fact]
+    public async Task AnUnknownKind_IsRejectedRatherThanIgnored()
+    {
+        // Silently returning everything would make a filtered retry-all a very
+        // bad surprise.
+        var (_, admin) = await CreateAuthenticatedUserAsync(role: "Admin");
+
+        var response = await admin.GetAsync("/api/admin/enrichment/failures?kind=Whatever");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RetryAll_ScopedToACause_LeavesTheRestAlone()
+    {
+        // The whole point of classifying: retrying the ones whose cause is the
+        // file itself only reproduces the same failure and refills the queue.
+        var (_, admin) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (owner, _) = await CreateAuthenticatedUserAsync();
+        await SeedMissingFileAssetAsync(owner.Id);
+
+        await RunMetadataSweepAsync(admin);
+
+        var response = await admin.PostAsync(
+            "/api/admin/enrichment/failures/retry-all?kind=Transient", null);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<RetryAllResponse>();
+        Assert.Equal(0, result!.Retried);
+
+        // Still there, still permanent — not quietly swept back into the queue.
+        var body = await admin.GetFromJsonAsync<FailuresResponse>("/api/admin/enrichment/failures");
+        Assert.Single(body!.Items);
     }
 }

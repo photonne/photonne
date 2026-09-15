@@ -4,6 +4,7 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.Embeddings;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
+using Photonne.Server.Api.Shared.Services.Ml;
 using Photonne.Server.Api.Shared.Services.ObjectDetection;
 using Photonne.Server.Api.Shared.Services.SceneClassification;
 using Photonne.Server.Api.Shared.Services.TextRecognition;
@@ -173,6 +174,8 @@ public class EnrichmentWorker : BackgroundService
             task.CompletedAt = DateTime.UtcNow;
             task.NextRetryAt = null;
             task.ErrorMessage = null;
+            task.FailureKind = EnrichmentFailureKind.Unknown;
+            task.FailureCode = null;
             await dbContext.SaveChangesAsync(ct);
 
             _logger.LogInformation(
@@ -191,13 +194,26 @@ public class EnrichmentWorker : BackgroundService
 
             task.AttemptCount++;
             task.Status = EnrichmentStatus.Failed;
-            task.ErrorMessage = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
+            // The whole cause chain, not just the outermost message: the ML
+            // clients' own wording is the least useful link in it, and the
+            // status code or the socket error lives further down.
+            task.ErrorMessage = EnrichmentFailureClassifier.Describe(ex);
+            task.FailureKind = EnrichmentFailureClassifier.Classify(ex);
+            task.FailureCode = EnrichmentFailureClassifier.CodeOf(ex);
             task.CompletedAt = DateTime.UtcNow;
 
             // Schedule the next retry if we still have backoff slots left. Otherwise
             // the row stays Failed permanently and only the manual reindex endpoint
             // (or the user via the UI) can reset it.
-            task.NextRetryAt = EnrichmentBackoff.ComputeNextRetry(task.AttemptCount, DateTime.UtcNow);
+            //
+            // A cause that can't improve on its own skips the schedule entirely.
+            // Grinding an unreadable file through five attempts across seven
+            // hours changes nothing, and doing it for a disabled capability
+            // just buries the one thing the admin needs to read — that the
+            // model isn't loaded — under hours of identical retries.
+            task.NextRetryAt = task.FailureKind is EnrichmentFailureKind.Permanent or EnrichmentFailureKind.NeedsAction
+                ? null
+                : EnrichmentBackoff.ComputeNextRetry(task.AttemptCount, DateTime.UtcNow);
 
             await dbContext.SaveChangesAsync(ct);
 

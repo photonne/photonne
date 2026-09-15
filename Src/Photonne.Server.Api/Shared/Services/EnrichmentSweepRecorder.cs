@@ -32,12 +32,34 @@ public static class EnrichmentSweepRecorder
     /// the cause and schedules/exhausts the backoff. Creates the row when the
     /// asset never went through the enrichment pipeline.
     /// </summary>
+    /// <summary>
+    /// Same, from the exception that ended the attempt: the cause chain becomes
+    /// the message and the kind is derived from it, so a sweep's rows read the
+    /// same way in the registry as the worker's. Without this half the list
+    /// carries a cause badge and half doesn't, which makes the badge worth
+    /// nothing.
+    /// </summary>
+    public static Task RecordFailureAsync(
+        ApplicationDbContext db,
+        Guid assetId,
+        AssetEnrichmentType type,
+        Exception exception,
+        CancellationToken ct) =>
+        RecordFailureAsync(
+            db, assetId, type,
+            Ml.EnrichmentFailureClassifier.Describe(exception),
+            ct,
+            Ml.EnrichmentFailureClassifier.Classify(exception),
+            Ml.EnrichmentFailureClassifier.CodeOf(exception));
+
     public static async Task RecordFailureAsync(
         ApplicationDbContext db,
         Guid assetId,
         AssetEnrichmentType type,
         string error,
-        CancellationToken ct)
+        CancellationToken ct,
+        EnrichmentFailureKind kind = EnrichmentFailureKind.Unknown,
+        string? code = null)
     {
         var now = DateTime.UtcNow;
         var task = await LatestAsync(db, assetId, type, ct);
@@ -57,7 +79,12 @@ public static class EnrichmentSweepRecorder
         task.AttemptCount++;
         task.Status = EnrichmentStatus.Failed;
         task.ErrorMessage = error.Length <= MaxErrorLength ? error : error[..MaxErrorLength];
+        task.FailureKind = kind;
+        task.FailureCode = code;
         task.CompletedAt = now;
+        // Unlike the worker, a sweep keeps its backoff budget even for a cause
+        // that won't improve: these runs are triggered by hand or nightly, and
+        // the admin re-running one after fixing a mount expects it to try.
         task.NextRetryAt = EnrichmentBackoff.ComputeNextRetry(task.AttemptCount, now);
         await db.SaveChangesAsync(ct);
     }
@@ -80,6 +107,8 @@ public static class EnrichmentSweepRecorder
         task.Status = EnrichmentStatus.Completed;
         task.CompletedAt = DateTime.UtcNow;
         task.ErrorMessage = null;
+        task.FailureKind = EnrichmentFailureKind.Unknown;
+        task.FailureCode = null;
         task.NextRetryAt = null;
         await db.SaveChangesAsync(ct);
     }

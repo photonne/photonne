@@ -52,13 +52,25 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         string? ErrorMessage,
         int AttemptCount,
         bool IsPermanent,
-        DateTime? LastAttemptAt);
+        DateTime? LastAttemptAt,
+        // What kind of failure this was — "Transient" / "Permanent" /
+        // "NeedsAction" / "Unknown". IsPermanent only says the attempts ran
+        // out, which happens just as surely when the ML container is down as
+        // when the file is corrupt; this is what separates the two.
+        string FailureKind,
+        // The service's own error token, when it sent one. Lets a wall of
+        // failures read as "3.412 veces model_not_loaded" instead of 3.412
+        // sentences.
+        string? FailureCode);
 
     private sealed record AdminEnrichmentFailuresResponse(
         IReadOnlyList<AdminEnrichmentFailureDto> Items,
         string? NextCursor,
         int Total,
-        IReadOnlyDictionary<string, int> CountsByType);
+        IReadOnlyDictionary<string, int> CountsByType,
+        // Same idea as CountsByType, by cause: it answers "is this worth
+        // retrying?" before the admin reads a single row.
+        IReadOnlyDictionary<string, int> CountsByKind);
 
     /// <summary>Latest Failed/Suppressed rows over live assets. A row is an
     /// "open problem" only while no newer attempt exists for the same
@@ -74,6 +86,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
 
     private async Task<IResult> HandleList(
         [FromQuery] string? type,
+        [FromQuery] string? kind,
         [FromQuery] string? cursor,
         [FromServices] ApplicationDbContext dbContext,
         CancellationToken cancellationToken,
@@ -92,6 +105,19 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
             parsedType = value;
         }
 
+        EnrichmentFailureKind? parsedKind = null;
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            if (!Enum.TryParse<EnrichmentFailureKind>(kind, ignoreCase: true, out var value))
+            {
+                return Results.BadRequest(new
+                {
+                    error = $"Unknown failure kind '{kind}'. Valid: {string.Join(", ", Enum.GetNames<EnrichmentFailureKind>())}"
+                });
+            }
+            parsedKind = value;
+        }
+
         var capped = Math.Clamp(pageSize, 1, 200);
 
         var open = OpenProblems(dbContext);
@@ -104,9 +130,17 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
                 .ToListAsync(cancellationToken))
             .ToDictionary(g => g.Key.ToString(), g => g.Count);
 
+        var countsByKind = (await open
+                .GroupBy(t => t.FailureKind)
+                .Select(g => new { g.Key, Count = g.Count() })
+                .ToListAsync(cancellationToken))
+            .ToDictionary(g => g.Key.ToString(), g => g.Count);
+
         var filtered = parsedType.HasValue
             ? open.Where(t => t.TaskType == parsedType.Value)
             : open;
+        if (parsedKind.HasValue)
+            filtered = filtered.Where(t => t.FailureKind == parsedKind.Value);
 
         var total = await filtered.CountAsync(cancellationToken);
 
@@ -127,6 +161,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
             {
                 t.Id, t.AssetId, t.TaskType, t.Status, t.ErrorMessage, t.AttemptCount,
                 t.NextRetryAt, t.CreatedAt, t.StartedAt, t.CompletedAt,
+                t.FailureKind, t.FailureCode,
                 t.Asset.FileName, t.Asset.FileCreatedAt, t.Asset.OwnerId,
                 OwnerName = t.Asset.Owner != null ? t.Asset.Owner.Username : null
             })
@@ -139,13 +174,15 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
             t.Id, t.AssetId, t.FileName, t.FileCreatedAt, t.OwnerId, t.OwnerName,
             t.TaskType.ToString(), t.Status.ToString(), t.ErrorMessage, t.AttemptCount,
             IsPermanent: t.Status == EnrichmentStatus.Failed && t.NextRetryAt == null,
-            LastAttemptAt: t.CompletedAt ?? t.StartedAt ?? t.CreatedAt)).ToList();
+            LastAttemptAt: t.CompletedAt ?? t.StartedAt ?? t.CreatedAt,
+            FailureKind: t.FailureKind.ToString(),
+            FailureCode: t.FailureCode)).ToList();
 
         var nextCursor = hasMore
             ? FormatCursor(page[^1].CreatedAt, page[^1].Id)
             : null;
 
-        return Results.Ok(new AdminEnrichmentFailuresResponse(items, nextCursor, total, countsByType));
+        return Results.Ok(new AdminEnrichmentFailuresResponse(items, nextCursor, total, countsByType, countsByKind));
     }
 
     private async Task<IResult> HandleRetry(
@@ -168,6 +205,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
 
     private async Task<IResult> HandleRetryAll(
         [FromQuery] string? type,
+        [FromQuery] string? kind,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IEnrichmentService enrichmentService,
         CancellationToken cancellationToken)
@@ -180,10 +218,22 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
             parsedType = value;
         }
 
+        EnrichmentFailureKind? parsedKind = null;
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            if (!Enum.TryParse<EnrichmentFailureKind>(kind, ignoreCase: true, out var value))
+                return Results.BadRequest(new { error = $"Unknown failure kind '{kind}'." });
+            parsedKind = value;
+        }
+
         var query = OpenProblems(dbContext)
             .Where(t => t.Status == EnrichmentStatus.Failed);
         if (parsedType.HasValue)
             query = query.Where(t => t.TaskType == parsedType.Value);
+        // Retrying the ones whose cause is the file itself only reproduces the
+        // same failure and buries the queue again.
+        if (parsedKind.HasValue)
+            query = query.Where(t => t.FailureKind == parsedKind.Value);
 
         var ids = await query.Select(t => t.Id).ToListAsync(cancellationToken);
 

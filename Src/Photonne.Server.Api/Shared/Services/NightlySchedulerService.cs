@@ -641,7 +641,8 @@ public class NightlySchedulerService : BackgroundService
                     Console.WriteLine($"[NIGHTLY] Thumbnail error for asset {asset.Id}: file not found at {asset.FullPath}");
                     await EnrichmentSweepRecorder.RecordFailureAsync(
                         dbContext, asset.Id, AssetEnrichmentType.Thumbnails,
-                        $"Fichero no encontrado: {asset.FullPath}", ct);
+                        $"Fichero no encontrado: {asset.FullPath}", ct,
+                                        EnrichmentFailureKind.Permanent);
                     failed++;
                     continue;
                 }
@@ -663,7 +664,8 @@ public class NightlySchedulerService : BackgroundService
                 {
                     await EnrichmentSweepRecorder.RecordFailureAsync(
                         dbContext, asset.Id, AssetEnrichmentType.Thumbnails,
-                        "El generador no produjo miniaturas", ct);
+                        "El generador no produjo miniaturas", ct,
+                                        EnrichmentFailureKind.Permanent);
                     failed++;
                 }
             }
@@ -677,7 +679,7 @@ public class NightlySchedulerService : BackgroundService
                     using var failScope = _scopeFactory.CreateScope();
                     var failDb = failScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     await EnrichmentSweepRecorder.RecordFailureAsync(
-                        failDb, asset.Id, AssetEnrichmentType.Thumbnails, ex.Message, ct);
+                        failDb, asset.Id, AssetEnrichmentType.Thumbnails, ex, ct);
                 }
                 catch { /* never let bookkeeping mask the sweep */ }
                 failed++;
@@ -771,7 +773,8 @@ public class NightlySchedulerService : BackgroundService
                         Console.WriteLine($"[NIGHTLY] Metadata error for asset {asset.Id}: file not found at {asset.FullPath}");
                         await EnrichmentSweepRecorder.RecordFailureAsync(
                             innerDb, asset.Id, AssetEnrichmentType.Exif,
-                            $"Fichero no encontrado: {asset.FullPath}", innerCt);
+                            $"Fichero no encontrado: {asset.FullPath}", innerCt,
+                                        EnrichmentFailureKind.Permanent);
                         Interlocked.Increment(ref failed);
                         return;
                     }
@@ -825,7 +828,8 @@ public class NightlySchedulerService : BackgroundService
                     {
                         await EnrichmentSweepRecorder.RecordFailureAsync(
                             innerDb, asset.Id, AssetEnrichmentType.Exif,
-                            "El extractor EXIF no devolvió datos (formato no soportado o fichero corrupto)", innerCt);
+                            "El extractor EXIF no devolvió datos (formato no soportado o fichero corrupto)", innerCt,
+                                            EnrichmentFailureKind.Permanent);
                         Interlocked.Increment(ref failed);
                     }
                 }
@@ -840,7 +844,7 @@ public class NightlySchedulerService : BackgroundService
                         using var failScope = _scopeFactory.CreateScope();
                         var failDb = failScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                         await EnrichmentSweepRecorder.RecordFailureAsync(
-                            failDb, asset.Id, AssetEnrichmentType.Exif, ex.Message, innerCt);
+                            failDb, asset.Id, AssetEnrichmentType.Exif, ex, innerCt);
                     }
                     catch { /* never let bookkeeping mask the sweep */ }
                     Interlocked.Increment(ref failed);

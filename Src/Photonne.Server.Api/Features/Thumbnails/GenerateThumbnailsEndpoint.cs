@@ -131,7 +131,8 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                             {
                                 await EnrichmentSweepRecorder.RecordFailureAsync(
                                     dbContext, asset.Id, AssetEnrichmentType.Thumbnails,
-                                    $"Fichero no encontrado: {asset.FullPath}", taskCt);
+                                    $"Fichero no encontrado: {asset.FullPath}", taskCt,
+                                        EnrichmentFailureKind.Permanent);
                                 stats.Failed++;
                             }
                             else
@@ -157,7 +158,8 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                                 {
                                     await EnrichmentSweepRecorder.RecordFailureAsync(
                                         dbContext, asset.Id, AssetEnrichmentType.Thumbnails,
-                                        "El generador no produjo miniaturas", taskCt);
+                                        "El generador no produjo miniaturas", taskCt,
+                                        EnrichmentFailureKind.Permanent);
                                     stats.Failed++;
                                 }
                             }
@@ -174,7 +176,7 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                             using var failScope = serviceProvider.CreateScope();
                             var failDb = failScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                             await EnrichmentSweepRecorder.RecordFailureAsync(
-                                failDb, asset.Id, AssetEnrichmentType.Thumbnails, ex.Message, taskCt);
+                                failDb, asset.Id, AssetEnrichmentType.Thumbnails, ex, taskCt);
                         }
                         catch { /* never let bookkeeping mask the sweep */ }
                         stats.Failed++;

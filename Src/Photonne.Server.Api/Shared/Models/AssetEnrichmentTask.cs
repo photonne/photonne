@@ -43,6 +43,35 @@ public enum EnrichmentStatus
     Suppressed = 4,
 }
 
+/// <summary>
+/// What kind of failure this was, so "retry" stops being a coin flip.
+///
+/// <see cref="EnrichmentStatus.Failed"/> plus a null <c>NextRetryAt</c> only
+/// says the attempts ran out, and they run out just as surely when the ML
+/// container is down as when the JPEG is corrupt — the two need opposite
+/// responses and looked identical in the failures registry.
+/// </summary>
+public enum EnrichmentFailureKind
+{
+    /// <summary>Not classified: a failure from before this existed, or one
+    /// nothing recognised.</summary>
+    Unknown = 0,
+
+    /// <summary>Trying again later, with nobody touching anything, could work:
+    /// the service was unreachable, timed out, or the inference raised.</summary>
+    Transient = 1,
+
+    /// <summary>The same input will fail the same way — an unreadable file, a
+    /// request the service rejected. Retrying is waste; fix or suppress.</summary>
+    Permanent = 2,
+
+    /// <summary>Not the asset's fault and not self-healing: the capability is
+    /// switched off, or its model never loaded. Retrying the queue does nothing
+    /// until somebody fixes the service, and then everything here retries
+    /// successfully at once.</summary>
+    NeedsAction = 3,
+}
+
 public class AssetEnrichmentTask
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -62,6 +91,17 @@ public class AssetEnrichmentTask
 
     [MaxLength(2000)]
     public string? ErrorMessage { get; set; }
+
+    /// <summary>How <see cref="ErrorMessage"/> should be read. Set on every
+    /// failed attempt; stays <see cref="EnrichmentFailureKind.Unknown"/> on rows
+    /// that failed before this was recorded.</summary>
+    public EnrichmentFailureKind FailureKind { get; set; } = EnrichmentFailureKind.Unknown;
+
+    /// <summary>The service's own error token when there was one
+    /// (<c>image_unreadable</c>, <c>model_not_loaded</c>…). Groups a wall of
+    /// failures by cause without string-matching the message.</summary>
+    [MaxLength(64)]
+    public string? FailureCode { get; set; }
 
     public string? ResultJson { get; set; }
 

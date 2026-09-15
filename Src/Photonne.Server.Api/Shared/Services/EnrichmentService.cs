@@ -146,6 +146,10 @@ public class EnrichmentService : IEnrichmentService
         task.AttemptCount = 0;
         task.NextRetryAt = null;
         task.ErrorMessage = null;
+        // The retry is a fresh verdict: keeping the old classification would
+        // leave the row badged "permanente" while it queues up to try again.
+        task.FailureKind = EnrichmentFailureKind.Unknown;
+        task.FailureCode = null;
         task.StartedAt = null;
         task.CompletedAt = null;
         await _dbContext.SaveChangesAsync(cancellationToken);

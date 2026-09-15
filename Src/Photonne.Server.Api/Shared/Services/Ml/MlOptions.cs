@@ -14,4 +14,9 @@ public class MlOptions
     public int TimeoutSeconds { get; set; } = 120;
 
     public int MaxRetries { get; set; } = 3;
+
+    /// <summary>First wait before a retry, in seconds; each further attempt
+    /// doubles it (2 → 4 → 8 with the default). Zero retries immediately, which
+    /// is what the tests want and nothing else should.</summary>
+    public double RetryBaseDelaySeconds { get; set; } = 2;
 }

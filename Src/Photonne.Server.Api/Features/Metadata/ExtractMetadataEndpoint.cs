@@ -175,7 +175,8 @@ public class ExtractMetadataEndpoint : IEndpoint
                                 {
                                     await EnrichmentSweepRecorder.RecordFailureAsync(
                                         innerDb, asset.Id, AssetEnrichmentType.Exif,
-                                        $"Fichero no encontrado: {asset.FullPath}", ct);
+                                        $"Fichero no encontrado: {asset.FullPath}", ct,
+                                        EnrichmentFailureKind.Permanent);
                                     Interlocked.Increment(ref failed);
                                 }
                                 else
@@ -233,7 +234,8 @@ public class ExtractMetadataEndpoint : IEndpoint
                                     {
                                         await EnrichmentSweepRecorder.RecordFailureAsync(
                                             innerDb, asset.Id, AssetEnrichmentType.Exif,
-                                            "El extractor EXIF no devolvió datos (formato no soportado o fichero corrupto)", ct);
+                                            "El extractor EXIF no devolvió datos (formato no soportado o fichero corrupto)", ct,
+                                            EnrichmentFailureKind.Permanent);
                                         Interlocked.Increment(ref failed);
                                     }
                                 }
@@ -250,7 +252,7 @@ public class ExtractMetadataEndpoint : IEndpoint
                                 using var failScope = serviceProvider.CreateScope();
                                 var failDb = failScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                                 await EnrichmentSweepRecorder.RecordFailureAsync(
-                                    failDb, asset.Id, AssetEnrichmentType.Exif, ex.Message, ct);
+                                    failDb, asset.Id, AssetEnrichmentType.Exif, ex, ct);
                             }
                             catch { /* never let bookkeeping mask the sweep */ }
                             Interlocked.Increment(ref failed);
