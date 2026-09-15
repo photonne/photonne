@@ -10,6 +10,7 @@ from .config import settings
 from .embedding_image import embedder as image_embedder
 from .embedding_models import EmbedImageRequest, EmbedTextRequest, EmbeddingResponse
 from .embedding_text import embedder as text_embedder
+from . import errors
 from .face_detector import detector as face_detector
 from .face_models import DetectRequest as FaceDetectRequest
 from .face_models import DetectResponse as FaceDetectResponse
@@ -94,6 +95,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Photonne ML Service", version="0.2.0", lifespan=lifespan)
+errors.install_handlers(app)
 
 
 @app.get("/health")
@@ -217,14 +219,19 @@ def set_provider_config(req: ProviderConfigRequest) -> Dict[str, Any]:
 @app.post("/v1/faces/detect", response_model=FaceDetectResponse)
 def detect_faces(req: FaceDetectRequest) -> FaceDetectResponse:
     if not settings.face.enabled:
-        raise HTTPException(status_code=503, detail="face detection disabled")
+        raise errors.capability_disabled("el reconocimiento facial")
 
     try:
         img = load_bgr(req.image_path)
     except ImageLoadError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise errors.image_unreadable(str(e)) from e
 
-    faces, elapsed_ms = face_detector.detect(img)
+    try:
+        faces, elapsed_ms = face_detector.detect(img)
+    except Exception as e:
+        log.exception("Face detection failed for asset %s", req.asset_id)
+        raise errors.inference_failed("reconocimiento facial", e) from e
+
     h, w = img.shape[:2]
     return FaceDetectResponse(
         asset_id=req.asset_id,
@@ -237,21 +244,21 @@ def detect_faces(req: FaceDetectRequest) -> FaceDetectResponse:
 @app.post("/v1/objects/detect", response_model=ObjectDetectResponse)
 def detect_objects(req: ObjectDetectRequest) -> ObjectDetectResponse:
     if not settings.obj.enabled:
-        raise HTTPException(status_code=503, detail="object detection disabled")
+        raise errors.capability_disabled("la detección de objetos")
     if not object_detector.is_loaded:
-        detail = (
-            f"object detector not loaded: {object_detector.load_error}"
-            if object_detector.load_error
-            else "object detector not loaded"
-        )
-        raise HTTPException(status_code=503, detail=detail)
+        raise errors.model_not_loaded("detección de objetos", object_detector.load_error)
 
     try:
         img = load_bgr(req.image_path)
     except ImageLoadError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise errors.image_unreadable(str(e)) from e
 
-    objects, elapsed_ms = object_detector.detect(img)
+    try:
+        objects, elapsed_ms = object_detector.detect(img)
+    except Exception as e:
+        log.exception("Object detection failed for asset %s", req.asset_id)
+        raise errors.inference_failed("detección de objetos", e) from e
+
     h, w = img.shape[:2]
     return ObjectDetectResponse(
         asset_id=req.asset_id,
@@ -264,21 +271,21 @@ def detect_objects(req: ObjectDetectRequest) -> ObjectDetectResponse:
 @app.post("/v1/scenes/classify", response_model=SceneClassifyResponse)
 def classify_scenes(req: SceneClassifyRequest) -> SceneClassifyResponse:
     if not settings.scene.enabled:
-        raise HTTPException(status_code=503, detail="scene classification disabled")
+        raise errors.capability_disabled("la clasificación de escenas")
     if not scene_classifier.is_loaded:
-        detail = (
-            f"scene classifier not loaded: {scene_classifier.load_error}"
-            if scene_classifier.load_error
-            else "scene classifier not loaded"
-        )
-        raise HTTPException(status_code=503, detail=detail)
+        raise errors.model_not_loaded("clasificación de escenas", scene_classifier.load_error)
 
     try:
         img = load_bgr(req.image_path)
     except ImageLoadError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise errors.image_unreadable(str(e)) from e
 
-    scenes, elapsed_ms = scene_classifier.classify(img)
+    try:
+        scenes, elapsed_ms = scene_classifier.classify(img)
+    except Exception as e:
+        log.exception("Scene classification failed for asset %s", req.asset_id)
+        raise errors.inference_failed("clasificación de escenas", e) from e
+
     h, w = img.shape[:2]
     return SceneClassifyResponse(
         asset_id=req.asset_id,
@@ -291,21 +298,21 @@ def classify_scenes(req: SceneClassifyRequest) -> SceneClassifyResponse:
 @app.post("/v1/text/detect", response_model=TextDetectResponse)
 def detect_text(req: TextDetectRequest) -> TextDetectResponse:
     if not settings.text.enabled:
-        raise HTTPException(status_code=503, detail="text recognition disabled")
+        raise errors.capability_disabled("el reconocimiento de texto")
     if not text_recognizer.is_loaded:
-        detail = (
-            f"text recognizer not loaded: {text_recognizer.load_error}"
-            if text_recognizer.load_error
-            else "text recognizer not loaded"
-        )
-        raise HTTPException(status_code=503, detail=detail)
+        raise errors.model_not_loaded("reconocimiento de texto", text_recognizer.load_error)
 
     try:
         img = load_bgr(req.image_path)
     except ImageLoadError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise errors.image_unreadable(str(e)) from e
 
-    lines, full_text, elapsed_ms = text_recognizer.recognize(img)
+    try:
+        lines, full_text, elapsed_ms = text_recognizer.recognize(img)
+    except Exception as e:
+        log.exception("Text recognition failed for asset %s", req.asset_id)
+        raise errors.inference_failed("reconocimiento de texto", e) from e
+
     h, w = img.shape[:2]
     return TextDetectResponse(
         asset_id=req.asset_id,
@@ -319,21 +326,21 @@ def detect_text(req: TextDetectRequest) -> TextDetectResponse:
 @app.post("/v1/embeddings/image", response_model=EmbeddingResponse)
 def embed_image(req: EmbedImageRequest) -> EmbeddingResponse:
     if not settings.embedding.enabled:
-        raise HTTPException(status_code=503, detail="image embedding disabled")
+        raise errors.capability_disabled("el cálculo de embeddings de imagen")
     if not image_embedder.is_loaded:
-        detail = (
-            f"image embedder not loaded: {image_embedder.load_error}"
-            if image_embedder.load_error
-            else "image embedder not loaded"
-        )
-        raise HTTPException(status_code=503, detail=detail)
+        raise errors.model_not_loaded("embeddings de imagen", image_embedder.load_error)
 
     try:
         img = load_bgr(req.image_path)
     except ImageLoadError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise errors.image_unreadable(str(e)) from e
 
-    vector, elapsed_ms = image_embedder.encode(img)
+    try:
+        vector, elapsed_ms = image_embedder.encode(img)
+    except Exception as e:
+        log.exception("Image embedding failed for asset %s", req.asset_id)
+        raise errors.inference_failed("embeddings de imagen", e) from e
+
     return EmbeddingResponse(
         asset_id=req.asset_id,
         embedding=vector,
@@ -346,16 +353,16 @@ def embed_image(req: EmbedImageRequest) -> EmbeddingResponse:
 @app.post("/v1/embeddings/text", response_model=EmbeddingResponse)
 def embed_text(req: EmbedTextRequest) -> EmbeddingResponse:
     if not settings.embedding.enabled:
-        raise HTTPException(status_code=503, detail="text embedding disabled")
+        raise errors.capability_disabled("el cálculo de embeddings de texto")
     if not text_embedder.is_loaded:
-        detail = (
-            f"text embedder not loaded: {text_embedder.load_error}"
-            if text_embedder.load_error
-            else "text embedder not loaded"
-        )
-        raise HTTPException(status_code=503, detail=detail)
+        raise errors.model_not_loaded("embeddings de texto", text_embedder.load_error)
 
-    vector, elapsed_ms = text_embedder.encode(req.text)
+    try:
+        vector, elapsed_ms = text_embedder.encode(req.text)
+    except Exception as e:
+        log.exception("Text embedding failed")
+        raise errors.inference_failed("embeddings de texto", e) from e
+
     return EmbeddingResponse(
         asset_id=None,
         embedding=vector,
