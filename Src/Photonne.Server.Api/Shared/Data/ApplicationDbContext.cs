@@ -649,6 +649,13 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.PersonId);
             entity.HasIndex(e => new { e.PersonId, e.IsRejected });
             entity.HasIndex(e => e.SuggestedPersonId);
+            // Every nearest-neighbour lookup in FaceClusteringService orders
+            // by cosine distance to one embedding. Without this index each of
+            // them is a sequential scan of the whole table — four seconds on
+            // 160k faces, run once per orphan face per clustering pass.
+            entity.HasIndex(e => e.Embedding)
+                .HasMethod("hnsw")
+                .HasOperators("vector_cosine_ops");
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
@@ -750,13 +757,16 @@ public class ApplicationDbContext : DbContext
         });
 
         // Configure AssetEmbedding entity. One row per Asset; AssetId is both PK and FK.
-        // The HNSW vector index for similarity search is created in the migration
-        // directly — EF Core can't model pgvector's HNSW operator-class indexes.
         modelBuilder.Entity<AssetEmbedding>(entity =>
         {
             entity.HasKey(e => e.AssetId);
             entity.Property(e => e.Embedding).HasColumnType("vector(512)");
             entity.Property(e => e.ModelVersion).IsRequired().HasMaxLength(64);
+            // Semantic search orders by cosine distance to the query vector;
+            // same sequential-scan problem as Faces without this.
+            entity.HasIndex(e => e.Embedding)
+                .HasMethod("hnsw")
+                .HasOperators("vector_cosine_ops");
 
             entity.HasOne(e => e.Asset)
                 .WithOne(a => a.Embedding)
