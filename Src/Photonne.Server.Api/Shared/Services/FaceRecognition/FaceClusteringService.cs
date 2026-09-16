@@ -309,7 +309,9 @@ public class FaceClusteringService
             // nearest orphan neighbors (visible to U, no assignment yet) using
             // the HNSW index on Faces.Embedding, and add edges below the
             // cosine threshold to the union-find. Keeps batch runtime bounded
-            // on large catalogs.
+            // on large catalogs — provided the index exists. It didn't until
+            // migration AddVectorIndexes: this comment described it for a year
+            // while every one of these queries scanned the whole table.
             var idToIndex = new Dictionary<Guid, int>(orphans.Count);
             for (int i = 0; i < orphans.Count; i++) idToIndex[orphans[i].Id] = i;
 

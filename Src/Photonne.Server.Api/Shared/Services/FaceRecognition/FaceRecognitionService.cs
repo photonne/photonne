@@ -21,6 +21,7 @@ public class FaceRecognitionService
     private readonly ApplicationDbContext _dbContext;
     private readonly IFaceRecognitionClient _client;
     private readonly FaceClusteringService _clustering;
+    private readonly FaceClusteringQueue _clusteringQueue;
     private readonly SettingsService _settings;
     private readonly FaceRecognitionOptions _options;
     private readonly ILogger<FaceRecognitionService> _logger;
@@ -29,6 +30,7 @@ public class FaceRecognitionService
         ApplicationDbContext dbContext,
         IFaceRecognitionClient client,
         FaceClusteringService clustering,
+        FaceClusteringQueue clusteringQueue,
         SettingsService settings,
         IOptions<FaceRecognitionOptions> options,
         ILogger<FaceRecognitionService> logger)
@@ -36,6 +38,7 @@ public class FaceRecognitionService
         _dbContext = dbContext;
         _client = client;
         _clustering = clustering;
+        _clusteringQueue = clusteringQueue;
         _settings = settings;
         _options = options.Value;
         _logger = logger;
@@ -124,10 +127,16 @@ public class FaceRecognitionService
             await _clustering.AssignNewFacesForUserAsync(asset.OwnerId.Value, assetId, cancellationToken);
 
             // Bootstrap & refresh for the owner: faces that didn't match an
-            // existing Person remain orphans. Run a cooldown-guarded batch
-            // pass so new clusters get created without waiting for a manual
-            // trigger or nightly job.
-            await _clustering.MaybeRunBatchForUserAsync(asset.OwnerId.Value, cancellationToken);
+            // existing Person remain orphans, and the batch pass is what turns
+            // them into new Persons. It runs on the clustering queue, not
+            // here. Inline it was the face worker's own time: with twenty
+            // thousand orphans a pass took hours, the cooldown restarted it
+            // two minutes after it finished, and the worker spent its life
+            // clustering while the detection queue sat still. The queue's
+            // single consumer also means one pass at a time hits Postgres,
+            // however many face workers are running. The pass's own cooldown
+            // still applies, and a user already queued is not queued twice.
+            _clusteringQueue.TryEnqueue(asset.OwnerId.Value);
         }
 
         _logger.LogInformation("Stored {Inserted} faces for asset {AssetId}", inserted, assetId);
