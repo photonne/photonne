@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -78,16 +79,48 @@ import com.photonne.app.resources.admin_run_tasks_action_cancel
 import com.photonne.app.resources.admin_run_tasks_action_start
 import com.photonne.app.resources.admin_run_tasks_ai_failed_format
 import com.photonne.app.resources.admin_run_tasks_ai_open_failures
-import com.photonne.app.resources.admin_run_tasks_ai_done_of_format
-import com.photonne.app.resources.admin_run_tasks_ai_rate_format
-import com.photonne.app.resources.admin_run_tasks_ai_eta_format
-import com.photonne.app.resources.admin_run_tasks_ai_processing_format
-import com.photonne.app.resources.admin_run_tasks_ai_stalled_format
 import com.photonne.app.resources.admin_run_tasks_ai_enqueued_format
 import com.photonne.app.resources.admin_run_tasks_ai_nothing_to_enqueue
 import com.photonne.app.resources.admin_run_tasks_ai_retrying_format
 import com.photonne.app.resources.admin_run_tasks_last_run_format
 import com.photonne.app.resources.admin_run_tasks_last_run_never
+import com.photonne.app.resources.admin_run_tasks_status_queueing
+import com.photonne.app.resources.admin_run_tasks_status_starting
+import com.photonne.app.resources.admin_run_tasks_detail_progress
+import com.photonne.app.resources.admin_run_tasks_detail_progress_value
+import com.photonne.app.resources.admin_run_tasks_detail_queue
+import com.photonne.app.resources.admin_run_tasks_detail_queue_value
+import com.photonne.app.resources.admin_run_tasks_detail_rate
+import com.photonne.app.resources.admin_run_tasks_detail_rate_value
+import com.photonne.app.resources.admin_run_tasks_detail_remaining
+import com.photonne.app.resources.admin_run_tasks_detail_processing
+import com.photonne.app.resources.admin_run_tasks_detail_stalled
+import com.photonne.app.resources.admin_run_tasks_detail_stalled_value
+import com.photonne.app.resources.admin_run_tasks_detail_problems
+import com.photonne.app.resources.admin_run_tasks_detail_status
+import com.photonne.app.resources.admin_run_tasks_detail_started
+import com.photonne.app.resources.admin_run_tasks_detail_started_value
+import com.photonne.app.resources.admin_maintenance_active_coverage
+import com.photonne.app.resources.admin_maintenance_active_empty_trash
+import com.photonne.app.resources.admin_maintenance_active_missing
+import com.photonne.app.resources.admin_maintenance_active_orphans
+import com.photonne.app.resources.admin_maintenance_active_purge_missing
+import com.photonne.app.resources.admin_maintenance_active_recalculate
+import com.photonne.app.resources.admin_system_duplicates_active
+import com.photonne.app.resources.admin_system_embedding_active
+import com.photonne.app.resources.admin_system_face_active
+import com.photonne.app.resources.admin_system_geocode_active
+import com.photonne.app.resources.admin_system_index_active
+import com.photonne.app.resources.admin_system_interpolate_active
+import com.photonne.app.resources.admin_system_media_recognition_active
+import com.photonne.app.resources.admin_system_memories_active
+import com.photonne.app.resources.admin_system_metadata_active
+import com.photonne.app.resources.admin_system_object_active
+import com.photonne.app.resources.admin_system_restore_dates_active
+import com.photonne.app.resources.admin_system_scene_active
+import com.photonne.app.resources.admin_system_text_active
+import com.photonne.app.resources.admin_system_thumbnails_active
+import com.photonne.app.resources.admin_system_trips_active
 import com.photonne.app.resources.admin_run_tasks_pending_format
 import com.photonne.app.resources.admin_run_tasks_section_ai
 import com.photonne.app.resources.admin_run_tasks_section_memories
@@ -118,7 +151,6 @@ import com.photonne.app.resources.admin_maintenance_desc_orphans
 import com.photonne.app.resources.admin_maintenance_desc_purge_missing
 import com.photonne.app.resources.admin_maintenance_desc_recalculate
 import com.photonne.app.resources.admin_run_tasks_section_memories_subtitle
-import com.photonne.app.resources.admin_run_tasks_status_in_progress
 import com.photonne.app.resources.admin_run_tasks_time_d_format
 import com.photonne.app.resources.admin_run_tasks_time_h_format
 import com.photonne.app.resources.admin_run_tasks_time_m_format
@@ -238,6 +270,9 @@ enum class AdminBackfillKind(val apiPath: String) {
 enum class AdminRunTask(
     val titleRes: StringResource,
     val subtitleRes: StringResource,
+    // What the row says while the task runs: a verb, not a number. "12 %"
+    // tells you nothing about what the 12 % is of; "Analizando caras" does.
+    val activeLabelRes: StringResource,
     val icon: ImageVector,
     val backfillKind: AdminBackfillKind?,
     val section: AdminRunTaskSection,
@@ -258,6 +293,7 @@ enum class AdminRunTask(
     IndexAssets(
         titleRes = Res.string.admin_system_index,
         subtitleRes = Res.string.admin_system_index_subtitle,
+        activeLabelRes = Res.string.admin_system_index_active,
         icon = Icons.Outlined.Sync,
         backfillKind = null,
         section = AdminRunTaskSection.NewPhotos,
@@ -266,6 +302,7 @@ enum class AdminRunTask(
     ExtractMetadata(
         titleRes = Res.string.admin_system_metadata,
         subtitleRes = Res.string.admin_system_metadata_subtitle,
+        activeLabelRes = Res.string.admin_system_metadata_active,
         icon = Icons.Outlined.Info,
         backfillKind = null,
         section = AdminRunTaskSection.NewPhotos,
@@ -274,6 +311,7 @@ enum class AdminRunTask(
     GenerateThumbnails(
         titleRes = Res.string.admin_system_thumbnails,
         subtitleRes = Res.string.admin_system_thumbnails_subtitle,
+        activeLabelRes = Res.string.admin_system_thumbnails_active,
         icon = Icons.Outlined.Image,
         backfillKind = null,
         section = AdminRunTaskSection.NewPhotos,
@@ -282,6 +320,7 @@ enum class AdminRunTask(
     RestoreDates(
         titleRes = Res.string.admin_system_restore_dates,
         subtitleRes = Res.string.admin_system_restore_dates_subtitle,
+        activeLabelRes = Res.string.admin_system_restore_dates_active,
         icon = Icons.Outlined.DateRange,
         backfillKind = null,
         section = AdminRunTaskSection.Repair,
@@ -290,6 +329,7 @@ enum class AdminRunTask(
     FaceRecognition(
         titleRes = Res.string.admin_system_face,
         subtitleRes = Res.string.admin_system_face_subtitle,
+        activeLabelRes = Res.string.admin_system_face_active,
         icon = Icons.Outlined.Face,
         backfillKind = AdminBackfillKind.FaceRecognition,
         section = AdminRunTaskSection.Ai,
@@ -298,6 +338,7 @@ enum class AdminRunTask(
     ObjectDetection(
         titleRes = Res.string.admin_system_object,
         subtitleRes = Res.string.admin_system_object_subtitle,
+        activeLabelRes = Res.string.admin_system_object_active,
         icon = Icons.Outlined.Category,
         backfillKind = AdminBackfillKind.ObjectDetection,
         section = AdminRunTaskSection.Ai,
@@ -306,6 +347,7 @@ enum class AdminRunTask(
     SceneClassification(
         titleRes = Res.string.admin_system_scene,
         subtitleRes = Res.string.admin_system_scene_subtitle,
+        activeLabelRes = Res.string.admin_system_scene_active,
         icon = Icons.Outlined.Landscape,
         backfillKind = AdminBackfillKind.SceneClassification,
         section = AdminRunTaskSection.Ai,
@@ -314,6 +356,7 @@ enum class AdminRunTask(
     TextRecognition(
         titleRes = Res.string.admin_system_text,
         subtitleRes = Res.string.admin_system_text_subtitle,
+        activeLabelRes = Res.string.admin_system_text_active,
         icon = Icons.Outlined.TextFields,
         backfillKind = AdminBackfillKind.TextRecognition,
         section = AdminRunTaskSection.Ai,
@@ -322,6 +365,7 @@ enum class AdminRunTask(
     ImageEmbedding(
         titleRes = Res.string.admin_system_embedding,
         subtitleRes = Res.string.admin_system_embedding_subtitle,
+        activeLabelRes = Res.string.admin_system_embedding_active,
         icon = Icons.Outlined.ImageSearch,
         backfillKind = AdminBackfillKind.ImageEmbedding,
         section = AdminRunTaskSection.Ai,
@@ -330,6 +374,7 @@ enum class AdminRunTask(
     InterpolateLocations(
         titleRes = Res.string.admin_system_interpolate,
         subtitleRes = Res.string.admin_system_interpolate_subtitle,
+        activeLabelRes = Res.string.admin_system_interpolate_active,
         icon = Icons.Outlined.MyLocation,
         backfillKind = null,
         section = AdminRunTaskSection.Memories,
@@ -339,6 +384,7 @@ enum class AdminRunTask(
     ReverseGeocode(
         titleRes = Res.string.admin_system_geocode,
         subtitleRes = Res.string.admin_system_geocode_subtitle,
+        activeLabelRes = Res.string.admin_system_geocode_active,
         icon = Icons.Outlined.Place,
         backfillKind = null,
         section = AdminRunTaskSection.Memories,
@@ -348,6 +394,7 @@ enum class AdminRunTask(
     DetectTrips(
         titleRes = Res.string.admin_system_trips,
         subtitleRes = Res.string.admin_system_trips_subtitle,
+        activeLabelRes = Res.string.admin_system_trips_active,
         icon = Icons.Outlined.Flight,
         backfillKind = null,
         section = AdminRunTaskSection.Memories,
@@ -357,6 +404,7 @@ enum class AdminRunTask(
     GenerateMemories(
         titleRes = Res.string.admin_system_memories,
         subtitleRes = Res.string.admin_system_memories_subtitle,
+        activeLabelRes = Res.string.admin_system_memories_active,
         icon = Icons.Outlined.AutoAwesome,
         backfillKind = null,
         section = AdminRunTaskSection.Memories,
@@ -366,6 +414,7 @@ enum class AdminRunTask(
     MediaRecognition(
         titleRes = Res.string.admin_system_media_recognition,
         subtitleRes = Res.string.admin_system_media_recognition_subtitle,
+        activeLabelRes = Res.string.admin_system_media_recognition_active,
         icon = Icons.Outlined.MotionPhotosOn,
         backfillKind = AdminBackfillKind.MediaRecognition,
         section = AdminRunTaskSection.Repair,
@@ -374,6 +423,7 @@ enum class AdminRunTask(
     DetectDuplicates(
         titleRes = Res.string.admin_system_duplicates,
         subtitleRes = Res.string.admin_system_duplicates_subtitle,
+        activeLabelRes = Res.string.admin_system_duplicates_active,
         icon = Icons.Outlined.ContentCopy,
         backfillKind = null,
         section = AdminRunTaskSection.Repair,
@@ -382,6 +432,7 @@ enum class AdminRunTask(
     MarkMissingFiles(
         titleRes = Res.string.admin_maintenance_action_missing,
         subtitleRes = Res.string.admin_maintenance_desc_missing,
+        activeLabelRes = Res.string.admin_maintenance_active_missing,
         icon = Icons.Outlined.SearchOff,
         backfillKind = null,
         section = AdminRunTaskSection.Repair,
@@ -391,6 +442,7 @@ enum class AdminRunTask(
     IndexingCoverage(
         titleRes = Res.string.admin_maintenance_action_coverage,
         subtitleRes = Res.string.admin_maintenance_desc_coverage,
+        activeLabelRes = Res.string.admin_maintenance_active_coverage,
         icon = Icons.Outlined.FactCheck,
         backfillKind = null,
         section = AdminRunTaskSection.Repair,
@@ -400,6 +452,7 @@ enum class AdminRunTask(
     RecalculateSizes(
         titleRes = Res.string.admin_maintenance_action_recalculate,
         subtitleRes = Res.string.admin_maintenance_desc_recalculate,
+        activeLabelRes = Res.string.admin_maintenance_active_recalculate,
         icon = Icons.Outlined.Straighten,
         backfillKind = null,
         section = AdminRunTaskSection.Repair,
@@ -409,6 +462,7 @@ enum class AdminRunTask(
     OrphanThumbnails(
         titleRes = Res.string.admin_maintenance_action_orphans,
         subtitleRes = Res.string.admin_maintenance_desc_orphans,
+        activeLabelRes = Res.string.admin_maintenance_active_orphans,
         icon = Icons.Outlined.BrokenImage,
         backfillKind = null,
         section = AdminRunTaskSection.Cleanup,
@@ -420,6 +474,7 @@ enum class AdminRunTask(
     EmptyTrash(
         titleRes = Res.string.admin_maintenance_action_empty_trash,
         subtitleRes = Res.string.admin_maintenance_desc_empty_trash,
+        activeLabelRes = Res.string.admin_maintenance_active_empty_trash,
         icon = Icons.Outlined.DeleteForever,
         backfillKind = null,
         section = AdminRunTaskSection.Cleanup,
@@ -430,6 +485,7 @@ enum class AdminRunTask(
     PurgeMissing(
         titleRes = Res.string.admin_maintenance_action_purge_missing,
         subtitleRes = Res.string.admin_maintenance_desc_purge_missing,
+        activeLabelRes = Res.string.admin_maintenance_active_purge_missing,
         icon = Icons.Outlined.DeleteSweep,
         backfillKind = null,
         section = AdminRunTaskSection.Cleanup,
@@ -1545,7 +1601,7 @@ private fun TaskRow(
                         task = task,
                         running = running,
                         aiInProgress = aiInProgress,
-                        sessionBaseline = sessionBaseline,
+                        isTriggering = isTriggering,
                         lastFinished = lastFinished,
                         nowMs = nowMs,
                         pending = pending,
@@ -1623,6 +1679,20 @@ private fun TaskRow(
                 }
             }
 
+            // The numbers behind the bar, one per line with a label. They
+            // used to share the subtitle's single line with everything else
+            // and get cut off after the second one on a phone.
+            if (isActive) {
+                TaskRowDetails(
+                    running = running,
+                    aiInProgress = aiInProgress,
+                    sessionBaseline = sessionBaseline,
+                    nowMs = nowMs,
+                    pending = pending,
+                    contentColor = contentColor,
+                )
+            }
+
             // What the last run actually said. Without this the row reports
             // "Última ejecución hace 2 min" whether the task did the work or
             // died on the first line, which makes a failing task and a dead
@@ -1640,12 +1710,19 @@ private fun TaskRow(
     }
 }
 
+/**
+ * The one line under the title. While the task runs it says what the task
+ * is doing, in words ("Analizando caras"); the numbers go to
+ * [TaskRowDetails] under the bar, one per line, where they fit. Idle rows
+ * keep their counters and "last run" here, allowed a second line instead
+ * of an ellipsis.
+ */
 @Composable
 private fun TaskRowSubtitle(
     task: AdminRunTask,
     running: BackgroundTaskDto?,
     aiInProgress: Boolean,
-    sessionBaseline: Int?,
+    isTriggering: Boolean,
     lastFinished: BackgroundTaskDto?,
     nowMs: Long,
     pending: PendingCountResponse?,
@@ -1660,71 +1737,36 @@ private fun TaskRowSubtitle(
         if (running != null || aiInProgress) {
             LiveDot(active = true)
         }
-        // A queue that keeps failing looks exactly like a queue that keeps
-        // working if all you report is its size, and the assets that gave up
-        // for good vanish from "sin procesar" entirely — which is how a row
-        // ends up claiming there is nothing left to do on a library with
-        // thousands of unanalysed photos.
-        val troubles = pending?.let { p ->
-            listOfNotNull(
-                stringResource(Res.string.admin_run_tasks_ai_retrying_format, p.retrying)
-                    .takeIf { p.retrying > 0 },
-                stringResource(Res.string.admin_run_tasks_ai_failed_format, p.failed)
-                    .takeIf { p.failed > 0 },
-            )
-        }.orEmpty()
 
         val text: String = when {
-            running != null -> {
-                val pct = running.percentage.toInt().coerceIn(0, 100)
-                // The percent sign is concatenated in Kotlin (rather than
-                // baked into the format string as `%%`) because compose-
-                // resources renders the literal `%%` as-is on some targets
-                // — escaping is unreliable across JVM / iOS / wasm.
-                if (running.lastMessage.isNotBlank()) "$pct% — ${running.lastMessage}"
-                else stringResource(Res.string.admin_run_tasks_status_in_progress, "$pct%")
+            running != null || aiInProgress -> stringResource(task.activeLabelRes)
+            // The request that starts it is still in flight: for an AI row
+            // that's the server queueing the whole pool, for the rest the
+            // stream opening.
+            isTriggering ->
+                if (task.backfillKind != null && task.maintenanceKind == null)
+                    stringResource(Res.string.admin_run_tasks_status_queueing)
+                else stringResource(Res.string.admin_run_tasks_status_starting)
+            // ML idle: the pending counters, plus what's wrong with them. A
+            // queue that keeps failing looks exactly like a queue that keeps
+            // working if all you report is its size, and the assets that gave
+            // up for good vanish from "sin procesar" entirely — which is how a
+            // row ends up claiming there is nothing left to do on a library
+            // with thousands of unanalysed photos.
+            pending != null -> {
+                val troubles = listOfNotNull(
+                    stringResource(Res.string.admin_run_tasks_ai_retrying_format, pending.retrying)
+                        .takeIf { pending.retrying > 0 },
+                    stringResource(Res.string.admin_run_tasks_ai_failed_format, pending.failed)
+                        .takeIf { pending.failed > 0 },
+                )
+                val counters = stringResource(
+                    Res.string.admin_run_tasks_pending_format,
+                    pending.unprocessed,
+                    pending.inQueue
+                )
+                (listOf(counters) + troubles).joinToString(" · ")
             }
-            // Queue is full, workers chip away. The percentage is scoped to
-            // this run (completed − baseline), but on its own it can't say
-            // whether anything is happening: on twenty thousand photos it
-            // reads 0 % for minutes either way. So the line also carries
-            // done/total, the server-measured rate and the time left at it —
-            // or, when nothing is claimed and nothing has finished, how long
-            // that has been so.
-            aiInProgress && pending != null -> {
-                val progress = aiQueueProgress(pending, sessionBaseline, nowMs)
-                val fraction = progress.fraction
-                val head = if (fraction != null) {
-                    val pct = (fraction * 100).toInt().coerceIn(0, 100)
-                    "$pct% · " + stringResource(
-                        Res.string.admin_run_tasks_ai_done_of_format,
-                        formatCount(progress.done),
-                        formatCount(progress.total)
-                    )
-                } else {
-                    // No baseline (queue started elsewhere): counts, no %.
-                    stringResource(Res.string.admin_run_tasks_pending_format, pending.unprocessed, pending.inQueue)
-                }
-                val stalledFor = progress.stalledForSeconds
-                val tail = when {
-                    stalledFor != null -> listOf(
-                        stringResource(Res.string.admin_run_tasks_ai_stalled_format, formatRelativeTime(stalledFor))
-                    )
-                    else -> listOfNotNull(
-                        progress.perMinute?.let { stringResource(Res.string.admin_run_tasks_ai_rate_format, it) },
-                        progress.etaSeconds?.let { stringResource(Res.string.admin_run_tasks_ai_eta_format, formatEta(it)) },
-                        progress.processing?.takeIf { it > 0 }
-                            ?.let { stringResource(Res.string.admin_run_tasks_ai_processing_format, it) },
-                    )
-                }
-                (listOf(head) + tail).joinToString(" · ")
-            }
-            // ML idle: just the pending counters.
-            pending != null -> stringResource(
-                Res.string.admin_run_tasks_pending_format,
-                pending.unprocessed,
-                pending.inQueue
-            )
             lastFinished?.finishedAt != null -> {
                 val finishedMs = runCatching { Instant.parse(lastFinished.finishedAt!!).toEpochMilliseconds() }
                     .getOrNull()
@@ -1741,15 +1783,141 @@ private fun TaskRowSubtitle(
             task.progressKey != null -> stringResource(Res.string.admin_run_tasks_last_run_never)
             else -> ""
         }
-        val line = (listOf(text).filter { it.isNotEmpty() } + troubles).joinToString(" · ")
-        if (line.isNotEmpty()) {
+        if (text.isNotEmpty()) {
             Text(
-                line,
+                text,
                 style = MaterialTheme.typography.bodySmall,
                 color = mutedColor,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+/** One labelled value of a running task: "Progreso   1.234 de 20.000 (12 %)". */
+private data class TaskDetailLine(
+    val label: String,
+    val value: String,
+    val highlight: Boolean = false,
+)
+
+/**
+ * The numbers of a running task, one per line, under its progress bar.
+ *
+ * For a pipeline or maintenance run: the percentage, the server's own status
+ * message in full (it names the file or the phase), and when it started.
+ * For an AI queue: this run's progress, the measured rate and the time left
+ * at it, what's claimed right now, and — in the error colour — a queue that
+ * has gone quiet or assets that are failing. Nothing here is abbreviated
+ * or cut: the rows only exist while the task runs, so the height is spent
+ * exactly when the admin is looking.
+ */
+@Composable
+private fun TaskRowDetails(
+    running: BackgroundTaskDto?,
+    aiInProgress: Boolean,
+    sessionBaseline: Int?,
+    nowMs: Long,
+    pending: PendingCountResponse?,
+    contentColor: androidx.compose.ui.graphics.Color,
+) {
+    val lines = mutableListOf<TaskDetailLine>()
+    when {
+        running != null -> {
+            val pct = running.percentage.toInt().coerceIn(0, 100)
+            // The percent sign is concatenated in Kotlin (rather than baked
+            // into a format string as `%%`) because compose-resources renders
+            // the literal `%%` as-is on some targets.
+            lines += TaskDetailLine(stringResource(Res.string.admin_run_tasks_detail_progress), "$pct%")
+            if (running.lastMessage.isNotBlank()) {
+                lines += TaskDetailLine(stringResource(Res.string.admin_run_tasks_detail_status), running.lastMessage)
+            }
+            // Live followers carry no startedAt; the polled entry does.
+            val startedMs = runCatching { Instant.parse(running.startedAt).toEpochMilliseconds() }.getOrNull()
+            if (startedMs != null) {
+                lines += TaskDetailLine(
+                    stringResource(Res.string.admin_run_tasks_detail_started),
+                    stringResource(Res.string.admin_run_tasks_detail_started_value, formatRelativeTime((nowMs - startedMs) / 1000L)),
+                )
+            }
+        }
+        aiInProgress && pending != null -> {
+            val progress = aiQueueProgress(pending, sessionBaseline, nowMs)
+            val fraction = progress.fraction
+            lines += if (fraction != null) {
+                val pct = (fraction * 100).toInt().coerceIn(0, 100)
+                TaskDetailLine(
+                    stringResource(Res.string.admin_run_tasks_detail_progress),
+                    stringResource(
+                        Res.string.admin_run_tasks_detail_progress_value,
+                        formatCount(progress.done), formatCount(progress.total), "$pct%"
+                    ),
+                )
+            } else {
+                // No baseline (queue started elsewhere): the queue size, no %.
+                TaskDetailLine(
+                    stringResource(Res.string.admin_run_tasks_detail_queue),
+                    stringResource(Res.string.admin_run_tasks_detail_queue_value, formatCount(pending.inQueue)),
+                )
+            }
+            val stalledFor = progress.stalledForSeconds
+            if (stalledFor != null) {
+                lines += TaskDetailLine(
+                    stringResource(Res.string.admin_run_tasks_detail_stalled),
+                    stringResource(Res.string.admin_run_tasks_detail_stalled_value, formatRelativeTime(stalledFor)),
+                    highlight = true,
+                )
+            } else {
+                progress.perMinute?.let {
+                    lines += TaskDetailLine(
+                        stringResource(Res.string.admin_run_tasks_detail_rate),
+                        stringResource(Res.string.admin_run_tasks_detail_rate_value, it),
+                    )
+                }
+                progress.etaSeconds?.let {
+                    lines += TaskDetailLine(stringResource(Res.string.admin_run_tasks_detail_remaining), formatEta(it))
+                }
+                progress.processing?.let {
+                    lines += TaskDetailLine(stringResource(Res.string.admin_run_tasks_detail_processing), formatCount(it))
+                }
+            }
+            val troubles = listOfNotNull(
+                stringResource(Res.string.admin_run_tasks_ai_retrying_format, pending.retrying)
+                    .takeIf { pending.retrying > 0 },
+                stringResource(Res.string.admin_run_tasks_ai_failed_format, pending.failed)
+                    .takeIf { pending.failed > 0 },
+            )
+            if (troubles.isNotEmpty()) {
+                lines += TaskDetailLine(
+                    stringResource(Res.string.admin_run_tasks_detail_problems),
+                    troubles.joinToString(", "),
+                    highlight = pending.failed > 0,
+                )
+            }
+        }
+    }
+    if (lines.isEmpty()) return
+
+    val mutedColor = contentColor.copy(alpha = 0.75f)
+    val errorColor = MaterialTheme.colorScheme.error
+    Spacer(Modifier.size(8.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        for (line in lines) {
+            Row(verticalAlignment = Alignment.Top) {
+                Text(
+                    line.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (line.highlight) errorColor else mutedColor,
+                    modifier = Modifier.width(92.dp)
+                )
+                Text(
+                    line.value,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (line.highlight) errorColor else contentColor,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
