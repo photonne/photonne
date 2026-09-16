@@ -613,6 +613,13 @@
     <string name="admin_run_tasks_confirm_run">Ejecutar</string>
     <string name="admin_run_tasks_ai_subtitle_format">%1$d assets sin analizar por alguna IA</string>
     <string name="admin_run_tasks_ai_progress_format">%1$s · %2$d en cola</string>
+    <string name="admin_run_tasks_ai_done_of_format">%1$s de %2$s</string>
+    <string name="admin_run_tasks_ai_rate_format">%1$d/min</string>
+    <string name="admin_run_tasks_ai_eta_format">quedan %1$s</string>
+    <string name="admin_run_tasks_ai_processing_format">%1$d en curso</string>
+    <string name="admin_run_tasks_ai_stalled_format">sin actividad desde hace %1$s</string>
+    <string name="admin_run_tasks_ai_enqueued_format">encolados %1$s de %2$s en %3$s. El procesador los irá completando.</string>
+    <string name="admin_run_tasks_ai_nothing_to_enqueue">no había nada que encolar.</string>
     <string name="admin_run_tasks_ai_retrying_format">%1$d reintentándose</string>
     <string name="admin_run_tasks_ai_failed_format">%1$d con errores</string>
     <string name="admin_run_tasks_ai_open_failures">Ver los assets con errores</string>

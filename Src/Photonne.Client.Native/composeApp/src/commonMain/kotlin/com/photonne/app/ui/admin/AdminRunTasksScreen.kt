@@ -51,6 +51,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -77,7 +78,13 @@ import com.photonne.app.resources.admin_run_tasks_action_cancel
 import com.photonne.app.resources.admin_run_tasks_action_start
 import com.photonne.app.resources.admin_run_tasks_ai_failed_format
 import com.photonne.app.resources.admin_run_tasks_ai_open_failures
-import com.photonne.app.resources.admin_run_tasks_ai_progress_format
+import com.photonne.app.resources.admin_run_tasks_ai_done_of_format
+import com.photonne.app.resources.admin_run_tasks_ai_rate_format
+import com.photonne.app.resources.admin_run_tasks_ai_eta_format
+import com.photonne.app.resources.admin_run_tasks_ai_processing_format
+import com.photonne.app.resources.admin_run_tasks_ai_stalled_format
+import com.photonne.app.resources.admin_run_tasks_ai_enqueued_format
+import com.photonne.app.resources.admin_run_tasks_ai_nothing_to_enqueue
 import com.photonne.app.resources.admin_run_tasks_ai_retrying_format
 import com.photonne.app.resources.admin_run_tasks_last_run_format
 import com.photonne.app.resources.admin_run_tasks_last_run_never
@@ -181,6 +188,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 import kotlin.time.Instant
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -439,6 +447,12 @@ enum class AdminRunTask(
 
 private const val PollIntervalMs = 10_000L
 
+/** Poll cadence while an AI queue is being filled or drained. Ten seconds
+ *  is fine for "did the nightly run", not for watching a bar you just
+ *  started: the counters behind it are cheap now (one index probe each), so
+ *  the row can afford to move every few seconds. */
+private const val ActivePollIntervalMs = 3_000L
+
 /** `BackgroundTaskType.Maintenance` on the server — the type every maintenance
  *  kind shares. */
 private const val MaintenanceTaskType = "Maintenance"
@@ -513,7 +527,13 @@ data class AdminRunTasksUiState(
      *  "cancelled 320, 2 still running" is the difference between a button
      *  that did nothing and one that did what it could. */
     val infoMessage: TaskMessage? = null,
-)
+) {
+    /** An AI row is being queued or still has jobs queued: the state in which
+     *  the admin is watching, and polling should keep up. */
+    val hasAiWorkInFlight: Boolean
+        get() = triggering.any { it.backfillKind != null } ||
+            pending.any { (task, count) -> task.backfillKind != null && count.inQueue > 0 }
+}
 
 /** A line of feedback, and which row it came from. The task travels as the
  *  enum rather than as text because the banner is rendered in a composable and
@@ -624,7 +644,7 @@ class AdminRunTasksViewModel(
         pollJob = viewModelScope.launch {
             refresh(showLoading = _state.value.pending.isEmpty())
             while (isActive) {
-                delay(PollIntervalMs)
+                delay(if (_state.value.hasAiWorkInFlight) ActivePollIntervalMs else PollIntervalMs)
                 refresh(showLoading = false)
             }
         }
@@ -810,6 +830,20 @@ class AdminRunTasksViewModel(
             val outcome = runCatching {
                 repository.backfill(kind = kind, batchSize = null, onlyMissing = true, all = true)
             }
+            // Resolved before the state update: the message needs a string
+            // resource, and that lookup suspends.
+            val enqueuedMessage: String = when (val resp = outcome.getOrNull()) {
+                null -> ""
+                else -> if (resp.enqueued > 0) getString(
+                    Res.string.admin_run_tasks_ai_enqueued_format,
+                    formatCount(resp.enqueued),
+                    formatCount(resp.total),
+                    // How long the server took to queue it: the wait the admin
+                    // just sat through, named, so a slow enqueue and slow
+                    // workers stop looking like the same thing.
+                    formatDurationSeconds((resp.elapsedMs + 999) / 1000),
+                ) else getString(Res.string.admin_run_tasks_ai_nothing_to_enqueue)
+            }
             _state.update { current ->
                 outcome.fold(
                     onSuccess = { resp ->
@@ -820,12 +854,7 @@ class AdminRunTasksViewModel(
                             // a run that never started.
                             aiSessionBaseline = if (resp.enqueued > 0) current.aiSessionBaseline
                                                 else current.aiSessionBaseline - task,
-                            infoMessage = TaskMessage(
-                                task,
-                                if (resp.enqueued > 0)
-                                    "encolados ${resp.enqueued} de ${resp.total}. El procesador los irá completando."
-                                else "no había nada que encolar."
-                            ),
+                            infoMessage = TaskMessage(task, enqueuedMessage),
                         )
                     },
                     onFailure = { error ->
@@ -1055,11 +1084,11 @@ fun AdminRunTasksScreen(
     }
     LaunchedEffect(Unit) { viewModel.load() }
 
-    // Snapshot Clock.now whenever the polled task list changes so every
-    // "hace X" label re-evaluates against the same instant. Coarser
-    // granularity (minutes/hours/days) means we don't need a per-second
-    // ticker here.
-    val nowMs = remember(state.backgroundTasks) {
+    // Snapshot Clock.now whenever a poll lands so every "hace X" label — and
+    // the AI rows' "sin actividad desde hace X" — re-evaluates against the
+    // same instant. Coarser granularity (minutes/hours/days) means we don't
+    // need a per-second ticker here.
+    val nowMs = remember(state.backgroundTasks, state.pending) {
         Clock.System.now().toEpochMilliseconds()
     }
 
@@ -1558,28 +1587,35 @@ private fun TaskRow(
                         modifier = Modifier.fillMaxWidth().height(4.dp)
                     )
                 }
-                aiInProgress && pending != null && sessionBaseline != null -> {
+                aiInProgress && pending != null -> {
                     Spacer(Modifier.size(8.dp))
                     // Session-scoped progress: how much of *this* run's
                     // work the workers have completed. Stays at 0 % when
                     // the queue is full, climbs to 100 % as it drains —
                     // independent of how many assets were already done
-                    // before the user pressed Iniciar.
-                    val sessionDone = (pending.completed - sessionBaseline).coerceAtLeast(0)
-                    val sessionTotal = sessionDone + pending.inQueue
-                    val pct = if (sessionTotal > 0)
-                        sessionDone.toFloat() / sessionTotal.toFloat()
-                    else 0f
-                    LinearProgressIndicator(
-                        progress = { pct.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(4.dp)
-                    )
+                    // before the user pressed Iniciar. Without a baseline
+                    // (queue started from the PWA, or before this screen
+                    // opened) the fraction is unknown and the bar is
+                    // indeterminate rather than misleading. A stalled queue
+                    // paints the bar in error colour: the subtitle says why.
+                    val progress = aiQueueProgress(pending, sessionBaseline, nowMs)
+                    val barColor = if (progress.isStalled) MaterialTheme.colorScheme.error
+                                   else ProgressIndicatorDefaults.linearColor
+                    val fraction = progress.fraction
+                    if (fraction != null) {
+                        LinearProgressIndicator(
+                            progress = { fraction.coerceIn(0f, 1f) },
+                            color = barColor,
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            color = barColor,
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    }
                 }
                 aiInProgress -> {
-                    // Backfill running but no session baseline — usually
-                    // because the queue was started elsewhere (PWA, prev
-                    // app session). Show an indeterminate bar so the user
-                    // still sees activity without a misleading %.
                     Spacer(Modifier.size(8.dp))
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth().height(4.dp)
@@ -1648,29 +1684,41 @@ private fun TaskRowSubtitle(
                 if (running.lastMessage.isNotBlank()) "$pct% — ${running.lastMessage}"
                 else stringResource(Res.string.admin_run_tasks_status_in_progress, "$pct%")
             }
-            // Queue is full, workers chip away. Use the
-            // session-scoped delta (current.completed - baseline) so the
-            // % reflects the work *this* run is doing rather than the
-            // library's lifetime completion ratio.
-            aiInProgress && pending != null && sessionBaseline != null -> {
-                val sessionDone = (pending.completed - sessionBaseline).coerceAtLeast(0)
-                val sessionTotal = sessionDone + pending.inQueue
-                val pct = if (sessionTotal > 0)
-                    (sessionDone * 100 / sessionTotal).coerceIn(0, 100)
-                else 0
-                stringResource(
-                    Res.string.admin_run_tasks_ai_progress_format,
-                    "$pct%",
-                    pending.inQueue
-                )
+            // Queue is full, workers chip away. The percentage is scoped to
+            // this run (completed − baseline), but on its own it can't say
+            // whether anything is happening: on twenty thousand photos it
+            // reads 0 % for minutes either way. So the line also carries
+            // done/total, the server-measured rate and the time left at it —
+            // or, when nothing is claimed and nothing has finished, how long
+            // that has been so.
+            aiInProgress && pending != null -> {
+                val progress = aiQueueProgress(pending, sessionBaseline, nowMs)
+                val fraction = progress.fraction
+                val head = if (fraction != null) {
+                    val pct = (fraction * 100).toInt().coerceIn(0, 100)
+                    "$pct% · " + stringResource(
+                        Res.string.admin_run_tasks_ai_done_of_format,
+                        formatCount(progress.done),
+                        formatCount(progress.total)
+                    )
+                } else {
+                    // No baseline (queue started elsewhere): counts, no %.
+                    stringResource(Res.string.admin_run_tasks_pending_format, pending.unprocessed, pending.inQueue)
+                }
+                val stalledFor = progress.stalledForSeconds
+                val tail = when {
+                    stalledFor != null -> listOf(
+                        stringResource(Res.string.admin_run_tasks_ai_stalled_format, formatRelativeTime(stalledFor))
+                    )
+                    else -> listOfNotNull(
+                        progress.perMinute?.let { stringResource(Res.string.admin_run_tasks_ai_rate_format, it) },
+                        progress.etaSeconds?.let { stringResource(Res.string.admin_run_tasks_ai_eta_format, formatEta(it)) },
+                        progress.processing?.takeIf { it > 0 }
+                            ?.let { stringResource(Res.string.admin_run_tasks_ai_processing_format, it) },
+                    )
+                }
+                (listOf(head) + tail).joinToString(" · ")
             }
-            // Phase 2 fallback when we have no baseline (queue started
-            // elsewhere): just show the queue size, no %.
-            aiInProgress && pending != null -> stringResource(
-                Res.string.admin_run_tasks_pending_format,
-                pending.unprocessed,
-                pending.inQueue
-            )
             // ML idle: just the pending counters.
             pending != null -> stringResource(
                 Res.string.admin_run_tasks_pending_format,

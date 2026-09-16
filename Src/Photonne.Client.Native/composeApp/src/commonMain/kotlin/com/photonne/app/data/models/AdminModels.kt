@@ -183,7 +183,9 @@ data class BackfillRequest(
 @Serializable
 data class BackfillResponse(
     val enqueued: Int = 0,
-    val total: Int = 0
+    val total: Int = 0,
+    /** How long the server took to queue it all. Zero on older servers. */
+    val elapsedMs: Long = 0,
 )
 
 @Serializable
@@ -204,7 +206,20 @@ data class PendingCountResponse(
      *  library with thousands of unanalysed photos reports nothing to do.
      *  Zero on servers older than 1.143. */
     val failed: Int = 0,
+    /** Jobs a worker has claimed right now. Null on servers that predate the
+     *  liveness fields (1.140): the row then shows counts only, rather than
+     *  reporting a queue as stalled because the server never said otherwise. */
+    val processing: Int? = null,
+    /** ISO-8601 instant of the last job of this type that finished, or null
+     *  when none ever has. */
+    val lastCompletedAt: String? = null,
+    /** Jobs finished in the last sixty seconds — the throughput the ETA is
+     *  built on. */
+    val completedLastMinute: Int = 0,
 ) {
+    /** True when the server sent the liveness fields at all. */
+    val reportsLiveness: Boolean get() = processing != null
+
     /** Anything a run could still act on. Drives whether the row offers a
      *  button at all. */
     val hasWorkLeft: Boolean get() = unprocessed > 0 || failed > 0
