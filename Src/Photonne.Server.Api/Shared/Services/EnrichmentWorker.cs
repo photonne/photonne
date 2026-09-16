@@ -165,6 +165,13 @@ public class EnrichmentWorker : BackgroundService
         var task = await dbContext.AssetEnrichmentTasks.FirstOrDefaultAsync(t => t.Id == taskId, ct);
         if (task == null) return;
 
+        // Wall time of the whole attempt, ML round trip included. The ML
+        // service reports its own inference time in every response and the
+        // clients log it; what nobody logged was the rest — reading the row,
+        // resolving the file, the HTTP hop, storing the result — which is
+        // where a model that answers in 40 ms still ends up at one photo a
+        // second.
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             var resultJson = await DispatchAsync(task, sp, ct);
@@ -179,8 +186,8 @@ public class EnrichmentWorker : BackgroundService
             await dbContext.SaveChangesAsync(ct);
 
             _logger.LogInformation(
-                "Enrichment task completed: TaskId={TaskId}, AssetId={AssetId}, TaskType={TaskType}",
-                task.Id, task.AssetId, task.TaskType);
+                "Enrichment task completed: TaskId={TaskId}, AssetId={AssetId}, TaskType={TaskType}, ElapsedMs={ElapsedMs}",
+                task.Id, task.AssetId, task.TaskType, stopwatch.ElapsedMilliseconds);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -190,7 +197,8 @@ public class EnrichmentWorker : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing task {TaskId} ({TaskType})", task.Id, task.TaskType);
+            _logger.LogError(ex, "Error processing task {TaskId} ({TaskType}) after {ElapsedMs} ms",
+                task.Id, task.TaskType, stopwatch.ElapsedMilliseconds);
 
             task.AttemptCount++;
             task.Status = EnrichmentStatus.Failed;

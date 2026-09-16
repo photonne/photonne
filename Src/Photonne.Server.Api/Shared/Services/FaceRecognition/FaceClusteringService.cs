@@ -203,6 +203,21 @@ public class FaceClusteringService
     /// </summary>
     public async Task<int> MaybeRunBatchForUserAsync(Guid userId, CancellationToken cancellationToken)
     {
+        // Cooldown first: it's an in-memory lookup, and the face worker calls
+        // this after every photo with a face in it. The orphan count behind it
+        // is a visibility scope (five queries, one of them every asset id the
+        // user can see through an album) plus a scan of their faces — paid, in
+        // the old order, on every photo of a backfill, to be told two minutes
+        // hadn't passed yet.
+        var now = DateTime.UtcNow;
+        var last = _lastBatchRunUtcByUser.TryGetValue(userId, out var t) ? t : DateTime.MinValue;
+        if (now - last < BatchCooldown)
+        {
+            _logger.LogDebug("User {UserId}: batch cooldown active ({Remaining:F0}s left)",
+                userId, (BatchCooldown - (now - last)).TotalSeconds);
+            return 0;
+        }
+
         var scope = await _visibility.GetScopeAsync(userId, cancellationToken);
         var orphanCount = await CountOrphansForUserAsync(userId, scope, cancellationToken);
 
@@ -211,15 +226,6 @@ public class FaceClusteringService
         {
             _logger.LogDebug("User {UserId}: {Orphans} orphans (< {Min}); skipping batch",
                 userId, orphanCount, minFacesForCluster);
-            return 0;
-        }
-
-        var now = DateTime.UtcNow;
-        var last = _lastBatchRunUtcByUser.TryGetValue(userId, out var t) ? t : DateTime.MinValue;
-        if (now - last < BatchCooldown)
-        {
-            _logger.LogDebug("User {UserId}: batch cooldown active ({Remaining:F0}s left)",
-                userId, (BatchCooldown - (now - last)).TotalSeconds);
             return 0;
         }
 

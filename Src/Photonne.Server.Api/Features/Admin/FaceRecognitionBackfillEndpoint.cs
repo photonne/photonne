@@ -20,7 +20,11 @@ namespace Photonne.Server.Api.Features.Admin;
 /// when it can. When <c>All</c> is true, <c>BatchSize</c> is ignored.</summary>
 public record BackfillRequest(int? BatchSize, bool? OnlyMissing, bool? All = null);
 
-public record BackfillResponse(int Enqueued, int Total);
+/// <summary><c>ElapsedMs</c> is how long the server took to queue the lot.
+/// The hub waits on this request before it can show anything, so when a
+/// library is big enough for that wait to be noticeable, the number is the
+/// difference between "the server is slow" and "the workers are slow".</summary>
+public record BackfillResponse(int Enqueued, int Total, long ElapsedMs = 0);
 
 public record GlobalReclusterResponse(int OwnersProcessed, int PersonsCreated);
 

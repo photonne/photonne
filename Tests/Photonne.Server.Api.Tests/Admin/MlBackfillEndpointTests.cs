@@ -23,8 +23,10 @@ public sealed class MlBackfillEndpointTests : IntegrationTestBase
 {
     public MlBackfillEndpointTests(PhotonneApiFactory factory) : base(factory) { }
 
-    private sealed record PendingCountDto(int Unprocessed, int InQueue, int Completed, int Retrying, int Failed);
-    private sealed record BackfillDto(int Enqueued, int Total);
+    private sealed record PendingCountDto(
+        int Unprocessed, int InQueue, int Completed, int Retrying, int Failed,
+        int Processing, DateTime? LastCompletedAt, int CompletedLastMinute);
+    private sealed record BackfillDto(int Enqueued, int Total, long ElapsedMs);
     private sealed record CancelQueueDto(int Deleted, int StillProcessing);
     private sealed record ErrorDto(string Error);
 
@@ -52,7 +54,7 @@ public sealed class MlBackfillEndpointTests : IntegrationTestBase
         });
     }
 
-    private Task SeedTaskAsync(Guid assetId, AssetEnrichmentType type, EnrichmentStatus status, DateTime? nextRetryAt) =>
+    private Task SeedTaskAsync(Guid assetId, AssetEnrichmentType type, EnrichmentStatus status, DateTime? nextRetryAt, DateTime? completedAt = null) =>
         WithDbContextAsync(async db =>
         {
             db.AssetEnrichmentTasks.Add(new AssetEnrichmentTask
@@ -63,6 +65,7 @@ public sealed class MlBackfillEndpointTests : IntegrationTestBase
                 NextRetryAt = nextRetryAt,
                 AttemptCount = status == EnrichmentStatus.Failed ? 3 : 0,
                 StartedAt = status == EnrichmentStatus.Processing ? DateTime.UtcNow : null,
+                CompletedAt = completedAt,
             });
             await db.SaveChangesAsync();
         });
@@ -226,6 +229,74 @@ public sealed class MlBackfillEndpointTests : IntegrationTestBase
             "/api/admin/maintenance/image-embedding/pending-count");
 
         Assert.Equal(1, body!.Failed);
+    }
+
+    // ─── Liveness: is it doing anything right now? ───────────────────────────
+
+    [Fact]
+    public async Task PendingCount_ReportsWhatIsMovingRightNow()
+    {
+        // The totals can't tell a working queue from a dead one — on twenty
+        // thousand photos the percentage sits on 0 for minutes either way.
+        // These three can: claimed now, last finished, finished in the last
+        // minute.
+        var (_, client) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (user, _) = await CreateAuthenticatedUserAsync();
+        var assets = await SeedImagesAsync(user.Id, 5);
+        var now = DateTime.UtcNow;
+
+        await SeedTaskAsync(assets[0].Id, AssetEnrichmentType.SceneClassification, EnrichmentStatus.Processing, null);
+        await SeedTaskAsync(assets[1].Id, AssetEnrichmentType.SceneClassification, EnrichmentStatus.Pending, null);
+        await SeedTaskAsync(assets[2].Id, AssetEnrichmentType.SceneClassification, EnrichmentStatus.Completed, null, completedAt: now.AddSeconds(-10));
+        await SeedTaskAsync(assets[3].Id, AssetEnrichmentType.SceneClassification, EnrichmentStatus.Completed, null, completedAt: now.AddSeconds(-30));
+        // Finished long ago: part of the lifetime total, not of the rate.
+        await SeedTaskAsync(assets[4].Id, AssetEnrichmentType.SceneClassification, EnrichmentStatus.Completed, null, completedAt: now.AddMinutes(-5));
+        // Another type's activity must not leak into this row.
+        await SeedTaskAsync(assets[4].Id, AssetEnrichmentType.ObjectDetection, EnrichmentStatus.Completed, null, completedAt: now.AddSeconds(-1));
+
+        var body = await client.GetFromJsonAsync<PendingCountDto>(
+            "/api/admin/maintenance/scene-classification/pending-count");
+
+        Assert.Equal(1, body!.Processing);
+        Assert.Equal(2, body.InQueue);
+        Assert.Equal(2, body.CompletedLastMinute);
+        Assert.NotNull(body.LastCompletedAt);
+        Assert.InRange(body.LastCompletedAt!.Value, now.AddSeconds(-11), now.AddSeconds(-9));
+    }
+
+    [Fact]
+    public async Task PendingCount_OnAQueueThatNeverRan_ReportsNoActivity()
+    {
+        var (_, client) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (user, _) = await CreateAuthenticatedUserAsync();
+        var assets = await SeedImagesAsync(user.Id, 1);
+        await SeedTaskAsync(assets[0].Id, AssetEnrichmentType.TextRecognition, EnrichmentStatus.Pending, null);
+
+        var body = await client.GetFromJsonAsync<PendingCountDto>(
+            "/api/admin/maintenance/text-recognition/pending-count");
+
+        Assert.Equal(0, body!.Processing);
+        Assert.Null(body.LastCompletedAt);
+        Assert.Equal(0, body.CompletedLastMinute);
+    }
+
+    [Fact]
+    public async Task Backfill_SaysHowLongTheQueueingTook()
+    {
+        // The hub can't show anything until this request answers; when that
+        // wait is noticeable, the number says whether it's the server or the
+        // workers that are slow.
+        var (_, client) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (user, _) = await CreateAuthenticatedUserAsync();
+        await SeedImagesAsync(user.Id, 2);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/admin/maintenance/image-embedding/backfill",
+            new { OnlyMissing = true, All = true });
+
+        var body = await response.Content.ReadFromJsonAsync<BackfillDto>();
+        Assert.Equal(2, body!.Enqueued);
+        Assert.InRange(body.ElapsedMs, 0, 60_000);
     }
 
     // ─── Cancel that actually cancels ────────────────────────────────────────

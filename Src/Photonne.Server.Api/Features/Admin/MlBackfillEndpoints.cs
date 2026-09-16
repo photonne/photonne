@@ -25,13 +25,24 @@ namespace Photonne.Server.Api.Features.Admin;
 /// assets waiting on a backoff window; <c>Failed</c> is the ones that exhausted
 /// their attempts and now need the failures registry — they are excluded from
 /// <c>Unprocessed</c>, which is why a library with thousands of unanalysed
-/// photos can otherwise report nothing left to do.</summary>
+/// photos can otherwise report nothing left to do.
+///
+/// The last three answer "is it doing anything right now?", which none of the
+/// totals can: on a queue of twenty thousand the percentage sits on 0 for
+/// minutes whether the workers are busy or dead. <c>Processing</c> is the jobs
+/// a worker has claimed this instant, <c>LastCompletedAt</c> is when one last
+/// finished, and <c>CompletedLastMinute</c> is the throughput — which also
+/// gives the client an ETA that is honest about the rate the machine actually
+/// sustains, rather than one extrapolated from two polls.</summary>
 public record PendingCountResponse(
     int Unprocessed,
     int InQueue,
     int Completed,
     int Retrying = 0,
-    int Failed = 0);
+    int Failed = 0,
+    int Processing = 0,
+    DateTime? LastCompletedAt = null,
+    int CompletedLastMinute = 0);
 
 /// <summary>Distinct count of image assets that are missing at least one ML
 /// enrichment (face / object / scene / OCR / embedding). Used by the admin
@@ -99,7 +110,9 @@ internal static class MlBackfillRunner
 
         try
         {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var result = await EnqueueAsync(db, mlJobs, jobType, onlyMissing, batchSize, ownerScope, ct);
+            result = result with { ElapsedMs = stopwatch.ElapsedMilliseconds };
 
             if (notifications is not null && triggeredBy is { } uid && uid != Guid.Empty && result.Enqueued > 0)
             {
@@ -212,7 +225,30 @@ internal static class MlBackfillRunner
         var retrying = failedGroups.FirstOrDefault(g => !g.Permanent)?.Assets ?? 0;
         var failed = failedGroups.FirstOrDefault(g => g.Permanent)?.Assets ?? 0;
 
-        return Results.Ok(new PendingCountResponse(unprocessed, inQueue, completed, retrying, failed));
+        // Liveness. All three sit on the (TaskType, Status, CompletedAt) index,
+        // so polling them every few seconds costs an index probe, not a walk
+        // over one row per attempt ever made.
+        var processingQuery = db.AssetEnrichmentTasks.AsNoTracking()
+            .Where(j => j.TaskType == jobType && j.Status == EnrichmentStatus.Processing);
+        if (ownerScope.HasValue)
+        {
+            processingQuery = processingQuery.Where(j => j.Asset.OwnerId == ownerScope.Value);
+        }
+        var processing = await processingQuery.CountAsync(ct);
+
+        var completedRows = db.AssetEnrichmentTasks.AsNoTracking()
+            .Where(j => j.TaskType == jobType && j.Status == EnrichmentStatus.Completed && j.CompletedAt != null);
+        if (ownerScope.HasValue)
+        {
+            completedRows = completedRows.Where(j => j.Asset.OwnerId == ownerScope.Value);
+        }
+        var lastCompletedAt = await completedRows.MaxAsync(j => j.CompletedAt, ct);
+        var minuteAgo = DateTime.UtcNow.AddMinutes(-1);
+        var completedLastMinute = await completedRows.CountAsync(j => j.CompletedAt >= minuteAgo, ct);
+
+        return Results.Ok(new PendingCountResponse(
+            unprocessed, inQueue, completed, retrying, failed,
+            processing, lastCompletedAt, completedLastMinute));
     }
 
     /// <summary>How many distinct image assets are missing at least one ML

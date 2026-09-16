@@ -400,6 +400,12 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.AssetId, e.TaskType, e.Status });
             // Used by the worker's "due now" scan: find Pending tasks past their NextRetryAt.
             entity.HasIndex(e => new { e.Status, e.NextRetryAt });
+            // Used by the admin hub's per-type queue counters, polled every few
+            // seconds while a backfill runs: "in queue", "processing right now",
+            // "last completed at" and "completed in the last minute" all filter
+            // on (TaskType, Status), and the last two read CompletedAt off the
+            // same index entry instead of walking one row per attempt.
+            entity.HasIndex(e => new { e.TaskType, e.Status, e.CompletedAt });
 
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.StartedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
