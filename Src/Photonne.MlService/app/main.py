@@ -17,6 +17,7 @@ from .face_models import DetectResponse as FaceDetectResponse
 from .image_loader import ImageLoadError, load_bgr
 from .object_detector import detector as object_detector
 from .object_models import ObjectDetectRequest, ObjectDetectResponse
+from . import request_log
 from .scene_classifier import classifier as scene_classifier
 from .scene_models import SceneClassifyRequest, SceneClassifyResponse
 from .text_models import TextDetectRequest, TextDetectResponse
@@ -96,6 +97,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Photonne ML Service", version="0.2.0", lifespan=lifespan)
 errors.install_handlers(app)
+request_log.install(app)
 
 
 @app.get("/health")
