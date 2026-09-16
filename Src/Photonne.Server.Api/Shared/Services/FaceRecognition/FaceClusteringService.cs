@@ -143,36 +143,30 @@ public class FaceClusteringService
 
         var (assignThreshold, suggestThreshold) = await ResolveThresholdsAsync(cancellationToken);
 
+        // Persons that gain a face here, and how many. Their FaceCount is
+        // bumped by that much instead of recounted from scratch: the recount
+        // groups every assignment the user has (1.8 s on a big library) and
+        // this runs after every photo with a face in it.
+        var gained = new Dictionary<Guid, int>();
+
         foreach (var face in newFaces)
         {
-            // pgvector cosine-distance operator <=>; pick U's closest already-
-            // assigned face. Pull the embedding back so we can re-check the
-            // distance in memory without forcing EF to translate
-            // CosineDistance twice in a single query.
-            var nearest = await WithLiveAssets(_dbContext.UserFaceAssignments)
-                .Where(uf => uf.UserId == userId
-                             && uf.PersonId != null
-                             && !uf.IsRejected
-                             && uf.Person!.OwnerId == userId
-                             && uf.FaceId != face.Id)
-                .OrderBy(uf => uf.Face.Embedding.CosineDistance(face.Embedding))
-                .Select(uf => new { uf.PersonId, Embedding = uf.Face.Embedding })
-                .FirstOrDefaultAsync(cancellationToken);
+            var nearest = await NearestConfirmedFaceAsync(userId, face, cancellationToken);
+            if (nearest is null) continue;
 
-            if (nearest?.PersonId == null) continue;
-
-            var distance = CosineDistance(nearest.Embedding.ToArray(), face.Embedding.ToArray());
+            var (personId, distance) = nearest.Value;
             if (distance < assignThreshold)
             {
                 _dbContext.UserFaceAssignments.Add(new UserFaceAssignment
                 {
                     FaceId = face.Id,
                     UserId = userId,
-                    PersonId = nearest.PersonId.Value,
+                    PersonId = personId,
                     UpdatedAt = DateTime.UtcNow,
                 });
+                gained[personId] = gained.GetValueOrDefault(personId) + 1;
                 _logger.LogDebug("User {UserId} face {FaceId} → Person {PersonId} (dist={Dist:F3})",
-                    userId, face.Id, nearest.PersonId.Value, distance);
+                    userId, face.Id, personId, distance);
             }
             else if (distance < suggestThreshold)
             {
@@ -180,20 +174,83 @@ public class FaceClusteringService
                 {
                     FaceId = face.Id,
                     UserId = userId,
-                    SuggestedPersonId = nearest.PersonId.Value,
+                    SuggestedPersonId = personId,
                     SuggestedDistance = distance,
                     UpdatedAt = DateTime.UtcNow,
                 });
                 _logger.LogDebug("User {UserId} face {FaceId} ~? Person {PersonId} (dist={Dist:F3}) — suggestion",
-                    userId, face.Id, nearest.PersonId.Value, distance);
+                    userId, face.Id, personId, distance);
             }
             // else: leave with no assignment row — true orphan, will be picked
             // up by the next batch run.
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        await RecomputeFaceCountsForUserAsync(userId, cancellationToken);
+
+        // A new face can't invalidate a cover, so the cover repair that rides
+        // with the full recount isn't needed here; the batch pass and the
+        // nightly still run the full recount for everything else.
+        foreach (var (personId, count) in gained)
+        {
+            await _dbContext.People
+                .Where(p => p.Id == personId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.FaceCount, p => p.FaceCount + count)
+                    .SetProperty(p => p.UpdatedAt, DateTime.UtcNow), cancellationToken);
+        }
     }
+
+    /// <summary>
+    /// U's nearest confirmed face to <paramref name="face"/> — one U assigned
+    /// to one of U's own Persons, not rejected, on a live asset — as the Person
+    /// and the cosine distance, or null when none is close.
+    ///
+    /// Two queries on purpose. Written as one, starting from
+    /// <c>UserFaceAssignments</c> and ordering by distance through the join,
+    /// Postgres can't drive it from the HNSW index on <c>Faces.Embedding</c>
+    /// and sorts every confirmed face by hand: 5 to 17 s on 160k faces, once
+    /// per new face. So the index answers first — the <see cref="NearestCandidates"/>
+    /// nearest faces of any kind — and the confirmation filter runs over those
+    /// ids. The candidate count matches pgvector's default <c>hnsw.ef_search</c>;
+    /// asking for more than that returns no more without the iterative scan.
+    /// The match this can miss is a confirmed face closer than the threshold
+    /// but further than forty other faces; at the thresholds in use that is
+    /// the same person's own faces, and any of them gives the same answer.
+    /// </summary>
+    private async Task<(Guid PersonId, float Distance)?> NearestConfirmedFaceAsync(
+        Guid userId, Face face, CancellationToken cancellationToken)
+    {
+        var candidateIds = await _dbContext.Faces.AsNoTracking()
+            .Where(f => f.Id != face.Id)
+            .OrderBy(f => f.Embedding.CosineDistance(face.Embedding))
+            .Take(NearestCandidates)
+            .Select(f => f.Id)
+            .ToListAsync(cancellationToken);
+        if (candidateIds.Count == 0) return null;
+
+        var confirmed = await WithLiveAssets(_dbContext.UserFaceAssignments).AsNoTracking()
+            .Where(uf => candidateIds.Contains(uf.FaceId)
+                         && uf.UserId == userId
+                         && uf.PersonId != null
+                         && !uf.IsRejected
+                         && uf.Person!.OwnerId == userId)
+            .Select(uf => new { PersonId = uf.PersonId!.Value, uf.Face.Embedding })
+            .ToListAsync(cancellationToken);
+        if (confirmed.Count == 0) return null;
+
+        var query = face.Embedding.ToArray();
+        (Guid PersonId, float Distance)? best = null;
+        foreach (var c in confirmed)
+        {
+            var d = CosineDistance(c.Embedding.ToArray(), query);
+            if (best is null || d < best.Value.Distance) best = (c.PersonId, d);
+        }
+        return best;
+    }
+
+    /// <summary>How many nearest faces the index is asked for before the
+    /// confirmation filter — pgvector's default <c>hnsw.ef_search</c>.</summary>
+    private const int NearestCandidates = 40;
 
     /// <summary>
     /// Runs <see cref="RunForUserAsync"/> for the user if there are enough
@@ -462,6 +519,14 @@ public class FaceClusteringService
         {
             await AssignNewFacesForUserAsync(userId, assetId, cancellationToken);
         }
+
+        // The per-asset step only bumps counts for the persons it touched;
+        // the full recount with cover repair runs once per pass, here, not
+        // once per asset as it used to (thousands of assets × 1.8 s).
+        if (unassignedAssetIds.Count > 0)
+        {
+            await RecomputeFaceCountsForUserAsync(userId, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -510,26 +575,14 @@ public class FaceClusteringService
         var changed = 0;
         foreach (var face in orphans)
         {
-            var nearest = await WithLiveAssets(_dbContext.UserFaceAssignments)
-                .Where(uf => uf.UserId == userId
-                             && uf.PersonId != null
-                             && !uf.IsRejected
-                             && uf.Person!.OwnerId == userId
-                             && uf.FaceId != face.Id)
-                .OrderBy(uf => uf.Face.Embedding.CosineDistance(face.Embedding))
-                .Select(uf => new { uf.PersonId, Embedding = uf.Face.Embedding })
-                .FirstOrDefaultAsync(cancellationToken);
+            var nearest = await NearestConfirmedFaceAsync(userId, face, cancellationToken);
 
             Guid? newSuggestion = null;
             float? newDistance = null;
-            if (nearest?.PersonId != null)
+            if (nearest is { } n && n.Distance >= assignThreshold && n.Distance < suggestThreshold)
             {
-                var distance = CosineDistance(nearest.Embedding.ToArray(), face.Embedding.ToArray());
-                if (distance >= assignThreshold && distance < suggestThreshold)
-                {
-                    newSuggestion = nearest.PersonId.Value;
-                    newDistance = distance;
-                }
+                newSuggestion = n.PersonId;
+                newDistance = n.Distance;
             }
 
             // Upsert the user's row: create a row only when there's a real
