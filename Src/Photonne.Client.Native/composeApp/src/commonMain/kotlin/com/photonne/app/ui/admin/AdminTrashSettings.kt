@@ -1,5 +1,7 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.SecondaryActionButton
+import com.photonne.app.ui.main.ResultSnackbar
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_trash_error_stats
 import com.photonne.app.resources.admin_trash_cleanup_done_format
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,7 +20,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -159,7 +159,7 @@ fun AdminTrashSettingsScreen(
         onSavedShown = viewModel::consumeSaved,
         onDismissError = viewModel::dismissError,
         footer = {
-            AdminResultSnackbar(stats.statusMessage, viewModel::consumeCleanupStatus)
+            ResultSnackbar(stats.statusMessage, viewModel::consumeCleanupStatus)
             TrashUsageSection(stats, viewModel::cleanupExpired)
         },
     ) {
@@ -226,22 +226,12 @@ private fun TrashUsageSection(stats: AdminTrashSideState, onCleanup: () -> Unit)
                 }
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (stats.isCleaning) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(Spacing.md))
-            }
-            OutlinedButton(
-                onClick = onCleanup,
-                enabled = !stats.isCleaning && (s.expiredItems > 0)
-            ) {
-                Text(stringResource(Res.string.admin_trash_action_cleanup))
-            }
-        }
+        SecondaryActionButton(
+            label = stringResource(Res.string.admin_trash_action_cleanup),
+            enabled = s.expiredItems > 0,
+            isLoading = stats.isCleaning,
+            onClick = onCleanup
+        )
     } else if (stats.isLoading) {
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp))

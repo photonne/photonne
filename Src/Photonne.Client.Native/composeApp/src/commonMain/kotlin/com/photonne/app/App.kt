@@ -9,15 +9,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.outlined.CreateNewFolder
-import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -65,27 +61,16 @@ import com.photonne.app.resources.admin_settings_scene_classification
 import com.photonne.app.resources.admin_settings_server
 import com.photonne.app.resources.admin_settings_text_recognition
 import com.photonne.app.resources.admin_settings_trash
-import com.photonne.app.resources.admin_shared_trash
 import com.photonne.app.resources.admin_settings_user_defaults
 import com.photonne.app.resources.admin_settings_version
 import com.photonne.app.resources.admin_system_backup
 import com.photonne.app.resources.admin_system_duplicates
-import com.photonne.app.resources.admin_system_embedding
-import com.photonne.app.resources.admin_system_face
-import com.photonne.app.resources.admin_system_index
-import com.photonne.app.resources.admin_system_metadata
-import com.photonne.app.resources.admin_system_object
-import com.photonne.app.resources.admin_system_scene
-import com.photonne.app.resources.admin_system_text
 import com.photonne.app.resources.admin_system_run_tasks
-import com.photonne.app.resources.admin_system_thumbnails
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.action_create
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.album_action_edit
 import com.photonne.app.resources.album_action_new
-import com.photonne.app.resources.albums_count_format
-import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.archive_action_unarchive_all_title
 import com.photonne.app.resources.archive_action_unarchive_all_message
 import com.photonne.app.resources.archive_action_unarchive_all
@@ -100,8 +85,6 @@ import com.photonne.app.resources.trash_action_restore_all
 import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
-import com.photonne.app.resources.favorites_title
-import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.backup_pending_screen_title
 import com.photonne.app.resources.device_backup_action_select_all
@@ -115,9 +98,6 @@ import com.photonne.app.resources.utilities_section_large_files
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_title
 import com.photonne.app.resources.my_links_title
-import com.photonne.app.resources.unsupported_files_title
-import com.photonne.app.resources.explore_title
-import com.photonne.app.resources.explore_section_places
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
@@ -169,7 +149,6 @@ import com.photonne.app.ui.actions.ShareLinkResultDialog
 import com.photonne.app.ui.main.AlbumsListTopBar
 import com.photonne.app.ui.main.ArchiveMode
 import com.photonne.app.ui.main.LocalSnackbarController
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
@@ -181,12 +160,10 @@ import com.photonne.app.ui.main.rememberSnackbarController
 import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.AssetSelectionTopBar
 import com.photonne.app.ui.main.FolderDetailChromeActions
-import com.photonne.app.ui.main.FolderDetailTopBar
 import com.photonne.app.ui.main.FoldersListTopBar
 import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.main.MoreScreen
-import com.photonne.app.ui.main.MoreTopBar
 import com.photonne.app.ui.theme.PhotonneTheme
 import com.photonne.app.ui.timeline.TimelineScreen
 import com.photonne.app.ui.timeline.TimelineViewModel
@@ -4481,14 +4458,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
-    // Host del snackbar sobre todo lo demás, elevado por encima de la nav flotante
-    // y respetando el inset inferior del sistema.
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-        SnackbarHost(
+    // Host del snackbar sobre todo lo demás. Entra por arriba, bajo el cromo
+    // flotante (barra de estado + cápsula): abajo caía sobre la nav flotante y
+    // sobre el botón que lo acababa de provocar.
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        com.photonne.app.ui.main.TopSnackbarHost(
             hostState = snackbarController.hostState,
-            modifier = Modifier
-                .navigationBarsPadding()
-                .padding(bottom = floatingNavBarReservedHeight())
+            modifier = Modifier.padding(top = com.photonne.app.ui.main.subscreenChromeReservedTop())
         )
     }
 }

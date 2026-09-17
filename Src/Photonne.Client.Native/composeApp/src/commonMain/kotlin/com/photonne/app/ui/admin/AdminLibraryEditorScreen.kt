@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -111,10 +112,10 @@ fun AdminLibraryEditorScreen(
 
         if (!showDelete) ErrorBanner(error = state.error)
 
-        AdminPrimaryActionRow(
+        PrimaryActionButton(
             label = stringResource(if (isEdit) Res.string.action_save else Res.string.action_create),
             enabled = canSubmit,
-            isSubmitting = isSubmitting,
+            isLoading = isSubmitting,
             onClick = {
                 val cronValue = cron.takeIf { it.isNotBlank() }
                 if (isEdit) {

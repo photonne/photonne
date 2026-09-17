@@ -1,6 +1,7 @@
 package com.photonne.app.ui.admin
 
-import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SecondaryActionButton
+import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.resources.admin_duplicates_error_run
 import org.jetbrains.compose.resources.getString
 import com.photonne.app.data.error.UiError
@@ -8,13 +9,8 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.ui.error.ErrorBanner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
@@ -281,24 +276,18 @@ fun AdminDuplicatesScreen(
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (state.isRunning) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(Spacing.md))
-                OutlinedButton(onClick = viewModel::cancel) {
-                    Text(stringResource(Res.string.admin_duplicates_action_cancel))
-                }
-            } else {
-                // With "eliminar duplicados" on, Start deletes on the server —
-                // from disk too with "físico". That is not a one-tap action.
-                Button(onClick = { if (state.cleanup) confirmCleanup = true else viewModel.start() }) {
-                    Text(stringResource(Res.string.admin_duplicates_action_start))
-                }
-            }
+        if (state.isRunning) {
+            SecondaryActionButton(
+                label = stringResource(Res.string.admin_duplicates_action_cancel),
+                onClick = viewModel::cancel
+            )
+        } else {
+            // With "eliminar duplicados" on, Start deletes on the server —
+            // from disk too with "físico". That is not a one-tap action.
+            PrimaryActionButton(
+                label = stringResource(Res.string.admin_duplicates_action_start),
+                onClick = { if (state.cleanup) confirmCleanup = true else viewModel.start() }
+            )
         }
     }
     }

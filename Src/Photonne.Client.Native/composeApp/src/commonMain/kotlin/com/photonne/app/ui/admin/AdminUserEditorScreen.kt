@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
@@ -191,10 +192,10 @@ fun AdminUserEditorScreen(
             ErrorBanner(error = state.error)
         }
 
-        AdminPrimaryActionRow(
+        PrimaryActionButton(
             label = stringResource(if (isEdit) Res.string.action_save else Res.string.action_create),
             enabled = canSubmit,
-            isSubmitting = isSubmitting,
+            isLoading = isSubmitting,
             onClick = {
                 val quotaBytes = quotaMb.toLongOrNull()?.takeIf { it > 0 }
                     ?.let { it * 1024L * 1024L }

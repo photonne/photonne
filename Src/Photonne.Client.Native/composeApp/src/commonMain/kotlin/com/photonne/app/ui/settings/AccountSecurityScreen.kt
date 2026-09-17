@@ -1,20 +1,18 @@
 package com.photonne.app.ui.settings
 
+import com.photonne.app.ui.main.ResultSnackbar
+import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -22,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -31,7 +28,6 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
-import com.photonne.app.ui.theme.actionButtonHeight
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
@@ -55,6 +51,11 @@ fun AccountSecurityScreen(
     val hazeState = remember { HazeState() }
     val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsState()
+    // The result goes where every other one in the app goes: the snackbar.
+    ResultSnackbar(
+        message = stringResource(Res.string.account_security_changed).takeIf { state.successMessage != null },
+        onShown = viewModel::consumeSuccess
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
@@ -114,31 +115,14 @@ fun AccountSecurityScreen(
         state.error?.userMessage?.let { msg ->
             Text(msg, color = MaterialTheme.colorScheme.error)
         }
-        if (state.successMessage != null) {
-            Text(
-                stringResource(Res.string.account_security_changed),
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
 
         Spacer(Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (state.isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(12.dp))
-            }
-            Button(
-                onClick = viewModel::submit,
-                enabled = state.canSave,
-                modifier = Modifier.actionButtonHeight()
-            ) {
-                Text(stringResource(Res.string.account_security_submit))
-            }
-        }
+        PrimaryActionButton(
+            label = stringResource(Res.string.account_security_submit),
+            enabled = state.canSave,
+            isLoading = state.isSubmitting,
+            onClick = viewModel::submit
+        )
     }
         SubscreenFloatingChrome(
             title = title,

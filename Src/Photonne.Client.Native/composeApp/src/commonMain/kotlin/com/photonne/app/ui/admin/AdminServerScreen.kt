@@ -1,16 +1,15 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,8 +21,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_server_checked_at
 import com.photonne.app.resources.admin_server_check_error
@@ -39,7 +36,6 @@ import androidx.compose.material.icons.outlined.CloudOff
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.error_banner_retry
-import androidx.compose.foundation.layout.size
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -157,23 +153,11 @@ fun AdminServerScreen(
                         }
                     }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.size(Spacing.md))
-                    }
-                    Button(
-                        onClick = { viewModel.load(refresh = true) },
-                        enabled = !state.isLoading,
-                        modifier = Modifier.actionButtonHeight()
-                    ) {
-                        Text(stringResource(Res.string.admin_server_check_again))
-                    }
-                }
+                PrimaryActionButton(
+                    label = stringResource(Res.string.admin_server_check_again),
+                    isLoading = state.isLoading,
+                    onClick = { viewModel.load(refresh = true) }
+                )
             }
         }
     }

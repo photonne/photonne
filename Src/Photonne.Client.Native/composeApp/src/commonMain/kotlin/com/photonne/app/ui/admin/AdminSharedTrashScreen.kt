@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.main.ResultSnackbar
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -257,7 +258,7 @@ fun AdminSharedTrashScreen(viewModel: AdminSharedTrashViewModel) {
     // Every entry: it loaded once per app session, so what users deleted since
     // only showed up after restarting the app.
     LaunchedEffect(Unit) { viewModel.load() }
-    AdminResultSnackbar(state.resultMessage, viewModel::consumeResult)
+    ResultSnackbar(state.resultMessage, viewModel::consumeResult)
 
     if (state.showPurgeConfirm) {
         ConfirmActionDialog(

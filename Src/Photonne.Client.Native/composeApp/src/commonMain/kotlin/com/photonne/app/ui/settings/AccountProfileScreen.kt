@@ -1,5 +1,7 @@
 package com.photonne.app.ui.settings
 
+import com.photonne.app.ui.main.ResultSnackbar
+import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,10 +22,8 @@ import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +46,6 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
-import com.photonne.app.ui.theme.actionButtonHeight
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
@@ -74,6 +73,11 @@ fun AccountProfileScreen(
     val hazeState = remember { HazeState() }
     val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsState()
+    // The result goes where every other one in the app goes: the snackbar.
+    ResultSnackbar(
+        message = stringResource(Res.string.account_profile_saved).takeIf { state.successMessage != null },
+        onShown = viewModel::consumeSuccess
+    )
     LaunchedEffect(Unit) { viewModel.load() }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -132,31 +136,14 @@ fun AccountProfileScreen(
         state.error?.userMessage?.let { msg ->
             Text(msg, color = MaterialTheme.colorScheme.error)
         }
-        if (state.successMessage != null) {
-            Text(
-                stringResource(Res.string.account_profile_saved),
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
 
         Spacer(Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (state.isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(12.dp))
-            }
-            Button(
-                onClick = viewModel::save,
-                enabled = state.canSave,
-                modifier = Modifier.actionButtonHeight()
-            ) {
-                Text(stringResource(Res.string.account_profile_save))
-            }
-        }
+        PrimaryActionButton(
+            label = stringResource(Res.string.account_profile_save),
+            enabled = state.canSave,
+            isLoading = state.isSubmitting,
+            onClick = viewModel::save
+        )
     }
         SubscreenFloatingChrome(
             title = title,

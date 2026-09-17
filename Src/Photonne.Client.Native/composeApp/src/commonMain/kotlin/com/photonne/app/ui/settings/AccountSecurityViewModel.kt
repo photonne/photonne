@@ -57,6 +57,11 @@ class AccountSecurityViewModel(
         _state.update { it.copy(confirmPassword = value, successMessage = null) }
     }
 
+    /** The success was shown (snackbar): don't replay it. */
+    fun consumeSuccess() {
+        _state.update { it.copy(successMessage = null) }
+    }
+
     fun clearError() {
         _state.update { it.copy(error = null) }
     }

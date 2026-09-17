@@ -1,12 +1,12 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_backup_error_download
 import org.jetbrains.compose.resources.getString
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.ui.error.ErrorBanner
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -28,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
@@ -179,22 +176,11 @@ fun AdminBackupScreen(
             onSelect = viewModel::setLevel
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (state.isDownloading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(Spacing.md))
-            }
-            Button(
-                onClick = viewModel::downloadBackup,
-                enabled = !state.isDownloading
-            ) {
-                Text(stringResource(Res.string.admin_backup_action_download))
-            }
-        }
+        PrimaryActionButton(
+            label = stringResource(Res.string.admin_backup_action_download),
+            isLoading = state.isDownloading,
+            onClick = viewModel::downloadBackup
+        )
 
         HorizontalDivider()
 

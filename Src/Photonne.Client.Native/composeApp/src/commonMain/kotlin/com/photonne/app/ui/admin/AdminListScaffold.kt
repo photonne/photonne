@@ -13,21 +13,16 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
-import com.photonne.app.ui.theme.actionButtonHeight
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -36,7 +31,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.error_banner_retry
 import com.photonne.app.ui.error.ErrorBanner
-import com.photonne.app.ui.main.LocalSnackbarController
+import com.photonne.app.ui.main.ResultSnackbar
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -48,23 +43,6 @@ import com.photonne.app.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
-
-/**
- * Shows [message] once on the app's snackbar and tells the owner it was shown,
- * so a result ("Usuario eliminado") doesn't replay on the next recomposition
- * or the next visit. The one channel for operation results in admin: they used
- * to be a text strip here, a line above a button there, and mostly nothing.
- */
-@Composable
-fun AdminResultSnackbar(message: String?, onShown: () -> Unit) {
-    val snackbar = LocalSnackbarController.current
-    LaunchedEffect(message) {
-        if (message != null) {
-            snackbar?.show(message)
-            onShown()
-        }
-    }
-}
 
 /**
  * Shell of every admin list: floating chrome, content padded clear of it and
@@ -97,7 +75,7 @@ fun AdminListScaffold(
     header: (LazyListScope.() -> Unit)? = null,
     content: LazyListScope.() -> Unit
 ) {
-    AdminResultSnackbar(resultMessage, onResultShown)
+    ResultSnackbar(resultMessage, onResultShown)
 
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
@@ -183,7 +161,7 @@ fun AdminEditorScaffold(
     onResultShown: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
 ) {
-    AdminResultSnackbar(resultMessage, onResultShown)
+    ResultSnackbar(resultMessage, onResultShown)
 
     AdminPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
         when {
@@ -262,33 +240,5 @@ fun AdminKeyValueRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Text(value, style = MaterialTheme.typography.titleMedium)
-    }
-}
-
-/**
- * The form's main button: end-aligned, at the shared action height, with the
- * spinner beside it while the request is out. One shape for "Guardar" in the
- * settings forms and "Guardar"/"Crear" in the editors, which used a full-width
- * button with the spinner inside.
- */
-@Composable
-fun AdminPrimaryActionRow(
-    label: String,
-    enabled: Boolean,
-    isSubmitting: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (isSubmitting) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp))
-            Spacer(Modifier.size(Spacing.md))
-        }
-        Button(onClick = onClick, enabled = enabled, modifier = Modifier.actionButtonHeight()) {
-            Text(label)
-        }
     }
 }

@@ -1,5 +1,7 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.PrimaryActionButton
+import com.photonne.app.ui.main.ResultSnackbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -112,7 +114,7 @@ fun AdminSettingsForm(
     footer: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    AdminResultSnackbar(
+    ResultSnackbar(
         message = stringResource(Res.string.admin_settings_saved).takeIf { state.saved },
         onShown = onSavedShown
     )
@@ -139,10 +141,10 @@ fun AdminSettingsForm(
                 ErrorBanner(error = state.error, onDismiss = onDismissError)
 
                 Spacer(Modifier.height(Spacing.sm))
-                AdminPrimaryActionRow(
+                PrimaryActionButton(
                     label = stringResource(Res.string.action_save),
                     enabled = state.canSave,
-                    isSubmitting = state.isSubmitting,
+                    isLoading = state.isSubmitting,
                     onClick = onSave
                 )
 

@@ -1,23 +1,13 @@
 package com.photonne.app.ui.admin
 
-import com.photonne.app.ui.theme.Spacing
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import com.photonne.app.ui.theme.SecondaryActionButton
+import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
@@ -39,7 +29,6 @@ import com.photonne.app.resources.admin_settings_server_max_upload_hint
 import com.photonne.app.resources.admin_settings_server_public_url
 import com.photonne.app.resources.admin_settings_server_session_timeout
 import com.photonne.app.resources.admin_settings_server_session_timeout_hint
-import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.admin_settings_device_error_local_missing
 import com.photonne.app.resources.admin_settings_device_error_local_invalid
 import com.photonne.app.resources.admin_settings_device_error_public_invalid
@@ -189,29 +178,16 @@ private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
     }
     infoText?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (state.isProbing || state.isSaving) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp))
-            Spacer(Modifier.size(Spacing.md))
-        }
-        OutlinedButton(
-            onClick = viewModel::testLocalConnection,
-            enabled = !state.isProbing && !state.isSaving && state.localUrl.isNotBlank(),
-            modifier = Modifier.actionButtonHeight()
-        ) {
-            Text(stringResource(Res.string.admin_settings_device_probe_button))
-        }
-        Spacer(Modifier.size(Spacing.md))
-        Button(
-            onClick = viewModel::save,
-            enabled = !state.isProbing && !state.isSaving && state.publicUrl.isNotBlank(),
-            modifier = Modifier.actionButtonHeight()
-        ) {
-            Text(stringResource(Res.string.action_save))
-        }
-    }
+    SecondaryActionButton(
+        label = stringResource(Res.string.admin_settings_device_probe_button),
+        enabled = !state.isSaving && state.localUrl.isNotBlank(),
+        isLoading = state.isProbing,
+        onClick = viewModel::testLocalConnection
+    )
+    PrimaryActionButton(
+        label = stringResource(Res.string.action_save),
+        enabled = !state.isProbing && state.publicUrl.isNotBlank(),
+        isLoading = state.isSaving,
+        onClick = viewModel::save
+    )
 }
