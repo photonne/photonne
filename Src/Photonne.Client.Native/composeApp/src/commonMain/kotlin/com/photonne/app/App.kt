@@ -741,6 +741,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showRenamePerson by remember { mutableStateOf(false) }
     var showMergePicker by remember { mutableStateOf(false) }
     var showAssetFacesSheet by remember { mutableStateOf(false) }
+    var assetFacesRevision by remember { mutableStateOf(0) }
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlin.time.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
@@ -3363,6 +3364,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             assetFacesViewModel.open(assetId)
                             showAssetFacesSheet = true
                         },
+                        facesRevision = assetFacesRevision,
                         onShare = { item -> actionsViewModel.shareDirectly(listOf(item.id)) },
                         onDownload = { item -> actionsViewModel.download(listOf(item.id)) },
                         onDeleteFromDevice = { item ->
@@ -4458,6 +4460,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onDismiss = {
                 showAssetFacesSheet = false
                 assetFacesViewModel.close()
+                assetFacesRevision++
             },
             onAcceptSuggestion = assetFacesViewModel::acceptSuggestion,
             onDismissSuggestion = assetFacesViewModel::dismissSuggestion,

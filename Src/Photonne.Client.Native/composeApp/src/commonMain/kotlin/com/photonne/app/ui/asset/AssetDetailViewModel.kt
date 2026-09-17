@@ -9,6 +9,7 @@ import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.ExifData
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PersonAsset
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,11 @@ data class AssetDetailUiState(
     val error: UiError? = null,
     // Lazily-loaded extras for the info panel, keyed implicitly to [detail].
     val faces: List<Face> = emptyList(),
+    /** False while the faces request is in flight: an empty [faces] then means
+     *  "not known yet", not "no faces". */
+    val facesLoaded: Boolean = false,
+    /** The faces request failed; the panel falls back to the sheet entry. */
+    val facesFailed: Boolean = false,
     val samePersonAssets: List<PersonAsset> = emptyList(),
     val sameDayAssets: List<PersonAsset> = emptyList(),
 )
@@ -50,14 +56,17 @@ class AssetDetailViewModel(
     private var currentId: String? = null
 
     /** Info-panel extras (faces + related assets), cached per asset id for the
-     *  lifetime of the screen so swiping back is instant. */
+     *  lifetime of the screen so swiping back is instant. Each piece is null
+     *  until its own request succeeds, so a failed or cancelled load is
+     *  retried instead of being remembered as "empty". */
     private data class Extras(
-        val faces: List<Face> = emptyList(),
-        val samePersonAssets: List<PersonAsset> = emptyList(),
-        val sameDayAssets: List<PersonAsset> = emptyList(),
+        val faces: List<Face>? = null,
+        val samePersonAssets: List<PersonAsset>? = null,
+        val sameDayAssets: List<PersonAsset>? = null,
     )
     private val extrasCache = mutableMapOf<String, Extras>()
     private var extrasJob: Job? = null
+    private var facesRefreshJob: Job? = null
 
     private fun publishCache() {
         _details.value = cache.toMap()
@@ -125,38 +134,90 @@ class AssetDetailViewModel(
     /**
      * Loads the info-panel extras for [assetId]: detected faces, "same people"
      * (assets of the first confirmed person in this asset) and "same day".
-     * Served from cache when warm; never blocks the detail. Failures degrade
-     * to empty sections rather than surfacing an error.
+     * Each piece is published as soon as it arrives — faces never wait for the
+     * related strips. Served from cache when warm; never blocks the detail.
+     * Related strips degrade to empty on failure; a faces failure is flagged
+     * so the panel can still offer the faces sheet.
      */
     private fun loadExtras(assetId: String) {
         if (assetId.startsWith("device:")) return
-        extrasCache[assetId]?.let { cached ->
-            applyExtras(assetId, cached)
+        extrasJob?.cancel()
+        facesRefreshJob?.cancel()
+        val cached = extrasCache[assetId] ?: Extras()
+        applyExtras(assetId, cached)
+        if (cached.faces != null && cached.samePersonAssets != null && cached.sameDayAssets != null) return
+        extrasJob = viewModelScope.launch {
+            if (cached.faces == null || cached.samePersonAssets == null) {
+                launch { loadFacesAndSamePerson(assetId, cached.faces) }
+            }
+            if (cached.sameDayAssets == null) launch {
+                val sameDay = fetchOrNull { repository.getSameDay(assetId, limit = 12) }
+                    ?.items?.filter { it.id != assetId }?.take(8)
+                if (sameDay != null) updateExtras(assetId) { it.copy(sameDayAssets = sameDay) }
+            }
+        }
+    }
+
+    /**
+     * Re-reads the faces of [assetId] after the faces sheet may have changed
+     * them (assign / reject / unassign), along with the "same people" strip
+     * that hangs off them. The current strip stays on screen meanwhile.
+     */
+    fun refreshFaces(assetId: String) {
+        if (assetId.startsWith("device:")) return
+        val fresh = extrasCache[assetId]?.copy(faces = null, samePersonAssets = null)
+        if (fresh != null) extrasCache[assetId] = fresh
+        if (currentId != assetId) return
+        // Own job: cancelling extrasJob would also drop an in-flight "same day".
+        facesRefreshJob?.cancel()
+        facesRefreshJob = viewModelScope.launch { loadFacesAndSamePerson(assetId, knownFaces = null) }
+    }
+
+    private suspend fun loadFacesAndSamePerson(assetId: String, knownFaces: List<Face>?) {
+        val faces = knownFaces ?: fetchOrNull { repository.getFaces(assetId) }
+        if (faces == null) {
+            // Keep whatever is already on screen (a refresh); only flag the
+            // failure when there is nothing to show.
+            _state.update {
+                if (it.detail?.id == assetId && !it.facesLoaded) it.copy(facesFailed = true) else it
+            }
             return
         }
-        extrasJob?.cancel()
-        extrasJob = viewModelScope.launch {
-            val faces = runCatching { repository.getFaces(assetId) }.getOrDefault(emptyList())
-            val personId = faces.firstOrNull { it.personId != null && !it.isRejected }?.personId
-            val samePerson = if (personId != null) {
-                runCatching { repository.getPersonAssets(personId, limit = 12) }.getOrNull()
-                    ?.items.orEmpty().filter { it.id != assetId }.take(8)
-            } else emptyList()
-            val sameDay = runCatching { repository.getSameDay(assetId, limit = 12) }.getOrNull()
-                ?.items.orEmpty().filter { it.id != assetId }.take(8)
-            val extras = Extras(faces, samePerson, sameDay)
-            extrasCache[assetId] = extras
-            if (currentId == assetId) applyExtras(assetId, extras)
+        updateExtras(assetId) { it.copy(faces = faces) }
+        val personId = faces.firstOrNull { it.personId != null && !it.isRejected }?.personId
+        val samePerson = if (personId != null) {
+            fetchOrNull { repository.getPersonAssets(personId, limit = 12) }
+                ?.items?.filter { it.id != assetId }?.take(8)
+        } else emptyList()
+        if (samePerson != null) updateExtras(assetId) { it.copy(samePersonAssets = samePerson) }
+    }
+
+    /** Null on failure; cancellation propagates so a cancelled load is never
+     *  mistaken for an empty result. */
+    private suspend fun <T> fetchOrNull(block: suspend () -> T): T? =
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
         }
+
+    private fun updateExtras(assetId: String, transform: (Extras) -> Extras) {
+        val updated = transform(extrasCache[assetId] ?: Extras())
+        extrasCache[assetId] = updated
+        if (currentId == assetId) applyExtras(assetId, updated)
     }
 
     private fun applyExtras(assetId: String, extras: Extras) {
         _state.update { current ->
             if (current.detail?.id == assetId) {
                 current.copy(
-                    faces = extras.faces,
-                    samePersonAssets = extras.samePersonAssets,
-                    sameDayAssets = extras.sameDayAssets,
+                    faces = extras.faces.orEmpty(),
+                    facesLoaded = extras.faces != null,
+                    facesFailed = false,
+                    samePersonAssets = extras.samePersonAssets.orEmpty(),
+                    sameDayAssets = extras.sameDayAssets.orEmpty(),
                 )
             } else current
         }

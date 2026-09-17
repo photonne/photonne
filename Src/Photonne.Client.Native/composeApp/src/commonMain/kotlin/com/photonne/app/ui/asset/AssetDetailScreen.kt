@@ -202,6 +202,9 @@ fun AssetDetailScreen(
     onAssetTrashed: (assetId: String) -> Unit = {},
     onAssetArchived: (assetId: String) -> Unit = {},
     onOpenFaces: (assetId: String) -> Unit = {},
+    /** Bumped by the host when the faces sheet closes, so the inline faces of
+     *  the visible asset are re-read (the sheet may have changed them). */
+    facesRevision: Int = 0,
     onPageChanged: (assetId: String) -> Unit = {},
     onOpenAsset: (TimelineItem) -> Unit = {},
     onShare: (TimelineItem) -> Unit = {},
@@ -318,6 +321,9 @@ fun AssetDetailScreen(
     var showEditDate by remember { mutableStateOf(false) }
     var showTrashConfirm by remember { mutableStateOf(false) }
     val currentItem = items.getOrNull(pagerState.currentPage)
+    LaunchedEffect(facesRevision) {
+        if (facesRevision > 0) currentItem?.let { viewModel.refreshFaces(it.id) }
+    }
     val currentIsFavorite = state.detail
         ?.takeIf { it.id == currentItem?.id }?.isFavorite
         ?: currentItem?.isFavorite ?: false
@@ -586,6 +592,7 @@ fun AssetDetailScreen(
                         errorMessage = if (isCurrent) state.error?.userMessage else null,
                         baseUrl = apiBaseUrl,
                         faces = if (isCurrent) state.faces else emptyList(),
+                        facesFailed = isCurrent && state.facesFailed,
                         samePersonAssets = if (isCurrent) state.samePersonAssets else emptyList(),
                         sameDayAssets = if (isCurrent) state.sameDayAssets else emptyList(),
                         onEditDescription = { showEditDescription = true },
@@ -1543,6 +1550,7 @@ private fun AssetMetadataPanel(
     errorMessage: String?,
     baseUrl: String,
     faces: List<com.photonne.app.data.models.Face>,
+    facesFailed: Boolean,
     samePersonAssets: List<com.photonne.app.data.models.PersonAsset>,
     sameDayAssets: List<com.photonne.app.data.models.PersonAsset>,
     onEditDescription: () -> Unit,
@@ -1621,11 +1629,13 @@ private fun AssetMetadataPanel(
             LocationMap(latitude = lat, longitude = lon)
         }
 
-        // Detected faces — thumbnails inline; tap any (or "Ver todas") opens
-        // the full faces sheet.
+        // Detected faces — thumbnails inline; tapping the card opens the full
+        // faces sheet. Nothing while they load or when the asset has none (the
+        // overflow menu still reaches the sheet); the plain row only comes back
+        // if the request failed, so the sheet stays reachable from here.
         if (detail != null && faces.isNotEmpty()) {
             FacesSection(faces = faces, baseUrl = baseUrl, onOpenFaces = onOpenFaces)
-        } else if (detail != null) {
+        } else if (detail != null && facesFailed) {
             MetadataActionRow(
                 leadingIcon = Icons.Outlined.Face,
                 label = "Ver caras",
@@ -2656,6 +2666,8 @@ private fun AssetActionsBottomBar(
                                 onOpenFaces()
                             }
                         )
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.asset_action_archive)) },
                             leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
