@@ -4,24 +4,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CreateNewFolder
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,7 +40,6 @@ import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
-import com.photonne.app.resources.admin_libraries_action_delete
 import com.photonne.app.resources.admin_libraries_action_new
 import com.photonne.app.resources.admin_libraries_action_permissions
 import com.photonne.app.resources.admin_libraries_action_scan
@@ -58,15 +51,6 @@ import com.photonne.app.resources.admin_libraries_permissions_empty
 import com.photonne.app.resources.admin_libraries_permissions_title
 import com.photonne.app.resources.admin_libraries_scan_progress
 import com.photonne.app.ui.main.CreateAction
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import com.photonne.app.ui.theme.EmptyState
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.remember
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.photonne.app.data.error.UiError
@@ -195,8 +179,8 @@ private fun LibraryCard(
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             Text(library.name, style = MaterialTheme.typography.titleMedium)
             Text(
@@ -205,7 +189,7 @@ private fun LibraryCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 MetricPill(stringResource(Res.string.admin_libraries_asset_count, library.assetCount))
@@ -225,10 +209,10 @@ private fun LibraryCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 OutlinedButton(onClick = onScan, enabled = scanEnabled, modifier = Modifier.weight(1f)) {
                     Text(stringResource(Res.string.admin_libraries_action_scan))

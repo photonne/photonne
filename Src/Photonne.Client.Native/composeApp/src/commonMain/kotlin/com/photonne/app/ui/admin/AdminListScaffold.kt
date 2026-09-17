@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -184,9 +185,7 @@ fun AdminEditorScaffold(
 ) {
     AdminResultSnackbar(resultMessage, onResultShown)
 
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
-    Box(modifier = Modifier.fillMaxSize()) {
+    AdminPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
         when {
             isResolving -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -197,7 +196,35 @@ fun AdminEditorScaffold(
                 actionLabel = stringResource(Res.string.error_banner_retry),
                 onAction = onRetry
             )
-            else -> Column(
+            else -> page(content)
+        }
+    }
+}
+
+/**
+ * Shell of every admin page that is a scrolling column rather than a list:
+ * the hubs, the server version, the duplicates and backup tasks, the editors.
+ * Each of them used to paste the same forty lines — Box, haze, scroll state,
+ * the padding that clears the floating chrome and the floating nav, and the
+ * chrome wired to that scroll — with the margins drifting between 8, 12 and
+ * 16 dp from one copy to the next.
+ *
+ * [body] gets a `page` function that draws the padded scrolling column, so a
+ * caller can show something else instead of it (a spinner, an empty state)
+ * and still keep the chrome.
+ */
+@Composable
+fun AdminPageScaffold(
+    title: String,
+    onBack: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
+    body: @Composable (page: @Composable (@Composable ColumnScope.() -> Unit) -> Unit) -> Unit
+) {
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    Box(modifier = Modifier.fillMaxSize()) {
+        body { content ->
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
@@ -225,6 +252,16 @@ fun AdminEditorScaffold(
             hazeState = hazeState,
             onChromeVisibleChange = onChromeVisibleChange
         )
+    }
+}
+
+/** Label on the left, value on the right: a row of a stats or info card. It
+ *  existed three times over (InfoRow, StatRow, TwoColumn), identical. */
+@Composable
+fun AdminKeyValueRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.titleMedium)
     }
 }
 

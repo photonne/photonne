@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_trash_error_stats
 import com.photonne.app.resources.admin_trash_cleanup_done_format
 import com.photonne.app.resources.admin_trash_error_cleanup
@@ -199,14 +200,14 @@ private fun TrashUsageSection(stats: AdminTrashSideState, onCleanup: () -> Unit)
             )
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                TwoColumn(stringResource(Res.string.admin_trash_total_items), formatCount(s.totalItems))
-                TwoColumn(stringResource(Res.string.admin_trash_total_bytes), humanBytes(s.totalBytes))
-                TwoColumn(stringResource(Res.string.admin_trash_expired), formatCount(s.expiredItems))
-                TwoColumn(stringResource(Res.string.admin_trash_over_quota_users), formatCount(s.overQuotaUsers))
-                TwoColumn(stringResource(Res.string.admin_trash_over_quota_bytes), humanBytes(s.overQuotaBytes))
+                AdminKeyValueRow(stringResource(Res.string.admin_trash_total_items), formatCount(s.totalItems))
+                AdminKeyValueRow(stringResource(Res.string.admin_trash_total_bytes), humanBytes(s.totalBytes))
+                AdminKeyValueRow(stringResource(Res.string.admin_trash_expired), formatCount(s.expiredItems))
+                AdminKeyValueRow(stringResource(Res.string.admin_trash_over_quota_users), formatCount(s.overQuotaUsers))
+                AdminKeyValueRow(stringResource(Res.string.admin_trash_over_quota_bytes), humanBytes(s.overQuotaBytes))
             }
         }
         if (s.perUser.isNotEmpty()) {
@@ -218,8 +219,8 @@ private fun TrashUsageSection(stats: AdminTrashSideState, onCleanup: () -> Unit)
                 )
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     s.perUser.forEach { user -> PerUserRow(user) }
                 }
@@ -232,7 +233,7 @@ private fun TrashUsageSection(stats: AdminTrashSideState, onCleanup: () -> Unit)
         ) {
             if (stats.isCleaning) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(12.dp))
+                Spacer(Modifier.size(Spacing.md))
             }
             OutlinedButton(
                 onClick = onCleanup,
@@ -245,14 +246,6 @@ private fun TrashUsageSection(stats: AdminTrashSideState, onCleanup: () -> Unit)
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp))
         }
-    }
-}
-
-@Composable
-private fun TwoColumn(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.titleMedium)
     }
 }
 

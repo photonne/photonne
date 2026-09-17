@@ -1,22 +1,19 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_backup_error_download
 import org.jetbrains.compose.resources.getString
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.ui.error.ErrorBanner
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -51,12 +47,6 @@ import com.photonne.app.resources.admin_backup_media_warning
 import com.photonne.app.resources.admin_backup_restore_only_pwa
 import com.photonne.app.resources.admin_backup_section_download
 import com.photonne.app.resources.admin_backup_section_restore
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -128,20 +118,10 @@ fun AdminBackupScreen(
     viewModel: AdminBackupViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .hazeSource(hazeState)
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    AdminPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
+    page {
         ErrorBanner(error = state.error)
         state.downloadedTo?.let { path ->
             Text(
@@ -170,7 +150,7 @@ fun AdminBackupScreen(
                 stringResource(Res.string.admin_backup_media_warning),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(Spacing.lg)
             )
         }
 
@@ -206,7 +186,7 @@ fun AdminBackupScreen(
         ) {
             if (state.isDownloading) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(12.dp))
+                Spacer(Modifier.size(Spacing.md))
             }
             Button(
                 onClick = viewModel::downloadBackup,
@@ -232,23 +212,10 @@ fun AdminBackupScreen(
                 stringResource(Res.string.admin_backup_restore_only_pwa),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(Spacing.lg)
             )
         }
     }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
     }
 }
 
@@ -270,7 +237,7 @@ private fun BackupLevelOption(
                 role = Role.RadioButton,
                 onClick = { onSelect(level) }
             )
-            .padding(vertical = 4.dp),
+            .padding(vertical = Spacing.xs),
         verticalAlignment = Alignment.Top
     ) {
         RadioButton(
@@ -278,7 +245,7 @@ private fun BackupLevelOption(
             enabled = enabled,
             onClick = null
         )
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(Spacing.sm))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(title),

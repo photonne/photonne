@@ -1,23 +1,17 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Group
@@ -30,10 +24,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.admin_user_action_new
 import com.photonne.app.resources.admin_user_inactive_badge
 import com.photonne.app.resources.admin_user_last_login
@@ -44,15 +36,6 @@ import com.photonne.app.resources.admin_user_role_admin
 import com.photonne.app.resources.admin_user_role_user
 import com.photonne.app.resources.admin_users_empty
 import com.photonne.app.ui.main.CreateAction
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import com.photonne.app.ui.theme.EmptyState
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.remember
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 
@@ -107,8 +90,8 @@ private fun UserRow(user: UserDto, onClick: () -> Unit) {
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             val displayName = listOfNotNull(
                 user.firstName?.takeIf { it.isNotBlank() },
@@ -120,9 +103,9 @@ private fun UserRow(user: UserDto, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val roleLabel = if (user.role.equals("Admin", ignoreCase = true)) {

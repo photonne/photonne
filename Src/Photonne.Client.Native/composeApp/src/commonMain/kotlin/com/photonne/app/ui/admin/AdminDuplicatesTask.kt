@@ -1,26 +1,20 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_duplicates_error_run
 import org.jetbrains.compose.resources.getString
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.ui.error.ErrorBanner
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,12 +44,6 @@ import com.photonne.app.resources.admin_duplicates_stats_total
 import com.photonne.app.resources.admin_duplicates_stats_unindexed
 import com.photonne.app.resources.admin_task_chip_completed
 import com.photonne.app.resources.admin_task_chip_running
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -154,9 +142,6 @@ fun AdminDuplicatesScreen(
     viewModel: AdminDuplicatesViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsState()
 
     var nowMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
@@ -186,47 +171,22 @@ fun AdminDuplicatesScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .hazeSource(hazeState)
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    AdminPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
+    page {
         ErrorBanner(error = state.error)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                stringResource(Res.string.admin_duplicates_physical),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
-            Switch(
-                checked = state.physical,
-                onCheckedChange = viewModel::setPhysical,
-                enabled = !state.isRunning
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                stringResource(Res.string.admin_duplicates_cleanup),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
-            Switch(
-                checked = state.cleanup,
-                onCheckedChange = viewModel::setCleanup,
-                enabled = !state.isRunning
-            )
-        }
+        SettingSwitch(
+            label = stringResource(Res.string.admin_duplicates_physical),
+            checked = state.physical,
+            enabled = !state.isRunning,
+            onChange = viewModel::setPhysical
+        )
+        SettingSwitch(
+            label = stringResource(Res.string.admin_duplicates_cleanup),
+            checked = state.cleanup,
+            enabled = !state.isRunning,
+            onChange = viewModel::setCleanup
+        )
 
         val event = state.lastEvent
         val isCompleted = event?.isCompleted == true && !state.isRunning
@@ -328,7 +288,7 @@ fun AdminDuplicatesScreen(
         ) {
             if (state.isRunning) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(12.dp))
+                Spacer(Modifier.size(Spacing.md))
                 OutlinedButton(onClick = viewModel::cancel) {
                     Text(stringResource(Res.string.admin_duplicates_action_cancel))
                 }
@@ -341,18 +301,5 @@ fun AdminDuplicatesScreen(
             }
         }
     }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
     }
 }

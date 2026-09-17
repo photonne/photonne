@@ -1,23 +1,18 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AdminUserUsage
-import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_stats_coverage_indexed
 import com.photonne.app.resources.admin_stats_coverage_never
@@ -63,12 +57,6 @@ import com.photonne.app.ui.charts.StackedSegment
 import com.photonne.app.ui.charts.TopNBars
 import com.photonne.app.ui.charts.TopNEntry
 import com.photonne.app.ui.charts.rememberChartPalette
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import com.photonne.app.resources.admin_stats_per_user_list
@@ -159,7 +147,7 @@ private fun TotalsOverviewCard(
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -183,15 +171,15 @@ private fun TotalsOverviewCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                StatRow(
+                AdminKeyValueRow(
                     label = stringResource(Res.string.admin_stats_total_photos),
                     value = formatCount(totalPhotos)
                 )
-                StatRow(
+                AdminKeyValueRow(
                     label = stringResource(Res.string.admin_stats_total_videos),
                     value = formatCount(totalVideos)
                 )
-                StatRow(
+                AdminKeyValueRow(
                     label = stringResource(Res.string.admin_stats_total_storage),
                     value = humanBytes(totalBytes)
                 )
@@ -221,7 +209,7 @@ private fun TopUsersCard(users: List<AdminUserUsage>) {
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
@@ -244,17 +232,6 @@ private fun TopUsersCard(users: List<AdminUserUsage>) {
     }
 }
 
-@Composable
-private fun StatRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.titleMedium)
-    }
-}
-
 /**
  * The last indexing-coverage verification: files on disk vs. indexed, with the
  * offending paths one tap away when anything is left unindexed. Data comes
@@ -269,12 +246,12 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
             Text(
                 stringResource(Res.string.admin_stats_coverage_title),
                 style = MaterialTheme.typography.titleSmall
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
 
             if (!coverage.hasResult) {
                 Text(
@@ -285,9 +262,9 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
                 return@Column
             }
 
-            StatRow(stringResource(Res.string.admin_stats_coverage_total), formatCount(coverage.totalFiles))
-            StatRow(stringResource(Res.string.admin_stats_coverage_indexed), formatCount(coverage.indexed))
-            StatRow(stringResource(Res.string.admin_stats_coverage_unsupported), formatCount(coverage.unsupported))
+            AdminKeyValueRow(stringResource(Res.string.admin_stats_coverage_total), formatCount(coverage.totalFiles))
+            AdminKeyValueRow(stringResource(Res.string.admin_stats_coverage_indexed), formatCount(coverage.indexed))
+            AdminKeyValueRow(stringResource(Res.string.admin_stats_coverage_unsupported), formatCount(coverage.unsupported))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -308,9 +285,9 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
             // Bottom line so nobody has to do the math: covered indexables over
             // total indexables. Unsupported files are left out of the ratio —
             // they can never be indexed, so they'd only dilute the verdict.
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             HorizontalDivider()
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             val indexable = coverage.indexed + coverage.unindexed
             val complete = coverage.unindexed == 0
             Row(
@@ -344,7 +321,7 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
             )
 
             if (coverage.offlineLibraries > 0) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 Text(
                     stringResource(Res.string.admin_stats_coverage_offline, coverage.offlineLibraries),
                     style = MaterialTheme.typography.bodySmall,
@@ -353,7 +330,7 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
             }
 
             coverage.verifiedAtUtc?.let { verified ->
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 Text(
                     stringResource(
                         Res.string.admin_stats_coverage_verified_at,
@@ -365,7 +342,7 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
             }
 
             if (coverage.unindexedPaths.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 Text(
                     stringResource(Res.string.admin_stats_coverage_show_list, coverage.unindexed),
                     style = MaterialTheme.typography.labelLarge,
@@ -375,7 +352,7 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
                         .clickable { showPaths = !showPaths }
                 )
                 if (showPaths) {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Spacing.xs))
                     coverage.unindexedPaths.forEach { path ->
                         Text(
                             path,
@@ -409,7 +386,7 @@ private fun UserUsageCard(usage: AdminUserUsage) {
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(usage.displayName, style = MaterialTheme.typography.titleMedium)
@@ -428,16 +405,16 @@ private fun UserUsageCard(usage: AdminUserUsage) {
                 trackColor = MaterialTheme.colorScheme.surface,
                 barHeight = 8.dp
             )
-            StatRow(
+            AdminKeyValueRow(
                 label = stringResource(Res.string.admin_stats_total_photos),
                 value = "${usage.photos} · ${humanBytes(usage.photoBytes)}"
             )
-            StatRow(
+            AdminKeyValueRow(
                 label = stringResource(Res.string.admin_stats_total_videos),
                 value = "${usage.videos} · ${humanBytes(usage.videoBytes)}"
             )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-            StatRow(
+            HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xxs))
+            AdminKeyValueRow(
                 label = stringResource(Res.string.admin_stats_total_storage),
                 value = humanBytes(usage.photoBytes + usage.videoBytes)
             )

@@ -6,24 +6,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.TaskAlt
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,13 +62,6 @@ import com.photonne.app.resources.enrichment_task_object_detection
 import com.photonne.app.resources.enrichment_task_scene_classification
 import com.photonne.app.resources.enrichment_task_text_recognition
 import com.photonne.app.resources.enrichment_task_thumbnails
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import com.photonne.app.ui.theme.EmptyState
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -194,7 +181,7 @@ private fun FailuresHeader(
     onKindFilter: (EnrichmentFailureKind?) -> Unit,
     onRetryAll: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(Res.string.admin_enrichment_failures_total, total),
@@ -221,7 +208,7 @@ private fun FailuresHeader(
             }
         }
         if (countsByType.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -315,7 +302,7 @@ private fun FailureCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
             Text(
                 text = failure.fileName.ifBlank { failure.assetId },
                 style = MaterialTheme.typography.titleSmall,
@@ -324,7 +311,7 @@ private fun FailureCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAsset)
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Text(
                 text = listOfNotNull(
                     failure.ownerName?.takeIf { it.isNotBlank() },
@@ -334,7 +321,7 @@ private fun FailureCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -360,7 +347,7 @@ private fun FailureCard(
             }
 
             failure.errorMessage?.takeIf { it.isNotBlank() }?.let { msg ->
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 Text(
                     text = msg,
                     style = MaterialTheme.typography.bodySmall,
@@ -372,7 +359,7 @@ private fun FailureCard(
             // wall of failures readable as one cause repeated N times rather
             // than N separate problems.
             failure.failureCode?.takeIf { it.isNotBlank() }?.let { code ->
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(Spacing.xxs))
                 Text(
                     text = code,
                     style = MaterialTheme.typography.labelSmall,
@@ -381,7 +368,7 @@ private fun FailureCard(
             }
 
             item.actionError?.takeIf { it.isNotBlank() }?.let { msg ->
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 Text(
                     text = msg,
                     style = MaterialTheme.typography.bodySmall,
@@ -389,7 +376,7 @@ private fun FailureCard(
                 )
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
@@ -397,7 +384,7 @@ private fun FailureCard(
             ) {
                 if (item.isBusy) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(Spacing.md))
                 } else {
                     if (!isSuppressed) {
                         TextButton(onClick = onSuppress) {
@@ -406,7 +393,7 @@ private fun FailureCard(
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(Modifier.size(4.dp))
+                            Spacer(Modifier.size(Spacing.xs))
                             Text(stringResource(Res.string.admin_enrichment_failures_suppress))
                         }
                     }
@@ -416,7 +403,7 @@ private fun FailureCard(
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(Modifier.size(4.dp))
+                        Spacer(Modifier.size(Spacing.xs))
                         Text(stringResource(Res.string.admin_enrichment_failures_retry))
                     }
                 }

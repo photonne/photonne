@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,8 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -21,17 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.actionButtonHeight
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_server_checked_at
 import com.photonne.app.resources.admin_server_check_error
@@ -57,13 +49,10 @@ fun AdminServerScreen(
     viewModel: AdminServerViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    AdminPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
     when {
         state.isLoading && state.info == null ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -78,14 +67,7 @@ fun AdminServerScreen(
             )
         state.info != null -> {
             val info = state.info!!
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .hazeSource(hazeState)
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            page {
                 // A re-check that failed used to look exactly like one that
                 // found nothing new: the error only showed with no data at all.
                 ErrorBanner(error = state.error, onRetry = { viewModel.load(refresh = true) })
@@ -96,26 +78,26 @@ fun AdminServerScreen(
                     )
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                     ) {
-                        InfoRow(
+                        AdminKeyValueRow(
                             label = stringResource(Res.string.admin_server_current_version),
                             value = info.currentVersion.ifBlank { "—" }
                         )
                         info.latestVersion?.let { latest ->
-                            InfoRow(
+                            AdminKeyValueRow(
                                 label = stringResource(Res.string.admin_server_latest_version),
                                 value = latest
                             )
                         }
                         info.checkedAt?.let { checked ->
-                            InfoRow(
+                            AdminKeyValueRow(
                                 label = stringResource(Res.string.admin_server_checked_at),
                                 value = adminDateTime(checked) ?: checked
                             )
                         }
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(Spacing.xs))
                         Text(
                             text = stringResource(
                                 if (info.hasUpdate) Res.string.admin_server_update_available
@@ -145,8 +127,8 @@ fun AdminServerScreen(
                         )
                     ) {
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
                         ) {
                             Text(
                                 stringResource(Res.string.admin_server_release_url),
@@ -164,8 +146,8 @@ fun AdminServerScreen(
                         )
                     ) {
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
                         ) {
                             Text(
                                 stringResource(Res.string.admin_server_release_notes),
@@ -182,7 +164,7 @@ fun AdminServerScreen(
                 ) {
                     if (state.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.size(12.dp))
+                        Spacer(Modifier.size(Spacing.md))
                     }
                     Button(
                         onClick = { viewModel.load(refresh = true) },
@@ -195,26 +177,6 @@ fun AdminServerScreen(
             }
         }
     }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
     }
 }
 
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.titleMedium)
-    }
-}

@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_security_min_length
@@ -63,7 +63,7 @@ fun AdminDeleteUserDialog(
                     )
                 )
                 errorMessage?.let { msg ->
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     Text(msg, color = MaterialTheme.colorScheme.error)
                 }
             }
@@ -107,7 +107,7 @@ fun AdminPromoteToPrimaryDialog(
                     )
                 )
                 errorMessage?.let { msg ->
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     Text(msg, color = MaterialTheme.colorScheme.error)
                 }
             }
@@ -145,9 +145,9 @@ fun AdminResetPasswordDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 stringResource(Res.string.admin_user_action_reset_password_title),
@@ -182,7 +182,7 @@ fun AdminResetPasswordDialog(
             errorMessage?.let { msg ->
                 Text(msg, color = MaterialTheme.colorScheme.error)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -190,7 +190,7 @@ fun AdminResetPasswordDialog(
                 TextButton(onClick = onDismiss, enabled = !isSubmitting) {
                     Text(stringResource(Res.string.action_cancel))
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 Button(enabled = canSubmit, onClick = { onConfirm(newPassword) }) {
                     Text(stringResource(Res.string.admin_user_action_reset_password))
                 }

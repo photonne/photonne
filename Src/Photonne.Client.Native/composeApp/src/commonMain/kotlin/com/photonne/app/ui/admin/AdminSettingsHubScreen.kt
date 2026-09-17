@@ -24,8 +24,6 @@ import com.photonne.app.resources.admin_settings_image_embedding_subtitle
 import com.photonne.app.resources.admin_settings_image_subtitle
 import com.photonne.app.resources.admin_settings_metadata
 import com.photonne.app.resources.admin_settings_metadata_subtitle
-import com.photonne.app.resources.admin_shared_trash
-import com.photonne.app.resources.admin_shared_trash_subtitle
 import com.photonne.app.resources.admin_settings_nightly
 import com.photonne.app.resources.admin_settings_nightly_subtitle
 import com.photonne.app.resources.admin_settings_notifications

@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -195,7 +196,7 @@ private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
     ) {
         if (state.isProbing || state.isSaving) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp))
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.size(Spacing.md))
         }
         OutlinedButton(
             onClick = viewModel::testLocalConnection,
@@ -204,7 +205,7 @@ private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
         ) {
             Text(stringResource(Res.string.admin_settings_device_probe_button))
         }
-        Spacer(Modifier.size(12.dp))
+        Spacer(Modifier.size(Spacing.md))
         Button(
             onClick = viewModel::save,
             enabled = !state.isProbing && !state.isSaving && state.publicUrl.isNotBlank(),

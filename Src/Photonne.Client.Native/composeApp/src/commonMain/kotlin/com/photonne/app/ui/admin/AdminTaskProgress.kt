@@ -1,7 +1,7 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,10 +45,10 @@ fun TaskProgressCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
             if (chips != null) {
                 chips()
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
             }
             Text(
                 text = statusText,
@@ -87,7 +87,7 @@ fun MetricPill(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = Spacing.xs)
         )
     }
 }
@@ -128,13 +128,13 @@ fun StatGridCard(
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             items.chunked(columns).forEach { rowItems ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     rowItems.forEach { item ->
                         StatCell(
@@ -162,7 +162,7 @@ private fun StatCell(item: StatGridItem, modifier: Modifier = Modifier) {
         tonalElevation = 1.dp
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.md, horizontal = Spacing.sm),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -171,7 +171,7 @@ private fun StatCell(item: StatGridItem, modifier: Modifier = Modifier) {
                 color = item.valueColor ?: MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(Spacing.xxs))
             Text(
                 text = item.label,
                 style = MaterialTheme.typography.bodySmall,

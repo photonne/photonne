@@ -15,17 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,15 +79,9 @@ import com.photonne.app.resources.admin_settings_saved
 import com.photonne.app.resources.error_banner_retry
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.library.ConfirmActionDialog
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.navigation.PlatformBackHandler
 import com.photonne.app.ui.theme.EmptyState
-import com.photonne.app.ui.theme.actionButtonHeight
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
+import com.photonne.app.ui.theme.Spacing
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
@@ -126,13 +117,11 @@ fun AdminSettingsForm(
         onShown = onSavedShown
     )
 
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
     var confirmDiscard by remember { mutableStateOf(false) }
     val guardedBack = { if (state.isDirty) confirmDiscard = true else onBack() }
     PlatformBackHandler(enabled = state.isDirty) { confirmDiscard = true }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    AdminPageScaffold(title = title, onBack = guardedBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
         when {
             state.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -144,28 +133,12 @@ fun AdminSettingsForm(
                 actionLabel = stringResource(Res.string.error_banner_retry),
                 onAction = onRetry
             )
-            else -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .hazeSource(hazeState)
-                    // El padding es el modificador interno del scroll, así que hace de
-                    // content-padding: reservar el hueco del cromo flotante arriba y de
-                    // la nav flotante abajo deja que el formulario pase a sangre por
-                    // debajo de las cápsulas (mismo estilo que Timeline/Álbumes).
-                    .padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 16.dp + subscreenChromeReservedTop(),
-                        bottom = 16.dp + floatingNavBarReservedHeight()
-                    ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            else -> page {
                 content()
 
                 ErrorBanner(error = state.error, onDismiss = onDismissError)
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 AdminPrimaryActionRow(
                     label = stringResource(Res.string.action_save),
                     enabled = state.canSave,
@@ -176,19 +149,6 @@ fun AdminSettingsForm(
                 footer?.invoke(this)
             }
         }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = guardedBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
     }
 
     if (confirmDiscard) {
@@ -241,9 +201,9 @@ private fun SettingTile(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 14.dp, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             if (icon != null) {
                 Box(
@@ -371,7 +331,7 @@ fun SettingTextField(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 14.dp, vertical = Spacing.md),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
@@ -425,7 +385,7 @@ fun NightlyStateCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -657,7 +617,7 @@ fun SettingSlider(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 14.dp, vertical = Spacing.md),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
@@ -765,7 +725,7 @@ private fun ValueChip(text: String) {
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = 10.dp, vertical = Spacing.xs)
     ) {
         Text(
             text = text,

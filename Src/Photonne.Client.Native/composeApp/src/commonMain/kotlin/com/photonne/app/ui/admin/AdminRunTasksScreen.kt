@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -1178,8 +1179,8 @@ fun AdminRunTasksScreen(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize().hazeSource(hazeState),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        contentPadding = PaddingValues(start = Spacing.lg, end = Spacing.lg, top = Spacing.lg + reservedTop, bottom = Spacing.lg + floatingNavBarReservedHeight()),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         // Every action here is fire-and-forget against a 10s poll, so the only
         // place an outcome can land is a line at the top of the list.
@@ -1404,7 +1405,7 @@ private fun InlineToggle(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 8.dp),
+            .padding(start = Spacing.lg, end = Spacing.md, top = Spacing.xs, bottom = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -1459,18 +1460,18 @@ private fun SectionHeader(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onToggle)
-            .padding(horizontal = 4.dp)
-            .padding(top = 16.dp, bottom = 8.dp),
+            .padding(horizontal = Spacing.xs)
+            .padding(top = Spacing.lg, bottom = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 Text(
                     title,
@@ -1512,7 +1513,7 @@ private fun TaskBanner(message: TaskMessage, color: androidx.compose.ui.graphics
         text,
         color = color,
         style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs)
     )
 }
 
@@ -1524,7 +1525,7 @@ private fun SectionCountPill(count: Int) {
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xxs)
     ) {
         Text(
             "$count",
@@ -1590,10 +1591,10 @@ private fun TaskRow(
         // The footer's rows and dividers run edge to edge, so only the content
         // above them is padded.
         Column {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md)
                 ) {
                     Icon(
                         imageVector = task.icon,
@@ -1625,7 +1626,7 @@ private fun TaskRow(
                 // backwards while we were still adding work).
                 when {
                     running != null -> {
-                        Spacer(Modifier.size(8.dp))
+                        Spacer(Modifier.size(Spacing.sm))
                         val pct = (running.percentage / 100.0).toFloat().coerceIn(0f, 1f)
                         LinearProgressIndicator(
                             progress = { pct },
@@ -1633,7 +1634,7 @@ private fun TaskRow(
                         )
                     }
                     aiInProgress && pending != null -> {
-                        Spacer(Modifier.size(8.dp))
+                        Spacer(Modifier.size(Spacing.sm))
                         // Session-scoped progress: how much of *this* run's
                         // work the workers have completed. Stays at 0 % when
                         // the queue is full, climbs to 100 % as it drains —
@@ -1661,7 +1662,7 @@ private fun TaskRow(
                         }
                     }
                     aiInProgress -> {
-                        Spacer(Modifier.size(8.dp))
+                        Spacer(Modifier.size(Spacing.sm))
                         LinearProgressIndicator(
                             modifier = Modifier.fillMaxWidth().height(4.dp)
                         )
@@ -1687,7 +1688,7 @@ private fun TaskRow(
                 // died on the first line, which makes a failing task and a dead
                 // button look exactly the same.
                 if (!isActive && lastFinished != null && lastFinished.lastMessage.isNotBlank()) {
-                    Spacer(Modifier.size(8.dp))
+                    Spacer(Modifier.size(Spacing.sm))
                     Text(
                         lastFinished.lastMessage,
                         style = MaterialTheme.typography.bodySmall,
@@ -1898,8 +1899,8 @@ private fun TaskRowDetails(
 
     val mutedColor = contentColor.copy(alpha = 0.75f)
     val errorColor = MaterialTheme.colorScheme.error
-    Spacer(Modifier.size(8.dp))
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Spacer(Modifier.size(Spacing.sm))
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
         for (line in lines) {
             Row(verticalAlignment = Alignment.Top) {
                 Text(
@@ -2010,12 +2011,12 @@ private fun TaskActionRow(
     HorizontalDivider(color = dividerColor.copy(alpha = 0.12f))
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
         modifier = Modifier
             .fillMaxWidth()
             .let { mod -> if (onClick != null) mod.clickable(role = Role.Button, onClick = onClick) else mod }
             .heightIn(min = 48.dp)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = Spacing.lg)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
             if (icon != null) {

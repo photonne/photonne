@@ -69,8 +69,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import org.jetbrains.compose.resources.getString
@@ -358,9 +356,9 @@ private fun SelectionActionBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         Text(
             stringResource(Res.string.admin_shared_trash_selected_format, count),
@@ -397,9 +395,9 @@ private fun SharedTrashRow(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onToggle, onLongClick = onToggle)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         SharedTrashThumbnail(
             item = item,
@@ -425,7 +423,7 @@ private fun SharedTrashRow(
             sourceFolderLabel(item)?.let { folder ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
                     Icon(
                         Icons.Outlined.Folder,
