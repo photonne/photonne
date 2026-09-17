@@ -1,5 +1,8 @@
 package com.photonne.app.data.admin
 
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.async
 import com.photonne.app.data.api.AdminEnrichmentFailuresPage
 import com.photonne.app.data.api.AdminEnrichmentTaskActionResponse
 import com.photonne.app.data.api.AdminIndexingCoverageResponse
@@ -131,13 +134,14 @@ class AdminRepository(private val api: PhotonneApi) {
         return dto.value.takeIf { it.isNotBlank() }
     }
 
-    suspend fun getSettings(keys: List<String>): Map<String, String> {
-        val out = LinkedHashMap<String, String>()
-        for (key in keys) {
-            val value = runCatching { api.adminGetSetting(key).value }.getOrDefault("")
-            out[key] = value
-        }
-        return out
+    // One request per key is all the API offers, so they go out together: the
+    // nightly form alone is twenty-one of them. A failed read has to fail the
+    // load — turning it into "" made an offline phone or an expired session
+    // paint the client's defaults as if they were what the server had stored.
+    suspend fun getSettings(keys: List<String>): Map<String, String> = coroutineScope {
+        keys.map { key -> async { key to api.adminGetSetting(key).value } }
+            .awaitAll()
+            .toMap()
     }
 
     suspend fun saveSetting(key: String, value: String) {

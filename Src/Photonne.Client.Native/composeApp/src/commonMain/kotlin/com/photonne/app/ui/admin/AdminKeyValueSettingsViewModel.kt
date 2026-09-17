@@ -23,13 +23,28 @@ data class AdminKeyValueUiState(
     val current: Map<String, String> = emptyMap(),
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
+    /** The load itself failed: there is nothing trustworthy to edit, so the
+     *  form shows the error with a retry instead of a page of defaults that
+     *  would pass for the server's values. */
+    val loadFailed: Boolean = false,
+    /** Keys whose current value the server would refuse or silently rewrite
+     *  (empty, not a number, outside its range, or at odds with another
+     *  field). Saving waits until this is empty. */
+    val invalid: Set<String> = emptySet(),
     val errorMessage: String? = null,
     val successMessage: String? = null
 ) {
+    val isDirty: Boolean
+        get() = current != original
+
     val canSave: Boolean
-        get() = !isSubmitting && !isLoading && current != original
+        get() = !isSubmitting && !isLoading && isDirty && invalid.isEmpty()
 
     fun get(key: String): String = current[key].orEmpty()
+
+    fun bool(key: String): Boolean = get(key).equals("true", ignoreCase = true)
+
+    fun int(key: String, default: Int): Int = get(key).toIntOrNull() ?: default
 }
 
 /**
@@ -56,9 +71,23 @@ abstract class AdminKeyValueSettingsViewModel(
     /** Hook for subclasses to normalize input as the user types. */
     protected open fun normalize(key: String, value: String): String = value
 
+    /** Whole-number settings and the range the server accepts for each. The
+     *  server never rejects a value: it clamps or falls back to its default
+     *  when it reads one, without telling anybody, so the form is the only
+     *  place an admin can find out that 500 is not a JPEG quality. */
+    open val intRanges: Map<String, IntRange> = emptyMap()
+
+    /** Rules that span more than one field. Returns the keys at fault. */
+    protected open fun crossCheck(current: Map<String, String>): Set<String> = emptySet()
+
+    private fun invalidKeys(current: Map<String, String>): Set<String> =
+        invalidIntKeys(current, intRanges) + crossCheck(current)
+
     fun load() {
         if (_state.value.isLoading) return
-        _state.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
+        _state.update {
+            it.copy(isLoading = true, loadFailed = false, errorMessage = null, successMessage = null)
+        }
         viewModelScope.launch {
             runCatching { repository.getSettings(keys) }
                 .onSuccess { fetched ->
@@ -69,6 +98,7 @@ abstract class AdminKeyValueSettingsViewModel(
                         it.copy(
                             original = withDefaults,
                             current = withDefaults,
+                            invalid = invalidKeys(withDefaults),
                             isLoading = false
                         )
                     }
@@ -77,6 +107,7 @@ abstract class AdminKeyValueSettingsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
+                            loadFailed = true,
                             errorMessage = error.message ?: "No se pudieron cargar los ajustes"
                         )
                     }
@@ -84,11 +115,14 @@ abstract class AdminKeyValueSettingsViewModel(
         }
     }
 
+    fun setBool(key: String, value: Boolean) = set(key, if (value) "true" else "false")
+
     fun set(key: String, value: String) {
         _state.update { current ->
-            val normalized = normalize(key, value)
+            val edited = current.current + (key to normalize(key, value))
             current.copy(
-                current = current.current + (key to normalized),
+                current = edited,
+                invalid = invalidKeys(edited),
                 successMessage = null
             )
         }
@@ -103,9 +137,13 @@ abstract class AdminKeyValueSettingsViewModel(
         viewModelScope.launch {
             runCatching { repository.saveSettings(changed) }
                 .onSuccess {
+                    // Only what was actually sent becomes the new baseline. The
+                    // fields stay live during the request, so taking the
+                    // latest `current` here would mark an edit made meanwhile
+                    // as saved without it ever reaching the server.
                     _state.update {
                         it.copy(
-                            original = it.current,
+                            original = it.original + changed,
                             isSubmitting = false,
                             successMessage = "Guardado"
                         )
@@ -126,3 +164,15 @@ abstract class AdminKeyValueSettingsViewModel(
         _state.update { it.copy(errorMessage = null, successMessage = null) }
     }
 }
+
+/** Keys of [ranges] whose value in [current] is not a whole number inside its
+ *  range. An empty field counts: the server would swap in its own default and
+ *  the form would go on showing a blank. */
+internal fun invalidIntKeys(
+    current: Map<String, String>,
+    ranges: Map<String, IntRange>,
+): Set<String> = ranges.filter { (key, range) ->
+    val raw = current[key] ?: return@filter false
+    val n = raw.toIntOrNull()
+    n == null || n !in range
+}.keys
