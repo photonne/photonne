@@ -151,4 +151,13 @@ class AdminKeyValueSettingsTest {
         )
         assertEquals(setOf("a", "b"), invalid)
     }
+
+    @Test
+    fun slider_values_snap_to_the_step_inside_the_range() {
+        assertEquals(500, snapToStep(537f, 100..5000, 100))
+        assertEquals(600, snapToStep(551f, 100..5000, 100))
+        assertEquals(100, snapToStep(-40f, 100..5000, 100))
+        assertEquals(5000, snapToStep(9000f, 100..5000, 100))
+        assertEquals(17, snapToStep(16.6f, 1..32, 1))
+    }
 }

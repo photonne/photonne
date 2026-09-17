@@ -1,8 +1,6 @@
 package com.photonne.app.ui.admin
 
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,35 +41,15 @@ class AdminMetadataSettingsViewModel(
         WORKERS_KEY to "2",
     )
 
-    override fun normalize(key: String, value: String): String =
-        if (key == WORKERS_KEY) value.filter { it.isDigit() } else value
+    override val intRanges = mapOf(WORKERS_KEY to WORKERS_RANGE)
 
     companion object {
         const val WORKERS_KEY = "TaskSettings.MetadataWorkers"
+
+        /** EnrichmentWorker clamps every worker count to this. */
+        val WORKERS_RANGE = 1..32
     }
 }
-
-/**
- * Curated IANA timezone ids for the DefaultTimezone dropdown — the zone the
- * server assumes when turning absolute timestamps (filesystem/video mvhd) into
- * local wall-clock and when computing "on this day". Not exhaustive; a custom
- * stored value is always appended so it stays selectable.
- */
-private val COMMON_TIMEZONES = listOf(
-    "UTC",
-    "Europe/Madrid", "Europe/Lisbon", "Europe/London", "Europe/Paris",
-    "Europe/Berlin", "Europe/Rome", "Europe/Amsterdam", "Europe/Brussels",
-    "Europe/Zurich", "Europe/Vienna", "Europe/Warsaw", "Europe/Athens",
-    "Europe/Istanbul", "Europe/Moscow",
-    "Atlantic/Canary",
-    "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
-    "America/Toronto", "America/Mexico_City", "America/Bogota", "America/Sao_Paulo",
-    "America/Argentina/Buenos_Aires",
-    "Africa/Casablanca", "Africa/Cairo", "Africa/Johannesburg",
-    "Asia/Dubai", "Asia/Kolkata", "Asia/Shanghai", "Asia/Hong_Kong",
-    "Asia/Singapore", "Asia/Tokyo", "Asia/Seoul", "Asia/Jakarta",
-    "Australia/Perth", "Australia/Sydney", "Pacific/Auckland",
-)
 
 @Composable
 fun AdminMetadataSettingsScreen(
@@ -87,55 +65,43 @@ fun AdminMetadataSettingsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
-        onSave = viewModel::save
+        state = state,
+        onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_metadata_datetime),
-            checked = state.get("MetadataSettings.ExtractDateTime").equals("true", true)
-        ) { viewModel.set("MetadataSettings.ExtractDateTime", if (it) "true" else "false") }
+            checked = state.bool("MetadataSettings.ExtractDateTime")
+        ) { viewModel.setBool("MetadataSettings.ExtractDateTime", it) }
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_metadata_gps),
-            checked = state.get("MetadataSettings.ExtractGps").equals("true", true)
-        ) { viewModel.set("MetadataSettings.ExtractGps", if (it) "true" else "false") }
+            checked = state.bool("MetadataSettings.ExtractGps")
+        ) { viewModel.setBool("MetadataSettings.ExtractGps", it) }
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_metadata_camera),
-            checked = state.get("MetadataSettings.ExtractCameraInfo").equals("true", true)
-        ) { viewModel.set("MetadataSettings.ExtractCameraInfo", if (it) "true" else "false") }
+            checked = state.bool("MetadataSettings.ExtractCameraInfo")
+        ) { viewModel.setBool("MetadataSettings.ExtractCameraInfo", it) }
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_metadata_iptc),
-            checked = state.get("MetadataSettings.ExtractIptc").equals("true", true)
-        ) { viewModel.set("MetadataSettings.ExtractIptc", if (it) "true" else "false") }
+            checked = state.bool("MetadataSettings.ExtractIptc")
+        ) { viewModel.setBool("MetadataSettings.ExtractIptc", it) }
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_metadata_xmp),
-            checked = state.get("MetadataSettings.ReadXmpSidecar").equals("true", true)
-        ) { viewModel.set("MetadataSettings.ReadXmpSidecar", if (it) "true" else "false") }
+            checked = state.bool("MetadataSettings.ReadXmpSidecar")
+        ) { viewModel.setBool("MetadataSettings.ReadXmpSidecar", it) }
 
         HorizontalDivider()
-        run {
-            val current = state.get("MetadataSettings.DefaultTimezone").ifBlank { "UTC" }
-            // Keep a stored custom value selectable even if it isn't in the
-            // curated list, so switching screens never silently drops it.
-            val options = (COMMON_TIMEZONES + current).distinct().map { it to it }
-            SettingDropdown(
-                label = stringResource(Res.string.admin_settings_metadata_timezone),
-                value = current,
-                options = options
-            ) { viewModel.set("MetadataSettings.DefaultTimezone", it) }
-        }
+        SettingTimezoneDropdown(
+            label = stringResource(Res.string.admin_settings_metadata_timezone),
+            value = state.get("MetadataSettings.DefaultTimezone")
+        ) { viewModel.set("MetadataSettings.DefaultTimezone", it) }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_workers_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        SettingNumberField(
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminMetadataSettingsViewModel.WORKERS_KEY),
-        ) { viewModel.set(AdminMetadataSettingsViewModel.WORKERS_KEY, it) }
+            value = state.int(AdminMetadataSettingsViewModel.WORKERS_KEY, 2),
+            range = AdminMetadataSettingsViewModel.WORKERS_RANGE,
+            onValueChange = { viewModel.set(AdminMetadataSettingsViewModel.WORKERS_KEY, it.toString()) }
+        )
     }
 }

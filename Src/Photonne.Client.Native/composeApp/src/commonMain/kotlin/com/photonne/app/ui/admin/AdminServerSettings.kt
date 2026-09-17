@@ -1,20 +1,12 @@
 package com.photonne.app.ui.admin
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -26,13 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.admin.AdminRepository
-import androidx.compose.runtime.remember
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.admin_settings_device_local_url
@@ -51,6 +36,7 @@ import com.photonne.app.resources.admin_settings_server_max_upload
 import com.photonne.app.resources.admin_settings_server_max_upload_hint
 import com.photonne.app.resources.admin_settings_server_public_url
 import com.photonne.app.resources.admin_settings_server_session_timeout
+import com.photonne.app.resources.admin_settings_server_session_timeout_hint
 import com.photonne.app.ui.theme.actionButtonHeight
 import org.jetbrains.compose.resources.stringResource
 
@@ -64,16 +50,22 @@ class AdminServerSettingsViewModel(
         "ServerSettings.SessionTimeoutMinutes"
     )
 
+    // AuthService falls back to a day when the timeout was never stored, and
+    // clamps whatever is stored to five minutes … thirty days.
     override val defaults = mapOf(
         "ServerSettings.PublicUrl" to "",
-        "ServerSettings.MaxUploadSizeMb" to "0",
-        "ServerSettings.SessionTimeoutMinutes" to "60"
+        MAX_UPLOAD_KEY to "0",
+        SESSION_TIMEOUT_KEY to "1440"
     )
 
-    override fun normalize(key: String, value: String): String = when (key) {
-        "ServerSettings.MaxUploadSizeMb", "ServerSettings.SessionTimeoutMinutes" ->
-            value.filter { it.isDigit() }
-        else -> value
+    override val intRanges = mapOf(
+        MAX_UPLOAD_KEY to 0..1_000_000,
+        SESSION_TIMEOUT_KEY to 5..43200,
+    )
+
+    companion object {
+        const val MAX_UPLOAD_KEY = "ServerSettings.MaxUploadSizeMb"
+        const val SESSION_TIMEOUT_KEY = "ServerSettings.SessionTimeoutMinutes"
     }
 }
 
@@ -89,95 +81,46 @@ fun AdminServerSettingsScreen(
     LaunchedEffect(Unit) { viewModel.load() }
     LaunchedEffect(Unit) { deviceConnectionViewModel.reload() }
 
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
-    Box(modifier = Modifier.fillMaxSize()) {
-    if (serverState.isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .hazeSource(hazeState)
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = 16.dp + reservedTop,
-                bottom = 16.dp + floatingNavBarReservedHeight()
-            ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    AdminSettingsForm(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        state = serverState,
+        onSave = viewModel::save,
+        onRetry = viewModel::load,
+        // This phone's own addresses: stored on the device, not on the server,
+        // with their own Save. Below the server's so neither button can be
+        // taken for the other's.
+        footer = { DeviceConnectionSection(deviceConnectionViewModel) },
     ) {
         SettingTextField(
             label = stringResource(Res.string.admin_settings_server_public_url),
             value = serverState.get("ServerSettings.PublicUrl"),
-            supporting = "https://photos.example.com"
+            placeholder = URL_PLACEHOLDER
         ) { viewModel.set("ServerSettings.PublicUrl", it) }
         SettingNumberField(
             stringResource(Res.string.admin_settings_server_max_upload),
-            serverState.get("ServerSettings.MaxUploadSizeMb"),
-            supporting = stringResource(Res.string.admin_settings_server_max_upload_hint)
-        ) { viewModel.set("ServerSettings.MaxUploadSizeMb", it) }
+            serverState.get(AdminServerSettingsViewModel.MAX_UPLOAD_KEY),
+            supporting = stringResource(Res.string.admin_settings_server_max_upload_hint),
+            range = viewModel.intRanges[AdminServerSettingsViewModel.MAX_UPLOAD_KEY]
+        ) { viewModel.set(AdminServerSettingsViewModel.MAX_UPLOAD_KEY, it) }
         SettingNumberField(
             stringResource(Res.string.admin_settings_server_session_timeout),
-            serverState.get("ServerSettings.SessionTimeoutMinutes")
-        ) { viewModel.set("ServerSettings.SessionTimeoutMinutes", it) }
-
-        serverState.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        serverState.successMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (serverState.isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(12.dp))
-            }
-            Button(
-                onClick = viewModel::save,
-                enabled = serverState.canSave,
-                modifier = Modifier.actionButtonHeight()
-            ) {
-                Text(stringResource(Res.string.action_save))
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(8.dp))
-
-        DeviceConnectionSection(deviceConnectionViewModel)
-    }
-    }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
+            serverState.get(AdminServerSettingsViewModel.SESSION_TIMEOUT_KEY),
+            supporting = stringResource(Res.string.admin_settings_server_session_timeout_hint),
+            range = viewModel.intRanges[AdminServerSettingsViewModel.SESSION_TIMEOUT_KEY]
+        ) { viewModel.set(AdminServerSettingsViewModel.SESSION_TIMEOUT_KEY, it) }
     }
 }
+
+/** Example address shown inside an empty URL field. Not translatable. */
+private const val URL_PLACEHOLDER = "https://photos.example.com"
 
 @Composable
 private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
     val state by viewModel.state.collectAsState()
 
-    Text(
-        stringResource(Res.string.admin_settings_device_section),
-        style = MaterialTheme.typography.titleMedium
-    )
+    SettingSectionHeader(stringResource(Res.string.admin_settings_device_section))
     Text(
         stringResource(Res.string.admin_settings_device_section_hint),
         style = MaterialTheme.typography.bodySmall,
@@ -203,7 +146,7 @@ private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
         label = stringResource(Res.string.admin_settings_device_public_url),
         value = state.publicUrl,
         enabled = !state.isSaving && !state.isProbing,
-        supporting = "https://photos.example.com"
+        placeholder = URL_PLACEHOLDER
     ) { viewModel.onPublicUrlChange(it) }
 
     SettingTextField(

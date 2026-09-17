@@ -3,9 +3,6 @@ package com.photonne.app.ui.admin
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -91,31 +88,20 @@ fun AdminSceneClassificationSettingsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
+        state = state,
         onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_scene_settings_enabled),
             description = stringResource(Res.string.admin_scene_settings_enabled_description),
             icon = Icons.Outlined.Landscape,
-            checked = state.get(AdminSceneClassificationSettingsViewModel.ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminSceneClassificationSettingsViewModel.ENABLED_KEY),
         ) { v ->
-            viewModel.set(
-                AdminSceneClassificationSettingsViewModel.ENABLED_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminSceneClassificationSettingsViewModel.ENABLED_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_parameters_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_parameters_section))
 
         DeviceSettingDropdown(
             value = state.get(AdminSceneClassificationSettingsViewModel.PROVIDER_KEY),
@@ -155,25 +141,17 @@ fun AdminSceneClassificationSettingsScreen(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
             icon = Icons.Outlined.PhotoSizeSelectLarge,
-            checked = state.get(AdminSceneClassificationSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminSceneClassificationSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY),
         ) { v ->
-            viewModel.set(
-                AdminSceneClassificationSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminSceneClassificationSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_workers_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
         SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
             value = state.get(AdminSceneClassificationSettingsViewModel.WORKERS_KEY)
                 .toIntOrNull() ?: 1,
-            range = 1..8,
+            range = 1..32,
             onValueChange = {
                 viewModel.set(
                     AdminSceneClassificationSettingsViewModel.WORKERS_KEY,
@@ -182,14 +160,9 @@ fun AdminSceneClassificationSettingsScreen(
             }
         )
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_nightly_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(
-            enabled = state.get(AdminSceneClassificationSettingsViewModel.NIGHTLY_ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            enabled = state.bool(AdminSceneClassificationSettingsViewModel.NIGHTLY_ENABLED_KEY),
             mode = state.get(AdminSceneClassificationSettingsViewModel.NIGHTLY_MODE_KEY),
             onOpen = onOpenNightly,
         )

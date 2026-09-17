@@ -3,9 +3,6 @@ package com.photonne.app.ui.admin
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -76,6 +73,18 @@ class AdminFaceRecognitionSettingsViewModel(
         NIGHTLY_MODE_KEY to "missing",
     )
 
+    // The suggestion band is what lies between the two thresholds: with the
+    // suggestion one below the clustering one there is no band, and "¿Es la
+    // misma persona?" never has anything to offer. The hint always said so;
+    // nothing checked it.
+    override fun crossCheck(current: Map<String, String>): Set<String> {
+        val clustering = parseFraction(current[CLUSTERING_THRESHOLD_KEY].orEmpty(), 0.42f)
+        val suggestion = parseFraction(current[SUGGESTION_THRESHOLD_KEY].orEmpty(), 0.55f)
+        return if (suggestion < clustering) setOf(SUGGESTION_THRESHOLD_KEY) else emptySet()
+    }
+
+    override val intRanges = mapOf(KNN_SWITCHOVER_THRESHOLD_KEY to 1..10_000_000)
+
     override fun normalize(key: String, value: String): String = when (key) {
         MIN_DETECTION_SCORE_KEY,
         CLUSTERING_THRESHOLD_KEY,
@@ -120,12 +129,9 @@ fun AdminFaceRecognitionSettingsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
+        state = state,
         onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         // Master kill switch — the runtime override checked by
         // FaceRecognitionService.IsRuntimeEnabledAsync.
@@ -133,20 +139,12 @@ fun AdminFaceRecognitionSettingsScreen(
             label = stringResource(Res.string.admin_face_settings_enabled),
             description = stringResource(Res.string.admin_face_settings_enabled_description),
             icon = Icons.Outlined.Face,
-            checked = state.get(AdminFaceRecognitionSettingsViewModel.ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminFaceRecognitionSettingsViewModel.ENABLED_KEY),
         ) { v ->
-            viewModel.set(
-                AdminFaceRecognitionSettingsViewModel.ENABLED_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminFaceRecognitionSettingsViewModel.ENABLED_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_parameters_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_parameters_section))
 
         DeviceSettingDropdown(
             value = state.get(AdminFaceRecognitionSettingsViewModel.PROVIDER_KEY),
@@ -193,6 +191,7 @@ fun AdminFaceRecognitionSettingsScreen(
                 default = 0.55f,
             ),
             description = stringResource(Res.string.admin_face_settings_suggestion_threshold_hint),
+            isError = AdminFaceRecognitionSettingsViewModel.SUGGESTION_THRESHOLD_KEY in state.invalid,
             onValueChange = {
                 viewModel.set(
                     AdminFaceRecognitionSettingsViewModel.SUGGESTION_THRESHOLD_KEY,
@@ -220,6 +219,7 @@ fun AdminFaceRecognitionSettingsScreen(
             label = stringResource(Res.string.admin_face_settings_knn_switchover),
             value = state.get(AdminFaceRecognitionSettingsViewModel.KNN_SWITCHOVER_THRESHOLD_KEY),
             supporting = stringResource(Res.string.admin_face_settings_knn_switchover_hint),
+            range = viewModel.intRanges[AdminFaceRecognitionSettingsViewModel.KNN_SWITCHOVER_THRESHOLD_KEY],
         ) { viewModel.set(AdminFaceRecognitionSettingsViewModel.KNN_SWITCHOVER_THRESHOLD_KEY, it) }
 
         SettingIntSlider(
@@ -240,25 +240,17 @@ fun AdminFaceRecognitionSettingsScreen(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
             icon = Icons.Outlined.PhotoSizeSelectLarge,
-            checked = state.get(AdminFaceRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminFaceRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY),
         ) { v ->
-            viewModel.set(
-                AdminFaceRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminFaceRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_workers_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
         SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
             value = state.get(AdminFaceRecognitionSettingsViewModel.WORKERS_KEY)
                 .toIntOrNull() ?: 1,
-            range = 1..8,
+            range = 1..32,
             onValueChange = {
                 viewModel.set(
                     AdminFaceRecognitionSettingsViewModel.WORKERS_KEY,
@@ -267,24 +259,20 @@ fun AdminFaceRecognitionSettingsScreen(
             }
         )
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_nightly_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(
-            enabled = state.get(AdminFaceRecognitionSettingsViewModel.NIGHTLY_ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            enabled = state.bool(AdminFaceRecognitionSettingsViewModel.NIGHTLY_ENABLED_KEY),
             mode = state.get(AdminFaceRecognitionSettingsViewModel.NIGHTLY_MODE_KEY),
             onOpen = onOpenNightly,
         )
     }
 }
 
-/** Parses a setting value to a [0,1] Float, tolerating an empty string
- *  (returns [default]) and out-of-range overrides from the server. */
+/** Parses a setting value to a Float, tolerating an empty string (returns
+ *  [default]). Not clamped to [0,1]: a value stored past the slider's end has
+ *  to reach the chip as it is, the slider pins its own thumb. */
 internal fun parseFraction(raw: String, default: Float): Float =
-    raw.replace(',', '.').toFloatOrNull()?.coerceIn(0f, 1f) ?: default
+    raw.replace(',', '.').toFloatOrNull()?.coerceAtLeast(0f) ?: default
 
 /** Two-decimal rendering matching what `normalizeDecimal` and the server
  *  accept. The slider has 100 steps so values are already aligned to 0.01. */

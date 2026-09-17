@@ -11,7 +11,6 @@ import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,7 +67,8 @@ class AdminImageEmbeddingSettingsViewModel(
         ENABLED_KEY to "true",
         PROVIDER_KEY to "auto",
         MODEL_VERSION_KEY to "mclip-vit-b32-v1",
-        MAX_COSINE_DISTANCE_KEY to "0.7",
+        // appsettings.json ships 0.85 and overrides the 0.7 of EmbeddingOptions.
+        MAX_COSINE_DISTANCE_KEY to "0.85",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
         WORKERS_KEY to "1",
         NIGHTLY_ENABLED_KEY to "false",
@@ -113,31 +113,20 @@ fun AdminImageEmbeddingSettingsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
+        state = state,
         onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_embedding_settings_enabled),
             description = stringResource(Res.string.admin_embedding_settings_enabled_description),
             icon = Icons.Outlined.ImageSearch,
-            checked = state.get(AdminImageEmbeddingSettingsViewModel.ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminImageEmbeddingSettingsViewModel.ENABLED_KEY),
         ) { v ->
-            viewModel.set(
-                AdminImageEmbeddingSettingsViewModel.ENABLED_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminImageEmbeddingSettingsViewModel.ENABLED_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_parameters_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_parameters_section))
 
         DeviceSettingDropdown(
             value = state.get(AdminImageEmbeddingSettingsViewModel.PROVIDER_KEY),
@@ -162,7 +151,7 @@ fun AdminImageEmbeddingSettingsScreen(
             label = stringResource(Res.string.admin_embedding_settings_max_cosine),
             value = parseFraction(
                 state.get(AdminImageEmbeddingSettingsViewModel.MAX_COSINE_DISTANCE_KEY),
-                default = 0.7f,
+                default = 0.85f,
             ),
             description = stringResource(Res.string.admin_embedding_settings_max_cosine_hint),
             onValueChange = {
@@ -177,25 +166,17 @@ fun AdminImageEmbeddingSettingsScreen(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
             icon = Icons.Outlined.PhotoSizeSelectLarge,
-            checked = state.get(AdminImageEmbeddingSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminImageEmbeddingSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY),
         ) { v ->
-            viewModel.set(
-                AdminImageEmbeddingSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminImageEmbeddingSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_workers_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
         SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
             value = state.get(AdminImageEmbeddingSettingsViewModel.WORKERS_KEY)
                 .toIntOrNull() ?: 1,
-            range = 1..8,
+            range = 1..32,
             onValueChange = {
                 viewModel.set(
                     AdminImageEmbeddingSettingsViewModel.WORKERS_KEY,
@@ -204,14 +185,9 @@ fun AdminImageEmbeddingSettingsScreen(
             }
         )
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_nightly_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(
-            enabled = state.get(AdminImageEmbeddingSettingsViewModel.NIGHTLY_ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            enabled = state.bool(AdminImageEmbeddingSettingsViewModel.NIGHTLY_ENABLED_KEY),
             mode = state.get(AdminImageEmbeddingSettingsViewModel.NIGHTLY_MODE_KEY),
             onOpen = onOpenNightly,
         )

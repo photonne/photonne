@@ -1218,4 +1218,15 @@
     <string name="memories_section_this_month">This month</string>
     <string name="memories_section_favorites">Your favourites</string>
     <string name="memories_section_places">Places and hobbies</string>
+    <string name="admin_settings_range_format">Between %1$d and %2$d</string>
+    <string name="admin_settings_load_failed">Couldn\'t load the settings</string>
+    <string name="admin_settings_discard_title">Discard changes?</string>
+    <string name="admin_settings_discard_message">Some settings were changed but not saved. Leaving now loses them.</string>
+    <string name="admin_settings_discard_confirm">Discard</string>
+    <string name="admin_settings_decrease">Decrease</string>
+    <string name="admin_settings_increase">Increase</string>
+    <string name="admin_settings_notifications_retention_hint">Days a notification is kept. 0 = never deleted.</string>
+    <string name="admin_settings_notifications_max_per_user_hint">Past it, the oldest are deleted. 0 = no limit.</string>
+    <string name="admin_settings_server_session_timeout_hint">5 to 43200 minutes (1440 = one day, 43200 = 30 days).</string>
+    <string name="admin_settings_trash_retention_hint">Days until permanent deletion. 0 = kept forever.</string>
 </resources>

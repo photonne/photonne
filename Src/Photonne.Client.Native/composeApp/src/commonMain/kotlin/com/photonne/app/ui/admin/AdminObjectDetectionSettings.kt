@@ -3,9 +3,6 @@ package com.photonne.app.ui.admin
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -101,31 +98,20 @@ fun AdminObjectDetectionSettingsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
+        state = state,
         onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_object_settings_enabled),
             description = stringResource(Res.string.admin_object_settings_enabled_description),
             icon = Icons.Outlined.Category,
-            checked = state.get(AdminObjectDetectionSettingsViewModel.ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminObjectDetectionSettingsViewModel.ENABLED_KEY),
         ) { v ->
-            viewModel.set(
-                AdminObjectDetectionSettingsViewModel.ENABLED_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminObjectDetectionSettingsViewModel.ENABLED_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_parameters_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_parameters_section))
 
         DeviceSettingDropdown(
             value = state.get(AdminObjectDetectionSettingsViewModel.PROVIDER_KEY),
@@ -153,6 +139,9 @@ fun AdminObjectDetectionSettingsScreen(
                 state.get(AdminObjectDetectionSettingsViewModel.MIN_NORMALIZED_SIZE_KEY),
                 default = 0.02f,
             ),
+            // A fraction of the frame: past a quarter nothing would pass. The
+            // 0–1 track left the useful values within the thumb's own width.
+            range = 0f..0.25f,
             description = stringResource(Res.string.admin_object_settings_min_normalized_size_hint),
             onValueChange = {
                 viewModel.set(
@@ -167,6 +156,7 @@ fun AdminObjectDetectionSettingsScreen(
             value = state.get(AdminObjectDetectionSettingsViewModel.MAX_OBJECTS_PER_ASSET_KEY)
                 .toIntOrNull() ?: 50,
             range = 10..200,
+            step = 5,
             description = stringResource(Res.string.admin_object_settings_max_objects_hint),
             onValueChange = {
                 viewModel.set(
@@ -180,25 +170,17 @@ fun AdminObjectDetectionSettingsScreen(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
             icon = Icons.Outlined.PhotoSizeSelectLarge,
-            checked = state.get(AdminObjectDetectionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminObjectDetectionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY),
         ) { v ->
-            viewModel.set(
-                AdminObjectDetectionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminObjectDetectionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_workers_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
         SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
             value = state.get(AdminObjectDetectionSettingsViewModel.WORKERS_KEY)
                 .toIntOrNull() ?: 1,
-            range = 1..8,
+            range = 1..32,
             onValueChange = {
                 viewModel.set(
                     AdminObjectDetectionSettingsViewModel.WORKERS_KEY,
@@ -207,14 +189,9 @@ fun AdminObjectDetectionSettingsScreen(
             }
         )
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_nightly_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(
-            enabled = state.get(AdminObjectDetectionSettingsViewModel.NIGHTLY_ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            enabled = state.bool(AdminObjectDetectionSettingsViewModel.NIGHTLY_ENABLED_KEY),
             mode = state.get(AdminObjectDetectionSettingsViewModel.NIGHTLY_MODE_KEY),
             onOpen = onOpenNightly,
         )

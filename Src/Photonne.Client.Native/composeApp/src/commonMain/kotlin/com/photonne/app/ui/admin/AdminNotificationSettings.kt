@@ -1,8 +1,5 @@
 package com.photonne.app.ui.admin
 
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -14,7 +11,9 @@ import com.photonne.app.resources.admin_settings_notifications_enabled
 import com.photonne.app.resources.admin_settings_notifications_job_completed
 import com.photonne.app.resources.admin_settings_notifications_job_failed
 import com.photonne.app.resources.admin_settings_notifications_max_per_user
+import com.photonne.app.resources.admin_settings_notifications_max_per_user_hint
 import com.photonne.app.resources.admin_settings_notifications_retention_days
+import com.photonne.app.resources.admin_settings_notifications_retention_hint
 import com.photonne.app.resources.admin_settings_notifications_share_viewed
 import org.jetbrains.compose.resources.stringResource
 
@@ -31,19 +30,25 @@ class AdminNotificationSettingsViewModel(
         "NotificationSettings.ShareViewed.Enabled"
     )
 
+    // MaxPerUser is 0 on the server when unset: no cap. This form used to
+    // show 1000 for it, a limit nobody had set and nothing enforced.
     override val defaults = mapOf(
         "NotificationSettings.Enabled" to "true",
-        "NotificationSettings.RetentionDays" to "30",
-        "NotificationSettings.MaxPerUser" to "1000",
+        RETENTION_KEY to "30",
+        MAX_PER_USER_KEY to "0",
         "NotificationSettings.JobCompleted.Enabled" to "true",
         "NotificationSettings.JobFailed.Enabled" to "true",
         "NotificationSettings.ShareViewed.Enabled" to "true"
     )
 
-    override fun normalize(key: String, value: String): String = when (key) {
-        "NotificationSettings.RetentionDays", "NotificationSettings.MaxPerUser" ->
-            value.filter { it.isDigit() }
-        else -> value
+    override val intRanges = mapOf(
+        RETENTION_KEY to 0..3650,
+        MAX_PER_USER_KEY to 0..1_000_000,
+    )
+
+    companion object {
+        const val RETENTION_KEY = "NotificationSettings.RetentionDays"
+        const val MAX_PER_USER_KEY = "NotificationSettings.MaxPerUser"
     }
 }
 
@@ -61,57 +66,45 @@ fun AdminNotificationSettingsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
-        onSave = viewModel::save
+        state = state,
+        onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_notifications_enabled),
-            checked = state.get("NotificationSettings.Enabled").equals("true", true)
-        ) { viewModel.set("NotificationSettings.Enabled", if (it) "true" else "false") }
+            checked = state.bool("NotificationSettings.Enabled")
+        ) { viewModel.setBool("NotificationSettings.Enabled", it) }
         SettingNumberField(
             stringResource(Res.string.admin_settings_notifications_retention_days),
-            state.get("NotificationSettings.RetentionDays")
-        ) { viewModel.set("NotificationSettings.RetentionDays", it) }
+            state.get(AdminNotificationSettingsViewModel.RETENTION_KEY),
+            supporting = stringResource(Res.string.admin_settings_notifications_retention_hint),
+            range = viewModel.intRanges[AdminNotificationSettingsViewModel.RETENTION_KEY]
+        ) { viewModel.set(AdminNotificationSettingsViewModel.RETENTION_KEY, it) }
         SettingNumberField(
             stringResource(Res.string.admin_settings_notifications_max_per_user),
-            state.get("NotificationSettings.MaxPerUser")
-        ) { viewModel.set("NotificationSettings.MaxPerUser", it) }
+            state.get(AdminNotificationSettingsViewModel.MAX_PER_USER_KEY),
+            supporting = stringResource(Res.string.admin_settings_notifications_max_per_user_hint),
+            range = viewModel.intRanges[AdminNotificationSettingsViewModel.MAX_PER_USER_KEY]
+        ) { viewModel.set(AdminNotificationSettingsViewModel.MAX_PER_USER_KEY, it) }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_settings_notifications_categories),
-            style = MaterialTheme.typography.titleSmall
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_settings_notifications_categories))
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_notifications_job_completed),
-            checked = state.get("NotificationSettings.JobCompleted.Enabled").equals("true", true)
+            checked = state.bool("NotificationSettings.JobCompleted.Enabled")
         ) {
-            viewModel.set(
-                "NotificationSettings.JobCompleted.Enabled",
-                if (it) "true" else "false"
-            )
+            viewModel.setBool("NotificationSettings.JobCompleted.Enabled", it)
         }
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_notifications_job_failed),
-            checked = state.get("NotificationSettings.JobFailed.Enabled").equals("true", true)
+            checked = state.bool("NotificationSettings.JobFailed.Enabled")
         ) {
-            viewModel.set(
-                "NotificationSettings.JobFailed.Enabled",
-                if (it) "true" else "false"
-            )
+            viewModel.setBool("NotificationSettings.JobFailed.Enabled", it)
         }
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_notifications_share_viewed),
-            checked = state.get("NotificationSettings.ShareViewed.Enabled").equals("true", true)
+            checked = state.bool("NotificationSettings.ShareViewed.Enabled")
         ) {
-            viewModel.set(
-                "NotificationSettings.ShareViewed.Enabled",
-                if (it) "true" else "false"
-            )
+            viewModel.setBool("NotificationSettings.ShareViewed.Enabled", it)
         }
     }
 }

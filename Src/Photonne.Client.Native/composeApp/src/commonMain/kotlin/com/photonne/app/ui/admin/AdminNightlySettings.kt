@@ -1,8 +1,6 @@
 package com.photonne.app.ui.admin
 
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -75,11 +73,13 @@ class AdminNightlySettingsViewModel(
         put(BACKFILL_BATCH_SIZE_KEY, "500")
     }
 
-    override fun normalize(key: String, value: String): String =
-        if (key == BACKFILL_BATCH_SIZE_KEY) value.filter { it.isDigit() } else value
+    override val intRanges = mapOf(BACKFILL_BATCH_SIZE_KEY to BATCH_SIZE_RANGE)
 
     companion object {
         const val BACKFILL_BATCH_SIZE_KEY = "TaskSettings.BackfillBatchSize"
+
+        /** MlBackfillEndpoints clamps the batch to this. */
+        val BATCH_SIZE_RANGE = 1..5000
     }
 }
 
@@ -102,33 +102,24 @@ fun AdminNightlySettingsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
-        onSave = viewModel::save
+        state = state,
+        onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_nightly_enabled),
-            checked = state.get("NightlyTaskSettings.Enabled").equals("true", true)
-        ) { viewModel.set("NightlyTaskSettings.Enabled", if (it) "true" else "false") }
-        SettingTextField(
+            checked = state.bool("NightlyTaskSettings.Enabled")
+        ) { viewModel.setBool("NightlyTaskSettings.Enabled", it) }
+        SettingTimeField(
             label = stringResource(Res.string.admin_settings_nightly_schedule),
-            value = state.get("NightlyTaskSettings.ScheduleTime"),
-            supporting = "HH:MM (24h)"
+            value = state.get("NightlyTaskSettings.ScheduleTime")
         ) { viewModel.set("NightlyTaskSettings.ScheduleTime", it) }
-        SettingTextField(
+        SettingTimezoneDropdown(
             label = stringResource(Res.string.admin_settings_nightly_timezone),
-            value = state.get("NightlyTaskSettings.Timezone"),
-            supporting = "IANA: UTC, Europe/Madrid, …"
+            value = state.get("NightlyTaskSettings.Timezone")
         ) { viewModel.set("NightlyTaskSettings.Timezone", it) }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_settings_nightly_features_section),
-            style = MaterialTheme.typography.titleSmall
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_settings_nightly_features_section))
 
         FeatureRow(state, viewModel, "Metadata", stringResource(Res.string.admin_settings_nightly_metadata), modeOptions)
         FeatureRow(state, viewModel, "Thumbnails", stringResource(Res.string.admin_settings_nightly_thumbnails), modeOptions)
@@ -139,39 +130,35 @@ fun AdminNightlySettingsScreen(
         FeatureRow(state, viewModel, "ImageEmbedding", stringResource(Res.string.admin_settings_nightly_embedding), modeOptions)
 
         HorizontalDivider()
-        SettingNumberField(
+        // Dragged in hundreds; a batch set by hand below that still shows as
+        // it is, and the − / + buttons walk from wherever it stands.
+        SettingIntSlider(
             label = stringResource(Res.string.admin_settings_task_backfill_batch),
-            value = state.get(AdminNightlySettingsViewModel.BACKFILL_BATCH_SIZE_KEY),
-            supporting = stringResource(Res.string.admin_settings_nightly_batch_size_hint),
-        ) { viewModel.set(AdminNightlySettingsViewModel.BACKFILL_BATCH_SIZE_KEY, it) }
+            value = state.int(AdminNightlySettingsViewModel.BACKFILL_BATCH_SIZE_KEY, 500),
+            range = 100..5000,
+            step = 100,
+            description = stringResource(Res.string.admin_settings_nightly_batch_size_hint),
+            onValueChange = { viewModel.set(AdminNightlySettingsViewModel.BACKFILL_BATCH_SIZE_KEY, it.toString()) }
+        )
 
         HorizontalDivider()
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_nightly_clustering),
-            checked = state.get("NightlyTaskSettings.FaceClustering.Enabled").equals("true", true)
+            checked = state.bool("NightlyTaskSettings.FaceClustering.Enabled")
         ) {
-            viewModel.set(
-                "NightlyTaskSettings.FaceClustering.Enabled",
-                if (it) "true" else "false"
-            )
+            viewModel.setBool("NightlyTaskSettings.FaceClustering.Enabled", it)
         }
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_nightly_trash_cleanup),
-            checked = state.get("NightlyTaskSettings.TrashCleanup.Enabled").equals("true", true)
+            checked = state.bool("NightlyTaskSettings.TrashCleanup.Enabled")
         ) {
-            viewModel.set(
-                "NightlyTaskSettings.TrashCleanup.Enabled",
-                if (it) "true" else "false"
-            )
+            viewModel.setBool("NightlyTaskSettings.TrashCleanup.Enabled", it)
         }
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_nightly_indexing_coverage),
-            checked = state.get("NightlyTaskSettings.IndexingCoverage.Enabled").equals("true", true)
+            checked = state.bool("NightlyTaskSettings.IndexingCoverage.Enabled")
         ) {
-            viewModel.set(
-                "NightlyTaskSettings.IndexingCoverage.Enabled",
-                if (it) "true" else "false"
-            )
+            viewModel.setBool("NightlyTaskSettings.IndexingCoverage.Enabled", it)
         }
     }
 }
@@ -188,12 +175,15 @@ private fun FeatureRow(
     val modeKey = "NightlyTaskSettings.$featureKey.Mode"
     SettingSwitch(
         label = title,
-        checked = state.get(enabledKey).equals("true", true)
-    ) { viewModel.set(enabledKey, if (it) "true" else "false") }
-    SettingDropdown(
-        label = stringResource(Res.string.admin_settings_nightly_mode),
-        value = state.get(modeKey).ifBlank { "missing" },
-        enabled = state.get(enabledKey).equals("true", true),
-        options = modeOptions
-    ) { viewModel.set(modeKey, it) }
+        checked = state.bool(enabledKey)
+    ) { viewModel.setBool(enabledKey, it) }
+    // The mode only means something while the feature runs at night; hidden
+    // otherwise, it halves a page that was fourteen controls in a column.
+    if (state.bool(enabledKey)) {
+        SettingDropdown(
+            label = stringResource(Res.string.admin_settings_nightly_mode),
+            value = state.get(modeKey).ifBlank { "missing" },
+            options = modeOptions
+        ) { viewModel.set(modeKey, it) }
+    }
 }

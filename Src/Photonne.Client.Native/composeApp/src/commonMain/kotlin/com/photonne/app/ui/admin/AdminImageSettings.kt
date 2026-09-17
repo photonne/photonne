@@ -1,8 +1,5 @@
 package com.photonne.app.ui.admin
 
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -24,27 +21,41 @@ class AdminImageSettingsViewModel(
     repository: AdminRepository
 ) : AdminKeyValueSettingsViewModel(repository) {
 
-    override val keys = listOf(
-        "TaskSettings.ThumbnailFormat",
-        "TaskSettings.ThumbnailQuality.Small",
-        "TaskSettings.ThumbnailQuality.Medium",
-        "TaskSettings.ThumbnailQuality.Large",
-        WORKERS_KEY,
-    )
+    override val keys = listOf(FORMAT_KEY, QUALITY_SMALL_KEY, QUALITY_MEDIUM_KEY, QUALITY_LARGE_KEY, WORKERS_KEY)
 
+    // What ThumbnailGeneratorService falls back to when a key was never
+    // stored. They have to match: an unset key shows its default here, and a
+    // default that isn't the server's is a number on screen that nothing uses.
     override val defaults = mapOf(
-        "TaskSettings.ThumbnailFormat" to "jpeg",
-        "TaskSettings.ThumbnailQuality.Small" to "60",
-        "TaskSettings.ThumbnailQuality.Medium" to "75",
-        "TaskSettings.ThumbnailQuality.Large" to "85",
+        FORMAT_KEY to FORMAT_JPEG,
+        QUALITY_SMALL_KEY to "75",
+        QUALITY_MEDIUM_KEY to "80",
+        QUALITY_LARGE_KEY to "85",
         WORKERS_KEY to "2",
     )
 
-    override fun normalize(key: String, value: String): String =
-        if (key == "TaskSettings.ThumbnailFormat") value else value.filter { it.isDigit() }
+    override val intRanges = mapOf(
+        QUALITY_SMALL_KEY to QUALITY_RANGE,
+        QUALITY_MEDIUM_KEY to QUALITY_RANGE,
+        QUALITY_LARGE_KEY to QUALITY_RANGE,
+        WORKERS_KEY to WORKERS_RANGE,
+    )
 
     companion object {
+        const val FORMAT_KEY = "TaskSettings.ThumbnailFormat"
+        const val QUALITY_SMALL_KEY = "TaskSettings.ThumbnailQuality.Small"
+        const val QUALITY_MEDIUM_KEY = "TaskSettings.ThumbnailQuality.Medium"
+        const val QUALITY_LARGE_KEY = "TaskSettings.ThumbnailQuality.Large"
         const val WORKERS_KEY = "TaskSettings.ThumbnailWorkers"
+
+        // Spelled the way the web client writes them. The server compares
+        // ignoring case, the web's radio buttons don't.
+        const val FORMAT_JPEG = "JPEG"
+        const val FORMAT_WEBP = "WebP"
+
+        /** The server clamps to these when it reads the settings. */
+        val QUALITY_RANGE = 1..100
+        val WORKERS_RANGE = 1..16
     }
 }
 
@@ -59,55 +70,55 @@ fun AdminImageSettingsScreen(
     LaunchedEffect(Unit) { viewModel.load() }
 
     val formatOptions = listOf(
-        "jpeg" to stringResource(Res.string.admin_settings_image_format_jpeg),
-        "webp" to stringResource(Res.string.admin_settings_image_format_webp)
+        AdminImageSettingsViewModel.FORMAT_JPEG to stringResource(Res.string.admin_settings_image_format_jpeg),
+        AdminImageSettingsViewModel.FORMAT_WEBP to stringResource(Res.string.admin_settings_image_format_webp)
     )
 
     AdminSettingsForm(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
-        onSave = viewModel::save
+        state = state,
+        onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingDropdown(
             label = stringResource(Res.string.admin_settings_image_format),
-            value = state.get("TaskSettings.ThumbnailFormat").ifBlank { "jpeg" },
+            value = state.get(AdminImageSettingsViewModel.FORMAT_KEY)
+                .ifBlank { AdminImageSettingsViewModel.FORMAT_JPEG },
             options = formatOptions
-        ) { viewModel.set("TaskSettings.ThumbnailFormat", it) }
+        ) { viewModel.set(AdminImageSettingsViewModel.FORMAT_KEY, it) }
 
-        Text(
-            stringResource(Res.string.admin_settings_image_quality_section),
-            style = MaterialTheme.typography.titleSmall
-        )
-        SettingNumberField(
-            stringResource(Res.string.admin_settings_image_quality_small),
-            state.get("TaskSettings.ThumbnailQuality.Small"),
-            supporting = "0 – 100"
-        ) { viewModel.set("TaskSettings.ThumbnailQuality.Small", it) }
-        SettingNumberField(
-            stringResource(Res.string.admin_settings_image_quality_medium),
-            state.get("TaskSettings.ThumbnailQuality.Medium"),
-            supporting = "0 – 100"
-        ) { viewModel.set("TaskSettings.ThumbnailQuality.Medium", it) }
-        SettingNumberField(
-            stringResource(Res.string.admin_settings_image_quality_large),
-            state.get("TaskSettings.ThumbnailQuality.Large"),
-            supporting = "0 – 100"
-        ) { viewModel.set("TaskSettings.ThumbnailQuality.Large", it) }
+        SettingSectionHeader(stringResource(Res.string.admin_settings_image_quality_section))
+        QualitySlider(state, viewModel, AdminImageSettingsViewModel.QUALITY_SMALL_KEY, 75,
+            stringResource(Res.string.admin_settings_image_quality_small))
+        QualitySlider(state, viewModel, AdminImageSettingsViewModel.QUALITY_MEDIUM_KEY, 80,
+            stringResource(Res.string.admin_settings_image_quality_medium))
+        QualitySlider(state, viewModel, AdminImageSettingsViewModel.QUALITY_LARGE_KEY, 85,
+            stringResource(Res.string.admin_settings_image_quality_large))
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_workers_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        SettingNumberField(
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminImageSettingsViewModel.WORKERS_KEY),
-        ) { viewModel.set(AdminImageSettingsViewModel.WORKERS_KEY, it) }
+            value = state.int(AdminImageSettingsViewModel.WORKERS_KEY, 2),
+            range = AdminImageSettingsViewModel.WORKERS_RANGE,
+            onValueChange = { viewModel.set(AdminImageSettingsViewModel.WORKERS_KEY, it.toString()) }
+        )
     }
+}
+
+@Composable
+private fun QualitySlider(
+    state: AdminKeyValueUiState,
+    viewModel: AdminImageSettingsViewModel,
+    key: String,
+    default: Int,
+    label: String,
+) {
+    SettingIntSlider(
+        label = label,
+        value = state.int(key, default),
+        range = AdminImageSettingsViewModel.QUALITY_RANGE,
+        onValueChange = { viewModel.set(key, it.toString()) }
+    )
 }

@@ -30,8 +30,7 @@ class AdminUserDefaultsViewModel(
         "UserSettings.DefaultStorageQuotaGb" to "0"
     )
 
-    override fun normalize(key: String, value: String): String =
-        if (key == "UserSettings.DefaultStorageQuotaGb") value.filter { it.isDigit() } else value
+    override val intRanges = mapOf("UserSettings.DefaultStorageQuotaGb" to 0..1_000_000)
 }
 
 @Composable
@@ -53,17 +52,14 @@ fun AdminUserDefaultsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
-        onSave = viewModel::save
+        state = state,
+        onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_user_defaults_active),
-            checked = state.get("UserSettings.DefaultIsActive").equals("true", true)
-        ) { viewModel.set("UserSettings.DefaultIsActive", if (it) "true" else "false") }
+            checked = state.bool("UserSettings.DefaultIsActive")
+        ) { viewModel.setBool("UserSettings.DefaultIsActive", it) }
         SettingDropdown(
             label = stringResource(Res.string.admin_settings_user_defaults_role),
             value = state.get("UserSettings.DefaultRole").ifBlank { "User" },
@@ -72,7 +68,8 @@ fun AdminUserDefaultsScreen(
         SettingNumberField(
             stringResource(Res.string.admin_settings_user_defaults_quota_gb),
             state.get("UserSettings.DefaultStorageQuotaGb"),
-            supporting = stringResource(Res.string.admin_settings_user_defaults_quota_hint)
+            supporting = stringResource(Res.string.admin_settings_user_defaults_quota_hint),
+            range = viewModel.intRanges["UserSettings.DefaultStorageQuotaGb"]
         ) { viewModel.set("UserSettings.DefaultStorageQuotaGb", it) }
     }
 }

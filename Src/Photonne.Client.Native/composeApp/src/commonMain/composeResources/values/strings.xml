@@ -1321,4 +1321,15 @@
     <string name="smart_album_summary_date_none">Sin rango</string>
     <string name="smart_album_date_from">Desde</string>
     <string name="smart_album_date_to">Hasta</string>
+    <string name="admin_settings_range_format">Entre %1$d y %2$d</string>
+    <string name="admin_settings_load_failed">No se pudieron cargar los ajustes</string>
+    <string name="admin_settings_discard_title">¿Descartar los cambios?</string>
+    <string name="admin_settings_discard_message">Hay ajustes modificados sin guardar. Si sales ahora se pierden.</string>
+    <string name="admin_settings_discard_confirm">Descartar</string>
+    <string name="admin_settings_decrease">Reducir</string>
+    <string name="admin_settings_increase">Aumentar</string>
+    <string name="admin_settings_notifications_retention_hint">Días que se conserva una notificación. 0 = no se borran nunca.</string>
+    <string name="admin_settings_notifications_max_per_user_hint">Al superarlo se borran las más antiguas. 0 = sin límite.</string>
+    <string name="admin_settings_server_session_timeout_hint">De 5 a 43200 minutos (1440 = un día, 43200 = 30 días).</string>
+    <string name="admin_settings_trash_retention_hint">Días hasta el borrado definitivo. 0 = se conserva siempre.</string>
 </resources>

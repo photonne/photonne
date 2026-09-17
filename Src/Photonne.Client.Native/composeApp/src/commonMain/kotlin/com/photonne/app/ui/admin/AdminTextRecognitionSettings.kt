@@ -3,9 +3,6 @@ package com.photonne.app.ui.admin
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
 import androidx.compose.material.icons.outlined.TextFields
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -90,31 +87,20 @@ fun AdminTextRecognitionSettingsScreen(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isLoading = state.isLoading,
-        isSubmitting = state.isSubmitting,
-        errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
-        canSave = state.canSave,
+        state = state,
         onSave = viewModel::save,
+        onRetry = viewModel::load,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_text_settings_enabled),
             description = stringResource(Res.string.admin_text_settings_enabled_description),
             icon = Icons.Outlined.TextFields,
-            checked = state.get(AdminTextRecognitionSettingsViewModel.ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminTextRecognitionSettingsViewModel.ENABLED_KEY),
         ) { v ->
-            viewModel.set(
-                AdminTextRecognitionSettingsViewModel.ENABLED_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminTextRecognitionSettingsViewModel.ENABLED_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_parameters_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_parameters_section))
 
         DeviceSettingDropdown(
             value = state.get(AdminTextRecognitionSettingsViewModel.PROVIDER_KEY),
@@ -142,6 +128,7 @@ fun AdminTextRecognitionSettingsScreen(
             value = state.get(AdminTextRecognitionSettingsViewModel.MAX_LINES_PER_ASSET_KEY)
                 .toIntOrNull() ?: 200,
             range = 50..500,
+            step = 10,
             description = stringResource(Res.string.admin_text_settings_max_lines_hint),
             onValueChange = {
                 viewModel.set(
@@ -155,25 +142,17 @@ fun AdminTextRecognitionSettingsScreen(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
             icon = Icons.Outlined.PhotoSizeSelectLarge,
-            checked = state.get(AdminTextRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
-                .equals("true", ignoreCase = true),
+            checked = state.bool(AdminTextRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY),
         ) { v ->
-            viewModel.set(
-                AdminTextRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY,
-                if (v) "true" else "false",
-            )
+            viewModel.setBool(AdminTextRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_workers_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
         SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
             value = state.get(AdminTextRecognitionSettingsViewModel.WORKERS_KEY)
                 .toIntOrNull() ?: 1,
-            range = 1..8,
+            range = 1..32,
             onValueChange = {
                 viewModel.set(
                     AdminTextRecognitionSettingsViewModel.WORKERS_KEY,
@@ -182,14 +161,9 @@ fun AdminTextRecognitionSettingsScreen(
             }
         )
 
-        HorizontalDivider()
-        Text(
-            stringResource(Res.string.admin_face_settings_nightly_section),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(
-            enabled = state.get(AdminTextRecognitionSettingsViewModel.NIGHTLY_ENABLED_KEY)
-                .equals("true", ignoreCase = true),
+            enabled = state.bool(AdminTextRecognitionSettingsViewModel.NIGHTLY_ENABLED_KEY),
             mode = state.get(AdminTextRecognitionSettingsViewModel.NIGHTLY_MODE_KEY),
             onOpen = onOpenNightly,
         )

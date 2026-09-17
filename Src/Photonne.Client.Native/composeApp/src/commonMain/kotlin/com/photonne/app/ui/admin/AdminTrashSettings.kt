@@ -5,17 +5,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -29,22 +24,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
-import androidx.compose.runtime.remember
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.data.models.TrashUserStat
-import com.photonne.app.ui.theme.actionButtonHeight
 import kotlinx.coroutines.launch
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_save
 import com.photonne.app.resources.admin_settings_trash_enabled
 import com.photonne.app.resources.admin_settings_trash_max_quota
 import com.photonne.app.resources.admin_settings_trash_max_quota_hint
 import com.photonne.app.resources.admin_settings_trash_retention
+import com.photonne.app.resources.admin_settings_trash_retention_hint
 import com.photonne.app.resources.admin_settings_trash_section_config
 import com.photonne.app.resources.admin_settings_trash_section_stats
 import com.photonne.app.resources.admin_trash_action_cleanup
@@ -62,11 +49,7 @@ class AdminTrashSettingsViewModel(
     private val repository: AdminRepository
 ) : AdminKeyValueSettingsViewModel(repository) {
 
-    override val keys = listOf(
-        "TrashSettings.Enabled",
-        "TrashSettings.RetentionDays",
-        "TrashSettings.MaxQuotaMb"
-    )
+    override val keys = listOf("TrashSettings.Enabled", RETENTION_KEY, MAX_QUOTA_KEY)
 
     override val defaults = mapOf(
         "TrashSettings.Enabled" to "true",
@@ -74,10 +57,10 @@ class AdminTrashSettingsViewModel(
         "TrashSettings.MaxQuotaMb" to "0"
     )
 
-    override fun normalize(key: String, value: String): String = when (key) {
-        "TrashSettings.RetentionDays", "TrashSettings.MaxQuotaMb" -> value.filter { it.isDigit() }
-        else -> value
-    }
+    override val intRanges = mapOf(
+        RETENTION_KEY to 0..3650,
+        MAX_QUOTA_KEY to 0..100_000_000,
+    )
 
     // Stats are loaded separately and held on the side; reuses the
     // same screen so the admin can read live trash usage and tweak
@@ -85,6 +68,11 @@ class AdminTrashSettingsViewModel(
     private val _trashStats =
         kotlinx.coroutines.flow.MutableStateFlow(AdminTrashSideState())
     val trashStats: kotlinx.coroutines.flow.StateFlow<AdminTrashSideState> = _trashStats
+
+    companion object {
+        const val RETENTION_KEY = "TrashSettings.RetentionDays"
+        const val MAX_QUOTA_KEY = "TrashSettings.MaxQuotaMb"
+    }
 
     fun loadStats() {
         if (_trashStats.value.isLoading) return
@@ -149,82 +137,65 @@ fun AdminTrashSettingsScreen(
         viewModel.loadStats()
     }
 
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
-    Box(modifier = Modifier.fillMaxSize()) {
-    if (settings.isLoading && settings.original.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .hazeSource(hazeState)
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = 16.dp + reservedTop,
-                bottom = 16.dp + floatingNavBarReservedHeight()
-            ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    AdminSettingsForm(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        state = settings,
+        onSave = viewModel::save,
+        onRetry = viewModel::load,
+        footer = { TrashUsageSection(stats, viewModel::cleanupExpired) },
     ) {
-        Text(
-            stringResource(Res.string.admin_settings_trash_section_config),
-            style = MaterialTheme.typography.titleSmall
-        )
+        SettingSectionHeader(stringResource(Res.string.admin_settings_trash_section_config), divider = false)
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_trash_enabled),
-            checked = settings.get("TrashSettings.Enabled").equals("true", true)
-        ) { viewModel.set("TrashSettings.Enabled", if (it) "true" else "false") }
+            checked = settings.bool("TrashSettings.Enabled")
+        ) { viewModel.setBool("TrashSettings.Enabled", it) }
         SettingNumberField(
             stringResource(Res.string.admin_settings_trash_retention),
-            settings.get("TrashSettings.RetentionDays")
-        ) { viewModel.set("TrashSettings.RetentionDays", it) }
+            settings.get(AdminTrashSettingsViewModel.RETENTION_KEY),
+            supporting = stringResource(Res.string.admin_settings_trash_retention_hint),
+            range = viewModel.intRanges[AdminTrashSettingsViewModel.RETENTION_KEY]
+        ) { viewModel.set(AdminTrashSettingsViewModel.RETENTION_KEY, it) }
         SettingNumberField(
             stringResource(Res.string.admin_settings_trash_max_quota),
-            settings.get("TrashSettings.MaxQuotaMb"),
-            supporting = stringResource(Res.string.admin_settings_trash_max_quota_hint)
-        ) { viewModel.set("TrashSettings.MaxQuotaMb", it) }
+            settings.get(AdminTrashSettingsViewModel.MAX_QUOTA_KEY),
+            supporting = stringResource(Res.string.admin_settings_trash_max_quota_hint),
+            range = viewModel.intRanges[AdminTrashSettingsViewModel.MAX_QUOTA_KEY]
+        ) { viewModel.set(AdminTrashSettingsViewModel.MAX_QUOTA_KEY, it) }
+    }
+}
 
-        Row(
+/** Live trash usage and the manual cleanup, under the form: read next to the
+ *  retention it depends on, but not something Save touches. */
+@Composable
+private fun TrashUsageSection(stats: AdminTrashSideState, onCleanup: () -> Unit) {
+    SettingSectionHeader(stringResource(Res.string.admin_settings_trash_section_stats))
+
+    stats.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    stats.statusMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+
+    val s = stats.stats
+    if (s != null) {
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            if (settings.isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(12.dp))
-            }
-            settings.errorMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
-            }
-            settings.successMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-            }
-            Button(
-                onClick = viewModel::save,
-                enabled = settings.canSave,
-                modifier = Modifier.actionButtonHeight()
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(stringResource(Res.string.action_save))
+                TwoColumn(stringResource(Res.string.admin_trash_total_items), s.totalItems.toString())
+                TwoColumn(stringResource(Res.string.admin_trash_total_bytes), humanBytes(s.totalBytes))
+                TwoColumn(stringResource(Res.string.admin_trash_expired), s.expiredItems.toString())
+                TwoColumn(stringResource(Res.string.admin_trash_over_quota_users), s.overQuotaUsers.toString())
+                TwoColumn(stringResource(Res.string.admin_trash_over_quota_bytes), humanBytes(s.overQuotaBytes))
             }
         }
-
-        HorizontalDivider()
-
-        Text(
-            stringResource(Res.string.admin_settings_trash_section_stats),
-            style = MaterialTheme.typography.titleSmall
-        )
-
-        stats.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        stats.statusMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-
-        val s = stats.stats
-        if (s != null) {
+        if (s.perUser.isNotEmpty()) {
+            SettingSectionHeader(stringResource(Res.string.admin_trash_per_user_title), divider = false)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -233,70 +204,32 @@ fun AdminTrashSettingsScreen(
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TwoColumn(stringResource(Res.string.admin_trash_total_items), s.totalItems.toString())
-                    TwoColumn(stringResource(Res.string.admin_trash_total_bytes), humanBytes(s.totalBytes))
-                    TwoColumn(stringResource(Res.string.admin_trash_expired), s.expiredItems.toString())
-                    TwoColumn(stringResource(Res.string.admin_trash_over_quota_users), s.overQuotaUsers.toString())
-                    TwoColumn(stringResource(Res.string.admin_trash_over_quota_bytes), humanBytes(s.overQuotaBytes))
+                    s.perUser.forEach { user -> PerUserRow(user) }
                 }
-            }
-            if (s.perUser.isNotEmpty()) {
-                Text(
-                    stringResource(Res.string.admin_trash_per_user_title),
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        s.perUser.forEach { user -> PerUserRow(user) }
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (stats.isCleaning) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.size(12.dp))
-                }
-                OutlinedButton(
-                    onClick = viewModel::cleanupExpired,
-                    enabled = !stats.isCleaning && (s.expiredItems > 0)
-                ) {
-                    Text(stringResource(Res.string.admin_trash_action_cleanup))
-                }
-            }
-        } else if (stats.isLoading) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
             }
         }
-    }
-    }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (stats.isCleaning) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                Spacer(Modifier.size(12.dp))
+            }
+            OutlinedButton(
+                onClick = onCleanup,
+                enabled = !stats.isCleaning && (s.expiredItems > 0)
+            ) {
+                Text(stringResource(Res.string.admin_trash_action_cleanup))
+            }
+        }
+    } else if (stats.isLoading) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+        }
     }
 }
 
