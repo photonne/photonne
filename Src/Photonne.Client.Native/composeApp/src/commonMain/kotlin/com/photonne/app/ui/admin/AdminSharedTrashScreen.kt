@@ -53,14 +53,14 @@ import com.photonne.app.data.models.SharedTrashItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_shared_trash_action_purge
 import com.photonne.app.resources.admin_shared_trash_action_restore
-import com.photonne.app.resources.admin_shared_trash_deleted_by
+import com.photonne.app.resources.admin_shared_trash_deleted_by_format
 import com.photonne.app.resources.admin_shared_trash_empty
 import com.photonne.app.resources.admin_shared_trash_empty_subtitle
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.resources.admin_shared_trash_load_more
 import com.photonne.app.resources.admin_shared_trash_purge_confirm_message
 import com.photonne.app.resources.admin_shared_trash_purge_confirm_title
-import com.photonne.app.resources.admin_shared_trash_selected
+import com.photonne.app.resources.admin_shared_trash_selected_format
 import com.photonne.app.resources.admin_shared_trash_unknown_user
 import com.photonne.app.ui.library.ConfirmActionDialog
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -363,7 +363,7 @@ private fun SelectionActionBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            "$count ${stringResource(Res.string.admin_shared_trash_selected)}",
+            stringResource(Res.string.admin_shared_trash_selected_format, count),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
@@ -416,7 +416,7 @@ private fun SharedTrashRow(
             val user = item.deletedByUsername?.takeIf { it.isNotBlank() }
                 ?: stringResource(Res.string.admin_shared_trash_unknown_user)
             Text(
-                "${stringResource(Res.string.admin_shared_trash_deleted_by)} $user",
+                stringResource(Res.string.admin_shared_trash_deleted_by_format, user),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -505,5 +505,4 @@ private fun sourceFolderLabel(item: SharedTrashItem): String? {
     return if (idx in 0 until trimmed.lastIndex) trimmed.substring(idx + 1) else trimmed
 }
 
-private fun formatDeletedAt(instant: Instant): String =
-    instant.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+private fun formatDeletedAt(instant: Instant): String = adminDate(instant)

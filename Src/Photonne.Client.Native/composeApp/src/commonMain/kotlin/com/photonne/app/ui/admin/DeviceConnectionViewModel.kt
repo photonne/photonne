@@ -71,12 +71,12 @@ class DeviceConnectionViewModel(
         if (current.isProbing || current.isSaving) return
         val local = current.localUrl.trim()
         if (local.isEmpty()) {
-            _state.value = current.copy(errorMessage = "Introduce una URL local primero")
+            _state.value = current.copy(errorMessage = ERROR_LOCAL_MISSING)
             return
         }
         val normalized = ServerUrlStore.normalize(local)
         if (!isValidUrl(normalized)) {
-            _state.value = current.copy(errorMessage = "La URL local no es válida")
+            _state.value = current.copy(errorMessage = ERROR_LOCAL_INVALID)
             return
         }
         _state.value = current.copy(isProbing = true, errorMessage = null, infoMessage = null)
@@ -101,14 +101,14 @@ class DeviceConnectionViewModel(
         val normalizedPublic = ServerUrlStore.normalize(current.publicUrl)
         if (!isValidUrl(normalizedPublic)) {
             _state.value = current.copy(
-                errorMessage = "La URL pública no es válida"
+                errorMessage = ERROR_PUBLIC_INVALID
             )
             return
         }
         val rawLocal = current.localUrl.trim()
         val normalizedLocal = if (rawLocal.isEmpty()) null else ServerUrlStore.normalize(rawLocal)
         if (normalizedLocal != null && !isValidUrl(normalizedLocal)) {
-            _state.value = current.copy(errorMessage = "La URL local no es válida")
+            _state.value = current.copy(errorMessage = ERROR_LOCAL_INVALID)
             return
         }
         _state.value = current.copy(isSaving = true, errorMessage = null, infoMessage = null)
@@ -119,7 +119,7 @@ class DeviceConnectionViewModel(
             if (!publicOk) {
                 _state.value = _state.value.copy(
                     isSaving = false,
-                    errorMessage = "No se pudo contactar con la URL pública"
+                    errorMessage = ERROR_PUBLIC_UNREACHABLE
                 )
                 return@launch
             }
@@ -163,5 +163,9 @@ class DeviceConnectionViewModel(
         const val PROBE_REACHABLE = "probe_reachable"
         const val PROBE_UNREACHABLE = "probe_unreachable"
         const val SAVED = "saved"
+        const val ERROR_LOCAL_MISSING = "error_local_missing"
+        const val ERROR_LOCAL_INVALID = "error_local_invalid"
+        const val ERROR_PUBLIC_INVALID = "error_public_invalid"
+        const val ERROR_PUBLIC_UNREACHABLE = "error_public_unreachable"
     }
 }

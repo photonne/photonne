@@ -506,10 +506,6 @@
     <string name="admin_section_users_subtitle">Crear, editar y eliminar cuentas</string>
     <string name="admin_section_stats">Estadísticas</string>
     <string name="admin_section_stats_subtitle">Uso global y por usuario</string>
-    <string name="admin_section_server">Servidor</string>
-    <string name="admin_section_server_subtitle">Versión y actualizaciones</string>
-    <string name="admin_section_trash">Papelera del sistema</string>
-    <string name="admin_section_trash_subtitle">Retención y limpieza de expirados</string>
 
     <string name="admin_users_empty">No hay usuarios todavía.</string>
     <string name="admin_user_action_new">Nuevo usuario</string>
@@ -568,8 +564,6 @@
     <string name="admin_trash_total_items">Elementos en la papelera</string>
     <string name="admin_trash_total_bytes">Espacio ocupado</string>
     <string name="admin_trash_expired">Elementos expirados</string>
-    <string name="admin_trash_retention_days">Días de retención</string>
-    <string name="admin_trash_quota_mb">Cuota máxima (MB)</string>
     <string name="admin_trash_over_quota_users">Usuarios por encima de la cuota</string>
     <string name="admin_trash_over_quota_bytes">Espacio por encima de la cuota</string>
     <string name="admin_trash_action_cleanup">Limpiar expirados</string>
@@ -607,8 +601,8 @@
     <string name="admin_libraries_permissions_empty">Solo tú tienes acceso a esta biblioteca.</string>
 
     <!-- Settings hub + subpages -->
-    <string name="admin_settings_task_backfill_batch">Tamaño del lote de backfill</string>
-    <string name="admin_settings_nightly_batch_size_hint">Valor por defecto para ejecuciones manuales de backfill desde Sistema. Cada ejecución puede sobreescribirlo.</string>
+    <string name="admin_settings_task_backfill_batch">Tamaño del lote de reprocesado</string>
+    <string name="admin_settings_nightly_batch_size_hint">Cuántas fotos se encolan por tanda al lanzar un análisis a mano desde Sistema.</string>
 
     <string name="admin_system_run_tasks">Ejecutar tareas</string>
     <string name="admin_system_run_tasks_subtitle">Indexar, analizar, reparar y limpiar</string>
@@ -630,7 +624,6 @@
     <string name="admin_run_tasks_confirm_purge_title">¿Purgar los assets sin archivo?</string>
     <string name="admin_run_tasks_confirm_purge_message">Se eliminarán de la base de datos los assets marcados como ausentes y las carpetas cuyo directorio ya no exista, con sus álbumes y sus caras. No se puede deshacer. Si dudas, ejecútalo antes con «Solo simular».</string>
     <string name="admin_run_tasks_confirm_run">Ejecutar</string>
-    <string name="admin_run_tasks_ai_subtitle_format">%1$d assets sin analizar por alguna IA</string>
     <string name="admin_run_tasks_ai_enqueued_format">encolados %1$s de %2$s en %3$s. El procesador los irá completando.</string>
     <string name="admin_run_tasks_ai_nothing_to_enqueue">no había nada que encolar.</string>
     <string name="admin_run_tasks_ai_retrying_format">%1$d reintentándose</string>
@@ -683,25 +676,25 @@
     <string name="admin_run_tasks_time_d_format">%1$d d</string>
 
     <string name="admin_settings_face_recognition">Reconocimiento facial</string>
-    <string name="admin_settings_face_recognition_subtitle">Umbrales, modelo y workers</string>
+    <string name="admin_settings_face_recognition_subtitle">Umbrales, modelo y procesos en paralelo</string>
 
     <string name="admin_face_settings_enabled">Reconocimiento facial activado</string>
     <string name="admin_face_settings_enabled_description">Interruptor maestro. Si está desactivado, ninguna foto será procesada por el modelo.</string>
     <string name="admin_face_settings_parameters_section">Parámetros del modelo</string>
-    <string name="admin_face_settings_min_detection_score">Score mínimo de detección</string>
-    <string name="admin_face_settings_min_detection_score_hint">Caras con score por debajo se descartan. Rango 0.0 – 1.0.</string>
+    <string name="admin_face_settings_min_detection_score">Confianza mínima de detección</string>
+    <string name="admin_face_settings_min_detection_score_hint">Las caras detectadas con menos confianza se descartan.</string>
     <string name="admin_face_settings_clustering_threshold">Umbral de agrupado (clustering)</string>
     <string name="admin_face_settings_threshold_hint">Distancia coseno máxima para considerar dos caras de la misma persona. Típico: 0.40 – 0.45.</string>
     <string name="admin_face_settings_suggestion_threshold">Umbral de sugerencias</string>
     <string name="admin_face_settings_suggestion_threshold_hint">Caras en [umbral de agrupado, este valor) se proponen como sugerencia. Debe ser ≥ umbral de agrupado.</string>
     <string name="admin_face_settings_min_faces_for_cluster">Caras mínimas por cluster</string>
-    <string name="admin_face_settings_knn_switchover">Switchover kNN</string>
+    <string name="admin_face_settings_knn_switchover">Umbral de cambio a kNN</string>
     <string name="admin_face_settings_knn_switchover_hint">Por encima de este número de caras huérfanas se usa pgvector kNN en lugar del O(n²) en memoria.</string>
     <string name="admin_face_settings_knn_neighbors">Vecinos kNN</string>
     <string name="admin_face_settings_knn_neighbors_hint">Top-k consultado por cara en el camino kNN.</string>
     <string name="admin_face_settings_prefer_thumb_large">Preferir miniatura grande</string>
     <string name="admin_face_settings_prefer_thumb_large_description">Usa la miniatura Large (1280 px) en vez del original. Reduce I/O. ArcFace recorta a 112x112 igualmente.</string>
-    <string name="admin_face_settings_workers_section">Workers</string>
+    <string name="admin_face_settings_workers_section">Rendimiento</string>
     <string name="admin_face_settings_workers">Procesos en paralelo</string>
     <string name="admin_face_settings_nightly_section">Programación nocturna</string>
     <string name="admin_face_settings_nightly_state_enabled">Activado en la tarea nocturna</string>
@@ -710,34 +703,34 @@
     <string name="admin_face_settings_nightly_mode_all">Modo: todos los elementos</string>
     <string name="admin_face_settings_nightly_open">Editar en nocturnas ▸</string>
     <string name="admin_settings_object_detection">Reconocimiento de objetos</string>
-    <string name="admin_settings_object_detection_subtitle">Umbrales, modelo y workers</string>
+    <string name="admin_settings_object_detection_subtitle">Umbrales, modelo y procesos en paralelo</string>
 
     <string name="admin_object_settings_enabled">Detección de objetos activada</string>
     <string name="admin_object_settings_enabled_description">Interruptor maestro. Si está desactivado, no se detectan objetos en ninguna foto.</string>
-    <string name="admin_object_settings_min_score">Score mínimo</string>
-    <string name="admin_object_settings_min_score_hint">Objetos con score por debajo se descartan. Rango 0.0 – 1.0.</string>
+    <string name="admin_object_settings_min_score">Confianza mínima</string>
+    <string name="admin_object_settings_min_score_hint">Los objetos detectados con menos confianza se descartan.</string>
     <string name="admin_object_settings_min_normalized_size">Tamaño mínimo del objeto</string>
     <string name="admin_object_settings_min_normalized_size_hint">Fracción mínima del lado de la imagen (0.02 = 2 %). Filtra objetos diminutos.</string>
     <string name="admin_object_settings_max_objects">Máximo de objetos por foto</string>
-    <string name="admin_object_settings_max_objects_hint">Tope superior. Se quedan los objetos con mayor score.</string>
+    <string name="admin_object_settings_max_objects_hint">Tope por foto. Se quedan los objetos detectados con más confianza.</string>
     <string name="admin_settings_scene_classification">Clasificación de escenas</string>
-    <string name="admin_settings_scene_classification_subtitle">Umbrales, modelo y workers</string>
+    <string name="admin_settings_scene_classification_subtitle">Umbrales, modelo y procesos en paralelo</string>
     <string name="admin_settings_text_recognition">Reconocimiento de texto (OCR)</string>
-    <string name="admin_settings_text_recognition_subtitle">Umbrales, modelo y workers</string>
+    <string name="admin_settings_text_recognition_subtitle">Umbrales, modelo y procesos en paralelo</string>
     <string name="admin_settings_image_embedding">Búsqueda inteligente</string>
-    <string name="admin_settings_image_embedding_subtitle">Modelo CLIP, umbrales y workers</string>
+    <string name="admin_settings_image_embedding_subtitle">Modelo CLIP, umbrales y procesos en paralelo</string>
 
     <string name="admin_scene_settings_enabled">Clasificación de escenas activada</string>
     <string name="admin_scene_settings_enabled_description">Interruptor maestro. Si está desactivado, no se clasifican escenas en ninguna foto.</string>
-    <string name="admin_scene_settings_min_score">Score mínimo (rangos 2+)</string>
-    <string name="admin_scene_settings_min_score_hint">El rango 1 (mejor predicción) siempre se guarda. Los rangos siguientes solo si superan este score.</string>
+    <string name="admin_scene_settings_min_score">Confianza mínima (puestos 2 en adelante)</string>
+    <string name="admin_scene_settings_min_score_hint">La mejor predicción se guarda siempre. Las siguientes, solo si superan esta confianza.</string>
     <string name="admin_scene_settings_max_scenes">Máximo de escenas por foto</string>
     <string name="admin_scene_settings_max_scenes_hint">Tope superior. Se guardan en orden de ranking.</string>
 
     <string name="admin_text_settings_enabled">OCR activado</string>
     <string name="admin_text_settings_enabled_description">Interruptor maestro. Si está desactivado, no se extrae texto de ninguna foto.</string>
     <string name="admin_text_settings_min_score">Confianza mínima</string>
-    <string name="admin_text_settings_min_score_hint">Líneas con menor confianza se descartan. Rango 0.0 – 1.0.</string>
+    <string name="admin_text_settings_min_score_hint">Las líneas leídas con menos confianza se descartan.</string>
     <string name="admin_text_settings_max_lines">Máximo de líneas por foto</string>
     <string name="admin_text_settings_max_lines_hint">Tope superior por imagen. Útil para documentos densos.</string>
 
@@ -806,7 +799,7 @@
     <string name="admin_settings_notifications_share_viewed">Enlace compartido visto</string>
 
     <string name="admin_settings_server">Configuración del servidor</string>
-    <string name="admin_settings_server_subtitle">URL pública, límites y rutas</string>
+    <string name="admin_settings_server_subtitle">URL pública, límites y conexión de este dispositivo</string>
     <string name="admin_settings_server_public_url">URL pública</string>
     <string name="admin_settings_server_max_upload">Tamaño máximo de subida (MB)</string>
     <string name="admin_settings_server_max_upload_hint">0 = sin límite</string>
@@ -837,9 +830,7 @@
     <string name="admin_shared_trash_subtitle">Elementos borrados de carpetas compartidas</string>
     <string name="admin_shared_trash_empty">No hay elementos en la papelera compartida</string>
     <string name="admin_shared_trash_empty_subtitle">Los archivos que se eliminen de carpetas compartidas aparecerán aquí hasta que se restauren o se eliminen.</string>
-    <string name="admin_shared_trash_deleted_by">Borrado por</string>
     <string name="admin_shared_trash_unknown_user">Desconocido</string>
-    <string name="admin_shared_trash_selected">seleccionados</string>
     <string name="admin_shared_trash_action_restore">Restaurar</string>
     <string name="admin_shared_trash_action_purge">Eliminar permanentemente</string>
     <string name="admin_shared_trash_purge_confirm_title">Eliminar permanentemente</string>
@@ -888,7 +879,7 @@
     <string name="admin_system_embedding">Búsqueda inteligente (CLIP)</string>
     <string name="admin_system_embedding_subtitle">Calcular embeddings para búsqueda semántica</string>
     <string name="admin_system_backup">Copia de seguridad</string>
-    <string name="admin_system_backup_subtitle">Exportar e importar la base de datos</string>
+    <string name="admin_system_backup_subtitle">Descargar una copia de la base de datos</string>
     <string name="admin_system_enrichment_failures">Assets con problemas</string>
     <string name="admin_system_enrichment_failures_subtitle">Fallos de metadatos, miniaturas y análisis con su causa</string>
 
@@ -912,36 +903,11 @@
     <!-- Shared task UI (chips above the progress bar) -->
     <string name="admin_task_chip_running">En curso</string>
     <string name="admin_task_chip_completed">Completado</string>
-    <string name="admin_task_chip_eta">ETA %1$s</string>
-    <string name="admin_task_speed_files">%1$s archivos/s</string>
-    <string name="admin_task_speed_assets">%1$s assets/s</string>
 
     <!-- Index task -->
-    <string name="admin_index_action_start">Iniciar indexado</string>
-    <string name="admin_index_action_cancel">Cancelar</string>
-    <string name="admin_index_started">Indexado en curso…</string>
-    <string name="admin_index_completed">Indexado completado.</string>
-    <string name="admin_index_stats_section">Estadísticas</string>
-    <string name="admin_index_stats_total">Archivos encontrados</string>
-    <string name="admin_index_stats_new">Nuevos</string>
-    <string name="admin_index_stats_updated">Actualizados</string>
-    <string name="admin_index_stats_indexed">Hashes calculados</string>
-    <string name="admin_index_stats_extracted">EXIF extraído</string>
-    <string name="admin_index_stats_jobs_queued">Trabajos ML encolados</string>
-    <string name="admin_index_stats_thumbnails">Miniaturas generadas</string>
-    <string name="admin_index_stats_orphans">Huérfanos limpiados</string>
-    <string name="admin_index_stats_duplicates">Duplicados eliminados</string>
 
     <!-- Thumbnails task -->
-    <string name="admin_thumbnails_action_start">Generar miniaturas</string>
-    <string name="admin_thumbnails_action_cancel">Cancelar</string>
-    <string name="admin_thumbnails_completed">Generación completada.</string>
     <string name="admin_thumbnails_regenerate">Regenerar todas las existentes</string>
-    <string name="admin_thumbnails_stats_total">Total</string>
-    <string name="admin_thumbnails_stats_processed">Procesadas</string>
-    <string name="admin_thumbnails_stats_generated">Generadas</string>
-    <string name="admin_thumbnails_stats_skipped">Saltadas</string>
-    <string name="admin_thumbnails_stats_failed">Fallidas</string>
 
     <!-- Duplicates task -->
     <string name="admin_duplicates_action_start">Buscar duplicados</string>
@@ -957,27 +923,6 @@
     <string name="admin_duplicates_stats_unindexed">Archivos sin indexar</string>
 
     <!-- Backfill (ML tasks) -->
-    <string name="admin_backfill_pending">Pendientes</string>
-    <string name="admin_backfill_in_queue">En cola</string>
-    <string name="admin_backfill_unprocessed">Sin encolar</string>
-    <string name="admin_backfill_only_missing">Solo elementos sin procesar</string>
-    <string name="admin_backfill_action_start">Iniciar</string>
-    <string name="admin_backfill_action_stop">Detener</string>
-    <string name="admin_backfill_action_refresh">Actualizar</string>
-    <string name="admin_backfill_action_run">Procesar ahora</string>
-    <string name="admin_backfill_response">Encolados %1$d de %2$d.</string>
-    <string name="admin_backfill_clustering_result">%1$d usuarios procesados · %2$d personas creadas.</string>
-    <string name="admin_backfill_batch_size_label">Tamaño de lote (esta ejecución)</string>
-    <string name="admin_backfill_batch_size_helper">Por defecto se usa el global (%1$d). Editable solo para esta tirada.</string>
-    <string name="admin_backfill_session_progress">Encolados en esta sesión: %1$d de %2$d</string>
-    <string name="admin_backfill_status_enqueuing">Encolando…</string>
-    <string name="admin_backfill_status_enqueuing_progress">Encolados %1$d de %2$d…</string>
-    <string name="admin_backfill_empty_all_processed">No hay fotos pendientes — todo está procesado.</string>
-    <string name="admin_backfill_empty_all_queued">Todo lo pendiente está ya en cola. El motor de ML lo irá procesando en segundo plano; no hay nada nuevo que encolar.</string>
-    <string name="admin_backfill_summary_done">Encolados %1$d. Los procesará el motor de ML en segundo plano.</string>
-    <string name="admin_backfill_summary_stopped">Detenido. Encolados %1$d; quedan %2$d sin encolar.</string>
-    <string name="admin_backfill_cancel_caption">Detener solo deja de encolar más; los jobs ya encolados se procesan en segundo plano.</string>
-    <string name="admin_backfill_error_load">No se pudo leer el estado: %1$s</string>
 
     <!-- Maintenance -->
     <string name="admin_maintenance_action_orphans">Limpiar miniaturas huérfanas</string>
@@ -992,7 +937,6 @@
     <string name="admin_maintenance_desc_empty_trash">Elimina de forma permanente todos los elementos en la papelera de cualquier usuario.</string>
     <string name="admin_maintenance_action_purge_missing">Purgar assets sin archivo</string>
     <string name="admin_maintenance_desc_purge_missing">Elimina de la base de datos los assets marcados como ausentes y las carpetas cuyo directorio ya no existe en disco.</string>
-    <string name="admin_maintenance_result">Procesados %1$d · Afectados %2$d</string>
 
     <!-- Backup -->
     <string name="admin_backup_section_download">Descargar copia de seguridad</string>
@@ -1010,22 +954,12 @@
     <string name="admin_backup_restore_only_pwa">La restauración de copias de seguridad solo está disponible desde la aplicación web por ahora.</string>
 
     <!-- Metadata task -->
-    <string name="admin_metadata_task_explanation">Re-lee EXIF, GPS y otros campos directamente de los archivos.</string>
-    <string name="admin_metadata_action_start">Extraer metadatos</string>
-    <string name="admin_metadata_action_cancel">Cancelar</string>
-    <string name="admin_metadata_completed">Extracción completada.</string>
     <string name="admin_metadata_overwrite">Sobrescribir los existentes</string>
     <string name="admin_restore_dates_from_file">Releer EXIF del archivo</string>
     <string name="admin_restore_dates_infer">Inferir fechas del nombre o carpeta</string>
     <string name="admin_restore_dates_use_file_date">Usar la fecha del archivo (modificación)</string>
     <string name="admin_restore_dates_write_file">Escribir la fecha en el archivo (EXIF)</string>
     <string name="admin_restore_dates_dry_run">Solo simular</string>
-    <string name="admin_metadata_stats_total">Total</string>
-    <string name="admin_metadata_stats_processed">Procesados</string>
-    <string name="admin_metadata_stats_extracted">Extraídos</string>
-    <string name="admin_metadata_stats_skipped">Omitidos</string>
-    <string name="admin_metadata_stats_failed">Fallidos</string>
-    <string name="admin_task_speed_metadata">%1$s metadatos/s</string>
 
     <!-- Backup (formerly Device sync) -->
     <string name="device_backup_title">Copia de seguridad</string>
@@ -1350,4 +1284,42 @@
     <string name="admin_shared_trash_error_purge">No se pudieron eliminar los elementos</string>
     <string name="admin_shared_trash_restored_format">%1$d elemento(s) restaurados</string>
     <string name="admin_shared_trash_purged_format">%1$d elemento(s) eliminados definitivamente</string>
+    <string name="admin_settings_save_failed">No se pudieron guardar los ajustes</string>
+    <string name="admin_settings_saved">Ajustes guardados</string>
+    <string name="admin_users_error_load">No se pudieron cargar los usuarios</string>
+    <string name="admin_users_created_format">Usuario «%1$s» creado</string>
+    <string name="admin_users_error_create">No se pudo crear el usuario</string>
+    <string name="admin_users_updated_format">Usuario «%1$s» actualizado</string>
+    <string name="admin_users_error_update">No se pudo actualizar el usuario</string>
+    <string name="admin_users_deleted">Usuario eliminado</string>
+    <string name="admin_users_error_delete">No se pudo eliminar el usuario</string>
+    <string name="admin_users_password_reset">Contraseña restablecida</string>
+    <string name="admin_users_error_reset_password">No se pudo restablecer la contraseña</string>
+    <string name="admin_users_error_promote">No se pudo transferir el administrador principal</string>
+    <string name="admin_libraries_error_load">No se pudieron cargar las bibliotecas</string>
+    <string name="admin_libraries_created_format">Biblioteca «%1$s» creada</string>
+    <string name="admin_libraries_error_create">No se pudo crear la biblioteca</string>
+    <string name="admin_libraries_updated_format">Biblioteca «%1$s» actualizada</string>
+    <string name="admin_libraries_error_update">No se pudo actualizar la biblioteca</string>
+    <string name="admin_libraries_deleted">Biblioteca eliminada</string>
+    <string name="admin_libraries_error_delete">No se pudo eliminar la biblioteca</string>
+    <string name="admin_libraries_error_scan">Falló el escaneo de la biblioteca</string>
+    <string name="admin_libraries_scan_starting">Iniciando…</string>
+    <string name="admin_libraries_error_permissions_load">No se pudieron cargar los permisos</string>
+    <string name="admin_libraries_error_grant">No se pudo conceder el acceso</string>
+    <string name="admin_libraries_error_revoke">No se pudo quitar el acceso</string>
+    <string name="admin_server_error_load">No se pudo cargar la información de versión</string>
+    <string name="admin_stats_error_load">No se pudieron cargar las estadísticas</string>
+    <string name="admin_enrichment_failures_error_action">No se pudo aplicar la acción</string>
+    <string name="admin_backup_error_download">No se pudo descargar la copia de seguridad</string>
+    <string name="admin_duplicates_error_run">No se pudo completar la búsqueda de duplicados</string>
+    <string name="admin_trash_error_stats">No se pudieron cargar las estadísticas de la papelera</string>
+    <string name="admin_trash_cleanup_done_format">%1$d elemento(s) caducados eliminados</string>
+    <string name="admin_trash_error_cleanup">No se pudo completar la limpieza</string>
+    <string name="admin_settings_device_error_local_missing">Introduce primero una URL local</string>
+    <string name="admin_settings_device_error_local_invalid">La URL local no es válida</string>
+    <string name="admin_settings_device_error_public_invalid">La URL pública no es válida</string>
+    <string name="admin_settings_device_error_public_unreachable">No se pudo contactar con la URL pública</string>
+    <string name="admin_shared_trash_selected_format">%1$d seleccionados</string>
+    <string name="admin_shared_trash_deleted_by_format">Borrado por %1$s</string>
 </resources>

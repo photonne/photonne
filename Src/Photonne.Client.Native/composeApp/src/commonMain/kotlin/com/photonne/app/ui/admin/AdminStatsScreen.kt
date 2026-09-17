@@ -185,11 +185,11 @@ private fun TotalsOverviewCard(
             ) {
                 StatRow(
                     label = stringResource(Res.string.admin_stats_total_photos),
-                    value = totalPhotos.toString()
+                    value = formatCount(totalPhotos)
                 )
                 StatRow(
                     label = stringResource(Res.string.admin_stats_total_videos),
-                    value = totalVideos.toString()
+                    value = formatCount(totalVideos)
                 )
                 StatRow(
                     label = stringResource(Res.string.admin_stats_total_storage),
@@ -285,9 +285,9 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
                 return@Column
             }
 
-            StatRow(stringResource(Res.string.admin_stats_coverage_total), coverage.totalFiles.toString())
-            StatRow(stringResource(Res.string.admin_stats_coverage_indexed), coverage.indexed.toString())
-            StatRow(stringResource(Res.string.admin_stats_coverage_unsupported), coverage.unsupported.toString())
+            StatRow(stringResource(Res.string.admin_stats_coverage_total), formatCount(coverage.totalFiles))
+            StatRow(stringResource(Res.string.admin_stats_coverage_indexed), formatCount(coverage.indexed))
+            StatRow(stringResource(Res.string.admin_stats_coverage_unsupported), formatCount(coverage.unsupported))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -298,7 +298,7 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    coverage.unindexed.toString(),
+                    formatCount(coverage.unindexed),
                     style = MaterialTheme.typography.titleMedium,
                     color = if (coverage.unindexed > 0) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.primary
@@ -357,7 +357,7 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
                 Text(
                     stringResource(
                         Res.string.admin_stats_coverage_verified_at,
-                        verified.take(16).replace('T', ' ')
+                        adminDateTime(verified) ?: verified
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

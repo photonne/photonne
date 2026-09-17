@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_embedding_settings_enabled
 import com.photonne.app.resources.admin_embedding_settings_enabled_description
@@ -49,8 +50,9 @@ import org.jetbrains.compose.resources.stringResource
  * surfaces this warning whenever the model version has been edited.
  */
 class AdminImageEmbeddingSettingsViewModel(
-    repository: AdminRepository
-) : AdminKeyValueSettingsViewModel(repository) {
+    repository: AdminRepository,
+    errorFactory: UiErrorFactory,
+) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
 
     override val keys = listOf(
         ENABLED_KEY,
@@ -116,6 +118,8 @@ fun AdminImageEmbeddingSettingsScreen(
         state = state,
         onSave = viewModel::save,
         onRetry = viewModel::load,
+        onSavedShown = viewModel::consumeSaved,
+        onDismissError = viewModel::dismissError,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_embedding_settings_enabled),

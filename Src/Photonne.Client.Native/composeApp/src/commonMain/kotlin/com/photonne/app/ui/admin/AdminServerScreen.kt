@@ -112,7 +112,7 @@ fun AdminServerScreen(
                         info.checkedAt?.let { checked ->
                             InfoRow(
                                 label = stringResource(Res.string.admin_server_checked_at),
-                                value = isoDateOnly(checked) ?: checked
+                                value = adminDateTime(checked) ?: checked
                             )
                         }
                         Spacer(Modifier.height(4.dp))

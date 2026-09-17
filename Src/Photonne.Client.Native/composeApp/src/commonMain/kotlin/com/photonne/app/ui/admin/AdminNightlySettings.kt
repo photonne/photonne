@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_settings_feature_mode_all
 import com.photonne.app.resources.admin_settings_feature_mode_missing
@@ -29,8 +30,9 @@ import com.photonne.app.resources.admin_settings_nightly_trash_cleanup
 import org.jetbrains.compose.resources.stringResource
 
 class AdminNightlySettingsViewModel(
-    repository: AdminRepository
-) : AdminKeyValueSettingsViewModel(repository) {
+    repository: AdminRepository,
+    errorFactory: UiErrorFactory,
+) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
 
     override val keys = listOf(
         "NightlyTaskSettings.Enabled",
@@ -105,6 +107,8 @@ fun AdminNightlySettingsScreen(
         state = state,
         onSave = viewModel::save,
         onRetry = viewModel::load,
+        onSavedShown = viewModel::consumeSaved,
+        onDismissError = viewModel::dismissError,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_nightly_enabled),

@@ -1,5 +1,10 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.resources.admin_backup_error_download
+import org.jetbrains.compose.resources.getString
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.ui.error.ErrorBanner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,12 +75,13 @@ data class AdminBackupUiState(
     val level: BackupLevel = BackupLevel.Essential,
     val isDownloading: Boolean = false,
     val downloadedTo: String? = null,
-    val errorMessage: String? = null
+    val error: UiError? = null
 )
 
 class AdminBackupViewModel(
     private val repository: AdminRepository,
-    private val sharing: com.photonne.app.ui.actions.AssetSharing
+    private val sharing: com.photonne.app.ui.actions.AssetSharing,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminBackupUiState())
@@ -87,7 +93,7 @@ class AdminBackupViewModel(
 
     fun downloadBackup() {
         if (_state.value.isDownloading) return
-        _state.update { it.copy(isDownloading = true, errorMessage = null, downloadedTo = null) }
+        _state.update { it.copy(isDownloading = true, error = null, downloadedTo = null) }
         val level = _state.value.level
         viewModelScope.launch {
             runCatching {
@@ -107,7 +113,7 @@ class AdminBackupViewModel(
                     _state.update {
                         it.copy(
                             isDownloading = false,
-                            errorMessage = error.message ?: "No se pudo descargar la copia de seguridad"
+                            error = errorFactory.from(error, getString(Res.string.admin_backup_error_download))
                         )
                     }
                 }
@@ -136,7 +142,7 @@ fun AdminBackupScreen(
             .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        state.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        ErrorBanner(error = state.error)
         state.downloadedTo?.let { path ->
             Text(
                 stringResource(Res.string.admin_backup_downloaded, path),

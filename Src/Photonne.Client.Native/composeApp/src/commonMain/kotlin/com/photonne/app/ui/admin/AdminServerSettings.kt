@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.admin_settings_device_local_url
@@ -38,11 +39,16 @@ import com.photonne.app.resources.admin_settings_server_public_url
 import com.photonne.app.resources.admin_settings_server_session_timeout
 import com.photonne.app.resources.admin_settings_server_session_timeout_hint
 import com.photonne.app.ui.theme.actionButtonHeight
+import com.photonne.app.resources.admin_settings_device_error_local_missing
+import com.photonne.app.resources.admin_settings_device_error_local_invalid
+import com.photonne.app.resources.admin_settings_device_error_public_invalid
+import com.photonne.app.resources.admin_settings_device_error_public_unreachable
 import org.jetbrains.compose.resources.stringResource
 
 class AdminServerSettingsViewModel(
-    repository: AdminRepository
-) : AdminKeyValueSettingsViewModel(repository) {
+    repository: AdminRepository,
+    errorFactory: UiErrorFactory,
+) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
 
     override val keys = listOf(
         "ServerSettings.PublicUrl",
@@ -88,6 +94,8 @@ fun AdminServerSettingsScreen(
         state = serverState,
         onSave = viewModel::save,
         onRetry = viewModel::load,
+        onSavedShown = viewModel::consumeSaved,
+        onDismissError = viewModel::dismissError,
         // This phone's own addresses: stored on the device, not on the server,
         // with their own Save. Below the server's so neither button can be
         // taken for the other's.
@@ -156,7 +164,18 @@ private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
         supporting = stringResource(Res.string.admin_settings_device_local_url_hint)
     ) { viewModel.onLocalUrlChange(it) }
 
-    state.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    val errorText: String? = when (state.errorMessage) {
+        DeviceConnectionViewModel.ERROR_LOCAL_MISSING ->
+            stringResource(Res.string.admin_settings_device_error_local_missing)
+        DeviceConnectionViewModel.ERROR_LOCAL_INVALID ->
+            stringResource(Res.string.admin_settings_device_error_local_invalid)
+        DeviceConnectionViewModel.ERROR_PUBLIC_INVALID ->
+            stringResource(Res.string.admin_settings_device_error_public_invalid)
+        DeviceConnectionViewModel.ERROR_PUBLIC_UNREACHABLE ->
+            stringResource(Res.string.admin_settings_device_error_public_unreachable)
+        else -> state.errorMessage
+    }
+    errorText?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
     val infoText: String? = when (state.infoMessage) {
         DeviceConnectionViewModel.PROBE_REACHABLE ->

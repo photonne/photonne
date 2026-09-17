@@ -76,6 +76,7 @@ import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_libraries_scan_cancel
 import com.photonne.app.resources.admin_libraries_permissions_revoke
 import com.photonne.app.resources.admin_libraries_permissions_add
+import com.photonne.app.resources.admin_libraries_scan_starting
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -166,7 +167,10 @@ private fun ScanProgressCard(progress: LibraryScanProgress, onCancel: () -> Unit
                     )
                 }
             }
-            Text(progress.message, style = MaterialTheme.typography.bodySmall)
+            Text(
+                progress.message.ifBlank { stringResource(Res.string.admin_libraries_scan_starting) },
+                style = MaterialTheme.typography.bodySmall
+            )
             Spacer(Modifier.height(Spacing.xs))
             LinearProgressIndicator(
                 progress = { (progress.percentage / 100f).coerceIn(0f, 1f) },
@@ -213,7 +217,7 @@ private fun LibraryCard(
                 text = library.lastScannedAt?.let {
                     stringResource(
                         Res.string.admin_libraries_last_scan,
-                        isoDateOnly(it) ?: it,
+                        adminDate(it) ?: it,
                         library.lastScanStatus.orEmpty()
                     )
                 } ?: stringResource(Res.string.admin_libraries_no_scan),

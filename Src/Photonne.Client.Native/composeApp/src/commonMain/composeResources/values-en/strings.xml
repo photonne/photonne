@@ -491,10 +491,6 @@
     <string name="admin_section_users_subtitle">Create, edit and delete accounts</string>
     <string name="admin_section_stats">Statistics</string>
     <string name="admin_section_stats_subtitle">Global usage and per-user breakdown</string>
-    <string name="admin_section_server">Server</string>
-    <string name="admin_section_server_subtitle">Version and updates</string>
-    <string name="admin_section_trash">System trash</string>
-    <string name="admin_section_trash_subtitle">Retention and cleanup of expired items</string>
 
     <string name="admin_users_empty">No users yet.</string>
     <string name="admin_user_action_new">New user</string>
@@ -553,8 +549,6 @@
     <string name="admin_trash_total_items">Items in trash</string>
     <string name="admin_trash_total_bytes">Space used</string>
     <string name="admin_trash_expired">Expired items</string>
-    <string name="admin_trash_retention_days">Retention days</string>
-    <string name="admin_trash_quota_mb">Max quota (MB)</string>
     <string name="admin_trash_over_quota_users">Users over quota</string>
     <string name="admin_trash_over_quota_bytes">Space over quota</string>
     <string name="admin_trash_action_cleanup">Clean up expired</string>
@@ -592,8 +586,8 @@
     <string name="admin_libraries_permissions_empty">Only you can access this library.</string>
 
     <!-- Settings hub + subpages -->
-    <string name="admin_settings_task_backfill_batch">Backfill batch size</string>
-    <string name="admin_settings_nightly_batch_size_hint">Default for manual backfill runs from System. Each run can override it.</string>
+    <string name="admin_settings_task_backfill_batch">Reprocessing batch size</string>
+    <string name="admin_settings_nightly_batch_size_hint">How many photos are queued per round when an analysis is launched by hand from System.</string>
 
     <string name="admin_system_run_tasks">Run tasks</string>
     <string name="admin_system_run_tasks_subtitle">Index, analyse, repair and clean up</string>
@@ -615,7 +609,6 @@
     <string name="admin_run_tasks_confirm_purge_title">Purge assets with no file?</string>
     <string name="admin_run_tasks_confirm_purge_message">This deletes from the database the assets marked as missing and the folders whose directory no longer exists, along with their albums and faces. It cannot be undone. If in doubt, run it with "Dry run" first.</string>
     <string name="admin_run_tasks_confirm_run">Run</string>
-    <string name="admin_run_tasks_ai_subtitle_format">%1$d assets missing at least one AI pass</string>
     <string name="admin_run_tasks_ai_enqueued_format">queued %1$s of %2$s in %3$s. The processor will work through them.</string>
     <string name="admin_run_tasks_ai_nothing_to_enqueue">there was nothing to queue.</string>
     <string name="admin_run_tasks_status_queueing">Queueing everything pending…</string>
@@ -684,7 +677,7 @@
     <string name="admin_face_settings_knn_neighbors_hint">Top-k queried per face in the kNN path.</string>
     <string name="admin_face_settings_prefer_thumb_large">Prefer Large thumbnail</string>
     <string name="admin_face_settings_prefer_thumb_large_description">Use the Large (1280 px) thumbnail instead of the original. Reduces I/O. ArcFace crops to 112x112 anyway.</string>
-    <string name="admin_face_settings_workers_section">Workers</string>
+    <string name="admin_face_settings_workers_section">Performance</string>
     <string name="admin_face_settings_workers">Parallel processes</string>
     <string name="admin_face_settings_nightly_section">Nightly schedule</string>
     <string name="admin_face_settings_nightly_state_enabled">Enabled in the nightly task</string>
@@ -789,7 +782,7 @@
     <string name="admin_settings_notifications_share_viewed">Share link viewed</string>
 
     <string name="admin_settings_server">Server configuration</string>
-    <string name="admin_settings_server_subtitle">Public URL, limits and paths</string>
+    <string name="admin_settings_server_subtitle">Public URL, limits and this device\'s connection</string>
     <string name="admin_settings_server_public_url">Public URL</string>
     <string name="admin_settings_server_max_upload">Max upload size (MB)</string>
     <string name="admin_settings_server_max_upload_hint">0 = unlimited</string>
@@ -858,41 +851,16 @@
     <string name="admin_system_embedding">Smart search (CLIP)</string>
     <string name="admin_system_embedding_subtitle">Compute embeddings for semantic search</string>
     <string name="admin_system_backup">Backup</string>
-    <string name="admin_system_backup_subtitle">Export and import the database</string>
+    <string name="admin_system_backup_subtitle">Download a copy of the database</string>
 
     <!-- Shared task UI (chips above the progress bar) -->
     <string name="admin_task_chip_running">Running</string>
     <string name="admin_task_chip_completed">Completed</string>
-    <string name="admin_task_chip_eta">ETA %1$s</string>
-    <string name="admin_task_speed_files">%1$s files/s</string>
-    <string name="admin_task_speed_assets">%1$s assets/s</string>
 
     <!-- Index task -->
-    <string name="admin_index_action_start">Start indexing</string>
-    <string name="admin_index_action_cancel">Cancel</string>
-    <string name="admin_index_started">Indexing in progress…</string>
-    <string name="admin_index_completed">Indexing finished.</string>
-    <string name="admin_index_stats_section">Statistics</string>
-    <string name="admin_index_stats_total">Files found</string>
-    <string name="admin_index_stats_new">New</string>
-    <string name="admin_index_stats_updated">Updated</string>
-    <string name="admin_index_stats_indexed">Hashes computed</string>
-    <string name="admin_index_stats_extracted">EXIF extracted</string>
-    <string name="admin_index_stats_jobs_queued">ML jobs queued</string>
-    <string name="admin_index_stats_thumbnails">Thumbnails generated</string>
-    <string name="admin_index_stats_orphans">Orphans cleaned</string>
-    <string name="admin_index_stats_duplicates">Duplicates removed</string>
 
     <!-- Thumbnails task -->
-    <string name="admin_thumbnails_action_start">Generate thumbnails</string>
-    <string name="admin_thumbnails_action_cancel">Cancel</string>
-    <string name="admin_thumbnails_completed">Generation finished.</string>
     <string name="admin_thumbnails_regenerate">Regenerate existing</string>
-    <string name="admin_thumbnails_stats_total">Total</string>
-    <string name="admin_thumbnails_stats_processed">Processed</string>
-    <string name="admin_thumbnails_stats_generated">Generated</string>
-    <string name="admin_thumbnails_stats_skipped">Skipped</string>
-    <string name="admin_thumbnails_stats_failed">Failed</string>
 
     <!-- Duplicates task -->
     <string name="admin_duplicates_action_start">Find duplicates</string>
@@ -908,27 +876,6 @@
     <string name="admin_duplicates_stats_unindexed">Unindexed files</string>
 
     <!-- Backfill (ML tasks) -->
-    <string name="admin_backfill_pending">Pending</string>
-    <string name="admin_backfill_in_queue">In queue</string>
-    <string name="admin_backfill_unprocessed">Not yet queued</string>
-    <string name="admin_backfill_only_missing">Only missing items</string>
-    <string name="admin_backfill_action_start">Start</string>
-    <string name="admin_backfill_action_stop">Stop</string>
-    <string name="admin_backfill_action_refresh">Refresh</string>
-    <string name="admin_backfill_action_run">Process now</string>
-    <string name="admin_backfill_response">Queued %1$d of %2$d.</string>
-    <string name="admin_backfill_clustering_result">%1$d owners processed · %2$d persons created.</string>
-    <string name="admin_backfill_batch_size_label">Batch size (this run)</string>
-    <string name="admin_backfill_batch_size_helper">Defaults to the global value (%1$d). Editable only for this run.</string>
-    <string name="admin_backfill_session_progress">Queued in this session: %1$d of %2$d</string>
-    <string name="admin_backfill_status_enqueuing">Queueing…</string>
-    <string name="admin_backfill_status_enqueuing_progress">Queued %1$d of %2$d…</string>
-    <string name="admin_backfill_empty_all_processed">No pending photos — everything is processed.</string>
-    <string name="admin_backfill_empty_all_queued">Everything pending is already in the queue. The ML engine will process it in the background; nothing new to enqueue.</string>
-    <string name="admin_backfill_summary_done">Queued %1$d. The ML engine will process them in the background.</string>
-    <string name="admin_backfill_summary_stopped">Stopped. Queued %1$d; %2$d remaining.</string>
-    <string name="admin_backfill_cancel_caption">Stopping only halts new enqueues; jobs already in the queue keep being processed in the background.</string>
-    <string name="admin_backfill_error_load">Could not load state: %1$s</string>
 
     <!-- Maintenance -->
     <string name="admin_maintenance_action_orphans">Clean orphan thumbnails</string>
@@ -943,7 +890,6 @@
     <string name="admin_maintenance_desc_empty_trash">Permanently deletes every item in every user's trash.</string>
     <string name="admin_maintenance_action_purge_missing">Purge missing assets</string>
     <string name="admin_maintenance_desc_purge_missing">Deletes from the database the assets marked as missing and the folders whose directory no longer exists on disk.</string>
-    <string name="admin_maintenance_result">Processed %1$d · Affected %2$d</string>
 
     <!-- Backup -->
     <string name="admin_backup_section_download">Download backup</string>
@@ -961,22 +907,12 @@
     <string name="admin_backup_restore_only_pwa">Backup restore is only available from the web app for now.</string>
 
     <!-- Metadata task -->
-    <string name="admin_metadata_task_explanation">Re-reads EXIF, GPS and other fields directly from the files.</string>
-    <string name="admin_metadata_action_start">Extract metadata</string>
-    <string name="admin_metadata_action_cancel">Cancel</string>
-    <string name="admin_metadata_completed">Extraction complete.</string>
     <string name="admin_metadata_overwrite">Overwrite existing</string>
     <string name="admin_restore_dates_from_file">Re-read EXIF from file</string>
     <string name="admin_restore_dates_infer">Infer dates from name or folder</string>
     <string name="admin_restore_dates_use_file_date">Use the file date (modified)</string>
     <string name="admin_restore_dates_write_file">Write the date into the file (EXIF)</string>
     <string name="admin_restore_dates_dry_run">Simulate only</string>
-    <string name="admin_metadata_stats_total">Total</string>
-    <string name="admin_metadata_stats_processed">Processed</string>
-    <string name="admin_metadata_stats_extracted">Extracted</string>
-    <string name="admin_metadata_stats_skipped">Skipped</string>
-    <string name="admin_metadata_stats_failed">Failed</string>
-    <string name="admin_task_speed_metadata">%1$s metadata/s</string>
 
     <!-- Backup (formerly Device sync) -->
     <string name="device_backup_title">Backup</string>
@@ -1248,4 +1184,124 @@
     <string name="admin_shared_trash_error_purge">Couldn\'t delete the items</string>
     <string name="admin_shared_trash_restored_format">%1$d item(s) restored</string>
     <string name="admin_shared_trash_purged_format">%1$d item(s) permanently deleted</string>
+    <string name="admin_settings_save_failed">Couldn\'t save the settings</string>
+    <string name="admin_settings_saved">Settings saved</string>
+    <string name="admin_users_error_load">Couldn\'t load the users</string>
+    <string name="admin_users_created_format">User “%1$s” created</string>
+    <string name="admin_users_error_create">Couldn\'t create the user</string>
+    <string name="admin_users_updated_format">User “%1$s” updated</string>
+    <string name="admin_users_error_update">Couldn\'t update the user</string>
+    <string name="admin_users_deleted">User deleted</string>
+    <string name="admin_users_error_delete">Couldn\'t delete the user</string>
+    <string name="admin_users_password_reset">Password reset</string>
+    <string name="admin_users_error_reset_password">Couldn\'t reset the password</string>
+    <string name="admin_users_error_promote">Couldn\'t transfer the primary administrator</string>
+    <string name="admin_libraries_error_load">Couldn\'t load the libraries</string>
+    <string name="admin_libraries_created_format">Library “%1$s” created</string>
+    <string name="admin_libraries_error_create">Couldn\'t create the library</string>
+    <string name="admin_libraries_updated_format">Library “%1$s” updated</string>
+    <string name="admin_libraries_error_update">Couldn\'t update the library</string>
+    <string name="admin_libraries_deleted">Library deleted</string>
+    <string name="admin_libraries_error_delete">Couldn\'t delete the library</string>
+    <string name="admin_libraries_error_scan">The library scan failed</string>
+    <string name="admin_libraries_scan_starting">Starting…</string>
+    <string name="admin_libraries_error_permissions_load">Couldn\'t load the permissions</string>
+    <string name="admin_libraries_error_grant">Couldn\'t grant access</string>
+    <string name="admin_libraries_error_revoke">Couldn\'t remove access</string>
+    <string name="admin_server_error_load">Couldn\'t load the version information</string>
+    <string name="admin_stats_error_load">Couldn\'t load the statistics</string>
+    <string name="admin_enrichment_failures_error_action">Couldn\'t apply the action</string>
+    <string name="admin_backup_error_download">Couldn\'t download the backup</string>
+    <string name="admin_duplicates_error_run">Couldn\'t complete the duplicate search</string>
+    <string name="admin_trash_error_stats">Couldn\'t load the trash statistics</string>
+    <string name="admin_trash_cleanup_done_format">%1$d expired item(s) removed</string>
+    <string name="admin_trash_error_cleanup">Couldn\'t complete the cleanup</string>
+    <string name="admin_settings_device_error_local_missing">Enter a local URL first</string>
+    <string name="admin_settings_device_error_local_invalid">The local URL isn\'t valid</string>
+    <string name="admin_settings_device_error_public_invalid">The public URL isn\'t valid</string>
+    <string name="admin_settings_device_error_public_unreachable">Couldn\'t reach the public URL</string>
+    <string name="action_accept">OK</string>
+    <string name="action_apply">Apply</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_understood">Got it</string>
+    <string name="asset_action_download">Download</string>
+    <string name="search_no_results">No results</string>
+    <string name="admin_run_tasks_ai_retrying_format">%1$d retrying</string>
+    <string name="admin_run_tasks_ai_failed_format">%1$d with errors</string>
+    <string name="admin_shared_trash">Shared trash</string>
+    <string name="admin_shared_trash_subtitle">Items deleted from shared folders</string>
+    <string name="admin_shared_trash_empty">The shared trash is empty</string>
+    <string name="admin_shared_trash_empty_subtitle">Files deleted from shared folders show up here until they are restored or deleted.</string>
+    <string name="admin_shared_trash_unknown_user">Unknown</string>
+    <string name="admin_shared_trash_action_restore">Restore</string>
+    <string name="admin_shared_trash_action_purge">Delete permanently</string>
+    <string name="admin_shared_trash_purge_confirm_title">Delete permanently</string>
+    <string name="admin_shared_trash_purge_confirm_message">The selected items will be permanently deleted. This can\'t be undone.</string>
+    <string name="admin_shared_trash_load_more">Load more</string>
+    <string name="admin_system_enrichment_failures">Assets with problems</string>
+    <string name="admin_system_enrichment_failures_subtitle">Metadata, thumbnail and analysis failures, with their cause</string>
+    <string name="admin_enrichment_failures_empty">No assets with problems</string>
+    <string name="admin_enrichment_failures_total">%1$d task(s) with problems</string>
+    <string name="admin_enrichment_failures_filter_all">All</string>
+    <string name="admin_enrichment_failures_retry">Retry</string>
+    <string name="admin_enrichment_failures_retry_all">Retry all</string>
+    <string name="admin_enrichment_failures_retrying_all">Retrying…</string>
+    <string name="admin_enrichment_failures_suppress">Dismiss</string>
+    <string name="admin_enrichment_failures_badge_permanent">No retries left</string>
+    <string name="admin_enrichment_failures_badge_suppressed">Dismissed</string>
+    <string name="admin_enrichment_failures_kind_any">Any cause</string>
+    <string name="admin_enrichment_failures_kind_transient">Transient</string>
+    <string name="admin_enrichment_failures_kind_permanent">The file itself</string>
+    <string name="admin_enrichment_failures_kind_needs_action">Needs fixing</string>
+    <string name="admin_enrichment_failures_attempts">%1$d attempt(s)</string>
+    <string name="admin_enrichment_failures_load_more">Load more</string>
+    <string name="explore_title">Explore</string>
+    <string name="explore_section_memories">Memories</string>
+    <string name="explore_section_memories_subtitle">Photos from a year ago, two years ago…</string>
+    <string name="explore_section_places">Places</string>
+    <string name="explore_section_places_subtitle">Cities and countries</string>
+    <string name="explore_section_scenes">Scenes</string>
+    <string name="explore_section_scenes_subtitle">Beach, mountain, city…</string>
+    <string name="explore_section_objects">Objects</string>
+    <string name="explore_section_objects_subtitle">Cars, dogs, food…</string>
+    <string name="explore_memories_empty">No memories to show yet.</string>
+    <string name="explore_memories_group_count">%1$d photos</string>
+    <string name="explore_places_coming_soon">Places will be available once reverse geocoding is added to the server.</string>
+    <string name="explore_scenes_empty">No scenes detected yet. Scene classification runs in the background.</string>
+    <string name="explore_objects_empty">No objects detected yet. Object detection runs in the background.</string>
+    <string name="explore_label_count">%1$d photos</string>
+    <string name="smart_album_editor_title">New smart album</string>
+    <string name="smart_album_name_label">Album name</string>
+    <string name="smart_album_match_section">Match</string>
+    <string name="smart_album_match_all">All</string>
+    <string name="smart_album_match_any">Any</string>
+    <string name="smart_album_match_all_together">All together</string>
+    <string name="smart_album_conditions_section">Conditions</string>
+    <string name="smart_album_conditions_empty">Add at least one condition.</string>
+    <string name="smart_album_add_condition">Add condition</string>
+    <string name="smart_album_preview_count">%1$d photos match</string>
+    <string name="smart_album_preview_calculating">Calculating…</string>
+    <string name="smart_album_cond_people">People</string>
+    <string name="smart_album_cond_folders">Folders</string>
+    <string name="smart_album_cond_dates">Dates</string>
+    <string name="smart_album_cond_scenes">Scenes</string>
+    <string name="smart_album_cond_objects">Objects</string>
+    <string name="smart_album_search_person">Search person…</string>
+    <string name="smart_album_search_folder">Search folder…</string>
+    <string name="smart_album_search_scene">Search scene…</string>
+    <string name="smart_album_search_object">Search object…</string>
+    <string name="smart_album_folders_include_sub">Subfolders are included too.</string>
+    <string name="smart_album_folders_empty">No folders.</string>
+    <string name="smart_album_no_selection">Nothing selected</string>
+    <string name="smart_album_summary_people_all">%1$s (all together)</string>
+    <string name="smart_album_summary_people_any">%1$s (any)</string>
+    <string name="smart_album_summary_folders">%1$s (+ subfolders)</string>
+    <string name="smart_album_summary_date_range">%1$s → %2$s</string>
+    <string name="smart_album_summary_date_from">From %1$s</string>
+    <string name="smart_album_summary_date_to">Until %1$s</string>
+    <string name="smart_album_summary_date_none">No range</string>
+    <string name="smart_album_date_from">From</string>
+    <string name="smart_album_date_to">Until</string>
+    <string name="admin_shared_trash_selected_format">%1$d selected</string>
+    <string name="admin_shared_trash_deleted_by_format">Deleted by %1$s</string>
 </resources>

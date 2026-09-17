@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.resources.admin_enrichment_failures_error_action
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.error.UiError
@@ -206,7 +207,7 @@ class AdminEnrichmentFailuresViewModel(
                     _state.update { cur ->
                         cur.copy(items = cur.items.map { item ->
                             if (item.failure.taskId == taskId)
-                                item.copy(isBusy = false, actionError = ex.message ?: "No se pudo aplicar")
+                                item.copy(isBusy = false, actionError = errorFactory.from(ex, getString(Res.string.admin_enrichment_failures_error_action)).userMessage)
                             else item
                         })
                     }

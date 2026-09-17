@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_face_settings_workers
 import com.photonne.app.resources.admin_face_settings_workers_section
@@ -18,8 +19,9 @@ import com.photonne.app.resources.admin_settings_metadata_xmp
 import org.jetbrains.compose.resources.stringResource
 
 class AdminMetadataSettingsViewModel(
-    repository: AdminRepository
-) : AdminKeyValueSettingsViewModel(repository) {
+    repository: AdminRepository,
+    errorFactory: UiErrorFactory,
+) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
 
     override val keys = listOf(
         "MetadataSettings.ExtractDateTime",
@@ -68,6 +70,8 @@ fun AdminMetadataSettingsScreen(
         state = state,
         onSave = viewModel::save,
         onRetry = viewModel::load,
+        onSavedShown = viewModel::consumeSaved,
+        onDismissError = viewModel::dismissError,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_metadata_datetime),

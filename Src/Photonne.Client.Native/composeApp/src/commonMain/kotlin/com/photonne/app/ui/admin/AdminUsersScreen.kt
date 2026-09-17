@@ -146,7 +146,7 @@ private fun UserRow(user: UserDto, onClick: () -> Unit) {
                     )
                 }
             }
-            val lastLogin = isoDateOnly(user.lastLoginAt)
+            val lastLogin = adminDateTime(user.lastLoginAt)
             Text(
                 text = if (lastLogin != null) {
                     stringResource(Res.string.admin_user_last_login, lastLogin)

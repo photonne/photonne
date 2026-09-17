@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiErrorFactory
 import kotlin.math.roundToInt
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_face_settings_clustering_threshold
@@ -40,8 +41,9 @@ import org.jetbrains.compose.resources.stringResource
  * the nightly section is read-only with a link to the scheduling page.
  */
 class AdminFaceRecognitionSettingsViewModel(
-    repository: AdminRepository
-) : AdminKeyValueSettingsViewModel(repository) {
+    repository: AdminRepository,
+    errorFactory: UiErrorFactory,
+) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
 
     override val keys = listOf(
         ENABLED_KEY,
@@ -132,6 +134,8 @@ fun AdminFaceRecognitionSettingsScreen(
         state = state,
         onSave = viewModel::save,
         onRetry = viewModel::load,
+        onSavedShown = viewModel::consumeSaved,
+        onDismissError = viewModel::dismissError,
     ) {
         // Master kill switch — the runtime override checked by
         // FaceRecognitionService.IsRuntimeEnabledAsync.

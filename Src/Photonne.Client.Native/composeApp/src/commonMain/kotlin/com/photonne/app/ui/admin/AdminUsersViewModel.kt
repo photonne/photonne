@@ -1,5 +1,17 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.resources.admin_users_error_load
+import com.photonne.app.resources.admin_users_created_format
+import com.photonne.app.resources.admin_users_error_create
+import com.photonne.app.resources.admin_users_updated_format
+import com.photonne.app.resources.admin_users_error_update
+import com.photonne.app.resources.admin_users_deleted
+import com.photonne.app.resources.admin_users_error_delete
+import com.photonne.app.resources.admin_users_password_reset
+import com.photonne.app.resources.admin_users_error_reset_password
+import com.photonne.app.resources.admin_users_error_promote
+import org.jetbrains.compose.resources.getString
+import com.photonne.app.resources.Res
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.account.AccountRepository
@@ -79,7 +91,7 @@ class AdminUsersViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "No se pudieron cargar los usuarios")
+                            error = errorFactory.from(error, getString(Res.string.admin_users_error_load))
                         )
                     }
                 }
@@ -126,12 +138,12 @@ class AdminUsersViewModel(
                         current.copy(
                             users = (current.users + created).sortedByNatural { it.username },
                             isMutating = false,
-                            statusMessage = "User \"${created.username}\" created"
+                            statusMessage = getString(Res.string.admin_users_created_format, created.username)
                         )
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "No se pudo crear el usuario") }
+                .onFailure { error -> failMutation(error, getString(Res.string.admin_users_error_create)) }
         }
     }
 
@@ -169,12 +181,12 @@ class AdminUsersViewModel(
                         current.copy(
                             users = replaced,
                             isMutating = false,
-                            statusMessage = "User \"${updated.username}\" updated"
+                            statusMessage = getString(Res.string.admin_users_updated_format, updated.username)
                         )
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "No se pudo actualizar el usuario") }
+                .onFailure { error -> failMutation(error, getString(Res.string.admin_users_error_update)) }
         }
     }
 
@@ -188,12 +200,12 @@ class AdminUsersViewModel(
                         current.copy(
                             users = current.users.filterNot { it.id == userId },
                             isMutating = false,
-                            statusMessage = "User deleted"
+                            statusMessage = getString(Res.string.admin_users_deleted)
                         )
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "No se pudo eliminar el usuario") }
+                .onFailure { error -> failMutation(error, getString(Res.string.admin_users_error_delete)) }
         }
     }
 
@@ -202,16 +214,16 @@ class AdminUsersViewModel(
         _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching { repository.resetUserPassword(userId, newPassword) }
-                .onSuccess { msg ->
+                .onSuccess {
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            statusMessage = msg.ifBlank { "Password reset" }
+                            statusMessage = getString(Res.string.admin_users_password_reset)
                         )
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "No se pudo restablecer la contraseña") }
+                .onFailure { error -> failMutation(error, getString(Res.string.admin_users_error_reset_password)) }
         }
     }
 
@@ -253,7 +265,7 @@ class AdminUsersViewModel(
                     onDone()
                 }
                 .onFailure { error ->
-                    failMutation(error, "No se pudo transferir el administrador principal")
+                    failMutation(error, getString(Res.string.admin_users_error_promote))
                 }
         }
     }

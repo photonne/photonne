@@ -1,5 +1,8 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.resources.admin_server_error_load
+import org.jetbrains.compose.resources.getString
+import com.photonne.app.resources.Res
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
@@ -38,7 +41,7 @@ class AdminServerViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "No se pudo cargar la información de versión")
+                            error = errorFactory.from(error, getString(Res.string.admin_server_error_load))
                         )
                     }
                 }

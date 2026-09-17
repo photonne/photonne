@@ -3,6 +3,12 @@ package com.photonne.app.ui.admin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.admin_settings_load_failed
+import com.photonne.app.resources.admin_settings_save_failed
+import org.jetbrains.compose.resources.getString
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,8 +37,9 @@ data class AdminKeyValueUiState(
      *  (empty, not a number, outside its range, or at odds with another
      *  field). Saving waits until this is empty. */
     val invalid: Set<String> = emptySet(),
-    val errorMessage: String? = null,
-    val successMessage: String? = null
+    val error: UiError? = null,
+    /** The last Save went through: the form says so on the snackbar, once. */
+    val saved: Boolean = false
 ) {
     val isDirty: Boolean
         get() = current != original
@@ -54,7 +61,8 @@ data class AdminKeyValueUiState(
  * goes into the editable state (e.g. clamping integers to a range).
  */
 abstract class AdminKeyValueSettingsViewModel(
-    private val repository: AdminRepository
+    private val repository: AdminRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminKeyValueUiState())
@@ -86,7 +94,7 @@ abstract class AdminKeyValueSettingsViewModel(
     fun load() {
         if (_state.value.isLoading) return
         _state.update {
-            it.copy(isLoading = true, loadFailed = false, errorMessage = null, successMessage = null)
+            it.copy(isLoading = true, loadFailed = false, error = null, saved = false)
         }
         viewModelScope.launch {
             runCatching { repository.getSettings(keys) }
@@ -108,7 +116,7 @@ abstract class AdminKeyValueSettingsViewModel(
                         it.copy(
                             isLoading = false,
                             loadFailed = true,
-                            errorMessage = error.message ?: "No se pudieron cargar los ajustes"
+                            error = errorFactory.from(error, getString(Res.string.admin_settings_load_failed))
                         )
                     }
                 }
@@ -123,7 +131,7 @@ abstract class AdminKeyValueSettingsViewModel(
             current.copy(
                 current = edited,
                 invalid = invalidKeys(edited),
-                successMessage = null
+                saved = false
             )
         }
     }
@@ -133,7 +141,7 @@ abstract class AdminKeyValueSettingsViewModel(
         if (!s.canSave) return
         val changed = s.current.filter { (k, v) -> s.original[k] != v }
         if (changed.isEmpty()) return
-        _state.update { it.copy(isSubmitting = true, errorMessage = null, successMessage = null) }
+        _state.update { it.copy(isSubmitting = true, error = null, saved = false) }
         viewModelScope.launch {
             runCatching { repository.saveSettings(changed) }
                 .onSuccess {
@@ -145,7 +153,7 @@ abstract class AdminKeyValueSettingsViewModel(
                         it.copy(
                             original = it.original + changed,
                             isSubmitting = false,
-                            successMessage = "Guardado"
+                            saved = true
                         )
                     }
                 }
@@ -153,15 +161,19 @@ abstract class AdminKeyValueSettingsViewModel(
                     _state.update {
                         it.copy(
                             isSubmitting = false,
-                            errorMessage = error.message ?: "No se pudieron guardar los ajustes"
+                            error = errorFactory.from(error, getString(Res.string.admin_settings_save_failed))
                         )
                     }
                 }
         }
     }
 
-    fun clearMessages() {
-        _state.update { it.copy(errorMessage = null, successMessage = null) }
+    fun consumeSaved() {
+        _state.update { it.copy(saved = false) }
+    }
+
+    fun dismissError() {
+        _state.update { it.copy(error = null) }
     }
 }
 

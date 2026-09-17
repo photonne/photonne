@@ -1,5 +1,18 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.resources.admin_libraries_error_load
+import com.photonne.app.resources.admin_libraries_created_format
+import com.photonne.app.resources.admin_libraries_error_create
+import com.photonne.app.resources.admin_libraries_updated_format
+import com.photonne.app.resources.admin_libraries_error_update
+import com.photonne.app.resources.admin_libraries_deleted
+import com.photonne.app.resources.admin_libraries_error_delete
+import com.photonne.app.resources.admin_libraries_error_scan
+import com.photonne.app.resources.admin_libraries_error_permissions_load
+import com.photonne.app.resources.admin_libraries_error_grant
+import com.photonne.app.resources.admin_libraries_error_revoke
+import org.jetbrains.compose.resources.getString
+import com.photonne.app.resources.Res
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
@@ -71,7 +84,7 @@ class AdminLibrariesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "No se pudieron cargar las bibliotecas")
+                            error = errorFactory.from(error, getString(Res.string.admin_libraries_error_load))
                         )
                     }
                 }
@@ -100,12 +113,12 @@ class AdminLibrariesViewModel(
                         current.copy(
                             libraries = current.libraries + created,
                             isMutating = false,
-                            statusMessage = "Library \"${created.name}\" created"
+                            statusMessage = getString(Res.string.admin_libraries_created_format, created.name)
                         )
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "No se pudo crear") }
+                .onFailure { error -> failMutation(error, getString(Res.string.admin_libraries_error_create)) }
         }
     }
 
@@ -130,12 +143,12 @@ class AdminLibrariesViewModel(
                                 if (it.id == updated.id) updated else it
                             },
                             isMutating = false,
-                            statusMessage = "Library \"${updated.name}\" updated"
+                            statusMessage = getString(Res.string.admin_libraries_updated_format, updated.name)
                         )
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "No se pudo actualizar") }
+                .onFailure { error -> failMutation(error, getString(Res.string.admin_libraries_error_update)) }
         }
     }
 
@@ -149,12 +162,12 @@ class AdminLibrariesViewModel(
                         current.copy(
                             libraries = current.libraries.filterNot { it.id == id },
                             isMutating = false,
-                            statusMessage = "Library deleted"
+                            statusMessage = getString(Res.string.admin_libraries_deleted)
                         )
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "No se pudo eliminar") }
+                .onFailure { error -> failMutation(error, getString(Res.string.admin_libraries_error_delete)) }
         }
     }
 
@@ -163,7 +176,8 @@ class AdminLibrariesViewModel(
         _state.update {
             it.copy(
                 scanningLibraryId = id,
-                scanProgress = LibraryScanProgress(message = "Iniciando…"),
+                // Blank until the server says something: the card fills in "Iniciando…".
+                scanProgress = LibraryScanProgress(message = ""),
                 error = null,
                 statusMessage = null
             )
@@ -175,7 +189,7 @@ class AdminLibrariesViewModel(
                         it.copy(
                             scanningLibraryId = null,
                             scanProgress = null,
-                            error = errorFactory.from(throwable, "Fallo al escanear biblioteca")
+                            error = errorFactory.from(throwable, getString(Res.string.admin_libraries_error_scan))
                         )
                     }
                 }
@@ -225,7 +239,7 @@ class AdminLibrariesViewModel(
                     _state.update {
                         it.copy(
                             permissionsLoading = false,
-                            permissionsError = errorFactory.from(error, "No se pudieron cargar los permisos")
+                            permissionsError = errorFactory.from(error, getString(Res.string.admin_libraries_error_permissions_load))
                         )
                     }
                 }
@@ -265,7 +279,7 @@ class AdminLibrariesViewModel(
                     _state.update {
                         it.copy(
                             permissionsBusy = it.permissionsBusy - userId,
-                            permissionsError = errorFactory.from(error, "No se pudo conceder el acceso")
+                            permissionsError = errorFactory.from(error, getString(Res.string.admin_libraries_error_grant))
                         )
                     }
                 }
@@ -289,7 +303,7 @@ class AdminLibrariesViewModel(
                     _state.update {
                         it.copy(
                             permissionsBusy = it.permissionsBusy - userId,
-                            permissionsError = errorFactory.from(error, "No se pudo revocar el acceso")
+                            permissionsError = errorFactory.from(error, getString(Res.string.admin_libraries_error_revoke))
                         )
                     }
                 }

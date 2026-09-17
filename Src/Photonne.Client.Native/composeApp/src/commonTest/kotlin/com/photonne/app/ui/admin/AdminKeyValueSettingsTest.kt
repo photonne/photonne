@@ -5,6 +5,10 @@ import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.data.api.ServerUrlStore
+import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.version.AppVersionStore
+import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -39,7 +43,10 @@ private class SettingsStubTokenStorage : TokenStorage {
     override fun clear() = Unit
 }
 
-private class TwoKeyViewModel(repository: AdminRepository) : AdminKeyValueSettingsViewModel(repository) {
+private class TwoKeyViewModel(
+    repository: AdminRepository,
+    errorFactory: UiErrorFactory,
+) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
     override val keys = listOf("A.Quality", "A.Name")
     override val defaults = mapOf("A.Quality" to "80", "A.Name" to "")
     override val intRanges = mapOf("A.Quality" to 1..100)
@@ -63,7 +70,11 @@ class AdminKeyValueSettingsTest {
             tokenStorage = SettingsStubTokenStorage(),
             authState = AuthStateHolder()
         )
-        return TwoKeyViewModel(AdminRepository(PhotonneApiClient(client, "http://test.local")))
+        val api = PhotonneApiClient(client, "http://test.local")
+        return TwoKeyViewModel(
+            AdminRepository(api),
+            UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api))
+        )
     }
 
     private fun MockRequestHandleScope.json(body: String) = respond(

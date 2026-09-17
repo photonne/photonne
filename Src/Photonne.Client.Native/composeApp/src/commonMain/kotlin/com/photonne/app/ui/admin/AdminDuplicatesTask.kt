@@ -1,5 +1,10 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.resources.admin_duplicates_error_run
+import org.jetbrains.compose.resources.getString
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.ui.error.ErrorBanner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,11 +79,12 @@ data class AdminDuplicatesUiState(
     val lastEvent: DuplicatesStreamEvent? = null,
     val startedAtMs: Long? = null,
     val finishedAtMs: Long? = null,
-    val errorMessage: String? = null
+    val error: UiError? = null
 )
 
 class AdminDuplicatesViewModel(
-    private val repository: AdminRepository
+    private val repository: AdminRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
     private val _state = MutableStateFlow(AdminDuplicatesUiState())
     val state: StateFlow<AdminDuplicatesUiState> = _state.asStateFlow()
@@ -99,7 +105,7 @@ class AdminDuplicatesViewModel(
         _state.update {
             it.copy(
                 isRunning = true,
-                errorMessage = null,
+                error = null,
                 lastEvent = null,
                 startedAtMs = Clock.System.now().toEpochMilliseconds(),
                 finishedAtMs = null
@@ -121,7 +127,7 @@ class AdminDuplicatesViewModel(
                 _state.update {
                     it.copy(
                         isRunning = false,
-                        errorMessage = e.message ?: "No se pudo completar el escaneo de duplicados",
+                        error = errorFactory.from(e, getString(Res.string.admin_duplicates_error_run)),
                         finishedAtMs = Clock.System.now().toEpochMilliseconds()
                     )
                 }
@@ -189,7 +195,7 @@ fun AdminDuplicatesScreen(
             .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        state.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        ErrorBanner(error = state.error)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -267,21 +273,21 @@ fun AdminDuplicatesScreen(
             val items = listOfNotNull(
                 StatGridItem(
                     label = stringResource(Res.string.admin_duplicates_stats_total),
-                    value = (stats.totalAssets ?: 0).toString()
+                    value = formatCount(stats.totalAssets ?: 0)
                 ),
                 StatGridItem(
                     label = stringResource(Res.string.admin_duplicates_stats_groups),
-                    value = (stats.duplicateGroups ?: 0).toString(),
+                    value = formatCount(stats.duplicateGroups ?: 0),
                     valueColor = MaterialTheme.colorScheme.secondary
                 ),
                 StatGridItem(
                     label = stringResource(Res.string.admin_duplicates_stats_assets),
-                    value = (stats.duplicateAssets ?: 0).toString(),
+                    value = formatCount(stats.duplicateAssets ?: 0),
                     valueColor = MaterialTheme.colorScheme.tertiary
                 ),
                 StatGridItem(
                     label = stringResource(Res.string.admin_duplicates_stats_removed),
-                    value = (stats.removed ?: 0).toString()
+                    value = formatCount(stats.removed ?: 0)
                 )
             )
             StatGridCard(items = items)
@@ -310,7 +316,7 @@ fun AdminDuplicatesScreen(
                         stringResource(Res.string.admin_duplicates_stats_unindexed),
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Text(unindexed.toString(), style = MaterialTheme.typography.bodyMedium)
+                    Text(formatCount(unindexed), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

@@ -252,5 +252,5 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminRunTasksViewModel)
     viewModelOf(::AdminEnrichmentFailuresViewModel)
     viewModelOf(::DeviceConnectionViewModel)
-    viewModel { AdminBackupViewModel(get(), get<AssetSharing>()) }
+    viewModel { AdminBackupViewModel(get(), get<AssetSharing>(), get()) }
 }

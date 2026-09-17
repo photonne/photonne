@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_settings_user_defaults_active
 import com.photonne.app.resources.admin_settings_user_defaults_quota_gb
@@ -15,8 +16,9 @@ import com.photonne.app.resources.admin_user_role_user
 import org.jetbrains.compose.resources.stringResource
 
 class AdminUserDefaultsViewModel(
-    repository: AdminRepository
-) : AdminKeyValueSettingsViewModel(repository) {
+    repository: AdminRepository,
+    errorFactory: UiErrorFactory,
+) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
 
     override val keys = listOf(
         "UserSettings.DefaultIsActive",
@@ -55,6 +57,8 @@ fun AdminUserDefaultsScreen(
         state = state,
         onSave = viewModel::save,
         onRetry = viewModel::load,
+        onSavedShown = viewModel::consumeSaved,
+        onDismissError = viewModel::dismissError,
     ) {
         SettingSwitch(
             label = stringResource(Res.string.admin_settings_user_defaults_active),

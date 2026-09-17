@@ -78,7 +78,9 @@ import com.photonne.app.resources.admin_settings_discard_title
 import com.photonne.app.resources.admin_settings_increase
 import com.photonne.app.resources.admin_settings_load_failed
 import com.photonne.app.resources.admin_settings_range_format
+import com.photonne.app.resources.admin_settings_saved
 import com.photonne.app.resources.error_banner_retry
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -114,9 +116,16 @@ fun AdminSettingsForm(
     state: AdminKeyValueUiState,
     onSave: () -> Unit,
     onRetry: () -> Unit,
+    onSavedShown: () -> Unit,
+    onDismissError: () -> Unit,
     footer: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    AdminResultSnackbar(
+        message = stringResource(Res.string.admin_settings_saved).takeIf { state.saved },
+        onShown = onSavedShown
+    )
+
     val hazeState = remember { HazeState() }
     val scrollState = rememberScrollState()
     var confirmDiscard by remember { mutableStateOf(false) }
@@ -131,7 +140,7 @@ fun AdminSettingsForm(
             state.loadFailed -> EmptyState(
                 icon = Icons.Outlined.CloudOff,
                 title = stringResource(Res.string.admin_settings_load_failed),
-                subtitle = state.errorMessage,
+                subtitle = state.error?.userMessage,
                 actionLabel = stringResource(Res.string.error_banner_retry),
                 onAction = onRetry
             )
@@ -154,12 +163,7 @@ fun AdminSettingsForm(
             ) {
                 content()
 
-                state.errorMessage?.let { msg ->
-                    Text(msg, color = MaterialTheme.colorScheme.error)
-                }
-                state.successMessage?.let { msg ->
-                    Text(msg, color = MaterialTheme.colorScheme.primary)
-                }
+                ErrorBanner(error = state.error, onDismiss = onDismissError)
 
                 Spacer(Modifier.height(8.dp))
                 AdminPrimaryActionRow(

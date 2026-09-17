@@ -1,5 +1,11 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.resources.admin_trash_error_stats
+import com.photonne.app.resources.admin_trash_cleanup_done_format
+import com.photonne.app.resources.admin_trash_error_cleanup
+import org.jetbrains.compose.resources.getString
+import com.photonne.app.data.error.UiError
+import com.photonne.app.ui.error.ErrorBanner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TrashUserStat
 import kotlinx.coroutines.launch
 import com.photonne.app.resources.Res
@@ -46,8 +53,9 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 
 class AdminTrashSettingsViewModel(
-    private val repository: AdminRepository
-) : AdminKeyValueSettingsViewModel(repository) {
+    private val repository: AdminRepository,
+    private val errorFactory: UiErrorFactory,
+) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
 
     override val keys = listOf("TrashSettings.Enabled", RETENTION_KEY, MAX_QUOTA_KEY)
 
@@ -76,7 +84,7 @@ class AdminTrashSettingsViewModel(
 
     fun loadStats() {
         if (_trashStats.value.isLoading) return
-        _trashStats.value = _trashStats.value.copy(isLoading = true, errorMessage = null)
+        _trashStats.value = _trashStats.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
             runCatching { repository.getTrashStats() }
                 .onSuccess { stats ->
@@ -86,29 +94,32 @@ class AdminTrashSettingsViewModel(
                 .onFailure { error ->
                     _trashStats.value = _trashStats.value.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "No se pudieron cargar las estadísticas de la papelera"
+                        error = errorFactory.from(error, getString(Res.string.admin_trash_error_stats))
                     )
                 }
         }
     }
 
+    fun consumeCleanupStatus() {
+        _trashStats.value = _trashStats.value.copy(statusMessage = null)
+    }
+
     fun cleanupExpired() {
         if (_trashStats.value.isCleaning) return
-        _trashStats.value = _trashStats.value.copy(isCleaning = true, errorMessage = null)
+        _trashStats.value = _trashStats.value.copy(isCleaning = true, error = null)
         viewModelScope.launch {
             runCatching { repository.cleanupExpiredTrash() }
                 .onSuccess { result ->
                     _trashStats.value = _trashStats.value.copy(
                         isCleaning = false,
-                        statusMessage = result.message
-                            .ifBlank { "Removed ${result.deleted} items" }
+                        statusMessage = getString(Res.string.admin_trash_cleanup_done_format, result.deleted)
                     )
                     loadStats()
                 }
                 .onFailure { error ->
                     _trashStats.value = _trashStats.value.copy(
                         isCleaning = false,
-                        errorMessage = error.message ?: "No se pudo completar la limpieza"
+                        error = errorFactory.from(error, getString(Res.string.admin_trash_error_cleanup))
                     )
                 }
         }
@@ -119,7 +130,7 @@ data class AdminTrashSideState(
     val stats: com.photonne.app.data.models.TrashStatsResponse? = null,
     val isLoading: Boolean = false,
     val isCleaning: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val statusMessage: String? = null
 )
 
@@ -144,7 +155,12 @@ fun AdminTrashSettingsScreen(
         state = settings,
         onSave = viewModel::save,
         onRetry = viewModel::load,
-        footer = { TrashUsageSection(stats, viewModel::cleanupExpired) },
+        onSavedShown = viewModel::consumeSaved,
+        onDismissError = viewModel::dismissError,
+        footer = {
+            AdminResultSnackbar(stats.statusMessage, viewModel::consumeCleanupStatus)
+            TrashUsageSection(stats, viewModel::cleanupExpired)
+        },
     ) {
         SettingSectionHeader(stringResource(Res.string.admin_settings_trash_section_config), divider = false)
         SettingSwitch(
@@ -172,8 +188,7 @@ fun AdminTrashSettingsScreen(
 private fun TrashUsageSection(stats: AdminTrashSideState, onCleanup: () -> Unit) {
     SettingSectionHeader(stringResource(Res.string.admin_settings_trash_section_stats))
 
-    stats.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-    stats.statusMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+    ErrorBanner(error = stats.error)
 
     val s = stats.stats
     if (s != null) {
@@ -187,10 +202,10 @@ private fun TrashUsageSection(stats: AdminTrashSideState, onCleanup: () -> Unit)
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                TwoColumn(stringResource(Res.string.admin_trash_total_items), s.totalItems.toString())
+                TwoColumn(stringResource(Res.string.admin_trash_total_items), formatCount(s.totalItems))
                 TwoColumn(stringResource(Res.string.admin_trash_total_bytes), humanBytes(s.totalBytes))
-                TwoColumn(stringResource(Res.string.admin_trash_expired), s.expiredItems.toString())
-                TwoColumn(stringResource(Res.string.admin_trash_over_quota_users), s.overQuotaUsers.toString())
+                TwoColumn(stringResource(Res.string.admin_trash_expired), formatCount(s.expiredItems))
+                TwoColumn(stringResource(Res.string.admin_trash_over_quota_users), formatCount(s.overQuotaUsers))
                 TwoColumn(stringResource(Res.string.admin_trash_over_quota_bytes), humanBytes(s.overQuotaBytes))
             }
         }
