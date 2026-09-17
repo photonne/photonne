@@ -25,9 +25,10 @@ actual object OrientationController {
         activityRef?.get()?.requestedOrientation = orientation
     }
 
-    // SENSOR (not FULL_SENSOR) keeps upside-down portrait out, matching the
-    // portrait + landscape-left/right set the rest of the app allows.
-    actual fun allowAutoRotate() = set(ActivityInfo.SCREEN_ORIENTATION_SENSOR)
+    // USER, not SENSOR: SENSOR rotates even with the system's auto-rotate
+    // switched off, USER follows the sensor only when the user allows it. (And
+    // not FULL_USER, which would let upside-down portrait in.)
+    actual fun allowAutoRotate() = set(ActivityInfo.SCREEN_ORIENTATION_USER)
 
     actual fun forceLandscape() = set(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
 

@@ -48,8 +48,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.ScreenLockPortrait
-import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -339,17 +337,13 @@ fun AssetDetailScreen(
         (state.detail?.takeIf { it.id == currentItem.id }?.isOwner ?: true)
     val currentShowingOriginal = currentItem?.let { showOriginal[it.id] == true } == true
 
-    // Orientation: the app is portrait-locked everywhere. The viewer offers an
-    // explicit landscape mode, entered ONLY via the rotate button in the top bar
-    // (turning the phone does nothing — we never auto-rotate). It works for both
-    // photos and videos: the asset and the chrome (thumbnail strip + bars + back)
-    // fill the screen, and a tap hides/shows the chrome, like the native gallery.
-    var landscapeMode by remember { mutableStateOf(false) }
-    LaunchedEffect(landscapeMode) {
-        if (landscapeMode) OrientationController.forceLandscape()
-        else OrientationController.lockPortrait()
-    }
+    // Orientation: the app is portrait-locked everywhere EXCEPT here. While the
+    // viewer is on screen the phone's own rotation drives it (honouring the
+    // system rotation lock), for photos and videos alike; leaving snaps back to
+    // portrait. The layout follows the real window shape — see `landscapeMode`
+    // inside the BoxWithConstraints below — so there is no toggle to keep in sync.
     DisposableEffect(Unit) {
+        OrientationController.allowAutoRotate()
         onDispose { OrientationController.lockPortrait() }
     }
 
@@ -402,6 +396,9 @@ fun AssetDetailScreen(
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val progress = infoProgress.value
             val infoOpen = progress > 0f
+            // Landscape layout = the window is wider than tall, whatever got it
+            // there (the sensor on a phone, a wide window on desktop).
+            val landscapeMode = maxWidth > maxHeight
 
             // La píldora de foto en movimiento vive DENTRO de la página del pager
             // y la cápsula superior fuera, así que nadie coordina sus alturas: se
@@ -711,24 +708,6 @@ fun AssetDetailScreen(
                     ViewerChromeCapsule(hazeState = viewerHazeState) {
                       Row(verticalAlignment = Alignment.CenterVertically) {
                         val isLocalOnly = currentItem?.isLocalOnly == true
-                        // Landscape toggle (photos and videos): the ONLY way in
-                        // or out of landscape — turning the phone does nothing.
-                        // The asset and chrome fill the screen; a tap hides/shows
-                        // the bars, like the native gallery.
-                        IconButton(onClick = { landscapeMode = !landscapeMode }) {
-                            Icon(
-                                imageVector = if (landscapeMode) {
-                                    Icons.Filled.ScreenLockPortrait
-                                } else {
-                                    Icons.Filled.ScreenRotation
-                                },
-                                contentDescription = if (landscapeMode) {
-                                    "Volver a vertical"
-                                } else {
-                                    "Girar a horizontal"
-                                }
-                            )
-                        }
                         if (currentItem != null && !currentItem.isVideo && !isLocalOnly) {
                             IconButton(onClick = {
                                 showOriginal[currentItem.id] = !currentShowingOriginal

@@ -3,13 +3,14 @@ package com.photonne.app.ui.platform
 /**
  * Controls device orientation locking. The app is portrait-only everywhere
  * (AndroidManifest `screenOrientation="portrait"` / iOS Info.plist), but the
- * video viewer relaxes that so a clip can be watched landscape:
+ * asset viewers relax that so a photo or clip can be seen landscape:
  *
- *  - [allowAutoRotate] — while a video is on screen, let the sensor rotate the
- *    app freely (portrait or landscape), like the native galleries.
- *  - [forceLandscape] — the fullscreen button on a landscape clip rotates to
- *    landscape regardless of how the user is holding the phone.
- *  - [lockPortrait] — leaving the video (or the viewer) returns to portrait.
+ *  - [allowAutoRotate] — while the viewer is on screen, let the phone rotate
+ *    the app (portrait or landscape) like the native galleries. It honours the
+ *    system rotation lock: with auto-rotate off, turning the phone does nothing.
+ *  - [forceLandscape] — the device preview's fullscreen button rotates a clip
+ *    to landscape regardless of how the user is holding the phone.
+ *  - [lockPortrait] — leaving the viewer returns to portrait.
  *
  * Each platform actual maps these onto its own orientation API. Desktop is a
  * no-op (window already free-form).
