@@ -1,0 +1,221 @@
+# Roadmap UX/UI — Client.Native
+
+Auditoría del 2026-09-17 sobre `Src/Photonne.Client.Native/composeApp/src/commonMain/kotlin/com/photonne/app/` (en adelante, las rutas son relativas a esa carpeta). Cinco pasadas de solo lectura: timeline/rejilla/shell, visor/mapa/recuerdos, álbumes/carpetas/organizar/utilidades, búsqueda/personas/ajustes/login/backup, y una transversal de consistencia. `ui/admin` quedó fuera porque se auditó y normalizó el mismo día.
+
+**Estado: nada implementado.** Marca cada punto con `[x]` al cerrarlo y anota el commit.
+
+Fiabilidad de los hallazgos:
+- Comprobados a mano: 1, 2, 4 y 6.
+- El resto lo verificaron las auditorías leyendo el código, sin repaso uno a uno ni ejecución en dispositivo.
+- Lo marcado como *sospecha* no está confirmado.
+
+Esfuerzo: S pequeño, M medio, L grande.
+
+No proponer de nuevo (rechazado por Marc): carril lateral de selección, crossfade/reflow/dos capas en el zoom, tinte sin blur en el cromo, separar fotos locales y del servidor en el timeline, `TopAppBar` acoplada, `TabRow` de ámbito en álbumes/carpetas, carpetas del dispositivo como pestaña o grupo en línea, vincular el filtro de visibilidad del timeline al backup.
+
+## Orden recomendado
+
+1. Lote A, en uno o dos commits. Todo es S y son errores reales.
+2. Lotes B y C juntos. El puente de errores y resultados es una sola pieza; las confirmaciones reutilizan `ConfirmActionDialog`.
+3. Lote E (visor) y el punto 19 (selección de fotos locales).
+4. Lote I por tandas mecánicas, empezando por los textos y el código muerto.
+5. Lotes F, G y H según lo que más moleste.
+
+Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar: 19, 23, 44 y 49.
+
+---
+
+## Lote A — Errores funcionales
+
+- [ ] **1. "Copiar enlace" no copia nada** (S).
+  - `App.kt:4426-4429`: `onCopy = { actionsViewModel.dismissLink() }`. `ui/actions/ShareAssetsDialog.kt:135-172` no toca el portapapeles y el texto de la URL no es seleccionable.
+  - El enlace ya está creado en el servidor (crea un álbum) y el portapapeles queda vacío. El botón lleva un icono de candado.
+  - Arreglo: copiar con `LocalClipboardManager`, snackbar "Enlace copiado", mantener la hoja u ofrecer la hoja de compartir del sistema, icono ContentCopy. Referencia que sí copia: `ui/album/ShareDialogs.kt:100`, `MyLinksScreen.kt:98`.
+- [ ] **2. El token Bearer sale a terceros, y falta la atribución del mapa** (S).
+  - `data/api/AuthRefreshPlugin.kt:128-136` añade `Authorization` a toda petición sin mirar el host. `App.kt:431` pone ese cliente como loader de Coil. Las teselas salen de `basemaps.cartocdn.com` (`ui/map/OsmMap.kt:67-72`, `:484`) y `tile.openstreetmap.org` (`ui/asset/AssetDetailScreen.kt:2160`).
+  - Arreglo: mandar el token solo si el host coincide con la URL base de la API (o `SKIP_AUTH_HEADER` en las teselas). Añadir "© OpenStreetMap © CARTO".
+- [ ] **3. Contraseña incorrecta en el login dice "Sesión expirada"** (S).
+  - `data/error/UiError.kt:92-100` traduce todo 401 a ese texto; `ui/login/LoginViewModel.kt:198-203` lo usa. El servidor devuelve `Results.Unauthorized()` (`Photonne.Server.Api/Features/Auth/LoginEndpoint.cs:48,53`). Un fallo de red dice "Error desconocido".
+  - Arreglo: mapear en `LoginViewModel.submit`: 401 → "Usuario o contraseña incorrectos", sin estado → "No se pudo conectar con <host>", 400/404 → "Ese servidor no parece Photonne".
+- [ ] **4. El snackbar "Movidas a la papelera · Deshacer" sale antes de que la petición termine** (S-M).
+  - `ui/main/MainScaffold.kt:968-977` (`runUndoable`) lanza `action()` sin esperar. El fallo llega aparte por el banner (`ui/timeline/TimelineViewModel.kt:210-227`).
+  - *Sospecha*: pulsar Deshacer con la petición en vuelo puede restaurar antes de que termine el borrado.
+  - Arreglo: que las acciones masivas devuelvan resultado o callback; snackbar de deshacer en el éxito y de error en el fallo. Lo heredan todas las pantallas que usan `AssetSelectionBottomBar`.
+- [ ] **5. Saltar a fecha y el zoom año→mes caen una fila antes** (S).
+  - `ui/timeline/TimelineScreen.kt:593`, `612`, `629` hacen scroll al índice crudo. El scrubber y el traspaso del reflow sí suman las cabeceras (`TimelineScrubber.kt:136`, `TimelineScreen.kt:661`). `anchorDate` en `:457` tampoco resta.
+  - Arreglo: sumar `headerCount` en esas tres llamadas y restarlo en `anchorDate`.
+- [ ] **6. Archivar o borrar desde el visor no actualiza Carpeta ni Favoritos** (S).
+  - `App.kt:3320-3340` avisa a timeline, álbum, búsqueda, archivo, papelera y persona. `ui/folder/FolderDetailViewModel.kt:167` (`applyAssetRemovedLocal`) no tiene llamadores; el de `FavoritesViewModel` (`:192`) solo se llama desde dentro. Mapa y recuerdos tampoco se enteran.
+  - Arreglo rápido: cablear carpeta y favoritos en `App.kt:3320/3330`. Arreglo de fondo: punto 52.
+- [ ] **7. Duplicados: mensajes invisibles y vacío engañoso** (S-M).
+  - `ui/utilities/UtilitiesDuplicatesViewModel.kt:68`, `144-147`: `deleteSelected()` pone `statusMessage` y `load()` lo anula.
+  - `ui/utilities/UtilitiesDuplicatesScreen.kt:101-120`: estado y error se pintan en y=0, sin `reservedTop`, detrás del cromo.
+  - `:122-131`: el `when` no tiene rama de error, así que un fallo de carga enseña "no hay duplicados".
+  - `:237`: confirmación con `AlertDialog` a mano y botón relleno; va a la papelera pero no ofrece Deshacer. Texto de éxito en español a fuego (`ViewModel:144`).
+  - *Sospecha*: el FAB de borrar (`:215-217`, `padding(16.dp)`) choca con la nav flotante. Mismo patrón en `devicebackup/BackupPendingScreen.kt:198`.
+  - Arreglo: `ResultSnackbar` con Deshacer, rama `ErrorBanner` con reintento, cápsula inferior tipo `ConfirmMoveCapsule` en lugar del FAB.
+- [ ] **8. En Carpetas, "Mi dispositivo" y "Para organizar" desaparecen** (S).
+  - `ui/folder/FoldersListScreen.kt:374`, `404`: `inboxHeader` solo se emite en la rama con contenido; las ramas vacía, búsqueda y error (`:346-362`) lo pierden. Contradice el comentario de `:153-155`.
+  - `:353-361`: el error es un `Text` rojo sin reintento y sin scroll.
+  - `ui/folder/FolderDetailScreen.kt:149-153`: una carpeta vacía dice "Indexa una carpeta desde la app web".
+  - El vacío raíz no ofrece "Nueva carpeta" (álbumes sí).
+
+## Lote B — Fallos silenciosos
+
+- [ ] **9. Con contenido en pantalla, los errores de acción no se ven** (M).
+  - Todas las pantallas pintan `state.error` solo con la lista vacía: `ui/album/AlbumDetailScreen.kt:217`, `ui/library/TrashScreen.kt:96`, `ui/folder/FolderDetailScreen.kt:139`, Archivo, Favoritos, `people/PeopleScreen.kt:99`, `PersonDetailScreen.kt:82`, `PersonSuggestionsScreen.kt:94`, `search/SearchScreen.kt:122`. En el visor, `state.error` solo sale como una línea roja al fondo del panel de info (`AssetDetailScreen.kt:602`, `:1712`) y `clearError()` no se llama nunca.
+  - Los ViewModels masivos devuelven los elementos y ponen `error` sin que nadie lo observe (`AlbumDetailViewModel.kt:441`, `TrashViewModel.kt:159`). En `App.kt` solo hay puente para `actionsState` (`:1750-1765`).
+  - El error viejo aparece luego en otro diálogo: `App.kt:3435`, `3475` ("Editar álbum", borrar), `:3673`, `:4028` (añadir a álbum, mover).
+  - Papelera: vaciar, purgar y restaurar todo no reciben `errorMessage` (`App.kt:4217-4259`).
+  - `InviteMemberDialog` se cierra antes del resultado (`App.kt:3619`). `MyLinksScreen.kt:181` pone `editing = null` al instante.
+  - Timeline: los fallos de añadir/mover van al `error` de carga y salen como banner con "Reintentar" que refresca el timeline (`TimelineViewModel.kt:241-248`, `279-286`; `TimelineScreen.kt:1220-1228`).
+  - Arreglo: un puente único en `App.kt` de error de cada ViewModel a `ResultSnackbar`, limpiando al mostrar. Separar `error` (carga) de `actionError`. Limpiar el error al abrir un diálogo. Pasar `errorMessage` a los diálogos de la papelera.
+- [ ] **10. Las acciones que salen bien tampoco avisan** (S-M).
+  - Añadir a álbum y Mover desde el timeline: `App.kt:3679-3685`, `4035-4042`. Propuesta: snackbar con "Ver" o "Deshacer".
+  - "Reagrupar" personas descarta `personsCreated` (`App.kt:2516`).
+  - Archivar o borrar en el visor cierra el visor sin snackbar ni Deshacer (`App.kt:3320-3340`); archivar no confirma (`AssetDetailScreen.kt:826`, `:903`). Propuesta: `TopSnackbarHost` en el visor y avanzar a la siguiente foto; cerrar solo si la lista queda vacía.
+- [ ] **11. Errores a pantalla completa sin salida** (S).
+  - `ErrorBanner` admite `onRetry` (`ui/error/ErrorBanner.kt:73`) y no se lo pasan: `album/AlbumsListScreen.kt:176`, `library/TrashScreen.kt:98`, `ArchivedScreen.kt:80`, `FavoritesScreen.kt:81`, `UnsupportedFilesScreen.kt:75`, `memories/MemoriesScreen.kt:97-100`, `explore/ExploreLabelGridScreen.kt:96-99`, `people/PersonDetailScreen.kt:82-85`, `PersonSuggestionsScreen.kt:94-97`. `album/MyLinksScreen.kt:117-126` y `settings/AccountStorageScreen.kt:81-84` usan un `Text` rojo.
+  - La caja del error no hace scroll, así que `PullToRefreshBox` no recibe el gesto.
+  - Guardas que bloquean el reintento hasta reiniciar: `attempted` en `explore/ExploreFacetsViewModel.kt:34` y `MemoriesScreen.kt:82`.
+  - Abrir un recuerdo falla en silencio: `MemoryFeedViewModel.open()` (`:128-135`) pone `error`, que solo se pinta con las filas vacías; un `detail.assets` vacío (`:126`) no hace nada.
+  - Arreglo: `onRetry` en todas, rama de error con `verticalScroll` (como `EmptyState`), fallos de abrir recuerdo por `ResultSnackbar`.
+- [ ] **12. El spinner de pull-to-refresh queda tras el cromo flotante** (S).
+  - `ui/theme/PullToRefresh.kt:20-22` documenta `indicatorTopPadding`; solo lo pasa `admin/AdminListScaffold.kt:108`. Pasar `subscreenChromeReservedTop()` o el `reservedTop` del álbum.
+- [ ] **13. Banner de error bajo el cromo en Notificaciones y Personas** (S).
+  - `ui/notifications/NotificationsScreen.kt:112-116` sin `reservedTop`; `NotificationsViewModel.kt:30,162-168`: una primera carga fallida cae en una lista vacía con "total: 0". `PeopleScreen.kt:100` igual.
+
+## Lote C — Acciones destructivas sin red de seguridad
+
+- [ ] **14. Cerrar sesión con un solo toque** (S). `ui/main/MoreScreen.kt:314` → `App.kt:767` → `authRepository.logout()`. Confirmación que mencione los backups pendientes si `backupPendingCount > 0`. El `OutlinedButton` pequeño y centrado rompe el patrón de filas de esa pantalla.
+- [ ] **15. Fusionar personas** (M). `App.kt:4326-4349`: `runCatching { }.onSuccess { }` sin `onFailure`, sin progreso ni confirmación. `ui/people/PersonPickerDialog.kt:51-53,127-134`: solo las páginas cargadas, sin buscador, "Sin nombre" + número con avatar de 40 dp. Arreglo: confirmación con los dos avatares, `ResultSnackbar`, buscador que cargue todas las páginas.
+- [ ] **16. Acciones sin confirmación ni resultado** (S).
+  - "Aceptar todas" / "Descartar todas" en sugerencias de caras: `App.kt:2491-2500`, `PersonSuggestionsViewModel.kt:126-178`, menú en `PersonSuggestionsScreen.kt:192-199`. Afecta también a páginas no cargadas; se descarta el recuento del servidor.
+  - Revocar enlace desde la hoja del álbum: `ui/album/ShareDialogs.kt:137`, `App.kt:3554`. En "Mis enlaces" sí confirma (`MyLinksScreen.kt:186`).
+  - Quitar miembro: `ui/album/PermissionDialogs.kt:147`, `ui/folder/FolderPermissionDialogs.kt`, `App.kt:3568`.
+  - Quitar un origen de backup: `devicebackup/BackupScreen.kt:289` → `DeviceBackupViewModel.kt:543-551`. Propuesta: snackbar con Deshacer.
+  - Archivar en bloque desde la hoja de clúster del mapa (la papelera sí confirma).
+- [ ] **17. "Quitar del álbum" sin confirmación ni Deshacer** (S-M). `App.kt:1336`. `AlbumDetailViewModel.kt:404-418` hace una petición por asset y, si falla a medias, restaura en local todo aunque el servidor ya quitó algunos. Arreglo: snackbar con Deshacer que reañada los ids, y refrescar el álbum tras un fallo parcial.
+- [ ] **18. "Seleccionar todo" en el timeline solo coge lo cargado** (S). `TimelineViewModel.kt:181-187` usa `loadedItems`; `App.kt:1022` pone `totalCount = loadedItems.size`. Quitarlo (la casilla de mes ya cubre el caso) o rotularlo "lo cargado (N)".
+
+## Lote D — Selección y timeline mezclado
+
+- [ ] **19. Las fotos solo-dispositivo no se pueden seleccionar y nada lo indica** (M). *Pide opciones antes de tocar.*
+  - `TimelineScreen.kt:974-982` (pulsación larga ignora `isLocalOnly`), `:1007-1010` (`idAt` devuelve null), `ui/grid/dragselect/DragSelectAdapters.kt:131-133` y `DragSelectGesture.kt:90` (`begin` devuelve false sin vibración), `TimelineScreen.kt:949-965` (en modo selección, tocar una local abre el visor). `ui/grid/AssetGrid.kt` no tiene estado "no seleccionable". La casilla de mes se las salta.
+  - Mínimo: atenuarlas al seleccionar, vibración de rechazo + aviso "Aún no se ha subido", y no abrir nunca el visor con selección activa.
+  - Mayor: selección local con acciones reducidas (compartir, subir ahora, eliminar del dispositivo), indicando a qué aplica cada una ("Compartir 8 · 3 aún sin subir").
+- [ ] **20. Descarga y Compartir masivos sin progreso ni cancelar** (M; la parte de UI es S). `ui/actions/AssetSelectionActionsViewModel.kt:102-141`, `147-176` guardan todo el ZIP como `ByteArray`. `actionsState.working` solo atenúa la barra al 38 % (`MainScaffold.kt:635`). Riesgo de quedarse sin memoria en móvil (confianza media). Arreglo: píldora con progreso y Cancelar; escribir a fichero en streaming.
+- [ ] **21. Retocar la pestaña Fotos activa no hace nada** (S). `switchTab` en `App.kt:1721-1732`. Reutilizar el volver arriba de `TimelineScreen.kt:1165-1170`.
+- [ ] **22. Tira de Recuerdos** (S-M). `ui/timeline/MemoriesStrip.kt:173-180`: altura `(maxWidth-32)*0.62` sin tope. `:198` lee `progress.value` en composición, así que la tarjeta activa se recompone cada fotograma, también fuera de pantalla (`beyondViewportPageCount = 1`, `App.kt:1839`). *Sospecha*: el pager interior cambia de pestaña al llegar a la última página. Arreglo: `widthIn(max=560.dp)` o varias tarjetas en ventanas anchas, leer el progreso en `graphicsLayer`, pausar si la página no es la actual.
+
+## Lote E — Visor de assets
+
+- [ ] **23. Sin carga progresiva ni zoom nítido** (M). *Pide opciones antes de tocar.*
+  - `ui/asset/ZoomablePagerImage.kt:110-122`: `AsyncImage` sin `placeholderMemoryCacheKey`, sin spinner, sin `onError`. El esquema de claves de `image/AssetThumbnailImage.kt:88-95` ya permite reutilizar la `Small`.
+  - Zoom a 5x sobre `Large` (`AssetDetailScreen.kt:1163-1167`); el original solo con el botón "HD/ORIG" (`:733-741`), sin `contentDescription` y con `Color(0xFFFFB300)`.
+  - Arreglo: `placeholderMemoryCacheKey("$thumbUrl|Small")`, estado de error con reintento, y cadena Small→Large→original según el zoom (cambio automático por encima de ~2x) para quitar el botón.
+- [ ] **24. Gestos de zoom toscos** (M). `ZoomablePagerImage.kt:79-91` doble toque sin animación; `:98-103` el pellizco ignora el centroide; `:59-66` el arrastre se limita a la caja y no a la imagen; sin inercia. Arreglo: `Animatable` para escala y desplazamiento anclado al centroide.
+- [ ] **25. Atrás cierra el visor entero** (S). `App.kt:819-822`. Añadir `PlatformBackHandler` en `AssetDetailScreen` que deshaga en orden: zoom, panel de info, pase automático, apaisado, cerrar.
+- [ ] **26. Abrir una foto relacionada pierde el sitio** (M). `App.kt:3350-3362`: `onOpenAsset` sustituye `assetDetail` por un contexto de un elemento. Arreglo: pila de `AssetDetailContext` y, mejor, abrir la fila relacionada como lista del pager.
+- [ ] **27. Vídeo y pase automático** (M).
+  - `VideoPlayback.isReady` no se lee en común: no hay spinner de carga. La interfaz no tiene estado de error (`ui/asset/VideoPlayback.kt`). No hay silencio. El scrubber solo busca al soltar (`AssetDetailScreen.kt:1271`).
+  - El pase avanza con `delay` fijo (`:291-295`) y corta los vídeos. `SlideshowControls` ignora `chromeAlpha` (`:915`).
+  - *Sospecha*: la pantalla no se mantiene encendida durante el pase con fotos.
+- [ ] **28. Huecos en apaisado** (M). `AssetDetailScreen.kt:757` (acciones ocultas con `!isLocalOnly`) y `:879` (barra inferior oculta): una foto solo-dispositivo queda sin Info ni Eliminar. Falta "Editar fecha" (`:2684`). Arreglo: un único modelo de acciones para las dos orientaciones.
+- [ ] **29. Datos en crudo en el panel de info** (S). `formatInstant` (`:2266-2271`) imprime "2026-09-17 12:33:11"; GPS truncado (`:2239`); `formatBytes` con "." fijo; `AssetAiSheet.kt:126` muestra `it.message`. Reutilizar `ui/format` y `UiErrorFactory`.
+- [ ] **30. El atrás del detalle de un recuerdo se va con el scroll** (S). `ui/memories/MemoryDetailScreen.kt:137-153`: el `IconButton` vive dentro de la cabecera de la rejilla. Usar `SubscreenFloatingChrome` o el cromo del álbum.
+
+## Lote F — Mapa
+
+- [ ] **31. Teselas sin escalar por densidad, arrastre sin inercia** (M). `ui/map/MapProjection.kt:15` (`TILE_SIZE_PX = 256`), `OsmMap.kt:475`, gesto en `:188-316`. Pedir teselas `@2x` y añadir inercia. La gravedad visual no está vista en dispositivo.
+- [ ] **32. Estados contradictorios** (S-M).
+  - `MapViewModel.kt:72-79` pone `firstLoadComplete = true` al fallar: `MapScreen.kt:101` enseña "no hay fotos con ubicación" junto al error.
+  - Aviso de error propio (`:128-142`) sin reintento; `clearError` sin usar. Refrescar no muestra progreso (`:85`).
+  - "Encajar" (`MapViewModel.kt:98-103`) salta a la foto más reciente a zoom 12.
+  - "−" es un `Text` sin `contentDescription` (`MapScreen.kt:178`); marcadores con `pointerInput` sin semántica (`OsmMap.kt:524`).
+
+## Lote G — Login, búsqueda, backup, subida, notificaciones
+
+- [ ] **33. Login** (S + M).
+  - Sin botón de ver contraseña (`ui/login/LoginScreen.kt:196-216`); tampoco en `settings/AccountSecurityScreen.kt:69-113`, que además no encadena `imeAction`.
+  - `LoginViewModel.kt:218-235`: la sonda es un `HEAD /api/auth/login` que acepta todo lo que no sea 5xx. `:232` concatena `t.message`. `ServerUrlStore.kt:103-110` fuerza `https://` en silencio.
+  - Arreglo: sondear un endpoint que identifique Photonne, clasificar el fallo (DNS, tiempo agotado, TLS, no es Photonne), reintentar con http si no se escribió esquema, e informar por URL cuál respondió.
+- [ ] **34. Búsqueda** (M).
+  - `search/SearchScreen.kt:298`: chips de filtro activo con `onClick = {}`. `:134-138,157`: viven solo en la cabecera de la rejilla, así que con cero resultados desaparecen. `:201-204`: filtros deshabilitados en semántico sin explicación. `SearchViewModel.kt:424-426`: semántico con consulta vacía y filtros residuales dice "sin resultados". `:237`: menú ⋮ con `contentDescription = null`.
+  - Hoja de filtros (`search/SearchFiltersSheet.kt`): confirmar fecha dice "Cerrar" (`:262`), quitar fechas también (`:119-121`), fechas ISO (`:105,114`), personas sin nombre como hex (`:148`), `FlowRow` con `heightIn(max = 220.dp)` sin scroll (`:137-141,162-166`), "borrar todo" es un chip al fondo (`:207-210`).
+- [ ] **35. Backup** (S-M).
+  - `devicebackup/BackupScreen.kt:343-351`: el aviso de permiso denegado está en la sección "Ajustes", plegada por defecto (`:194`). `androidMain/.../NotificationPermission.android.kt:22-35`: `granted` no se relee al volver. Sin enlace a los ajustes del sistema.
+  - `BackupScreen.kt:749-761`: "esperando Wi-Fi y carga" sale de las preferencias, no del estado del dispositivo.
+- [ ] **36. Subida manual** (M; L en streaming). `upload/UploadScreen.kt:191-214` `ErrorBanner` privado; `:342,349,352,211` botones sin descripción; `:244-249` progreso indeterminado; `:292-299` Hecho y Omitido solo cambian de tinte; `UploadViewModel.kt:75` texto en inglés; `:220` límite de 200 MB porque va en RAM (`MediaPicker.kt:12`).
+- [ ] **37. Notificaciones** (M). `NotificationsScreen.kt:164-174,332-366` paginación "Anterior / Siguiente"; `:154-157` y `App.kt:2816-2843` todas las filas clicables aunque la `actionUrl` no lleve a nada; `:243` icono de filtro descrito como "Todas"; `GroupCount`/`GroupKey` no existen en el DTO nativo (`data/models/NotificationModels.kt:20-29`).
+
+## Lote H — Álbumes, carpetas y compartir
+
+- [ ] **38. Formularios** (M).
+  - Cero `KeyboardOptions`/`imeAction`/`KeyboardType`/`PasswordVisualTransformation` en album/, folder/, library/, organize/, utilities/ (`album/smart/` sin revisar en este punto).
+  - Sin foco inicial ni Hecho-para-enviar: `ui/album/AlbumDialogs.kt:71`, `ui/folder/FolderDialogs.kt:71`, `people/RenamePersonDialog.kt:61-67`.
+  - `ui/album/ShareDialogs.kt:303,518` contraseña en claro; `:319,538` "Máx. vistas" con teclado de texto; `:266,462` hojas sin scroll; `:643` caducidad admite fechas pasadas.
+  - `ui/folder/FolderPickerDialog.kt:296`: el botón dice siempre "Mover".
+- [ ] **39. Álbumes inteligentes indistinguibles** (M-L). `AlbumSummary.isSmart` (`data/models/AlbumModels.kt:28`) no se usa en `ui/`. "Editar" solo abre nombre y descripción. Se ofrecen "Quitar del álbum" y "Portada". `AddToAlbumDialog` recibe `albumsState.albums` sin filtrar (`App.kt:3670`), sin miniatura ni buscador (`ui/album/AddToAlbumDialog.kt:114`).
+- [ ] **40. Editor de álbum inteligente con `TopAppBar` acoplada** (S-M). `ui/album/smart/SmartAlbumEditorScreen.kt:61-79`. Referencia del patrón bueno: `ui/organize/OrganizeRuleScreen.kt`. Sin spinner al guardar, error bajo el pliegue (`:117`), atrás descarta sin avisar.
+- [ ] **41. Filas de enlace** (S). Copiar con icono de compartir y sin "Copiado" (`ShareDialogs.kt:205`, `MyLinksScreen.kt:296`); sin hoja de compartir del sistema; la fila no abre el álbum ni las subidas de una solicitud de fotos.
+- [ ] **42. Detalles menores** (S).
+  - "Para organizar": `SuggestedBatchesList` con `listState` propio y sin `hazeSource` (`ui/organize/OrganizeInboxScreen.kt:118-128`, `:172`); el cromo ni se oculta ni tiene blur.
+  - `ListRowsSkeleton()` sin `contentPadding` (`FoldersListScreen.kt:347`, `DeviceFoldersScreen.kt:98`).
+  - `FolderRow` con icono de lista (`FoldersListScreen.kt:453`) frente a Folder en `SubfolderRow` (`FolderDetailScreen.kt:417`).
+  - "Nuevo álbum" / "Nueva carpeta" sin `CreateAction` (`AlbumsListScreen.kt:252`, `FoldersListScreen.kt:265`; ver `MainScaffold.kt:660`).
+  - Álbum vacío sin "Añadir fotos" (`AlbumDetailScreen.kt:230`). "Mi dispositivo" sin pull-to-refresh.
+
+## Lote I — Consistencia transversal
+
+- [ ] **43. Textos** (M + S).
+  - Unos 160 literales en español en 37 `*ViewModel.kt`. Peores: `folder/FolderDetailViewModel.kt` (11), `album/AlbumDetailViewModel.kt` (11), `people/AssetFacesViewModel.kt` (8), `asset/AssetDetailViewModel.kt` (8). "No se pudo archivar" y "No se pudo mover a la papelera" duplicados en seis ViewModels. `data/error/UiError.kt:95-98` también.
+  - Pantallas: `login/LoginScreen.kt:95-258`, `AssetDetailScreen.kt:375,726-728,737,766,1102,1140,1394,1615-1700,1801,1845,1919,1932-1948,2630`, `folder/FolderPickerDialog.kt:156,161,187,210,219,249-263`, `folder/FolderTree.kt:196`, `main/MoreScreen.kt:334,340`, `ShareAssetsDialog.kt:175`, roles en `data/models/PermissionModels.kt:41`.
+  - Faltan en `values-en`: `selection_trash_confirm_message`, `selection_trash_done`.
+  - **Decidir antes el patrón**: `StringResource` en `UiError` o `getString` en el ViewModel.
+- [ ] **44. Convenciones poco adoptadas** (M). *Pide decisión.*
+  - `PrimaryActionButton` fuera de admin solo en `settings/AccountProfileScreen.kt:141` y `AccountSecurityScreen.kt:120`. Botones principales a mano: `upload/UploadScreen.kt:136`, `organize/OrganizeRuleScreen.kt:289`, `devicebackup/EnrichmentStatusScreen.kt:199`, `BackupScreen.kt:692`, `login/LoginScreen.kt:148,241`, `asset/AssetAiSheet.kt:161`.
+  - `ResultSnackbar` en 2 pantallas; `LocalSnackbarController` en 5 ficheros.
+  - 14 pantallas con spinner a pantalla completa donde las hermanas usan esqueleto: `AlbumsListScreen.kt:169`, `FolderDetailScreen.kt:137`, `ExploreLabelGridScreen.kt:91`, `NotificationsScreen.kt:128`, `MyLinksScreen.kt:115`, `MemoriesScreen.kt:94`, `PersonSuggestionsScreen.kt:92`, `Utilities{Duplicates:125,LargeFiles:93,Locations:77}`, `UnsupportedFilesScreen.kt:71`, `BackupPendingScreen.kt:164`, `EnrichmentStatusScreen.kt:94`, `AccountStorageScreen.kt:79`.
+  - Confirmaciones a mano en vez de `ConfirmActionDialog`: `ShareDialogs.kt:394`, `MyLinksScreen.kt:187`, `UtilitiesDuplicatesScreen.kt:237`, `BackupScreen.kt:379`. `ConfirmActionDialog` no muestra progreso al enviar.
+  - Formularios en `AlertDialog`: "Añadir etiqueta" (`AssetDetailScreen.kt:1930`), asignar cara (`people/AssetFacesSheet.kt:302`).
+  - Cromo: `SmartAlbumEditorScreen.kt:63`, `devicebackup/DeviceAssetPreviewScreen.kt:156`, `UploadTopBar`.
+  - **Decisión de Marc**: ¿las hojas llevan `PrimaryActionButton` a todo el ancho o mantienen su pie de Cancelar + botón?
+- [ ] **45. Código muerto** (S). 11 `*TopBar` sin llamadores en `main/MainScaffold.kt`: Hub `:836`, FolderDetail `:1491`, Search `:1736`, More `:1749`, Settings `:1772`, Notifications `:1805`, Archived `:1869`, Trash `:1922`, Favorites `:1980`, PersonDetail `:2017`, PersonSuggestions `:2086`.
+- [ ] **46. Tokens del tema** (M-L).
+  - `Spacing.` 15 usos frente a 1091 líneas con dp a mano; `IconSize.` 3 usos frente a 165 `.size(N.dp)`; 69 `RoundedCornerShape` (17 de 8 dp, que no existe en el tema); 21 scrims `Color.Black.copy(alpha)` frente a 5 usos del token.
+  - Fuera de escala: padding 6 dp (21), 14 (7), 10 (3), 20 (1); iconos 18 (19), 14 (9), 28 (6).
+  - Peores ficheros: `AssetDetailScreen.kt` (85), `AlbumsListScreen.kt` (46), `BackupScreen.kt` (45), `FoldersListScreen.kt` (44), `BackupPendingScreen.kt` (43), `album/smart/RuleConditionsEditor.kt` (40).
+  - Timeline: los 56 dp de la cabecera de mes están en tres sitios que deben coincidir (`GroupedAssetGrid.kt:600`, `TimelineScrubber.kt:61`, `TimelineScreen.kt:592`); la lógica de ocultar al bajar está duplicada (`TimelineScreen.kt:204-248`) aunque existe `main/ImmersiveChrome.kt`.
+  - Decidir si 8 dp pasa a ser token de forma o se funde en small (10).
+- [ ] **47. Accesibilidad** (S-M).
+  - Flechas de atrás anunciadas como "Cerrar": `SubscreenChrome.kt:234`, `MainScaffold.kt:1496`, `AlbumDetailScreen.kt:447`.
+  - `IconButton` sin descripción: `UploadScreen.kt:210,341,348,351`, `SearchScreen.kt:236`, `main/SearchFieldPill.kt:86`.
+  - Objetivos pequeños: ✕ de etiqueta 16 dp (`AssetDetailScreen.kt:1890-1893`), tira del visor 34 dp (`:2382`), chip "Abrir en mapas" (`:2200-2205`), botones de la hoja de IA en 40 dp (`AssetAiSheet.kt:222`), `SearchFieldPill.kt:86` y `folder/FolderTree.kt:176` a 32 dp, círculo de selección de escritorio 20 dp (`AssetGrid.kt:496`).
+  - 119 `clickable` frente a 7 `Role`; 0 `onClickLabel`, `stateDescription`, `heading()`. `FloatingSelectionBarItem` se lee dos veces y no tiene `Role.Button` (`MainScaffold.kt:641`, `989-992`). Scrubber sin semántica (`TimelineScrubber.kt:235-312`). Insignias de subida sin describir (`AssetGrid.kt:402-409`, `503-528`). Gráficas solo Canvas (`ui/charts/*`).
+- [ ] **48. Iconos de la barra de estado** (S-M). `androidMain/.../MainActivity.kt:14` llama a `enableEdgeToEdge()` una vez; `ui/theme/PhotonneTheme.kt:129-134` respeta la preferencia de la app. Sin `isAppearanceLightStatusBars` ni `SystemBarStyle`. Arreglo: efecto expect/actual guiado por `LocalIsDarkTheme`, forzando iconos claros sobre el scrim de fotos. iOS sin revisar.
+- [ ] **49. Bloqueo en vertical y estado que no sobrevive** (M). *Pide opciones.* `androidMain/AndroidManifest.xml:53` (`screenOrientation="portrait"` también en tablets). `App.kt:663-765` todo con `remember` plano. Propuesta: bloqueo solo en anchos compactos; `rememberSaveable` al menos para pestaña, subpantalla e ids de álbum/carpeta abiertos.
+- [ ] **50. Diseño adaptable** (M). Cero `WindowSizeClass`. Ancho máximo solo en `LoginScreen.kt:69` y `EmptyState`. `ExploreLabelGridScreen.kt:106` usa `Fixed(2)` con miniaturas `Small`. Tarjetas de recuerdo de 150x190 dp pidiendo `Large` (`MemoriesScreen.kt:203`). Propuesta: un envoltorio `ContentWidth` (`widthIn(max = 720.dp)`) en el andamio de subpantalla.
+- [ ] **51. Movimiento** (S-M). `animateItem()` en 1 de 45 listas. Vibración solo en selección (`haptics/`). Sin tokens de duración (280 ×6, 320 ×2, 220 ×1). Transición de overlays centralizada en `App.kt:2017-2035`, sin animación de salida. Sin `PredictiveBackHandler`.
+- [ ] **52. Bus de mutaciones** (M). `AssetMutationBus` (SharedFlow de Removed/Restored/FavoriteChanged) al que se suscriben los ViewModels, en lugar de las listas a mano de `App.kt:1307-1554` y `:3320-3339`. Tras acciones masivas tampoco se refrescan portadas y recuentos de álbumes y carpetas.
+- [ ] **Pull-to-refresh que falta** (S): `PersonDetailScreen`, `PersonSuggestionsScreen`, `AccountStorageScreen`, `EnrichmentStatusScreen`, `MapScreen`, `MemoryDetailScreen`.
+
+## Ideas mayores (funciones, no correcciones)
+
+- [ ] **Criba en el visor**: avanzar con Deshacer (depende del punto 10) y atajos de escritorio (Supr, A, F, flechas, Espacio).
+- [ ] **Salto por mes y año con recuentos** en lugar del `DatePicker` de días (`ui/timeline/JumpToDateDialog.kt`). El esqueleto de buckets ya tiene los datos.
+- [ ] **Píldora única de operaciones** (backup, escaneo, descarga, ZIP, mover) con progreso y Cancelar. Cubre los puntos 10 y 20.
+- [ ] **Resumen de selección**: rango de fechas y tamaño total junto al recuento, y "x/y" en la cabecera de mes.
+- [ ] **Pantalla inicial de búsqueda**: recientes y filas de personas, escenas, objetos y lugares. Las facetas ya se cargan (`ensureFacetsLoaded`).
+- [ ] **Nombrar a una persona ofrece fusionar** con un nombre existente.
+- [ ] **Cola global "¿Quién es?"** de sugerencias de caras. Hoy: Personas → persona → ⋮ → Sugerencias.
+- [ ] **Selector de fotos desde dentro del álbum o la carpeta.** Resuelve también el álbum vacío.
+- [ ] **Portadas en carpetas** (`coverThumbnailUrl` desde el servidor) y orden, scrubber y fecha en el detalle de carpeta.
+- [ ] **Una sola hoja "Compartir" por álbum**: miembros, enlaces, QR, hoja del sistema al crear; en solicitudes de fotos, subidas por invitado.
+- [ ] **Álbumes inteligentes de primera**: distintivo, chip "Reglas" que abre el editor, "Convertir en álbum normal".
+- [ ] **"Reproducir recuerdo"** con el pase automático existente y "Guardar como álbum".
+- [ ] **Metadatos tocables en el panel de info** (etiqueta, cámara, carpeta, fecha → "ver en el timeline"); el minimapa abre el mapa de la app con el nombre del lugar (GeoNames ya está en el servidor).
+- [ ] **Bienvenida tras el primer login** (permiso de fotos, backup y buckets, notificaciones con su motivo).
+- [ ] **Descubrimiento del servidor en el login** (mDNS o QR desde el admin web) y "Probar conexión" por URL.
+- [ ] **Herramientas de limpieza como flujos**: Archivos grandes con selección múltiple, Duplicados con "quedarse con la mejor" y comparación, Papelera con "se borra en N días", crear carpeta en el destino del selector de mover.
+- [ ] **Pasada de ventana ancha**: nav en cápsula, Recuerdos y teselas de Más se estiran en escritorio y tablet.
