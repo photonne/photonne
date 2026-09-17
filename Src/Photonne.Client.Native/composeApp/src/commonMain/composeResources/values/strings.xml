@@ -380,6 +380,25 @@
     <string name="people_face_set_cover">Usar como portada</string>
 
     <string name="asset_action_faces">Ver caras</string>
+    <string name="asset_action_analyze">Analizar con IA</string>
+    <string name="asset_ai_title">Analizar con IA</string>
+    <string name="asset_ai_subtitle">Lanza un análisis solo para esta foto. El resultado llega en segundos si el procesador está libre.</string>
+    <string name="asset_ai_faces">Caras</string>
+    <string name="asset_ai_objects">Objetos</string>
+    <string name="asset_ai_scenes">Escenas</string>
+    <string name="asset_ai_text">Texto</string>
+    <string name="asset_ai_embeddings">Búsqueda semántica</string>
+    <string name="asset_ai_status_never">Nunca analizado</string>
+    <string name="asset_ai_status_queued">En cola</string>
+    <string name="asset_ai_status_running">En curso</string>
+    <string name="asset_ai_status_done_format">Hecho hace %1$s</string>
+    <string name="asset_ai_status_failed_format">Falló: %1$s</string>
+    <string name="asset_ai_status_failed_retry_format">Falló, se reintentará (%1$s)</string>
+    <string name="asset_ai_status_suppressed">Descartado por el administrador</string>
+    <string name="asset_ai_run">Analizar</string>
+    <string name="asset_ai_rerun">Volver a analizar</string>
+    <string name="asset_ai_run_all">Analizar todo</string>
+    <string name="asset_ai_load_error">No se pudo leer el estado del análisis</string>
 
     <string name="selection_action_select_all">Seleccionar todo</string>
     <string name="selection_action_deselect_all">Deseleccionar todo</string>

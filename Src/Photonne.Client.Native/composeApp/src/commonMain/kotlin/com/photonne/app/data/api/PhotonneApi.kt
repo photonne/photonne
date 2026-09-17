@@ -3372,9 +3372,12 @@ class PhotonneApiClient(
             parameter("taskType", taskType)
         }
         if (response.status != HttpStatusCode.OK) {
+            // The server refuses a disabled model with `{"error": "…"}`; its
+            // words are the ones the sheet shows.
             throw PhotonneApiException(
                 status = response.status.value,
-                message = "Retry enrichment task failed (${response.status.value})"
+                message = parseErrorMessage(response)
+                    ?: "Retry enrichment task failed (${response.status.value})"
             )
         }
         return response.body()

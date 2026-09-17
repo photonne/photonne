@@ -68,6 +68,7 @@ import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
@@ -153,6 +154,7 @@ import com.photonne.app.resources.asset_action_archive
 import com.photonne.app.resources.asset_action_download
 import com.photonne.app.resources.asset_action_edit_date
 import com.photonne.app.resources.asset_action_edit_description
+import com.photonne.app.resources.asset_action_analyze
 import com.photonne.app.resources.asset_action_faces
 import com.photonne.app.resources.asset_action_more
 import com.photonne.app.resources.asset_action_open_in_maps
@@ -327,6 +329,14 @@ fun AssetDetailScreen(
     val currentIsFavorite = state.detail
         ?.takeIf { it.id == currentItem?.id }?.isFavorite
         ?: currentItem?.isFavorite ?: false
+    // Per-photo AI analysis: images only (the ML pipeline skips videos) and
+    // the owner's only (the server's retry endpoint is owner-scoped). Device-
+    // only entries have nothing on the server to analyse.
+    var showAiSheet by remember { mutableStateOf(false) }
+    val canAnalyze = currentItem != null &&
+        !currentItem.isVideo &&
+        !currentItem.id.startsWith("device:") &&
+        (state.detail?.takeIf { it.id == currentItem.id }?.isOwner ?: true)
     val currentShowingOriginal = currentItem?.let { showOriginal[it.id] == true } == true
 
     // Orientation: the app is portrait-locked everywhere. The viewer offers an
@@ -801,6 +811,13 @@ fun AssetDetailScreen(
                                         leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
                                         onClick = { showOverflow = false; onOpenFaces(currentItem.id) }
                                     )
+                                    if (canAnalyze) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(Res.string.asset_action_analyze)) },
+                                            leadingIcon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+                                            onClick = { showOverflow = false; showAiSheet = true }
+                                        )
+                                    }
                                     DropdownMenuItem(
                                         text = { Text(stringResource(Res.string.asset_action_archive)) },
                                         leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
@@ -881,6 +898,7 @@ fun AssetDetailScreen(
                             onEditDescription = { showEditDescription = true },
                             onEditDate = { showEditDate = true },
                             onOpenFaces = { onOpenFaces(currentItem.id) },
+                            onAnalyze = if (canAnalyze) { { showAiSheet = true } } else null,
                             onArchive = {
                                 viewModel.archive(currentItem.id) { id ->
                                     onAssetArchived(id)
@@ -924,6 +942,16 @@ fun AssetDetailScreen(
                 )
             }
         }
+    }
+
+    if (showAiSheet && currentItem != null) {
+        AssetAiSheet(
+            assetId = currentItem.id,
+            onDismiss = { showAiSheet = false },
+            // Faces, tags and the AI description live in the detail and its
+            // extras; a finished pass makes the cached copy stale.
+            onAnalysisFinished = { viewModel.reload(currentItem.id) },
+        )
     }
 
     if (showEditDescription && currentItem != null) {
@@ -2524,6 +2552,9 @@ private fun AssetActionsBottomBar(
     onOpenFaces: () -> Unit,
     onArchive: () -> Unit,
     onDeleteFromDevice: (() -> Unit)? = null,
+    // Null hides the entry: videos have no AI passes, and the server only
+    // lets the owner run them.
+    onAnalyze: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // Cápsula flotante, misma geometría que la nav y que la barra de selección:
@@ -2666,6 +2697,14 @@ private fun AssetActionsBottomBar(
                                 onOpenFaces()
                             }
                         )
+                        if (onAnalyze != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.asset_action_analyze)) },
+                                leadingIcon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+                                onClick = {
+                                    onShowOverflowChange(false)
+                                    onAnalyze()
+                                }
                             )
                         }
                         DropdownMenuItem(

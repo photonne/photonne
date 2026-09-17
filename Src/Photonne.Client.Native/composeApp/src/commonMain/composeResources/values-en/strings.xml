@@ -366,6 +366,25 @@
     <string name="people_face_set_cover">Use as cover</string>
 
     <string name="asset_action_faces">View faces</string>
+    <string name="asset_action_analyze">Analyse with AI</string>
+    <string name="asset_ai_title">Analyse with AI</string>
+    <string name="asset_ai_subtitle">Runs an analysis for this photo only. Results arrive within seconds when the processor is idle.</string>
+    <string name="asset_ai_faces">Faces</string>
+    <string name="asset_ai_objects">Objects</string>
+    <string name="asset_ai_scenes">Scenes</string>
+    <string name="asset_ai_text">Text</string>
+    <string name="asset_ai_embeddings">Semantic search</string>
+    <string name="asset_ai_status_never">Never analysed</string>
+    <string name="asset_ai_status_queued">Queued</string>
+    <string name="asset_ai_status_running">In progress</string>
+    <string name="asset_ai_status_done_format">Done %1$s ago</string>
+    <string name="asset_ai_status_failed_format">Failed: %1$s</string>
+    <string name="asset_ai_status_failed_retry_format">Failed, will retry (%1$s)</string>
+    <string name="asset_ai_status_suppressed">Dismissed by the administrator</string>
+    <string name="asset_ai_run">Analyse</string>
+    <string name="asset_ai_rerun">Analyse again</string>
+    <string name="asset_ai_run_all">Analyse everything</string>
+    <string name="asset_ai_load_error">Could not read the analysis status</string>
 
     <string name="selection_action_select_all">Select all</string>
     <string name="selection_action_deselect_all">Deselect all</string>

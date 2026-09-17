@@ -31,7 +31,11 @@ data class AssetDetail(
     val isFileMissing: Boolean = false,
     val caption: String? = null,
     val aiDescription: String? = null,
-    val isReadOnly: Boolean = false
+    val isReadOnly: Boolean = false,
+    /** The caller owns the asset. Per-asset AI analysis is owner-only on the
+     *  server; defaults to true so an older server that doesn't say still
+     *  offers the action (and answers 403 with a reason if it isn't). */
+    val isOwner: Boolean = true,
 ) {
     val isVideo: Boolean get() = type.equals("VIDEO", ignoreCase = true)
 }

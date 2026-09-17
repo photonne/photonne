@@ -159,6 +159,22 @@ class AssetDetailViewModel(
     }
 
     /**
+     * Drops what's cached for [assetId] and loads it again: detail (tags,
+     * description) and every extra. For after an AI analysis finished on the
+     * server, when the cached copy is exactly what's stale.
+     */
+    fun reload(assetId: String) {
+        if (assetId.startsWith("device:")) return
+        cache.remove(assetId)
+        extrasCache.remove(assetId)
+        publishCache()
+        if (currentId == assetId) {
+            currentId = null
+            select(assetId)
+        }
+    }
+
+    /**
      * Re-reads the faces of [assetId] after the faces sheet may have changed
      * them (assign / reject / unassign), along with the "same people" strip
      * that hangs off them. The current strip stays on screen meanwhile.
