@@ -291,12 +291,21 @@ public static class DependencyInjection
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             try
             {
+                // Npgsql's default 30 s command timeout is sized for queries, not
+                // for DDL over a full table: building the HNSW indexes of
+                // AddVectorIndexes takes minutes on a real library, so the
+                // migration was cancelled, rolled back and — with the catch
+                // below — silently skipped on every startup. Only this scope's
+                // context gets the long timeout.
+                dbContext.Database.SetCommandTimeout(TimeSpan.FromHours(1));
                 dbContext.Database.Migrate();
                 Console.WriteLine("Database migrations applied successfully.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error applying migrations: {ex.Message}");
+                // The whole chain: "Exception while reading from stream" alone
+                // doesn't say it was a timeout, nor which migration it hit.
+                Console.WriteLine($"[ERROR] Error applying migrations — the schema is BEHIND the code: {ex}");
                 // No lanzar excepción para permitir que la app continúe
             }
         }
