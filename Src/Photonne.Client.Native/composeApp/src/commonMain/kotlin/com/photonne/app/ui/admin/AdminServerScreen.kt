@@ -42,6 +42,12 @@ import com.photonne.app.resources.admin_server_check_again
 import com.photonne.app.resources.admin_server_release_url
 import com.photonne.app.resources.admin_server_up_to_date
 import com.photonne.app.resources.admin_server_update_available
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
+import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.resources.error_banner_retry
+import androidx.compose.foundation.layout.size
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -63,10 +69,13 @@ fun AdminServerScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        state.error?.userMessage != null && state.info == null ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
-            }
+        state.error != null && state.info == null ->
+            EmptyState(
+                icon = Icons.Outlined.CloudOff,
+                title = state.error!!.userMessage,
+                actionLabel = stringResource(Res.string.error_banner_retry),
+                onAction = { viewModel.load(refresh = true) }
+            )
         state.info != null -> {
             val info = state.info!!
             Column(
@@ -77,6 +86,9 @@ fun AdminServerScreen(
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // A re-check that failed used to look exactly like one that
+                // found nothing new: the error only showed with no data at all.
+                ErrorBanner(error = state.error, onRetry = { viewModel.load(refresh = true) })
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -165,8 +177,13 @@ fun AdminServerScreen(
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.size(12.dp))
+                    }
                     Button(
                         onClick = { viewModel.load(refresh = true) },
                         enabled = !state.isLoading,

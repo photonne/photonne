@@ -52,7 +52,7 @@ fun AdminDeleteUserDialog(
     onConfirm: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
         title = { Text(stringResource(Res.string.admin_user_action_delete_title)) },
         text = {
             Column {
@@ -96,7 +96,7 @@ fun AdminPromoteToPrimaryDialog(
     onConfirm: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
         title = { Text(stringResource(Res.string.admin_user_action_promote_title)) },
         text = {
             Column {

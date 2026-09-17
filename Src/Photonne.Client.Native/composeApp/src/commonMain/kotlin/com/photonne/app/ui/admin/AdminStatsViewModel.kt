@@ -29,6 +29,10 @@ class AdminStatsViewModel(
     private val _state = MutableStateFlow(AdminStatsUiState())
     val state: StateFlow<AdminStatsUiState> = _state.asStateFlow()
 
+    fun dismissError() {
+        _state.update { it.copy(error = null) }
+    }
+
     fun load() {
         if (_state.value.isLoading) return
         _state.update { it.copy(isLoading = true, error = null) }

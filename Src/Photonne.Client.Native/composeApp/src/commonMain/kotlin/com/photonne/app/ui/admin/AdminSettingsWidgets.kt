@@ -162,23 +162,12 @@ fun AdminSettingsForm(
                 }
 
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (state.isSubmitting) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.size(12.dp))
-                    }
-                    Button(
-                        onClick = onSave,
-                        enabled = state.canSave,
-                        modifier = Modifier.actionButtonHeight()
-                    ) {
-                        Text(stringResource(Res.string.action_save))
-                    }
-                }
+                AdminPrimaryActionRow(
+                    label = stringResource(Res.string.action_save),
+                    enabled = state.canSave,
+                    isSubmitting = state.isSubmitting,
+                    onClick = onSave
+                )
 
                 footer?.invoke(this)
             }

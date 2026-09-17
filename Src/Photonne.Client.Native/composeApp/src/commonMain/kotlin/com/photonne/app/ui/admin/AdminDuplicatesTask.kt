@@ -59,6 +59,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
+import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.resources.admin_duplicates_confirm_title
+import com.photonne.app.resources.admin_duplicates_confirm_message
+import com.photonne.app.resources.admin_duplicates_confirm_message_physical
+import com.photonne.app.resources.admin_duplicates_confirm_action
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 
@@ -154,6 +159,25 @@ fun AdminDuplicatesScreen(
             nowMs = Clock.System.now().toEpochMilliseconds()
             delay(1000L)
         }
+    }
+
+    var confirmCleanup by remember { mutableStateOf(false) }
+    if (confirmCleanup) {
+        ConfirmActionDialog(
+            title = stringResource(Res.string.admin_duplicates_confirm_title),
+            message = stringResource(
+                if (state.physical) Res.string.admin_duplicates_confirm_message_physical
+                else Res.string.admin_duplicates_confirm_message
+            ),
+            confirmLabel = stringResource(Res.string.admin_duplicates_confirm_action),
+            isDestructive = true,
+            isSubmitting = false,
+            onDismiss = { confirmCleanup = false },
+            onConfirm = {
+                confirmCleanup = false
+                viewModel.start()
+            }
+        )
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -303,7 +327,9 @@ fun AdminDuplicatesScreen(
                     Text(stringResource(Res.string.admin_duplicates_action_cancel))
                 }
             } else {
-                Button(onClick = viewModel::start) {
+                // With "eliminar duplicados" on, Start deletes on the server —
+                // from disk too with "físico". That is not a one-tap action.
+                Button(onClick = { if (state.cleanup) confirmCleanup = true else viewModel.start() }) {
                     Text(stringResource(Res.string.admin_duplicates_action_start))
                 }
             }

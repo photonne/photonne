@@ -56,6 +56,8 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.resources.admin_user_not_found
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ADMIN_USER_MIN_PASSWORD_LENGTH = 8
@@ -116,22 +118,16 @@ fun AdminUserEditorScreen(
         email.isNotBlank() &&
         (isEdit || password.length >= ADMIN_USER_MIN_PASSWORD_LENGTH)
 
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
-    Box(modifier = Modifier.fillMaxSize()) {
-    if (isEdit && existing == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .hazeSource(hazeState)
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp + reservedTop, bottom = 12.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    AdminEditorScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        isResolving = isEdit && existing == null && state.isLoading,
+        notFound = isEdit && existing == null && !state.isLoading,
+        notFoundMessage = state.error?.userMessage ?: stringResource(Res.string.admin_user_not_found),
+        onRetry = viewModel::refresh,
+        resultMessage = state.statusMessage,
+        onResultShown = viewModel::consumeStatus,
     ) {
         OutlinedTextField(
             value = username,
@@ -199,28 +195,29 @@ fun AdminUserEditorScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        ToggleRow(
+        SettingSwitch(
             label = stringResource(Res.string.admin_user_field_admin),
             checked = isAdmin,
-            onCheckedChange = { isAdmin = it },
+            onChange = { isAdmin = it },
             enabled = !isSubmitting && existing?.isPrimaryAdmin != true
         )
-        ToggleRow(
+        SettingSwitch(
             label = stringResource(Res.string.admin_user_field_active),
             checked = isActive,
-            onCheckedChange = { isActive = it },
+            onChange = { isActive = it },
             enabled = !isSubmitting && existing?.isPrimaryAdmin != true
         )
 
-        state.error?.userMessage?.let { msg ->
-            Text(msg, color = MaterialTheme.colorScheme.error)
+        // One error slot in the view model, two places that draw it: while a
+        // dialog is open the error is the dialog's, not the form's behind it.
+        if (!showResetPassword && !showDelete && !showPromoteToPrimary) {
+            ErrorBanner(error = state.error)
         }
 
-        Spacer(Modifier.height(4.dp))
-
-        Button(
+        AdminPrimaryActionRow(
+            label = stringResource(if (isEdit) Res.string.action_save else Res.string.action_create),
             enabled = canSubmit,
-            modifier = Modifier.fillMaxWidth(),
+            isSubmitting = isSubmitting,
             onClick = {
                 val quotaBytes = quotaMb.toLongOrNull()?.takeIf { it > 0 }
                     ?.let { it * 1024L * 1024L }
@@ -251,25 +248,14 @@ fun AdminUserEditorScreen(
                     )
                 }
             }
-        ) {
-            if (isSubmitting) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(16.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(Modifier.size(8.dp))
-            }
-            Text(
-                stringResource(
-                    if (isEdit) Res.string.action_save else Res.string.action_create
-                )
-            )
-        }
+        )
 
         if (isEdit) {
             OutlinedButton(
-                onClick = { showResetPassword = true },
+                onClick = {
+                    viewModel.clearMessages()
+                    showResetPassword = true
+                },
                 enabled = !isSubmitting,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -277,7 +263,10 @@ fun AdminUserEditorScreen(
             }
             if (canPromoteToPrimary) {
                 OutlinedButton(
-                    onClick = { showPromoteToPrimary = true },
+                    onClick = {
+                    viewModel.clearMessages()
+                    showPromoteToPrimary = true
+                },
                     enabled = !isSubmitting,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -285,7 +274,10 @@ fun AdminUserEditorScreen(
                 }
             }
             OutlinedButton(
-                onClick = { showDelete = true },
+                onClick = {
+                    viewModel.clearMessages()
+                    showDelete = true
+                },
                 enabled = !isSubmitting && existing?.isPrimaryAdmin != true,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -345,36 +337,5 @@ fun AdminUserEditorScreen(
                 }
             }
         )
-    }
-    }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
-    }
-}
-
-@Composable
-private fun ToggleRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }

@@ -71,6 +71,21 @@ import kotlinx.coroutines.launch
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
+import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.error.ErrorBanner
+import androidx.compose.material.icons.outlined.CloudOff
+import com.photonne.app.resources.error_banner_retry
+import com.photonne.app.resources.action_refresh
+import com.photonne.app.resources.admin_shared_trash_error_load
+import com.photonne.app.resources.admin_shared_trash_error_restore
+import com.photonne.app.resources.admin_shared_trash_error_purge
+import com.photonne.app.resources.admin_shared_trash_restored_format
+import com.photonne.app.resources.admin_shared_trash_purged_format
 import org.jetbrains.compose.resources.stringResource
 
 data class AdminSharedTrashUiState(
@@ -78,7 +93,9 @@ data class AdminSharedTrashUiState(
     val isLoading: Boolean = false,
     val isAppending: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
+    /** Outcome of a restore or purge, for the snackbar. */
+    val resultMessage: String? = null,
     val nextCursor: Instant? = null,
     val hasMore: Boolean = false,
     val selection: Set<String> = emptySet(),
@@ -96,21 +113,24 @@ data class AdminSharedTrashUiState(
  * the user-facing `TrashViewModel` does.
  */
 class AdminSharedTrashViewModel(
-    private val repository: AdminRepository
+    private val repository: AdminRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminSharedTrashUiState())
     val state: StateFlow<AdminSharedTrashUiState> = _state.asStateFlow()
 
-    fun ensureLoaded() {
-        val snapshot = _state.value
-        if (snapshot.loaded || snapshot.isLoading) return
-        load()
+    fun consumeResult() {
+        _state.update { it.copy(resultMessage = null) }
+    }
+
+    fun dismissError() {
+        _state.update { it.copy(error = null) }
     }
 
     fun load() {
         if (_state.value.isLoading) return
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.getSharedTrash(cursor = null) }
                 .onSuccess { page ->
@@ -129,7 +149,7 @@ class AdminSharedTrashViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "No se pudo cargar la papelera compartida"
+                            error = errorFactory.from(error, getString(Res.string.admin_shared_trash_error_load))
                         )
                     }
                 }
@@ -159,7 +179,7 @@ class AdminSharedTrashViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            errorMessage = error.message ?: "No se pudieron cargar más elementos"
+                            error = errorFactory.from(error, getString(Res.string.admin_shared_trash_error_load))
                         )
                     }
                 }
@@ -190,18 +210,19 @@ class AdminSharedTrashViewModel(
     fun restoreSelected() {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.restoreSharedTrash(ids) }
                 .onSuccess {
-                    _state.update { it.copy(isMutating = false, selection = emptySet()) }
+                    val done = getString(Res.string.admin_shared_trash_restored_format, ids.size)
+                    _state.update { it.copy(isMutating = false, selection = emptySet(), resultMessage = done) }
                     load()
                 }
                 .onFailure { error ->
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "No se pudo restaurar"
+                            error = errorFactory.from(error, getString(Res.string.admin_shared_trash_error_restore))
                         )
                     }
                 }
@@ -211,18 +232,19 @@ class AdminSharedTrashViewModel(
     fun purgeSelected() {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, showPurgeConfirm = false) }
+        _state.update { it.copy(isMutating = true, error = null, showPurgeConfirm = false) }
         viewModelScope.launch {
             runCatching { repository.purgeSharedTrash(ids) }
                 .onSuccess {
-                    _state.update { it.copy(isMutating = false, selection = emptySet()) }
+                    val done = getString(Res.string.admin_shared_trash_purged_format, ids.size)
+                    _state.update { it.copy(isMutating = false, selection = emptySet(), resultMessage = done) }
                     load()
                 }
                 .onFailure { error ->
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "No se pudo eliminar"
+                            error = errorFactory.from(error, getString(Res.string.admin_shared_trash_error_purge))
                         )
                     }
                 }
@@ -234,7 +256,10 @@ class AdminSharedTrashViewModel(
 fun AdminSharedTrashScreen(viewModel: AdminSharedTrashViewModel) {
     val state by viewModel.state.collectAsState()
     val baseUrl = rememberApiBaseUrl()
-    LaunchedEffect(Unit) { viewModel.ensureLoaded() }
+    // Every entry: it loaded once per app session, so what users deleted since
+    // only showed up after restarting the app.
+    LaunchedEffect(Unit) { viewModel.load() }
+    AdminResultSnackbar(state.resultMessage, viewModel::consumeResult)
 
     if (state.showPurgeConfirm) {
         ConfirmActionDialog(
@@ -249,20 +274,20 @@ fun AdminSharedTrashScreen(viewModel: AdminSharedTrashViewModel) {
     }
 
     when {
-        state.isLoading && state.items.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        state.errorMessage != null && state.items.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Text(state.errorMessage!!, color = MaterialTheme.colorScheme.error)
-            }
-        state.isEmpty ->
-            EmptyState(
-                icon = Icons.Outlined.DeleteSweep,
-                title = stringResource(Res.string.admin_shared_trash_empty),
-                subtitle = stringResource(Res.string.admin_shared_trash_empty_subtitle)
-            )
+        state.isLoading && state.items.isEmpty() -> ListRowsSkeleton()
+        state.error != null && state.items.isEmpty() -> EmptyState(
+            icon = Icons.Outlined.CloudOff,
+            title = state.error!!.userMessage,
+            actionLabel = stringResource(Res.string.error_banner_retry),
+            onAction = viewModel::load
+        )
+        state.isEmpty -> EmptyState(
+            icon = Icons.Outlined.DeleteSweep,
+            title = stringResource(Res.string.admin_shared_trash_empty),
+            subtitle = stringResource(Res.string.admin_shared_trash_empty_subtitle),
+            actionLabel = stringResource(Res.string.action_refresh),
+            onAction = viewModel::load
+        )
         else -> Column(modifier = Modifier.fillMaxSize()) {
             if (state.isSelectionActive) {
                 SelectionActionBar(
@@ -274,39 +299,43 @@ fun AdminSharedTrashScreen(viewModel: AdminSharedTrashViewModel) {
                 )
                 HorizontalDivider()
             }
-            state.errorMessage?.let {
-                Text(
-                    it,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = 8.dp,
-                    bottom = 8.dp + floatingNavBarReservedHeight()
-                )
+            ErrorBanner(error = state.error, onRetry = viewModel::load, onDismiss = viewModel::dismissError)
+            PhotonneRefreshableScreen(
+                isRefreshing = state.isLoading,
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxWidth().weight(1f)
             ) {
-                items(state.items, key = { it.id }) { item ->
-                    SharedTrashRow(
-                        item = item,
-                        baseUrl = baseUrl,
-                        isSelected = item.id in state.selection,
-                        onToggle = { viewModel.toggleSelection(item.id) }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        top = Spacing.sm,
+                        bottom = Spacing.sm + floatingNavBarReservedHeight()
                     )
-                }
-                if (state.hasMore) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (state.isAppending) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            } else {
-                                TextButton(onClick = viewModel::loadMore) {
-                                    Text(stringResource(Res.string.admin_shared_trash_load_more))
+                ) {
+                    items(state.items, key = { it.id }) { item ->
+                        SharedTrashRow(
+                            item = item,
+                            baseUrl = baseUrl,
+                            isSelected = item.id in state.selection,
+                            onToggle = { viewModel.toggleSelection(item.id) }
+                        )
+                    }
+                    if (state.hasMore) {
+                        item("load-more") {
+                            // Pages as the end scrolls in, like the user's own
+                            // trash. The button is the way back after a page
+                            // that failed.
+                            LaunchedEffect(state.nextCursor) { viewModel.loadMore() }
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (state.error != null && !state.isAppending) {
+                                    TextButton(onClick = viewModel::loadMore) {
+                                        Text(stringResource(Res.string.admin_shared_trash_load_more))
+                                    }
+                                } else {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 }
                             }
                         }

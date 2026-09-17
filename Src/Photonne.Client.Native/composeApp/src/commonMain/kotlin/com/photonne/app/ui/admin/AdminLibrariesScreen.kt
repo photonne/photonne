@@ -67,6 +67,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.remember
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.models.LibraryScanProgress
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.resources.admin_libraries_scan_cancel
+import com.photonne.app.resources.admin_libraries_permissions_revoke
+import com.photonne.app.resources.admin_libraries_permissions_add
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,96 +90,43 @@ fun AdminLibrariesScreen(
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-    LaunchedEffect(Unit) { viewModel.ensureLoaded() }
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val listState = rememberLazyListState()
-    Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        state.statusMessage?.let { msg ->
-            Text(
-                msg,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+    val scan = state.scanProgress
+    AdminListScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        isLoading = state.isLoading,
+        isEmpty = state.libraries.isEmpty(),
+        error = state.error,
+        onRefresh = viewModel::refresh,
+        emptyIcon = Icons.Outlined.CreateNewFolder,
+        emptyTitle = stringResource(Res.string.admin_libraries_empty),
+        resultMessage = state.statusMessage,
+        onResultShown = viewModel::consumeStatus,
+        onDismissError = viewModel::clearMessages,
+        actions = {
+            CreateAction(
+                icon = Icons.Outlined.CreateNewFolder,
+                contentDescription = stringResource(Res.string.admin_libraries_action_new),
+                onClick = onCreateNew
             )
-        }
-        state.error?.userMessage?.let { msg ->
-            Text(
-                msg,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+        },
+        // First row of the list rather than a strip above it: up there it sat
+        // behind the chrome, cancel button and all.
+        header = if (scan != null) {
+            { item(key = "scan-progress") { ScanProgressCard(scan, onCancel = viewModel::cancelScan) } }
+        } else null
+    ) {
+        items(state.libraries, key = { it.id }) { lib ->
+            LibraryCard(
+                library = lib,
+                scanEnabled = state.scanningLibraryId == null,
+                onEdit = { onEdit(lib) },
+                onScan = { viewModel.startScan(lib.id) },
+                onPermissions = { viewModel.openPermissions(lib.id, knownUsers) }
             )
-        }
-        state.scanProgress?.let { progress ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(
-                                Res.string.admin_libraries_scan_progress,
-                                progress.percentage
-                            ),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = viewModel::cancelScan) {
-                            Icon(Icons.Filled.Close, contentDescription = null)
-                        }
-                    }
-                    Text(progress.message, style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(4.dp))
-                    LinearProgressIndicator(
-                        progress = { (progress.percentage / 100f).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(6.dp)
-                    )
-                }
-            }
-        }
-
-        when {
-            state.isLoading && state.libraries.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            state.libraries.isEmpty() ->
-                EmptyState(
-                    icon = Icons.Outlined.CreateNewFolder,
-                    title = stringResource(Res.string.admin_libraries_empty)
-                )
-            else ->
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 8.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize().hazeSource(hazeState)
-                ) {
-                    items(state.libraries, key = { it.id }) { lib ->
-                        LibraryCard(
-                            library = lib,
-                            onEdit = { onEdit(lib) },
-                            onScan = { viewModel.startScan(lib.id) },
-                            onPermissions = {
-                                viewModel.openPermissions(lib.id, knownUsers)
-                            }
-                        )
-                    }
-                }
         }
     }
 
@@ -178,37 +134,52 @@ fun AdminLibrariesScreen(
         LibraryPermissionsDialog(
             permissions = state.permissions,
             candidates = state.candidateUsers,
+            isLoading = state.permissionsLoading,
+            error = state.permissionsError,
+            busyUserIds = state.permissionsBusy,
             onGrant = viewModel::grantPermission,
             onRevoke = viewModel::revokePermission,
             onDismiss = viewModel::closePermissions
         )
     }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
-                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
-                isScrollInProgress = { listState.isScrollInProgress },
-                scrollToTopMinIndex = 4,
-                onScrollToTop = { listState.animateScrollToItem(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange,
-            actions = {
-                CreateAction(
-                    icon = Icons.Outlined.CreateNewFolder,
-                    contentDescription = stringResource(Res.string.admin_libraries_action_new),
-                    onClick = onCreateNew
-                )
-            }
+}
+
+@Composable
+private fun ScanProgressCard(progress: LibraryScanProgress, onCancel: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(Res.string.admin_libraries_scan_progress, progress.percentage),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onCancel) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(Res.string.admin_libraries_scan_cancel)
+                    )
+                }
+            }
+            Text(progress.message, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(Spacing.xs))
+            LinearProgressIndicator(
+                progress = { (progress.percentage / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(6.dp)
+            )
+        }
     }
 }
 
 @Composable
 private fun LibraryCard(
     library: ExternalLibraryDto,
+    scanEnabled: Boolean,
     onEdit: () -> Unit,
     onScan: () -> Unit,
     onPermissions: () -> Unit
@@ -233,28 +204,9 @@ private fun LibraryCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AssistChip(
-                    onClick = onEdit,
-                    label = {
-                        Text(
-                            stringResource(
-                                Res.string.admin_libraries_asset_count,
-                                library.assetCount
-                            )
-                        )
-                    },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                )
+                MetricPill(stringResource(Res.string.admin_libraries_asset_count, library.assetCount))
                 library.cronSchedule?.takeIf { it.isNotBlank() }?.let {
-                    AssistChip(
-                        onClick = onEdit,
-                        label = { Text(it) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        )
-                    )
+                    MetricPill(it)
                 }
             }
             Text(
@@ -274,7 +226,7 @@ private fun LibraryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(onClick = onScan, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onScan, enabled = scanEnabled, modifier = Modifier.weight(1f)) {
                     Text(stringResource(Res.string.admin_libraries_action_scan))
                 }
                 OutlinedButton(onClick = onPermissions, modifier = Modifier.weight(1f)) {
@@ -290,6 +242,9 @@ private fun LibraryCard(
 private fun LibraryPermissionsDialog(
     permissions: List<com.photonne.app.data.models.LibraryPermissionDto>,
     candidates: List<UserDto>,
+    isLoading: Boolean,
+    error: UiError?,
+    busyUserIds: Set<String>,
     onGrant: (userId: String) -> Unit,
     onRevoke: (userId: String) -> Unit,
     onDismiss: () -> Unit
@@ -299,25 +254,37 @@ private fun LibraryPermissionsDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 stringResource(Res.string.admin_libraries_permissions_title),
                 style = MaterialTheme.typography.titleLarge
             )
+            // The sheet's own errors: the list's banner is behind it.
+            ErrorBanner(error = error)
+            // Scrolls: capped at 420 dp without it, a long user list was cut off.
             Column(
-                modifier = Modifier.heightIn(min = 140.dp, max = 420.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .heightIn(min = 140.dp, max = 420.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                if (permissions.isEmpty()) {
-                    Text(
+                when {
+                    // Not "Solo tú tienes acceso" while it is still unknown.
+                    isLoading -> Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xl),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                    permissions.isEmpty() && error == null -> Text(
                         stringResource(Res.string.admin_libraries_permissions_empty),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                } else {
-                    permissions.forEach { perm ->
+                    else -> permissions.forEach { perm ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -330,8 +297,11 @@ private fun LibraryPermissionsDialog(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            TextButton(onClick = { onRevoke(perm.userId) }) {
-                                Text(stringResource(Res.string.admin_libraries_action_delete))
+                            TextButton(
+                                onClick = { onRevoke(perm.userId) },
+                                enabled = perm.userId !in busyUserIds
+                            ) {
+                                Text(stringResource(Res.string.admin_libraries_permissions_revoke))
                             }
                         }
                     }
@@ -339,19 +309,19 @@ private fun LibraryPermissionsDialog(
                 val availableCandidates = candidates.filter { user ->
                     permissions.none { it.userId == user.id }
                 }
-                if (availableCandidates.isNotEmpty()) {
-                    Spacer(Modifier.size(8.dp))
-                    Text("+", style = MaterialTheme.typography.titleSmall)
+                if (!isLoading && availableCandidates.isNotEmpty()) {
+                    SettingSectionHeader(stringResource(Res.string.admin_libraries_permissions_add))
                     availableCandidates.forEach { user ->
+                        val busy = user.id in busyUserIds
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable(onClick = { onGrant(user.id) })
-                                .padding(vertical = 4.dp),
+                                .clickable(enabled = !busy, onClick = { onGrant(user.id) })
+                                .padding(vertical = Spacing.xs),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Filled.Add, contentDescription = null)
-                            Spacer(Modifier.size(8.dp))
+                            Spacer(Modifier.size(Spacing.sm))
                             Column {
                                 Text(user.username, style = MaterialTheme.typography.bodyMedium)
                                 Text(

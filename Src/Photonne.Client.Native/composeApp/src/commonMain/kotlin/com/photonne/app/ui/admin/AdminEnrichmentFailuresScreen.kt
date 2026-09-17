@@ -54,7 +54,6 @@ import com.photonne.app.resources.admin_enrichment_failures_kind_any
 import com.photonne.app.resources.admin_enrichment_failures_kind_needs_action
 import com.photonne.app.resources.admin_enrichment_failures_kind_permanent
 import com.photonne.app.resources.admin_enrichment_failures_kind_transient
-import com.photonne.app.resources.admin_enrichment_failures_load_error
 import com.photonne.app.resources.admin_enrichment_failures_load_more
 import com.photonne.app.resources.admin_enrichment_failures_retry
 import com.photonne.app.resources.admin_enrichment_failures_retry_all
@@ -77,6 +76,11 @@ import com.photonne.app.ui.theme.EmptyState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.resources.admin_enrichment_failures_retry_all_confirm
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -94,100 +98,85 @@ fun AdminEnrichmentFailuresScreen(
     onOpenAsset: (AdminEnrichmentFailureDto) -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val listState = rememberLazyListState()
     val state by viewModel.state.collectAsState()
-    LaunchedEffect(Unit) { viewModel.start(initialType) }
+    LaunchedEffect(initialType) { viewModel.start(initialType) }
+    var confirmRetryAll by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            when {
-                state.isLoading && state.items.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                state.loadError != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            stringResource(Res.string.admin_enrichment_failures_load_error, state.loadError ?: ""),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-                state.items.isEmpty() && state.typeFilter == null && state.countsByType.isEmpty() -> EmptyState(
-                    icon = Icons.Outlined.TaskAlt,
-                    title = stringResource(Res.string.admin_enrichment_failures_empty)
+    AdminListScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        isLoading = state.isLoading,
+        // With a filter on, "nothing" is an answer to the filter: the chips
+        // have to stay on screen to take it off again.
+        isEmpty = state.items.isEmpty() && state.typeFilter == null &&
+            state.kindFilter == null && state.countsByType.isEmpty(),
+        error = state.loadError,
+        onRefresh = viewModel::refresh,
+        emptyIcon = Icons.Outlined.TaskAlt,
+        emptyTitle = stringResource(Res.string.admin_enrichment_failures_empty),
+        resultMessage = state.resultMessage,
+        onResultShown = viewModel::consumeResult,
+        onDismissError = viewModel::dismissError,
+        header = {
+            item("header") {
+                FailuresHeader(
+                    total = state.total,
+                    countsByType = state.countsByType,
+                    countsByKind = state.countsByKind,
+                    typeFilter = state.typeFilter,
+                    kindFilter = state.kindFilter,
+                    isRetryingAll = state.isRetryingAll,
+                    onFilter = { viewModel.setFilter(it) },
+                    onKindFilter = { viewModel.setKindFilter(it) },
+                    onRetryAll = { confirmRetryAll = true }
                 )
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize().hazeSource(hazeState),
-                        contentPadding = PaddingValues(
-                            start = 16.dp, end = 16.dp,
-                            top = 8.dp + reservedTop,
-                            bottom = 8.dp + floatingNavBarReservedHeight()
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item("header") {
-                            FailuresHeader(
-                                total = state.total,
-                                countsByType = state.countsByType,
-                                countsByKind = state.countsByKind,
-                                typeFilter = state.typeFilter,
-                                kindFilter = state.kindFilter,
-                                isRetryingAll = state.isRetryingAll,
-                                onFilter = { viewModel.setFilter(it) },
-                                onKindFilter = { viewModel.setKindFilter(it) },
-                                onRetryAll = { viewModel.retryAll() }
-                            )
+            }
+        }
+    ) {
+        items(items = state.items, key = { it.failure.taskId }) { item ->
+            FailureCard(
+                item = item,
+                onOpenAsset = { onOpenAsset(item.failure) },
+                onRetry = { viewModel.retry(item.failure.taskId) },
+                onSuppress = { viewModel.suppress(item.failure.taskId) }
+            )
+        }
+        val cursor = state.nextCursor
+        if (cursor != null) {
+            item("load-more") {
+                // Pages on its own as the end of the list scrolls in, like the
+                // rest of the app. The button is only the way back after a page
+                // that failed (the error is in the banner on top).
+                LaunchedEffect(cursor) { viewModel.loadMore() }
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (state.loadError != null && !state.isLoadingMore) {
+                        TextButton(onClick = { viewModel.loadMore() }) {
+                            Text(stringResource(Res.string.admin_enrichment_failures_load_more))
                         }
-                        items(items = state.items, key = { it.failure.taskId }) { item ->
-                            FailureCard(
-                                item = item,
-                                onOpenAsset = { onOpenAsset(item.failure) },
-                                onRetry = { viewModel.retry(item.failure.taskId) },
-                                onSuppress = { viewModel.suppress(item.failure.taskId) }
-                            )
-                        }
-                        if (state.nextCursor != null) {
-                            item("load-more") {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (state.isLoadingMore) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        TextButton(onClick = { viewModel.loadMore() }) {
-                                            Text(stringResource(Res.string.admin_enrichment_failures_load_more))
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    } else {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     }
                 }
             }
         }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
-                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
-                isScrollInProgress = { listState.isScrollInProgress },
-                scrollToTopMinIndex = 4,
-                onScrollToTop = { listState.animateScrollToItem(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
+    }
+
+    if (confirmRetryAll) {
+        ConfirmActionDialog(
+            title = stringResource(Res.string.admin_enrichment_failures_retry_all),
+            message = stringResource(Res.string.admin_enrichment_failures_retry_all_confirm, state.total),
+            confirmLabel = stringResource(Res.string.admin_enrichment_failures_retry),
+            isDestructive = false,
+            isSubmitting = false,
+            onDismiss = { confirmRetryAll = false },
+            onConfirm = {
+                confirmRetryAll = false
+                viewModel.retryAll()
+            }
         )
     }
 }
@@ -438,14 +427,10 @@ private fun FailureCard(
 
 @Composable
 private fun TypeChip(label: String) {
-    AssistChip(
-        onClick = {},
-        enabled = false,
-        label = { Text(label) },
-        colors = AssistChipDefaults.assistChipColors(
-            disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-            disabledLabelColor = MaterialTheme.colorScheme.onSurface
-        )
+    MetricPill(
+        label,
+        container = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+        content = MaterialTheme.colorScheme.onSurface
     )
 }
 

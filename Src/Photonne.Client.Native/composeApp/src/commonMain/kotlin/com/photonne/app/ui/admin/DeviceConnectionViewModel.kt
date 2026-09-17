@@ -81,18 +81,15 @@ class DeviceConnectionViewModel(
         }
         _state.value = current.copy(isProbing = true, errorMessage = null, infoMessage = null)
         viewModelScope.launch {
-            // Persist first so the probe reads it from the store; we restore
-            // the previous value if the probe fails and the user hasn't saved.
-            val previousLocal = store.getLocal()
-            store.setLocal(normalized)
-            val reachable = probe.runProbe()
-            // Roll the persisted value back if it wasn't saved before — the
-            // probe should not silently overwrite the stored URL just from a
-            // test.
-            if (previousLocal != normalized) store.setLocal(previousLocal)
+            // Probe the candidate directly and leave the store alone. This used
+            // to persist it, run the app-wide probe, and roll the URL back: the
+            // probe's "reachable" flag stayed up, so after a good test the store
+            // claimed the PREVIOUS local address was reachable and the whole app
+            // switched to a URL nobody had checked — and ran against the
+            // candidate for as long as the test lasted.
+            val reachable = probeOnce(normalized)
             _state.value = _state.value.copy(
                 isProbing = false,
-                localReachable = reachable && store.getLocal() == normalized,
                 infoMessage = if (reachable) PROBE_REACHABLE else PROBE_UNREACHABLE
             )
         }

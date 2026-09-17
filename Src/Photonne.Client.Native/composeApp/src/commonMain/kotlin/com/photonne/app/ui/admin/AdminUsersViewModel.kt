@@ -35,6 +35,9 @@ class AdminUsersViewModel(
     private val _state = MutableStateFlow(AdminUsersUiState())
     val state: StateFlow<AdminUsersUiState> = _state.asStateFlow()
 
+    /** For the screens that only need the list to exist (the editor, the
+     *  library permissions). The list screen itself calls [refresh] on every
+     *  entry: reloading under an open editor would swap the user being edited. */
     fun ensureLoaded() {
         if (_state.value.users.isNotEmpty() || _state.value.isLoading) return
         refresh()
@@ -81,6 +84,11 @@ class AdminUsersViewModel(
                     }
                 }
         }
+    }
+
+    /** The result was shown (snackbar): don't replay it on the next screen. */
+    fun consumeStatus() {
+        _state.update { it.copy(statusMessage = null) }
     }
 
     fun clearMessages() {

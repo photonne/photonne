@@ -28,6 +28,12 @@ data class AdminLibrariesUiState(
     val scanningLibraryId: String? = null,
     val permissions: List<LibraryPermissionDto> = emptyList(),
     val permissionsLibraryId: String? = null,
+    /** The sheet's own load and error: it covers the list, so anything put in
+     *  [error] while it is open is drawn behind it and never read. */
+    val permissionsLoading: Boolean = false,
+    val permissionsError: UiError? = null,
+    /** Users with a grant or revoke in flight, so a second tap can't fire it twice. */
+    val permissionsBusy: Set<String> = emptySet(),
     val candidateUsers: List<UserDto> = emptyList()
 )
 
@@ -41,9 +47,16 @@ class AdminLibrariesViewModel(
 
     private var scanJob: Job? = null
 
+    /** For the editor, which only needs the list to exist. The list screen
+     *  calls [refresh] on every entry. */
     fun ensureLoaded() {
         if (_state.value.libraries.isNotEmpty() || _state.value.isLoading) return
         refresh()
+    }
+
+    /** The result was shown (snackbar): don't replay it on the next screen. */
+    fun consumeStatus() {
+        _state.update { it.copy(statusMessage = null) }
     }
 
     fun refresh() {
@@ -80,7 +93,7 @@ class AdminLibrariesViewModel(
         _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching {
-                repository.createLibrary(name, path, importSubfolders, cronSchedule)
+                repository.createLibrary(name.trim(), path.trim(), importSubfolders, cronSchedule?.trim())
             }
                 .onSuccess { created ->
                     _state.update { current ->
@@ -108,7 +121,7 @@ class AdminLibrariesViewModel(
         _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching {
-                repository.updateLibrary(id, name, path, importSubfolders, cronSchedule)
+                repository.updateLibrary(id, name.trim(), path.trim(), importSubfolders, cronSchedule?.trim())
             }
                 .onSuccess { updated ->
                     _state.update { current ->
@@ -172,8 +185,16 @@ class AdminLibrariesViewModel(
                         refresh()
                     }
                 }
+            // A finished scan takes its card with it. It used to stay at 100 %
+            // until someone pressed its X; the last message goes to the
+            // snackbar instead, so the outcome is still said once.
             _state.update {
-                it.copy(scanningLibraryId = null)
+                if (it.scanningLibraryId == null) it
+                else it.copy(
+                    scanningLibraryId = null,
+                    scanProgress = null,
+                    statusMessage = it.scanProgress?.message?.takeIf { m -> m.isNotBlank() }
+                )
             }
         }
     }
@@ -189,17 +210,23 @@ class AdminLibrariesViewModel(
             it.copy(
                 permissionsLibraryId = libraryId,
                 permissions = emptyList(),
-                candidateUsers = allUsers
+                candidateUsers = allUsers,
+                permissionsLoading = true,
+                permissionsError = null,
+                permissionsBusy = emptySet()
             )
         }
         viewModelScope.launch {
             runCatching { repository.listLibraryPermissions(libraryId) }
                 .onSuccess { perms ->
-                    _state.update { it.copy(permissions = perms) }
+                    _state.update { it.copy(permissions = perms, permissionsLoading = false) }
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "No se pudieron cargar los permisos"))
+                        it.copy(
+                            permissionsLoading = false,
+                            permissionsError = errorFactory.from(error, "No se pudieron cargar los permisos")
+                        )
                     }
                 }
         }
@@ -210,13 +237,17 @@ class AdminLibrariesViewModel(
             it.copy(
                 permissionsLibraryId = null,
                 permissions = emptyList(),
-                candidateUsers = emptyList()
+                candidateUsers = emptyList(),
+                permissionsLoading = false,
+                permissionsError = null,
+                permissionsBusy = emptySet()
             )
         }
     }
 
     fun grantPermission(userId: String) {
         val libraryId = _state.value.permissionsLibraryId ?: return
+        if (!markPermissionBusy(userId)) return
         viewModelScope.launch {
             runCatching {
                 repository.setLibraryPermission(libraryId, userId, canRead = true)
@@ -224,12 +255,18 @@ class AdminLibrariesViewModel(
                 .onSuccess { perm ->
                     _state.update { current ->
                         val list = current.permissions.filterNot { it.userId == perm.userId } + perm
-                        current.copy(permissions = list.sortedByNatural { it.username })
+                        current.copy(
+                            permissions = list.sortedByNatural { it.username },
+                            permissionsBusy = current.permissionsBusy - userId
+                        )
                     }
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "No se pudo conceder el acceso"))
+                        it.copy(
+                            permissionsBusy = it.permissionsBusy - userId,
+                            permissionsError = errorFactory.from(error, "No se pudo conceder el acceso")
+                        )
                     }
                 }
         }
@@ -237,21 +274,33 @@ class AdminLibrariesViewModel(
 
     fun revokePermission(userId: String) {
         val libraryId = _state.value.permissionsLibraryId ?: return
+        if (!markPermissionBusy(userId)) return
         viewModelScope.launch {
             runCatching { repository.removeLibraryPermission(libraryId, userId) }
                 .onSuccess {
                     _state.update { current ->
                         current.copy(
-                            permissions = current.permissions.filterNot { it.userId == userId }
+                            permissions = current.permissions.filterNot { it.userId == userId },
+                            permissionsBusy = current.permissionsBusy - userId
                         )
                     }
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "No se pudo revocar el acceso"))
+                        it.copy(
+                            permissionsBusy = it.permissionsBusy - userId,
+                            permissionsError = errorFactory.from(error, "No se pudo revocar el acceso")
+                        )
                     }
                 }
         }
+    }
+
+    /** False when [userId] already has a request in flight. */
+    private fun markPermissionBusy(userId: String): Boolean {
+        if (userId in _state.value.permissionsBusy) return false
+        _state.update { it.copy(permissionsBusy = it.permissionsBusy + userId, permissionsError = null) }
+        return true
     }
 
     private fun failMutation(throwable: Throwable, fallback: String) {

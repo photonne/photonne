@@ -1229,4 +1229,23 @@
     <string name="admin_settings_notifications_max_per_user_hint">Past it, the oldest are deleted. 0 = no limit.</string>
     <string name="admin_settings_server_session_timeout_hint">5 to 43200 minutes (1440 = one day, 43200 = 30 days).</string>
     <string name="admin_settings_trash_retention_hint">Days until permanent deletion. 0 = kept forever.</string>
+    <string name="admin_libraries_scan_cancel">Cancel the scan</string>
+    <string name="admin_libraries_permissions_revoke">Remove access</string>
+    <string name="admin_libraries_permissions_add">Give access to</string>
+    <string name="admin_enrichment_failures_error_load">Couldn\'t load the problems registry</string>
+    <string name="admin_enrichment_failures_error_retry_all">Couldn\'t retry the tasks</string>
+    <string name="admin_enrichment_failures_retry_all_done">Tasks sent back to the queue</string>
+    <string name="admin_enrichment_failures_retry_all_confirm">The %1$d tasks in the current filter will be queued again. Those failing because of the file itself will fail the same way.</string>
+    <string name="admin_user_not_found">Couldn\'t find the user</string>
+    <string name="admin_libraries_not_found">Couldn\'t find the library</string>
+    <string name="admin_stats_per_user_list">Users</string>
+    <string name="admin_duplicates_confirm_title">Delete duplicates?</string>
+    <string name="admin_duplicates_confirm_message">Duplicates will be searched for and the ones found removed from the library. This can\'t be undone.</string>
+    <string name="admin_duplicates_confirm_message_physical">Duplicates will be searched for and the ones found removed from the library and from disk. This can\'t be undone.</string>
+    <string name="admin_duplicates_confirm_action">Search and delete</string>
+    <string name="admin_shared_trash_error_load">Couldn\'t load the shared trash</string>
+    <string name="admin_shared_trash_error_restore">Couldn\'t restore the items</string>
+    <string name="admin_shared_trash_error_purge">Couldn\'t delete the items</string>
+    <string name="admin_shared_trash_restored_format">%1$d item(s) restored</string>
+    <string name="admin_shared_trash_purged_format">%1$d item(s) permanently deleted</string>
 </resources>

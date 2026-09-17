@@ -67,82 +67,34 @@ fun AdminUsersScreen(
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-    LaunchedEffect(Unit) { viewModel.ensureLoaded() }
+    // Every entry, not just the first: last logins and quotas went stale for
+    // the whole session otherwise. The rows on screen stay while it reloads.
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val listState = rememberLazyListState()
-    Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        state.statusMessage?.let { msg ->
-            Text(
-                msg,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+    AdminListScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        isLoading = state.isLoading,
+        isEmpty = state.users.isEmpty(),
+        error = state.error,
+        onRefresh = viewModel::refresh,
+        emptyIcon = Icons.Outlined.Group,
+        emptyTitle = stringResource(Res.string.admin_users_empty),
+        resultMessage = state.statusMessage,
+        onResultShown = viewModel::consumeStatus,
+        onDismissError = viewModel::clearMessages,
+        actions = {
+            CreateAction(
+                icon = Icons.Outlined.PersonAdd,
+                contentDescription = stringResource(Res.string.admin_user_action_new),
+                onClick = onCreateNew
             )
         }
-        state.error?.userMessage?.let { msg ->
-            Text(
-                msg,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            )
+    ) {
+        items(state.users, key = { it.id }) { user ->
+            UserRow(user = user, onClick = { onEdit(user) })
         }
-
-        when {
-            state.isLoading && state.users.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            state.users.isEmpty() && state.error?.userMessage == null ->
-                EmptyState(
-                    icon = Icons.Outlined.Group,
-                    title = stringResource(Res.string.admin_users_empty),
-                    actionLabel = stringResource(Res.string.action_refresh),
-                    onAction = viewModel::refresh
-                )
-            else ->
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize().hazeSource(hazeState),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 8.dp + reservedTop,
-                        bottom = 16.dp + floatingNavBarReservedHeight()
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.users, key = { it.id }) { user ->
-                        UserRow(user = user, onClick = { onEdit(user) })
-                    }
-                }
-        }
-    }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
-                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
-                isScrollInProgress = { listState.isScrollInProgress },
-                scrollToTopMinIndex = 4,
-                onScrollToTop = { listState.animateScrollToItem(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange,
-            actions = {
-                CreateAction(
-                    icon = Icons.Outlined.PersonAdd,
-                    contentDescription = stringResource(Res.string.admin_user_action_new),
-                    onClick = onCreateNew
-                )
-            }
-        )
     }
 }
 
@@ -178,33 +130,19 @@ private fun UserRow(user: UserDto, onClick: () -> Unit) {
                 } else {
                     stringResource(Res.string.admin_user_role_user)
                 }
-                AssistChip(
-                    onClick = onClick,
-                    label = { Text(roleLabel) },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                )
+                MetricPill(roleLabel)
                 if (user.isPrimaryAdmin) {
-                    AssistChip(
-                        onClick = onClick,
-                        label = {
-                            Text(stringResource(Res.string.admin_user_primary_admin_badge))
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                    MetricPill(
+                        stringResource(Res.string.admin_user_primary_admin_badge),
+                        container = MaterialTheme.colorScheme.primaryContainer,
+                        content = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
                 if (!user.isActive) {
-                    AssistChip(
-                        onClick = onClick,
-                        label = {
-                            Text(stringResource(Res.string.admin_user_inactive_badge))
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
+                    MetricPill(
+                        stringResource(Res.string.admin_user_inactive_badge),
+                        container = MaterialTheme.colorScheme.errorContainer,
+                        content = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }

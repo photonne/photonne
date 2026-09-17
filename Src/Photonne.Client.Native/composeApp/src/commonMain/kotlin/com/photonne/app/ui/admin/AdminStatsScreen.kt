@@ -69,6 +69,9 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
+import com.photonne.app.resources.admin_stats_per_user_list
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 
@@ -79,94 +82,64 @@ fun AdminStatsScreen(
     viewModel: AdminStatsViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val listState = rememberLazyListState()
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-    when {
-        state.isLoading && state.data == null ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        state.error?.userMessage != null && state.data == null ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ErrorBanner(error = state.error, onRetry = viewModel::load)
-            }
-        state.data != null -> {
-            val data = state.data!!
-            // The API returns totalBytes but no global photo/video byte split,
-            // so we sum it across users — same denominators the per-user view
-            // shows, so the donut's photo:video ratio matches what an admin
-            // would expect from the breakdown below.
-            val totalPhotoBytes = remember(data.users) {
-                data.users.sumOf { it.photoBytes }
-            }
-            val totalVideoBytes = remember(data.users) {
-                data.users.sumOf { it.videoBytes }
-            }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().hazeSource(hazeState),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    TotalsOverviewCard(
-                        totalPhotos = data.totalPhotos,
-                        totalVideos = data.totalVideos,
-                        totalBytes = data.totalBytes,
-                        photoBytes = totalPhotoBytes,
-                        videoBytes = totalVideoBytes
-                    )
-                }
-                state.coverage?.let { coverage ->
-                    item {
-                        IndexingCoverageCard(coverage)
-                    }
-                }
-                if (data.users.size >= 2) {
-                    item {
-                        TopUsersCard(users = data.users)
-                    }
-                }
-                item {
-                    Text(
-                        stringResource(Res.string.admin_stats_per_user),
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                    )
-                }
-                items(data.users, key = { it.userId }) { usage ->
-                    UserUsageCard(usage)
-                }
-                if (data.users.isEmpty()) {
-                    item {
-                        Text(
-                            stringResource(Res.string.admin_stats_per_user_breakdown),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+    val data = state.data
+    // The API returns totalBytes but no global photo/video byte split,
+    // so we sum it across users — same denominators the per-user view
+    // shows, so the donut's photo:video ratio matches what an admin
+    // would expect from the breakdown below.
+    val totalPhotoBytes = remember(data?.users) { data?.users?.sumOf { it.photoBytes } ?: 0L }
+    val totalVideoBytes = remember(data?.users) { data?.users?.sumOf { it.videoBytes } ?: 0L }
+
+    AdminListScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        isLoading = state.isLoading,
+        isEmpty = data == null,
+        error = state.error,
+        onRefresh = viewModel::load,
+        emptyIcon = Icons.Outlined.BarChart,
+        emptyTitle = stringResource(Res.string.admin_stats_per_user_breakdown),
+        onDismissError = viewModel::dismissError,
+    ) {
+        if (data == null) return@AdminListScaffold
+        item {
+            TotalsOverviewCard(
+                totalPhotos = data.totalPhotos,
+                totalVideos = data.totalVideos,
+                totalBytes = data.totalBytes,
+                photoBytes = totalPhotoBytes,
+                videoBytes = totalVideoBytes
+            )
+        }
+        state.coverage?.let { coverage ->
+            item {
+                IndexingCoverageCard(coverage)
             }
         }
-    }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
-                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
-                isScrollInProgress = { listState.isScrollInProgress },
-                scrollToTopMinIndex = 4,
-                onScrollToTop = { listState.animateScrollToItem(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
+        if (data.users.size >= 2) {
+            item {
+                TopUsersCard(users = data.users)
+            }
+        }
+        item {
+            SettingSectionHeader(stringResource(Res.string.admin_stats_per_user_list), divider = false)
+        }
+        items(data.users, key = { it.userId }) { usage ->
+            UserUsageCard(usage)
+        }
+        if (data.users.isEmpty()) {
+            item {
+                Text(
+                    stringResource(Res.string.admin_stats_per_user_breakdown),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 

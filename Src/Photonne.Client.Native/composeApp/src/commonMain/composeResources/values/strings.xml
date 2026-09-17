@@ -894,7 +894,6 @@
 
     <!-- Admin enrichment failures registry -->
     <string name="admin_enrichment_failures_empty">Ningún asset con problemas</string>
-    <string name="admin_enrichment_failures_load_error">No se pudo cargar el registro: %1$s</string>
     <string name="admin_enrichment_failures_total">%1$d tarea(s) con problemas</string>
     <string name="admin_enrichment_failures_filter_all">Todas</string>
     <string name="admin_enrichment_failures_retry">Reintentar</string>
@@ -1332,4 +1331,23 @@
     <string name="admin_settings_notifications_max_per_user_hint">Al superarlo se borran las más antiguas. 0 = sin límite.</string>
     <string name="admin_settings_server_session_timeout_hint">De 5 a 43200 minutos (1440 = un día, 43200 = 30 días).</string>
     <string name="admin_settings_trash_retention_hint">Días hasta el borrado definitivo. 0 = se conserva siempre.</string>
+    <string name="admin_libraries_scan_cancel">Cancelar el escaneo</string>
+    <string name="admin_libraries_permissions_revoke">Quitar acceso</string>
+    <string name="admin_libraries_permissions_add">Dar acceso a</string>
+    <string name="admin_enrichment_failures_error_load">No se pudo cargar el registro de problemas</string>
+    <string name="admin_enrichment_failures_error_retry_all">No se pudieron reintentar las tareas</string>
+    <string name="admin_enrichment_failures_retry_all_done">Tareas enviadas de nuevo a la cola</string>
+    <string name="admin_enrichment_failures_retry_all_confirm">Se volverán a encolar las %1$d tareas del filtro actual. Las que fallan por el propio archivo volverán a fallar igual.</string>
+    <string name="admin_user_not_found">No se encontró el usuario</string>
+    <string name="admin_libraries_not_found">No se encontró la biblioteca</string>
+    <string name="admin_stats_per_user_list">Usuarios</string>
+    <string name="admin_duplicates_confirm_title">¿Eliminar los duplicados?</string>
+    <string name="admin_duplicates_confirm_message">Se buscarán duplicados y se eliminarán de la biblioteca los que se encuentren. No se puede deshacer.</string>
+    <string name="admin_duplicates_confirm_message_physical">Se buscarán duplicados y se eliminarán de la biblioteca y del disco los que se encuentren. No se puede deshacer.</string>
+    <string name="admin_duplicates_confirm_action">Buscar y eliminar</string>
+    <string name="admin_shared_trash_error_load">No se pudo cargar la papelera compartida</string>
+    <string name="admin_shared_trash_error_restore">No se pudieron restaurar los elementos</string>
+    <string name="admin_shared_trash_error_purge">No se pudieron eliminar los elementos</string>
+    <string name="admin_shared_trash_restored_format">%1$d elemento(s) restaurados</string>
+    <string name="admin_shared_trash_purged_format">%1$d elemento(s) eliminados definitivamente</string>
 </resources>

@@ -51,6 +51,9 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.resources.admin_libraries_not_found
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -84,22 +87,16 @@ fun AdminLibraryEditorScreen(
     val isSubmitting = state.isMutating
     val canSubmit = !isSubmitting && name.isNotBlank() && path.isNotBlank()
 
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
-    Box(modifier = Modifier.fillMaxSize()) {
-    if (isEdit && existing == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .hazeSource(hazeState)
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp + reservedTop, bottom = 12.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    AdminEditorScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        isResolving = isEdit && existing == null && state.isLoading,
+        notFound = isEdit && existing == null && !state.isLoading,
+        notFoundMessage = state.error?.userMessage ?: stringResource(Res.string.admin_libraries_not_found),
+        onRetry = viewModel::refresh,
+        resultMessage = state.statusMessage,
+        onResultShown = viewModel::consumeStatus,
     ) {
         OutlinedTextField(
             value = name,
@@ -118,21 +115,12 @@ fun AdminLibraryEditorScreen(
             keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth()
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                stringResource(Res.string.admin_libraries_field_import_subfolders),
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Switch(
-                checked = importSubfolders,
-                onCheckedChange = { importSubfolders = it },
-                enabled = !isSubmitting
-            )
-        }
+        SettingSwitch(
+            label = stringResource(Res.string.admin_libraries_field_import_subfolders),
+            checked = importSubfolders,
+            enabled = !isSubmitting,
+            onChange = { importSubfolders = it }
+        )
         OutlinedTextField(
             value = cron,
             onValueChange = { cron = it },
@@ -145,15 +133,12 @@ fun AdminLibraryEditorScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        state.error?.userMessage?.let { msg ->
-            Text(msg, color = MaterialTheme.colorScheme.error)
-        }
+        if (!showDelete) ErrorBanner(error = state.error)
 
-        Spacer(Modifier.height(4.dp))
-
-        Button(
+        AdminPrimaryActionRow(
+            label = stringResource(if (isEdit) Res.string.action_save else Res.string.action_create),
             enabled = canSubmit,
-            modifier = Modifier.fillMaxWidth(),
+            isSubmitting = isSubmitting,
             onClick = {
                 val cronValue = cron.takeIf { it.isNotBlank() }
                 if (isEdit) {
@@ -175,25 +160,14 @@ fun AdminLibraryEditorScreen(
                     )
                 }
             }
-        ) {
-            if (isSubmitting) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(16.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(Modifier.size(8.dp))
-            }
-            Text(
-                stringResource(
-                    if (isEdit) Res.string.action_save else Res.string.action_create
-                )
-            )
-        }
+        )
 
         if (isEdit) {
             OutlinedButton(
-                onClick = { showDelete = true },
+                onClick = {
+                    viewModel.clearMessages()
+                    showDelete = true
+                },
                 enabled = !isSubmitting,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -206,56 +180,23 @@ fun AdminLibraryEditorScreen(
     }
 
     if (showDelete && existing != null) {
-        AlertDialog(
-            onDismissRequest = { if (!isSubmitting) showDelete = false },
-            title = { Text(stringResource(Res.string.admin_libraries_delete_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        Res.string.admin_libraries_delete_message,
-                        existing.name
-                    )
-                )
+        ConfirmActionDialog(
+            title = stringResource(Res.string.admin_libraries_delete_title),
+            message = stringResource(Res.string.admin_libraries_delete_message, existing.name),
+            confirmLabel = stringResource(Res.string.action_delete),
+            isDestructive = true,
+            isSubmitting = isSubmitting,
+            errorMessage = state.error?.userMessage,
+            onDismiss = {
+                showDelete = false
+                viewModel.clearMessages()
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.delete(existing.id) {
-                            showDelete = false
-                            onDone()
-                        }
-                    },
-                    enabled = !isSubmitting
-                ) {
-                    Text(
-                        stringResource(Res.string.action_delete),
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDelete = false },
-                    enabled = !isSubmitting
-                ) {
-                    Text(stringResource(Res.string.action_cancel))
+            onConfirm = {
+                viewModel.delete(existing.id) {
+                    showDelete = false
+                    onDone()
                 }
             }
-        )
-    }
-    }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
         )
     }
 }
