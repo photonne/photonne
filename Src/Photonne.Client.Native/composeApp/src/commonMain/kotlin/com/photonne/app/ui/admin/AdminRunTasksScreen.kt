@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.Category
@@ -27,11 +29,12 @@ import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.outlined.GroupWork
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Info
@@ -43,14 +46,13 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material.icons.outlined.Stop
-import androidx.compose.material.icons.outlined.GroupWork
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -75,10 +78,10 @@ import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.models.BackgroundTaskDto
 import com.photonne.app.data.models.PendingCountResponse
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.admin_run_tasks_action_cancel
+import com.photonne.app.resources.admin_run_tasks_action_recluster
 import com.photonne.app.resources.admin_run_tasks_action_start
+import com.photonne.app.resources.admin_run_tasks_action_stop
 import com.photonne.app.resources.admin_run_tasks_ai_failed_format
-import com.photonne.app.resources.admin_run_tasks_ai_open_failures
 import com.photonne.app.resources.admin_run_tasks_ai_enqueued_format
 import com.photonne.app.resources.admin_run_tasks_ai_nothing_to_enqueue
 import com.photonne.app.resources.admin_run_tasks_ai_retrying_format
@@ -155,7 +158,6 @@ import com.photonne.app.resources.admin_run_tasks_time_d_format
 import com.photonne.app.resources.admin_run_tasks_time_h_format
 import com.photonne.app.resources.admin_run_tasks_time_m_format
 import com.photonne.app.resources.admin_run_tasks_time_now
-import com.photonne.app.resources.admin_backfill_action_clustering
 import com.photonne.app.resources.admin_metadata_overwrite
 import com.photonne.app.resources.admin_restore_dates_dry_run
 import com.photonne.app.resources.admin_restore_dates_from_file
@@ -1252,7 +1254,7 @@ fun AdminRunTasksScreen(
                         // existing detections without re-running the model.
                         if (task == AdminRunTask.FaceRecognition) SecondaryAction(
                             icon = Icons.Outlined.GroupWork,
-                            contentDescription = stringResource(Res.string.admin_backfill_action_clustering),
+                            label = stringResource(Res.string.admin_run_tasks_action_recluster),
                             onClick = viewModel::runFaceClustering
                         ) else null,
                         // The way out of the dead end: assets that exhausted
@@ -1260,9 +1262,11 @@ fun AdminRunTasksScreen(
                         // the row has no Start button and nothing to say. The
                         // registry is where they get retried or suppressed.
                         task.backfillKind?.let { kind ->
-                            if ((pending?.failed ?: 0) > 0) SecondaryAction(
+                            val failed = pending?.failed ?: 0
+                            if (failed > 0) SecondaryAction(
                                 icon = Icons.Outlined.ErrorOutline,
-                                contentDescription = stringResource(Res.string.admin_run_tasks_ai_open_failures),
+                                label = stringResource(Res.string.admin_run_tasks_ai_failed_format, failed),
+                                isWarning = true,
                                 onClick = { onOpenFailures(kind.name) }
                             ) else null
                         },
@@ -1418,12 +1422,15 @@ private fun InlineToggle(
     }
 }
 
-/** Extra action surfaced on the right side of the row, alongside the main
- *  Start/Cancel button: the face-recognition clustering pass, and the shortcut
- *  into the failures registry for a queue that has assets stuck. */
+/** Extra row in the card's footer, above the main Start/Stop one: the
+ *  face-recognition clustering pass, and the way into the failures registry
+ *  for a queue that has assets stuck. That second one isn't something the
+ *  task does but something it reports, so [isWarning] paints it in the error
+ *  colour with a chevron: a notice that navigates, not a button. */
 data class SecondaryAction(
     val icon: ImageVector,
-    val contentDescription: String?,
+    val label: String,
+    val isWarning: Boolean = false,
     val onClick: () -> Unit,
 )
 
@@ -1528,21 +1535,21 @@ private fun SectionCountPill(count: Int) {
 }
 
 /**
- * Full-width row for a single task. Three visual states keyed off the
- * card's container colour so the section list scans at a glance:
+ * Full-width card for a single task. The header (icon · title · contextual
+ * subtitle) owns the card's width; the actions live in a footer of full-
+ * width list rows ([TaskRowActions]). Three visual states keyed off the card's
+ * container colour so the section list scans at a glance:
  *
- * - Idle (`surfaceVariant`): icon · title · contextual subtitle ·
- *   ▶ Start button.
- * - Triggering (`secondaryContainer`): same layout, ▶ replaced by a
+ * - Idle (`surfaceVariant`): header, the last run's message, "Iniciar".
+ * - Triggering (`secondaryContainer`): same layout, "Iniciar" replaced by a
  *   small spinner while the trigger request flies out. Lasts at most
  *   [TriggerTimeoutMs] before the next refresh promotes it to Running
  *   or rolls back to Idle.
- * - Running (`primaryContainer`): ● LiveDot · "45 % — Procesando 234/520"
- *   subtitle · linear progress bar · ⏹ Cancel button.
+ * - Running (`primaryContainer`): ● LiveDot · "Analizando caras" subtitle ·
+ *   linear progress bar · labelled numbers · "Detener".
  *
- * Tapping the card body opens the dedicated detail screen. Tapping the
- * trailing icon button executes the inline action without leaving the
- * hub.
+ * Tapping the card body opens the dedicated detail screen, for the one task
+ * that has one.
  */
 @Composable
 private fun TaskRow(
@@ -1580,132 +1587,127 @@ private fun TaskRow(
             contentColor = contentColor
         )
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = task.icon,
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        stringResource(task.titleRes),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = contentColor
+        // The footer's rows and dividers run edge to edge, so only the content
+        // above them is padded.
+        Column {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = task.icon,
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp)
                     )
-                    TaskRowSubtitle(
-                        task = task,
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            stringResource(task.titleRes),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = contentColor
+                        )
+                        TaskRowSubtitle(
+                            task = task,
+                            running = running,
+                            aiInProgress = aiInProgress,
+                            isTriggering = isTriggering,
+                            lastFinished = lastFinished,
+                            nowMs = nowMs,
+                            pending = pending,
+                            contentColor = contentColor
+                        )
+                    }
+                }
+                // Progress bar: pipeline DTO, enqueueing counter, or queue-
+                // draining ratio — chosen by exclusive `when` so we never
+                // overlay two metrics on the same bar (which made the % go
+                // backwards while we were still adding work).
+                when {
+                    running != null -> {
+                        Spacer(Modifier.size(8.dp))
+                        val pct = (running.percentage / 100.0).toFloat().coerceIn(0f, 1f)
+                        LinearProgressIndicator(
+                            progress = { pct },
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    }
+                    aiInProgress && pending != null -> {
+                        Spacer(Modifier.size(8.dp))
+                        // Session-scoped progress: how much of *this* run's
+                        // work the workers have completed. Stays at 0 % when
+                        // the queue is full, climbs to 100 % as it drains —
+                        // independent of how many assets were already done
+                        // before the user pressed Iniciar. Without a baseline
+                        // (queue started from the PWA, or before this screen
+                        // opened) the fraction is unknown and the bar is
+                        // indeterminate rather than misleading. A stalled queue
+                        // paints the bar in error colour: the subtitle says why.
+                        val progress = aiQueueProgress(pending, sessionBaseline, nowMs)
+                        val barColor = if (progress.isStalled) MaterialTheme.colorScheme.error
+                                       else ProgressIndicatorDefaults.linearColor
+                        val fraction = progress.fraction
+                        if (fraction != null) {
+                            LinearProgressIndicator(
+                                progress = { fraction.coerceIn(0f, 1f) },
+                                color = barColor,
+                                modifier = Modifier.fillMaxWidth().height(4.dp)
+                            )
+                        } else {
+                            LinearProgressIndicator(
+                                color = barColor,
+                                modifier = Modifier.fillMaxWidth().height(4.dp)
+                            )
+                        }
+                    }
+                    aiInProgress -> {
+                        Spacer(Modifier.size(8.dp))
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    }
+                }
+
+                // The numbers behind the bar, one per line with a label. They
+                // used to share the subtitle's single line with everything else
+                // and get cut off after the second one on a phone.
+                if (isActive) {
+                    TaskRowDetails(
                         running = running,
                         aiInProgress = aiInProgress,
-                        isTriggering = isTriggering,
-                        lastFinished = lastFinished,
+                        sessionBaseline = sessionBaseline,
                         nowMs = nowMs,
                         pending = pending,
-                        contentColor = contentColor
+                        contentColor = contentColor,
                     )
                 }
-                // Secondary actions sit between the title block and the
-                // primary action so they never collide with the Start/Cancel
-                // slot. At most two today (re-cluster faces, open failures).
-                for (action in secondaryActions) {
-                    IconButton(onClick = action.onClick) {
-                        Icon(
-                            imageVector = action.icon,
-                            contentDescription = action.contentDescription,
-                            tint = contentColor
-                        )
-                    }
-                }
-                TaskRowAction(
-                    running = running,
-                    aiInProgress = aiInProgress,
-                    pending = pending,
-                    isTriggering = isTriggering,
-                    onStart = onStart,
-                    onCancel = onCancel,
-                    onCancelAi = onCancelAi
-                )
-            }
-            // Progress bar: pipeline DTO, enqueueing counter, or queue-
-            // draining ratio — chosen by exclusive `when` so we never
-            // overlay two metrics on the same bar (which made the % go
-            // backwards while we were still adding work).
-            when {
-                running != null -> {
+
+                // What the last run actually said. Without this the row reports
+                // "Última ejecución hace 2 min" whether the task did the work or
+                // died on the first line, which makes a failing task and a dead
+                // button look exactly the same.
+                if (!isActive && lastFinished != null && lastFinished.lastMessage.isNotBlank()) {
                     Spacer(Modifier.size(8.dp))
-                    val pct = (running.percentage / 100.0).toFloat().coerceIn(0f, 1f)
-                    LinearProgressIndicator(
-                        progress = { pct },
-                        modifier = Modifier.fillMaxWidth().height(4.dp)
-                    )
-                }
-                aiInProgress && pending != null -> {
-                    Spacer(Modifier.size(8.dp))
-                    // Session-scoped progress: how much of *this* run's
-                    // work the workers have completed. Stays at 0 % when
-                    // the queue is full, climbs to 100 % as it drains —
-                    // independent of how many assets were already done
-                    // before the user pressed Iniciar. Without a baseline
-                    // (queue started from the PWA, or before this screen
-                    // opened) the fraction is unknown and the bar is
-                    // indeterminate rather than misleading. A stalled queue
-                    // paints the bar in error colour: the subtitle says why.
-                    val progress = aiQueueProgress(pending, sessionBaseline, nowMs)
-                    val barColor = if (progress.isStalled) MaterialTheme.colorScheme.error
-                                   else ProgressIndicatorDefaults.linearColor
-                    val fraction = progress.fraction
-                    if (fraction != null) {
-                        LinearProgressIndicator(
-                            progress = { fraction.coerceIn(0f, 1f) },
-                            color = barColor,
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
-                        )
-                    } else {
-                        LinearProgressIndicator(
-                            color = barColor,
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
-                        )
-                    }
-                }
-                aiInProgress -> {
-                    Spacer(Modifier.size(8.dp))
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                    Text(
+                        lastFinished.lastMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (lastFinished.status == "Failed") MaterialTheme.colorScheme.error
+                                else contentColor.copy(alpha = 0.75f)
                     )
                 }
             }
 
-            // The numbers behind the bar, one per line with a label. They
-            // used to share the subtitle's single line with everything else
-            // and get cut off after the second one on a phone.
-            if (isActive) {
-                TaskRowDetails(
-                    running = running,
-                    aiInProgress = aiInProgress,
-                    sessionBaseline = sessionBaseline,
-                    nowMs = nowMs,
-                    pending = pending,
-                    contentColor = contentColor,
-                )
-            }
-
-            // What the last run actually said. Without this the row reports
-            // "Última ejecución hace 2 min" whether the task did the work or
-            // died on the first line, which makes a failing task and a dead
-            // button look exactly the same.
-            if (!isActive && lastFinished != null && lastFinished.lastMessage.isNotBlank()) {
-                Spacer(Modifier.size(8.dp))
-                Text(
-                    lastFinished.lastMessage,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (lastFinished.status == "Failed") MaterialTheme.colorScheme.error
-                            else contentColor.copy(alpha = 0.75f)
-                )
-            }
+            TaskRowActions(
+                running = running,
+                aiInProgress = aiInProgress,
+                pending = pending,
+                isTriggering = isTriggering,
+                contentColor = contentColor,
+                secondaryActions = secondaryActions,
+                onStart = onStart,
+                onCancel = onCancel,
+                onCancelAi = onCancelAi
+            )
         }
     }
 }
@@ -1882,17 +1884,12 @@ private fun TaskRowDetails(
                     lines += TaskDetailLine(stringResource(Res.string.admin_run_tasks_detail_processing), formatCount(it))
                 }
             }
-            val troubles = listOfNotNull(
-                stringResource(Res.string.admin_run_tasks_ai_retrying_format, pending.retrying)
-                    .takeIf { pending.retrying > 0 },
-                stringResource(Res.string.admin_run_tasks_ai_failed_format, pending.failed)
-                    .takeIf { pending.failed > 0 },
-            )
-            if (troubles.isNotEmpty()) {
+            // Only the retries: the ones that failed for good have their own
+            // row in the footer, right under this, and it opens the registry.
+            if (pending.retrying > 0) {
                 lines += TaskDetailLine(
                     stringResource(Res.string.admin_run_tasks_detail_problems),
-                    troubles.joinToString(", "),
-                    highlight = pending.failed > 0,
+                    stringResource(Res.string.admin_run_tasks_ai_retrying_format, pending.retrying),
                 )
             }
         }
@@ -1922,59 +1919,123 @@ private fun TaskRowDetails(
     }
 }
 
+/**
+ * The card's footer: one full-width row per thing, split by hairlines, like a
+ * settings list. They used to be bare icon buttons on the title's own line,
+ * which left an AI row's title some 90 dp on a phone — "Reconocimiento
+ * facial" broke in two — and said nothing about what each icon did.
+ *
+ * Top to bottom: the failures notice (error colour, chevron: it navigates),
+ * any other secondary action, and last the task's own Start/Stop. While the
+ * trigger request is in flight that last row stays put with a spinner, so the
+ * card doesn't change height under the finger. Emits nothing at all for a
+ * row with nothing to offer (an idle AI row with no work left and no
+ * failures).
+ */
 @Composable
-private fun TaskRowAction(
+private fun TaskRowActions(
     running: BackgroundTaskDto?,
     aiInProgress: Boolean,
     pending: PendingCountResponse?,
     isTriggering: Boolean,
+    contentColor: androidx.compose.ui.graphics.Color,
+    secondaryActions: List<SecondaryAction>,
     onStart: () -> Unit,
     onCancel: ((BackgroundTaskDto) -> Unit)?,
     onCancelAi: (() -> Unit)?,
 ) {
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp)) {
-        when {
-            // Pipeline/Other running with cancel affordance.
-            running != null && onCancel != null -> {
-                IconButton(onClick = { onCancel(running) }) {
-                    Icon(
-                        imageVector = Icons.Outlined.Stop,
-                        contentDescription = stringResource(Res.string.admin_run_tasks_action_cancel),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+    // Pipeline/Other running with cancel affordance, or the ML queue: there
+    // the same handler stops the enqueueing loop AND clears Pending server-
+    // side, so the row drops out of every "active" state in one tap.
+    val onStop: (() -> Unit)? = when {
+        running != null && onCancel != null -> ({ onCancel(running) })
+        aiInProgress && onCancelAi != null -> onCancelAi
+        else -> null
+    }
+    // Idle ML row with nothing left to enqueue: no Start row, so the user
+    // isn't tempted to fire an empty backfill.
+    val canStart = onStop == null && !isTriggering && running == null &&
+        !(pending != null && pending.unprocessed == 0)
+
+    val errorColor = MaterialTheme.colorScheme.error
+    for (action in secondaryActions.sortedByDescending { it.isWarning }) {
+        TaskActionRow(
+            icon = action.icon,
+            label = action.label,
+            color = if (action.isWarning) errorColor else contentColor,
+            dividerColor = contentColor,
+            showChevron = action.isWarning,
+            onClick = action.onClick,
+        )
+    }
+    when {
+        onStop != null -> TaskActionRow(
+            icon = Icons.Outlined.Stop,
+            label = stringResource(Res.string.admin_run_tasks_action_stop),
+            color = errorColor,
+            dividerColor = contentColor,
+            onClick = onStop,
+        )
+        isTriggering -> TaskActionRow(
+            icon = null,
+            label = stringResource(Res.string.admin_run_tasks_action_start),
+            color = contentColor.copy(alpha = 0.6f),
+            dividerColor = contentColor,
+            onClick = null,
+        )
+        canStart -> TaskActionRow(
+            icon = Icons.Outlined.PlayArrow,
+            label = stringResource(Res.string.admin_run_tasks_action_start),
+            color = MaterialTheme.colorScheme.primary,
+            dividerColor = contentColor,
+            onClick = onStart,
+        )
+    }
+}
+
+/**
+ * One footer row: hairline, then icon · label (· chevron), lined up with the
+ * header's icon and title. A null [icon] is the in-flight state: a spinner in
+ * the icon's place. A null [onClick] makes the row inert.
+ */
+@Composable
+private fun TaskActionRow(
+    icon: ImageVector?,
+    label: String,
+    color: androidx.compose.ui.graphics.Color,
+    dividerColor: androidx.compose.ui.graphics.Color,
+    showChevron: Boolean = false,
+    onClick: (() -> Unit)?,
+) {
+    HorizontalDivider(color = dividerColor.copy(alpha = 0.12f))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .let { mod -> if (onClick != null) mod.clickable(role = Role.Button, onClick = onClick) else mod }
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 16.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+            if (icon != null) {
+                Icon(imageVector = icon, contentDescription = null, tint = color)
+            } else {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
             }
-            // ML enqueueing loop in flight OR queue draining: same
-            // cancel handler — it stops the loop AND clears Pending
-            // server-side, so the row drops out of every "active" state
-            // in one tap.
-            aiInProgress && onCancelAi != null -> {
-                IconButton(onClick = onCancelAi) {
-                    Icon(
-                        imageVector = Icons.Outlined.Stop,
-                        contentDescription = stringResource(Res.string.admin_run_tasks_action_cancel),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-            isTriggering -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
-                )
-            }
-            // Idle ML row with nothing left to enqueue: hide the Play
-            // button so the user isn't tempted to fire an empty backfill.
-            pending != null && pending.unprocessed == 0 -> Unit
-            running == null -> {
-                IconButton(onClick = onStart) {
-                    Icon(
-                        imageVector = Icons.Outlined.PlayArrow,
-                        contentDescription = stringResource(Res.string.admin_run_tasks_action_start),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = color,
+            modifier = Modifier.weight(1f)
+        )
+        if (showChevron) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = color
+            )
         }
     }
 }

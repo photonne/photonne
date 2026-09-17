@@ -635,9 +635,9 @@
     <string name="admin_run_tasks_ai_nothing_to_enqueue">no había nada que encolar.</string>
     <string name="admin_run_tasks_ai_retrying_format">%1$d reintentándose</string>
     <string name="admin_run_tasks_ai_failed_format">%1$d con errores</string>
-    <string name="admin_run_tasks_ai_open_failures">Ver los assets con errores</string>
     <string name="admin_run_tasks_action_start">Iniciar</string>
-    <string name="admin_run_tasks_action_cancel">Cancelar</string>
+    <string name="admin_run_tasks_action_stop">Detener</string>
+    <string name="admin_run_tasks_action_recluster">Reagrupar caras</string>
     <string name="admin_run_tasks_last_run_format">Última ejecución hace %1$s</string>
     <string name="admin_run_tasks_last_run_never">Nunca ejecutado en esta sesión</string>
     <string name="admin_run_tasks_status_queueing">Encolando todo lo pendiente…</string>
@@ -967,7 +967,6 @@
     <string name="admin_backfill_action_refresh">Actualizar</string>
     <string name="admin_backfill_action_run">Procesar ahora</string>
     <string name="admin_backfill_response">Encolados %1$d de %2$d.</string>
-    <string name="admin_backfill_action_clustering">Reagrupar caras</string>
     <string name="admin_backfill_clustering_result">%1$d usuarios procesados · %2$d personas creadas.</string>
     <string name="admin_backfill_batch_size_label">Tamaño de lote (esta ejecución)</string>
     <string name="admin_backfill_batch_size_helper">Por defecto se usa el global (%1$d). Editable solo para esta tirada.</string>
