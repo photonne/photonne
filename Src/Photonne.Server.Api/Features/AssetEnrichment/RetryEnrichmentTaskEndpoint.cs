@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.Admin;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
+using Photonne.Server.Api.Shared.Services.Ml;
 
 namespace Photonne.Server.Api.Features.AssetEnrichment;
 
@@ -31,6 +33,7 @@ public class RetryEnrichmentTaskEndpoint : IEndpoint
         [FromQuery] string taskType,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IEnrichmentService enrichmentService,
+        [FromServices] MlEnablement enablement,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -44,6 +47,17 @@ public class RetryEnrichmentTaskEndpoint : IEndpoint
             {
                 error = $"Unknown task type '{taskType}'. Valid: {string.Join(", ", Enum.GetNames<AssetEnrichmentType>())}"
             });
+        }
+
+        // Same refusal as the admin backfill: a disabled model's worker
+        // completes the job without recording anything, so the row would sit
+        // on "en cola" and then quietly go back to "nunca". Saying no, with
+        // the reason, is the only honest answer.
+        if (!await enablement.IsEnabledAsync(parsedType))
+        {
+            return Results.Json(
+                new { error = $"El análisis «{MlBackfillRunner.JobTypeLabel(parsedType)}» está desactivado en Ajustes." },
+                statusCode: StatusCodes.Status409Conflict);
         }
 
         var ownerId = await dbContext.Assets

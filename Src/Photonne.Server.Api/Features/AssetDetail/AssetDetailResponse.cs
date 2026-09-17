@@ -34,6 +34,9 @@ public class AssetDetailResponse
     public string? Caption { get; set; }
     public string? AiDescription { get; set; }
     public bool IsReadOnly { get; set; }
+    /// <summary>The caller owns the asset. Owner-only actions (per-photo AI
+    /// analysis) are offered on this, not on read access.</summary>
+    public bool IsOwner { get; set; }
 }
 
 public class ExifDataResponse

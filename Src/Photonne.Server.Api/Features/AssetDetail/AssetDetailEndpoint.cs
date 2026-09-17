@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 using Scalar.AspNetCore;
 
 namespace Photonne.Server.Api.Features.AssetDetail;
@@ -29,10 +30,12 @@ public class AssetDetailEndpoint : IEndpoint
     private async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] Guid assetId,
+        System.Security.Claims.ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         try
         {
+            var userId = user.GetUserId();
             var asset = await dbContext.Assets
                 .Include(a => a.Exif)
                 .Include(a => a.Thumbnails)
@@ -106,7 +109,8 @@ public class AssetDetailEndpoint : IEndpoint
                 IsFileMissing = asset.IsFileMissing,
                 Caption = asset.Caption,
                 AiDescription = asset.AiDescription,
-                IsReadOnly = asset.ExternalLibraryId.HasValue
+                IsReadOnly = asset.ExternalLibraryId.HasValue,
+                IsOwner = asset.OwnerId == userId
             };
 
             return Results.Ok(response);

@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Tests.Infrastructure;
 
 namespace Photonne.Server.Api.Tests.AssetEnrichment;
@@ -180,6 +182,29 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
                 .FirstAsync(t => t.AssetId == asset.Id && t.TaskType == AssetEnrichmentType.Exif);
             Assert.Equal(EnrichmentStatus.Pending, task.Status);
         });
+    }
+
+    [Fact]
+    public async Task Retry_MlTaskWithTheModelSwitchedOff_IsRefused()
+    {
+        // The worker would "complete" the job without analysing anything, and
+        // the detail sheet would show "en cola" and then "nunca" again.
+        var (user, client) = await CreateAuthenticatedUserAsync();
+        var asset = await SeedAssetWithTasksAsync(user.Id, "off.jpg", []);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var settings = scope.ServiceProvider.GetRequiredService<SettingsService>();
+            await settings.SetSettingAsync("SceneClassification.Enabled", "false", Guid.Empty);
+        }
+
+        var response = await client.PostAsync(
+            $"/api/assets/{asset.Id}/enrichment/retry?taskType=SceneClassification", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+        Assert.Contains("Ajustes", body!["error"]);
+        await WithDbContextAsync(async db =>
+            Assert.Equal(0, await db.AssetEnrichmentTasks.CountAsync(t => t.AssetId == asset.Id)));
     }
 
     [Fact]
