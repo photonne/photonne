@@ -200,6 +200,15 @@ public class EnrichmentWorker : BackgroundService
             _logger.LogError(ex, "Error processing task {TaskId} ({TaskType}) after {ElapsedMs} ms",
                 task.Id, task.TaskType, stopwatch.ElapsedMilliseconds);
 
+            // Drop whatever the dispatch left half-saved. When the failure IS
+            // the save (a row the database rejects), those entities are still
+            // tracked, so recording the failure re-sent the same bad INSERT,
+            // threw again from inside this catch, and left the row in
+            // Processing — which stale recovery re-queued every 15 minutes,
+            // forever, without ever counting an attempt.
+            dbContext.ChangeTracker.Clear();
+            dbContext.Attach(task);
+
             task.AttemptCount++;
             task.Status = EnrichmentStatus.Failed;
             // The whole cause chain, not just the outermost message: the ML

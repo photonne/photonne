@@ -235,10 +235,10 @@ public class ExifExtractorService
                 // so we must NOT overwrite an already-populated field with a null read
                 // from the other directory.
                 var make = exifDir.GetDescription(ExifDirectoryBase.TagMake);
-                if (!string.IsNullOrEmpty(make)) exif.CameraMake = make;
+                if (CleanText(make, int.MaxValue) is { } cleanMake) exif.CameraMake = cleanMake;
 
                 var model = exifDir.GetDescription(ExifDirectoryBase.TagModel);
-                if (!string.IsNullOrEmpty(model)) exif.CameraModel = model;
+                if (CleanText(model, int.MaxValue) is { } cleanModel) exif.CameraModel = cleanModel;
 
                 var iso = exifDir.GetDescription(ExifDirectoryBase.TagIsoEquivalent);
                 if (!string.IsNullOrEmpty(iso) && int.TryParse(iso, out var isoVal))
@@ -306,15 +306,15 @@ public class ExifExtractorService
         else if (directory is IptcDirectory iptcDir && options.Iptc)
         {
             var caption = iptcDir.GetDescription(IptcDirectory.TagCaption);
-            if (!string.IsNullOrEmpty(caption))
+            if (CleanText(caption, 500) is { } cleanCaption)
             {
-                exif.Description = caption.Length > 500 ? caption[..500] : caption;
+                exif.Description = cleanCaption;
             }
 
             var keywords = iptcDir.GetDescription(IptcDirectory.TagKeywords);
-            if (!string.IsNullOrEmpty(keywords))
+            if (CleanText(keywords, 1000) is { } cleanKeywords)
             {
-                exif.Keywords = keywords.Length > 1000 ? keywords[..1000] : keywords;
+                exif.Keywords = cleanKeywords;
             }
         }
         else if (directory is XmpDirectory xmpDir && options.Iptc)
@@ -328,8 +328,8 @@ public class ExifExtractorService
                     try
                     {
                         var desc = xmpMeta.GetPropertyString("http://purl.org/dc/elements/1.1/", "description");
-                        if (!string.IsNullOrEmpty(desc))
-                            exif.Description = desc.Length > 500 ? desc[..500] : desc;
+                        if (CleanText(desc, 500) is { } cleanDesc)
+                            exif.Description = cleanDesc;
                     }
                     catch { /* XMP property may not exist */ }
                 }
@@ -402,6 +402,23 @@ public class ExifExtractorService
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Free text read out of a file, made safe to store. Cameras and editors
+    /// pad fixed-size EXIF/IPTC fields with NUL bytes, and PostgreSQL rejects
+    /// 0x00 in any text value ("invalid byte sequence for encoding UTF8"), so
+    /// one padded caption failed the whole AssetExifs insert. Returns null
+    /// when nothing readable is left.
+    /// </summary>
+    internal static string? CleanText(string? raw, int maxLength)
+    {
+        if (string.IsNullOrEmpty(raw)) return null;
+
+        var clean = raw.Replace("\0", string.Empty).Trim();
+        if (clean.Length == 0) return null;
+
+        return clean.Length > maxLength ? clean[..maxLength] : clean;
     }
 
     /// <summary>
