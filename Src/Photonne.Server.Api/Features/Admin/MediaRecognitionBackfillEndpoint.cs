@@ -123,18 +123,15 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
                 && (j.Status == EnrichmentStatus.Pending || j.Status == EnrichmentStatus.Processing))
             .CountAsync(ct);
 
-        var failedGroups = await db.AssetEnrichmentTasks.AsNoTracking()
-            .Where(j => j.TaskType == AssetEnrichmentType.MediaRecognition
-                && j.Status == EnrichmentStatus.Failed)
-            .GroupBy(j => j.NextRetryAt == null)
-            .Select(g => new { Permanent = g.Key, Assets = g.Select(j => j.AssetId).Distinct().Count() })
-            .ToListAsync(ct);
+        // Same definition as the failures registry, so both say one number.
+        var problems = EnrichmentFailureQueries.OpenProblems(db).AsNoTracking()
+            .Where(j => j.TaskType == AssetEnrichmentType.MediaRecognition);
 
         return Results.Ok(new MediaRecognitionPendingResponse(
             unprocessed,
             inQueue,
-            Retrying: failedGroups.FirstOrDefault(g => !g.Permanent)?.Assets ?? 0,
-            Failed: failedGroups.FirstOrDefault(g => g.Permanent)?.Assets ?? 0));
+            Retrying: await problems.Retrying().CountAsync(ct),
+            Failed: await problems.Definitive().CountAsync(ct)));
     }
 
     private static IQueryable<Asset> BuildQuery(ApplicationDbContext db, bool onlyMissing)

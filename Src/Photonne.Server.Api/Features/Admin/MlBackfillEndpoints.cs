@@ -208,22 +208,17 @@ internal static class MlBackfillRunner
         }
         var completed = await completedQuery.CountAsync(ct);
 
-        // Counted per asset, not per row: a repeatedly-failing asset accumulates
-        // one Failed row per attempt, and "1.204 fotos con errores" is the
-        // number an operator can act on — "5.117 intentos fallidos" isn't.
-        var failedQuery = db.AssetEnrichmentTasks.AsNoTracking()
-            .Where(j => j.TaskType == jobType && j.Status == EnrichmentStatus.Failed);
+        // The registry's own definition, so "N con errores" here and the chip it
+        // opens say the same number. Latest row per asset only: counting every
+        // Failed row kept alive the photos that had since been reprocessed fine.
+        var problems = EnrichmentFailureQueries.OpenProblems(db).AsNoTracking()
+            .Where(j => j.TaskType == jobType);
         if (ownerScope.HasValue)
         {
-            failedQuery = failedQuery.Where(j => j.Asset.OwnerId == ownerScope.Value);
+            problems = problems.Where(j => j.Asset.OwnerId == ownerScope.Value);
         }
-        var failedGroups = await failedQuery
-            .GroupBy(j => j.NextRetryAt == null)
-            .Select(g => new { Permanent = g.Key, Assets = g.Select(j => j.AssetId).Distinct().Count() })
-            .ToListAsync(ct);
-
-        var retrying = failedGroups.FirstOrDefault(g => !g.Permanent)?.Assets ?? 0;
-        var failed = failedGroups.FirstOrDefault(g => g.Permanent)?.Assets ?? 0;
+        var retrying = await problems.Retrying().CountAsync(ct);
+        var failed = await problems.Definitive().CountAsync(ct);
 
         // Liveness. All three sit on the (TaskType, Status, CompletedAt) index,
         // so polling them every few seconds costs an index probe, not a walk

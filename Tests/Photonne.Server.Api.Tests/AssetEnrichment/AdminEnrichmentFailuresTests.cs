@@ -37,7 +37,9 @@ public sealed class AdminEnrichmentFailuresTests : IntegrationTestBase
         string? NextCursor,
         int Total,
         IReadOnlyDictionary<string, int> CountsByType,
-        IReadOnlyDictionary<string, int>? CountsByKind = null);
+        IReadOnlyDictionary<string, int>? CountsByKind = null,
+        int Retrying = 0,
+        int Suppressed = 0);
 
     private sealed record RetryAllResponse(int Retried);
 
@@ -71,6 +73,16 @@ public sealed class AdminEnrichmentFailuresTests : IntegrationTestBase
         await response.Content.ReadAsStringAsync();
     }
 
+    /// <summary>Leaves every Failed row out of attempts, as the backoff would
+    /// after enough runs.</summary>
+    private Task ExhaustRetriesAsync() =>
+        WithDbContextAsync(async db =>
+        {
+            await db.AssetEnrichmentTasks
+                .Where(t => t.Status == EnrichmentStatus.Failed)
+                .ExecuteUpdateAsync(u => u.SetProperty(t => t.NextRetryAt, (DateTime?)null));
+        });
+
     [Fact]
     public async Task MetadataSweepFailure_AppearsInAdminRegistry_WithCause()
     {
@@ -93,7 +105,12 @@ public sealed class AdminEnrichmentFailuresTests : IntegrationTestBase
         Assert.Equal(1, row.AttemptCount);
         Assert.False(row.IsPermanent);
         Assert.Equal(owner.Username, row.OwnerName);
-        Assert.True(body.CountsByType.TryGetValue("Exif", out var exifCount) && exifCount == 1);
+        // A first failure still has retries scheduled: listed, and said so, but
+        // the counters are for what's out of attempts — the number Run Tasks
+        // shows as "N con errores".
+        Assert.Equal(0, body.Total);
+        Assert.Equal(1, body.Retrying);
+        Assert.False(body.CountsByType.ContainsKey("Exif"));
 
         // The type filter finds it too (what the notification actionUrl opens).
         var filtered = await admin.GetFromJsonAsync<FailuresResponse>(
@@ -187,8 +204,11 @@ public sealed class AdminEnrichmentFailuresTests : IntegrationTestBase
         var body = await admin.GetFromJsonAsync<FailuresResponse>("/api/admin/enrichment/failures");
         var row = Assert.Single(body!.Items);
         Assert.Equal("Permanent", row.FailureKind);
-        Assert.NotNull(body.CountsByKind);
-        Assert.True(body.CountsByKind!.TryGetValue("Permanent", out var permanent) && permanent == 1);
+
+        // Counted by cause once its attempts run out.
+        await ExhaustRetriesAsync();
+        body = await admin.GetFromJsonAsync<FailuresResponse>("/api/admin/enrichment/failures");
+        Assert.True(body!.CountsByKind!.TryGetValue("Permanent", out var permanent) && permanent == 1);
     }
 
     [Fact]
@@ -199,6 +219,7 @@ public sealed class AdminEnrichmentFailuresTests : IntegrationTestBase
         await SeedMissingFileAssetAsync(owner.Id);
 
         await RunMetadataSweepAsync(admin);
+        await ExhaustRetriesAsync();
 
         var permanent = await admin.GetFromJsonAsync<FailuresResponse>(
             "/api/admin/enrichment/failures?kind=Permanent");

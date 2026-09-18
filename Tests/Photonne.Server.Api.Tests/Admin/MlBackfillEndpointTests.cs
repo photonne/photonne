@@ -29,6 +29,8 @@ public sealed class MlBackfillEndpointTests : IntegrationTestBase
     private sealed record BackfillDto(int Enqueued, int Total, long ElapsedMs);
     private sealed record CancelQueueDto(int Deleted, int StillProcessing);
     private sealed record ErrorDto(string Error);
+    private sealed record FailuresRegistryDto(
+        int Total, IReadOnlyDictionary<string, int> CountsByType, int Retrying, int Suppressed);
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -229,6 +231,47 @@ public sealed class MlBackfillEndpointTests : IntegrationTestBase
             "/api/admin/maintenance/image-embedding/pending-count");
 
         Assert.Equal(1, body!.Failed);
+    }
+
+    [Fact]
+    public async Task PendingCount_SaysTheSameNumberAsTheFailuresRegistry()
+    {
+        // "N con errores" opens the registry filtered by that type. The two were
+        // separate queries and disagreed: this one counted any Failed row ever
+        // written, the registry only the latest one of a live asset.
+        var (_, client) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (user, _) = await CreateAuthenticatedUserAsync();
+        var assets = await SeedImagesAsync(user.Id, 5);
+        const AssetEnrichmentType Faces = AssetEnrichmentType.FaceRecognition;
+
+        // Failed once, reprocessed fine later: history, not a problem.
+        await SeedTaskAsync(assets[0].Id, Faces, EnrichmentStatus.Failed, null);
+        await SeedTaskAsync(assets[0].Id, Faces, EnrichmentStatus.Completed, null, DateTime.UtcNow);
+        // In the trash: nobody's problem any more.
+        await SeedTaskAsync(assets[1].Id, Faces, EnrichmentStatus.Failed, null);
+        await WithDbContextAsync(async db =>
+        {
+            var trashed = await db.Assets.FindAsync(assets[1].Id);
+            trashed!.DeletedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+        });
+        // Dismissed, and still retrying on its own: listed, not counted.
+        await SeedTaskAsync(assets[2].Id, Faces, EnrichmentStatus.Suppressed, null);
+        await SeedTaskAsync(assets[3].Id, Faces, EnrichmentStatus.Failed, DateTime.UtcNow.AddMinutes(5));
+        // The one that's actually waiting for somebody.
+        await SeedTaskAsync(assets[4].Id, Faces, EnrichmentStatus.Failed, null);
+
+        var pending = await client.GetFromJsonAsync<PendingCountDto>(
+            "/api/admin/maintenance/face-recognition/pending-count");
+        var registry = await client.GetFromJsonAsync<FailuresRegistryDto>(
+            "/api/admin/enrichment/failures?type=FaceRecognition");
+
+        Assert.Equal(1, pending!.Failed);
+        Assert.Equal(1, pending.Retrying);
+        Assert.Equal(pending.Failed, registry!.Total);
+        Assert.Equal(pending.Failed, registry.CountsByType["FaceRecognition"]);
+        Assert.Equal(1, registry.Retrying);
+        Assert.Equal(1, registry.Suppressed);
     }
 
     // ─── Liveness: is it doing anything right now? ───────────────────────────

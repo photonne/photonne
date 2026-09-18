@@ -33,7 +33,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
 
         group.MapPost("/retry-all", HandleRetryAll)
             .WithName("AdminRetryAllEnrichmentFailures")
-            .WithDescription("Resets every Failed task (optionally of one type) back to Pending. Suppressed rows are left alone.");
+            .WithDescription("Resets every definitively Failed task (optionally of one type or cause) back to Pending. Suppressed rows, and the ones with a retry still scheduled, are left alone.");
 
         group.MapPost("/{taskId:guid}/suppress", HandleSuppress)
             .WithName("AdminSuppressEnrichmentFailure")
@@ -70,19 +70,12 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         IReadOnlyDictionary<string, int> CountsByType,
         // Same idea as CountsByType, by cause: it answers "is this worth
         // retrying?" before the admin reads a single row.
-        IReadOnlyDictionary<string, int> CountsByKind);
-
-    /// <summary>Latest Failed/Suppressed rows over live assets. A row is an
-    /// "open problem" only while no newer attempt exists for the same
-    /// (asset, type) — a later Completed/Pending row supersedes it.</summary>
-    private static IQueryable<AssetEnrichmentTask> OpenProblems(ApplicationDbContext db) =>
-        db.AssetEnrichmentTasks.AsNoTracking()
-            .Where(t => t.Status == EnrichmentStatus.Failed || t.Status == EnrichmentStatus.Suppressed)
-            .Where(t => t.Asset.DeletedAt == null)
-            .Where(t => !db.AssetEnrichmentTasks.Any(n =>
-                n.AssetId == t.AssetId &&
-                n.TaskType == t.TaskType &&
-                n.CreatedAt > t.CreatedAt));
+        IReadOnlyDictionary<string, int> CountsByKind,
+        // The listed rows that Total leaves out, under the same filter, so the
+        // screen can say why there are more rows than problems: the ones still
+        // retrying on their own, and the ones somebody dismissed.
+        int Retrying,
+        int Suppressed);
 
     private async Task<IResult> HandleList(
         [FromQuery] string? type,
@@ -120,17 +113,24 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
 
         var capped = Math.Clamp(pageSize, 1, 200);
 
-        var open = OpenProblems(dbContext);
+        var open = EnrichmentFailureQueries.OpenProblems(dbContext).AsNoTracking();
+
+        // Every number on the screen counts the definitive ones only — the same
+        // thing "N con errores" counts on Run Tasks, so the chip you land on
+        // says what the row you tapped said. The list below still shows the
+        // rows that are retrying on their own and the dismissed ones, with
+        // their badge: they're worth seeing, they just aren't waiting for you.
+        var definitive = open.Definitive();
 
         // Chip counters always span every type so switching filters never hides
         // where the remaining problems live.
-        var countsByType = (await open
+        var countsByType = (await definitive
                 .GroupBy(t => t.TaskType)
                 .Select(g => new { g.Key, Count = g.Count() })
                 .ToListAsync(cancellationToken))
             .ToDictionary(g => g.Key.ToString(), g => g.Count);
 
-        var countsByKind = (await open
+        var countsByKind = (await definitive
                 .GroupBy(t => t.FailureKind)
                 .Select(g => new { g.Key, Count = g.Count() })
                 .ToListAsync(cancellationToken))
@@ -142,7 +142,9 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         if (parsedKind.HasValue)
             filtered = filtered.Where(t => t.FailureKind == parsedKind.Value);
 
-        var total = await filtered.CountAsync(cancellationToken);
+        var total = await filtered.Definitive().CountAsync(cancellationToken);
+        var retrying = await filtered.Retrying().CountAsync(cancellationToken);
+        var suppressed = await filtered.CountAsync(t => t.Status == EnrichmentStatus.Suppressed, cancellationToken);
 
         // Keyset pagination on (CreatedAt desc, Id desc): stable under the
         // retries/suppressions the screen itself triggers between pages.
@@ -182,7 +184,8 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
             ? FormatCursor(page[^1].CreatedAt, page[^1].Id)
             : null;
 
-        return Results.Ok(new AdminEnrichmentFailuresResponse(items, nextCursor, total, countsByType, countsByKind));
+        return Results.Ok(new AdminEnrichmentFailuresResponse(
+            items, nextCursor, total, countsByType, countsByKind, retrying, suppressed));
     }
 
     private async Task<IResult> HandleRetry(
@@ -226,8 +229,8 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
             parsedKind = value;
         }
 
-        var query = OpenProblems(dbContext)
-            .Where(t => t.Status == EnrichmentStatus.Failed);
+        // Exactly the rows the button's count announced.
+        var query = EnrichmentFailureQueries.OpenProblems(dbContext).AsNoTracking().Definitive();
         if (parsedType.HasValue)
             query = query.Where(t => t.TaskType == parsedType.Value);
         // Retrying the ones whose cause is the file itself only reproduces the
