@@ -2,7 +2,7 @@
 
 Auditoría del 2026-09-17 sobre `Src/Photonne.Client.Native/composeApp/src/commonMain/kotlin/com/photonne/app/` (en adelante, las rutas son relativas a esa carpeta). Cinco pasadas de solo lectura: timeline/rejilla/shell, visor/mapa/recuerdos, álbumes/carpetas/organizar/utilidades, búsqueda/personas/ajustes/login/backup, y una transversal de consistencia. `ui/admin` quedó fuera porque se auditó y normalizó el mismo día.
 
-**Estado: nada implementado.** Marca cada punto con `[x]` al cerrarlo y anota el commit.
+**Estado: Lote A cerrado** (`995cd74`, 2026-09-18, sin verificar en dispositivo). Marca cada punto con `[x]` al cerrarlo y anota el commit.
 
 Fiabilidad de los hallazgos:
 - Comprobados a mano: 1, 2, 4 y 6.
@@ -27,34 +27,34 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
 
 ## Lote A — Errores funcionales
 
-- [ ] **1. "Copiar enlace" no copia nada** (S).
+- [x] (`995cd74`) **1. "Copiar enlace" no copia nada** (S).
   - `App.kt:4426-4429`: `onCopy = { actionsViewModel.dismissLink() }`. `ui/actions/ShareAssetsDialog.kt:135-172` no toca el portapapeles y el texto de la URL no es seleccionable.
   - El enlace ya está creado en el servidor (crea un álbum) y el portapapeles queda vacío. El botón lleva un icono de candado.
   - Arreglo: copiar con `LocalClipboardManager`, snackbar "Enlace copiado", mantener la hoja u ofrecer la hoja de compartir del sistema, icono ContentCopy. Referencia que sí copia: `ui/album/ShareDialogs.kt:100`, `MyLinksScreen.kt:98`.
-- [ ] **2. El token Bearer sale a terceros, y falta la atribución del mapa** (S).
+- [x] (`995cd74`) **2. El token Bearer sale a terceros, y falta la atribución del mapa** (S).
   - `data/api/AuthRefreshPlugin.kt:128-136` añade `Authorization` a toda petición sin mirar el host. `App.kt:431` pone ese cliente como loader de Coil. Las teselas salen de `basemaps.cartocdn.com` (`ui/map/OsmMap.kt:67-72`, `:484`) y `tile.openstreetmap.org` (`ui/asset/AssetDetailScreen.kt:2160`).
   - Arreglo: mandar el token solo si el host coincide con la URL base de la API (o `SKIP_AUTH_HEADER` en las teselas). Añadir "© OpenStreetMap © CARTO".
-- [ ] **3. Contraseña incorrecta en el login dice "Sesión expirada"** (S).
+- [x] (`995cd74`) **3. Contraseña incorrecta en el login dice "Sesión expirada"** (S).
   - `data/error/UiError.kt:92-100` traduce todo 401 a ese texto; `ui/login/LoginViewModel.kt:198-203` lo usa. El servidor devuelve `Results.Unauthorized()` (`Photonne.Server.Api/Features/Auth/LoginEndpoint.cs:48,53`). Un fallo de red dice "Error desconocido".
   - Arreglo: mapear en `LoginViewModel.submit`: 401 → "Usuario o contraseña incorrectos", sin estado → "No se pudo conectar con <host>", 400/404 → "Ese servidor no parece Photonne".
-- [ ] **4. El snackbar "Movidas a la papelera · Deshacer" sale antes de que la petición termine** (S-M).
+- [x] (`995cd74`) **4. El snackbar "Movidas a la papelera · Deshacer" sale antes de que la petición termine** (S-M).
   - `ui/main/MainScaffold.kt:968-977` (`runUndoable`) lanza `action()` sin esperar. El fallo llega aparte por el banner (`ui/timeline/TimelineViewModel.kt:210-227`).
   - *Sospecha*: pulsar Deshacer con la petición en vuelo puede restaurar antes de que termine el borrado.
   - Arreglo: que las acciones masivas devuelvan resultado o callback; snackbar de deshacer en el éxito y de error en el fallo. Lo heredan todas las pantallas que usan `AssetSelectionBottomBar`.
-- [ ] **5. Saltar a fecha y el zoom año→mes caen una fila antes** (S).
+- [x] (`995cd74`) **5. Saltar a fecha y el zoom año→mes caen una fila antes** (S).
   - `ui/timeline/TimelineScreen.kt:593`, `612`, `629` hacen scroll al índice crudo. El scrubber y el traspaso del reflow sí suman las cabeceras (`TimelineScrubber.kt:136`, `TimelineScreen.kt:661`). `anchorDate` en `:457` tampoco resta.
   - Arreglo: sumar `headerCount` en esas tres llamadas y restarlo en `anchorDate`.
-- [ ] **6. Archivar o borrar desde el visor no actualiza Carpeta ni Favoritos** (S).
+- [x] (`995cd74`) **6. Archivar o borrar desde el visor no actualiza Carpeta ni Favoritos** (S).
   - `App.kt:3320-3340` avisa a timeline, álbum, búsqueda, archivo, papelera y persona. `ui/folder/FolderDetailViewModel.kt:167` (`applyAssetRemovedLocal`) no tiene llamadores; el de `FavoritesViewModel` (`:192`) solo se llama desde dentro. Mapa y recuerdos tampoco se enteran.
   - Arreglo rápido: cablear carpeta y favoritos en `App.kt:3320/3330`. Arreglo de fondo: punto 52.
-- [ ] **7. Duplicados: mensajes invisibles y vacío engañoso** (S-M).
+- [x] (`995cd74`) **7. Duplicados: mensajes invisibles y vacío engañoso** (S-M).
   - `ui/utilities/UtilitiesDuplicatesViewModel.kt:68`, `144-147`: `deleteSelected()` pone `statusMessage` y `load()` lo anula.
   - `ui/utilities/UtilitiesDuplicatesScreen.kt:101-120`: estado y error se pintan en y=0, sin `reservedTop`, detrás del cromo.
   - `:122-131`: el `when` no tiene rama de error, así que un fallo de carga enseña "no hay duplicados".
   - `:237`: confirmación con `AlertDialog` a mano y botón relleno; va a la papelera pero no ofrece Deshacer. Texto de éxito en español a fuego (`ViewModel:144`).
   - *Sospecha*: el FAB de borrar (`:215-217`, `padding(16.dp)`) choca con la nav flotante. Mismo patrón en `devicebackup/BackupPendingScreen.kt:198`.
   - Arreglo: `ResultSnackbar` con Deshacer, rama `ErrorBanner` con reintento, cápsula inferior tipo `ConfirmMoveCapsule` en lugar del FAB.
-- [ ] **8. En Carpetas, "Mi dispositivo" y "Para organizar" desaparecen** (S).
+- [x] (`995cd74`) **8. En Carpetas, "Mi dispositivo" y "Para organizar" desaparecen** (S).
   - `ui/folder/FoldersListScreen.kt:374`, `404`: `inboxHeader` solo se emite en la rama con contenido; las ramas vacía, búsqueda y error (`:346-362`) lo pierden. Contradice el comentario de `:153-155`.
   - `:353-361`: el error es un `Text` rojo sin reintento y sin scroll.
   - `ui/folder/FolderDetailScreen.kt:149-153`: una carpeta vacía dice "Indexa una carpeta desde la app web".
