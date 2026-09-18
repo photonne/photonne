@@ -240,13 +240,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
 
         var ids = await query.Select(t => t.Id).ToListAsync(cancellationToken);
 
-        var retried = 0;
-        foreach (var id in ids)
-        {
-            if (cancellationToken.IsCancellationRequested) break;
-            if (await enrichmentService.ResetAndEnqueueAsync(id, cancellationToken))
-                retried++;
-        }
+        var retried = await enrichmentService.ResetAndEnqueueManyAsync(ids, cancellationToken);
 
         return Results.Ok(new RetryAllResponse(retried));
     }

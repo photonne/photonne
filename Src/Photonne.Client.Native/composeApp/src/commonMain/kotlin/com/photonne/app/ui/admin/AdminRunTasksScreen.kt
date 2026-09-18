@@ -77,6 +77,7 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.models.BackgroundTaskDto
+import com.photonne.app.data.models.EnrichmentQueueCounts
 import com.photonne.app.data.models.PendingCountResponse
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_run_tasks_action_recluster
@@ -89,6 +90,8 @@ import com.photonne.app.resources.admin_run_tasks_ai_retrying_format
 import com.photonne.app.resources.admin_run_tasks_last_run_format
 import com.photonne.app.resources.admin_run_tasks_last_run_never
 import com.photonne.app.resources.admin_run_tasks_status_queueing
+import com.photonne.app.resources.admin_run_tasks_status_waiting
+import com.photonne.app.resources.admin_run_tasks_retry_queue_format
 import com.photonne.app.resources.admin_run_tasks_status_starting
 import com.photonne.app.resources.admin_run_tasks_detail_progress
 import com.photonne.app.resources.admin_run_tasks_detail_progress_value
@@ -207,7 +210,6 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -502,6 +504,18 @@ enum class AdminRunTask(
      *  maintenance kind registers under the type "Maintenance", so keying on
      *  type alone would make one task paint another's progress bar. */
     val progressKey: String? get() = maintenanceKind ?: backgroundType
+
+    /** The server's `AssetEnrichmentType` behind this row, when it has one:
+     *  the key into the queue summary and the filter the failures registry
+     *  opens with. The two sweeps have one too — a retry sent from the registry
+     *  runs through the per-asset queue, not through the sweep, and used to be
+     *  invisible here: no activity, no "N con errores". */
+    val enrichmentType: String?
+        get() = when (this) {
+            ExtractMetadata -> "Exif"
+            GenerateThumbnails -> "Thumbnails"
+            else -> backfillKind?.name
+        }
 }
 
 private const val PollIntervalMs = 10_000L
@@ -524,6 +538,11 @@ private const val TriggerTimeoutMs = 3_000L
 
 data class AdminRunTasksUiState(
     val pending: Map<AdminRunTask, PendingCountResponse> = emptyMap(),
+    /** Every per-asset queue, by `AssetEnrichmentType` name. Arrives well
+     *  before [pending] — it doesn't count the library, only the task table —
+     *  so it's what decides whether a row is working. Empty against a server
+     *  that predates the endpoint; the rows then fall back to [pending]. */
+    val queues: Map<String, EnrichmentQueueCounts> = emptyMap(),
     /** Every task entry the server reports (running + recently finished).
      *  Used to derive both "running now" rows and "Última ejecución hace X"
      *  subtitles. */
@@ -589,9 +608,23 @@ data class AdminRunTasksUiState(
 ) {
     /** An AI row is being queued or still has jobs queued: the state in which
      *  the admin is watching, and polling should keep up. */
+    /** A row's queue numbers: the summary's when the server sent one, else the
+     *  ones that came with its pending count. */
+    fun queueOf(task: AdminRunTask): EnrichmentQueueCounts {
+        task.enrichmentType?.let { queues[it] }?.let { return it }
+        val count = pending[task] ?: return EnrichmentQueueCounts()
+        return EnrichmentQueueCounts(
+            inQueue = count.inQueue,
+            processing = count.processing ?: 0,
+            retrying = count.retrying,
+            failed = count.failed,
+        )
+    }
+
     val hasAiWorkInFlight: Boolean
         get() = triggering.any { it.backfillKind != null } ||
-            pending.any { (task, count) -> task.backfillKind != null && count.inQueue > 0 }
+            pending.any { (task, count) -> task.backfillKind != null && count.inQueue > 0 } ||
+            queues.values.any { it.inQueue > 0 }
 }
 
 /** A line of feedback, and which row it came from. The task travels as the
@@ -1068,36 +1101,37 @@ class AdminRunTasksViewModel(
 
     private suspend fun refresh(showLoading: Boolean) {
         if (showLoading) _state.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
-        val pendingDeferred: kotlinx.coroutines.Deferred<Map<AdminRunTask, PendingCountResponse>>
-        val tasksDeferred: kotlinx.coroutines.Deferred<List<BackgroundTaskDto>>
-        coroutineScope {
-            pendingDeferred = async {
-                AdminRunTask.values()
-                    .filter { it.backfillKind != null }
-                    .map { task ->
-                        async {
-                            runCatching {
-                                repository.pendingCount(task.backfillKind!!.apiPath)
-                            }.getOrNull()?.let { task to it }
-                        }
-                    }
-                    .awaitAll()
-                    .filterNotNull()
-                    .toMap()
-                    // Six counts go out in parallel every 10s over queries that
-                    // scan the whole asset table; one of them timing out must
-                    // not blank its row's counters and put a Play button back on
-                    // a task that's mid-run. Last known value beats no value.
-                    .let { fresh -> _state.value.pending + fresh }
+        // Each answer lands on the screen as it arrives. They used to be
+        // gathered first — the row for a retry just sent from the failures
+        // registry waited for six counts over the whole asset table before it
+        // could light up, and by then a short queue had already drained.
+        val tasks: List<BackgroundTaskDto> = coroutineScope {
+            // The cheap one: who is working, right now.
+            launch {
+                runCatching { repository.enrichmentQueueSummary() }.getOrNull()?.let { summary ->
+                    _state.update { it.copy(queues = summary.types) }
+                }
             }
-            tasksDeferred = async {
+            for (task in AdminRunTask.entries) {
+                val kind = task.backfillKind ?: continue
+                launch {
+                    // One of these timing out must not blank its row's counters
+                    // and put a Play button back on a task that's mid-run: last
+                    // known value beats no value.
+                    runCatching { repository.pendingCount(kind.apiPath) }.getOrNull()?.let { count ->
+                        _state.update { it.copy(pending = it.pending + (task to count)) }
+                    }
+                }
+            }
+            val tasksDeferred = async {
                 runCatching { repository.listBackgroundTasks() }
                     .getOrNull()
                     ?: _state.value.backgroundTasks
             }
+            tasksDeferred.await().also { fresh ->
+                _state.update { it.copy(backgroundTasks = fresh) }
+            }
         }
-        val pending = pendingDeferred.await()
-        val tasks = tasksDeferred.await()
         _state.update { current ->
             // Drop any session baseline whose queue is now empty AND
             // isn't actively enqueueing — the session is done, so further
@@ -1105,15 +1139,10 @@ class AdminRunTasksViewModel(
             // a stale one.
             val pruned = current.aiSessionBaseline.filter { (task, _) ->
                 val stillQueueing = task in current.triggering
-                val stillDraining = (pending[task]?.inQueue ?: 0) > 0
+                val stillDraining = current.queueOf(task).inQueue > 0
                 stillQueueing || stillDraining
             }
-            current.copy(
-                pending = pending,
-                backgroundTasks = tasks,
-                aiSessionBaseline = pruned,
-                isLoading = false
-            )
+            current.copy(aiSessionBaseline = pruned, isLoading = false)
         }
         // Keep a live follower attached to every running pipeline task so the
         // row updates per-asset and resumes after navigating back.
@@ -1147,7 +1176,7 @@ fun AdminRunTasksScreen(
     // the AI rows' "sin actividad desde hace X" — re-evaluates against the
     // same instant. Coarser granularity (minutes/hours/days) means we don't
     // need a per-second ticker here.
-    val nowMs = remember(state.backgroundTasks, state.pending) {
+    val nowMs = remember(state.backgroundTasks, state.pending, state.queues) {
         Clock.System.now().toEpochMilliseconds()
     }
 
@@ -1204,7 +1233,7 @@ fun AdminRunTasksScreen(
                 val anyRunning = tasks.any { task ->
                     task in state.triggering ||
                         task.progressKey?.let { runningByKey[it] } != null ||
-                        (state.pending[task]?.inQueue ?: 0) > 0
+                        state.queueOf(task).inQueue > 0
                 }
                 SectionHeader(
                     title = stringResource(sectionTitleOf(section)),
@@ -1225,16 +1254,46 @@ fun AdminRunTasksScreen(
             if (!expanded) continue
 
             items(tasks, key = { it.name }) { task ->
-                val pending = state.pending[task]
+                val queue = state.queueOf(task)
+                // The queue summary is fresher than the pending count (and is
+                // there long before it), so its numbers win. A queue with work
+                // but no pending count yet still gets a row that says so.
+                val pending = state.pending[task]?.copy(
+                    inQueue = queue.inQueue,
+                    processing = queue.processing,
+                    retrying = queue.retrying,
+                    failed = queue.failed,
+                ) ?: PendingCountResponse(
+                    inQueue = queue.inQueue,
+                    // Null: without the real count there's no "last finished"
+                    // to measure a stall against, and the row would cry wolf.
+                    processing = null,
+                    retrying = queue.retrying,
+                    failed = queue.failed,
+                ).takeIf { task.backfillKind != null && queue.inQueue > 0 }
                 val running = task.progressKey?.let { runningByKey[it] }
                 val isMl = task.backfillKind != null && task.maintenanceKind == null
-                val aiInProgress = isMl && (pending?.inQueue ?: 0) > 0
+                val aiInProgress = isMl && queue.inQueue > 0
+                // A sweep row (metadata, thumbnails) whose per-asset queue has
+                // work: retries sent from the failures registry. Not the sweep
+                // itself, so it keeps its Start button.
+                val retryQueue = queue.takeIf { !isMl && running == null && it.inQueue > 0 }
+                // Queued, and no worker has claimed one yet. Said out loud: it's
+                // the moment right after a retry or a Start, when the admin is
+                // looking for proof that the tap did something. Only with the
+                // summary in hand — older servers don't say what's claimed.
+                val waitingForWorker = state.queues.isNotEmpty() && running == null &&
+                    queue.inQueue > 0 && queue.processing == 0
+                // Not the retry queue: the sweep itself is idle then, and keeps
+                // its options.
                 val isActive = running != null || aiInProgress || task in state.triggering
 
                 TaskRow(
                     task = task,
                     running = running,
                     aiInProgress = aiInProgress,
+                    retryQueue = retryQueue,
+                    waitingForWorker = waitingForWorker,
                     // Live Photos re-pairing reuses the /backfill enqueue loop
                     // but has no honest "N pending → 0" counter (no per-asset
                     // completion marker), so it shows as a fire-and-forget run
@@ -1262,13 +1321,12 @@ fun AdminRunTasksScreen(
                         // their retries are skipped by every future backfill, so
                         // the row has no Start button and nothing to say. The
                         // registry is where they get retried or suppressed.
-                        task.backfillKind?.let { kind ->
-                            val failed = pending?.failed ?: 0
-                            if (failed > 0) SecondaryAction(
+                        task.enrichmentType?.let { type ->
+                            if (queue.failed > 0) SecondaryAction(
                                 icon = Icons.Outlined.ErrorOutline,
-                                label = stringResource(Res.string.admin_run_tasks_ai_failed_format, failed),
+                                label = stringResource(Res.string.admin_run_tasks_ai_failed_format, queue.failed),
                                 isWarning = true,
-                                onClick = { onOpenFailures(kind.name) }
+                                onClick = { onOpenFailures(type) }
                             ) else null
                         },
                     ),
@@ -1557,6 +1615,8 @@ private fun TaskRow(
     task: AdminRunTask,
     running: BackgroundTaskDto?,
     aiInProgress: Boolean,
+    retryQueue: EnrichmentQueueCounts?,
+    waitingForWorker: Boolean,
     sessionBaseline: Int?,
     lastFinished: BackgroundTaskDto?,
     nowMs: Long,
@@ -1568,7 +1628,7 @@ private fun TaskRow(
     onCancelAi: (() -> Unit)?,
     onCancel: ((BackgroundTaskDto) -> Unit)?,
 ) {
-    val isActive = running != null || aiInProgress
+    val isActive = running != null || aiInProgress || retryQueue != null
     val containerColor = when {
         isActive -> MaterialTheme.colorScheme.primaryContainer
         isTriggering -> MaterialTheme.colorScheme.secondaryContainer
@@ -1612,6 +1672,8 @@ private fun TaskRow(
                             task = task,
                             running = running,
                             aiInProgress = aiInProgress,
+                            retryQueue = retryQueue,
+                            waitingForWorker = waitingForWorker,
                             isTriggering = isTriggering,
                             lastFinished = lastFinished,
                             nowMs = nowMs,
@@ -1725,6 +1787,8 @@ private fun TaskRowSubtitle(
     task: AdminRunTask,
     running: BackgroundTaskDto?,
     aiInProgress: Boolean,
+    retryQueue: EnrichmentQueueCounts?,
+    waitingForWorker: Boolean,
     isTriggering: Boolean,
     lastFinished: BackgroundTaskDto?,
     nowMs: Long,
@@ -1737,12 +1801,17 @@ private fun TaskRowSubtitle(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        if (running != null || aiInProgress) {
+        if (running != null || aiInProgress || retryQueue != null) {
             LiveDot(active = true)
         }
 
         val text: String = when {
-            running != null || aiInProgress -> stringResource(task.activeLabelRes)
+            running != null -> stringResource(task.activeLabelRes)
+            waitingForWorker -> stringResource(Res.string.admin_run_tasks_status_waiting)
+            aiInProgress -> stringResource(task.activeLabelRes)
+            // A sweep row working through retries from the failures registry.
+            retryQueue != null ->
+                stringResource(Res.string.admin_run_tasks_retry_queue_format, retryQueue.inQueue)
             // The request that starts it is still in flight: for an AI row
             // that's the server queueing the whole pool, for the rest the
             // stream opening.

@@ -98,7 +98,18 @@ public class ShareMediaEndpoint : IEndpoint
             var physicalPath = await settings.ResolvePhysicalPathAsync(asset.FullPath);
             if (!File.Exists(physicalPath)) return Results.NotFound();
 
-            var generated = await thumbnailService.GenerateThumbnailsAsync(physicalPath, asset.Id, ct);
+            List<AssetThumbnail> generated;
+            try
+            {
+                generated = await thumbnailService.GenerateThumbnailsAsync(physicalPath, asset.Id, ct);
+            }
+            catch (ThumbnailGenerationException ex)
+            {
+                // On-demand path: a missing thumbnail is a 404 for the viewer,
+                // the reason goes to the log for the admin.
+                Console.WriteLine($"[SHARE] {ex.Message}");
+                return Results.NotFound();
+            }
             if (generated.Any())
             {
                 db.AssetThumbnails.AddRange(generated);

@@ -689,6 +689,8 @@
     <string name="admin_run_tasks_ai_enqueued_format">queued %1$s of %2$s in %3$s. The processor will work through them.</string>
     <string name="admin_run_tasks_ai_nothing_to_enqueue">there was nothing to queue.</string>
     <string name="admin_run_tasks_status_queueing">Queueing everything pending…</string>
+    <string name="admin_run_tasks_status_waiting">Queued, waiting for its turn…</string>
+    <string name="admin_run_tasks_retry_queue_format">Retrying %1$d queued</string>
     <string name="admin_run_tasks_status_starting">Starting…</string>
     <string name="admin_run_tasks_detail_progress">Progress</string>
     <string name="admin_run_tasks_detail_progress_value">%1$s of %2$s (%3$s)</string>
@@ -1247,7 +1249,8 @@
     <string name="admin_libraries_permissions_add">Give access to</string>
     <string name="admin_enrichment_failures_error_load">Couldn\'t load the problems registry</string>
     <string name="admin_enrichment_failures_error_retry_all">Couldn\'t retry the tasks</string>
-    <string name="admin_enrichment_failures_retry_all_done">Tasks sent back to the queue</string>
+    <string name="admin_enrichment_failures_retry_all_done">%1$d task(s) sent to the queue. Progress shows in Run tasks.</string>
+    <string name="admin_enrichment_failures_retry_done">Sent to the queue. Progress shows in Run tasks.</string>
     <string name="admin_enrichment_failures_retry_all_confirm">The %1$d tasks in the current filter will be queued again. Those failing because of the file itself will fail the same way.</string>
     <string name="admin_user_not_found">Couldn\'t find the user</string>
     <string name="admin_libraries_not_found">Couldn\'t find the library</string>

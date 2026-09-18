@@ -83,6 +83,13 @@ public class ThumbnailGeneratorService
         CancellationToken cancellationToken = default)
     {
         var thumbnails = new List<AssetThumbnail>();
+        // The first thing that went wrong. Every step below swallows its own
+        // exception so a bad size doesn't lose the others, and until now the
+        // caller only ever saw an empty list — "el generador no produjo
+        // miniaturas" — while the real reason (no space, no permission on the
+        // thumbnails volume, a decoder that can't read the file) went to the
+        // console only.
+        Exception? failure = null;
 
         var options = await GetOptionsAsync();
 
@@ -109,7 +116,7 @@ public class ThumbnailGeneratorService
 
                     foreach (var size in sizes)
                     {
-                        var thumbnail = await GenerateThumbnailAsync(
+                        var (thumbnail, error) = await GenerateThumbnailAsync(
                             sourceImage,
                             assetId,
                             size,
@@ -120,6 +127,10 @@ public class ThumbnailGeneratorService
                         if (thumbnail != null)
                         {
                             thumbnails.Add(thumbnail);
+                        }
+                        else
+                        {
+                            failure ??= error;
                         }
                     }
                 }
@@ -153,7 +164,7 @@ public class ThumbnailGeneratorService
                         var sizes = new[] { ThumbnailSize.Small, ThumbnailSize.Medium, ThumbnailSize.Large };
                         foreach (var size in sizes)
                         {
-                            var thumbnail = await GenerateThumbnailAsync(
+                            var (thumbnail, error) = await GenerateThumbnailAsync(
                                 sourceImage,
                                 assetId,
                                 size,
@@ -165,16 +176,24 @@ public class ThumbnailGeneratorService
                             {
                                 thumbnails.Add(thumbnail);
                             }
+                            else
+                            {
+                                failure ??= error;
+                            }
                         }
                     }
                     else
                     {
                         Console.WriteLine($"[ERROR] Could not extract any frame from video {sourceFilePath} for {assetId}. FFmpeg.ExecutablesPath: {FFmpeg.ExecutablesPath}");
+                        failure ??= new InvalidOperationException(
+                            $"ffmpeg no pudo extraer ningún fotograma del vídeo (ExecutablesPath: {FFmpeg.ExecutablesPath ?? "no configurado"})");
                     }
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[ERROR] Video thumbnail generation failed for {sourceFilePath}: {ex.Message}");
+                    failure ??= ex;
                 }
                 finally
                 {
@@ -185,12 +204,19 @@ public class ThumbnailGeneratorService
                 }
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
             // Return partial results if some thumbnails failed
             Console.WriteLine($"[ERROR] Thumbnail generation failed for {sourceFilePath}: {ex.Message}");
+            failure ??= ex;
         }
-        
+
+        // Partial output is still output. Nothing at all, with a reason, is a
+        // failure the caller has to be able to record and show.
+        if (thumbnails.Count == 0 && failure != null)
+            throw new ThumbnailGenerationException(sourceFilePath, failure);
+
         return thumbnails;
     }
 
@@ -347,9 +373,12 @@ public class ThumbnailGeneratorService
         }
     }
 
+    /// <summary>
+    /// RAW/HEIC via ImageMagick. Lets its exception out: the generic catch in
+    /// <see cref="GenerateThumbnailsAsync"/> records it as the failure reason.
+    /// </summary>
     private async Task GenerateHeicThumbnailsAsync(string sourceFilePath, Guid assetId, List<AssetThumbnail> thumbnails, ThumbnailOptions options, CancellationToken cancellationToken)
     {
-        try
         {
             using var image = new MagickImage(sourceFilePath);
 
@@ -386,13 +415,10 @@ public class ThumbnailGeneratorService
                 });
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ERROR] HEIC thumbnail generation failed for {sourceFilePath}: {ex.Message}");
-        }
     }
     
-    private async Task<AssetThumbnail?> GenerateThumbnailAsync(
+    /// <summary>One size. A null thumbnail comes with the exception that stopped it.</summary>
+    private async Task<(AssetThumbnail? Thumbnail, Exception? Error)> GenerateThumbnailAsync(
         Image sourceImage,
         Guid assetId,
         ThumbnailSize size,
@@ -450,7 +476,7 @@ public class ThumbnailGeneratorService
             if (size == ThumbnailSize.Small)
                 dominantColor = ExtractDominantColor(thumbnail);
 
-            return new AssetThumbnail
+            return (new AssetThumbnail
             {
                 AssetId = assetId,
                 Size = size,
@@ -460,11 +486,13 @@ public class ThumbnailGeneratorService
                 FileSize = fileInfo.Length,
                 Format = options.UseWebP ? "WebP" : "JPEG",
                 DominantColor = dominantColor
-            };
+            }, null);
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception ex)
         {
-            return null;
+            Console.WriteLine($"[ERROR] Thumbnail {size} failed for {assetId}: {ex.Message}");
+            return (null, ex);
         }
     }
     
@@ -645,5 +673,20 @@ public class ThumbnailGeneratorService
     {
         var videoExtensions = new[] { ".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".mpeg", ".mpg", ".3g2", ".3gpp", ".amv", ".asf", ".f4v", ".m2v", ".mp2", ".mpe", ".mpv", ".ogv", ".qt", ".vob" };
         return videoExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+    }
+}
+
+/// <summary>
+/// Thrown when <see cref="ThumbnailGeneratorService.GenerateThumbnailsAsync"/>
+/// produced nothing for a file. The message is the underlying cause so the
+/// failures registry shows "No space left on device" or "Permission denied"
+/// instead of a generic line; the cause stays as the inner exception for the
+/// failure classifier.
+/// </summary>
+public sealed class ThumbnailGenerationException : Exception
+{
+    public ThumbnailGenerationException(string sourceFilePath, Exception cause)
+        : base($"No se pudieron generar miniaturas de {Path.GetFileName(sourceFilePath)}: {cause.Message}", cause)
+    {
     }
 }

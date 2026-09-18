@@ -21,6 +21,10 @@ public static class EnrichmentFailureClassifier
     {
         MlServiceException ml => FromCode(ml),
 
+        // The generator's wrapper carries the message; the cause underneath
+        // is what decides whether retrying can help.
+        ThumbnailGenerationException { InnerException: { } cause } => Classify(cause),
+
         // The file the asset points at isn't on disk. Usually the photo really
         // is gone (that's what the missing-files maintenance is for); when it's
         // a volume that didn't mount, the path in the message makes that

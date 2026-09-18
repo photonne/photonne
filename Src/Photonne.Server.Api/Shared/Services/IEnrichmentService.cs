@@ -39,4 +39,11 @@ public interface IEnrichmentService
     /// endpoints. Returns <c>true</c> if the row existed and was reset.
     /// </summary>
     Task<bool> ResetAndEnqueueAsync(Guid taskId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <see cref="ResetAndEnqueueAsync"/> for a whole list, in set-based
+    /// updates rather than one round trip per row. Returns how many rows were
+    /// reset.
+    /// </summary>
+    Task<int> ResetAndEnqueueManyAsync(IReadOnlyList<Guid> taskIds, CancellationToken cancellationToken = default);
 }
