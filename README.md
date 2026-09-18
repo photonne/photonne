@@ -379,6 +379,13 @@ Ambas deben mostrar entradas `amd64` y `arm64` en `linux`. Las líneas
 `unknown/unknown` son las attestations (SBOM + provenance) firmadas por
 Buildx — son metadata, no se ejecutan.
 
+### PostgreSQL
+
+Qué necesita el contenedor de Postgres (`shm_size`, `shared_buffers`), cómo
+se aplican las migraciones al arrancar, los índices vectoriales de pgvector
+y cómo diagnosticar consultas lentas desde el log:
+[`docs/postgres-operations.md`](docs/postgres-operations.md).
+
 ### Usando la imagen pre-construida (recomendado)
 
 Las imágenes se publican automáticamente en GitHub Container Registry con cada
