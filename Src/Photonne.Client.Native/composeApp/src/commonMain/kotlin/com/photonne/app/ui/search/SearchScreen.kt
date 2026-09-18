@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.SolidColor
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_more
+import com.photonne.app.resources.search_filters_only_text
 import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -127,17 +128,25 @@ fun SearchScreen(
                         ) {
                             com.photonne.app.ui.error.ErrorBanner(error = state.error)
                         }
-                    !state.hasAnyCriteria ->
+                    !state.hasCriteriaForMode ->
                         EmptyState(
                             icon = Icons.Outlined.Search,
                             title = stringResource(Res.string.search_idle_title),
                             subtitle = stringResource(Res.string.search_idle_subtitle)
                         )
                     state.results.isEmpty() ->
-                        EmptyState(
-                            icon = Icons.Outlined.Search,
-                            title = stringResource(Res.string.search_empty_results)
-                        )
+                        // Los chips de filtro siguen visibles con cero
+                        // resultados: son la explicación de por qué no hay
+                        // nada, y tocarlos abre la hoja para relajarlos.
+                        Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
+                            ActiveFiltersRow(state = state, onClick = onOpenFilters)
+                            Box(modifier = Modifier.weight(1f)) {
+                                EmptyState(
+                                    icon = Icons.Outlined.Search,
+                                    title = stringResource(Res.string.search_empty_results)
+                                )
+                            }
+                        }
                     else -> AssetGrid(
                         items = state.results,
                         baseUrl = apiBaseUrl,
@@ -156,7 +165,7 @@ fun SearchScreen(
                         ),
                         // Los filtros activos viajan como cabecera de la rejilla:
                         // se desplazan con los resultados en vez de flotar.
-                        header = { ActiveFiltersRow(state = state) },
+                        header = { ActiveFiltersRow(state = state, onClick = onOpenFilters) },
                         modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                     )
                 }
@@ -200,9 +209,16 @@ fun SearchScreen(
                 hazeState = hazeState,
                 onChromeVisibleChange = onChromeVisibleChange,
                 actions = {
+                    val filtersOnlyTextMessage =
+                        stringResource(Res.string.search_filters_only_text)
+                    val snackbar = com.photonne.app.ui.main.LocalSnackbarController.current
                     IconButton(
-                        onClick = onOpenFilters,
-                        enabled = state.mode == SearchMode.Text
+                        onClick = {
+                            // Deshabilitarlo sin más no explicaba nada: en
+                            // semántica el toque cuenta por qué no aplica.
+                            if (state.mode == SearchMode.Text) onOpenFilters()
+                            else snackbar?.show(filtersOnlyTextMessage)
+                        }
                     ) {
                         Icon(
                             Icons.Outlined.Tune,
@@ -268,7 +284,7 @@ private fun SearchModeMenu(
 }
 
 @Composable
-private fun ActiveFiltersRow(state: SearchUiState) {
+private fun ActiveFiltersRow(state: SearchUiState, onClick: () -> Unit = {}) {
     val chips = remember(state) {
         buildList {
             if (state.from != null || state.to != null) {
@@ -297,7 +313,7 @@ private fun ActiveFiltersRow(state: SearchUiState) {
             .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
         items(chips) { chip ->
-            AssistChip(onClick = {}, label = { Text(chip) })
+            AssistChip(onClick = onClick, label = { Text(chip) })
         }
     }
 }

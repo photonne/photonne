@@ -62,6 +62,14 @@ data class SearchUiState(
     val hasAnyCriteria: Boolean
         get() = query.isNotBlank() || activeFilterCount > 0
 
+    /**
+     * Criterios que la modalidad actual usa de verdad: la semántica ignora
+     * los filtros, así que con consulta vacía y filtros residuales la
+     * pantalla debe enseñar el estado inicial, no "sin resultados".
+     */
+    val hasCriteriaForMode: Boolean
+        get() = if (mode == SearchMode.Semantic) query.isNotBlank() else hasAnyCriteria
+
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
 }
 

@@ -276,6 +276,7 @@
     <string name="search_mode_text">Text</string>
     <string name="search_mode_semantic">AI</string>
     <string name="search_filters">Filters</string>
+    <string name="search_filters_only_text">Filters only apply to text search</string>
     <string name="search_clear_all">Clear</string>
     <string name="search_idle_title">Start searching</string>
     <string name="search_idle_subtitle">Type a term or apply filters to see results.</string>
