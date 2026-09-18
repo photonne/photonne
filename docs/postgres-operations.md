@@ -45,18 +45,20 @@ en cuenta:
 1. **El contexto de migraciones lleva un timeout de una hora**, en lugar de
    los 30 s por defecto de Npgsql. Una migración que construye un índice
    sobre toda una tabla tarda minutos y con 30 s se cancelaba y se deshacía.
-2. **Si una migración falla, la API arranca igual.** Es una decisión
-   deliberada, pero significa que el esquema puede ir por detrás del código
-   sin que nada se caiga. El log de arranque lo dice en una línea que
-   empieza por `[ERROR] Error applying migrations — the schema is BEHIND the
-   code:` seguida de la excepción entera. Tras cada despliegue conviene
-   mirarlo:
+2. **Si una migración falla, la API no arranca.** El proceso termina con
+   una línea que empieza por `[ERROR] Error applying migrations — the
+   schema is BEHIND the code, refusing to start:` seguida de la excepción
+   entera, y con `restart: unless-stopped` Docker lo reintenta. Un
+   contenedor de la API que se reinicia en bucle tras un despliegue casi
+   siempre es esto; el motivo está en su log:
 
    ```bash
    docker logs photonne 2>&1 | grep -A25 "migrations"
    ```
 
-   Debe terminar en `Database migrations applied successfully.`.
+   Un arranque sano termina en `Database migrations applied successfully.`.
+   Hasta 1.149.4 la API arrancaba igual con el esquema por detrás del
+   código, y eso escondió durante días un índice que no existía.
 3. **Las migraciones son transaccionales.** Una migración que falla no deja
    nada a medias ni queda registrada en `__EFMigrationsHistory`, así que se
    reintenta entera en el siguiente arranque. Por eso mismo **no hay que
@@ -183,8 +185,9 @@ parejas separadas 31 s. `pg_index` no mostraba `IX_Faces_Embedding`, y el
 
 **Arreglo.** Timeout de una hora y excepción entera en el log para las
 migraciones (1.149.2); construcción en serie en la migración y `shm_size:
-1g` en el compose (1.149.3). Tras desplegar, el kNN pasó de más de 30 s a
-milisegundos y la tarea de caras dejó de saturar Postgres.
+1g` en el compose (1.149.3); la API deja de arrancar si una migración falla
+(1.150.0). Tras desplegar, el kNN pasó de más de 30 s a milisegundos y la
+tarea de caras dejó de saturar Postgres.
 
 **Lección.** Un error tragado en el arranque cuesta días; un `EXPLAIN` y un
 `pg_index` cuestan un minuto. Ante una consulta lenta, comprobar primero que

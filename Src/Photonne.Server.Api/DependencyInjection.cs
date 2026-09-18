@@ -305,8 +305,14 @@ public static class DependencyInjection
             {
                 // The whole chain: "Exception while reading from stream" alone
                 // doesn't say it was a timeout, nor which migration it hit.
-                Console.WriteLine($"[ERROR] Error applying migrations — the schema is BEHIND the code: {ex}");
-                // No lanzar excepción para permitir que la app continúe
+                Console.WriteLine($"[ERROR] Error applying migrations — the schema is BEHIND the code, refusing to start: {ex}");
+                // Letting the app continue used to hide this for days: the
+                // process ran, the health check passed, and every query that
+                // needed the missing index was a full scan. A failed migration
+                // now stops the process; under `restart: unless-stopped` the
+                // container retries, and the migration reruns whole because
+                // it rolled back.
+                throw;
             }
         }
     }
