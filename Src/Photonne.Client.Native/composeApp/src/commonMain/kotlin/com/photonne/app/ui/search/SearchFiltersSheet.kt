@@ -5,14 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,8 +30,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_accept
 import com.photonne.app.resources.action_cancel
-import com.photonne.app.resources.action_close
+import com.photonne.app.resources.action_clear
+import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.search_clear_all
 import com.photonne.app.resources.search_date_from
 import com.photonne.app.resources.search_date_range
@@ -48,6 +47,7 @@ import com.photonne.app.resources.search_scenes_count
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 
@@ -78,6 +78,22 @@ fun SearchFiltersSheet(
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(Res.string.search_filters),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                // Arriba y como acción de texto: al fondo, como chip, parecía
+                // un filtro más y con listas largas ni se veía.
+                TextButton(onClick = onClearAll) {
+                    Text(stringResource(Res.string.search_clear_all))
+                }
+            }
+
             // OCR (text inside images)
             Text(
                 stringResource(Res.string.search_ocr_title),
@@ -102,7 +118,7 @@ fun SearchFiltersSheet(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        state.from?.toString()
+                        state.from?.let { formatFilterDate(it) }
                             ?: stringResource(Res.string.search_date_from)
                     )
                 }
@@ -111,13 +127,13 @@ fun SearchFiltersSheet(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        state.to?.toString()
+                        state.to?.let { formatFilterDate(it) }
                             ?: stringResource(Res.string.search_date_to)
                     )
                 }
                 if (state.from != null || state.to != null) {
                     TextButton(onClick = { onDateRangeChange(null, null) }) {
-                        Text(stringResource(Res.string.action_close))
+                        Text(stringResource(Res.string.action_clear))
                     }
                 }
             }
@@ -137,7 +153,11 @@ fun SearchFiltersSheet(
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.heightIn(max = 220.dp)
+                    // El tope evita que una lista larga se coma la hoja, y el
+                    // scroll propio hace alcanzable lo que queda por debajo.
+                    modifier = Modifier
+                        .heightIn(max = 220.dp)
+                        .verticalScroll(rememberScrollState())
                 ) {
                     for (person in state.people) {
                         FilterChip(
@@ -145,7 +165,8 @@ fun SearchFiltersSheet(
                             onClick = { onTogglePerson(person.id) },
                             label = {
                                 Text(
-                                    person.name ?: person.id.take(6),
+                                    person.name
+                                        ?: stringResource(Res.string.people_unnamed),
                                     maxLines = 1
                                 )
                             }
@@ -162,7 +183,9 @@ fun SearchFiltersSheet(
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.heightIn(max = 220.dp)
+                modifier = Modifier
+                    .heightIn(max = 220.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 for (label in state.objectLabels) {
                     FilterChip(
@@ -186,7 +209,9 @@ fun SearchFiltersSheet(
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.heightIn(max = 220.dp)
+                modifier = Modifier
+                    .heightIn(max = 220.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 for (label in state.sceneLabels) {
                     FilterChip(
@@ -202,13 +227,7 @@ fun SearchFiltersSheet(
                 }
             }
 
-            Spacer(Modifier.width(1.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(
-                    onClick = onClearAll,
-                    label = { Text(stringResource(Res.string.search_clear_all)) }
-                )
-            }
+
         }
     }
 
@@ -259,7 +278,7 @@ private fun DateFieldPicker(
                 } else {
                     onPick(null)
                 }
-            }) { Text(stringResource(Res.string.action_close)) }
+            }) { Text(stringResource(Res.string.action_accept)) }
         },
         dismissButton = {
             TextButton(onClick = { onPick(null) }) {
@@ -270,3 +289,9 @@ private fun DateFieldPicker(
         DatePicker(state = state)
     }
 }
+
+/** Fecha corta legible ("12 mar 2024" según la plataforma), no ISO crudo. */
+private fun formatFilterDate(date: LocalDate): String =
+    com.photonne.app.ui.settings.formatProfileDate(
+        date.atStartOfDayIn(TimeZone.UTC)
+    )

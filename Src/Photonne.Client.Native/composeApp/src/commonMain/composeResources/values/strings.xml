@@ -308,6 +308,7 @@
     <string name="search_mode_text">Texto</string>
     <string name="search_mode_semantic">IA</string>
     <string name="search_filters">Filtros</string>
+    <string name="search_filters_only_text">Los filtros solo aplican a la búsqueda de texto</string>
     <string name="search_clear_all">Limpiar</string>
     <string name="search_idle_title">Empieza a buscar</string>
     <string name="search_idle_subtitle">Escribe un término o aplica filtros para ver resultados.</string>
