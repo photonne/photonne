@@ -3759,6 +3759,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 albumSharesViewModel.clearError()
             },
             onCreate = { showCreateShare = true },
+            onEdit = { link -> editingShareLink = link },
             // Revocar mata el enlace para todo el mundo: confirma, como en
             // "Mis enlaces".
             onRevoke = { token -> revokingShareToken = token }
