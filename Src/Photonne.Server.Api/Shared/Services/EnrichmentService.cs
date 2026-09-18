@@ -162,4 +162,49 @@ public class EnrichmentService : IEnrichmentService
 
         return true;
     }
+
+    public async Task<int> ResetAndEnqueueManyAsync(IReadOnlyList<Guid> taskIds, CancellationToken cancellationToken = default)
+    {
+        // "Reintentar todo" used to call the single-row version in a loop: one
+        // SELECT and one UPDATE per task, inside the request. A few thousand
+        // failures kept the admin looking at a spinner for the best part of a
+        // minute before a single job reached the queue.
+        const int ChunkSize = 1000;
+        var reset = 0;
+
+        for (var offset = 0; offset < taskIds.Count; offset += ChunkSize)
+        {
+            var chunk = taskIds.Skip(offset).Take(ChunkSize).ToList();
+
+            var rows = await _dbContext.AssetEnrichmentTasks.AsNoTracking()
+                .Where(t => chunk.Contains(t.Id))
+                .Select(t => new { t.Id, t.TaskType })
+                .ToListAsync(cancellationToken);
+            if (rows.Count == 0) continue;
+
+            var ids = rows.Select(r => r.Id).ToList();
+            // Same reset as the single-row path: a retry is a fresh verdict.
+            await _dbContext.AssetEnrichmentTasks
+                .Where(t => ids.Contains(t.Id))
+                .ExecuteUpdateAsync(u => u
+                    .SetProperty(t => t.Status, EnrichmentStatus.Pending)
+                    .SetProperty(t => t.AttemptCount, 0)
+                    .SetProperty(t => t.NextRetryAt, (DateTime?)null)
+                    .SetProperty(t => t.ErrorMessage, (string?)null)
+                    .SetProperty(t => t.FailureKind, EnrichmentFailureKind.Unknown)
+                    .SetProperty(t => t.FailureCode, (string?)null)
+                    .SetProperty(t => t.StartedAt, (DateTime?)null)
+                    .SetProperty(t => t.CompletedAt, (DateTime?)null),
+                    cancellationToken);
+
+            // After the update, so a worker never claims a row still Failed.
+            foreach (var row in rows)
+                await _queue.EnqueueAsync(row.TaskType, row.Id, cancellationToken);
+
+            reset += rows.Count;
+        }
+
+        _logger.LogInformation("Enrichment tasks reset and re-enqueued in bulk: Tasks={Tasks}", reset);
+        return reset;
+    }
 }

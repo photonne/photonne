@@ -29,6 +29,9 @@ public sealed class MlBackfillEndpointTests : IntegrationTestBase
     private sealed record BackfillDto(int Enqueued, int Total, long ElapsedMs);
     private sealed record CancelQueueDto(int Deleted, int StillProcessing);
     private sealed record ErrorDto(string Error);
+    private sealed record QueueCountsDto(int InQueue, int Processing, int Retrying, int Failed);
+    private sealed record QueueSummaryDto(IReadOnlyDictionary<string, QueueCountsDto> Types);
+    private sealed record RetryAllDto(int Retried);
     private sealed record FailuresRegistryDto(
         int Total, IReadOnlyDictionary<string, int> CountsByType, int Retrying, int Suppressed);
 
@@ -272,6 +275,70 @@ public sealed class MlBackfillEndpointTests : IntegrationTestBase
         Assert.Equal(pending.Failed, registry.CountsByType["FaceRecognition"]);
         Assert.Equal(1, registry.Retrying);
         Assert.Equal(1, registry.Suppressed);
+    }
+
+    [Fact]
+    public async Task QueueSummary_ReportsEveryQueue_IncludingTheOnesWithNoPendingCount()
+    {
+        // Exif and Thumbnails run as sweeps and have no pending-count, so a
+        // retry sent from the failures registry had nowhere to show up — and
+        // their rows never said "N con errores" either.
+        var (_, client) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (user, _) = await CreateAuthenticatedUserAsync();
+        var assets = await SeedImagesAsync(user.Id, 4);
+
+        await SeedTaskAsync(assets[0].Id, AssetEnrichmentType.Exif, EnrichmentStatus.Pending, null);
+        await SeedTaskAsync(assets[1].Id, AssetEnrichmentType.Exif, EnrichmentStatus.Processing, null);
+        await SeedTaskAsync(assets[2].Id, AssetEnrichmentType.Exif, EnrichmentStatus.Failed, null);
+        await SeedTaskAsync(assets[3].Id, AssetEnrichmentType.Thumbnails, EnrichmentStatus.Failed, DateTime.UtcNow.AddMinutes(5));
+
+        var body = await client.GetFromJsonAsync<QueueSummaryDto>("/api/admin/enrichment/queue-summary");
+
+        var exif = body!.Types["Exif"];
+        Assert.Equal(2, exif.InQueue);
+        Assert.Equal(1, exif.Processing);
+        Assert.Equal(1, exif.Failed);
+        Assert.Equal(1, body.Types["Thumbnails"].Retrying);
+        // Idle types are there too, as zeros: present means "reported".
+        Assert.Equal(0, body.Types["FaceRecognition"].InQueue);
+
+        // And it's the registry's number.
+        var registry = await client.GetFromJsonAsync<FailuresRegistryDto>("/api/admin/enrichment/failures?type=Exif");
+        Assert.Equal(exif.Failed, registry!.Total);
+    }
+
+    [Fact]
+    public async Task QueueSummary_RequiresAdminRole()
+    {
+        var (_, client) = await CreateAuthenticatedUserAsync();
+        var response = await client.GetAsync("/api/admin/enrichment/queue-summary");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RetryAll_PutsEveryDefinitiveFailureBackInTheQueue_InOneGo()
+    {
+        var (_, client) = await CreateAuthenticatedUserAsync(role: "Admin");
+        var (user, _) = await CreateAuthenticatedUserAsync();
+        var assets = await SeedImagesAsync(user.Id, 3);
+
+        await SeedTaskAsync(assets[0].Id, AssetEnrichmentType.Exif, EnrichmentStatus.Failed, null);
+        await SeedTaskAsync(assets[1].Id, AssetEnrichmentType.Exif, EnrichmentStatus.Failed, null);
+        await SeedTaskAsync(assets[2].Id, AssetEnrichmentType.Exif, EnrichmentStatus.Suppressed, null);
+
+        var response = await client.PostAsync("/api/admin/enrichment/failures/retry-all?type=Exif", null);
+        var result = await response.Content.ReadFromJsonAsync<RetryAllDto>();
+        Assert.Equal(2, result!.Retried);
+
+        await WithDbContextAsync(async db =>
+        {
+            var rows = await db.AssetEnrichmentTasks.AsNoTracking()
+                .Where(t => t.TaskType == AssetEnrichmentType.Exif).ToListAsync();
+            // The worker may already have claimed one; what matters is that
+            // none is left Failed and the dismissed one wasn't touched.
+            Assert.DoesNotContain(rows, r => r.Status == EnrichmentStatus.Failed && r.AttemptCount == 3);
+            Assert.Single(rows, r => r.Status == EnrichmentStatus.Suppressed);
+        });
     }
 
     // ─── Liveness: is it doing anything right now? ───────────────────────────
