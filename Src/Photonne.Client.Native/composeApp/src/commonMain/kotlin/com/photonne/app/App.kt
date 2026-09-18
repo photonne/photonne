@@ -1547,7 +1547,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onDownload = {
                         actionsViewModel.download(archivedState.selection.toList())
                     },
-                    onArchive = { archivedViewModel.bulkUnarchive() },
+                    onArchive = { done -> archivedViewModel.bulkUnarchive(onResult = done) },
                     onTrash = archivedViewModel::bulkTrash,
                     selectedIds = { archivedState.selection.toList() },
                     onUndo = { kind, ids ->
@@ -2356,6 +2356,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = utilitiesDuplicatesViewModel,
                             baseUrl = apiBaseUrl,
+                            onUndoTrash = { ids ->
+                                actionsViewModel.undoBulk(
+                                    com.photonne.app.ui.actions.BulkUndoKind.Trash,
+                                    ids
+                                ) {
+                                    utilitiesDuplicatesViewModel.refresh()
+                                    timelineViewModel.refresh()
+                                }
+                            },
                             onOpenAsset = { index, items ->
                                 assetDetail = AssetDetailContext(
                                     items = items,
@@ -3325,6 +3334,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             searchViewModel.removeItem(id)
                             archivedViewModel.applyAssetRemovedLocal(id)
                             personDetailViewModel.applyAssetRemovedLocal(id)
+                            folderDetailViewModel.applyAssetRemovedLocal(id)
+                            favoritesViewModel.applyAssetRemovedLocal(id)
                             assetDetail = null
                         },
                         onAssetArchived = { id ->
@@ -3335,6 +3346,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             searchViewModel.removeItem(id)
                             trashViewModel.applyAssetRemovedLocal(id)
                             personDetailViewModel.applyAssetRemovedLocal(id)
+                            folderDetailViewModel.applyAssetRemovedLocal(id)
+                            favoritesViewModel.applyAssetRemovedLocal(id)
                             assetDetail = null
                         },
                         onOpenFaces = { assetId ->
@@ -4425,7 +4438,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (createdLink != null) {
         ShareLinkResultDialog(
             url = createdLink,
-            onCopy = { actionsViewModel.dismissLink() },
             onDismiss = actionsViewModel::dismissLink
         )
     }

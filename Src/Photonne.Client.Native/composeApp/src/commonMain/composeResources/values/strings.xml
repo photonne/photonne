@@ -238,6 +238,8 @@
     <string name="folders_title">Carpetas</string>
     <string name="folders_empty_title">No hay carpetas</string>
     <string name="folders_empty_subtitle">Indexa una carpeta desde la app web para verla aquí.</string>
+    <string name="folder_detail_empty_title">Carpeta vacía</string>
+    <string name="folder_detail_empty_subtitle">Esta carpeta aún no tiene fotos ni subcarpetas.</string>
     <string name="folder_shared_badge">Compartida</string>
     <string name="folder_external_badge">Biblioteca externa</string>
     <string name="folders_scope_personal">Personales</string>
@@ -343,6 +345,8 @@
     <string name="map_action_zoom_in">Acercar</string>
     <string name="map_action_zoom_out">Alejar</string>
     <string name="map_action_fit_to_data">Centrar en mis fotos</string>
+    <string name="map_attribution">© OpenStreetMap © CARTO</string>
+    <string name="map_attribution_osm">© OpenStreetMap</string>
     <string name="map_cluster_sheet_title">%1$d fotos en este punto</string>
     <string name="map_action_select_all">Seleccionar todo</string>
 
@@ -449,6 +453,7 @@
     <string name="share_link_title">Enlace creado</string>
     <string name="share_link_field_label">Cualquiera con este enlace podrá ver las fotos.</string>
     <string name="share_link_copy">Copiar enlace</string>
+    <string name="share_link_copied">Enlace copiado</string>
     <string name="share_status_saved">Guardado: %1$s</string>
     <string name="share_status_share_failed">No se pudo compartir: %1$s</string>
     <string name="selection_action_remove_from_album">Quitar del álbum</string>

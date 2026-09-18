@@ -81,6 +81,34 @@ class AuthRefreshPluginTest {
     }
 
     @Test
+    fun does_not_send_token_to_foreign_hosts_nor_refresh_on_their_401() = runTest {
+        val storage = FakeTokenStorage()
+        val authState = AuthStateHolder()
+        val calls = mutableListOf<String>()
+
+        val engine = MockEngine { request ->
+            calls += "${request.url.host}${request.url.encodedPath} " +
+                "auth=${request.headers[HttpHeaders.Authorization]}"
+            // El tercero contesta 401: no debe disparar el refresh ni tumbar
+            // la sesión — no dice nada de nuestras credenciales.
+            respond("", HttpStatusCode.Unauthorized)
+        }
+
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrl = "http://test.local",
+            tokenStorage = storage,
+            authState = authState
+        )
+
+        val response: HttpResponse = client.get("https://tile.openstreetmap.org/1/0/0.png")
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals(listOf("tile.openstreetmap.org/1/0/0.png auth=null"), calls)
+        assertEquals(0, storage.clearedTimes)
+        assertEquals(AuthState.Unknown, authState.state.value)
+    }
+
+    @Test
     fun marks_unauthenticated_when_refresh_rejected() = runTest {
         val storage = FakeTokenStorage()
         val authState = AuthStateHolder()

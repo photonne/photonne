@@ -3,6 +3,7 @@ package com.photonne.app.ui.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.api.LocalReachabilityProbe
+import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.skipAuthRefresh
 import com.photonne.app.data.auth.AuthRepository
@@ -197,12 +198,29 @@ class LoginViewModel(
             } else {
                 _state.value.copy(
                     isSubmitting = false,
-                    error = result.exceptionOrNull()?.let {
-                        errorFactory.from(it, "Error desconocido")
-                    }
+                    error = result.exceptionOrNull()?.let(::loginError)
                 )
             }
         }
+    }
+
+    /**
+     * El mapeo genérico traduce todo 401 a "Sesión expirada", que en el login
+     * es mentira: aquí el 401 es la contraseña. Y un fallo de conexión debe
+     * decir contra qué host se intentó, no "Error desconocido".
+     */
+    private fun loginError(cause: Throwable): UiError {
+        val api = cause as? PhotonneApiException
+        val host = runCatching { Url(serverUrlStore.requireBaseUrl()).host }.getOrNull()
+            ?: serverUrlStore.getPublic().orEmpty()
+        val message = when (api?.status) {
+            null -> "No se pudo conectar con $host"
+            401 -> "Usuario o contraseña incorrectos"
+            400, 404 -> "Ese servidor no parece un servidor Photonne"
+            else -> null
+        }
+        val mapped = errorFactory.from(cause, "Error desconocido")
+        return if (message != null) mapped.copy(userMessage = message) else mapped
     }
 
     private fun isValidUrl(url: String): Boolean = try {

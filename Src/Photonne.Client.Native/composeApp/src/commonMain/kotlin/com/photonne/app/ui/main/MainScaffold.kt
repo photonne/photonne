@@ -194,6 +194,7 @@ import com.photonne.app.resources.upload_title
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.photonne.app.data.error.UiError
 import com.photonne.app.ui.actions.BulkUndoKind
 import com.photonne.app.ui.theme.photonneLogoPainter
 import dev.chrisbanes.haze.HazeState
@@ -918,8 +919,13 @@ fun AssetSelectionBottomBar(
     onShare: () -> Unit,
     onAddToAlbum: () -> Unit,
     onDownload: () -> Unit,
-    onArchive: () -> Unit,
-    onTrash: () -> Unit,
+    /**
+     * Archivar/papelera reciben un callback de resultado (`null` = éxito) que
+     * DEBEN invocar al terminar la petición: el snackbar de deshacer solo
+     * puede salir cuando el servidor ha confirmado, y el de error cuando no.
+     */
+    onArchive: (onResult: (UiError?) -> Unit) -> Unit,
+    onTrash: (onResult: (UiError?) -> Unit) -> Unit,
     /**
      * Ids sobre los que van a actuar archivar y papelera, leídos justo antes
      * de lanzarlas: la acción vacía la selección, así que después ya no están.
@@ -963,16 +969,20 @@ fun AssetSelectionBottomBar(
 
     /**
      * Lanza una acción reversible y ofrece deshacerla. Los ids se leen ANTES,
-     * porque la acción vacía la selección de inmediato.
+     * porque la acción vacía la selección de inmediato. El snackbar espera al
+     * resultado: antes salía "Movidas a la papelera · Deshacer" con la
+     * petición aún en vuelo, y un Deshacer a tiempo podía restaurar antes de
+     * que el borrado terminara.
      */
-    fun runUndoable(kind: BulkUndoKind, message: String, action: () -> Unit) {
+    fun runUndoable(kind: BulkUndoKind, message: String, action: ((UiError?) -> Unit) -> Unit) {
         val ids = selectedIds()
-        action()
         val undo = onUndo
-        if (undo == null || ids.isEmpty()) {
-            snackbar?.show(message)
-        } else {
-            snackbar?.show(message, undoLabel) { undo(kind, ids) }
+        action { error ->
+            when {
+                error != null -> snackbar?.show(error.userMessage)
+                undo == null || ids.isEmpty() -> snackbar?.show(message)
+                else -> snackbar?.show(message, undoLabel) { undo(kind, ids) }
+            }
         }
     }
     // When any context-specific action is wired (Move/Remove/SetCover/Unlink),

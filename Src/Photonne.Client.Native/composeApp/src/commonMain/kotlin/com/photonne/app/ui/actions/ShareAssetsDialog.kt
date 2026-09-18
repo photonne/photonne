@@ -10,8 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,6 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
@@ -38,9 +41,11 @@ import com.photonne.app.resources.share_choice_direct_subtitle
 import com.photonne.app.resources.share_choice_link
 import com.photonne.app.resources.share_choice_link_subtitle
 import com.photonne.app.resources.share_link_album_name_label
+import com.photonne.app.resources.share_link_copied
 import com.photonne.app.resources.share_link_copy
 import com.photonne.app.resources.share_link_field_label
 import com.photonne.app.resources.share_link_title
+import com.photonne.app.ui.main.LocalSnackbarController
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -134,9 +139,11 @@ private fun ShareOptionRow(
 @Composable
 fun ShareLinkResultDialog(
     url: String,
-    onCopy: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val clipboard = LocalClipboardManager.current
+    val snackbar = LocalSnackbarController.current
+    val copiedMessage = stringResource(Res.string.share_link_copied)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -152,14 +159,20 @@ fun ShareLinkResultDialog(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(url, style = MaterialTheme.typography.bodyMedium)
+            SelectionContainer {
+                Text(url, style = MaterialTheme.typography.bodyMedium)
+            }
             Spacer(Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = { onCopy(url) }) {
-                    Icon(Icons.Filled.Lock, contentDescription = null)
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString(url))
+                    snackbar?.show(copiedMessage)
+                    onDismiss()
+                }) {
+                    Icon(Icons.Filled.ContentCopy, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
                     Text(stringResource(Res.string.share_link_copy))
                 }

@@ -34,8 +34,8 @@ data class DuplicateGroupView(
 data class UtilitiesDuplicatesUiState(
     val isLoading: Boolean = false,
     val isDeleting: Boolean = false,
+    /** Solo errores de carga; el resultado de borrar viaja por callback. */
     val error: UiError? = null,
-    val statusMessage: String? = null,
     val groups: List<DuplicateGroupView> = emptyList()
 ) {
     val totalSelectedCount: Int get() = groups.sumOf { it.selectedAssetIds.size }
@@ -65,7 +65,7 @@ class UtilitiesDuplicatesViewModel(
     private fun load() {
         if (_state.value.isLoading) return
         _state.update {
-            it.copy(isLoading = true, error = null, statusMessage = null)
+            it.copy(isLoading = true, error = null)
         }
         viewModelScope.launch {
             runCatching { repository.duplicates() }
@@ -129,35 +129,27 @@ class UtilitiesDuplicatesViewModel(
         }
     }
 
-    fun deleteSelected() {
+    /**
+     * Mueve la selección a la papelera. El resultado sale por [onResult]
+     * (`error == null` → éxito, con los ids borrados para poder deshacer):
+     * el `statusMessage` en el estado que había antes lo pisaba el `load()`
+     * de recarga antes de que nadie llegara a verlo.
+     */
+    fun deleteSelected(onResult: (deleted: List<String>, error: UiError?) -> Unit = { _, _ -> }) {
         val selected = _state.value.groups.flatMap { it.selectedAssetIds }
         if (selected.isEmpty() || _state.value.isDeleting) return
-        _state.update {
-            it.copy(isDeleting = true, error = null, statusMessage = null)
-        }
+        _state.update { it.copy(isDeleting = true) }
         viewModelScope.launch {
             runCatching { repository.deleteAssets(selected) }
                 .onSuccess {
-                    _state.update {
-                        it.copy(
-                            isDeleting = false,
-                            statusMessage = "${selected.size} elementos enviados a la papelera"
-                        )
-                    }
+                    _state.update { it.copy(isDeleting = false) }
+                    onResult(selected, null)
                     load()
                 }
                 .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            isDeleting = false,
-                            error = errorFactory.from(error, "No se pudo eliminar")
-                        )
-                    }
+                    _state.update { it.copy(isDeleting = false) }
+                    onResult(selected, errorFactory.from(error, "No se pudo eliminar"))
                 }
         }
-    }
-
-    fun clearMessages() {
-        _state.update { it.copy(error = null, statusMessage = null) }
     }
 }

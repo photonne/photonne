@@ -449,12 +449,18 @@ fun TimelineScreen(
                             }
                     }
 
+                    // La rejilla antepone una fila extra (Recuerdos/backup/aviso)
+                    // cuando toca, así que índice de LazyColumn = headerCount +
+                    // índice en `rows`. Todo scroll/lectura debe convertir.
+                    val headerCount = if (hasHeader) 1 else 0
+
                     // Topmost visible cell drives both the sticky header
                     // overlay and the zoom-level re-anchor logic. Skeleton
                     // rows anchor to the first day of their month.
-                    val anchorDate: LocalDate? by remember(rows) {
+                    val anchorDate: LocalDate? by remember(rows, headerCount) {
                         derivedStateOf {
-                            val idx = gridState.firstVisibleItemIndex
+                            val idx = (gridState.firstVisibleItemIndex - headerCount)
+                                .coerceAtLeast(0)
                             if (rows.isEmpty()) return@derivedStateOf null
                             val end = minOf(idx + 8, rows.size - 1)
                             for (i in idx..end) {
@@ -500,7 +506,6 @@ fun TimelineScreen(
                     val rowsLatest = rememberUpdatedState(rows)
                     val widthLatest = rememberUpdatedState(containerWidthDp.value)
                     val zoomLatest = rememberUpdatedState(zoomLevel)
-                    val headerCount = if (hasHeader) 1 else 0
                     val headerCountLatest = rememberUpdatedState(headerCount)
 
                     var reflowActive by remember { mutableStateOf(false) }
@@ -590,7 +595,9 @@ fun TimelineScreen(
                                 // Land the row just below its (non-sticky) month
                                 // header so the date shows above it.
                                 val headerPx = with(density) { 56.dp.roundToPx() }
-                                runCatching { gridState.animateScrollToItem(idx, -headerPx) }
+                                runCatching {
+                                    gridState.animateScrollToItem(headerCount + idx, -headerPx)
+                                }
                                 pendingAssetAnchor = null
                                 pendingZoomAnchor = null
                                 return@LaunchedEffect
@@ -609,7 +616,7 @@ fun TimelineScreen(
                             // Snap (don't animate) across a wholesale layout
                             // swap; the exact-asset stage above is the only
                             // place that adds visible motion.
-                            runCatching { gridState.scrollToItem(newIdx) }
+                            runCatching { gridState.scrollToItem(headerCount + newIdx) }
                         }
                         pendingZoomAnchor = null
                     }
@@ -626,7 +633,7 @@ fun TimelineScreen(
                         val targetDate = target.captureLocalDate()
                         val index = findRowIndexForDate(rows, targetDate, zoomLevel.grouping)
                         if (index >= 0) {
-                            runCatching { gridState.animateScrollToItem(index) }
+                            runCatching { gridState.animateScrollToItem(headerCount + index) }
                         }
                         onJumpHandled()
                     }

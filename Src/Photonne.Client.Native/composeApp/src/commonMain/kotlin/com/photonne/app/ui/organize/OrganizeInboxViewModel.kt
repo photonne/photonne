@@ -361,19 +361,23 @@ class OrganizeInboxViewModel(
         }
     }
 
-    fun bulkArchive() {
-        bulkRemoveLocally("No se pudieron archivar") { assetRepository.archive(it) }
+    fun bulkArchive(onResult: (UiError?) -> Unit = {}) {
+        bulkRemoveLocally("No se pudieron archivar", onResult) { assetRepository.archive(it) }
     }
 
-    fun bulkTrash() {
-        bulkRemoveLocally("No se pudieron eliminar") { assetRepository.trash(it) }
+    fun bulkTrash(onResult: (UiError?) -> Unit = {}) {
+        bulkRemoveLocally("No se pudieron eliminar", onResult) { assetRepository.trash(it) }
     }
 
     /**
      * Archive/trash also file an asset out of the inbox (it's no longer pending),
      * so on success they drop the moved ids locally — same shape as the move.
      */
-    private fun bulkRemoveLocally(fallbackMessage: String, action: suspend (List<String>) -> Unit) {
+    private fun bulkRemoveLocally(
+        fallbackMessage: String,
+        onResult: (UiError?) -> Unit = {},
+        action: suspend (List<String>) -> Unit
+    ) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         _state.update { it.copy(isBulkMutating = true, error = null) }
@@ -388,14 +392,12 @@ class OrganizeInboxViewModel(
                             isBulkMutating = false
                         )
                     }
+                    onResult(null)
                 }
                 .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            isBulkMutating = false,
-                            error = errorFactory.from(error, fallbackMessage)
-                        )
-                    }
+                    val uiError = errorFactory.from(error, fallbackMessage)
+                    _state.update { it.copy(isBulkMutating = false, error = uiError) }
+                    onResult(uiError)
                 }
         }
     }

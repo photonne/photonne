@@ -160,6 +160,7 @@ import com.photonne.app.resources.asset_action_delete_device
 import com.photonne.app.resources.asset_action_trash
 import com.photonne.app.resources.asset_metadata_location
 import com.photonne.app.resources.asset_metadata_open_map
+import com.photonne.app.resources.map_attribution_osm
 import com.photonne.app.resources.slideshow_exit
 import com.photonne.app.resources.slideshow_next
 import com.photonne.app.resources.slideshow_pause
@@ -2145,6 +2146,20 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                         }
                     }
                 }
+            }
+            // Condición de uso de las teselas de OSM: atribución sobre el mapa.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = stringResource(Res.string.map_attribution_osm),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall
+                )
             }
             Icon(
                 imageVector = Icons.Filled.LocationOn,

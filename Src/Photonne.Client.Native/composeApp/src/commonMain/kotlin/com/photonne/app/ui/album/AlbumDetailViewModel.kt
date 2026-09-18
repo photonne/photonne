@@ -350,14 +350,16 @@ class AlbumDetailViewModel(
         }
     }
 
-    fun bulkArchive() = runAssetBulk(
+    fun bulkArchive(onResult: (UiError?) -> Unit = {}) = runAssetBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "No se pudo archivar"
+        errorFallback = "No se pudo archivar",
+        onResult = onResult
     )
 
-    fun bulkTrash() = runAssetBulk(
+    fun bulkTrash(onResult: (UiError?) -> Unit = {}) = runAssetBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "No se pudo mover a la papelera"
+        errorFallback = "No se pudo mover a la papelera",
+        onResult = onResult
     )
 
     fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
@@ -422,7 +424,8 @@ class AlbumDetailViewModel(
 
     private fun runAssetBulk(
         action: suspend (List<String>) -> Unit,
-        errorFallback: String
+        errorFallback: String,
+        onResult: (UiError?) -> Unit = {}
     ) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
@@ -437,15 +440,20 @@ class AlbumDetailViewModel(
         }
         viewModelScope.launch {
             runCatching { action(ids) }
-                .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false) }
+                    onResult(null)
+                }
                 .onFailure { error ->
+                    val uiError = errorFactory.from(error, errorFallback)
                     _state.update {
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, errorFallback)
+                            error = uiError
                         )
                     }
+                    onResult(uiError)
                 }
         }
     }

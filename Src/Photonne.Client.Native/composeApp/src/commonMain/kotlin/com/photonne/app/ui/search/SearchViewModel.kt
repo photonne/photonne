@@ -218,7 +218,7 @@ class SearchViewModel(
         }
     }
 
-    fun bulkArchive() {
+    fun bulkArchive(onResult: (UiError?) -> Unit = {}) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val previous = _state.value.results
@@ -232,12 +232,17 @@ class SearchViewModel(
         }
         viewModelScope.launch {
             runCatching { assetRepository.archive(ids) }
-                .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error, "No se pudo archivar") }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false) }
+                    onResult(null)
+                }
+                .onFailure { error ->
+                    onResult(revertBulk(previous, error, "No se pudo archivar"))
+                }
         }
     }
 
-    fun bulkTrash() {
+    fun bulkTrash(onResult: (UiError?) -> Unit = {}) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val previous = _state.value.results
@@ -251,8 +256,13 @@ class SearchViewModel(
         }
         viewModelScope.launch {
             runCatching { assetRepository.trash(ids) }
-                .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error, "No se pudo mover a la papelera") }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false) }
+                    onResult(null)
+                }
+                .onFailure { error ->
+                    onResult(revertBulk(previous, error, "No se pudo mover a la papelera"))
+                }
         }
     }
 
@@ -451,14 +461,20 @@ class SearchViewModel(
             }
     }
 
-    private fun revertBulk(previousItems: List<TimelineItem>, throwable: Throwable, fallback: String) {
+    private fun revertBulk(
+        previousItems: List<TimelineItem>,
+        throwable: Throwable,
+        fallback: String
+    ): UiError {
+        val uiError = errorFactory.from(throwable, fallback)
         _state.update {
             it.copy(
                 results = previousItems,
                 isBulkMutating = false,
-                error = errorFactory.from(throwable, fallback)
+                error = uiError
             )
         }
+        return uiError
     }
 
     companion object {
