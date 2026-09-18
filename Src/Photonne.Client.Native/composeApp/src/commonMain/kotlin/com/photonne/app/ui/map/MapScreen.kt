@@ -3,12 +3,14 @@ package com.photonne.app.ui.map
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
@@ -17,18 +19,23 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.resources.action_retry
+import com.photonne.app.resources.map_action_zoom_out
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
@@ -66,7 +73,10 @@ fun MapScreen(
 
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    var mapSizePx by remember {
+        androidx.compose.runtime.mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)
+    }
+    Box(modifier = Modifier.fillMaxSize().onSizeChanged { mapSizePx = it }) {
         OsmMap(
             centerLat = state.centerLat,
             centerLng = state.centerLng,
@@ -82,7 +92,7 @@ fun MapScreen(
         )
 
         when {
-            !state.firstLoadComplete && state.isLoading ->
+            state.isLoading ->
                 Surface(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -100,7 +110,7 @@ fun MapScreen(
                     }
                   }
                 }
-            state.firstLoadComplete && state.points.isEmpty() ->
+            state.firstLoadComplete && state.points.isEmpty() && state.error == null ->
                 Surface(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -139,12 +149,25 @@ fun MapScreen(
                 color = MaterialTheme.colorScheme.errorContainer,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(
-                    message,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Row(
+                    modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        message,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    TextButton(onClick = viewModel::refresh) {
+                        Text(
+                            stringResource(Res.string.action_retry),
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
             }
         }
 
@@ -176,7 +199,7 @@ fun MapScreen(
             horizontalAlignment = Alignment.End
         ) {
             FloatingActionButton(
-                onClick = { viewModel.fitToData() },
+                onClick = { viewModel.fitToData(mapSizePx.width, mapSizePx.height) },
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Icon(
@@ -197,10 +220,9 @@ fun MapScreen(
                 onClick = { viewModel.zoomOut() },
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
-                Text(
-                    text = "−",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                Icon(
+                    Icons.Filled.Remove,
+                    contentDescription = stringResource(Res.string.map_action_zoom_out)
                 )
             }
         }

@@ -335,6 +335,8 @@
     <string name="map_empty_subtitle">Photos tagged with GPS coordinates will show up here.</string>
     <string name="map_action_zoom_in">Zoom in</string>
     <string name="map_action_zoom_out">Zoom out</string>
+    <string name="map_marker_single">Photo on the map</string>
+    <string name="map_marker_cluster">Cluster of %1$d photos on the map</string>
     <string name="map_action_fit_to_data">Center on my photos</string>
     <string name="map_attribution">© OpenStreetMap © CARTO</string>
     <string name="map_attribution_osm">© OpenStreetMap</string>
