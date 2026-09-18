@@ -89,6 +89,7 @@ fun AssetAiSheet(
     onDismiss: () -> Unit,
     onAnalysisFinished: () -> Unit,
     repository: EnrichmentRepository = koinInject(),
+    errorFactory: com.photonne.app.data.error.UiErrorFactory = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
     var tasks by remember(assetId) { mutableStateOf<List<EnrichmentTaskDto>?>(null) }
@@ -126,7 +127,12 @@ fun AssetAiSheet(
         scope.launch {
             for (analysis in analyses) {
                 runCatching { repository.retryTask(assetId, analysis.taskType) }
-                    .onFailure { actionError = it.message }
+                    .onFailure { error ->
+                        // Mensaje legible en vez del it.message técnico en crudo.
+                        actionError = errorFactory
+                            .from(error, "No se pudo lanzar el análisis")
+                            .userMessage
+                    }
             }
             launching = launching - analyses.toSet()
             refreshTick++

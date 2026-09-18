@@ -696,6 +696,28 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         mutableStateListOf<com.photonne.app.data.models.FolderSummary>()
     }
     var assetDetail by remember { mutableStateOf<AssetDetailContext?>(null) }
+    // Pila de contextos del visor: abrir una foto relacionada apila el contexto
+    // actual para que atrás vuelva a la foto (y la lista) de la que se venía,
+    // en lugar de cerrar el visor y perder el sitio.
+    var assetDetailStack by remember {
+        mutableStateOf<List<AssetDetailContext>>(emptyList())
+    }
+    fun closeAssetDetail() {
+        val previous = assetDetailStack.lastOrNull()
+        if (previous != null) {
+            assetDetailStack = assetDetailStack.dropLast(1)
+            assetDetail = previous
+        } else {
+            assetDetail = null
+        }
+    }
+    // Red de seguridad: cualquier cierre directo (borrar, papelera del
+    // dispositivo…) vacía la pila para no resucitar contextos viejos.
+    LaunchedEffect(assetDetail == null) {
+        if (assetDetail == null) assetDetailStack = emptyList()
+    }
+    // Retocar la pestaña Fotos activa vuelve arriba (consumido por TimelineScreen).
+    var timelineScrollToTopTick by remember { mutableStateOf(0) }
     // The bucket the "Mi dispositivo" detail subscreen shows. Survives going
     // back to the bucket list (harmless), reset on every open.
     var deviceFolderBucket by remember {
@@ -866,7 +888,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     PlatformBackHandler(enabled = canHandleBack) {
         overlayForward = false
         when {
-            assetDetail != null -> { assetDetail = null }
+            assetDetail != null -> { closeAssetDetail() }
             // Before every selection case: an open memory covers the screen, so
             // back closes what you're actually looking at, not what's underneath.
             memoryDetail != null -> { memoryDetail = null }
@@ -1803,6 +1825,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // drop any open subscreen / person layer, collapse an open detail when the
     // same tab is re-selected, and clear the other tabs' multi-selection.
     val switchTab: (MainTab) -> Unit = { tab ->
+        // Retocar Fotos ya activa (y sin subpantalla que cerrar) vuelve arriba,
+        // como en cualquier app de galería; antes no hacía nada.
+        if (tab == MainTab.Timeline && selectedTab == MainTab.Timeline &&
+            moreSubscreen == null && selectedPerson == null
+        ) {
+            timelineScrollToTopTick++
+        }
         moreSubscreen = null
         selectedPerson = null
         if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
@@ -1950,6 +1979,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 when (navTabs.getOrNull(page)) {
                     MainTab.Timeline -> TimelineScreen(
                         state = timelineState,
+                        scrollToTopTick = timelineScrollToTopTick,
+                        // El pager principal compone esta página también como
+                        // vecina: la tira de Recuerdos solo anima cuando Fotos
+                        // es de verdad la pestaña visible.
+                        memoriesAutoPlay = selectedTab == MainTab.Timeline &&
+                            assetDetail == null,
                         onOpenAsset = { mergedItems, mergedIndex ->
                             assetDetail = AssetDetailContext(
                                 items = mergedItems,
@@ -3443,7 +3478,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         startIndex = displayCtx.startIndex,
                         hasMore = displayCtx.hasMore,
                         onLoadMore = displayCtx.onLoadMore,
-                        onBack = { assetDetail = null },
+                        onBack = { closeAssetDetail() },
                         onPageChanged = { id -> currentDetailAssetId = id },
                         animatedVisibilityScope = this@AnimatedVisibility,
                         onFavoriteChanged = displayCtx.onFavoriteChanged,
@@ -3458,6 +3493,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             personDetailViewModel.applyAssetRemovedLocal(id)
                             folderDetailViewModel.applyAssetRemovedLocal(id)
                             favoritesViewModel.applyAssetRemovedLocal(id)
+                            // Cierre TOTAL (sin volver a un contexto apilado que
+                            // podría contener la foto recién borrada).
+                            assetDetailStack = emptyList()
                             assetDetail = null
                             // El visor se cerraba en silencio: confirmación con
                             // Deshacer, como las acciones en bloque.
@@ -3487,6 +3525,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             personDetailViewModel.applyAssetRemovedLocal(id)
                             folderDetailViewModel.applyAssetRemovedLocal(id)
                             favoritesViewModel.applyAssetRemovedLocal(id)
+                            assetDetailStack = emptyList()
                             assetDetail = null
                             coroutineScope.launch {
                                 snackbarController.show(
@@ -3517,6 +3556,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenAsset = { item ->
                             // Open a related asset as its own single-item viewer;
                             // key(displayCtx) forces a fresh screen + detail load.
+                            // El contexto actual se apila: atrás vuelve a la foto
+                            // y a la lista de las que se venía.
+                            assetDetailStack = assetDetailStack + displayCtx
                             assetDetail = AssetDetailContext(
                                 items = listOf(item),
                                 startIndex = 0,
@@ -4879,5 +4921,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             hostState = snackbarController.hostState,
             modifier = Modifier.padding(top = com.photonne.app.ui.main.subscreenChromeReservedTop())
         )
+    }
+
+    // Píldora de operación masiva (descarga/ZIP/compartir/enlace) con Cancelar,
+    // por encima de la nav flotante. Antes el único indicio era la barra de
+    // selección atenuada, sin forma de abortar.
+    if (actionsState.working != AssetActionWorking.Idle) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            com.photonne.app.ui.actions.WorkingPill(
+                working = actionsState.working,
+                onCancel = actionsViewModel::cancelWorking,
+                modifier = Modifier.padding(
+                    bottom = com.photonne.app.ui.main.floatingNavBarReservedHeight() + 16.dp
+                )
+            )
+        }
     }
 }

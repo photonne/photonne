@@ -80,7 +80,13 @@ fun MemoriesStrip(
     memories: List<TimelineItem>,
     baseUrl: String,
     onOpenMemory: (MemoryDetailContext) -> Unit,
-    onSeeAll: (() -> Unit)? = null
+    onSeeAll: (() -> Unit)? = null,
+    /**
+     * False cuando la pestaña Fotos no es la visible: el pager principal
+     * compone la página vecina (beyondViewportPageCount = 1) y sin esto la
+     * tira seguía animando el Ken Burns fuera de pantalla.
+     */
+    autoPlay: Boolean = true
 ) {
     val zone = TimeZone.currentSystemDefault()
     val currentYear = Clock.System.now().toLocalDateTime(zone).date.year
@@ -156,9 +162,9 @@ fun MemoriesStrip(
         // continuous motion instead of "lands, sits still, then zooms".
         // The scroll runs in [scrollScope] so this effect cancelling on key
         // change doesn't leave the pager stranded between two pages.
-        LaunchedEffect(pagerState.currentPage, paused, groups.size, activeCoverLoaded) {
+        LaunchedEffect(pagerState.currentPage, paused, groups.size, activeCoverLoaded, autoPlay) {
             progress.snapTo(0f)
-            if (paused || groups.size < 2 || !activeCoverLoaded) return@LaunchedEffect
+            if (!autoPlay || paused || groups.size < 2 || !activeCoverLoaded) return@LaunchedEffect
             val animationResult = progress.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(durationMillis = StoryDurationMs.toInt(), easing = LinearEasing)
@@ -170,7 +176,9 @@ fun MemoriesStrip(
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val cardWidth = maxWidth - 32.dp
+            // Tope de tamaño: en tablet/escritorio la tarjeta a todo el ancho
+            // crecía sin límite (0.62 del ancho de la ventana).
+            val cardWidth = (maxWidth - 32.dp).coerceAtMost(560.dp)
             HorizontalPager(
                 state = pagerState,
                 contentPadding = PaddingValues(horizontal = 16.dp),
@@ -195,7 +203,10 @@ fun MemoriesStrip(
                     label = label,
                     baseUrl = baseUrl,
                     isActive = isActive,
-                    storyProgress = if (isActive) progress.value else 0f,
+                    // Lambda, no valor: el progreso se lee en graphicsLayer
+                    // (fase de dibujo), así que la tarjeta ya no se recompone
+                    // en cada fotograma del Ken Burns.
+                    storyProgress = if (isActive) ({ progress.value }) else ({ 0f }),
                     totalStories = groups.size,
                     activeIndex = pagerState.currentPage,
                     onTapHold = { hold -> paused = hold },
@@ -225,7 +236,7 @@ private fun StoryCard(
     label: String,
     baseUrl: String,
     isActive: Boolean,
-    storyProgress: Float,
+    storyProgress: () -> Float,
     totalStories: Int,
     activeIndex: Int,
     onTapHold: (Boolean) -> Unit,
@@ -233,11 +244,6 @@ private fun StoryCard(
     onClick: () -> Unit
 ) {
     val cover = group.cover
-    // Ken Burns: when the slide is the active one, scale lerps 1.0 → 1.10
-    // and pans slightly using the same progress driver so the motion lines
-    // up exactly with the time the slide is on screen.
-    val kenBurnsScale = 1f + (if (isActive) storyProgress else 0f) * 0.10f
-    val kenBurnsPan = (if (isActive) storyProgress else 0f) * 24f
 
     // Cover art, gradient, keepsake corners and caption come from the shared
     // face — the same one the Recuerdos section uses. Only the motion and the
@@ -267,9 +273,14 @@ private fun StoryCard(
             },
         imageModifier = Modifier
             .graphicsLayer {
-                scaleX = kenBurnsScale
-                scaleY = kenBurnsScale
-                translationX = -kenBurnsPan
+                // Ken Burns: when the slide is the active one, scale lerps
+                // 1.0 → 1.10 and pans slightly, read here (draw phase) so the
+                // per-frame progress never recomposes the card.
+                val p = if (isActive) storyProgress() else 0f
+                val s = 1f + p * 0.10f
+                scaleX = s
+                scaleY = s
+                translationX = -p * 24f
             },
         onCoverLoaded = onCoverLoaded,
     ) {
@@ -281,9 +292,9 @@ private fun StoryCard(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             repeat(totalStories) { idx ->
-                val fill = when {
-                    idx < activeIndex -> 1f
-                    idx > activeIndex -> 0f
+                val fill: () -> Float = when {
+                    idx < activeIndex -> ({ 1f })
+                    idx > activeIndex -> ({ 0f })
                     else -> storyProgress
                 }
                 StorySegment(fill = fill, modifier = Modifier.weight(1f))
@@ -293,7 +304,7 @@ private fun StoryCard(
 }
 
 @Composable
-private fun StorySegment(fill: Float, modifier: Modifier = Modifier) {
+private fun StorySegment(fill: () -> Float, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .height(3.dp)
@@ -304,7 +315,7 @@ private fun StorySegment(fill: Float, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    scaleX = fill.coerceIn(0f, 1f)
+                    scaleX = fill().coerceIn(0f, 1f)
                     transformOrigin = TransformOrigin(0f, 0.5f)
                 }
                 .background(Color.White)

@@ -375,6 +375,12 @@
         <item quantity="other">%1$d photos removed from the album</item>
     </plurals>
     <string name="selection_archive_confirm_title">Archive photos</string>
+    <string name="timeline_local_only_not_selectable">Not uploaded yet: it can’t be selected</string>
+    <string name="actions_working_download">Preparing the download…</string>
+    <string name="actions_working_share">Preparing to share…</string>
+    <string name="actions_working_link">Creating the link…</string>
+    <string name="asset_action_show_original">View the original</string>
+    <string name="asset_action_show_preview">Back to preview</string>
     <plurals name="selection_archive_confirm_message">
         <item quantity="one">%1$d photo will be archived and disappear from the timeline.</item>
         <item quantity="other">%1$d photos will be archived and disappear from the timeline.</item>
