@@ -52,6 +52,7 @@ import com.photonne.app.data.devicebackup.DeviceGallery
 import com.photonne.app.data.devicebackup.DeviceMediaSyncState
 import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
 import com.photonne.app.data.devicebackup.rememberNotificationPermission
+import com.photonne.app.resources.backup_notifications_allow
 import com.photonne.app.resources.backup_notifications_denied_hint
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.background_sync_auto_hint
@@ -61,6 +62,7 @@ import com.photonne.app.resources.background_sync_charging_label
 import com.photonne.app.resources.background_sync_section
 import com.photonne.app.resources.background_sync_wifi_hint
 import com.photonne.app.resources.background_sync_wifi_label
+import com.photonne.app.resources.backup_notifications_open_settings
 import com.photonne.app.resources.backup_turbo_hint
 import com.photonne.app.resources.backup_turbo_label
 import com.photonne.app.resources.backup_disabled_hint
@@ -256,6 +258,19 @@ fun BackupScreen(
             }
         }
 
+        // El aviso de permiso denegado vivía dentro de la sección "Ajustes",
+        // plegada por defecto: quien más lo necesitaba no lo veía nunca.
+        if (state.isBackupEnabled && state.backgroundSync.enabled &&
+            !notifications.isGranted
+        ) {
+            item("notifications-denied") {
+                NotificationsDeniedCard(
+                    onOpenSettings = notifications.openSystemSettings,
+                    onRequest = notifications.request
+                )
+            }
+        }
+
         // The answer to "am I backed up?" comes first. It used to sit at the
         // bottom, below every setting — the one thing people open this screen
         // for was the last thing they saw.
@@ -352,16 +367,6 @@ fun BackupScreen(
                         checked = state.backgroundSync.enabled,
                         onChange = viewModel::setAutoBackupEnabled
                     )
-                }
-                if (state.backgroundSync.enabled && !notifications.isGranted) {
-                    item("bg-notifications") {
-                        Text(
-                            text = stringResource(Res.string.backup_notifications_denied_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                    }
                 }
                 // Constraints only matter when auto-sync is on — hide them to
                 // avoid implying they affect manual syncs.
@@ -1052,6 +1057,48 @@ private fun DeviceBucketPickerSheet(
                         stringResource(Res.string.backup_bucket_other_folder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Aviso prominente de permiso de notificaciones denegado, con la salida real:
+ * pedirlo (si el sistema aún deja) o abrir los ajustes de la app.
+ */
+@Composable
+private fun NotificationsDeniedCard(
+    onOpenSettings: (() -> Unit)?,
+    onRequest: () -> Unit
+) {
+    androidx.compose.material3.Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = stringResource(Res.string.backup_notifications_denied_hint),
+                style = MaterialTheme.typography.bodySmall
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (onOpenSettings != null) {
+                    TextButton(onClick = onOpenSettings) {
+                        Text(
+                            stringResource(Res.string.backup_notifications_open_settings),
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+                TextButton(onClick = onRequest) {
+                    Text(
+                        stringResource(Res.string.backup_notifications_allow),
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }

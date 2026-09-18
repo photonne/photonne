@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.snapshotFlow
+import com.photonne.app.resources.notifications_filter_description
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -67,9 +70,6 @@ import com.photonne.app.resources.notifications_empty_title
 import com.photonne.app.resources.notifications_empty_unread_title
 import com.photonne.app.resources.notifications_filter_all
 import com.photonne.app.resources.notifications_filter_unread
-import com.photonne.app.resources.notifications_pagination_next
-import com.photonne.app.resources.notifications_pagination_page
-import com.photonne.app.resources.notifications_pagination_previous
 import com.photonne.app.resources.notifications_time_days_ago
 import com.photonne.app.resources.notifications_time_hours_ago
 import com.photonne.app.resources.notifications_time_just_now
@@ -79,6 +79,8 @@ import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
@@ -152,7 +154,21 @@ fun NotificationsScreen(
                         subtitle = stringResource(Res.string.notifications_empty_subtitle)
                     )
                 }
-                else -> LazyColumn(
+                else -> {
+                    val shouldLoadMore by remember {
+                        derivedStateOf {
+                            val info = listState.layoutInfo
+                            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            info.totalItemsCount > 0 && last >= info.totalItemsCount - 4
+                        }
+                    }
+                    LaunchedEffect(listState) {
+                        snapshotFlow { shouldLoadMore }
+                            .distinctUntilChanged()
+                            .filter { it }
+                            .collect { viewModel.loadMore() }
+                    }
+                    LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                     contentPadding = PaddingValues(
@@ -164,27 +180,37 @@ fun NotificationsScreen(
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     items(state.items, key = { it.id }) { notification ->
+                        // Una fila leída y sin actionUrl no hace nada: mejor
+                        // que tampoco parezca tocable.
+                        val actionable = notification.actionUrl != null ||
+                            !notification.isRead
                         NotificationRow(
                             notification = notification,
-                            onClick = {
-                                viewModel.markRead(notification.id)
-                                notification.actionUrl?.let { onNavigate(it) }
-                            }
+                            onClick = if (actionable) {
+                                {
+                                    viewModel.markRead(notification.id)
+                                    notification.actionUrl?.let { onNavigate(it) }
+                                }
+                            } else null
                         )
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
                     }
 
-                    if (state.totalPages > 1) {
-                        item("pagination") {
-                            Spacer(Modifier.size(12.dp))
-                            PaginationRow(
-                                currentPage = state.page,
-                                totalPages = state.totalPages,
-                                onPrev = { viewModel.goToPage(state.page - 1) },
-                                onNext = { viewModel.goToPage(state.page + 1) }
-                            )
+                    if (state.isAppending) {
+                        item("appending") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
 
@@ -200,6 +226,7 @@ fun NotificationsScreen(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                         )
                     }
+                }
                 }
             }
         }
@@ -255,7 +282,7 @@ private fun NotificationsFilterMenu(
         IconButton(onClick = { open = true }) {
             Icon(
                 Icons.Outlined.FilterList,
-                contentDescription = stringResource(Res.string.notifications_filter_all),
+                contentDescription = stringResource(Res.string.notifications_filter_description),
                 tint = if (unreadOnly) MaterialTheme.colorScheme.primary
                 else LocalContentColor.current
             )
@@ -288,7 +315,7 @@ private fun NotificationsFilterMenu(
 @Composable
 private fun NotificationRow(
     notification: NotificationDto,
-    onClick: () -> Unit
+    onClick: (() -> Unit)?
 ) {
     val (icon, tint) = iconFor(notification.type)
     val rowBackground = if (notification.isRead) {
@@ -300,7 +327,10 @@ private fun NotificationRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(rowBackground)
-            .clickable(onClick = onClick)
+            .then(
+                if (onClick != null) Modifier.clickable(onClick = onClick)
+                else Modifier
+            )
             .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -339,43 +369,6 @@ private fun NotificationRow(
                     .size(10.dp)
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
             )
-        }
-    }
-}
-
-@Composable
-private fun PaginationRow(
-    currentPage: Int,
-    totalPages: Int,
-    onPrev: () -> Unit,
-    onNext: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedButton(
-            onClick = onPrev,
-            enabled = currentPage > 1
-        ) {
-            Text(stringResource(Res.string.notifications_pagination_previous))
-        }
-        Spacer(Modifier.size(12.dp))
-        Text(
-            text = stringResource(
-                Res.string.notifications_pagination_page,
-                currentPage,
-                totalPages
-            ),
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Spacer(Modifier.size(12.dp))
-        OutlinedButton(
-            onClick = onNext,
-            enabled = currentPage < totalPages
-        ) {
-            Text(stringResource(Res.string.notifications_pagination_next))
         }
     }
 }
