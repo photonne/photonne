@@ -23,8 +23,10 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CheckCircle
@@ -32,8 +34,6 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,7 +43,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,8 +59,9 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_delete
+import com.photonne.app.resources.action_undo
+import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.utilities_duplicates_action_auto_select
 import com.photonne.app.resources.utilities_duplicates_action_clear
 import com.photonne.app.resources.utilities_duplicates_action_delete
@@ -71,8 +71,12 @@ import com.photonne.app.resources.utilities_duplicates_empty
 import com.photonne.app.resources.utilities_duplicates_group_assets
 import com.photonne.app.resources.utilities_duplicates_open_detail
 import com.photonne.app.resources.utilities_duplicates_summary
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 
@@ -83,6 +87,8 @@ fun UtilitiesDuplicatesScreen(
     viewModel: UtilitiesDuplicatesViewModel,
     baseUrl: String,
     onOpenAsset: (index: Int, items: List<TimelineItem>) -> Unit,
+    /** Restaura de la papelera los ids que acaba de borrar el Deshacer. */
+    onUndoTrash: (List<String>) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val reservedTop = subscreenChromeReservedTop()
@@ -91,6 +97,14 @@ fun UtilitiesDuplicatesScreen(
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
     var confirmOpen by remember { mutableStateOf(false) }
+    var confirmError by remember { mutableStateOf<String?>(null) }
+    val snackbar = LocalSnackbarController.current
+    val undoLabel = stringResource(Res.string.action_undo)
+    val trashDoneMessage = pluralStringResource(
+        Res.plurals.selection_trash_done,
+        state.totalSelectedCount,
+        state.totalSelectedCount
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
         PhotonneRefreshableScreen(
@@ -98,31 +112,25 @@ fun UtilitiesDuplicatesScreen(
             onRefresh = viewModel::refresh
         ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            state.statusMessage?.let { msg ->
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-            state.error?.userMessage?.let { msg ->
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-
             when {
                 state.isLoading && state.groups.isEmpty() ->
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
+                    }
+                state.error != null && state.groups.isEmpty() ->
+                    // Con scroll para que PullToRefreshBox reciba el gesto, y
+                    // bajo el cromo flotante — antes un fallo de carga caía en
+                    // la rama vacía y decía "no hay duplicados".
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(top = reservedTop)
+                    ) {
+                        ErrorBanner(
+                            error = state.error,
+                            onRetry = viewModel::refresh
+                        )
                     }
                 state.groups.isEmpty() ->
                     EmptyState(
@@ -214,6 +222,8 @@ fun UtilitiesDuplicatesScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    // Por encima de la nav flotante, que dibuja a sangre.
+                    .padding(bottom = floatingNavBarReservedHeight())
                     .padding(16.dp)
             )
         }
@@ -234,31 +244,33 @@ fun UtilitiesDuplicatesScreen(
     }
 
     if (confirmOpen) {
-        AlertDialog(
-            onDismissRequest = { confirmOpen = false },
-            title = { Text(stringResource(Res.string.utilities_duplicates_confirm_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        Res.string.utilities_duplicates_confirm_message,
-                        state.totalSelectedCount
-                    )
-                )
+        ConfirmActionDialog(
+            title = stringResource(Res.string.utilities_duplicates_confirm_title),
+            message = stringResource(
+                Res.string.utilities_duplicates_confirm_message,
+                state.totalSelectedCount
+            ),
+            confirmLabel = stringResource(Res.string.action_delete),
+            isDestructive = true,
+            isSubmitting = state.isDeleting,
+            errorMessage = confirmError,
+            onDismiss = {
+                confirmOpen = false
+                confirmError = null
             },
-            confirmButton = {
-                Button(
-                    onClick = {
+            onConfirm = {
+                confirmError = null
+                viewModel.deleteSelected { deleted, error ->
+                    if (error != null) {
+                        // El diálogo sigue abierto con el error, listo para
+                        // reintentar sin volver a montar la selección.
+                        confirmError = error.userMessage
+                    } else {
                         confirmOpen = false
-                        viewModel.deleteSelected()
-                    },
-                    enabled = !state.isDeleting
-                ) {
-                    Text(stringResource(Res.string.action_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmOpen = false }, enabled = !state.isDeleting) {
-                    Text(stringResource(Res.string.action_cancel))
+                        snackbar?.show(trashDoneMessage, undoLabel) {
+                            onUndoTrash(deleted)
+                        }
+                    }
                 }
             }
         )

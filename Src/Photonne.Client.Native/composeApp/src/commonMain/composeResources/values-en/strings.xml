@@ -225,6 +225,8 @@
     <string name="folders_title">Folders</string>
     <string name="folders_empty_title">No folders</string>
     <string name="folders_empty_subtitle">Index a folder from the web app to see it here.</string>
+    <string name="folder_detail_empty_title">Empty folder</string>
+    <string name="folder_detail_empty_subtitle">This folder has no photos or subfolders yet.</string>
     <string name="folder_shared_badge">Shared</string>
     <string name="folder_external_badge">External library</string>
     <string name="folders_scope_personal">Personal</string>
@@ -329,6 +331,8 @@
     <string name="map_action_zoom_in">Zoom in</string>
     <string name="map_action_zoom_out">Zoom out</string>
     <string name="map_action_fit_to_data">Center on my photos</string>
+    <string name="map_attribution">© OpenStreetMap © CARTO</string>
+    <string name="map_attribution_osm">© OpenStreetMap</string>
     <string name="map_cluster_sheet_title">%1$d photos at this spot</string>
     <string name="map_action_select_all">Select all</string>
 
@@ -406,6 +410,14 @@
         <item quantity="one">1 photo unarchived</item>
         <item quantity="other">%1$d photos unarchived</item>
     </plurals>
+    <plurals name="selection_trash_confirm_message">
+        <item quantity="one">%1$d photo will be moved to the trash. You can restore it from the trash.</item>
+        <item quantity="other">%1$d photos will be moved to the trash. You can restore them from the trash.</item>
+    </plurals>
+    <plurals name="selection_trash_done">
+        <item quantity="one">%1$d photo moved to the trash</item>
+        <item quantity="other">%1$d photos moved to the trash</item>
+    </plurals>
     <string name="selection_group_select">Select group</string>
     <string name="selection_group_clear">Deselect group</string>
     <string name="selection_action_download">Download</string>
@@ -434,6 +446,7 @@
     <string name="share_link_title">Link ready</string>
     <string name="share_link_field_label">Anyone with this link will be able to see the photos.</string>
     <string name="share_link_copy">Copy link</string>
+    <string name="share_link_copied">Link copied</string>
     <string name="share_status_saved">Saved: %1$s</string>
     <string name="share_status_share_failed">Could not share: %1$s</string>
     <string name="selection_action_remove_from_album">Remove from album</string>

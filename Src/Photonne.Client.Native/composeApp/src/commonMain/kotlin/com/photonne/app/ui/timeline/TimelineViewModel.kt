@@ -193,12 +193,12 @@ class TimelineViewModel(
 
     private fun selectedIds(): List<String> = _state.value.selection.toList()
 
-    fun bulkArchive() {
-        bulkRemove(fallbackMessage = "No se pudo archivar") { assetRepository.archive(it) }
+    fun bulkArchive(onResult: (UiError?) -> Unit = {}) {
+        bulkRemove("No se pudo archivar", onResult) { assetRepository.archive(it) }
     }
 
-    fun bulkTrash() {
-        bulkRemove(fallbackMessage = "No se pudo mover a la papelera") { assetRepository.trash(it) }
+    fun bulkTrash(onResult: (UiError?) -> Unit = {}) {
+        bulkRemove("No se pudo mover a la papelera", onResult) { assetRepository.trash(it) }
     }
 
     /**
@@ -206,23 +206,29 @@ class TimelineViewModel(
      * their buckets, call the API, and on failure re-sync from the server —
      * the store has no snapshot to roll back to, and a refresh both reverts
      * the optimistic removal and reflects any partial server success.
+     * [onResult] (null = éxito) le dice a la barra de selección cuándo puede
+     * ofrecer Deshacer.
      */
-    private fun bulkRemove(fallbackMessage: String, action: suspend (List<String>) -> Unit) {
+    private fun bulkRemove(
+        fallbackMessage: String,
+        onResult: (UiError?) -> Unit = {},
+        action: suspend (List<String>) -> Unit
+    ) {
         val ids = selectedIds()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         _state.update { it.copy(isBulkMutating = true, error = null, selection = emptySet()) }
         viewModelScope.launch {
             store.removeItems(ids)
             runCatching { action(ids) }
-                .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false) }
+                    onResult(null)
+                }
                 .onFailure { error ->
                     runCatching { store.refresh() }
-                    _state.update {
-                        it.copy(
-                            isBulkMutating = false,
-                            error = errorFactory.from(error, fallbackMessage)
-                        )
-                    }
+                    val uiError = errorFactory.from(error, fallbackMessage)
+                    _state.update { it.copy(isBulkMutating = false, error = uiError) }
+                    onResult(uiError)
                 }
         }
     }

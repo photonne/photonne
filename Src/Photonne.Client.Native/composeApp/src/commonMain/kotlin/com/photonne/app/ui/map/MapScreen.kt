@@ -38,6 +38,7 @@ import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.map_action_fit_to_data
+import com.photonne.app.resources.map_attribution
 import com.photonne.app.resources.map_action_zoom_in
 import com.photonne.app.resources.map_empty_subtitle
 import com.photonne.app.resources.map_empty_title
@@ -145,6 +146,23 @@ fun MapScreen(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
+        }
+
+        // Condición de uso de las teselas de OSM y CARTO: la atribución debe
+        // estar visible sobre el propio mapa.
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 16.dp, bottom = floatingNavBarReservedHeight() + 16.dp),
+            shape = RoundedCornerShape(6.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        ) {
+            Text(
+                stringResource(Res.string.map_attribution),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Column(

@@ -75,9 +75,21 @@ fun buildPhotonneHttpClient(
     baseUrlProvider: () -> String,
     tokenStorage: TokenStorage,
     authState: AuthStateHolder,
-    onConnectionError: (() -> Unit)? = null
+    onConnectionError: (() -> Unit)? = null,
+    trustedUrlsProvider: (() -> List<String>)? = null
 ): HttpClient {
     val refreshMutex = Mutex()
+
+    // Hosts a los que puede viajar el token. Este mismo cliente es el loader de
+    // Coil, así que por él pasan también las teselas de OSM/CARTO del mapa; sin
+    // esta lista el Bearer salía en cada petición a esos terceros.
+    fun trustedHosts(): Set<String> {
+        val urls = trustedUrlsProvider?.invoke()
+            ?: listOfNotNull(runCatching { baseUrlProvider() }.getOrNull())
+        return urls.mapNotNull { url ->
+            runCatching { io.ktor.http.Url(url).host }.getOrNull()?.lowercase()
+        }.toSet()
+    }
 
     val client = HttpClient(engine) {
         expectSuccess = false
@@ -128,6 +140,12 @@ fun buildPhotonneHttpClient(
     client.plugin(HttpSend).intercept { request ->
         if (request.headers[SKIP_AUTH_HEADER] != null) {
             request.headers.remove(SKIP_AUTH_HEADER)
+            return@intercept execute(request)
+        }
+
+        // Petición a un host ajeno a la API (teselas del mapa, etc.): ni token
+        // ni refresh-on-401 — un 401 de un tercero no dice nada de la sesión.
+        if (request.url.host.lowercase() !in trustedHosts()) {
             return@intercept execute(request)
         }
 

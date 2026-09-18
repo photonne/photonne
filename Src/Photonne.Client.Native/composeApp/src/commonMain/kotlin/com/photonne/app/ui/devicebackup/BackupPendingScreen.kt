@@ -208,6 +208,8 @@ fun BackupPendingScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    // Por encima de la nav flotante, que dibuja a sangre.
+                    .padding(bottom = floatingNavBarReservedHeight())
                     .padding(16.dp)
             )
         }

@@ -150,7 +150,7 @@ class ArchivedViewModel(
         }
     }
 
-    fun bulkUnarchive(onSuccess: (Int) -> Unit = {}) {
+    fun bulkUnarchive(onSuccess: (Int) -> Unit = {}, onResult: (UiError?) -> Unit = {}) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val previous = _state.value.items
@@ -167,15 +167,18 @@ class ArchivedViewModel(
                 .onSuccess {
                     _state.update { it.copy(isBulkMutating = false) }
                     onSuccess(ids.size)
+                    onResult(null)
                 }
                 .onFailure { error ->
+                    val uiError = errorFactory.from(error, "No se pudo desarchivar")
                     _state.update {
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "No se pudo desarchivar")
+                            error = uiError
                         )
                     }
+                    onResult(uiError)
                 }
         }
     }
@@ -202,7 +205,7 @@ class ArchivedViewModel(
         }
     }
 
-    fun bulkTrash() {
+    fun bulkTrash(onResult: (UiError?) -> Unit = {}) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val previousItems = _state.value.items
@@ -216,15 +219,20 @@ class ArchivedViewModel(
         }
         viewModelScope.launch {
             runCatching { repository.trash(ids) }
-                .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false) }
+                    onResult(null)
+                }
                 .onFailure { error ->
+                    val uiError = errorFactory.from(error, "No se pudo mover a la papelera")
                     _state.update {
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "No se pudo mover a la papelera")
+                            error = uiError
                         )
                     }
+                    onResult(uiError)
                 }
         }
     }

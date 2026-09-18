@@ -25,7 +25,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -60,7 +62,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.devicelibrary.DeviceBucket
@@ -84,6 +85,7 @@ import com.photonne.app.resources.folders_search_empty_subtitle
 import com.photonne.app.resources.folders_search_empty_title
 import com.photonne.app.resources.folders_search_placeholder
 import com.photonne.app.resources.folders_shared_empty
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.ListRowsSkeleton
@@ -176,7 +178,12 @@ fun FoldersListScreen(
                     folders = folders,
                     state = state,
                     isLoading = state.isLoading,
-                    errorMessage = state.error?.userMessage,
+                    onRetry = viewModel::refresh,
+                    // El CTA del vacío solo tiene sentido donde crear es posible:
+                    // en Compartidas/Externas el vacío no lo arregla el usuario.
+                    onCreateFolder = onCreateFolder.takeIf {
+                        state.scope == FoldersScope.All || state.scope == FoldersScope.Personal
+                    },
                     emptyTitle = stringResource(Res.string.folders_empty_title),
                     emptySubtitle = when (state.scope) {
                         FoldersScope.All, FoldersScope.Personal ->
@@ -296,7 +303,8 @@ private fun FolderListContent(
     folders: List<FolderSummary>,
     state: FoldersUiState,
     isLoading: Boolean,
-    errorMessage: String?,
+    onRetry: () -> Unit,
+    onCreateFolder: (() -> Unit)?,
     emptyTitle: String,
     emptySubtitle: String,
     onFolderClick: (FolderSummary) -> Unit,
@@ -345,20 +353,43 @@ private fun FolderListContent(
     when {
         isLoading && folders.isEmpty() ->
             ListRowsSkeleton()
-        folders.isEmpty() && state.hasActiveQuery ->
-            EmptySearchState(query = state.searchQuery.trim())
-        folders.isEmpty() && errorMessage == null ->
-            EmptyState(title = emptyTitle, subtitle = emptySubtitle)
-        errorMessage != null && folders.isEmpty() ->
-            Box(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                contentAlignment = Alignment.Center
+        folders.isEmpty() ->
+            // "Mi dispositivo" y "Para organizar" son entradas propias: no
+            // dependen de que el servidor tenga carpetas, así que la cabecera
+            // sobrevive a las ramas vacía y de error (antes desaparecía).
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 8.dp + chromeTopReserve)
             ) {
-                Text(
-                    errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center
-                )
+                inboxHeader?.invoke()
+                when {
+                    state.hasActiveQuery ->
+                        EmptySearchState(
+                            query = state.searchQuery.trim(),
+                            modifier = Modifier.weight(1f)
+                        )
+                    state.error != null ->
+                        // Con scroll para que el pull-to-refresh reciba el gesto.
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp)
+                        ) {
+                            ErrorBanner(error = state.error, onRetry = onRetry)
+                        }
+                    else ->
+                        EmptyState(
+                            title = emptyTitle,
+                            subtitle = emptySubtitle,
+                            actionLabel = if (onCreateFolder != null) {
+                                stringResource(Res.string.folder_action_new)
+                            } else null,
+                            onAction = onCreateFolder,
+                            modifier = Modifier.weight(1f)
+                        )
+                }
             }
         else -> when (state.viewMode) {
             FolderViewMode.List -> Box(Modifier.fillMaxSize()) {
@@ -589,20 +620,30 @@ private fun FolderCard(
 }
 
 @Composable
-private fun EmptyState(title: String, subtitle: String) {
+private fun EmptyState(
+    title: String,
+    subtitle: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
     SharedEmptyState(
         icon = Icons.Outlined.Folder,
         title = title,
-        subtitle = subtitle
+        subtitle = subtitle,
+        actionLabel = actionLabel,
+        onAction = onAction,
+        modifier = modifier
     )
 }
 
 @Composable
-private fun EmptySearchState(query: String) {
+private fun EmptySearchState(query: String, modifier: Modifier = Modifier) {
     SharedEmptyState(
         icon = Icons.Filled.Search,
         title = stringResource(Res.string.folders_search_empty_title),
-        subtitle = stringResource(Res.string.folders_search_empty_subtitle, query)
+        subtitle = stringResource(Res.string.folders_search_empty_subtitle, query),
+        modifier = modifier
     )
 }
 

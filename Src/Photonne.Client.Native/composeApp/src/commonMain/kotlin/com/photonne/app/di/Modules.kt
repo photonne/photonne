@@ -121,7 +121,11 @@ fun commonModule(config: PhotonneAppConfig) = module {
             authState = get(),
             // Resolved lazily (only invoked on a request-time connection
             // failure) so the probe→client construction order isn't a cycle.
-            onConnectionError = { get<LocalReachabilityProbe>().requestReprobe() }
+            onConnectionError = { get<LocalReachabilityProbe>().requestReprobe() },
+            // Ambas URLs, no solo la efectiva: una petición lanzada contra la
+            // pública justo cuando la sonda cambia a la local seguiría siendo
+            // del servidor Photonne.
+            trustedUrlsProvider = { listOfNotNull(urlStore.getPublic(), urlStore.getLocal()) }
         )
     }
     single<PhotonneApi> {

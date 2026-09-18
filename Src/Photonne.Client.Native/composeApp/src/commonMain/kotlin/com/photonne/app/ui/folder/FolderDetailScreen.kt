@@ -47,8 +47,8 @@ import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_count_format
-import com.photonne.app.resources.folders_empty_subtitle
-import com.photonne.app.resources.folders_empty_title
+import com.photonne.app.resources.folder_detail_empty_subtitle
+import com.photonne.app.resources.folder_detail_empty_title
 import com.photonne.app.ui.grid.AssetGridCell
 import com.photonne.app.ui.grid.assetCellKey
 import androidx.compose.foundation.layout.RowScope
@@ -146,10 +146,12 @@ fun FolderDetailScreen(
                         )
                     }
                 state.items.isEmpty() && state.subFolders.isEmpty() ->
+                    // No reutilizar el vacío de la LISTA de carpetas: aquí
+                    // "Indexa una carpeta desde la app web" no aplica.
                     EmptyState(
                         icon = Icons.Outlined.Folder,
-                        title = stringResource(Res.string.folders_empty_title),
-                        subtitle = stringResource(Res.string.folders_empty_subtitle)
+                        title = stringResource(Res.string.folder_detail_empty_title),
+                        subtitle = stringResource(Res.string.folder_detail_empty_subtitle)
                     )
                 // Subcarpetas y assets comparten un único LazyVerticalGrid para que
                 // haya un solo scroll.
