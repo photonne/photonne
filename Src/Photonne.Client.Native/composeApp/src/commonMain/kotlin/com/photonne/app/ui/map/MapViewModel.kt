@@ -73,10 +73,12 @@ class MapViewModel(
                     }
                 }
                 .onFailure { error ->
+                    // firstLoadComplete se queda como esté: marcarlo en el
+                    // fallo hacía que "no hay fotos con ubicación" saliera
+                    // junto al aviso de error.
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            firstLoadComplete = true,
                             error = errorFactory.from(error, "No se pudo cargar el mapa")
                         )
                     }
@@ -95,11 +97,38 @@ class MapViewModel(
     fun zoomIn() = onZoomChanged(_state.value.zoom + 1)
     fun zoomOut() = onZoomChanged(_state.value.zoom - 1)
 
-    fun fitToData() {
+    /**
+     * "Encajar" de verdad: centra y elige el mayor zoom en el que el bbox de
+     * TODOS los puntos cabe en el viewport (antes saltaba a la foto más
+     * reciente a zoom 12, igual que la primera apertura). [viewportWidthPx] y
+     * [viewportHeightPx] los pasa la pantalla; sin ellos cae al plano mundial.
+     */
+    fun fitToData(viewportWidthPx: Int = 0, viewportHeightPx: Int = 0) {
         val points = _state.value.points
         if (points.isEmpty()) return
-        val (lat, lng, zoom) = pickInitialView(points)
-        _state.update { it.copy(centerLat = lat, centerLng = lng, zoom = zoom) }
+        val minLat = points.minOf { it.latitude }
+        val maxLat = points.maxOf { it.latitude }
+        val minLng = points.minOf { it.longitude }
+        val maxLng = points.maxOf { it.longitude }
+        val centerLat = (minLat + maxLat) / 2.0
+        val centerLng = (minLng + maxLng) / 2.0
+        val zoom = if (viewportWidthPx > 0 && viewportHeightPx > 0) {
+            // El mayor zoom cuyo bbox (con 10 % de aire por lado) cabe.
+            (MAX_ZOOM downTo MIN_ZOOM).firstOrNull { z ->
+                val spanX = kotlin.math.abs(lonToWorldX(maxLng, z) - lonToWorldX(minLng, z))
+                val spanY = kotlin.math.abs(latToWorldY(minLat, z) - latToWorldY(maxLat, z))
+                spanX <= viewportWidthPx * 0.8 && spanY <= viewportHeightPx * 0.8
+            } ?: MIN_ZOOM
+        } else 2
+        _state.update {
+            it.copy(
+                centerLat = centerLat,
+                centerLng = centerLng,
+                // Un único punto (o un cluster muy prieto) cabría a MAX_ZOOM;
+                // 16 deja contexto de calles alrededor.
+                zoom = zoom.coerceAtMost(16)
+            )
+        }
     }
 
     fun openClusterSheet(points: List<MapPoint>) {

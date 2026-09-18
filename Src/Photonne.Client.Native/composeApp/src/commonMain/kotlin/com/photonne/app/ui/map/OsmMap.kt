@@ -1,7 +1,11 @@
 package com.photonne.app.ui.map
 
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationState
 import androidx.compose.animation.core.EaseIn
+import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -39,15 +43,23 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.MapPoint
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.map_marker_cluster
+import com.photonne.app.resources.map_marker_single
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.log2
@@ -145,6 +157,10 @@ fun OsmMap(
     var backdropZoom by remember { mutableStateOf<Int?>(null) }
     var pinchScaleSetByGesture by remember { mutableStateOf(false) }
     val pinchResetJob = remember { mutableStateOf<Job?>(null) }
+    // Inercia del arrastre (punto 31): al soltar, el mapa sigue deslizándose
+    // con la velocidad del dedo y frena con una curva exponencial, como en
+    // cualquier mapa nativo. Un toque nuevo la corta en seco.
+    val flingJob = remember { mutableStateOf<Job?>(null) }
 
     val effectiveBackdrop: Int? = when {
         renderedZoom != zoom -> renderedZoom
@@ -194,6 +210,10 @@ fun OsmMap(
                     // value without competing writes to pinchScale.
                     pinchResetJob.value?.cancel()
                     pinchResetJob.value = null
+                    flingJob.value?.cancel()
+                    flingJob.value = null
+                    val velocityTracker = VelocityTracker()
+                    var sawPinch = false
 
                     var pastTouchSlop = false
                     var slopZoom = 1f
@@ -228,6 +248,14 @@ fun OsmMap(
                         val sharedPressedCount =
                             event.changes.count { it.pressed && it.previousPressed }
                         val isPinching = sharedPressedCount >= 2
+                        if (isPinching) sawPinch = true
+                        if (!isPinching && centroidPx.isSpecified) {
+                            event.changes.firstOrNull()?.let { change ->
+                                velocityTracker.addPosition(
+                                    change.uptimeMillis, centroidPx
+                                )
+                            }
+                        }
 
                         // Pan: `panChange.x` is screen pixels, the
                         // world moves `/ localScale` to keep the
@@ -295,6 +323,37 @@ fun OsmMap(
 
                     val residual = localScale / 2f.pow(zoomDelta)
                     pinchScale = residual
+
+                    if (pastTouchSlop && !sawPinch && zoomDelta == 0) {
+                        val velocity = velocityTracker.calculateVelocity()
+                        val speed = Offset(velocity.x, velocity.y).getDistance()
+                        if (speed > 300f) {
+                            val flingZoom = currentZoom
+                            flingJob.value = scope.launch {
+                                var lastValue = Offset.Zero
+                                AnimationState(
+                                    typeConverter = Offset.VectorConverter,
+                                    initialValue = Offset.Zero,
+                                    initialVelocity = Offset(velocity.x, velocity.y)
+                                ).animateDecay(exponentialDecay(frictionMultiplier = 1.4f)) {
+                                    val delta = value - lastValue
+                                    lastValue = value
+                                    val centerW = project(
+                                        LatLng(currentCenterLat, currentCenterLng),
+                                        flingZoom
+                                    )
+                                    val unproj = unproject(
+                                        WorldPx(centerW.x - delta.x, centerW.y - delta.y),
+                                        flingZoom
+                                    )
+                                    currentOnCenterChanged(
+                                        unproj.latitude, unproj.longitude
+                                    )
+                                }
+                                flingJob.value = null
+                            }
+                        }
+                    }
 
                     // Glide the residual back to 1f so the integer
                     // zoom commit lands at a crisp natural scale.
@@ -513,6 +572,13 @@ private fun ThumbnailMarker(
     else (35 + marker.count * 2).coerceIn(40, 80)
     val badgeOffsetDp = 12
     val totalDp = circleDp + badgeOffsetDp
+    val markerDescription = if (marker.count == 1) {
+        org.jetbrains.compose.resources.stringResource(Res.string.map_marker_single)
+    } else {
+        org.jetbrains.compose.resources.stringResource(
+            Res.string.map_marker_cluster, marker.count
+        )
+    }
     val halfPx = with(LocalDensity.current) { (totalDp.dp / 2).toPx().toInt() }
 
     Box(
@@ -525,6 +591,12 @@ private fun ThumbnailMarker(
                     detectTapGestures(onTap = { onClick() })
                 } else Modifier
             )
+            // pointerInput no publica semántica: sin esto el lector de
+            // pantalla ni ve el marcador ni sabe que se puede abrir.
+            .semantics {
+                role = Role.Button
+                contentDescription = markerDescription
+            }
     ) {
         // Yellow ring + thumbnail centred inside the wrapper.
         Box(

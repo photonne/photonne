@@ -368,6 +368,8 @@
     <string name="map_empty_subtitle">Las fotos con coordenadas GPS aparecerán aquí.</string>
     <string name="map_action_zoom_in">Acercar</string>
     <string name="map_action_zoom_out">Alejar</string>
+    <string name="map_marker_single">Foto en el mapa</string>
+    <string name="map_marker_cluster">Grupo de %1$d fotos en el mapa</string>
     <string name="map_action_fit_to_data">Centrar en mis fotos</string>
     <string name="map_attribution">© OpenStreetMap © CARTO</string>
     <string name="map_attribution_osm">© OpenStreetMap</string>
