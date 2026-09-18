@@ -156,6 +156,7 @@ fun AlbumsListScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             PhotonneRefreshableScreen(
+                indicatorTopPadding = reservedTop,
                 isRefreshing = state.isLoading && state.albums.isNotEmpty(),
                 onRefresh = viewModel::refresh,
                 modifier = Modifier.fillMaxWidth().weight(1f)
@@ -172,9 +173,11 @@ fun AlbumsListScreen(
                         state.error != null && state.albums.isEmpty() ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
                                 exploreRow()
-                                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                                    com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                                }
+                                com.photonne.app.ui.error.FullScreenError(
+                                    error = state.error,
+                                    onRetry = viewModel::refresh,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         visible.isEmpty() && state.hasActiveQuery ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {

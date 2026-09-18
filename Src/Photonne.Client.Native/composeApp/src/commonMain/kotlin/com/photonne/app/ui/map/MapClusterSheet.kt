@@ -52,6 +52,9 @@ import com.photonne.app.resources.asset_trash_title
 import com.photonne.app.resources.map_cluster_sheet_title
 import com.photonne.app.resources.selection_action_add_to_album
 import com.photonne.app.resources.selection_action_archive
+import com.photonne.app.resources.selection_archive_confirm_message
+import com.photonne.app.resources.selection_archive_confirm_title
+import com.photonne.app.resources.selection_archive_done
 import com.photonne.app.resources.selection_action_close
 import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.resources.selection_count
@@ -96,6 +99,13 @@ fun MapClusterSheet(
         selectedIds.size,
         selectedIds.size
     )
+    // Archivar en bloque también confirma: aquí no hay barra con Deshacer.
+    var showArchiveConfirm by remember { mutableStateOf(false) }
+    val archiveDoneMessage = pluralStringResource(
+        Res.plurals.selection_archive_done,
+        selectedIds.size,
+        selectedIds.size
+    )
     if (showTrashConfirm) {
         ConfirmActionDialog(
             title = stringResource(Res.string.asset_trash_title),
@@ -115,6 +125,25 @@ fun MapClusterSheet(
             }
         )
     }
+    if (showArchiveConfirm) {
+        ConfirmActionDialog(
+            title = stringResource(Res.string.selection_archive_confirm_title),
+            message = pluralStringResource(
+                Res.plurals.selection_archive_confirm_message,
+                selectedIds.size,
+                selectedIds.size
+            ),
+            confirmLabel = stringResource(Res.string.selection_action_archive),
+            isDestructive = false,
+            isSubmitting = isMutating,
+            onDismiss = { showArchiveConfirm = false },
+            onConfirm = {
+                showArchiveConfirm = false
+                onArchive()
+                snackbar?.show(archiveDoneMessage)
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = { if (!isMutating) onDismiss() },
@@ -128,7 +157,7 @@ fun MapClusterSheet(
                     onExit = onExitSelection,
                     onSelectAll = onSelectAll,
                     onAddToAlbum = onAddToAlbum,
-                    onArchive = onArchive,
+                    onArchive = { showArchiveConfirm = true },
                     onTrash = { showTrashConfirm = true }
                 )
             } else {

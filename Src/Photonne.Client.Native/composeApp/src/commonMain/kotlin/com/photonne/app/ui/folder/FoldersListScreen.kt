@@ -170,6 +170,7 @@ fun FoldersListScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             PhotonneRefreshableScreen(
+                indicatorTopPadding = reservedTop,
                 isRefreshing = state.isLoading && folders.isNotEmpty(),
                 onRefresh = viewModel::refresh,
                 modifier = Modifier.fillMaxWidth().weight(1f)

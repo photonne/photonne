@@ -72,7 +72,8 @@ class SentSharesViewModel(
         password: String?,
         allowDownload: Boolean,
         maxViews: Int?,
-        allowUpload: Boolean
+        allowUpload: Boolean,
+        onSuccess: () -> Unit = {}
     ) {
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, error = null) }
@@ -102,6 +103,7 @@ class SentSharesViewModel(
                             isMutating = false
                         )
                     }
+                    onSuccess()
                 }
                 .onFailure { error ->
                     _state.update {

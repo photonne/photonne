@@ -108,6 +108,7 @@ fun UtilitiesDuplicatesScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         PhotonneRefreshableScreen(
+            indicatorTopPadding = reservedTop,
             isRefreshing = state.isLoading && state.groups.isNotEmpty(),
             onRefresh = viewModel::refresh
         ) {

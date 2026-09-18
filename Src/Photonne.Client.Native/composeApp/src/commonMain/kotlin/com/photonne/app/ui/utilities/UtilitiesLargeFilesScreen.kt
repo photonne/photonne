@@ -81,6 +81,7 @@ fun UtilitiesLargeFilesScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         PhotonneRefreshableScreen(
+            indicatorTopPadding = reservedTop,
             isRefreshing = state.isLoading && state.items.isNotEmpty(),
             onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxSize()

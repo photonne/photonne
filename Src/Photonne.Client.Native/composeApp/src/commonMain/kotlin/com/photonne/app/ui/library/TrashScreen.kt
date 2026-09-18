@@ -94,9 +94,10 @@ fun TrashScreen(
                         )
                     )
                 state.error != null && state.items.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                        com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                    }
+                    com.photonne.app.ui.error.FullScreenError(
+                        error = state.error,
+                        onRetry = onRefresh
+                    )
                 state.isEmpty ->
                     EmptyState(
                         icon = Icons.Outlined.Delete,

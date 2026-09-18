@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -42,7 +43,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -306,13 +306,14 @@ fun MoreScreen(
         }
 
         item("logout") {
+            // Misma fila que el resto de destinos de la pantalla: el botón
+            // pequeño y centrado rompía el patrón de filas.
             Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OutlinedButton(onClick = onLogout) { Text(stringResource(Res.string.action_logout)) }
-            }
+            SettingsLikeRow(
+                icon = Icons.AutoMirrored.Outlined.Logout,
+                label = stringResource(Res.string.action_logout),
+                onClick = onLogout
+            )
         }
 
         if (updateAvailable) {

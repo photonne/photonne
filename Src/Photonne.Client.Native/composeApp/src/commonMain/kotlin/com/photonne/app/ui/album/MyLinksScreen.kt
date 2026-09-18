@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -22,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Share
@@ -63,6 +68,7 @@ import com.photonne.app.resources.share_attribute_password
 import com.photonne.app.resources.share_attribute_upload
 import com.photonne.app.resources.share_attribute_uploads_format
 import com.photonne.app.resources.share_attribute_views_format
+import com.photonne.app.resources.share_link_copied
 import com.photonne.app.resources.share_link_fallback_title
 import com.photonne.app.resources.share_revoke_confirm_message
 import com.photonne.app.resources.share_revoke_confirm_title
@@ -96,6 +102,8 @@ fun MyLinksScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
     val clipboard = LocalClipboardManager.current
+    val snackbar = LocalSnackbarController.current
+    val copiedMessage = stringResource(Res.string.share_link_copied)
 
     var editing by remember { mutableStateOf<SentShareLink?>(null) }
     var revoking by remember { mutableStateOf<SentShareLink?>(null) }
@@ -104,6 +112,7 @@ fun MyLinksScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
     PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
         isRefreshing = state.isLoading && state.links.isNotEmpty(),
         onRefresh = viewModel::refresh,
         modifier = modifier.fillMaxSize()
@@ -114,15 +123,15 @@ fun MyLinksScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                state.error?.userMessage != null && state.links.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center
+                state.error != null && state.links.isEmpty() ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(top = reservedTop)
+                            .padding(16.dp)
                     ) {
-                        Text(
-                            state.error?.userMessage!!,
-                            color = MaterialTheme.colorScheme.error
-                        )
+                        ErrorBanner(error = state.error, onRetry = viewModel::refresh)
                     }
                 state.links.isEmpty() -> SharedEmptyState(
                     icon = Icons.Outlined.Share,
@@ -150,6 +159,7 @@ fun MyLinksScreen(
                                     resolveUrl("/share/${link.token}", apiBaseUrl)
                                 }
                                 clipboard.setText(AnnotatedString(url))
+                                snackbar?.show(copiedMessage)
                             },
                             onEdit = { editing = link },
                             onRevoke = { revoking = link }
@@ -170,6 +180,7 @@ fun MyLinksScreen(
                 viewModel.clearError()
             },
             onConfirm = { expiresAt, password, allowDownload, maxViews, allowUpload ->
+                // Abierto hasta el resultado: un fallo se enseña aquí mismo.
                 viewModel.editLink(
                     token = link.token,
                     expiresAt = expiresAt,
@@ -177,8 +188,9 @@ fun MyLinksScreen(
                     allowDownload = allowDownload,
                     maxViews = maxViews,
                     allowUpload = allowUpload
-                )
-                editing = null
+                ) {
+                    editing = null
+                }
             }
         )
     }
@@ -294,7 +306,10 @@ private fun MyLinkRow(
             )
         }
         IconButton(onClick = onCopy) {
-            Icon(Icons.Outlined.Share, contentDescription = stringResource(Res.string.share_action_copy))
+            Icon(
+                Icons.Outlined.ContentCopy,
+                contentDescription = stringResource(Res.string.share_action_copy)
+            )
         }
         IconButton(onClick = onEdit) {
             Icon(Icons.Filled.Edit, contentDescription = stringResource(Res.string.share_action_edit))

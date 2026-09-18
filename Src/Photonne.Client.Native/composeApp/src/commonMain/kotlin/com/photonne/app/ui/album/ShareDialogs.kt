@@ -14,9 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,11 +74,13 @@ import com.photonne.app.resources.share_option_expiry_pick
 import com.photonne.app.resources.share_option_max_views
 import com.photonne.app.resources.share_option_max_views_field
 import com.photonne.app.resources.share_option_password
+import com.photonne.app.resources.share_link_copied
 import com.photonne.app.resources.share_option_password_field
 import com.photonne.app.resources.share_password_change
 import com.photonne.app.resources.share_password_keep
 import com.photonne.app.resources.share_password_remove
 import com.photonne.app.resources.share_title
+import com.photonne.app.ui.main.LocalSnackbarController
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -98,6 +100,8 @@ fun ManageSharesDialog(
     onRevoke: (token: String) -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
+    val snackbar = LocalSnackbarController.current
+    val copiedMessage = stringResource(Res.string.share_link_copied)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = { if (!state.isMutating) onDismiss() },
@@ -132,7 +136,10 @@ fun ManageSharesDialog(
                         items(state.links, key = { it.token }) { link ->
                             ShareLinkRow(
                                 link = link,
-                                onCopy = { clipboard.setText(AnnotatedString(link.shareUrl)) },
+                                onCopy = {
+                                    clipboard.setText(AnnotatedString(link.shareUrl))
+                                    snackbar?.show(copiedMessage)
+                                },
                                 onEdit = { onEdit(link) },
                                 onRevoke = { onRevoke(link.token) }
                             )
@@ -204,7 +211,7 @@ private fun ShareLinkRow(
         }
         IconButton(onClick = onCopy) {
             Icon(
-                Icons.Outlined.Share,
+                Icons.Outlined.ContentCopy,
                 contentDescription = stringResource(Res.string.share_action_copy)
             )
         }

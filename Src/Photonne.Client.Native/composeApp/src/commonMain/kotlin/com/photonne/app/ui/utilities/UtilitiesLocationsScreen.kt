@@ -68,6 +68,7 @@ fun UtilitiesLocationsScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
     PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
         isRefreshing = state.isLoading && state.roots.isNotEmpty(),
         onRefresh = viewModel::refresh
     ) {

@@ -104,6 +104,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import com.photonne.app.ui.main.ChromeBaseGrayDark
+import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.CompactNavBarContentHeight
 import com.photonne.app.ui.main.FloatingNavBarBottomMargin
 import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
@@ -224,6 +225,17 @@ fun AssetDetailScreen(
     val tokenStorage: TokenStorage = koinInject()
     val state by viewModel.state.collectAsState()
     val details by viewModel.details.collectAsState()
+
+    // Los fallos de acción del visor (favorito, etiqueta, fecha, descripción…)
+    // solo se pintaban como una línea roja al fondo del panel de info, que
+    // suele estar cerrado, y nunca se limpiaban. Puente único al snackbar.
+    val actionSnackbar = LocalSnackbarController.current
+    LaunchedEffect(state.error) {
+        state.error?.let { error ->
+            actionSnackbar?.show(error.userMessage)
+            viewModel.clearError()
+        }
+    }
 
     // Fuente de blur del cromo del visor. Su fuente es el pager de la foto, así
     // que las barras (superior + acciones + slideshow) son HERMANAS de la foto y

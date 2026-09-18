@@ -72,16 +72,20 @@ fun MemoriesScreen(
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbar = com.photonne.app.ui.main.LocalSnackbarController.current
     // Fuente de blur del cromo: la lista que scrollea por detrás, de la que las
     // cápsulas son HERMANAS — la regla de Haze.
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     val reservedTop = subscreenChromeReservedTop()
     LaunchedEffect(Unit) {
-        if (state.rows.isEmpty() && !state.isLoading && !state.attempted) viewModel.refresh()
+        // Un intento fallido no cuenta como cargado: volver a entrar reintenta.
+        val blocked = state.attempted && state.error == null
+        if (state.rows.isEmpty() && !state.isLoading && !blocked) viewModel.refresh()
     }
 
     PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
         isRefreshing = state.isLoading && state.rows.isNotEmpty(),
         onRefresh = viewModel::refresh
     ) {
@@ -95,9 +99,11 @@ fun MemoriesScreen(
                     }
 
                 state.error != null && state.rows.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
-                        com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                    }
+                    com.photonne.app.ui.error.FullScreenError(
+                        error = state.error,
+                        onRetry = viewModel::refresh,
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
 
                 state.rows.isEmpty() ->
                     EmptyState(
@@ -127,7 +133,13 @@ fun MemoriesScreen(
                             row = row,
                             baseUrl = baseUrl,
                             openingId = state.openingId,
-                            onClick = { memory -> viewModel.open(memory.id, onOpenMemory) },
+                            onClick = { memory ->
+                                viewModel.open(
+                                    memoryId = memory.id,
+                                    onError = { error -> snackbar?.show(error.userMessage) },
+                                    onLoaded = onOpenMemory
+                                )
+                            },
                         )
                     }
                 }

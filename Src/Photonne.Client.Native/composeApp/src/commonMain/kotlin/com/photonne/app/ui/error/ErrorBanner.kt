@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -128,6 +129,28 @@ fun ErrorBanner(
             onDismiss = { detailsOpen = false },
             onCopied = onCopied,
         )
+    }
+}
+
+/**
+ * Rama de error a pantalla completa: el banner (con reintento) dentro de una
+ * columna CON scroll, para que `PullToRefreshBox` siga recibiendo el gesto y
+ * el contenido nunca quede inalcanzable en pantallas bajas. El caller pasa la
+ * reserva del cromo flotante en [modifier] cuando aplica.
+ */
+@Composable
+fun FullScreenError(
+    error: UiError?,
+    modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp)
+    ) {
+        ErrorBanner(error = error, onRetry = onRetry)
     }
 }
 

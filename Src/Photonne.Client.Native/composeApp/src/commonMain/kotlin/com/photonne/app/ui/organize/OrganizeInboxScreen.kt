@@ -90,6 +90,7 @@ fun OrganizeInboxScreen(
     LaunchedEffect(Unit) { onLoad() }
 
     PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
         isRefreshing = state.isRefreshing,
         onRefresh = onRefresh
     ) {

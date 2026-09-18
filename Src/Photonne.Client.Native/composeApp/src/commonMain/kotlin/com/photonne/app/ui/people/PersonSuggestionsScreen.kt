@@ -92,9 +92,11 @@ fun PersonSuggestionsScreen(
                     CircularProgressIndicator()
                 }
             state.error != null && state.items.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
-                    com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                }
+                com.photonne.app.ui.error.FullScreenError(
+                    error = state.error,
+                    onRetry = onOpen,
+                    modifier = Modifier.padding(top = reservedTop)
+                )
             state.isEmpty ->
                 Box(
                     modifier = Modifier.fillMaxSize().padding(24.dp),
