@@ -89,10 +89,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,6 +105,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.ChromeBaseGrayDark
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.CompactNavBarContentHeight
@@ -159,6 +164,8 @@ import com.photonne.app.resources.asset_action_more
 import com.photonne.app.resources.asset_action_open_in_maps
 import com.photonne.app.resources.asset_action_delete_device
 import com.photonne.app.resources.asset_action_trash
+import com.photonne.app.resources.asset_action_show_original
+import com.photonne.app.resources.asset_action_show_preview
 import com.photonne.app.resources.asset_metadata_location
 import com.photonne.app.resources.asset_metadata_open_map
 import com.photonne.app.resources.map_attribution_osm
@@ -275,6 +282,23 @@ fun AssetDetailScreen(
         tween<Float>(durationMillis = 420, easing = FastOutSlowInEasing)
     }
 
+    // Atrás deshace POR CAPAS en vez de cerrar el visor entero: primero el
+    // zoom, luego el panel de info, luego el pase automático, y solo entonces
+    // se cierra. Incrementar el tick anima el zoom de vuelta a 1x en la página.
+    var zoomResetTick by remember { mutableIntStateOf(0) }
+    com.photonne.app.ui.navigation.PlatformBackHandler(enabled = true) {
+        when {
+            currentScale > 1.05f -> zoomResetTick++
+            infoProgress.value > 0.05f ->
+                coroutineScope.launch { infoProgress.animateTo(0f, infoSpring) }
+            slideshowActive -> {
+                slideshowActive = false
+                slideshowPaused = false
+            }
+            else -> onBack()
+        }
+    }
+
     // Immersive mode: a single tap on the asset toggles all chrome (top bar +
     // bottom strip/actions) so the asset can be viewed edge to edge, matching
     // the iOS Photos / Google Photos gallery. Starts visible.
@@ -292,6 +316,11 @@ fun AssetDetailScreen(
     // cancel animateScrollToPage mid-flight, freezing the asset half-way across
     // the screen. currentPage is read inside the coroutine instead, so each hop
     // starts from wherever the user (or the previous hop) left the pager.
+    // El pase automático no corta un vídeo a medias: tras el intervalo, si el
+    // vídeo actual sigue reproduciéndose espera a que acabe (o se pause).
+    var currentVideoPlaybackForSlideshow by remember {
+        mutableStateOf<VideoPlayback?>(null)
+    }
     LaunchedEffect(
         slideshowActive,
         slideshowPaused,
@@ -301,6 +330,13 @@ fun AssetDetailScreen(
         if (!slideshowActive || slideshowPaused || items.isEmpty()) return@LaunchedEffect
         while (true) {
             delay(slideshowIntervalSec * 1000L)
+            while (true) {
+                val playback = currentVideoPlaybackForSlideshow ?: break
+                if (!playback.isReady || playback.durationMs <= 0L) break
+                if (!playback.isPlaying) break
+                if (playback.positionMs >= playback.durationMs - 500L) break
+                delay(250L)
+            }
             val next = (pagerState.currentPage + 1) % items.size
             pagerState.animateScrollToPage(next)
         }
@@ -472,6 +508,12 @@ fun AssetDetailScreen(
             val videoPlayback: VideoPlayback? = currentVideoUrl?.let { url ->
                 rememberVideoPlayback(url, currentVideoHeaders, autoPlay = true)
             }
+            // Espejo para el bucle del pase automático, que vive fuera de este
+            // scope: con él espera a que el vídeo termine en vez de cortarlo.
+            SideEffect { currentVideoPlaybackForSlideshow = videoPlayback }
+            DisposableEffect(Unit) {
+                onDispose { currentVideoPlaybackForSlideshow = null }
+            }
 
             // Vertical-drive gesture (drag up = open info, drag down = dismiss
             // the viewer), active only while fully closed. Shared by both
@@ -578,6 +620,7 @@ fun AssetDetailScreen(
                         onScaleChange = { newScale -> if (isCurrent) currentScale = newScale },
                         onToggleChrome = { chromeVisible = !chromeVisible },
                         zoomEnabled = !infoOpen,
+                        resetZoomTick = if (isCurrent) zoomResetTick else 0,
                         infoOpen = infoOpen,
                         // Video can't interpolate its crop (native binary
                         // gravity), so keep it fit (positioning) until the box is
@@ -722,13 +765,24 @@ fun AssetDetailScreen(
                       Row(verticalAlignment = Alignment.CenterVertically) {
                         val isLocalOnly = currentItem?.isLocalOnly == true
                         if (currentItem != null && !currentItem.isVideo && !isLocalOnly) {
-                            IconButton(onClick = {
-                                showOriginal[currentItem.id] = !currentShowingOriginal
-                            }) {
+                            val originalToggleLabel = stringResource(
+                                if (currentShowingOriginal) Res.string.asset_action_show_preview
+                                else Res.string.asset_action_show_original
+                            )
+                            IconButton(
+                                onClick = {
+                                    showOriginal[currentItem.id] = !currentShowingOriginal
+                                },
+                                modifier = Modifier.semantics {
+                                    contentDescription = originalToggleLabel
+                                }
+                            ) {
                                 Text(
                                     text = if (currentShowingOriginal) "ORIG" else "HD",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = if (currentShowingOriginal) Color(0xFFFFB300) else Color.White
+                                    color = if (currentShowingOriginal) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else Color.White
                                 )
                             }
                         }
@@ -803,6 +857,14 @@ fun AssetDetailScreen(
                                         leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
                                         onClick = { showOverflow = false; onOpenFaces(currentItem.id) }
                                     )
+                                    // Faltaba en apaisado; en vertical sí está.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.asset_action_edit_date)) },
+                                        leadingIcon = {
+                                            Icon(Icons.Outlined.DateRange, contentDescription = null)
+                                        },
+                                        onClick = { showOverflow = false; showEditDate = true }
+                                    )
                                     if (canAnalyze) {
                                         DropdownMenuItem(
                                             text = { Text(stringResource(Res.string.asset_action_analyze)) },
@@ -822,6 +884,30 @@ fun AssetDetailScreen(
                                         text = { Text(stringResource(Res.string.asset_action_trash)) },
                                         leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
                                         onClick = { showOverflow = false; showTrashConfirm = true }
+                                    )
+                                }
+                            }
+                        }
+                        // Una foto SOLO-dispositivo en apaisado se quedaba sin
+                        // acciones (ni Info ni Eliminar del dispositivo).
+                        if (landscapeMode && currentItem != null && isLocalOnly) {
+                            IconButton(onClick = {
+                                coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
+                            }) {
+                                Icon(
+                                    Icons.Outlined.Info,
+                                    contentDescription = stringResource(Res.string.asset_action_details),
+                                    tint = Color.White
+                                )
+                            }
+                            if (onDeleteFromDevice != null) {
+                                IconButton(onClick = { onDeleteFromDevice(currentItem) }) {
+                                    Icon(
+                                        Icons.Outlined.Delete,
+                                        contentDescription = stringResource(
+                                            Res.string.asset_action_delete_device
+                                        ),
+                                        tint = Color.White
                                     )
                                 }
                             }
@@ -904,7 +990,9 @@ fun AssetDetailScreen(
                 }
             }
 
-            if (slideshowActive) {
+            // Como el resto del cromo del visor, los controles del pase se
+            // desvanecen con chromeAlpha (antes lo ignoraban y quedaban fijos).
+            if (slideshowActive && chromeAlpha > 0.01f) {
                 SlideshowControls(
                     isPaused = slideshowPaused,
                     hazeState = viewerHazeState,
@@ -931,6 +1019,7 @@ fun AssetDetailScreen(
                         .align(Alignment.BottomCenter)
                         .windowInsetsPadding(WindowInsets.navigationBars)
                         .padding(bottom = 24.dp)
+                        .graphicsLayer { alpha = chromeAlpha }
                 )
             }
         }
@@ -1020,6 +1109,8 @@ private fun AssetPage(
     onScaleChange: (Float) -> Unit,
     onToggleChrome: () -> Unit = {},
     zoomEnabled: Boolean = true,
+    /** Se incrementa para animar el zoom de la página actual de vuelta a 1x. */
+    resetZoomTick: Int = 0,
     infoOpen: Boolean = false,
     videoFillCrop: Boolean = false,
     contentScale: ContentScale = ContentScale.Fit,
@@ -1086,7 +1177,8 @@ private fun AssetPage(
                         onScaleChange = onScaleChange,
                         zoomEnabled = zoomEnabled,
                         contentScale = contentScale,
-                        onTap = onToggleChrome
+                        onTap = onToggleChrome,
+                        resetZoomTick = resetZoomTick
                     )
                     if (item.isVideo && !isVideoPlaybackSupported) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1152,18 +1244,23 @@ private fun AssetPage(
                 )
             }
             else -> {
+                val largeUrl = "$baseUrl/api/assets/${item.id}/thumbnail?size=Large"
                 val imageUrl = if (showOriginal) {
                     "$baseUrl/api/assets/${item.id}/content"
-                } else {
-                    "$baseUrl/api/assets/${item.id}/thumbnail?size=Large"
-                }
+                } else largeUrl
+                val smallUrl = "$baseUrl/api/assets/${item.id}/thumbnail?size=Small"
                 ZoomablePagerImage(
                     model = imageUrl,
                     contentDescription = item.fileName,
                     onScaleChange = onScaleChange,
                     zoomEnabled = zoomEnabled,
                     contentScale = contentScale,
-                    onTap = onToggleChrome
+                    onTap = onToggleChrome,
+                    resetZoomTick = resetZoomTick,
+                    memoryCacheKey = if (showOriginal) "$imageUrl|Original" else "$imageUrl|Large",
+                    // Carga progresiva: mientras llega esta versión se pinta la
+                    // inmediatamente menor, que la rejilla ya dejó en caché.
+                    placeholderCacheKey = if (showOriginal) "$largeUrl|Large" else "$smallUrl|Small"
                 )
             }
         }
@@ -1202,6 +1299,15 @@ private fun VideoPage(
             fillCrop = fillCrop,
             modifier = Modifier.fillMaxSize()
         )
+        // isReady existía en la interfaz pero nadie lo leía en común: sin esto
+        // un vídeo que aún bufferea parece una pantalla negra muerta.
+        if (!playback.isReady) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                color = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.align(Alignment.Center).size(32.dp)
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1259,7 +1365,12 @@ private fun VideoScrubber(
     val value = dragValue ?: (playback.positionMs.toFloat() / duration).coerceIn(0f, 1f)
     Slider(
         value = value,
-        onValueChange = { dragValue = it },
+        onValueChange = {
+            dragValue = it
+            // Busca EN VIVO mientras se arrastra (antes solo al soltar, así que
+            // el frame no seguía al dedo y frotar era a ciegas).
+            playback.seekTo((it * duration).toLong())
+        },
         onValueChangeFinished = {
             dragValue?.let { playback.seekTo((it * duration).toLong()) }
             dragValue = null
@@ -2256,25 +2367,21 @@ private fun MetadataRow(label: String, value: String) {
     }
 }
 
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = listOf("KB", "MB", "GB", "TB")
-    var value = bytes.toDouble()
-    var unit = ""
-    for (u in units) {
-        value /= 1024.0
-        unit = u
-        if (value < 1024) break
-    }
-    return "${(value * 10).toLong() / 10.0} $unit"
-}
+// Reutiliza el formateador compartido (separador según configuración regional)
+// en lugar del "." a fuego que llevaba la copia local.
+private fun formatBytes(bytes: Long): String = humanBytes(bytes)
 
-private fun formatInstant(iso: String): String {
-    return iso
-        .substringBefore('.')
-        .removeSuffix("Z")
-        .replace('T', ' ')
-}
+/**
+ * Fecha localizada ("17 sept 2026 12:33") en vez del ISO crudo
+ * "2026-09-17 12:33:11" que imprimía antes. Si el texto no parsea (metadatos
+ * rotos), se enseña tal cual: peor es esconderlo.
+ */
+private fun formatInstant(iso: String): String =
+    runCatching {
+        com.photonne.app.ui.settings.formatProfileDateTime(kotlin.time.Instant.parse(iso))
+    }.getOrElse {
+        iso.substringBefore('.').removeSuffix("Z").replace('T', ' ')
+    }
 
 private fun authHeadersFor(tokenStorage: TokenStorage): Map<String, String> {
     val token = tokenStorage.getAccessToken().orEmpty()

@@ -750,6 +750,9 @@ private fun UniformCellsRow(
                 onRangeClick = onItemRangeClick?.let { { it(cell.index) } },
                 onToggleClick = onItemToggleClick?.let { { it(cell.index) } },
                 isSelected = cell.item.id in selectedIds,
+                // Con selección activa, lo solo-dispositivo (inseleccionable)
+                // se atenúa para que se vea que no entra.
+                dimmed = selectedIds.isNotEmpty() && cell.item.isLocalOnly,
                 // Uniform grid: every cell carries equal weight and the row's
                 // height equals the cell width, so the tile is square without
                 // forcing an aspect ratio here.

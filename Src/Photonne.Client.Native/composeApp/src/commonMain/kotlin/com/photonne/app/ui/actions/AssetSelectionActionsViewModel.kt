@@ -76,6 +76,20 @@ class AssetSelectionActionsViewModel(
     private val _state = MutableStateFlow(AssetActionsUiState())
     val state: StateFlow<AssetActionsUiState> = _state.asStateFlow()
 
+    /** Trabajo masivo en vuelo (descarga/ZIP/compartir/enlace), cancelable. */
+    private var workingJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Cancela la operación masiva en curso. La descarga de un ZIP grande podía
+     * durar minutos sin más salida que esperar; la píldora de progreso ofrece
+     * este Cancelar.
+     */
+    fun cancelWorking() {
+        workingJob?.cancel()
+        workingJob = null
+        _state.update { it.copy(working = AssetActionWorking.Idle) }
+    }
+
     fun beginShare(assetIds: List<String>) {
         if (assetIds.isEmpty()) return
         _state.update { it.copy(shareChooserIds = assetIds, error = null) }
@@ -104,7 +118,7 @@ class AssetSelectionActionsViewModel(
         _state.update {
             it.copy(working = AssetActionWorking.Downloading, error = null)
         }
-        viewModelScope.launch {
+        workingJob = viewModelScope.launch {
             runCatching {
                 if (assetIds.size == 1) {
                     val content = repository.downloadOriginal(assetIds.first())
@@ -130,6 +144,12 @@ class AssetSelectionActionsViewModel(
                     }
                 }
                 .onFailure { error ->
+                    // runCatching atrapa también la cancelación: un Cancelar
+                    // del usuario no es un error que enseñar.
+                    if (error is kotlinx.coroutines.CancellationException) {
+                        _state.update { it.copy(working = AssetActionWorking.Idle) }
+                        return@onFailure
+                    }
                     _state.update {
                         it.copy(
                             working = AssetActionWorking.Idle,
@@ -153,7 +173,7 @@ class AssetSelectionActionsViewModel(
                 error = null
             )
         }
-        viewModelScope.launch {
+        workingJob = viewModelScope.launch {
             runCatching {
                 val files = if (assetIds.size == 1) {
                     val content = repository.downloadOriginal(assetIds.first())
@@ -178,6 +198,10 @@ class AssetSelectionActionsViewModel(
                     _state.update { it.copy(working = AssetActionWorking.Idle) }
                 }
                 .onFailure { error ->
+                    if (error is kotlinx.coroutines.CancellationException) {
+                        _state.update { it.copy(working = AssetActionWorking.Idle) }
+                        return@onFailure
+                    }
                     val uiError = when (error) {
                         is AssetSharingUnavailable ->
                             UiError(userMessage = error.message ?: "Compartir no es compatible")
@@ -207,7 +231,7 @@ class AssetSelectionActionsViewModel(
                 error = null
             )
         }
-        viewModelScope.launch {
+        workingJob = viewModelScope.launch {
             runCatching {
                 repository.createShareLinkForAssets(
                     assetIds = assetIds,
@@ -223,6 +247,10 @@ class AssetSelectionActionsViewModel(
                     }
                 }
                 .onFailure { error ->
+                    if (error is kotlinx.coroutines.CancellationException) {
+                        _state.update { it.copy(working = AssetActionWorking.Idle) }
+                        return@onFailure
+                    }
                     _state.update {
                         it.copy(
                             working = AssetActionWorking.Idle,

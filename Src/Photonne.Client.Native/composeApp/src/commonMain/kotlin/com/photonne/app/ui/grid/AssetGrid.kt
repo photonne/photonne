@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -293,7 +294,13 @@ fun AssetGridCell(
      * badges — no thumbnail request. The timeline flips this while the
      * scrubber is dragged so viewport teleports stay cheap.
      */
-    loadThumbnail: Boolean = true
+    loadThumbnail: Boolean = true,
+    /**
+     * Atenúa la celda. El timeline lo usa con selección activa sobre las
+     * fotos solo-dispositivo, que no se pueden seleccionar: sin la
+     * atenuación nada indicaba por qué no respondían.
+     */
+    dimmed: Boolean = false
 ) {
     val placeholder = remember(asset.dominantColor) { parseHexColor(asset.dominantColor) }
     val sharedScope = LocalSharedTransitionScope.current
@@ -367,6 +374,7 @@ fun AssetGridCell(
         // bajo el dedo y la banda empezaría a fallar.
         modifier = modifier
             .let { base -> if (forceSquare) base.fillMaxWidth().aspectRatio(1f) else base }
+            .graphicsLayer { alpha = if (dimmed) 0.35f else 1f }
             .background(MaterialTheme.colorScheme.primary.copy(alpha = if (isSelected) 0.18f else 0f))
             .padding(selectionPadding)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)

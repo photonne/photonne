@@ -74,6 +74,10 @@ import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.settings.TimelineZoomLevel
 import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.timeline_local_only_not_selectable
+import com.photonne.app.ui.haptics.HapticEvent
+import com.photonne.app.ui.haptics.rememberPhotonneHaptics
+import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.resources.timeline_empty_action_upload
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
@@ -179,17 +183,31 @@ fun TimelineScreen(
     onJumpHandled: () -> Unit = {},
     /** On-this-day memories shown as a carousel pinned above the grid. */
     memories: List<com.photonne.app.data.models.TimelineItem> = emptyList(),
+    /** False mientras la pestaña Fotos no es la visible: pausa la tira. */
+    memoriesAutoPlay: Boolean = true,
     onOpenMemory: ((memory: com.photonne.app.ui.memories.MemoryDetailContext) -> Unit)? = null,
     onSeeAllMemories: (() -> Unit)? = null,
     /** Files still waiting to be backed up from this device, and where to go to
      *  deal with them. Surfaces the backup state in the tab people actually
      *  live in instead of only inside the More menu. */
     backupPendingCount: Int = 0,
-    onOpenBackup: (() -> Unit)? = null
+    onOpenBackup: (() -> Unit)? = null,
+    /** Se incrementa al retocar la pestaña Fotos ya activa: volver arriba. */
+    scrollToTopTick: Int = 0
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     val pullState = rememberPullToRefreshState()
     val gridState = rememberLazyListState()
+    LaunchedEffect(scrollToTopTick) {
+        if (scrollToTopTick > 0) {
+            // Mismo atajo que la píldora de subir: teletransporte previo para
+            // no animar miles de filas.
+            if (gridState.firstVisibleItemIndex > SCROLL_TO_TOP_SNAP_INDEX) {
+                gridState.scrollToItem(SCROLL_TO_TOP_SNAP_INDEX)
+            }
+            gridState.animateScrollToItem(0)
+        }
+    }
     // Fuente de blur de TODO el cromo del timeline (píldora superior, scrubber,
     // botón de subir). Su fuente es SOLO la rejilla (ver `hazeSource` más abajo),
     // así que las cápsulas quedan como HERMANAS de ella y no descendientes — la
@@ -937,6 +955,19 @@ fun TimelineScreen(
                             pendingAssetAnchor = asset
                             zoomStore.update(TimelineZoomLevel.Month)
                         }
+                        // Rechazo explícito al intentar seleccionar una foto
+                        // solo-dispositivo: antes el toque no hacía nada (o
+                        // abría el visor en pleno modo selección) sin explicar
+                        // por qué.
+                        val rejectSnackbar = LocalSnackbarController.current
+                        val rejectHaptics = rememberPhotonneHaptics()
+                        val localOnlyRejectMessage =
+                            stringResource(Res.string.timeline_local_only_not_selectable)
+                        val rejectLocalOnlySelection = {
+                            rejectHaptics.perform(HapticEvent.SelectionStart)
+                            rejectSnackbar?.show(localOnlyRejectMessage)
+                            Unit
+                        }
                         GroupedAssetGrid(
                             rows = rows,
                             baseUrl = apiBaseUrl,
@@ -960,6 +991,10 @@ fun TimelineScreen(
                                         // aren't part of the timeline's bulk
                                         // operations.
                                         toggler(item.id)
+                                    state.isSelectionActive && item.isLocalOnly ->
+                                        // Nunca abrir el visor con la selección
+                                        // activa: vibración + aviso.
+                                        rejectLocalOnlySelection()
                                     else -> {
                                         // The pager gets the contiguous loaded
                                         // run around the click, so swiping never
@@ -982,8 +1017,10 @@ fun TimelineScreen(
                                 ?.let { toggler ->
                                     { mergedIndex ->
                                         val item = mergedItems.getOrNull(mergedIndex)
-                                        if (item != null && !item.isLocalOnly) {
-                                            toggler(item.id)
+                                        when {
+                                            item == null -> Unit
+                                            item.isLocalOnly -> rejectLocalOnlySelection()
+                                            else -> toggler(item.id)
                                         }
                                     }
                                 },
@@ -1057,7 +1094,8 @@ fun TimelineScreen(
                                                         memories = memories,
                                                         baseUrl = apiBaseUrl,
                                                         onOpenMemory = onOpenMemory!!,
-                                                        onSeeAll = onSeeAllMemories
+                                                        onSeeAll = onSeeAllMemories,
+                                                        autoPlay = memoriesAutoPlay
                                                     )
                                                 }
                                             }

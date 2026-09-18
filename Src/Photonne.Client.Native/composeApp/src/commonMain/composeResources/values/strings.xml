@@ -427,6 +427,12 @@
         <item quantity="other">%1$d fotos quitadas del álbum</item>
     </plurals>
     <string name="selection_archive_confirm_title">Archivar fotos</string>
+    <string name="timeline_local_only_not_selectable">Aún no se ha subido: no se puede seleccionar</string>
+    <string name="actions_working_download">Preparando la descarga…</string>
+    <string name="actions_working_share">Preparando para compartir…</string>
+    <string name="actions_working_link">Creando el enlace…</string>
+    <string name="asset_action_show_original">Ver el original</string>
+    <string name="asset_action_show_preview">Volver a la vista previa</string>
     <plurals name="selection_archive_confirm_message">
         <item quantity="one">%1$d foto se archivará y dejará de verse en el timeline.</item>
         <item quantity="other">%1$d fotos se archivarán y dejarán de verse en el timeline.</item>

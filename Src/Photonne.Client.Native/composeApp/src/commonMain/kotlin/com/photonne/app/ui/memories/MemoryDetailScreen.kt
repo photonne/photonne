@@ -12,28 +12,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_close
 import com.photonne.app.resources.album_hero_photos
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import org.jetbrains.compose.resources.pluralStringResource
-import org.jetbrains.compose.resources.stringResource
 
 /**
  * A memory's assets, already loaded. Both surfaces reach the same screen from
@@ -90,7 +83,6 @@ fun MemoryDetailScreen(
                 MemoryHero(
                     memory = memory,
                     baseUrl = baseUrl,
-                    onBack = onBack,
                 )
             },
         )
@@ -107,6 +99,21 @@ fun MemoryDetailScreen(
             selectionActive = false,
             hazeState = null,
         )
+
+        // Cromo flotante fijo: el botón de volver vivía dentro de la portada y
+        // se iba con el scroll, dejando la pantalla sin salida visible.
+        SubscreenFloatingChrome(
+            title = memory.title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { gridState.isScrollInProgress },
+                scrollToTopMinIndex = 12,
+                onScrollToTop = { gridState.animateScrollToItem(0) }
+            ),
+            hazeState = null
+        )
     }
 }
 
@@ -114,7 +121,6 @@ fun MemoryDetailScreen(
 private fun MemoryHero(
     memory: MemoryDetailContext,
     baseUrl: String,
-    onBack: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         BoxWithConstraints(
@@ -123,12 +129,15 @@ private fun MemoryHero(
                 .padding(
                     start = 16.dp,
                     end = 16.dp,
-                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                    // Por debajo de la cápsula flotante de volver.
+                    top = subscreenChromeReservedTop() + 8.dp,
                 )
         ) {
             // The card you just tapped becomes the cover: same face, same
             // proportions, so the memory still looks like itself.
             val coverHeight = maxWidth * 0.62f
+            // El volver ya no monta sobre la portada: vive en el cromo flotante
+            // de la pantalla, que no se va con el scroll.
             MemoryCardFace(
                 coverUrl = memory.coverAssetId
                     ?.let { "$baseUrl/api/assets/$it/thumbnail?size=Large" },
@@ -136,25 +145,7 @@ private fun MemoryHero(
                 title = memory.title,
                 subtitle = memory.subtitle,
                 modifier = Modifier.fillMaxWidth().height(coverHeight),
-            ) {
-                // No top bar: the back button rides the cover, so the photo keeps
-                // the full height. Its own scrim carries it over bright covers —
-                // the card's gradient only darkens the bottom.
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.35f)),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = stringResource(Res.string.action_close),
-                        tint = Color.White,
-                    )
-                }
-            }
+            )
         }
 
         Text(
