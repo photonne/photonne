@@ -173,7 +173,7 @@ private fun FolderTreeRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (node.children.isNotEmpty()) {
-            IconButton(onClick = onToggleExpand, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = onToggleExpand, modifier = Modifier.size(40.dp)) {
                 Icon(
                     if (expanded) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = if (expanded) "Colapsar" else "Expandir",

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
@@ -27,6 +28,8 @@ data class PersonDetailUiState(
     val total: Int = 0,
     val hasMore: Boolean = false,
     val isInitialLoading: Boolean = false,
+    /** Recarga por gesto con contenido ya visible (pull-to-refresh). */
+    val isRefreshing: Boolean = false,
     val isAppending: Boolean = false,
     val isBulkMutating: Boolean = false,
     val error: UiError? = null,
@@ -72,6 +75,39 @@ class PersonDetailViewModel(
                     _state.update {
                         it.copy(
                             isInitialLoading = false,
+                            error = errorFactory.from(error, "No se pudieron cargar las fotos")
+                        )
+                    }
+                }
+        }
+    }
+
+    /** Recarga la primera página conservando el contenido visible mientras. */
+    fun refresh() {
+        val personId = _state.value.personId ?: return
+        if (_state.value.isInitialLoading || _state.value.isRefreshing) return
+        _state.update { it.copy(isRefreshing = true, error = null) }
+        viewModelScope.launch {
+            runCatching { peopleRepository.assets(personId, limit = PAGE_SIZE, offset = 0) }
+                .onSuccess { page ->
+                    _state.update {
+                        val items = page.items.map { p -> p.toTimelineItem() }
+                        it.copy(
+                            items = items,
+                            total = page.total,
+                            hasMore = items.size < page.total,
+                            isRefreshing = false,
+                            // La selección puede apuntar a fotos que ya no están.
+                            selection = it.selection.intersect(
+                                items.mapTo(HashSet()) { item -> item.id }
+                            )
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isRefreshing = false,
                             error = errorFactory.from(error, "No se pudieron cargar las fotos")
                         )
                     }
@@ -164,13 +200,13 @@ class PersonDetailViewModel(
 
     fun bulkArchive(onResult: (UiError?) -> Unit = {}) = runBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "No se pudo archivar",
+        errorFallback = ErrorMessages.ARCHIVE_FAILED,
         onResult = onResult
     )
 
     fun bulkTrash(onResult: (UiError?) -> Unit = {}) = runBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "No se pudo mover a la papelera",
+        errorFallback = ErrorMessages.TRASH_FAILED,
         onResult = onResult
     )
 

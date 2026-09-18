@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_back
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_create
 import com.photonne.app.resources.smart_album_editor_title
@@ -66,7 +67,7 @@ fun SmartAlbumEditorScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(Res.string.action_close)
+                            contentDescription = stringResource(Res.string.action_back)
                         )
                     }
                 },

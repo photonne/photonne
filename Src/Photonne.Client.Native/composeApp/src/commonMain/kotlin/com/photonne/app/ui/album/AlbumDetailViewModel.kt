@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumSummary
@@ -352,13 +353,13 @@ class AlbumDetailViewModel(
 
     fun bulkArchive(onResult: (UiError?) -> Unit = {}) = runAssetBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "No se pudo archivar",
+        errorFallback = ErrorMessages.ARCHIVE_FAILED,
         onResult = onResult
     )
 
     fun bulkTrash(onResult: (UiError?) -> Unit = {}) = runAssetBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "No se pudo mover a la papelera",
+        errorFallback = ErrorMessages.TRASH_FAILED,
         onResult = onResult
     )
 

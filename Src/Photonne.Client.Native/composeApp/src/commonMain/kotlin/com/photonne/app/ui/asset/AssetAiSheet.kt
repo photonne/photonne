@@ -229,7 +229,7 @@ private fun AiAnalysisRowView(
             // it wraps rather than being cut, because it's the whole point.
             Text(statusText, style = MaterialTheme.typography.bodySmall, color = statusColor)
         }
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
             when {
                 row.isBusy || launching -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 status == AiAnalysisStatus.Never -> IconButton(onClick = onRun) {

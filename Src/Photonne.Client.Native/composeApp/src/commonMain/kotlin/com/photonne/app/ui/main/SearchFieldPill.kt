@@ -23,6 +23,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_clear
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Campo de búsqueda SIN borde, pensado para vivir dentro de la cápsula flotante
@@ -83,10 +86,10 @@ internal fun SearchFieldPill(
             },
         )
         if (value.isNotEmpty()) {
-            IconButton(onClick = onClear, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = onClear, modifier = Modifier.size(40.dp)) {
                 Icon(
                     Icons.Filled.Close,
-                    contentDescription = null,
+                    contentDescription = stringResource(Res.string.action_clear),
                     modifier = Modifier.size(18.dp),
                 )
             }

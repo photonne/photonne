@@ -69,6 +69,9 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.asset_a11y_favorite
 import com.photonne.app.resources.asset_a11y_live_photo
 import com.photonne.app.resources.asset_a11y_video
+import com.photonne.app.resources.sync_badge_failed
+import com.photonne.app.resources.sync_badge_pending
+import com.photonne.app.resources.sync_badge_uploading
 import com.photonne.app.ui.grid.dragselect.AssetCellContentType
 import com.photonne.app.ui.grid.dragselect.DragSelectConfig
 import com.photonne.app.ui.grid.dragselect.DragSelectState
@@ -497,11 +500,12 @@ fun AssetGridCell(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(4.dp)
-                    .size(20.dp)
+                    // Zona táctil de 32 dp; el aro visible sigue siendo de 20.
+                    .size(32.dp)
                     .clip(CircleShape)
-                    .border(2.dp, Color.White, CircleShape)
                     .clickable(onClick = hoverToggle)
+                    .padding(6.dp)
+                    .border(2.dp, Color.White, CircleShape)
             )
         }
     }
@@ -521,6 +525,13 @@ private fun LocalSyncBadge(badge: LocalSyncBadge, modifier: Modifier = Modifier)
         LocalSyncBadge.Failed ->
             MaterialTheme.colorScheme.error to Icons.Filled.Refresh
     }
+    val description = stringResource(
+        when (badge) {
+            LocalSyncBadge.Pending -> Res.string.sync_badge_pending
+            LocalSyncBadge.Uploading -> Res.string.sync_badge_uploading
+            LocalSyncBadge.Failed -> Res.string.sync_badge_failed
+        }
+    )
     Box(
         modifier = modifier
             .size(24.dp)
@@ -529,7 +540,7 @@ private fun LocalSyncBadge(badge: LocalSyncBadge, modifier: Modifier = Modifier)
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = description,
             tint = Color.White,
             modifier = Modifier.size(16.dp)
         )

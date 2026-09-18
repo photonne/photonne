@@ -50,6 +50,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_close
+import com.photonne.app.resources.action_remove
+import com.photonne.app.resources.action_retry
 import com.photonne.app.resources.upload_action_add
 import com.photonne.app.resources.upload_action_cancel_all
 import com.photonne.app.resources.upload_action_clear_finished
@@ -208,7 +211,7 @@ private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium
         )
         IconButton(onClick = onDismiss) {
-            Icon(Icons.Filled.Close, contentDescription = null)
+            Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_close))
         }
     }
 }
@@ -339,17 +342,17 @@ private fun RowAction(
             strokeWidth = 2.dp
         )
         UploadStatus.Queued -> IconButton(onClick = onRemove) {
-            Icon(Icons.Filled.Close, contentDescription = null)
+            Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_remove))
         }
         UploadStatus.Failed, UploadStatus.Cancelled -> Row(
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onRetry) {
-                Icon(Icons.Filled.Refresh, contentDescription = null)
+                Icon(Icons.Filled.Refresh, contentDescription = stringResource(Res.string.action_retry))
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Close, contentDescription = null)
+                Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_remove))
             }
         }
         UploadStatus.Done, UploadStatus.Skipped -> Unit

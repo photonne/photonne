@@ -493,6 +493,12 @@ fun App() {
     }
 
     PhotonneTheme(preference = themePreference) {
+        // Los iconos de las barras del sistema siguen al tema efectivo de la
+        // app (no solo al del SO). AuthenticatedApp vuelve a llamar con el
+        // visor abierto para forzar iconos claros sobre el scrim de fotos.
+        com.photonne.app.ui.platform.SyncSystemBarIcons(
+            darkBackground = com.photonne.app.ui.theme.LocalIsDarkTheme.current
+        )
         val authState: AuthStateHolder = koinInject()
         val state by authState.state.collectAsState()
         when (val current = state) {
@@ -687,7 +693,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val actionsState by actionsViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
-    var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
+    // rememberSaveable: la pestaña y la subpantalla de Más sobreviven a la
+    // muerte de proceso y a la recreación de la Activity (punto 49; los
+    // álbumes/carpetas abiertos guardan objetos completos y quedan pendientes).
+    var selectedTab by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf(MainTab.Timeline)
+    }
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedFolder by remember {
         mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
@@ -716,6 +727,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     LaunchedEffect(assetDetail == null) {
         if (assetDetail == null) assetDetailStack = emptyList()
     }
+    // Con el visor abierto el fondo bajo las barras es el scrim negro de la
+    // foto: iconos claros aunque el tema sea claro. Este sitio recompone al
+    // abrir/cerrar el visor, así que también restaura el estado del tema.
+    com.photonne.app.ui.platform.SyncSystemBarIcons(
+        darkBackground = com.photonne.app.ui.theme.LocalIsDarkTheme.current ||
+            assetDetail != null
+    )
     // Retocar la pestaña Fotos activa vuelve arriba (consumido por TimelineScreen).
     var timelineScrollToTopTick by remember { mutableStateOf(0) }
     // The bucket the "Mi dispositivo" detail subscreen shows. Survives going
@@ -813,7 +831,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var pendingActionFolder by remember {
         mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
     }
-    var moreSubscreen by remember { mutableStateOf<MoreSubscreen?>(null) }
+    var moreSubscreen by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf<MoreSubscreen?>(null)
+    }
     // Vuelta a la bandeja tras un movimiento por condiciones, con el contador y
     // la rejilla al día.
     val organizeRuleMoved = {
@@ -2644,6 +2664,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // que primero confirman con el recuento del servidor.
                             onAcceptAll = { showAcceptAllSuggestions = true },
                             onDismissAll = { showDismissAllSuggestions = true },
+                            onRefresh = personSuggestionsViewModel::refresh,
                             onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.People -> {
@@ -2688,6 +2709,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 title = personDetailState.personName ?: person.name.orEmpty(),
                                 isHidden = person.isHidden,
                                 onRetry = { personDetailViewModel.open(person.id, person.name) },
+                                onRefresh = personDetailViewModel::refresh,
                                 onItemClick = { index ->
                                     if (personDetailState.isSelectionActive) {
                                         personDetailState.items.getOrNull(index)?.let {

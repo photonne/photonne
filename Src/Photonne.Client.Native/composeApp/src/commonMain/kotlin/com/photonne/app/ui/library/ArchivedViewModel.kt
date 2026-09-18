@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
@@ -170,7 +171,7 @@ class ArchivedViewModel(
                     onResult(null)
                 }
                 .onFailure { error ->
-                    val uiError = errorFactory.from(error, "No se pudo desarchivar")
+                    val uiError = errorFactory.from(error, ErrorMessages.UNARCHIVE_FAILED)
                     _state.update {
                         it.copy(
                             items = previous,
@@ -224,7 +225,7 @@ class ArchivedViewModel(
                     onResult(null)
                 }
                 .onFailure { error ->
-                    val uiError = errorFactory.from(error, "No se pudo mover a la papelera")
+                    val uiError = errorFactory.from(error, ErrorMessages.TRASH_FAILED)
                     _state.update {
                         it.copy(
                             items = previousItems,

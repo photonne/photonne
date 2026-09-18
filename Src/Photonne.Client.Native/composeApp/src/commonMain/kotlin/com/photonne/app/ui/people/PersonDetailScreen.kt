@@ -61,6 +61,7 @@ fun PersonDetailScreen(
     onMerge: () -> Unit,
     onToggleHidden: () -> Unit,
     onRetry: () -> Unit = {},
+    onRefresh: () -> Unit = onRetry,
     onApplySelection: (SelectionPatch) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
@@ -72,6 +73,11 @@ fun PersonDetailScreen(
     val reservedTop = if (chromeFloating) subscreenChromeReservedTop() else 0.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
+        com.photonne.app.ui.theme.PhotonneRefreshableScreen(
+            indicatorTopPadding = reservedTop,
+            isRefreshing = state.isRefreshing,
+            onRefresh = onRefresh
+        ) {
         when {
             state.isInitialLoading ->
                 AssetGridSkeleton(
@@ -104,6 +110,7 @@ fun PersonDetailScreen(
                 ),
                 modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
             )
+        }
         }
 
         PhotoGridScrubberOverlay(

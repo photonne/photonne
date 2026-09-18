@@ -19,6 +19,8 @@ data class PersonSuggestionsUiState(
     val total: Int = 0,
     val hasMore: Boolean = false,
     val isInitialLoading: Boolean = false,
+    /** Recarga por gesto con contenido ya visible (pull-to-refresh). */
+    val isRefreshing: Boolean = false,
     val isAppending: Boolean = false,
     val isBulkMutating: Boolean = false,
     val error: UiError? = null,
@@ -58,7 +60,11 @@ class PersonSuggestionsViewModel(
     fun refresh() {
         if (_state.value.personId == null) return
         _state.update {
-            it.copy(isInitialLoading = it.items.isEmpty(), error = null)
+            it.copy(
+                isInitialLoading = it.items.isEmpty(),
+                isRefreshing = it.items.isNotEmpty(),
+                error = null
+            )
         }
         viewModelScope.launch { loadInternal(append = false) }
     }
@@ -85,6 +91,7 @@ class PersonSuggestionsViewModel(
                         total = page.total,
                         hasMore = merged.size < page.total,
                         isInitialLoading = false,
+                        isRefreshing = false,
                         isAppending = false
                     )
                 }
@@ -93,6 +100,7 @@ class PersonSuggestionsViewModel(
                 _state.update {
                     it.copy(
                         isInitialLoading = false,
+                        isRefreshing = false,
                         isAppending = false,
                         error = errorFactory.from(error, "No se pudieron cargar las sugerencias")
                     )

@@ -107,6 +107,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import com.photonne.app.resources.action_back
 import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.ChromeBaseGrayDark
 import com.photonne.app.ui.main.LocalSnackbarController
@@ -757,7 +758,7 @@ fun AssetDetailScreen(
                         IconButton(onClick = onBack) {
                             Icon(
                                 Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = stringResource(Res.string.action_close)
+                                contentDescription = stringResource(Res.string.action_back)
                             )
                         }
                     }
@@ -1991,9 +1992,11 @@ private fun TagChip(label: String, onRemove: (() -> Unit)?) {
                     contentDescription = "${stringResource(Res.string.action_remove)} $label",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
-                        .size(16.dp)
+                        // Zona táctil de 28 dp; el glifo se queda en 16 con el padding.
+                        .size(28.dp)
                         .clip(androidx.compose.foundation.shape.CircleShape)
                         .clickable { onRemove() }
+                        .padding(6.dp)
                 )
             }
         }
@@ -2316,10 +2319,12 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                 }
                 Row(
                     modifier = Modifier
+                        // Altura táctil mínima razonable para un chip de acción.
+                        .heightIn(min = 36.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(PhotonneColors.scrimMedium)
                         .clickable { openExternalUrl(mapsUrl) }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
