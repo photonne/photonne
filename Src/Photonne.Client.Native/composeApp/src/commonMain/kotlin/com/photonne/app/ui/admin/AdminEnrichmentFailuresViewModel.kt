@@ -37,6 +37,10 @@ data class AdminEnrichmentFailuresUiState(
     val isRetryingAll: Boolean = false,
     val items: List<AdminEnrichmentFailureItem> = emptyList(),
     val total: Int = 0,
+    /** Rows in the list that [total] doesn't count, so the header can say why
+     *  there are more rows than problems. */
+    val retrying: Int = 0,
+    val suppressed: Int = 0,
     val countsByType: Map<String, Int> = emptyMap(),
     /** How the open problems split by cause. Lets the screen say "3.412 no se
      *  arreglan reintentando" before anyone reads a row. */
@@ -117,6 +121,8 @@ class AdminEnrichmentFailuresViewModel(
                         isLoading = false,
                         items = page.items.map { dto -> AdminEnrichmentFailureItem(failure = dto) },
                         total = page.total,
+                        retrying = page.retrying,
+                        suppressed = page.suppressed,
                         countsByType = page.countsByType,
                         countsByKind = page.countsByKind,
                         nextCursor = page.nextCursor
@@ -152,6 +158,8 @@ class AdminEnrichmentFailuresViewModel(
                         isLoadingMore = false,
                         items = it.items + fresh.map { dto -> AdminEnrichmentFailureItem(failure = dto) },
                         total = page.total,
+                        retrying = page.retrying,
+                        suppressed = page.suppressed,
                         countsByType = page.countsByType,
                         countsByKind = page.countsByKind,
                         nextCursor = page.nextCursor

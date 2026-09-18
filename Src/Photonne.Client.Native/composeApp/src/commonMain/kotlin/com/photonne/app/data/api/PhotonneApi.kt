@@ -300,7 +300,12 @@ data class AdminEnrichmentFailuresPage(
     val countsByType: Map<String, Int> = emptyMap(),
     /** How the open problems split by cause. Drives the "merece la pena
      *  reintentar" chips without paging through every row. */
-    val countsByKind: Map<String, Int> = emptyMap()
+    val countsByKind: Map<String, Int> = emptyMap(),
+    /** Listed rows that [total] leaves out: still retrying on their own, and
+     *  dismissed. [total] and the chips count only the ones out of attempts —
+     *  the same number Run Tasks shows as "N con errores". */
+    val retrying: Int = 0,
+    val suppressed: Int = 0
 )
 
 @Serializable
@@ -535,7 +540,7 @@ interface PhotonneApi {
     /** Resets one Failed/Suppressed task back to Pending and re-enqueues it (admin). */
     suspend fun adminRetryEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse
 
-    /** Resets every Failed task (optionally of one type) back to Pending (admin). */
+    /** Resets every Failed task that ran out of attempts (optionally of one type or cause) back to Pending (admin). */
     suspend fun adminRetryAllEnrichmentFailures(
         type: String? = null,
         kind: String? = null

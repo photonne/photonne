@@ -886,14 +886,17 @@
     <!-- Admin enrichment failures registry -->
     <string name="admin_enrichment_failures_empty">Ningún asset con problemas</string>
     <string name="admin_enrichment_failures_total">%1$d tarea(s) con problemas</string>
+    <string name="admin_enrichment_failures_also_retrying">%1$d reintentándose</string>
+    <string name="admin_enrichment_failures_also_suppressed">%1$d descartada(s)</string>
     <string name="admin_enrichment_failures_filter_all">Todas</string>
     <string name="admin_enrichment_failures_retry">Reintentar</string>
     <string name="admin_enrichment_failures_retry_all">Reintentar todo</string>
-    <string name="admin_enrichment_failures_retrying_all">Reintentando…</string>
+    <string name="admin_enrichment_failures_retry_count">Reintentar %1$d tarea(s)</string>
     <string name="admin_enrichment_failures_suppress">Descartar</string>
     <string name="admin_enrichment_failures_badge_permanent">Sin reintentos</string>
     <string name="admin_enrichment_failures_badge_suppressed">Descartado</string>
-    <string name="admin_enrichment_failures_kind_any">Cualquier causa</string>
+    <string name="admin_enrichment_failures_section_task">Tarea</string>
+    <string name="admin_enrichment_failures_section_cause">Causa</string>
     <string name="admin_enrichment_failures_kind_transient">Pasajero</string>
     <string name="admin_enrichment_failures_kind_permanent">Del archivo</string>
     <string name="admin_enrichment_failures_kind_needs_action">Requiere arreglo</string>

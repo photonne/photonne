@@ -4,8 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,12 +11,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.TaskAlt
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,19 +38,22 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.AdminEnrichmentFailureDto
 import com.photonne.app.data.api.EnrichmentFailureKind
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.admin_enrichment_failures_also_retrying
+import com.photonne.app.resources.admin_enrichment_failures_also_suppressed
 import com.photonne.app.resources.admin_enrichment_failures_attempts
 import com.photonne.app.resources.admin_enrichment_failures_badge_permanent
 import com.photonne.app.resources.admin_enrichment_failures_badge_suppressed
 import com.photonne.app.resources.admin_enrichment_failures_empty
 import com.photonne.app.resources.admin_enrichment_failures_filter_all
-import com.photonne.app.resources.admin_enrichment_failures_kind_any
 import com.photonne.app.resources.admin_enrichment_failures_kind_needs_action
 import com.photonne.app.resources.admin_enrichment_failures_kind_permanent
 import com.photonne.app.resources.admin_enrichment_failures_kind_transient
 import com.photonne.app.resources.admin_enrichment_failures_load_more
 import com.photonne.app.resources.admin_enrichment_failures_retry
 import com.photonne.app.resources.admin_enrichment_failures_retry_all
-import com.photonne.app.resources.admin_enrichment_failures_retrying_all
+import com.photonne.app.resources.admin_enrichment_failures_retry_count
+import com.photonne.app.resources.admin_enrichment_failures_section_cause
+import com.photonne.app.resources.admin_enrichment_failures_section_task
 import com.photonne.app.resources.admin_enrichment_failures_suppress
 import com.photonne.app.resources.admin_enrichment_failures_total
 import com.photonne.app.resources.enrichment_task_exif
@@ -66,6 +68,7 @@ import org.jetbrains.compose.resources.StringResource
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_enrichment_failures_retry_all_confirm
 import org.jetbrains.compose.resources.stringResource
@@ -109,6 +112,8 @@ fun AdminEnrichmentFailuresScreen(
             item("header") {
                 FailuresHeader(
                     total = state.total,
+                    retrying = state.retrying,
+                    suppressed = state.suppressed,
                     countsByType = state.countsByType,
                     countsByKind = state.countsByKind,
                     typeFilter = state.typeFilter,
@@ -168,10 +173,11 @@ fun AdminEnrichmentFailuresScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FailuresHeader(
     total: Int,
+    retrying: Int,
+    suppressed: Int,
     countsByType: Map<String, Int>,
     countsByKind: Map<String, Int>,
     typeFilter: String?,
@@ -181,59 +187,52 @@ private fun FailuresHeader(
     onKindFilter: (EnrichmentFailureKind?) -> Unit,
     onRetryAll: () -> Unit
 ) {
+    val allLabel = stringResource(Res.string.admin_enrichment_failures_filter_all)
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(Res.string.admin_enrichment_failures_total, total),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        // The total and the chips count what's waiting for the admin — the same
+        // number Run Tasks calls "N con errores". The list also carries these
+        // two, so say so, or the rows don't add up to the title.
+        val aside = listOfNotNull(
+            stringResource(Res.string.admin_enrichment_failures_also_retrying, retrying)
+                .takeIf { retrying > 0 },
+            stringResource(Res.string.admin_enrichment_failures_also_suppressed, suppressed)
+                .takeIf { suppressed > 0 }
+        )
+        if (aside.isNotEmpty()) {
+            Spacer(Modifier.height(Spacing.xxs))
             Text(
-                text = stringResource(Res.string.admin_enrichment_failures_total, total),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
+                text = aside.joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (total > 0) {
-                Button(onClick = onRetryAll, enabled = !isRetryingAll) {
-                    if (isRetryingAll) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(Modifier.size(6.dp))
-                        Text(stringResource(Res.string.admin_enrichment_failures_retrying_all))
-                    } else {
-                        Icon(Icons.Filled.Refresh, contentDescription = null)
-                        Spacer(Modifier.size(6.dp))
-                        Text(stringResource(Res.string.admin_enrichment_failures_retry_all))
-                    }
-                }
-            }
-        }
-        if (countsByType.isNotEmpty()) {
-            Spacer(Modifier.height(Spacing.sm))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                FilterChip(
-                    selected = typeFilter == null,
-                    onClick = { onFilter(null) },
-                    label = { Text(stringResource(Res.string.admin_enrichment_failures_filter_all)) }
-                )
-                countsByType.entries.sortedBy { it.key }.forEach { (type, count) ->
-                    FilterChip(
-                        selected = typeFilter.equals(type, ignoreCase = true),
-                        onClick = { onFilter(type) },
-                        label = { Text("${taskLabel(type)} ($count)") }
-                    )
-                }
-            }
         }
 
-        // A second row, by cause. It's the one that answers the question the
-        // admin actually has in front of a wall of failures — whether pressing
-        // "Reintentar todo" will achieve anything — and it scopes that button,
-        // so the transient ones can be retried without dragging along the files
-        // that will fail again identically.
+        // Two filters, two named blocks. They used to be two unlabelled wraps of
+        // identical chips 6dp apart — the same gap as between chips — so nobody
+        // could tell where "which task" ended and "why it failed" began.
+        if (countsByType.isNotEmpty()) {
+            Spacer(Modifier.height(Spacing.md))
+            FilterSection(
+                title = stringResource(Res.string.admin_enrichment_failures_section_task),
+                options = listOf(FilterOption<String?>(null, allLabel)) +
+                    countsByType.entries.sortedBy { it.key }.map { (type, count) ->
+                        FilterOption(type, "${taskLabel(type)} ($count)")
+                    },
+                isSelected = { it.equals(typeFilter, ignoreCase = true) },
+                onSelect = onFilter
+            )
+        }
+
+        // By cause. It's the one that answers the question the admin actually
+        // has in front of a wall of failures — whether retrying will achieve
+        // anything — and it scopes the button below, so the transient ones can
+        // be retried without dragging along the files that will fail again
+        // identically.
         val kinds = countsByKind.entries
             .mapNotNull { (raw, count) ->
                 val kind = EnrichmentFailureKind.from(raw)
@@ -241,25 +240,70 @@ private fun FailuresHeader(
             }
             .sortedBy { it.first.ordinal }
         if (kinds.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                FilterChip(
-                    selected = kindFilter == null,
-                    onClick = { onKindFilter(null) },
-                    label = { Text(stringResource(Res.string.admin_enrichment_failures_kind_any)) }
-                )
-                kinds.forEach { (kind, count) ->
-                    FilterChip(
-                        selected = kindFilter == kind,
-                        onClick = { onKindFilter(kind) },
-                        label = { Text("${stringResource(kindTitle(kind))} ($count)") }
-                    )
-                }
-            }
+            Spacer(Modifier.height(Spacing.md))
+            FilterSection(
+                title = stringResource(Res.string.admin_enrichment_failures_section_cause),
+                options = listOf(FilterOption<EnrichmentFailureKind?>(null, allLabel)) +
+                    kinds.map { (kind, count) ->
+                        FilterOption(kind, "${stringResource(kindTitle(kind))} ($count)")
+                    },
+                isSelected = { it == kindFilter },
+                onSelect = onKindFilter
+            )
+        }
+
+        // Under the filters because it acts on what they leave, and it says how
+        // many that is.
+        if (total > 0) {
+            Spacer(Modifier.height(Spacing.md))
+            PrimaryActionButton(
+                label = stringResource(Res.string.admin_enrichment_failures_retry_count, total),
+                onClick = onRetryAll,
+                isLoading = isRetryingAll
+            )
+        }
+    }
+}
+
+private data class FilterOption<T>(val value: T, val label: String)
+
+/**
+ * One named filter: its label and a single line of chips that scrolls sideways.
+ * A wrap grew to three or four lines with every task type failing and pushed
+ * the list off the first screen.
+ */
+@Composable
+private fun <T> FilterSection(
+    title: String,
+    options: List<FilterOption<T>>,
+    isSelected: (T) -> Boolean,
+    onSelect: (T) -> Unit
+) {
+    val listState = rememberLazyListState()
+    // The screen can open with a filter already on (a Run Tasks row, a
+    // notification): bring that chip into view rather than leave it off-screen.
+    val selectedIndex = options.indexOfFirst { isSelected(it.value) }
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex >= 0) listState.animateScrollToItem(selectedIndex)
+    }
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(Spacing.xxs))
+    LazyRow(
+        state = listState,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(options.size) { index ->
+            val option = options[index]
+            FilterChip(
+                selected = isSelected(option.value),
+                onClick = { onSelect(option.value) },
+                label = { Text(option.label) }
+            )
         }
     }
 }
@@ -286,7 +330,7 @@ private fun kindTitle(kind: EnrichmentFailureKind): StringResource = when (kind)
     EnrichmentFailureKind.Transient -> Res.string.admin_enrichment_failures_kind_transient
     EnrichmentFailureKind.Permanent -> Res.string.admin_enrichment_failures_kind_permanent
     EnrichmentFailureKind.NeedsAction -> Res.string.admin_enrichment_failures_kind_needs_action
-    EnrichmentFailureKind.Unknown -> Res.string.admin_enrichment_failures_kind_any
+    EnrichmentFailureKind.Unknown -> Res.string.admin_enrichment_failures_filter_all
 }
 
 @Composable
