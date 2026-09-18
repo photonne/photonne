@@ -2,7 +2,7 @@
 
 Auditoría del 2026-09-17 sobre `Src/Photonne.Client.Native/composeApp/src/commonMain/kotlin/com/photonne/app/` (en adelante, las rutas son relativas a esa carpeta). Cinco pasadas de solo lectura: timeline/rejilla/shell, visor/mapa/recuerdos, álbumes/carpetas/organizar/utilidades, búsqueda/personas/ajustes/login/backup, y una transversal de consistencia. `ui/admin` quedó fuera porque se auditó y normalizó el mismo día.
 
-**Estado: Lote A cerrado** (`995cd74`, 2026-09-18, sin verificar en dispositivo). Marca cada punto con `[x]` al cerrarlo y anota el commit.
+**Estado: Lotes A (`995cd74`), B y C (`83305d5`) cerrados** (2026-09-18, sin verificar en dispositivo). Marca cada punto con `[x]` al cerrarlo y anota el commit.
 
 Fiabilidad de los hallazgos:
 - Comprobados a mano: 1, 2, 4 y 6.
@@ -62,7 +62,7 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
 
 ## Lote B — Fallos silenciosos
 
-- [ ] **9. Con contenido en pantalla, los errores de acción no se ven** (M).
+- [x] (`83305d5`) **9. Con contenido en pantalla, los errores de acción no se ven** (M).
   - Todas las pantallas pintan `state.error` solo con la lista vacía: `ui/album/AlbumDetailScreen.kt:217`, `ui/library/TrashScreen.kt:96`, `ui/folder/FolderDetailScreen.kt:139`, Archivo, Favoritos, `people/PeopleScreen.kt:99`, `PersonDetailScreen.kt:82`, `PersonSuggestionsScreen.kt:94`, `search/SearchScreen.kt:122`. En el visor, `state.error` solo sale como una línea roja al fondo del panel de info (`AssetDetailScreen.kt:602`, `:1712`) y `clearError()` no se llama nunca.
   - Los ViewModels masivos devuelven los elementos y ponen `error` sin que nadie lo observe (`AlbumDetailViewModel.kt:441`, `TrashViewModel.kt:159`). En `App.kt` solo hay puente para `actionsState` (`:1750-1765`).
   - El error viejo aparece luego en otro diálogo: `App.kt:3435`, `3475` ("Editar álbum", borrar), `:3673`, `:4028` (añadir a álbum, mover).
@@ -70,33 +70,33 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
   - `InviteMemberDialog` se cierra antes del resultado (`App.kt:3619`). `MyLinksScreen.kt:181` pone `editing = null` al instante.
   - Timeline: los fallos de añadir/mover van al `error` de carga y salen como banner con "Reintentar" que refresca el timeline (`TimelineViewModel.kt:241-248`, `279-286`; `TimelineScreen.kt:1220-1228`).
   - Arreglo: un puente único en `App.kt` de error de cada ViewModel a `ResultSnackbar`, limpiando al mostrar. Separar `error` (carga) de `actionError`. Limpiar el error al abrir un diálogo. Pasar `errorMessage` a los diálogos de la papelera.
-- [ ] **10. Las acciones que salen bien tampoco avisan** (S-M).
+- [x] (`83305d5`) **10. Las acciones que salen bien tampoco avisan** (S-M).
   - Añadir a álbum y Mover desde el timeline: `App.kt:3679-3685`, `4035-4042`. Propuesta: snackbar con "Ver" o "Deshacer".
   - "Reagrupar" personas descarta `personsCreated` (`App.kt:2516`).
   - Archivar o borrar en el visor cierra el visor sin snackbar ni Deshacer (`App.kt:3320-3340`); archivar no confirma (`AssetDetailScreen.kt:826`, `:903`). Propuesta: `TopSnackbarHost` en el visor y avanzar a la siguiente foto; cerrar solo si la lista queda vacía.
-- [ ] **11. Errores a pantalla completa sin salida** (S).
+- [x] (`83305d5`) **11. Errores a pantalla completa sin salida** (S).
   - `ErrorBanner` admite `onRetry` (`ui/error/ErrorBanner.kt:73`) y no se lo pasan: `album/AlbumsListScreen.kt:176`, `library/TrashScreen.kt:98`, `ArchivedScreen.kt:80`, `FavoritesScreen.kt:81`, `UnsupportedFilesScreen.kt:75`, `memories/MemoriesScreen.kt:97-100`, `explore/ExploreLabelGridScreen.kt:96-99`, `people/PersonDetailScreen.kt:82-85`, `PersonSuggestionsScreen.kt:94-97`. `album/MyLinksScreen.kt:117-126` y `settings/AccountStorageScreen.kt:81-84` usan un `Text` rojo.
   - La caja del error no hace scroll, así que `PullToRefreshBox` no recibe el gesto.
   - Guardas que bloquean el reintento hasta reiniciar: `attempted` en `explore/ExploreFacetsViewModel.kt:34` y `MemoriesScreen.kt:82`.
   - Abrir un recuerdo falla en silencio: `MemoryFeedViewModel.open()` (`:128-135`) pone `error`, que solo se pinta con las filas vacías; un `detail.assets` vacío (`:126`) no hace nada.
   - Arreglo: `onRetry` en todas, rama de error con `verticalScroll` (como `EmptyState`), fallos de abrir recuerdo por `ResultSnackbar`.
-- [ ] **12. El spinner de pull-to-refresh queda tras el cromo flotante** (S).
+- [x] (`83305d5`) **12. El spinner de pull-to-refresh queda tras el cromo flotante** (S).
   - `ui/theme/PullToRefresh.kt:20-22` documenta `indicatorTopPadding`; solo lo pasa `admin/AdminListScaffold.kt:108`. Pasar `subscreenChromeReservedTop()` o el `reservedTop` del álbum.
-- [ ] **13. Banner de error bajo el cromo en Notificaciones y Personas** (S).
+- [x] (`83305d5`) **13. Banner de error bajo el cromo en Notificaciones y Personas** (S).
   - `ui/notifications/NotificationsScreen.kt:112-116` sin `reservedTop`; `NotificationsViewModel.kt:30,162-168`: una primera carga fallida cae en una lista vacía con "total: 0". `PeopleScreen.kt:100` igual.
 
 ## Lote C — Acciones destructivas sin red de seguridad
 
-- [ ] **14. Cerrar sesión con un solo toque** (S). `ui/main/MoreScreen.kt:314` → `App.kt:767` → `authRepository.logout()`. Confirmación que mencione los backups pendientes si `backupPendingCount > 0`. El `OutlinedButton` pequeño y centrado rompe el patrón de filas de esa pantalla.
-- [ ] **15. Fusionar personas** (M). `App.kt:4326-4349`: `runCatching { }.onSuccess { }` sin `onFailure`, sin progreso ni confirmación. `ui/people/PersonPickerDialog.kt:51-53,127-134`: solo las páginas cargadas, sin buscador, "Sin nombre" + número con avatar de 40 dp. Arreglo: confirmación con los dos avatares, `ResultSnackbar`, buscador que cargue todas las páginas.
-- [ ] **16. Acciones sin confirmación ni resultado** (S).
+- [x] (`83305d5`) **14. Cerrar sesión con un solo toque** (S). `ui/main/MoreScreen.kt:314` → `App.kt:767` → `authRepository.logout()`. Confirmación que mencione los backups pendientes si `backupPendingCount > 0`. El `OutlinedButton` pequeño y centrado rompe el patrón de filas de esa pantalla.
+- [x] (`83305d5`) **15. Fusionar personas** (M). `App.kt:4326-4349`: `runCatching { }.onSuccess { }` sin `onFailure`, sin progreso ni confirmación. `ui/people/PersonPickerDialog.kt:51-53,127-134`: solo las páginas cargadas, sin buscador, "Sin nombre" + número con avatar de 40 dp. Arreglo: confirmación con los dos avatares, `ResultSnackbar`, buscador que cargue todas las páginas.
+- [x] (`83305d5`) **16. Acciones sin confirmación ni resultado** (S).
   - "Aceptar todas" / "Descartar todas" en sugerencias de caras: `App.kt:2491-2500`, `PersonSuggestionsViewModel.kt:126-178`, menú en `PersonSuggestionsScreen.kt:192-199`. Afecta también a páginas no cargadas; se descarta el recuento del servidor.
   - Revocar enlace desde la hoja del álbum: `ui/album/ShareDialogs.kt:137`, `App.kt:3554`. En "Mis enlaces" sí confirma (`MyLinksScreen.kt:186`).
   - Quitar miembro: `ui/album/PermissionDialogs.kt:147`, `ui/folder/FolderPermissionDialogs.kt`, `App.kt:3568`.
   - Quitar un origen de backup: `devicebackup/BackupScreen.kt:289` → `DeviceBackupViewModel.kt:543-551`. Propuesta: snackbar con Deshacer.
   - Archivar en bloque desde la hoja de clúster del mapa (la papelera sí confirma).
-- [ ] **17. "Quitar del álbum" sin confirmación ni Deshacer** (S-M). `App.kt:1336`. `AlbumDetailViewModel.kt:404-418` hace una petición por asset y, si falla a medias, restaura en local todo aunque el servidor ya quitó algunos. Arreglo: snackbar con Deshacer que reañada los ids, y refrescar el álbum tras un fallo parcial.
-- [ ] **18. "Seleccionar todo" en el timeline solo coge lo cargado** (S). `TimelineViewModel.kt:181-187` usa `loadedItems`; `App.kt:1022` pone `totalCount = loadedItems.size`. Quitarlo (la casilla de mes ya cubre el caso) o rotularlo "lo cargado (N)".
+- [x] (`83305d5`) **17. "Quitar del álbum" sin confirmación ni Deshacer** (S-M). `App.kt:1336`. `AlbumDetailViewModel.kt:404-418` hace una petición por asset y, si falla a medias, restaura en local todo aunque el servidor ya quitó algunos. Arreglo: snackbar con Deshacer que reañada los ids, y refrescar el álbum tras un fallo parcial.
+- [x] (`83305d5`) **18. "Seleccionar todo" en el timeline solo coge lo cargado** (S). `TimelineViewModel.kt:181-187` usa `loadedItems`; `App.kt:1022` pone `totalCount = loadedItems.size`. Quitarlo (la casilla de mes ya cubre el caso) o rotularlo "lo cargado (N)".
 
 ## Lote D — Selección y timeline mezclado
 
