@@ -2,7 +2,7 @@
 
 Auditoría del 2026-09-17 sobre `Src/Photonne.Client.Native/composeApp/src/commonMain/kotlin/com/photonne/app/` (en adelante, las rutas son relativas a esa carpeta). Cinco pasadas de solo lectura: timeline/rejilla/shell, visor/mapa/recuerdos, álbumes/carpetas/organizar/utilidades, búsqueda/personas/ajustes/login/backup, y una transversal de consistencia. `ui/admin` quedó fuera porque se auditó y normalizó el mismo día.
 
-**Estado: Lotes A (`995cd74`), B y C (`83305d5`) cerrados** (2026-09-18, sin verificar en dispositivo). Marca cada punto con `[x]` al cerrarlo y anota el commit.
+**Estado: Lotes A (`995cd74`), B y C (`83305d5`), D y E (`1fbb212`) cerrados** (2026-09-18, sin verificar en dispositivo). Parciales anotados en cada punto. Marca cada punto con `[x]` al cerrarlo y anota el commit.
 
 Fiabilidad de los hallazgos:
 - Comprobados a mano: 1, 2, 4 y 6.
@@ -100,30 +100,30 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
 
 ## Lote D — Selección y timeline mezclado
 
-- [ ] **19. Las fotos solo-dispositivo no se pueden seleccionar y nada lo indica** (M). *Pide opciones antes de tocar.*
+- [x] (`1fbb212`) **19. Las fotos solo-dispositivo no se pueden seleccionar y nada lo indica** (M). *Pide opciones antes de tocar.*
   - `TimelineScreen.kt:974-982` (pulsación larga ignora `isLocalOnly`), `:1007-1010` (`idAt` devuelve null), `ui/grid/dragselect/DragSelectAdapters.kt:131-133` y `DragSelectGesture.kt:90` (`begin` devuelve false sin vibración), `TimelineScreen.kt:949-965` (en modo selección, tocar una local abre el visor). `ui/grid/AssetGrid.kt` no tiene estado "no seleccionable". La casilla de mes se las salta.
   - Mínimo: atenuarlas al seleccionar, vibración de rechazo + aviso "Aún no se ha subido", y no abrir nunca el visor con selección activa.
   - Mayor: selección local con acciones reducidas (compartir, subir ahora, eliminar del dispositivo), indicando a qué aplica cada una ("Compartir 8 · 3 aún sin subir").
-- [ ] **20. Descarga y Compartir masivos sin progreso ni cancelar** (M; la parte de UI es S). `ui/actions/AssetSelectionActionsViewModel.kt:102-141`, `147-176` guardan todo el ZIP como `ByteArray`. `actionsState.working` solo atenúa la barra al 38 % (`MainScaffold.kt:635`). Riesgo de quedarse sin memoria en móvil (confianza media). Arreglo: píldora con progreso y Cancelar; escribir a fichero en streaming.
-- [ ] **21. Retocar la pestaña Fotos activa no hace nada** (S). `switchTab` en `App.kt:1721-1732`. Reutilizar el volver arriba de `TimelineScreen.kt:1165-1170`.
-- [ ] **22. Tira de Recuerdos** (S-M). `ui/timeline/MemoriesStrip.kt:173-180`: altura `(maxWidth-32)*0.62` sin tope. `:198` lee `progress.value` en composición, así que la tarjeta activa se recompone cada fotograma, también fuera de pantalla (`beyondViewportPageCount = 1`, `App.kt:1839`). *Sospecha*: el pager interior cambia de pestaña al llegar a la última página. Arreglo: `widthIn(max=560.dp)` o varias tarjetas en ventanas anchas, leer el progreso en `graphicsLayer`, pausar si la página no es la actual.
+- [x] (`1fbb212`) **20. Descarga y Compartir masivos sin progreso ni cancelar** (M; la parte de UI es S). *Parcial: píldora con Cancelar hecha; el streaming a fichero (RAM) sigue pendiente.* `ui/actions/AssetSelectionActionsViewModel.kt:102-141`, `147-176` guardan todo el ZIP como `ByteArray`. `actionsState.working` solo atenúa la barra al 38 % (`MainScaffold.kt:635`). Riesgo de quedarse sin memoria en móvil (confianza media). Arreglo: píldora con progreso y Cancelar; escribir a fichero en streaming.
+- [x] (`1fbb212`) **21. Retocar la pestaña Fotos activa no hace nada** (S). `switchTab` en `App.kt:1721-1732`. Reutilizar el volver arriba de `TimelineScreen.kt:1165-1170`.
+- [x] (`1fbb212`) **22. Tira de Recuerdos** (S-M). `ui/timeline/MemoriesStrip.kt:173-180`: altura `(maxWidth-32)*0.62` sin tope. `:198` lee `progress.value` en composición, así que la tarjeta activa se recompone cada fotograma, también fuera de pantalla (`beyondViewportPageCount = 1`, `App.kt:1839`). *Sospecha*: el pager interior cambia de pestaña al llegar a la última página. Arreglo: `widthIn(max=560.dp)` o varias tarjetas en ventanas anchas, leer el progreso en `graphicsLayer`, pausar si la página no es la actual.
 
 ## Lote E — Visor de assets
 
-- [ ] **23. Sin carga progresiva ni zoom nítido** (M). *Pide opciones antes de tocar.*
+- [x] (`1fbb212`) **23. Sin carga progresiva ni zoom nítido** (M). *Parcial: placeholder + error con reintento hechos; la cadena Small→Large→original por zoom (quitar el botón HD) sigue pendiente.* *Pide opciones antes de tocar.*
   - `ui/asset/ZoomablePagerImage.kt:110-122`: `AsyncImage` sin `placeholderMemoryCacheKey`, sin spinner, sin `onError`. El esquema de claves de `image/AssetThumbnailImage.kt:88-95` ya permite reutilizar la `Small`.
   - Zoom a 5x sobre `Large` (`AssetDetailScreen.kt:1163-1167`); el original solo con el botón "HD/ORIG" (`:733-741`), sin `contentDescription` y con `Color(0xFFFFB300)`.
   - Arreglo: `placeholderMemoryCacheKey("$thumbUrl|Small")`, estado de error con reintento, y cadena Small→Large→original según el zoom (cambio automático por encima de ~2x) para quitar el botón.
-- [ ] **24. Gestos de zoom toscos** (M). `ZoomablePagerImage.kt:79-91` doble toque sin animación; `:98-103` el pellizco ignora el centroide; `:59-66` el arrastre se limita a la caja y no a la imagen; sin inercia. Arreglo: `Animatable` para escala y desplazamiento anclado al centroide.
-- [ ] **25. Atrás cierra el visor entero** (S). `App.kt:819-822`. Añadir `PlatformBackHandler` en `AssetDetailScreen` que deshaga en orden: zoom, panel de info, pase automático, apaisado, cerrar.
-- [ ] **26. Abrir una foto relacionada pierde el sitio** (M). `App.kt:3350-3362`: `onOpenAsset` sustituye `assetDetail` por un contexto de un elemento. Arreglo: pila de `AssetDetailContext` y, mejor, abrir la fila relacionada como lista del pager.
-- [ ] **27. Vídeo y pase automático** (M).
+- [x] (`1fbb212`) **24. Gestos de zoom toscos** (M). *Parcial: sin inercia.* `ZoomablePagerImage.kt:79-91` doble toque sin animación; `:98-103` el pellizco ignora el centroide; `:59-66` el arrastre se limita a la caja y no a la imagen; sin inercia. Arreglo: `Animatable` para escala y desplazamiento anclado al centroide.
+- [x] (`1fbb212`) **25. Atrás cierra el visor entero** (S). `App.kt:819-822`. Añadir `PlatformBackHandler` en `AssetDetailScreen` que deshaga en orden: zoom, panel de info, pase automático, apaisado, cerrar.
+- [x] (`1fbb212`) **26. Abrir una foto relacionada pierde el sitio** (M). `App.kt:3350-3362`: `onOpenAsset` sustituye `assetDetail` por un contexto de un elemento. Arreglo: pila de `AssetDetailContext` y, mejor, abrir la fila relacionada como lista del pager.
+- [x] (`1fbb212`) **27. Vídeo y pase automático** (M). *Parcial: sin silencio, sin estado de error del player ni mantener la pantalla encendida (piden tocar las actuals por plataforma).*
   - `VideoPlayback.isReady` no se lee en común: no hay spinner de carga. La interfaz no tiene estado de error (`ui/asset/VideoPlayback.kt`). No hay silencio. El scrubber solo busca al soltar (`AssetDetailScreen.kt:1271`).
   - El pase avanza con `delay` fijo (`:291-295`) y corta los vídeos. `SlideshowControls` ignora `chromeAlpha` (`:915`).
   - *Sospecha*: la pantalla no se mantiene encendida durante el pase con fotos.
-- [ ] **28. Huecos en apaisado** (M). `AssetDetailScreen.kt:757` (acciones ocultas con `!isLocalOnly`) y `:879` (barra inferior oculta): una foto solo-dispositivo queda sin Info ni Eliminar. Falta "Editar fecha" (`:2684`). Arreglo: un único modelo de acciones para las dos orientaciones.
-- [ ] **29. Datos en crudo en el panel de info** (S). `formatInstant` (`:2266-2271`) imprime "2026-09-17 12:33:11"; GPS truncado (`:2239`); `formatBytes` con "." fijo; `AssetAiSheet.kt:126` muestra `it.message`. Reutilizar `ui/format` y `UiErrorFactory`.
-- [ ] **30. El atrás del detalle de un recuerdo se va con el scroll** (S). `ui/memories/MemoryDetailScreen.kt:137-153`: el `IconButton` vive dentro de la cabecera de la rejilla. Usar `SubscreenFloatingChrome` o el cromo del álbum.
+- [x] (`1fbb212`) **28. Huecos en apaisado** (M). `AssetDetailScreen.kt:757` (acciones ocultas con `!isLocalOnly`) y `:879` (barra inferior oculta): una foto solo-dispositivo queda sin Info ni Eliminar. Falta "Editar fecha" (`:2684`). Arreglo: un único modelo de acciones para las dos orientaciones.
+- [x] (`1fbb212`) **29. Datos en crudo en el panel de info** (S). `formatInstant` (`:2266-2271`) imprime "2026-09-17 12:33:11"; GPS truncado (`:2239`); `formatBytes` con "." fijo; `AssetAiSheet.kt:126` muestra `it.message`. Reutilizar `ui/format` y `UiErrorFactory`.
+- [x] (`1fbb212`) **30. El atrás del detalle de un recuerdo se va con el scroll** (S). `ui/memories/MemoryDetailScreen.kt:137-153`: el `IconButton` vive dentro de la cabecera de la rejilla. Usar `SubscreenFloatingChrome` o el cromo del álbum.
 
 ## Lote F — Mapa
 
