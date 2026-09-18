@@ -127,6 +127,7 @@ fun FolderDetailScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         PhotonneRefreshableScreen(
+            indicatorTopPadding = reservedTop,
             isRefreshing = state.isLoading &&
                 (state.items.isNotEmpty() || state.subFolders.isNotEmpty()),
             onRefresh = viewModel::refresh

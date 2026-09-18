@@ -33,7 +33,33 @@ import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.resources.organize_skipped_done
+import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.action_undo
+import com.photonne.app.resources.logout_confirm_message
+import com.photonne.app.resources.member_remove_confirm_action
+import com.photonne.app.resources.member_remove_confirm_message
+import com.photonne.app.resources.member_remove_confirm_title
+import com.photonne.app.resources.share_action_revoke
+import com.photonne.app.resources.share_revoke_confirm_message
+import com.photonne.app.resources.share_revoke_confirm_title
+import com.photonne.app.resources.logout_confirm_pending_backup
+import com.photonne.app.resources.logout_confirm_title
+import com.photonne.app.resources.people_action_suggestions_accept_all
+import com.photonne.app.resources.people_action_suggestions_dismiss_all
+import com.photonne.app.resources.people_merge_done
+import com.photonne.app.resources.people_recluster_done
+import com.photonne.app.resources.people_recluster_done_none
+import com.photonne.app.resources.people_suggestions_accept_all_message
+import com.photonne.app.resources.people_suggestions_accept_all_title
+import com.photonne.app.resources.people_suggestions_accepted_done
+import com.photonne.app.resources.people_suggestions_dismiss_all_message
+import com.photonne.app.resources.people_suggestions_dismiss_all_title
+import com.photonne.app.resources.people_suggestions_dismissed_done
+import com.photonne.app.resources.selection_added_to_album_done
+import com.photonne.app.resources.selection_archive_done
+import com.photonne.app.resources.selection_moved_to_folder_done
+import com.photonne.app.resources.selection_removed_from_album_done
+import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_system_enrichment_failures
 import com.photonne.app.resources.account_section_appearance
@@ -491,6 +517,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val authRepository: AuthRepository = koinInject()
     val albumsRepository: AlbumsRepository = koinInject()
     val peopleRepository: com.photonne.app.data.people.PeopleRepository = koinInject()
+    val errorFactory: com.photonne.app.data.error.UiErrorFactory = koinInject()
     val apiBaseUrl = com.photonne.app.data.api.rememberApiBaseUrl()
     val appVersionStore: com.photonne.app.data.version.AppVersionStore = koinInject()
     // Refresca la versión del servidor cada vez que cambia el baseUrl
@@ -717,6 +744,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     var showRenamePerson by remember { mutableStateOf(false) }
     var showMergePicker by remember { mutableStateOf(false) }
+    // Confirmación de fusión: la persona elegida (que desaparecerá) y el
+    // estado de la petición.
+    var mergeSource by remember {
+        mutableStateOf<com.photonne.app.data.models.Person?>(null)
+    }
+    var isMerging by remember { mutableStateOf(false) }
+    var mergeError by remember { mutableStateOf<String?>(null) }
+    var showAcceptAllSuggestions by remember { mutableStateOf(false) }
+    var showDismissAllSuggestions by remember { mutableStateOf(false) }
+    // Confirmaciones de revocar enlace / quitar miembro (antes, un toque).
+    var revokingShareToken by remember { mutableStateOf<String?>(null) }
+    var revokingAlbumMember by remember {
+        mutableStateOf<com.photonne.app.data.models.AlbumPermission?>(null)
+    }
+    var revokingFolderMember by remember {
+        mutableStateOf<com.photonne.app.data.models.AlbumPermission?>(null)
+    }
     var showAssetFacesSheet by remember { mutableStateOf(false) }
     var assetFacesRevision by remember { mutableStateOf(0) }
     var showJumpToDate by remember { mutableStateOf(false) }
@@ -764,7 +808,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // Active tab of the unified Trash screen (Personal / Compartida).
     var trashTab by remember { mutableStateOf(com.photonne.app.ui.library.TrashTab.Personal) }
 
-    val onLogout: () -> Unit = { authRepository.logout() }
+    // Cerrar sesión era un solo toque directo a authRepository.logout();
+    // ahora confirma, y la confirmación avisa si quedan copias pendientes.
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+    val onLogout: () -> Unit = { showLogoutConfirm = true }
     val albumBack: () -> Unit = { selectedAlbum = null }
 
     // Mirror the share link count for the currently opened album back into
@@ -1019,11 +1066,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 timelineState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = timelineState.selection.size,
-                    totalCount = timelineState.loadedItems.size,
                     isMutating = timelineState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onClose = timelineViewModel::clearSelection,
-                    onSelectAll = timelineViewModel::toggleSelectAll
+                    onClose = timelineViewModel::clearSelection
+                    // Sin "Seleccionar todo": el timeline se pagina sobre toda
+                    // la biblioteca y el botón solo cogía lo cargado, que no es
+                    // lo que promete. La casilla de mes cubre el caso real.
                 )
             selectedTab == MainTab.Albums && selectedAlbum != null &&
                 albumDetailState.isSelectionActive ->
@@ -1312,6 +1360,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         selectedTab == MainTab.Albums && selectedAlbum != null &&
             albumDetailState.isSelectionActive -> {
             {
+                // Textos del snackbar de "Quitar del álbum", resueltos en
+                // composición (en el callback ya no hay recursos).
+                val removeCount = albumDetailState.selection.size
+                val removedFromAlbumMessage = pluralStringResource(
+                    Res.plurals.selection_removed_from_album_done, removeCount, removeCount
+                )
+                val removeUndoLabel = stringResource(Res.string.action_undo)
+                val removeSnackbar = LocalSnackbarController.current
                 AssetSelectionBottomBar(
                     selectedCount = albumDetailState.selection.size,
                     isMutating = albumDetailState.isBulkMutating ||
@@ -1333,11 +1389,39 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         selectedAlbum?.isOwner == true
                     ) {
                         {
-                            albumDetailViewModel.bulkRemoveFromAlbum { removed ->
-                                selectedAlbum?.let {
-                                    albumsViewModel.applyAssetsRemoved(it.id, removed)
+                            val albumId = selectedAlbum?.id
+                            albumDetailViewModel.bulkRemoveFromAlbum(
+                                onSuccess = { removed ->
+                                    selectedAlbum?.let {
+                                        albumsViewModel.applyAssetsRemoved(it.id, removed)
+                                    }
+                                },
+                                onResult = { removedIds, error ->
+                                    if (error != null) {
+                                        removeSnackbar?.show(error.userMessage)
+                                    } else {
+                                        removeSnackbar?.show(
+                                            removedFromAlbumMessage,
+                                            removeUndoLabel
+                                        ) {
+                                            if (albumId != null) {
+                                                coroutineScope.launch {
+                                                    runCatching {
+                                                        albumsRepository.addAssetsBatch(
+                                                            albumId, removedIds
+                                                        )
+                                                    }.onSuccess {
+                                                        albumDetailViewModel.refresh()
+                                                        albumsViewModel.applyAssetsAdded(
+                                                            albumId, removedIds.size
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                            }
+                            )
                         }
                     } else null,
                     onSetAsCover = if (albumDetailState.selection.size == 1 &&
@@ -1762,6 +1846,30 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         actionsState.error?.let { error ->
             snackbarController.show(error.userMessage)
             actionsViewModel.dismissMessage()
+        }
+    }
+
+    // Confirmaciones de éxito de añadir-a-álbum y mover: los textos son plurales
+    // con argumentos que solo se conocen al pulsar (recuento y destino), así que
+    // se resuelven con getPluralString en un scope y no en composición.
+    fun showAddedToAlbumSnackbar(count: Int, albumName: String) {
+        if (count <= 0) return
+        coroutineScope.launch {
+            snackbarController.show(
+                org.jetbrains.compose.resources.getPluralString(
+                    Res.plurals.selection_added_to_album_done, count, count, albumName
+                )
+            )
+        }
+    }
+    fun showMovedToFolderSnackbar(count: Int, folderName: String?) {
+        if (count <= 0) return
+        coroutineScope.launch {
+            snackbarController.show(
+                org.jetbrains.compose.resources.getPluralString(
+                    Res.plurals.selection_moved_to_folder_done, count, count, folderName ?: ""
+                ).trimEnd()
+            )
         }
     }
 
@@ -2497,16 +2605,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             },
                             onBack = { moreSubscreen = MoreSubscreen.People },
-                            onAcceptAll = {
-                                personSuggestionsViewModel.acceptAll {
-                                    personDetailViewModel.open(
-                                        selectedPerson?.id ?: return@acceptAll,
-                                        selectedPerson?.name
-                                    )
-                                    peopleViewModel.refresh()
-                                }
-                            },
-                            onDismissAll = { personSuggestionsViewModel.dismissAll() },
+                            // Actúan también sobre las páginas no cargadas, así
+                            // que primero confirman con el recuento del servidor.
+                            onAcceptAll = { showAcceptAllSuggestions = true },
+                            onDismissAll = { showDismissAllSuggestions = true },
                             onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.People -> {
@@ -2522,7 +2624,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onLoad = peopleViewModel::ensureLoaded,
                                 onRefresh = peopleViewModel::refresh,
                                 onBack = { moreSubscreen = null },
-                                onRecluster = { peopleViewModel.recluster() },
+                                onRecluster = {
+                                    // El servidor devuelve cuántas personas nuevas
+                                    // salieron del reagrupado; antes se descartaba.
+                                    peopleViewModel.recluster { created ->
+                                        coroutineScope.launch {
+                                            snackbarController.show(
+                                                if (created > 0) {
+                                                    org.jetbrains.compose.resources.getPluralString(
+                                                        Res.plurals.people_recluster_done,
+                                                        created, created
+                                                    )
+                                                } else {
+                                                    org.jetbrains.compose.resources.getString(
+                                                        Res.string.people_recluster_done_none
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+                                },
                                 onToggleHidden = peopleViewModel::toggleShowHidden,
                                 onChromeVisibleChange = { subscreenChromeVisible = it }
                             )
@@ -2531,6 +2652,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 state = personDetailState,
                                 title = personDetailState.personName ?: person.name.orEmpty(),
                                 isHidden = person.isHidden,
+                                onRetry = { personDetailViewModel.open(person.id, person.name) },
                                 onItemClick = { index ->
                                     if (personDetailState.isSelectionActive) {
                                         personDetailState.items.getOrNull(index)?.let {
@@ -3337,6 +3459,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             folderDetailViewModel.applyAssetRemovedLocal(id)
                             favoritesViewModel.applyAssetRemovedLocal(id)
                             assetDetail = null
+                            // El visor se cerraba en silencio: confirmación con
+                            // Deshacer, como las acciones en bloque.
+                            coroutineScope.launch {
+                                snackbarController.show(
+                                    message = org.jetbrains.compose.resources.getPluralString(
+                                        Res.plurals.selection_trash_done, 1, 1
+                                    ),
+                                    actionLabel = org.jetbrains.compose.resources.getString(
+                                        Res.string.action_undo
+                                    )
+                                ) {
+                                    actionsViewModel.undoBulk(
+                                        com.photonne.app.ui.actions.BulkUndoKind.Trash,
+                                        listOf(id)
+                                    ) { timelineViewModel.refresh() }
+                                }
+                            }
                         },
                         onAssetArchived = { id ->
                             timelineViewModel.removeItemLocal(id)
@@ -3349,6 +3488,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             folderDetailViewModel.applyAssetRemovedLocal(id)
                             favoritesViewModel.applyAssetRemovedLocal(id)
                             assetDetail = null
+                            coroutineScope.launch {
+                                snackbarController.show(
+                                    message = org.jetbrains.compose.resources.getPluralString(
+                                        Res.plurals.selection_archive_done, 1, 1
+                                    ),
+                                    actionLabel = org.jetbrains.compose.resources.getString(
+                                        Res.string.action_undo
+                                    )
+                                ) {
+                                    actionsViewModel.undoBulk(
+                                        com.photonne.app.ui.actions.BulkUndoKind.Archive,
+                                        listOf(id)
+                                    ) { timelineViewModel.refresh() }
+                                }
+                            }
                         },
                         onOpenFaces = { assetId ->
                             assetFacesViewModel.open(assetId)
@@ -3563,23 +3717,41 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 albumSharesViewModel.clearError()
             },
             onCreate = { showCreateShare = true },
-            onEdit = { link -> editingShareLink = link },
-            onRevoke = { token -> albumSharesViewModel.revoke(token) }
+            // Revocar mata el enlace para todo el mundo: confirma, como en
+            // "Mis enlaces".
+            onRevoke = { token -> revokingShareToken = token }
         )
     }
 
-    if (showMembers && (openedAlbum != null || pendingActionAlbum != null)) {
-        ManagePermissionsDialog(
-            state = albumPermissionsState,
-            onDismiss = {
-                showMembers = false
-                if (openedAlbum == null) pendingActionAlbum = null
-                albumPermissionsViewModel.clearError()
-            },
-            onInvite = { showInviteMember = true },
-            onChangeRole = { member, role -> albumPermissionsViewModel.changeRole(member, role) },
-            onRevoke = { member ->
+    revokingShareToken?.let { token ->
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.share_revoke_confirm_title),
+            message = stringResource(Res.string.share_revoke_confirm_message),
+            confirmLabel = stringResource(Res.string.share_action_revoke),
+            isDestructive = true,
+            isSubmitting = albumSharesState.isMutating,
+            errorMessage = albumSharesState.error?.userMessage,
+            onDismiss = { revokingShareToken = null },
+            onConfirm = {
+                albumSharesViewModel.revoke(token) { revokingShareToken = null }
+            }
+        )
+    }
+
+    revokingAlbumMember?.let { member ->
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.member_remove_confirm_title),
+            message = stringResource(
+                Res.string.member_remove_confirm_message, member.username
+            ),
+            confirmLabel = stringResource(Res.string.member_remove_confirm_action),
+            isDestructive = true,
+            isSubmitting = albumPermissionsState.isMutating,
+            errorMessage = albumPermissionsState.error?.userMessage,
+            onDismiss = { revokingAlbumMember = null },
+            onConfirm = {
                 albumPermissionsViewModel.revoke(member) { newCount ->
+                    revokingAlbumMember = null
                     selectedAlbum?.let { album ->
                         val updated = album.copy(
                             isShared = newCount > 0,
@@ -3601,6 +3773,55 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
+    revokingFolderMember?.let { member ->
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.member_remove_confirm_title),
+            message = stringResource(
+                Res.string.member_remove_confirm_message, member.username
+            ),
+            confirmLabel = stringResource(Res.string.member_remove_confirm_action),
+            isDestructive = true,
+            isSubmitting = folderPermissionsState.isMutating,
+            errorMessage = folderPermissionsState.error?.userMessage,
+            onDismiss = { revokingFolderMember = null },
+            onConfirm = {
+                folderPermissionsViewModel.revoke(member) { newCount ->
+                    revokingFolderMember = null
+                    selectedFolder?.let { folder ->
+                        val updated = folder.copy(
+                            isShared = newCount > 0,
+                            sharedWithCount = newCount
+                        )
+                        selectedFolder = updated
+                        foldersViewModel.applyUpdate(updated)
+                    }
+                    pendingActionFolder?.let { folder ->
+                        val updated = folder.copy(
+                            isShared = newCount > 0,
+                            sharedWithCount = newCount
+                        )
+                        pendingActionFolder = updated
+                        foldersViewModel.applyUpdate(updated)
+                    }
+                }
+            }
+        )
+    }
+
+    if (showMembers && (openedAlbum != null || pendingActionAlbum != null)) {
+        ManagePermissionsDialog(
+            state = albumPermissionsState,
+            onDismiss = {
+                showMembers = false
+                if (openedAlbum == null) pendingActionAlbum = null
+                albumPermissionsViewModel.clearError()
+            },
+            onInvite = { showInviteMember = true },
+            onChangeRole = { member, role -> albumPermissionsViewModel.changeRole(member, role) },
+            onRevoke = { member -> revokingAlbumMember = member }
+        )
+    }
+
     if (showInviteMember && (openedAlbum != null || pendingActionAlbum != null)) {
         InviteMemberDialog(
             candidates = albumPermissionsState.invitableUsers,
@@ -3611,25 +3832,31 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 albumPermissionsViewModel.clearError()
             },
             onInvite = { selectedUser, role ->
-                albumPermissionsViewModel.grant(selectedUser, role) { newCount ->
-                    selectedAlbum?.let { album ->
-                        val updated = album.copy(
-                            isShared = true,
-                            sharedWithCount = newCount
-                        )
-                        selectedAlbum = updated
-                        albumsViewModel.applyUpdate(updated)
-                    }
-                    pendingActionAlbum?.let { album ->
-                        val updated = album.copy(
-                            isShared = true,
-                            sharedWithCount = newCount
-                        )
-                        pendingActionAlbum = updated
-                        albumsViewModel.applyUpdate(updated)
-                    }
-                }
-                showInviteMember = false
+                // Abierto hasta el resultado: si la invitación falla, el error
+                // se ve aquí mismo; antes el diálogo ya se había cerrado.
+                albumPermissionsViewModel.grant(
+                    user = selectedUser,
+                    role = role,
+                    onMembershipChanged = { newCount ->
+                        selectedAlbum?.let { album ->
+                            val updated = album.copy(
+                                isShared = true,
+                                sharedWithCount = newCount
+                            )
+                            selectedAlbum = updated
+                            albumsViewModel.applyUpdate(updated)
+                        }
+                        pendingActionAlbum?.let { album ->
+                            val updated = album.copy(
+                                isShared = true,
+                                sharedWithCount = newCount
+                            )
+                            pendingActionAlbum = updated
+                            albumsViewModel.applyUpdate(updated)
+                        }
+                    },
+                    onSuccess = { showInviteMember = false }
+                )
             }
         )
     }
@@ -3649,8 +3876,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     allowDownload = allowDownload,
                     maxViews = maxViews,
                     allowUpload = allowUpload
-                )
-                showCreateShare = false
+                ) {
+                    showCreateShare = false
+                }
             }
         )
     }
@@ -3672,13 +3900,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     allowDownload = allowDownload,
                     maxViews = maxViews,
                     allowUpload = allowUpload
-                )
-                editingShareLink = null
+                ) {
+                    editingShareLink = null
+                }
             }
         )
     }
 
     if (bulkAddToAlbum) {
+        // Un error viejo de otra acción no debe estrenar el diálogo.
+        LaunchedEffect(Unit) { timelineViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
@@ -3690,11 +3921,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 showCreateAlbum = true
             },
             onAlbumSelected = { album ->
+                // El diálogo se queda abierto hasta el resultado: si falla,
+                // enseña el error y permite reintentar; antes se cerraba al
+                // instante y el fallo no se veía en ninguna parte.
                 timelineViewModel.bulkAddToAlbum(album.id) { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
                     albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    bulkAddToAlbum = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
                 }
-                bulkAddToAlbum = false
             },
             onDismiss = { bulkAddToAlbum = false }
         )
@@ -3863,26 +4098,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             },
             onInvite = { showInviteFolderMember = true },
             onChangeRole = { member, role -> folderPermissionsViewModel.changeRole(member, role) },
-            onRevoke = { member ->
-                folderPermissionsViewModel.revoke(member) { newCount ->
-                    selectedFolder?.let { folder ->
-                        val updated = folder.copy(
-                            isShared = newCount > 0,
-                            sharedWithCount = newCount
-                        )
-                        selectedFolder = updated
-                        foldersViewModel.applyUpdate(updated)
-                    }
-                    pendingActionFolder?.let { folder ->
-                        val updated = folder.copy(
-                            isShared = newCount > 0,
-                            sharedWithCount = newCount
-                        )
-                        pendingActionFolder = updated
-                        foldersViewModel.applyUpdate(updated)
-                    }
-                }
-            }
+            onRevoke = { member -> revokingFolderMember = member }
         )
     }
 
@@ -3896,25 +4112,30 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 folderPermissionsViewModel.clearError()
             },
             onInvite = { selectedUser, role ->
-                folderPermissionsViewModel.grant(selectedUser, role) { newCount ->
-                    selectedFolder?.let { folder ->
-                        val updated = folder.copy(
-                            isShared = true,
-                            sharedWithCount = newCount
-                        )
-                        selectedFolder = updated
-                        foldersViewModel.applyUpdate(updated)
-                    }
-                    pendingActionFolder?.let { folder ->
-                        val updated = folder.copy(
-                            isShared = true,
-                            sharedWithCount = newCount
-                        )
-                        pendingActionFolder = updated
-                        foldersViewModel.applyUpdate(updated)
-                    }
-                }
-                showInviteFolderMember = false
+                // Abierto hasta el resultado, como el invite de álbum.
+                folderPermissionsViewModel.grant(
+                    user = selectedUser,
+                    role = role,
+                    onMembershipChanged = { newCount ->
+                        selectedFolder?.let { folder ->
+                            val updated = folder.copy(
+                                isShared = true,
+                                sharedWithCount = newCount
+                            )
+                            selectedFolder = updated
+                            foldersViewModel.applyUpdate(updated)
+                        }
+                        pendingActionFolder?.let { folder ->
+                            val updated = folder.copy(
+                                isShared = true,
+                                sharedWithCount = newCount
+                            )
+                            pendingActionFolder = updated
+                            foldersViewModel.applyUpdate(updated)
+                        }
+                    },
+                    onSuccess = { showInviteFolderMember = false }
+                )
             }
         )
     }
@@ -3982,6 +4203,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (bulkAddToAlbumFromSearch) {
+        LaunchedEffect(Unit) { searchViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
@@ -3995,8 +4217,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 searchViewModel.bulkAddToAlbum(album.id) { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
                     albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    bulkAddToAlbumFromSearch = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
                 }
-                bulkAddToAlbumFromSearch = false
             },
             onDismiss = { bulkAddToAlbumFromSearch = false }
         )
@@ -4018,6 +4241,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onConfirm = { targetFolderId, _ ->
                 if (targetFolderId != null) {
                     recentDestinationsStore.record(targetFolderId)
+                    val targetName = foldersState.moveDestinations
+                        .firstOrNull { it.id == targetFolderId }?.name
                     folderDetailViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
                         showMoveSelectedAssets = false
                         val moved = movedIds.size
@@ -4026,6 +4251,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 assetCount = (openedFolder.assetCount - moved).coerceAtLeast(0)
                             )
                             foldersViewModel.refreshOrganizeCount()
+                            showMovedToFolderSnackbar(moved, targetName)
                         }
                     }
                 }
@@ -4048,9 +4274,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onConfirm = { targetFolderId, _ ->
                 if (targetFolderId != null) {
                     recentDestinationsStore.record(targetFolderId)
-                    timelineViewModel.moveSelectedAssets(targetFolderId) {
+                    val targetName = foldersState.moveDestinations
+                        .firstOrNull { it.id == targetFolderId }?.name
+                    timelineViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
                         showMoveSelectedAssetsTimeline = false
                         foldersViewModel.refreshOrganizeCount()
+                        showMovedToFolderSnackbar(movedIds.size, targetName)
                     }
                 }
             }
@@ -4157,6 +4386,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (bulkAddToAlbumFromInbox) {
+        LaunchedEffect(Unit) { organizeInboxViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
@@ -4170,8 +4400,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 organizeInboxViewModel.bulkAddToAlbum(album.id) { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
                     albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    bulkAddToAlbumFromInbox = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
                 }
-                bulkAddToAlbumFromInbox = false
             },
             onDismiss = { bulkAddToAlbumFromInbox = false }
         )
@@ -4196,6 +4427,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             albumsViewModel.applyAssetAdded(album.id)
                             albumDetailViewModel.applyAssetAdded(album.id, addToAlbumState.asset)
                             addToAlbum = null
+                            showAddedToAlbumSnackbar(1, album.name)
                         }
                         .onFailure { error ->
                             addToAlbum = addToAlbumState.copy(
@@ -4209,13 +4441,101 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
+    if (showLogoutConfirm) {
+        val pendingBackup = if (deviceBackupState.isBackupEnabled) {
+            deviceBackupState.pendingEntries.size
+        } else 0
+        val baseMessage = stringResource(Res.string.logout_confirm_message)
+        val message = if (pendingBackup > 0) {
+            baseMessage + "\n\n" + pluralStringResource(
+                Res.plurals.logout_confirm_pending_backup, pendingBackup, pendingBackup
+            )
+        } else baseMessage
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.logout_confirm_title),
+            message = message,
+            confirmLabel = stringResource(Res.string.action_logout),
+            isDestructive = true,
+            isSubmitting = false,
+            onDismiss = { showLogoutConfirm = false },
+            onConfirm = {
+                showLogoutConfirm = false
+                authRepository.logout()
+            }
+        )
+    }
+
+    if (showAcceptAllSuggestions) {
+        LaunchedEffect(Unit) { personSuggestionsViewModel.clearError() }
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.people_suggestions_accept_all_title),
+            message = pluralStringResource(
+                Res.plurals.people_suggestions_accept_all_message,
+                suggestionsState.total,
+                suggestionsState.total
+            ),
+            confirmLabel = stringResource(Res.string.people_action_suggestions_accept_all),
+            isDestructive = false,
+            isSubmitting = suggestionsState.isBulkMutating,
+            errorMessage = suggestionsState.error?.userMessage,
+            onDismiss = { showAcceptAllSuggestions = false },
+            onConfirm = {
+                personSuggestionsViewModel.acceptAll { affected ->
+                    showAcceptAllSuggestions = false
+                    selectedPerson?.let { personDetailViewModel.open(it.id, it.name) }
+                    peopleViewModel.refresh()
+                    coroutineScope.launch {
+                        snackbarController.show(
+                            org.jetbrains.compose.resources.getPluralString(
+                                Res.plurals.people_suggestions_accepted_done,
+                                affected, affected
+                            )
+                        )
+                    }
+                }
+            }
+        )
+    }
+
+    if (showDismissAllSuggestions) {
+        LaunchedEffect(Unit) { personSuggestionsViewModel.clearError() }
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.people_suggestions_dismiss_all_title),
+            message = pluralStringResource(
+                Res.plurals.people_suggestions_dismiss_all_message,
+                suggestionsState.total,
+                suggestionsState.total
+            ),
+            confirmLabel = stringResource(Res.string.people_action_suggestions_dismiss_all),
+            isDestructive = true,
+            isSubmitting = suggestionsState.isBulkMutating,
+            errorMessage = suggestionsState.error?.userMessage,
+            onDismiss = { showDismissAllSuggestions = false },
+            onConfirm = {
+                personSuggestionsViewModel.dismissAll { affected ->
+                    showDismissAllSuggestions = false
+                    coroutineScope.launch {
+                        snackbarController.show(
+                            org.jetbrains.compose.resources.getPluralString(
+                                Res.plurals.people_suggestions_dismissed_done,
+                                affected, affected
+                            )
+                        )
+                    }
+                }
+            }
+        )
+    }
+
     if (showUnarchiveAll) {
+        LaunchedEffect(Unit) { archivedViewModel.clearError() }
         com.photonne.app.ui.library.ConfirmActionDialog(
             title = stringResource(Res.string.archive_action_unarchive_all_title),
             message = stringResource(Res.string.archive_action_unarchive_all_message),
             confirmLabel = stringResource(Res.string.archive_action_unarchive_all),
             isDestructive = false,
             isSubmitting = archivedState.isBulkMutating,
+            errorMessage = archivedState.error?.userMessage,
             onDismiss = { showUnarchiveAll = false },
             onConfirm = {
                 archivedViewModel.unarchiveAll {
@@ -4227,12 +4547,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (showRestoreAllTrash) {
+        LaunchedEffect(Unit) { trashViewModel.clearError() }
         com.photonne.app.ui.library.ConfirmActionDialog(
             title = stringResource(Res.string.trash_action_restore_all),
             message = stringResource(Res.string.trash_dialog_restore_all_message),
             confirmLabel = stringResource(Res.string.trash_action_restore_all),
             isDestructive = false,
             isSubmitting = trashState.isBulkMutating,
+            errorMessage = trashState.error?.userMessage,
             onDismiss = { showRestoreAllTrash = false },
             onConfirm = {
                 trashViewModel.restoreAll {
@@ -4244,12 +4566,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (showEmptyTrash) {
+        LaunchedEffect(Unit) { trashViewModel.clearError() }
         com.photonne.app.ui.library.ConfirmActionDialog(
             title = stringResource(Res.string.trash_action_empty),
             message = stringResource(Res.string.trash_dialog_empty_message),
             confirmLabel = stringResource(Res.string.trash_action_empty),
             isDestructive = true,
             isSubmitting = trashState.isBulkMutating,
+            errorMessage = trashState.error?.userMessage,
             onDismiss = { showEmptyTrash = false },
             onConfirm = {
                 trashViewModel.emptyTrash { showEmptyTrash = false }
@@ -4259,12 +4583,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     if (showPurgeSelected) {
         val count = trashState.selection.size
+        LaunchedEffect(Unit) { trashViewModel.clearError() }
         com.photonne.app.ui.library.ConfirmActionDialog(
             title = stringResource(Res.string.trash_action_delete_forever),
             message = stringResource(Res.string.trash_dialog_purge_message, count),
             confirmLabel = stringResource(Res.string.trash_action_delete_forever),
             isDestructive = true,
             isSubmitting = trashState.isBulkMutating,
+            errorMessage = trashState.error?.userMessage,
             onDismiss = { showPurgeSelected = false },
             onConfirm = {
                 trashViewModel.bulkPurge { showPurgeSelected = false }
@@ -4274,6 +4600,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     if (bulkAddToAlbumFromMap) {
         val mapState = mapViewModel.state.collectAsState().value
+        LaunchedEffect(Unit) { mapViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
@@ -4287,14 +4614,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 mapViewModel.bulkAddToAlbum(album.id) { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
                     albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    bulkAddToAlbumFromMap = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
                 }
-                bulkAddToAlbumFromMap = false
             },
             onDismiss = { bulkAddToAlbumFromMap = false }
         )
     }
 
     if (bulkAddToAlbumFromPeople) {
+        LaunchedEffect(Unit) { personDetailViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
@@ -4308,8 +4637,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 personDetailViewModel.bulkAddToAlbum(album.id) { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
                     albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    bulkAddToAlbumFromPeople = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
                 }
-                bulkAddToAlbumFromPeople = false
             },
             onDismiss = { bulkAddToAlbumFromPeople = false }
         )
@@ -4336,13 +4666,39 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (showMergePicker && activePerson != null) {
+        // El selector debe poder encontrar a CUALQUIERA: se cargan todas las
+        // páginas al abrir (con el paginado perezoso las no cargadas eran
+        // infusionables).
+        LaunchedEffect(Unit) { peopleViewModel.loadAllPages() }
         com.photonne.app.ui.people.PersonPickerDialog(
             people = peopleState.people,
             baseUrl = apiBaseUrl,
             excludeId = activePerson.id,
+            isLoading = peopleState.isAppending,
             onDismiss = { showMergePicker = false },
             onSelect = { other ->
                 showMergePicker = false
+                mergeSource = other
+                mergeError = null
+            }
+        )
+    }
+
+    val mergeSourcePerson = mergeSource
+    if (mergeSourcePerson != null && activePerson != null) {
+        com.photonne.app.ui.people.ConfirmMergeDialog(
+            target = activePerson,
+            source = mergeSourcePerson,
+            baseUrl = apiBaseUrl,
+            isSubmitting = isMerging,
+            errorMessage = mergeError,
+            onDismiss = {
+                mergeSource = null
+                mergeError = null
+            },
+            onConfirm = {
+                isMerging = true
+                mergeError = null
                 coroutineScope.launch {
                     // The current person absorbs the picked one's faces.
                     // Mirror the PWA: target is the receiving person,
@@ -4350,12 +4706,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     runCatching {
                         peopleRepository.merge(
                             targetPersonId = activePerson.id,
-                            sourcePersonId = other.id
+                            sourcePersonId = mergeSourcePerson.id
                         )
                     }.onSuccess {
+                        isMerging = false
+                        mergeSource = null
                         peopleViewModel.refresh()
                         // The current detail might now contain more faces.
                         personDetailViewModel.open(activePerson.id, activePerson.name)
+                        snackbarController.show(
+                            org.jetbrains.compose.resources.getString(
+                                Res.string.people_merge_done
+                            )
+                        )
+                    }.onFailure { error ->
+                        // El diálogo sigue abierto con el error: antes el fallo
+                        // era silencio absoluto (runCatching sin onFailure).
+                        isMerging = false
+                        mergeError = errorFactory
+                            .from(error, "No se pudo fusionar")
+                            .userMessage
                     }
                 }
             }
@@ -4363,6 +4733,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (bulkAddToAlbumFromFolder) {
+        LaunchedEffect(Unit) { folderDetailViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
@@ -4376,14 +4747,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 folderDetailViewModel.bulkAddToAlbum(album.id) { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
                     albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    bulkAddToAlbumFromFolder = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
                 }
-                bulkAddToAlbumFromFolder = false
             },
             onDismiss = { bulkAddToAlbumFromFolder = false }
         )
     }
 
     if (bulkAddToAlbumFromAlbum) {
+        LaunchedEffect(Unit) { albumDetailViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
@@ -4396,14 +4769,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onAlbumSelected = { album ->
                 albumDetailViewModel.bulkAddToAlbum(album.id) { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    bulkAddToAlbumFromAlbum = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
                 }
-                bulkAddToAlbumFromAlbum = false
             },
             onDismiss = { bulkAddToAlbumFromAlbum = false }
         )
     }
 
     if (bulkAddToAlbumFromArchive) {
+        LaunchedEffect(Unit) { archivedViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
@@ -4417,10 +4792,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 archivedViewModel.bulkAddToAlbum(album.id) { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
                     albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    bulkAddToAlbumFromArchive = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
                 }
-                bulkAddToAlbumFromArchive = false
             },
             onDismiss = { bulkAddToAlbumFromArchive = false }
+        )
+    }
+
+    if (bulkAddToAlbumFromFavorites) {
+        // Este diálogo no existía: la barra de selección de Favoritos ponía el
+        // flag y aquí no lo leía nadie, así que el botón no hacía nada.
+        LaunchedEffect(Unit) { favoritesViewModel.clearError() }
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = favoritesState.isBulkMutating,
+            errorMessage = favoritesState.error?.userMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromFavorites = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                favoritesViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    bulkAddToAlbumFromFavorites = false
+                    showAddedToAlbumSnackbar(added.size, album.name)
+                }
+            },
+            onDismiss = { bulkAddToAlbumFromFavorites = false }
         )
     }
 

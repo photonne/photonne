@@ -49,7 +49,8 @@ class AlbumSharesViewModel(
         password: String?,
         allowDownload: Boolean,
         maxViews: Int?,
-        allowUpload: Boolean
+        allowUpload: Boolean,
+        onSuccess: () -> Unit = {}
     ) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
@@ -73,6 +74,7 @@ class AlbumSharesViewModel(
                             createdLink = link
                         )
                     }
+                    onSuccess()
                 }
                 .onFailure { error ->
                     _state.update {
@@ -91,7 +93,8 @@ class AlbumSharesViewModel(
         password: String?,
         allowDownload: Boolean,
         maxViews: Int?,
-        allowUpload: Boolean
+        allowUpload: Boolean,
+        onSuccess: () -> Unit = {}
     ) {
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, error = null) }
@@ -121,6 +124,7 @@ class AlbumSharesViewModel(
                             isMutating = false
                         )
                     }
+                    onSuccess()
                 }
                 .onFailure { error ->
                     _state.update {
@@ -133,7 +137,7 @@ class AlbumSharesViewModel(
         }
     }
 
-    fun revoke(token: String) {
+    fun revoke(token: String, onSuccess: () -> Unit = {}) {
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
@@ -145,6 +149,7 @@ class AlbumSharesViewModel(
                             isMutating = false
                         )
                     }
+                    onSuccess()
                 }
                 .onFailure { error ->
                     _state.update {

@@ -129,7 +129,9 @@ import com.photonne.app.resources.backup_bucket_other_folder
 import com.photonne.app.resources.backup_bucket_picker_hint
 import com.photonne.app.resources.backup_bucket_picker_title
 import com.photonne.app.resources.backup_source_add
+import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.backup_source_remove
+import com.photonne.app.resources.backup_source_removed
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -279,6 +281,10 @@ fun BackupScreen(
         // Screenshots and Downloads at once, and picking a new one used to
         // replace the previous.
         items(state.folders, key = { "folder-${it.uri}" }) { folder ->
+            val removedMessage = stringResource(
+                Res.string.backup_source_removed, folder.displayName
+            )
+            val undoLabel = stringResource(Res.string.action_undo)
             SettingsRow(
                 icon = Icons.Filled.Folder,
                 label = stringResource(Res.string.backup_source_label),
@@ -286,7 +292,14 @@ fun BackupScreen(
                 actionLabel = null,
                 onClick = null,
                 trailing = {
-                    IconButton(onClick = { viewModel.removeFolder(folder.uri) }) {
+                    IconButton(onClick = {
+                        // Reversible: quitarlo no borra nada del servidor, así
+                        // que snackbar con Deshacer en lugar de confirmación.
+                        viewModel.removeFolder(folder.uri)
+                        snackbar?.show(removedMessage, undoLabel) {
+                            viewModel.onFolderPicked(folder)
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Outlined.Delete,
                             contentDescription = stringResource(Res.string.backup_source_remove),

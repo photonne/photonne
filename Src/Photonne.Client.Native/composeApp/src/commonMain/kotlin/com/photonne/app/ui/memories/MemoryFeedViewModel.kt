@@ -120,22 +120,27 @@ class MemoryFeedViewModel(
      * Passes the whole [MemoryDetail], not just its assets: the detail screen's
      * cover needs the title, subtitle and cover id that came with it.
      */
-    fun open(memoryId: String, onLoaded: (MemoryDetail) -> Unit) {
+    fun open(
+        memoryId: String,
+        onError: (UiError) -> Unit = {},
+        onLoaded: (MemoryDetail) -> Unit
+    ) {
         if (_state.value.openingId != null) return
         _state.update { it.copy(openingId = memoryId, error = null) }
         viewModelScope.launch {
             runCatching { repository.detail(memoryId) }
                 .onSuccess { detail ->
                     _state.update { it.copy(openingId = null) }
+                    // Antes fallo y vacío eran silencio: el spinner terminaba y
+                    // no pasaba nada. Los dos salen ahora por [onError] (la
+                    // pantalla los enseña como snackbar); `state.error` queda
+                    // para la carga del feed, que es la que pinta el banner.
                     if (detail.assets.isNotEmpty()) onLoaded(detail)
+                    else onError(UiError(userMessage = "Este recuerdo ya no tiene fotos"))
                 }
                 .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            openingId = null,
-                            error = errorFactory.from(error, "No se pudo abrir el recuerdo"),
-                        )
-                    }
+                    _state.update { it.copy(openingId = null) }
+                    onError(errorFactory.from(error, "No se pudo abrir el recuerdo"))
                 }
         }
     }

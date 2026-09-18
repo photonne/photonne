@@ -110,12 +110,19 @@ fun NotificationsScreen(
     }
     Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
-        ErrorBanner(
+        // Con contenido en pantalla el banner vive arriba del todo: sin la
+        // reserva quedaba detrás del cromo flotante.
+        if (state.items.isNotEmpty()) {
+            ErrorBanner(
                 error = state.error,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                modifier = Modifier
+                    .padding(top = reservedTop)
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
             )
+        }
 
         PhotonneRefreshableScreen(
+            indicatorTopPadding = reservedTop,
             isRefreshing = state.isLoading && state.items.isNotEmpty(),
             onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxWidth().weight(1f)
@@ -126,6 +133,14 @@ fun NotificationsScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
+                // Una primera carga fallida no es una bandeja vacía: antes caía
+                // en la rama de vacío y decía "total: 0".
+                state.error != null && state.items.isEmpty() ->
+                    com.photonne.app.ui.error.FullScreenError(
+                        error = state.error,
+                        onRetry = viewModel::refresh,
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
                 state.isEmpty -> {
                     val title = if (state.unreadOnly)
                         stringResource(Res.string.notifications_empty_unread_title)

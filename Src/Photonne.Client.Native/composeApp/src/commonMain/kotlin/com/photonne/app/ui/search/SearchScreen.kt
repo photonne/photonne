@@ -106,6 +106,7 @@ fun SearchScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         PhotonneRefreshableScreen(
+            indicatorTopPadding = reservedTop,
             isRefreshing = state.isLoading && state.results.isNotEmpty(),
             onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxSize()

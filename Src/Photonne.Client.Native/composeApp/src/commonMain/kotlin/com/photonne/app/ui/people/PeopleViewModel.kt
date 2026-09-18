@@ -112,6 +112,50 @@ class PeopleViewModel(
         }
     }
 
+    /**
+     * Carga TODAS las páginas restantes de una tirada. El selector de fusión
+     * tiene que poder encontrar a cualquier persona, no solo a las ya
+     * scrolleadas; con paginado perezoso las no cargadas eran infusionables.
+     */
+    fun loadAllPages() {
+        val snapshot = _state.value
+        if (snapshot.isAppending || !snapshot.hasMore || snapshot.isInitialLoading) return
+        _state.update { it.copy(isAppending = true) }
+        viewModelScope.launch {
+            while (true) {
+                val current = _state.value
+                val page = runCatching {
+                    repository.list(
+                        includeHidden = current.showHidden,
+                        limit = PAGE_SIZE,
+                        offset = current.people.size
+                    )
+                }.getOrElse { error ->
+                    _state.update {
+                        it.copy(
+                            isAppending = false,
+                            error = errorFactory.from(error, "No se pudo cargar más")
+                        )
+                    }
+                    return@launch
+                }
+                val existing = current.people.mapTo(HashSet()) { it.id }
+                val appended = page.items.filter { it.id !in existing }
+                val merged = current.people + appended
+                val done = merged.size >= page.total || appended.isEmpty()
+                _state.update {
+                    it.copy(
+                        people = merged,
+                        total = page.total,
+                        hasMore = merged.size < page.total,
+                        isAppending = !done
+                    )
+                }
+                if (done) break
+            }
+        }
+    }
+
     fun toggleShowHidden() {
         _state.update {
             it.copy(showHidden = !it.showHidden, loaded = false, people = emptyList())

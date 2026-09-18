@@ -60,6 +60,7 @@ fun PersonDetailScreen(
     onSuggestions: () -> Unit,
     onMerge: () -> Unit,
     onToggleHidden: () -> Unit,
+    onRetry: () -> Unit = {},
     onApplySelection: (SelectionPatch) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
@@ -80,9 +81,11 @@ fun PersonDetailScreen(
                     )
                 )
             state.error != null && state.items.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
-                    com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                }
+                com.photonne.app.ui.error.FullScreenError(
+                    error = state.error,
+                    onRetry = onRetry,
+                    modifier = Modifier.padding(top = reservedTop)
+                )
             else -> AssetGrid(
                 items = state.items,
                 baseUrl = apiBaseUrl,

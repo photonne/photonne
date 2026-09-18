@@ -78,10 +78,12 @@ fun AccountStorageScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        state.error?.userMessage != null && state.info == null ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
-            }
+        state.error != null && state.info == null ->
+            com.photonne.app.ui.error.FullScreenError(
+                error = state.error,
+                onRetry = viewModel::load,
+                modifier = Modifier.padding(top = reservedTop)
+            )
         state.info != null -> {
             val info = state.info!!
             val percentInt = state.usagePercent?.let { (it * 100f).toInt().coerceIn(0, 100) }

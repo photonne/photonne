@@ -358,6 +358,45 @@
     <string name="people_suggestions_accept">Accept</string>
     <string name="people_suggestions_dismiss">Dismiss</string>
     <string name="people_picker_title">Pick a person</string>
+    <string name="people_picker_search_placeholder">Search person</string>
+    <plurals name="people_picker_faces_format">
+        <item quantity="one">%1$d face</item>
+        <item quantity="other">%1$d faces</item>
+    </plurals>
+    <string name="people_merge_confirm_title">Merge people</string>
+    <string name="people_merge_confirm_message">The faces of %1$s will move to %2$s and %1$s will disappear from the list. This cannot be undone.</string>
+    <string name="people_merge_done">People merged</string>
+    <string name="member_remove_confirm_title">Remove access</string>
+    <string name="member_remove_confirm_message">%1$s will no longer have access.</string>
+    <string name="member_remove_confirm_action">Remove</string>
+    <string name="backup_source_removed">Source removed: %1$s</string>
+    <plurals name="selection_removed_from_album_done">
+        <item quantity="one">%1$d photo removed from the album</item>
+        <item quantity="other">%1$d photos removed from the album</item>
+    </plurals>
+    <string name="selection_archive_confirm_title">Archive photos</string>
+    <plurals name="selection_archive_confirm_message">
+        <item quantity="one">%1$d photo will be archived and disappear from the timeline.</item>
+        <item quantity="other">%1$d photos will be archived and disappear from the timeline.</item>
+    </plurals>
+    <string name="people_suggestions_accept_all_title">Accept all suggestions</string>
+    <plurals name="people_suggestions_accept_all_message">
+        <item quantity="one">%1$d suggestion will be accepted, including any not loaded on screen yet.</item>
+        <item quantity="other">%1$d suggestions will be accepted, including any not loaded on screen yet.</item>
+    </plurals>
+    <string name="people_suggestions_dismiss_all_title">Dismiss all suggestions</string>
+    <plurals name="people_suggestions_dismiss_all_message">
+        <item quantity="one">%1$d suggestion will be dismissed, including any not loaded on screen yet.</item>
+        <item quantity="other">%1$d suggestions will be dismissed, including any not loaded on screen yet.</item>
+    </plurals>
+    <plurals name="people_suggestions_accepted_done">
+        <item quantity="one">%1$d suggestion accepted</item>
+        <item quantity="other">%1$d suggestions accepted</item>
+    </plurals>
+    <plurals name="people_suggestions_dismissed_done">
+        <item quantity="one">%1$d suggestion dismissed</item>
+        <item quantity="other">%1$d suggestions dismissed</item>
+    </plurals>
     <string name="people_picker_empty">No other people to merge with.</string>
     <string name="people_faces_title">Faces in this photo</string>
     <string name="people_faces_empty">The server hasn't detected any faces in this photo.</string>
@@ -417,6 +456,25 @@
     <plurals name="selection_trash_done">
         <item quantity="one">%1$d photo moved to the trash</item>
         <item quantity="other">%1$d photos moved to the trash</item>
+    </plurals>
+    <plurals name="selection_added_to_album_done">
+        <item quantity="one">%1$d photo added to %2$s</item>
+        <item quantity="other">%1$d photos added to %2$s</item>
+    </plurals>
+    <plurals name="selection_moved_to_folder_done">
+        <item quantity="one">%1$d photo moved to %2$s</item>
+        <item quantity="other">%1$d photos moved to %2$s</item>
+    </plurals>
+    <plurals name="people_recluster_done">
+        <item quantity="one">Regrouped: %1$d new person</item>
+        <item quantity="other">Regrouped: %1$d new people</item>
+    </plurals>
+    <string name="people_recluster_done_none">Regrouped: no new people</string>
+    <string name="logout_confirm_title">Log out</string>
+    <string name="logout_confirm_message">Are you sure you want to log out on this device?</string>
+    <plurals name="logout_confirm_pending_backup">
+        <item quantity="one">%1$d device photo has not been backed up to the server yet.</item>
+        <item quantity="other">%1$d device photos have not been backed up to the server yet.</item>
     </plurals>
     <string name="selection_group_select">Select group</string>
     <string name="selection_group_clear">Deselect group</string>

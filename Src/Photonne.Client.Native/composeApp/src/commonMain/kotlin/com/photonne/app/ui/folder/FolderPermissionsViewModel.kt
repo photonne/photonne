@@ -56,7 +56,9 @@ class FolderPermissionsViewModel(
     fun grant(
         user: ShareableUser,
         role: AlbumMemberRole,
-        onMembershipChanged: (memberCount: Int) -> Unit = {}
+        onMembershipChanged: (memberCount: Int) -> Unit = {},
+        /** Siempre que la petición sale bien, también al re-invitar a un miembro. */
+        onSuccess: () -> Unit = {}
     ) {
         val folderId = _state.value.folderId ?: return
         if (_state.value.isMutating) return
@@ -70,6 +72,7 @@ class FolderPermissionsViewModel(
                         it.copy(members = without + permission, isMutating = false)
                     }
                     if (!wasMember) onMembershipChanged(_state.value.members.size)
+                    onSuccess()
                 }
                 .onFailure { error ->
                     _state.update {

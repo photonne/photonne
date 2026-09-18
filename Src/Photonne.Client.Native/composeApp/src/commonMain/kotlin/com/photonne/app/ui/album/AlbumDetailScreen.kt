@@ -196,6 +196,7 @@ fun AlbumDetailScreen(
     }
 
     PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
         isRefreshing = state.isLoading && state.items.isNotEmpty(),
         onRefresh = viewModel::refresh
     ) {

@@ -79,6 +79,7 @@ internal fun ExploreLabelGridScreen(
     val gridState = rememberLazyGridState()
     val reservedTop = subscreenChromeReservedTop()
     PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
         isRefreshing = isLoading && tiles.isNotEmpty(),
         onRefresh = onRefresh
     ) {
@@ -91,9 +92,11 @@ internal fun ExploreLabelGridScreen(
                         CircularProgressIndicator()
                     }
                 error != null && tiles.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
-                        com.photonne.app.ui.error.ErrorBanner(error = error)
-                    }
+                    com.photonne.app.ui.error.FullScreenError(
+                        error = error,
+                        onRetry = onRefresh,
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
                 tiles.isEmpty() ->
                     EmptyState(
                         icon = Icons.Outlined.Category,

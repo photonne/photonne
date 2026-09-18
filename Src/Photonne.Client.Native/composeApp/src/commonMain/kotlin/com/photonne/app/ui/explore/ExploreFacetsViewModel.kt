@@ -31,7 +31,9 @@ class ExploreFacetsViewModel(
 
     fun ensureLoaded() {
         val current = _state.value
-        if (current.isLoading || current.attempted) return
+        // Un intento FALLIDO no cuenta como cargado: si no, el error quedaba
+        // clavado hasta reiniciar la app aunque se volviera a entrar.
+        if (current.isLoading || (current.attempted && current.error == null)) return
         refresh()
     }
 

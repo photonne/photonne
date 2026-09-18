@@ -55,7 +55,9 @@ class AlbumPermissionsViewModel(
     fun grant(
         user: ShareableUser,
         role: AlbumMemberRole,
-        onMembershipChanged: (memberCount: Int) -> Unit = {}
+        onMembershipChanged: (memberCount: Int) -> Unit = {},
+        /** Siempre que la petición sale bien, también al re-invitar a un miembro. */
+        onSuccess: () -> Unit = {}
     ) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
@@ -72,6 +74,7 @@ class AlbumPermissionsViewModel(
                         )
                     }
                     if (!wasMember) onMembershipChanged(_state.value.members.size)
+                    onSuccess()
                 }
                 .onFailure { error ->
                     _state.update {

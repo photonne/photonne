@@ -388,12 +388,18 @@ class AlbumDetailViewModel(
      * Detach every selected asset from this album. The repo only exposes a
      * per-asset endpoint, so we fan out one call per id and surface the
      * count we managed to remove for the album-list badge to stay correct.
+     *
+     * [onResult] recibe los ids quitados (para ofrecer Deshacer) o el error.
+     * Un fallo A MEDIAS ya no restaura la lista local entera — el servidor
+     * pudo quitar parte, así que se re-sincroniza con [refresh].
      */
-    fun bulkRemoveFromAlbum(onSuccess: (removed: Int) -> Unit = {}) {
+    fun bulkRemoveFromAlbum(
+        onSuccess: (removed: Int) -> Unit = {},
+        onResult: (removedIds: List<String>, error: UiError?) -> Unit = { _, _ -> }
+    ) {
         val albumId = _state.value.albumId ?: return
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
-        val previousItems = _state.value.items
         _state.update {
             it.copy(
                 isBulkMutating = true,
@@ -409,15 +415,13 @@ class AlbumDetailViewModel(
                 .onSuccess {
                     _state.update { it.copy(isBulkMutating = false) }
                     onSuccess(ids.size)
+                    onResult(ids, null)
                 }
                 .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            items = previousItems,
-                            isBulkMutating = false,
-                            error = errorFactory.from(error, "No se pudo quitar del álbum")
-                        )
-                    }
+                    val uiError = errorFactory.from(error, "No se pudo quitar del álbum")
+                    _state.update { it.copy(isBulkMutating = false, error = uiError) }
+                    refresh()
+                    onResult(ids, uiError)
                 }
         }
     }

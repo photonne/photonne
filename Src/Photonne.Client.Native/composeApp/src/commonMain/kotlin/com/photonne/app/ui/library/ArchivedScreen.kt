@@ -63,6 +63,7 @@ fun ArchivedScreen(
     LaunchedEffect(Unit) { onLoad() }
 
     PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
         isRefreshing = state.isRefreshing,
         onRefresh = onRefresh
     ) {
@@ -76,9 +77,11 @@ fun ArchivedScreen(
                         )
                     )
                 state.error != null && state.items.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
-                        com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                    }
+                    com.photonne.app.ui.error.FullScreenError(
+                        error = state.error,
+                        onRetry = onRefresh,
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
                 state.isEmpty ->
                     EmptyState(
                         icon = Icons.Outlined.Archive,
