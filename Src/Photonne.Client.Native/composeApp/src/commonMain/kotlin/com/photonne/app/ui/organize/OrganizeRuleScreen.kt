@@ -38,6 +38,7 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.settings.RecentDestinationsStore
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_select
 import com.photonne.app.resources.organize_move_action_count
 import com.photonne.app.resources.organize_move_by_year_desc
 import com.photonne.app.resources.organize_move_by_year_label
@@ -208,6 +209,7 @@ fun OrganizeRuleScreen(
             includeRoot = false,
             initialSelectionId = state.targetFolderId,
             recentDestinationIds = recentDestinations,
+            confirmLabel = stringResource(Res.string.action_select),
             onDismiss = { showFolderPicker = false },
             onConfirm = { targetFolderId, _ ->
                 showFolderPicker = false

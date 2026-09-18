@@ -18,6 +18,7 @@
     <string name="action_close">Cerrar</string>
     <string name="action_back">Atrás</string>
     <string name="action_save">Guardar</string>
+    <string name="action_select">Seleccionar</string>
     <string name="action_create">Crear</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_leave">Salir</string>
