@@ -1321,11 +1321,25 @@ fun AdminRunTasksScreen(
                         // their retries are skipped by every future backfill, so
                         // the row has no Start button and nothing to say. The
                         // registry is where they get retried or suppressed.
+                        // Whenever the registry has anything of this type, not
+                        // only once it's definitive: a sweep's failures are born
+                        // with a retry scheduled, so a run that ended on "190
+                        // fallidas" showed no way in for the hours the backoff
+                        // takes to run out. The label says which of the two it is.
                         task.enrichmentType?.let { type ->
-                            if (queue.failed > 0) SecondaryAction(
+                            val label = listOfNotNull(
+                                stringResource(Res.string.admin_run_tasks_ai_failed_format, queue.failed)
+                                    .takeIf { queue.failed > 0 },
+                                stringResource(Res.string.admin_run_tasks_ai_retrying_format, queue.retrying)
+                                    .takeIf { queue.retrying > 0 },
+                            ).joinToString(" · ")
+                            if (label.isNotEmpty()) SecondaryAction(
                                 icon = Icons.Outlined.ErrorOutline,
-                                label = stringResource(Res.string.admin_run_tasks_ai_failed_format, queue.failed),
-                                isWarning = true,
+                                label = label,
+                                // The error colour is for what's waiting on the
+                                // admin; retries alone are still the queue's job.
+                                isWarning = queue.failed > 0,
+                                opensRegistry = true,
                                 onClick = { onOpenFailures(type) }
                             ) else null
                         },
@@ -1490,6 +1504,8 @@ data class SecondaryAction(
     val icon: ImageVector,
     val label: String,
     val isWarning: Boolean = false,
+    /** Navigates rather than acts: gets the chevron, and goes first. */
+    val opensRegistry: Boolean = false,
     val onClick: () -> Unit,
 )
 
@@ -2028,13 +2044,13 @@ private fun TaskRowActions(
         !(pending != null && pending.unprocessed == 0)
 
     val errorColor = MaterialTheme.colorScheme.error
-    for (action in secondaryActions.sortedByDescending { it.isWarning }) {
+    for (action in secondaryActions.sortedByDescending { it.isWarning || it.opensRegistry }) {
         TaskActionRow(
             icon = action.icon,
             label = action.label,
             color = if (action.isWarning) errorColor else contentColor,
             dividerColor = contentColor,
-            showChevron = action.isWarning,
+            showChevron = action.isWarning || action.opensRegistry,
             onClick = action.onClick,
         )
     }
