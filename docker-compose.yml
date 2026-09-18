@@ -76,6 +76,9 @@ services:
   postgresql:
     image: pgvector/pgvector:pg17
     container_name: photonne-db
+    # Docker gives /dev/shm 64 MB; Postgres puts parallel-query and parallel
+    # index-build memory there, and the pgvector HNSW builds need far more.
+    shm_size: 1g
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-photonne}
       - POSTGRES_USER=${POSTGRES_USER:-photonne_user}

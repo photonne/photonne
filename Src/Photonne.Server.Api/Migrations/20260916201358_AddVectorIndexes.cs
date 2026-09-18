@@ -17,6 +17,15 @@ namespace Photonne.Server.Api.Migrations
             // this migration's transaction, nothing persists.
             migrationBuilder.Sql("SET LOCAL maintenance_work_mem = '1GB';");
 
+            // A parallel build puts that whole budget in a dynamic shared
+            // memory segment, which lives in /dev/shm — 64 MB in a Docker
+            // container unless the compose sets shm_size — so the CREATE INDEX
+            // died with "could not resize shared memory segment: No space left
+            // on device" on every startup. A serial build keeps the graph in
+            // the backend's own memory; it costs the parallelism, which a
+            // one-core Postgres never had anyway.
+            migrationBuilder.Sql("SET LOCAL max_parallel_maintenance_workers = 0;");
+
             migrationBuilder.CreateIndex(
                 name: "IX_Faces_Embedding",
                 table: "Faces",
