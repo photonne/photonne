@@ -3,6 +3,7 @@ package com.photonne.app.ui.asset
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AssetDetail
@@ -347,7 +348,7 @@ class AssetDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "No se pudo archivar"))
+                        it.copy(error = errorFactory.from(error, ErrorMessages.ARCHIVE_FAILED))
                     }
                 }
         }
@@ -363,7 +364,7 @@ class AssetDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "No se pudo mover a la papelera"))
+                        it.copy(error = errorFactory.from(error, ErrorMessages.TRASH_FAILED))
                     }
                 }
         }

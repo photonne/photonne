@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.ObjectLabel
@@ -237,7 +238,7 @@ class SearchViewModel(
                     onResult(null)
                 }
                 .onFailure { error ->
-                    onResult(revertBulk(previous, error, "No se pudo archivar"))
+                    onResult(revertBulk(previous, error, ErrorMessages.ARCHIVE_FAILED))
                 }
         }
     }
@@ -261,7 +262,7 @@ class SearchViewModel(
                     onResult(null)
                 }
                 .onFailure { error ->
-                    onResult(revertBulk(previous, error, "No se pudo mover a la papelera"))
+                    onResult(revertBulk(previous, error, ErrorMessages.TRASH_FAILED))
                 }
         }
     }

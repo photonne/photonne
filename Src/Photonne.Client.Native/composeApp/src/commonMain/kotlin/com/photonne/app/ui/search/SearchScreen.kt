@@ -56,6 +56,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.graphics.SolidColor
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.action_close
+import com.photonne.app.resources.action_more
 import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -235,7 +236,7 @@ private fun SearchModeMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Outlined.MoreVert, contentDescription = null)
+            Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(Res.string.action_more))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(

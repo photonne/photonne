@@ -114,6 +114,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.photonne.app.resources.Res
 import androidx.compose.material3.TextButton
+import com.photonne.app.resources.action_back
 import com.photonne.app.resources.selection_action_skip_organize
 import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.selection_archive_done
@@ -568,51 +569,6 @@ private fun FloatingNavBarItem(
 }
 
 /**
- * La cápsula que envuelve cualquier barra de acciones de selección. Comparte
- * forma, color, altura y márgenes con [MainNavigationBar] a propósito: la barra
- * de selección *sustituye* a la nav (ver `resolvedBottomBar`), así que entrar en
- * selección se lee como que la cápsula cambia de contenido, no como que aparece
- * otra barra encima.
- *
- * Comparte también la estrategia de ancho: se ciñe a sus ítems, va centrada y
- * los iguala entre sí con el mismo [EqualWidthRow] que la nav. Si en una pantalla
- * estrecha no caben, el row los encoge en proporción en vez de desbordar.
- */
-@Composable
-private fun FloatingSelectionBar(content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(NavigationBarDefaults.windowInsets)
-            .padding(
-                start = FloatingNavBarHorizontalMargin,
-                end = FloatingNavBarHorizontalMargin,
-                bottom = FloatingNavBarBottomMargin
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            shape = FloatingNavBarShape,
-            // Mismo patrón de cápsula que la nav: transparente + cristal de fondo.
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 6.dp
-        ) {
-          Box {
-            Box(Modifier.matchParentSize().chromeCapsuleBackdrop())
-            EqualWidthRow(
-                modifier = Modifier
-                    .height(CompactNavBarContentHeight)
-                    .padding(horizontal = FloatingNavBarItemsPadding),
-                horizontalGap = FloatingNavItemGap,
-                content = content
-            )
-          }
-        }
-    }
-}
-
-/**
  * Un botón de la cápsula de selección. Hermano de [FloatingNavBarItem], pero sin
  * estado seleccionado: estos ítems disparan una acción, no marcan dónde estás.
  *
@@ -639,7 +595,7 @@ private fun FloatingSelectionBarItem(
             .fillMaxHeight()
             .padding(vertical = FloatingNavItemMargin)
             .clip(FloatingNavBarShape)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             // Misma pareja min-width + padding que el ítem de la nav: antes solo
             // tenía el mínimo y se ceñía al contenido, por eso se veía estrecho.
             .widthIn(min = FloatingNavItemMinWidth)
@@ -830,21 +786,6 @@ fun TimelineTopBar(
     }
 }
 
-/** Slim top bar for the Inicio (Hub) view — just the wordmark. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HubTopBar() {
-    TopAppBar(
-        title = {
-            Image(
-                painter = photonneLogoPainter(),
-                contentDescription = stringResource(Res.string.app_name),
-                modifier = Modifier.height(32.dp)
-            )
-        }
-    )
-}
-
 /** Whether the unified selection top bar shows "Archive" or "Unarchive" on the archive icon. */
 enum class ArchiveMode { Archive, Unarchive }
 
@@ -998,7 +939,7 @@ fun AssetSelectionBottomBar(
             icon = {
                 Icon(
                     Icons.Outlined.Share,
-                    contentDescription = stringResource(Res.string.action_share)
+                    contentDescription = null
                 )
             }
         )
@@ -1009,7 +950,7 @@ fun AssetSelectionBottomBar(
             icon = {
                 Icon(
                     Icons.Outlined.AddToPhotos,
-                    contentDescription = stringResource(Res.string.selection_action_add_to_album)
+                    contentDescription = null
                 )
             }
         )
@@ -1021,7 +962,7 @@ fun AssetSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.Download,
-                        contentDescription = stringResource(Res.string.selection_action_download)
+                        contentDescription = null
                     )
                 }
             )
@@ -1034,7 +975,7 @@ fun AssetSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.AutoMirrored.Outlined.DriveFileMove,
-                        contentDescription = stringResource(Res.string.folder_selection_move)
+                        contentDescription = null
                     )
                 }
             )
@@ -1047,7 +988,7 @@ fun AssetSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.RemoveCircleOutline,
-                        contentDescription = stringResource(Res.string.selection_action_remove_from_album)
+                        contentDescription = null
                     )
                 }
             )
@@ -1060,7 +1001,7 @@ fun AssetSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.PhotoAlbum,
-                        contentDescription = stringResource(Res.string.asset_action_set_cover)
+                        contentDescription = null
                     )
                 }
             )
@@ -1073,7 +1014,7 @@ fun AssetSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.LinkOff,
-                        contentDescription = stringResource(Res.string.people_action_unlink)
+                        contentDescription = null
                     )
                 }
             )
@@ -1086,7 +1027,7 @@ fun AssetSelectionBottomBar(
                 Box {
                     Icon(
                         Icons.Filled.MoreVert,
-                        contentDescription = stringResource(Res.string.selection_action_more)
+                        contentDescription = null
                     )
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         if (hasContextAction) {
@@ -1280,7 +1221,7 @@ fun AlbumCardSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.Group,
-                        contentDescription = stringResource(Res.string.action_collaborators)
+                        contentDescription = null
                     )
                 }
             )
@@ -1293,7 +1234,7 @@ fun AlbumCardSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.Edit,
-                        contentDescription = stringResource(Res.string.action_edit)
+                        contentDescription = null
                     )
                 }
             )
@@ -1306,7 +1247,7 @@ fun AlbumCardSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.AutoMirrored.Filled.Logout,
-                        contentDescription = stringResource(Res.string.album_card_action_leave)
+                        contentDescription = null
                     )
                 }
             )
@@ -1320,7 +1261,7 @@ fun AlbumCardSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.Delete,
-                        contentDescription = stringResource(Res.string.action_delete)
+                        contentDescription = null
                     )
                 }
             )
@@ -1440,7 +1381,7 @@ fun FolderCardSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.Group,
-                        contentDescription = stringResource(Res.string.action_collaborators)
+                        contentDescription = null
                     )
                 }
             )
@@ -1453,7 +1394,7 @@ fun FolderCardSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.DriveFileRenameOutline,
-                        contentDescription = stringResource(Res.string.action_rename)
+                        contentDescription = null
                     )
                 }
             )
@@ -1467,141 +1408,12 @@ fun FolderCardSelectionBottomBar(
                 icon = {
                     Icon(
                         Icons.Outlined.Delete,
-                        contentDescription = stringResource(Res.string.action_delete)
+                        contentDescription = null
                     )
                 }
             )
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FolderDetailTopBar(
-    title: String,
-    subtitle: String?,
-    canEdit: Boolean,
-    canDelete: Boolean,
-    canManageMembers: Boolean,
-    canMove: Boolean,
-    onBack: () -> Unit,
-    onEdit: () -> Unit,
-    onMove: () -> Unit,
-    onDelete: () -> Unit,
-    onManageMembers: () -> Unit,
-    // Per-user timeline opt-out. Only meaningful for shared folders.
-    canToggleTimeline: Boolean = false,
-    excludedFromDiscovery: Boolean = false,
-    onToggleTimeline: () -> Unit = {},
-    /** Create a subfolder of this folder. Null hides the action. */
-    onCreateSubfolder: (() -> Unit)? = null
-) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = canEdit || canDelete || canManageMembers || canMove || canToggleTimeline
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = {
-            androidx.compose.foundation.layout.Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        actions = {
-            if (onCreateSubfolder != null) {
-                CreateAction(
-                    icon = Icons.Outlined.CreateNewFolder,
-                    contentDescription = stringResource(Res.string.folder_action_new),
-                    onClick = onCreateSubfolder
-                )
-            }
-            if (hasMenu) {
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = stringResource(Res.string.folder_action_actions)
-                        )
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        if (canToggleTimeline) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(
-                                            if (excludedFromDiscovery) Res.string.folder_discovery_add
-                                            else Res.string.folder_discovery_remove
-                                        )
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        if (excludedFromDiscovery) Icons.Outlined.Visibility
-                                        else Icons.Outlined.VisibilityOff,
-                                        contentDescription = null
-                                    )
-                                },
-                                onClick = { menuOpen = false; onToggleTimeline() }
-                            )
-                        }
-                        if (canEdit) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.action_edit)) },
-                                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                                onClick = { menuOpen = false; onEdit() }
-                            )
-                        }
-                        if (canMove) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.folder_action_move)) },
-                                leadingIcon = {
-                                    Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null)
-                                },
-                                onClick = { menuOpen = false; onMove() }
-                            )
-                        }
-                        if (canManageMembers) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.album_action_members)) },
-                                leadingIcon = { Icon(Icons.Outlined.People, contentDescription = null) },
-                                onClick = { menuOpen = false; onManageMembers() }
-                            )
-                        }
-                        if (canDelete) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(Res.string.action_delete),
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Outlined.Delete,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                onClick = { menuOpen = false; onDelete() }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    )
 }
 
 /**
@@ -1711,132 +1523,6 @@ fun RowScope.FolderDetailChromeActions(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FolderSelectionTopBar(
-    selectedCount: Int,
-    isMutating: Boolean,
-    onClose: () -> Unit,
-    onMoveToFolder: () -> Unit
-) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
-                )
-            }
-        },
-        title = {
-            Text(
-                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        actions = {
-            TextButton(onClick = onMoveToFolder, enabled = !isMutating) {
-                Text(stringResource(Res.string.folder_selection_move))
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SearchTopBar() {
-    TopAppBar(
-        title = {
-            Text(
-                stringResource(Res.string.tab_search),
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MoreTopBar(onOpenUpload: (() -> Unit)? = null) {
-    TopAppBar(
-        title = { Text(stringResource(Res.string.tab_more), style = MaterialTheme.typography.titleMedium) },
-        actions = {
-            if (onOpenUpload != null) {
-                CreateAction(
-                    icon = Icons.Outlined.AddPhotoAlternate,
-                    contentDescription = stringResource(Res.string.upload_title),
-                    onClick = onOpenUpload
-                )
-            }
-        }
-    )
-}
-
-/** Generic title + optional subtitle + back button used by every settings sub-page. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SettingsTopBar(
-    title: String,
-    subtitle: String? = null,
-    onBack: () -> Unit,
-    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}
-) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = {
-            androidx.compose.foundation.layout.Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        actions = actions
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NotificationsTopBar(
-    title: String,
-    canMarkAllRead: Boolean,
-    onBack: () -> Unit,
-    onMarkAllRead: () -> Unit
-) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = { Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
-        actions = {
-            IconButton(onClick = onMarkAllRead, enabled = canMarkAllRead) {
-                Icon(
-                    Icons.Outlined.DoneAll,
-                    contentDescription = stringResource(
-                        Res.string.notifications_action_mark_all_read
-                    )
-                )
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 fun UploadTopBar(
     title: String,
     subtitle: String?,
@@ -1847,7 +1533,7 @@ fun UploadTopBar(
             IconButton(onClick = onBack) {
                 Icon(
                     Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
+                    contentDescription = stringResource(Res.string.action_back)
                 )
             }
         },
@@ -1864,378 +1550,6 @@ fun UploadTopBar(
             }
         }
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ArchivedTopBar(
-    title: String,
-    subtitle: String?,
-    canUnarchiveAll: Boolean,
-    onBack: () -> Unit,
-    onUnarchiveAll: () -> Unit
-) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = {
-            androidx.compose.foundation.layout.Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        actions = {
-            if (canUnarchiveAll) {
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = stringResource(Res.string.action_more)
-                        )
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.archive_action_unarchive_all)) },
-                            onClick = { menuOpen = false; onUnarchiveAll() }
-                        )
-                    }
-                }
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TrashTopBar(
-    title: String,
-    subtitle: String?,
-    canActOnAll: Boolean,
-    onBack: () -> Unit,
-    onRestoreAll: () -> Unit,
-    onEmptyTrash: () -> Unit
-) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = {
-            androidx.compose.foundation.layout.Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        actions = {
-            if (canActOnAll) {
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = stringResource(Res.string.action_more)
-                        )
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.trash_action_restore_all)) },
-                            onClick = { menuOpen = false; onRestoreAll() }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    stringResource(Res.string.trash_action_empty),
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            },
-                            onClick = { menuOpen = false; onEmptyTrash() }
-                        )
-                    }
-                }
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FavoritesTopBar(
-    title: String,
-    subtitle: String?,
-    onBack: () -> Unit
-) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = {
-            androidx.compose.foundation.layout.Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PersonDetailTopBar(
-    title: String,
-    subtitle: String?,
-    isHidden: Boolean,
-    onBack: () -> Unit,
-    onRename: () -> Unit,
-    onSuggestions: () -> Unit,
-    onMerge: () -> Unit,
-    onToggleHidden: () -> Unit
-) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = {
-            androidx.compose.foundation.layout.Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        actions = {
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(
-                        Icons.Filled.MoreVert,
-                        contentDescription = stringResource(Res.string.action_more)
-                    )
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(Res.string.people_action_rename)) },
-                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                        onClick = { menuOpen = false; onRename() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(Res.string.people_action_suggestions)) },
-                        onClick = { menuOpen = false; onSuggestions() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(Res.string.people_action_merge)) },
-                        onClick = { menuOpen = false; onMerge() }
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                if (isHidden) stringResource(Res.string.people_action_unhide)
-                                else stringResource(Res.string.people_action_hide)
-                            )
-                        },
-                        onClick = { menuOpen = false; onToggleHidden() }
-                    )
-                }
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PersonSuggestionsTopBar(
-    title: String,
-    subtitle: String?,
-    isBulkMutating: Boolean,
-    onBack: () -> Unit,
-    onAcceptAll: () -> Unit,
-    onDismissAll: () -> Unit
-) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = {
-            androidx.compose.foundation.layout.Column {
-                Text(
-                    stringResource(Res.string.people_suggestions_title, title),
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1
-                )
-                subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        actions = {
-            Box {
-                IconButton(onClick = { menuOpen = true }, enabled = !isBulkMutating) {
-                    Icon(
-                        Icons.Filled.MoreVert,
-                        contentDescription = stringResource(Res.string.action_more)
-                    )
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(stringResource(Res.string.people_action_suggestions_accept_all))
-                        },
-                        onClick = { menuOpen = false; onAcceptAll() }
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(stringResource(Res.string.people_action_suggestions_dismiss_all))
-                        },
-                        onClick = { menuOpen = false; onDismissAll() }
-                    )
-                }
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PersonDetailSelectionTopBar(
-    selectedCount: Int,
-    isMutating: Boolean,
-    onClose: () -> Unit,
-    onAddToAlbum: () -> Unit,
-    onArchive: () -> Unit,
-    onTrash: () -> Unit,
-    onUnlink: () -> Unit
-) {
-    AssetSelectionTopBar(selectedCount = selectedCount, isMutating = isMutating, onClose = onClose) {
-        TextButton(onClick = onUnlink, enabled = !isMutating) {
-            Text(stringResource(Res.string.people_action_unlink))
-        }
-        IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
-            Icon(
-                Icons.Outlined.AddToPhotos,
-                contentDescription = stringResource(Res.string.selection_action_add_to_album)
-            )
-        }
-        IconButton(onClick = onArchive, enabled = !isMutating) {
-            Icon(
-                Icons.Outlined.Archive,
-                contentDescription = stringResource(Res.string.selection_action_archive)
-            )
-        }
-        IconButton(onClick = onTrash, enabled = !isMutating) {
-            Icon(
-                Icons.Outlined.Delete,
-                contentDescription = stringResource(Res.string.selection_action_trash),
-                tint = MaterialTheme.colorScheme.error
-            )
-        }
-    }
-}
-
-/**
- * Selection top bar for the Favorites screen — the same bulk vocabulary
- * as the Timeline selection bar (Add to album, Archive, Trash), since
- * "Unfavorite" can be done from the asset viewer per item.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FavoritesSelectionTopBar(
-    selectedCount: Int,
-    isMutating: Boolean,
-    onClose: () -> Unit,
-    onAddToAlbum: () -> Unit,
-    onArchive: () -> Unit,
-    onTrash: () -> Unit
-) {
-    // Comparte el andamiaje (Close + contador) de [AssetSelectionTopBar]; solo
-    // cambian las acciones de la derecha.
-    AssetSelectionTopBar(selectedCount = selectedCount, isMutating = isMutating, onClose = onClose) {
-        IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
-            Icon(
-                Icons.Outlined.AddToPhotos,
-                contentDescription = stringResource(Res.string.selection_action_add_to_album)
-            )
-        }
-        IconButton(onClick = onArchive, enabled = !isMutating) {
-            Icon(
-                Icons.Outlined.Archive,
-                contentDescription = stringResource(Res.string.selection_action_archive)
-            )
-        }
-        IconButton(onClick = onTrash, enabled = !isMutating) {
-            Icon(
-                Icons.Outlined.Delete,
-                contentDescription = stringResource(Res.string.selection_action_trash),
-                tint = MaterialTheme.colorScheme.error
-            )
-        }
-    }
-}
-
-/** Selection top bar tailored to the Archived screen — only exposes Unarchive. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ArchivedSelectionTopBar(
-    selectedCount: Int,
-    isMutating: Boolean,
-    onClose: () -> Unit,
-    onUnarchive: () -> Unit
-) {
-    AssetSelectionTopBar(selectedCount = selectedCount, isMutating = isMutating, onClose = onClose) {
-        TextButton(onClick = onUnarchive, enabled = !isMutating) {
-            Text(stringResource(Res.string.archive_action_unarchive))
-        }
-    }
 }
 
 /** Selection top bar tailored to the Trash screen — Restore + Delete forever. */

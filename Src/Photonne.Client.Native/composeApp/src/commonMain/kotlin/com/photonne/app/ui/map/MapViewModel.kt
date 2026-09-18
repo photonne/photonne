@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.map.MapRepository
@@ -146,12 +147,12 @@ class MapViewModel(
 
     fun bulkArchive() = runBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "No se pudo archivar"
+        errorFallback = ErrorMessages.ARCHIVE_FAILED
     )
 
     fun bulkTrash() = runBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "No se pudo mover a la papelera"
+        errorFallback = ErrorMessages.TRASH_FAILED
     )
 
     /**

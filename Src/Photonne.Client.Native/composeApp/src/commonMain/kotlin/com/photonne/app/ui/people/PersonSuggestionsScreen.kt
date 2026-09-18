@@ -76,6 +76,7 @@ fun PersonSuggestionsScreen(
     onBack: () -> Unit,
     onAcceptAll: () -> Unit,
     onDismissAll: () -> Unit,
+    onRefresh: () -> Unit = onOpen,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
@@ -85,6 +86,11 @@ fun PersonSuggestionsScreen(
 
     LaunchedEffect(Unit) { onOpen() }
 
+    com.photonne.app.ui.theme.PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh
+    ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             state.isInitialLoading ->
@@ -176,6 +182,7 @@ fun PersonSuggestionsScreen(
                 )
             }
         )
+    }
     }
 }
 

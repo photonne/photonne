@@ -73,6 +73,11 @@ fun AccountStorageScreen(
     LaunchedEffect(Unit) { viewModel.load() }
 
     Box(modifier = Modifier.fillMaxSize()) {
+    com.photonne.app.ui.theme.PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
+        isRefreshing = state.isLoading && state.info != null,
+        onRefresh = viewModel::load
+    ) {
     when {
         state.isLoading && state.info == null ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -105,6 +110,7 @@ fun AccountStorageScreen(
                 }
             }
         }
+    }
     }
         SubscreenFloatingChrome(
             title = title,

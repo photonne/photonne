@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_back
 import com.photonne.app.resources.action_close
 import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
@@ -231,7 +232,7 @@ internal fun BoxScope.SubscreenFloatingChrome(
                                 IconButton(onClick = onBack) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                        contentDescription = stringResource(Res.string.action_close)
+                                        contentDescription = stringResource(Res.string.action_back)
                                     )
                                 }
                             }

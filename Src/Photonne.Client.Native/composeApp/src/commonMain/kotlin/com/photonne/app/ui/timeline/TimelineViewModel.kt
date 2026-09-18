@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
@@ -194,11 +195,11 @@ class TimelineViewModel(
     private fun selectedIds(): List<String> = _state.value.selection.toList()
 
     fun bulkArchive(onResult: (UiError?) -> Unit = {}) {
-        bulkRemove("No se pudo archivar", onResult) { assetRepository.archive(it) }
+        bulkRemove(ErrorMessages.ARCHIVE_FAILED, onResult) { assetRepository.archive(it) }
     }
 
     fun bulkTrash(onResult: (UiError?) -> Unit = {}) {
-        bulkRemove("No se pudo mover a la papelera", onResult) { assetRepository.trash(it) }
+        bulkRemove(ErrorMessages.TRASH_FAILED, onResult) { assetRepository.trash(it) }
     }
 
     /**

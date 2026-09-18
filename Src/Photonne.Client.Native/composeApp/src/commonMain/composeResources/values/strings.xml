@@ -16,11 +16,13 @@
     <string name="action_jump">Saltar</string>
     <string name="action_cancel">Cancelar</string>
     <string name="action_close">Cerrar</string>
+    <string name="action_back">Atrás</string>
     <string name="action_save">Guardar</string>
     <string name="action_create">Crear</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_leave">Salir</string>
     <string name="action_remove">Quitar</string>
+    <string name="action_retry">Reintentar</string>
     <string name="action_share">Compartir</string>
     <string name="action_edit">Editar</string>
     <string name="action_invite">Invitar</string>
@@ -101,6 +103,9 @@
     <string name="albums_scope_mine">Míos</string>
     <string name="albums_scope_shared">Compartidos</string>
     <string name="albums_badge_shared">Compartido</string>
+    <string name="sync_badge_pending">Pendiente de subir</string>
+    <string name="sync_badge_uploading">Subiendo</string>
+    <string name="sync_badge_failed">Fallo al subir</string>
     <string name="album_share_link_badge">Enlace público activo</string>
     <string name="my_links_title">Mis enlaces</string>
     <string name="albums_shared_empty">Aún no te han compartido álbumes.</string>

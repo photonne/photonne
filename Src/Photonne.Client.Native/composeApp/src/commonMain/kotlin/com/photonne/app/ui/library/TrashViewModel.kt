@@ -3,6 +3,7 @@ package com.photonne.app.ui.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
@@ -161,7 +162,7 @@ class TrashViewModel(
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "No se pudo restaurar")
+                            error = errorFactory.from(error, ErrorMessages.RESTORE_FAILED)
                         )
                     }
                 }

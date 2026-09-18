@@ -87,6 +87,11 @@ fun EnrichmentStatusScreen(
     LaunchedEffect(Unit) { viewModel.refresh() }
 
     Box(modifier = Modifier.fillMaxSize()) {
+    com.photonne.app.ui.theme.PhotonneRefreshableScreen(
+        indicatorTopPadding = reservedTop,
+        isRefreshing = state.isLoading && state.items.isNotEmpty(),
+        onRefresh = viewModel::refresh
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         when {
             state.isLoading && state.items.isEmpty() -> {
@@ -147,6 +152,7 @@ fun EnrichmentStatusScreen(
                 }
             }
         }
+    }
     }
         SubscreenFloatingChrome(
             title = title,

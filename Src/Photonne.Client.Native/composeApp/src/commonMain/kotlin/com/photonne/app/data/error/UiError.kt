@@ -59,6 +59,19 @@ data class ErrorDetails(
 }
 
 /**
+ * Mensajes de respaldo de las acciones masivas que se repiten en varios
+ * ViewModels. Un único punto evita que las copias diverjan; cuando se decida
+ * el patrón de i18n de los ViewModels (punto 43 del roadmap) bastará con
+ * migrar este objeto.
+ */
+object ErrorMessages {
+    const val ARCHIVE_FAILED = "No se pudo archivar"
+    const val TRASH_FAILED = "No se pudo mover a la papelera"
+    const val RESTORE_FAILED = "No se pudo restaurar"
+    const val UNARCHIVE_FAILED = "No se pudo desarchivar"
+}
+
+/**
  * Convierte una excepción a [UiError]. [fallback] se usa como `userMessage`
  * cuando no se puede derivar uno más específico a partir del tipo concreto.
  *

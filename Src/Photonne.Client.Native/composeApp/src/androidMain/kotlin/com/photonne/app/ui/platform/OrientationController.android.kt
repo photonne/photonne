@@ -13,8 +13,21 @@ import java.lang.ref.WeakReference
 actual object OrientationController {
     private var activityRef: WeakReference<Activity>? = null
 
+    /**
+     * El bloqueo vertical solo aplica a anchos compactos (punto 49 del
+     * roadmap): en tablets (sw >= 600 dp) la app rota libre. El manifiesto
+     * arranca en portrait para evitar el parpadeo del primer frame; aquí se
+     * libera nada más crear la Activity.
+     */
+    private var lockToPortrait = true
+
     fun attach(activity: Activity) {
         activityRef = WeakReference(activity)
+        lockToPortrait =
+            activity.resources.configuration.smallestScreenWidthDp < 600
+        if (!lockToPortrait) {
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER
+        }
     }
 
     fun detach(activity: Activity) {
@@ -32,5 +45,8 @@ actual object OrientationController {
 
     actual fun forceLandscape() = set(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
 
-    actual fun lockPortrait() = set(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+    actual fun lockPortrait() = set(
+        if (lockToPortrait) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        else ActivityInfo.SCREEN_ORIENTATION_USER
+    )
 }
