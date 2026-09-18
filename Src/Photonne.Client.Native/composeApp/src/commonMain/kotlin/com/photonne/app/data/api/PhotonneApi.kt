@@ -743,6 +743,9 @@ interface PhotonneApi {
         request: com.photonne.app.data.models.BackfillRequest
     ): com.photonne.app.data.models.BackfillResponse
     suspend fun adminPendingCount(kind: String): com.photonne.app.data.models.PendingCountResponse
+
+    /** Queued / processing / retrying / failed for every enrichment type in one cheap call (admin). */
+    suspend fun adminEnrichmentQueueSummary(): com.photonne.app.data.models.EnrichmentQueueSummaryResponse
     suspend fun adminMlPendingTotal(): com.photonne.app.data.models.MlPendingTotalResponse
     suspend fun adminCancelMlQueue(kind: String): com.photonne.app.data.models.CancelQueueResponse
     suspend fun adminRunFaceClustering(): com.photonne.app.data.models.GlobalReclusterResponse
@@ -2878,6 +2881,20 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = parseErrorMessage(response) ?: "Pending count $kind failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminEnrichmentQueueSummary():
+        com.photonne.app.data.models.EnrichmentQueueSummaryResponse {
+        val response: HttpResponse = client.get(
+            "$baseUrl/api/admin/enrichment/queue-summary"
+        )
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Enrichment queue summary failed"
             )
         }
         return response.body()

@@ -9,6 +9,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_enrichment_failures_error_load
 import com.photonne.app.resources.admin_enrichment_failures_error_retry_all
 import com.photonne.app.resources.admin_enrichment_failures_retry_all_done
+import com.photonne.app.resources.admin_enrichment_failures_retry_done
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import org.jetbrains.compose.resources.getString
@@ -174,7 +175,12 @@ class AdminEnrichmentFailuresViewModel(
         }
     }
 
-    fun retry(taskId: String) = runRowAction(taskId) { repository.retryEnrichmentFailure(taskId) }
+    // Says where it went. The row just vanishes from this list, which is the
+    // same thing a discard does — and the work itself shows up on another
+    // screen, so without a word the tap looks like it did nothing.
+    fun retry(taskId: String) = runRowAction(taskId, doneMessage = Res.string.admin_enrichment_failures_retry_done) {
+        repository.retryEnrichmentFailure(taskId)
+    }
 
     fun suppress(taskId: String) = runRowAction(taskId) { repository.suppressEnrichmentFailure(taskId) }
 
@@ -185,11 +191,11 @@ class AdminEnrichmentFailuresViewModel(
             // Honours the cause filter too: reintentar los permanentes solo
             // reproduce el mismo fallo y vuelve a llenar la cola.
             try {
-                repository.retryAllEnrichmentFailures(
+                val result = repository.retryAllEnrichmentFailures(
                     type = _state.value.typeFilter,
                     kind = _state.value.kindFilter?.name
                 )
-                val done = getString(Res.string.admin_enrichment_failures_retry_all_done)
+                val done = getString(Res.string.admin_enrichment_failures_retry_all_done, result.retried)
                 _state.update { it.copy(isRetryingAll = false, resultMessage = done) }
                 refresh()
             } catch (cancelled: CancellationException) {
@@ -203,12 +209,20 @@ class AdminEnrichmentFailuresViewModel(
         }
     }
 
-    private fun runRowAction(taskId: String, action: suspend () -> Unit) {
+    private fun runRowAction(
+        taskId: String,
+        doneMessage: org.jetbrains.compose.resources.StringResource? = null,
+        action: suspend () -> Unit
+    ) {
         viewModelScope.launch {
             markBusy(taskId, busy = true)
             runCatching { action() }
                 .onSuccess {
                     markBusy(taskId, busy = false)
+                    if (doneMessage != null) {
+                        val text = getString(doneMessage)
+                        _state.update { it.copy(resultMessage = text) }
+                    }
                     refresh()
                 }
                 .onFailure { ex ->

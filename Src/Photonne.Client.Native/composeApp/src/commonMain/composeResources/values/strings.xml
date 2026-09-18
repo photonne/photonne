@@ -634,6 +634,8 @@
     <string name="admin_run_tasks_last_run_format">Última ejecución hace %1$s</string>
     <string name="admin_run_tasks_last_run_never">Nunca ejecutado en esta sesión</string>
     <string name="admin_run_tasks_status_queueing">Encolando todo lo pendiente…</string>
+    <string name="admin_run_tasks_status_waiting">En cola, esperando turno…</string>
+    <string name="admin_run_tasks_retry_queue_format">Reintentando %1$d en cola</string>
     <string name="admin_run_tasks_status_starting">Arrancando…</string>
     <string name="admin_run_tasks_detail_progress">Progreso</string>
     <string name="admin_run_tasks_detail_progress_value">%1$s de %2$s (%3$s)</string>
@@ -1273,7 +1275,8 @@
     <string name="admin_libraries_permissions_add">Dar acceso a</string>
     <string name="admin_enrichment_failures_error_load">No se pudo cargar el registro de problemas</string>
     <string name="admin_enrichment_failures_error_retry_all">No se pudieron reintentar las tareas</string>
-    <string name="admin_enrichment_failures_retry_all_done">Tareas enviadas de nuevo a la cola</string>
+    <string name="admin_enrichment_failures_retry_all_done">%1$d tarea(s) enviadas a la cola. El progreso se ve en Ejecutar tareas.</string>
+    <string name="admin_enrichment_failures_retry_done">Enviada a la cola. El progreso se ve en Ejecutar tareas.</string>
     <string name="admin_enrichment_failures_retry_all_confirm">Se volverán a encolar las %1$d tareas del filtro actual. Las que fallan por el propio archivo volverán a fallar igual.</string>
     <string name="admin_user_not_found">No se encontró el usuario</string>
     <string name="admin_libraries_not_found">No se encontró la biblioteca</string>

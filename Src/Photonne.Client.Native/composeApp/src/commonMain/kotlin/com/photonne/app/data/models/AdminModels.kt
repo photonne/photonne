@@ -188,6 +188,28 @@ data class BackfillResponse(
     val elapsedMs: Long = 0,
 )
 
+/** One task type's line in `/api/admin/enrichment/queue-summary`. */
+@Serializable
+data class EnrichmentQueueCounts(
+    /** Pending + Processing, like [PendingCountResponse.inQueue]. */
+    val inQueue: Int = 0,
+    val processing: Int = 0,
+    val retrying: Int = 0,
+    /** Out of attempts — the failures registry's own number. */
+    val failed: Int = 0,
+)
+
+/**
+ * What every per-asset queue is doing, keyed by the server's
+ * `AssetEnrichmentType` name. Cheap on the server (it never touches the asset
+ * table), so Run Tasks asks for it first and paints from it while the per-type
+ * pending counts are still being computed.
+ */
+@Serializable
+data class EnrichmentQueueSummaryResponse(
+    val types: Map<String, EnrichmentQueueCounts> = emptyMap()
+)
+
 @Serializable
 data class PendingCountResponse(
     val unprocessed: Int = 0,

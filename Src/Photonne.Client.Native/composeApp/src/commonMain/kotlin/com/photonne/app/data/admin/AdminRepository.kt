@@ -219,6 +219,9 @@ class AdminRepository(private val api: PhotonneApi) {
 
     suspend fun pendingCount(kind: String): PendingCountResponse = api.adminPendingCount(kind)
 
+    suspend fun enrichmentQueueSummary(): com.photonne.app.data.models.EnrichmentQueueSummaryResponse =
+        api.adminEnrichmentQueueSummary()
+
     suspend fun mlPendingTotal(): MlPendingTotalResponse = api.adminMlPendingTotal()
 
     suspend fun cancelMlQueue(kind: String): CancelQueueResponse =
