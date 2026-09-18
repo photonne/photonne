@@ -215,12 +215,18 @@ private fun FailuresHeader(
         // Two filters, two named blocks. They used to be two unlabelled wraps of
         // identical chips 6dp apart — the same gap as between chips — so nobody
         // could tell where "which task" ended and "why it failed" began.
-        if (countsByType.isNotEmpty()) {
+        // The chips count what's out of attempts, so a type whose rows are all
+        // still retrying has none — and that's exactly the type Run Tasks sends
+        // here after a sweep. The filter in force always gets its chip, at zero:
+        // a filter you can't see is a filter you can't take off.
+        val typeCounts = if (typeFilter != null && countsByType.keys.none { it.equals(typeFilter, ignoreCase = true) })
+            countsByType + (typeFilter to 0) else countsByType
+        if (typeCounts.isNotEmpty()) {
             Spacer(Modifier.height(Spacing.md))
             FilterSection(
                 title = stringResource(Res.string.admin_enrichment_failures_section_task),
                 options = listOf(FilterOption<String?>(null, allLabel)) +
-                    countsByType.entries.sortedBy { it.key }.map { (type, count) ->
+                    typeCounts.entries.sortedBy { it.key }.map { (type, count) ->
                         FilterOption(type, "${taskLabel(type)} ($count)")
                     },
                 isSelected = { it.equals(typeFilter, ignoreCase = true) },
