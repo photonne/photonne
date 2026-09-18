@@ -68,6 +68,12 @@ fun FolderPickerDialog(
      * obliga a recorrerlo entero otra vez.
      */
     recentDestinationIds: List<String> = emptyList(),
+    /**
+     * Etiqueta del botón de confirmar. Por defecto "Mover", pero el selector
+     * también sirve para elegir destino sin mover nada todavía (reglas de
+     * organización), donde "Mover" mentía.
+     */
+    confirmLabel: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (targetFolderId: String?, organizeByYear: Boolean) -> Unit
 ) {
@@ -293,7 +299,7 @@ fun FolderPickerDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text(stringResource(Res.string.action_move))
+                    Text(confirmLabel ?: stringResource(Res.string.action_move))
                 }
             }
         }

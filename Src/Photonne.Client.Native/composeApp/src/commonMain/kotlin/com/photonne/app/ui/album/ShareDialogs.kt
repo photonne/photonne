@@ -12,11 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.resources.Res
@@ -274,6 +280,9 @@ fun CreateShareDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
+                // Con teclado abierto en un móvil bajo, sin scroll los campos
+                // del fondo (caducidad, guardar) quedaban inalcanzables.
+                .verticalScroll(rememberScrollState())
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -307,13 +316,10 @@ fun CreateShareDialog(
                 enabled = !isSubmitting
             )
             if (passwordEnabled) {
-                OutlinedTextField(
+                SharePasswordField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text(stringResource(Res.string.share_option_password_field)) },
-                    singleLine = true,
-                    enabled = !isSubmitting,
-                    modifier = Modifier.fillMaxWidth()
+                    enabled = !isSubmitting
                 )
             }
             ToggleRow(
@@ -329,6 +335,7 @@ fun CreateShareDialog(
                     label = { Text(stringResource(Res.string.share_option_max_views_field)) },
                     singleLine = true,
                     enabled = !isSubmitting,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -459,6 +466,7 @@ fun EditShareDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -511,13 +519,10 @@ fun EditShareDialog(
                 onSelect = { passwordAction = EditPasswordAction.Change }
             )
             if (passwordAction == EditPasswordAction.Change) {
-                OutlinedTextField(
+                SharePasswordField(
                     value = newPassword,
                     onValueChange = { newPassword = it },
-                    label = { Text(stringResource(Res.string.share_option_password_field)) },
-                    singleLine = true,
-                    enabled = !isSubmitting,
-                    modifier = Modifier.fillMaxWidth()
+                    enabled = !isSubmitting
                 )
             }
 
@@ -537,6 +542,7 @@ fun EditShareDialog(
                     label = { Text(stringResource(Res.string.share_option_max_views_field)) },
                     singleLine = true,
                     enabled = !isSubmitting,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -636,7 +642,16 @@ private fun ShareExpiryDatePickerDialog(
     val initialMillis = initial?.let {
         it.toEpochDays().toLong() * 86_400_000L
     }
-    val state = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+    // Una caducidad en el pasado crea un enlace muerto al nacer.
+    val todayEpochDays = kotlin.time.Clock.System.now()
+        .toLocalDateTime(TimeZone.currentSystemDefault()).date.toEpochDays()
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis,
+        selectableDates = object : androidx.compose.material3.SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                (utcTimeMillis / 86_400_000L) >= todayEpochDays
+        }
+    )
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
@@ -679,4 +694,41 @@ private fun ToggleRow(
         Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
+}
+
+/**
+ * Campo de contraseña de enlace: oculto por defecto con ojo para verlo, y
+ * teclado de contraseña (antes iba en claro con teclado normal).
+ */
+@Composable
+private fun SharePasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean
+) {
+    var visible by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(stringResource(Res.string.share_option_password_field)) },
+        singleLine = true,
+        enabled = enabled,
+        visualTransformation = if (visible) {
+            androidx.compose.ui.text.input.VisualTransformation.None
+        } else {
+            androidx.compose.ui.text.input.PasswordVisualTransformation()
+        },
+        trailingIcon = {
+            IconButton(onClick = { visible = !visible }) {
+                Icon(
+                    if (visible) androidx.compose.material.icons.Icons.Outlined.VisibilityOff
+                    else androidx.compose.material.icons.Icons.Outlined.Visibility,
+                    contentDescription = if (visible) "Ocultar contraseña"
+                    else "Mostrar contraseña"
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        modifier = Modifier.fillMaxWidth()
+    )
 }
