@@ -71,7 +71,16 @@ public class ThumbnailEndpoint : IEndpoint
                 }
 
                 // Generate thumbnails for all sizes (to ensure we have them all)
-                var generatedThumbnails = await thumbnailService.GenerateThumbnailsAsync(physicalPath, assetId, cancellationToken);
+                List<AssetThumbnail> generatedThumbnails;
+                try
+                {
+                    generatedThumbnails = await thumbnailService.GenerateThumbnailsAsync(physicalPath, assetId, cancellationToken);
+                }
+                catch (ThumbnailGenerationException ex)
+                {
+                    Console.WriteLine($"[THUMBNAILS] {ex.Message}");
+                    return Results.NotFound(new { error = ex.Message });
+                }
 
                 if (generatedThumbnails.Any())
                 {

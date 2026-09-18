@@ -23,6 +23,28 @@ public sealed class ThumbnailGeneratorTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task UnreadableImage_ThrowsWithTheDecoderReason()
+    {
+        // A .jpg that isn't a JPEG: the decoder is the thing that fails, and
+        // the caller must get that reason, not an empty list.
+        var bogus = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
+        await File.WriteAllTextAsync(bogus, "this is not an image");
+        try
+        {
+            var ex = await Assert.ThrowsAsync<ThumbnailGenerationException>(
+                () => GenerateAsync(bogus, Guid.NewGuid()));
+
+            Assert.NotNull(ex.InnerException);
+            Assert.Contains(Path.GetFileName(bogus), ex.Message);
+            Assert.Contains(ex.InnerException!.Message, ex.Message);
+        }
+        finally
+        {
+            File.Delete(bogus);
+        }
+    }
+
+    [Fact]
     public async Task GeneratesThreeSizes_ForJpeg()
     {
         var assetId = Guid.NewGuid();
