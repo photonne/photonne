@@ -72,7 +72,7 @@ class UploadViewModel(
             it.copy(
                 items = it.items + newItems,
                 pickerError = if (tooBig > 0)
-                    "$tooBig file(s) exceed the ${MAX_MB_PER_FILE} MB limit and were skipped."
+                    "$tooBig archivo(s) superan el límite de ${MAX_MB_PER_FILE} MB y se han omitido."
                 else it.pickerError
             )
         }

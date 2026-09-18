@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
+import com.photonne.app.resources.notifications_no_screen
 import com.photonne.app.resources.organize_skipped_done
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.action_undo
@@ -2992,7 +2993,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             )
                         }
                     }
-                    MoreSubscreen.Notifications ->
+                    MoreSubscreen.Notifications -> {
+                        val noScreenMessage =
+                            stringResource(Res.string.notifications_no_screen)
                         com.photonne.app.ui.notifications.NotificationsScreen(
                             title = stringResource(Res.string.notifications_title),
                             onBack = { moreSubscreen = null },
@@ -3029,9 +3032,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     path == "/people" || path.endsWith("/people") -> {
                                         moreSubscreen = MoreSubscreen.People
                                     }
+                                    // Ruta sin pantalla nativa: decirlo vale
+                                    // más que un toque que no hace nada.
+                                    else -> snackbarController.show(noScreenMessage)
                                 }
                             }
                         )
+                    }
                     MoreSubscreen.AccountSettings ->
                         com.photonne.app.ui.settings.AccountSettingsScreen(
                             title = stringResource(Res.string.account_settings_title),

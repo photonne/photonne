@@ -98,7 +98,7 @@ fun UploadScreen(
         }
 
         state.pickerError?.let { error ->
-            ErrorBanner(message = error, onDismiss = onDismissPickerError)
+            UploadErrorBanner(message = error, onDismiss = onDismissPickerError)
         }
 
         if (state.items.isEmpty()) {
@@ -191,7 +191,7 @@ private fun ClickableEmptyState(onPickFiles: () -> Unit) {
 }
 
 @Composable
-private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
+private fun UploadErrorBanner(message: String, onDismiss: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

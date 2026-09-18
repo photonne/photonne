@@ -16,6 +16,12 @@ import androidx.compose.runtime.Immutable
 data class NotificationPermissionState(
     /** True when notifications can be posted (or the platform needs no grant). */
     val isGranted: Boolean,
+    /**
+     * Abre los ajustes de notificaciones de la app en el sistema, para cuando
+     * el prompt ya no puede reaparecer (denegación previa). Null donde no
+     * exista tal pantalla.
+     */
+    val openSystemSettings: (() -> Unit)? = null,
     /** Prompts the user. No-op when already granted or not applicable. */
     val request: () -> Unit
 )

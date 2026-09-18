@@ -24,7 +24,9 @@ data class NotificationsUiState(
     val isLoading: Boolean = false,
     val isMarkingAllRead: Boolean = false,
     val error: UiError? = null,
-    val loaded: Boolean = false
+    val loaded: Boolean = false,
+    /** Cargando la página siguiente al final de la lista (scroll infinito). */
+    val isAppending: Boolean = false
 ) {
     val hasMorePages: Boolean get() = page < totalPages
     val isEmpty: Boolean get() = loaded && items.isEmpty() && !isLoading
@@ -76,6 +78,50 @@ class NotificationsViewModel(
     fun goToPage(page: Int) {
         if (page < 1) return
         load(page = page)
+    }
+
+    /**
+     * Scroll infinito (punto 37): añade la página siguiente al final,
+     * deduplicando por id, en lugar del par Anterior/Siguiente que
+     * recargaba la lista entera y perdía la posición.
+     */
+    fun loadMore() {
+        val snapshot = _state.value
+        if (snapshot.isLoading || snapshot.isAppending || !snapshot.hasMorePages) return
+        _state.update { it.copy(isAppending = true) }
+        viewModelScope.launch {
+            runCatching {
+                repository.list(
+                    page = snapshot.page + 1,
+                    pageSize = NotificationsUiState.PAGE_SIZE,
+                    unreadOnly = snapshot.unreadOnly
+                )
+            }
+                .onSuccess { result ->
+                    _state.update { current ->
+                        val existing = current.items.mapTo(HashSet()) { it.id }
+                        current.copy(
+                            items = current.items +
+                                result.items.filter { it.id !in existing },
+                            totalCount = result.totalCount,
+                            page = result.page.coerceAtLeast(1),
+                            totalPages = result.totalPages,
+                            unreadCount = result.unreadCount,
+                            isAppending = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isAppending = false,
+                            error = errorFactory.from(
+                                error, "No se pudieron cargar más notificaciones"
+                            )
+                        )
+                    }
+                }
+        }
     }
 
     fun markRead(id: String) {

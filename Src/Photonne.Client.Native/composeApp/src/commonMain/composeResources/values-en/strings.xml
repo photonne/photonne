@@ -1098,6 +1098,8 @@
     <string name="backup_timeline_pending_row">%1$d photos still to back up</string>
     <string name="backup_status_stop">Stop</string>
     <string name="backup_notifications_denied_hint">Without notification permission you won\'t see progress or a warning when a background backup fails. You can grant it in the system settings.</string>
+    <string name="backup_notifications_open_settings">Open settings</string>
+    <string name="backup_notifications_allow">Allow</string>
 
     <!-- Background sync preferences -->
     <string name="background_sync_section">Background sync</string>
@@ -1176,6 +1178,8 @@
     <string name="notifications_title">Notifications</string>
     <string name="notifications_action_mark_all_read">Mark all as read</string>
     <string name="notifications_filter_all">All</string>
+    <string name="notifications_filter_description">Filter notifications</string>
+    <string name="notifications_no_screen">This notification has no screen in the app</string>
     <string name="notifications_filter_unread">Unread</string>
     <string name="notifications_empty_title">No notifications.</string>
     <string name="notifications_empty_unread_title">No unread notifications.</string>

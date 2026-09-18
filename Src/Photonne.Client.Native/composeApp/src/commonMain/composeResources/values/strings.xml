@@ -1140,6 +1140,8 @@
     <string name="backup_timeline_pending_row">%1$d fotos por respaldar</string>
     <string name="backup_status_stop">Detener</string>
     <string name="backup_notifications_denied_hint">Sin permiso de notificaciones no verás el progreso ni el aviso si falla una copia en segundo plano. Puedes concederlo en los ajustes del sistema.</string>
+    <string name="backup_notifications_open_settings">Abrir ajustes</string>
+    <string name="backup_notifications_allow">Permitir</string>
 
     <!-- Background sync preferences -->
     <string name="background_sync_section">Sincronización en segundo plano</string>
@@ -1229,6 +1231,8 @@
     <string name="notifications_title">Notificaciones</string>
     <string name="notifications_action_mark_all_read">Marcar todas como leídas</string>
     <string name="notifications_filter_all">Todas</string>
+    <string name="notifications_filter_description">Filtrar notificaciones</string>
+    <string name="notifications_no_screen">Este aviso no tiene pantalla en la app</string>
     <string name="notifications_filter_unread">No leídas</string>
     <string name="notifications_empty_title">No hay notificaciones.</string>
     <string name="notifications_empty_unread_title">No hay notificaciones sin leer.</string>
