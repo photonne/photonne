@@ -15,6 +15,7 @@ repositorio ya lleva y que conviene mantener en cualquier compose propio:
 postgresql:
   image: pgvector/pgvector:pg17
   shm_size: 1g
+  command: -c shared_buffers=1GB
 ```
 
 - **`shm_size: 1g`.** Docker da 64 MB a `/dev/shm`, y Postgres guarda ahí la
@@ -23,14 +24,14 @@ postgresql:
   un HNSW falla con `could not resize shared memory segment ... No space
   left on device`. Este cambio necesita **recrear** el contenedor
   (`docker compose up -d`); un `docker restart` no lo aplica.
-- **`shared_buffers`.** Por defecto son 128 MB. Un índice HNSW de cientos de
-  miles de caras ocupa varios cientos de MB, así que con el valor por defecto
-  se lee del disco. Si en Grafana ves I/O de lectura alto en Postgres con el
-  reconocimiento de caras en marcha, súbelo:
-
-  ```yaml
-  command: -c shared_buffers=1GB
-  ```
+- **`shared_buffers=1GB`.** Es la caché de páginas propia de Postgres, 128 MB
+  por defecto. Un índice HNSW de cientos de miles de caras ocupa varios
+  cientos de MB y un kNN lo recorre en orden aleatorio, así que tiene que
+  caber en memoria; si no, entre la caché del kernel y el disco, el kNN pasa
+  de milisegundos a segundos y se ve como I/O de lectura alto en Postgres.
+  Esa memoria queda reservada desde el arranque: en un host con 4 GB de RAM
+  o menos, baja a `512MB`. También necesita recrear el contenedor, y se
+  comprueba con `SHOW shared_buffers;`.
 
 Un dato útil para dimensionar: en el log de Postgres, cada
 `checkpoint complete: wrote N buffers (P%)` permite calcular `shared_buffers`

@@ -79,6 +79,11 @@ services:
     # Docker gives /dev/shm 64 MB; Postgres puts parallel-query and parallel
     # index-build memory there, and the pgvector HNSW builds need far more.
     shm_size: 1g
+    # Postgres' own page cache, 128 MB by default. The HNSW index over the
+    # face embeddings is several hundred MB and a kNN walks it in random
+    # order, so it has to fit in memory. Lower to 512MB on a host with 4 GB
+    # of RAM or less.
+    command: -c shared_buffers=1GB
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-photonne}
       - POSTGRES_USER=${POSTGRES_USER:-photonne_user}
