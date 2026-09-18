@@ -1,5 +1,11 @@
 package com.photonne.app.ui.settings
 
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.VisualTransformation
 import com.photonne.app.ui.main.ResultSnackbar
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +64,8 @@ fun AccountSecurityScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
+    // Un único toggle para los tres campos: si enseñas una, quieres verlas.
+    var passwordsVisible by remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -72,8 +80,13 @@ fun AccountSecurityScreen(
             label = { Text(stringResource(Res.string.account_security_current)) },
             singleLine = true,
             enabled = !state.isSubmitting,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = if (passwordsVisible) VisualTransformation.None
+            else PasswordVisualTransformation(),
+            trailingIcon = { VisibilityToggle(passwordsVisible) { passwordsVisible = it } },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Next
+            ),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
@@ -93,8 +106,12 @@ fun AccountSecurityScreen(
                     )
                 }
             } else null,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = if (passwordsVisible) VisualTransformation.None
+            else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Next
+            ),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
@@ -107,8 +124,15 @@ fun AccountSecurityScreen(
             supportingText = if (state.mismatch) {
                 { Text(stringResource(Res.string.account_security_mismatch)) }
             } else null,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = if (passwordsVisible) VisualTransformation.None
+            else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = {
+                if (state.canSave) viewModel.submit()
+            }),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -136,6 +160,17 @@ fun AccountSecurityScreen(
             ),
             hazeState = hazeState,
             onChromeVisibleChange = onChromeVisibleChange
+        )
+    }
+}
+
+@Composable
+private fun VisibilityToggle(visible: Boolean, onChange: (Boolean) -> Unit) {
+    androidx.compose.material3.IconButton(onClick = { onChange(!visible) }) {
+        androidx.compose.material3.Icon(
+            if (visible) androidx.compose.material.icons.Icons.Outlined.VisibilityOff
+            else androidx.compose.material.icons.Icons.Outlined.Visibility,
+            contentDescription = if (visible) "Ocultar contraseña" else "Mostrar contraseña"
         )
     }
 }

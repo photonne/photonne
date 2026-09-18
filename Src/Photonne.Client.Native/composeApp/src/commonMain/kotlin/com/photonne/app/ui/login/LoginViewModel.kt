@@ -13,10 +13,11 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.di.PhotonneAppConfig
 import io.ktor.client.HttpClient
-import io.ktor.client.request.head
+import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.HttpStatusCode
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Url
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -112,27 +113,49 @@ class LoginViewModel(
             )
             return
         }
+        // Si el usuario no escribió esquema, normalize impuso https en
+        // silencio; recordarlo permite reintentar con http si https falla.
+        val publicSchemeWritten = current.serverUrl.trim()
+            .startsWith("http", ignoreCase = true)
+        val localSchemeWritten = current.localUrl.trim()
+            .startsWith("http", ignoreCase = true)
         _state.value = current.copy(isSubmitting = true, error = null)
         viewModelScope.launch {
             // Probe both URLs in parallel and accept either one: on a LAN-only
             // WiFi the public domain often won't resolve, but the local URL
             // does — and vice versa when away from home. Blocking on the
             // public probe alone would lock the user out in the first case.
-            val publicDeferred = async { probe(normalizedPublic) }
-            val localDeferred = normalizedLocal?.let { async { probe(it) } }
+            val publicDeferred = async {
+                probe(normalizedPublic, allowHttpFallback = !publicSchemeWritten)
+            }
+            val localDeferred = normalizedLocal?.let {
+                async { probe(it, allowHttpFallback = !localSchemeWritten) }
+            }
             val publicResult = publicDeferred.await()
             val localResult = localDeferred?.await()
             if (publicResult.isFailure && (localResult == null || localResult.isFailure)) {
+                // El mensaje nombra cada URL sondeada y su causa clasificada.
+                val reasons = listOfNotNull(
+                    publicResult.exceptionOrNull()?.message,
+                    localResult?.exceptionOrNull()?.message
+                ).distinct().joinToString("\n")
                 _state.value = _state.value.copy(
                     isSubmitting = false,
                     error = (publicResult.exceptionOrNull() ?: localResult?.exceptionOrNull())?.let {
                         errorFactory.from(it, "No se pudo contactar con el servidor")
+                            .copy(userMessage = reasons.ifBlank {
+                                "No se pudo contactar con el servidor"
+                            })
                     }
                 )
                 return@launch
             }
-            serverUrlStore.setPublic(normalizedPublic)
-            serverUrlStore.setLocal(normalizedLocal)
+            // Guarda la URL que respondió de verdad (puede ser la variante
+            // http del reintento), no la normalizada a ciegas.
+            serverUrlStore.setPublic(publicResult.getOrNull() ?: normalizedPublic)
+            serverUrlStore.setLocal(
+                localResult?.getOrNull() ?: normalizedLocal
+            )
             // Probe the LAN URL right away so the first request after login
             // already goes through the local address when applicable.
             reachabilityProbe.runProbe()
@@ -233,22 +256,69 @@ class LoginViewModel(
         false
     }
 
-    private suspend fun probe(baseUrl: String): Result<Unit> = try {
-        val response: HttpResponse = httpClient.head("$baseUrl/api/auth/login") {
+    /**
+     * Sonda de servidor (punto 33): `GET /api/version` es público y solo lo
+     * sirve Photonne, así que un 200 con `"version"` en el cuerpo identifica
+     * el servidor de verdad (el HEAD anterior aceptaba cualquier cosa que no
+     * fuera 5xx, nginx incluido). Devuelve en el fallo un mensaje que nombra
+     * la URL sondeada y clasifica la causa (DNS, tiempo agotado, TLS, no es
+     * Photonne) en vez de concatenar `t.message` en crudo.
+     *
+     * [allowHttpFallback]: si el usuario no escribió esquema (normalize impone
+     * https en silencio), un fallo de conexión reintenta una vez con http —
+     * el caso típico es un servidor de LAN sin TLS.
+     */
+    private suspend fun probe(
+        baseUrl: String,
+        allowHttpFallback: Boolean = false
+    ): Result<String> = probeOnce(baseUrl).let { first ->
+        val canFallback = allowHttpFallback &&
+            first.isFailure &&
+            baseUrl.startsWith("https://", ignoreCase = true)
+        if (!canFallback) return first
+        val httpUrl = "http://" + baseUrl.removePrefix("https://")
+        probeOnce(httpUrl).let { second ->
+            if (second.isSuccess) second else first
+        }
+    }
+
+    private suspend fun probeOnce(baseUrl: String): Result<String> = try {
+        val response: HttpResponse = httpClient.get("$baseUrl/api/version") {
             skipAuthRefresh()
         }
-        if (response.status.value in 500..599) {
-            Result.failure(
-                RuntimeException("El servidor respondió con ${response.status.value}")
+        val status = response.status.value
+        when {
+            status in 500..599 -> Result.failure(
+                RuntimeException("$baseUrl respondió con un error del servidor ($status)")
             )
-        } else {
-            Result.success(Unit)
+            status == 200 && response.bodyAsText().contains("\"version\"") ->
+                Result.success(baseUrl)
+            else -> Result.failure(
+                RuntimeException("$baseUrl no parece un servidor Photonne")
+            )
         }
     } catch (t: Throwable) {
-        Result.failure(
-            RuntimeException(
-                "No se pudo contactar con el servidor: ${t.message ?: t::class.simpleName}"
-            )
-        )
+        if (t is CancellationException) throw t
+        Result.failure(RuntimeException(describeConnectionFailure(baseUrl, t)))
+    }
+
+    private fun describeConnectionFailure(url: String, t: Throwable): String {
+        val name = t::class.simpleName.orEmpty()
+        val msg = t.message.orEmpty()
+        return when {
+            name.contains("Timeout", ignoreCase = true) ||
+                msg.contains("timeout", ignoreCase = true) ->
+                "$url no responde (tiempo de espera agotado)"
+            name.contains("UnresolvedAddress", ignoreCase = true) ||
+                msg.contains("resolve", ignoreCase = true) ||
+                msg.contains("nodename", ignoreCase = true) ->
+                "No se pudo resolver el nombre de $url"
+            name.contains("SSL", ignoreCase = true) ||
+                name.contains("TLS", ignoreCase = true) ||
+                msg.contains("certificate", ignoreCase = true) ||
+                msg.contains("SSL", ignoreCase = true) ->
+                "Fallo de TLS al conectar con $url (¿certificado inválido?)"
+            else -> "No se pudo conectar con $url"
+        }
     }
 }
