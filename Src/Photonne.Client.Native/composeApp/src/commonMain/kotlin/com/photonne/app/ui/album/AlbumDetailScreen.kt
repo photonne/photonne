@@ -147,7 +147,7 @@ fun AlbumDetailScreen(
     }
     val chromeAlpha by animateFloatAsState(
         targetValue = if (chromeVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 280),
+        animationSpec = tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.CHROME_MS),
         label = "albumChromeAlpha"
     )
     val atTop by remember {
@@ -427,7 +427,7 @@ private fun AlbumDetailTopBar(
 ) {
     val dockedFraction by animateFloatAsState(
         targetValue = if (atTop) 1f else 0f,
-        animationSpec = tween(durationMillis = 280),
+        animationSpec = tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.CHROME_MS),
         label = "albumTopBarDocked"
     )
     // Acoplados sobre la portada oscurecida los iconos van en blanco; con el

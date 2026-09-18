@@ -80,10 +80,55 @@ class AlbumsViewModel(
     private val repository: AlbumsRepository,
     private val settings: Settings,
     private val errorFactory: UiErrorFactory,
+    mutationBus: com.photonne.app.data.events.AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<AlbumsUiState> = _state.asStateFlow()
+
+    init {
+        // Punto 52: archivar/borrar/restaurar cambia portadas y recuentos de
+        // álbumes; el bus evita que App.kt tenga que acordarse de llamarnos.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is com.photonne.app.data.events.AssetMutation.Removed,
+                    is com.photonne.app.data.events.AssetMutation.Restored,
+                    is com.photonne.app.data.events.AssetMutation.Purged,
+                    com.photonne.app.data.events.AssetMutation.AllChanged ->
+                        refreshQuietly()
+                    is com.photonne.app.data.events.AssetMutation.FavoriteChanged -> Unit
+                }
+            }
+        }
+    }
+
+    /**
+     * Recarga oportunista tras una mutación de assets: sin spinner y con el
+     * fallo en silencio (la lista visible sigue siendo válida; ya se
+     * reintentará en el siguiente refresh explícito).
+     */
+    private fun refreshQuietly() {
+        if (_state.value.albums.isEmpty() && !_state.value.isLoading) return
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            runCatching { repository.list() }
+                .onSuccess { albums ->
+                    _state.update {
+                        it.copy(
+                            albums = albums,
+                            isLoading = false,
+                            selectedAlbumId = it.selectedAlbumId?.takeIf { id ->
+                                albums.any { a -> a.id == id }
+                            }
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                }
+        }
+    }
 
     private var refreshJob: Job? = null
 

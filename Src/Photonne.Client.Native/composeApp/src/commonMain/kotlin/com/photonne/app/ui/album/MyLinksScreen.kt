@@ -196,25 +196,21 @@ fun MyLinksScreen(
     }
 
     revoking?.let { link ->
-        AlertDialog(
-            onDismissRequest = { revoking = null },
-            title = { Text(stringResource(Res.string.share_revoke_confirm_title)) },
-            text = { Text(stringResource(Res.string.share_revoke_confirm_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.revoke(link.token)
-                    revoking = null
-                }) {
-                    Text(
-                        stringResource(Res.string.share_action_revoke),
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
+        // Diálogo estándar: espera la confirmación del servidor y enseña el
+        // fallo inline en lugar de cerrarse con la petición aún en el aire.
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.share_revoke_confirm_title),
+            message = stringResource(Res.string.share_revoke_confirm_message),
+            confirmLabel = stringResource(Res.string.share_action_revoke),
+            isDestructive = true,
+            isSubmitting = state.isMutating,
+            errorMessage = state.error?.userMessage,
+            onDismiss = {
+                revoking = null
+                viewModel.clearError()
             },
-            dismissButton = {
-                TextButton(onClick = { revoking = null }) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
+            onConfirm = {
+                viewModel.revoke(link.token) { revoking = null }
             }
         )
     }

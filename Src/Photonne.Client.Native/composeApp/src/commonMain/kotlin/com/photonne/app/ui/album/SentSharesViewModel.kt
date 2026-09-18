@@ -116,7 +116,7 @@ class SentSharesViewModel(
         }
     }
 
-    fun revoke(token: String) {
+    fun revoke(token: String, onSuccess: () -> Unit = {}) {
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
@@ -128,6 +128,7 @@ class SentSharesViewModel(
                             isMutating = false
                         )
                     }
+                    onSuccess()
                 }
                 .onFailure { error ->
                     _state.update {

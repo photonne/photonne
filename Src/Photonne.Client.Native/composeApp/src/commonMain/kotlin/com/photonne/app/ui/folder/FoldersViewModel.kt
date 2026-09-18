@@ -116,10 +116,52 @@ class FoldersViewModel(
     private val authState: AuthStateHolder,
     private val settings: Settings,
     private val errorFactory: UiErrorFactory,
+    mutationBus: com.photonne.app.data.events.AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<FoldersUiState> = _state.asStateFlow()
+
+    init {
+        // Punto 52: las mutaciones de assets cambian recuentos (y en el futuro
+        // portadas) de carpetas; recarga silenciosa vía bus.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is com.photonne.app.data.events.AssetMutation.Removed,
+                    is com.photonne.app.data.events.AssetMutation.Restored,
+                    is com.photonne.app.data.events.AssetMutation.Purged,
+                    com.photonne.app.data.events.AssetMutation.AllChanged ->
+                        refreshQuietly()
+                    is com.photonne.app.data.events.AssetMutation.FavoriteChanged -> Unit
+                }
+            }
+        }
+    }
+
+    /** Recarga oportunista tras una mutación: sin spinner, fallo en silencio. */
+    private fun refreshQuietly() {
+        if (allFolders.isEmpty() && !_state.value.isLoading) return
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            runCatching { repository.list() }
+                .onSuccess { folders ->
+                    allFolders = folders
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            selectedFolderId = it.selectedFolderId?.takeIf { id ->
+                                folders.any { f -> f.id == id }
+                            }
+                        )
+                    }
+                    repartition()
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                }
+        }
+    }
 
     private var allFolders: List<FolderSummary> = emptyList()
     private var refreshJob: Job? = null

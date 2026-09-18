@@ -389,41 +389,25 @@ fun BackupScreen(
     }
 
     if (showFreeSpaceConfirm) {
-        AlertDialog(
-            onDismissRequest = { showFreeSpaceConfirm = false },
-            icon = {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-            },
-            title = { Text(stringResource(Res.string.device_backup_free_space_dialog_title)) },
-            text = {
-                Text(stringResource(Res.string.device_backup_free_space_dialog_message, syncedCount))
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showFreeSpaceConfirm = false
-                    // MediaStore-backed entries → system consent flow;
-                    // SAF/PhotoKit entries → the in-process path as always.
-                    val deviceUris = viewModel.syncedMediaStoreUris()
-                    if (deviceUris.isNotEmpty()) {
-                        pendingFreeUris = deviceUris
-                        freeSpaceDeleter(deviceUris)
-                    }
-                    viewModel.freeUpSyncedSpace()
-                }) {
-                    Text(
-                        stringResource(Res.string.device_backup_free_space_confirm),
-                        color = MaterialTheme.colorScheme.error
-                    )
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.device_backup_free_space_dialog_title),
+            message = stringResource(
+                Res.string.device_backup_free_space_dialog_message, syncedCount
+            ),
+            confirmLabel = stringResource(Res.string.device_backup_free_space_confirm),
+            isDestructive = true,
+            isSubmitting = false,
+            onDismiss = { showFreeSpaceConfirm = false },
+            onConfirm = {
+                showFreeSpaceConfirm = false
+                // MediaStore-backed entries → system consent flow;
+                // SAF/PhotoKit entries → the in-process path as always.
+                val deviceUris = viewModel.syncedMediaStoreUris()
+                if (deviceUris.isNotEmpty()) {
+                    pendingFreeUris = deviceUris
+                    freeSpaceDeleter(deviceUris)
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showFreeSpaceConfirm = false }) {
-                    Text(stringResource(Res.string.device_backup_free_space_cancel))
-                }
+                viewModel.freeUpSyncedSpace()
             }
         )
     }
@@ -702,12 +686,10 @@ private fun BackupStatusCard(
                             Text(stringResource(Res.string.backup_status_stop))
                         }
                     } else if (pendingCount > 0 && !state.isSyncing && !state.isCheckingHashes) {
-                        Button(
-                            onClick = onUploadNow,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(Res.string.backup_status_upload_now))
-                        }
+                        com.photonne.app.ui.theme.PrimaryActionButton(
+                            label = stringResource(Res.string.backup_status_upload_now),
+                            onClick = onUploadNow
+                        )
                     }
                     OutlinedButton(
                         onClick = onOpenPending,

@@ -187,6 +187,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::MemoriesRepository)
     singleOf(::NotificationsRepository)
     singleOf(::AssetDetailRepository)
+    single { com.photonne.app.data.events.AssetMutationBus() }
     singleOf(::AlbumsRepository)
     singleOf(::FoldersRepository)
     singleOf(::AssetActionsRepository)

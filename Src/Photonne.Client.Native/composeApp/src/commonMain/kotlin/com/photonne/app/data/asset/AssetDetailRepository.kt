@@ -1,6 +1,8 @@
 package com.photonne.app.data.asset
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.Face
@@ -8,7 +10,10 @@ import com.photonne.app.data.models.PersonAssetsPage
 import kotlin.time.Instant
 
 class AssetDetailRepository(
-    private val api: PhotonneApi
+    private val api: PhotonneApi,
+    // Por defecto un bus propio: los tests construyen el repo a pelo y no
+    // necesitan colectores; en la app Koin inyecta el singleton compartido.
+    private val mutationBus: AssetMutationBus = AssetMutationBus(),
 ) {
     suspend fun getDetail(assetId: String): AssetDetail = api.getAssetDetail(assetId)
 
@@ -26,38 +31,49 @@ class AssetDetailRepository(
     suspend fun removeTag(assetId: String, tag: String): List<String> =
         api.removeAssetTag(assetId, tag)
 
-    suspend fun toggleFavorite(assetId: String): Boolean = api.toggleFavorite(assetId)
+    suspend fun toggleFavorite(assetId: String): Boolean =
+        api.toggleFavorite(assetId).also { isFavorite ->
+            mutationBus.emit(AssetMutation.FavoriteChanged(assetId, isFavorite))
+        }
 
     suspend fun archive(assetIds: List<String>) {
         api.archiveAssets(assetIds)
+        mutationBus.emit(AssetMutation.Removed(assetIds))
     }
 
     suspend fun unarchive(assetIds: List<String>) {
         api.unarchiveAssets(assetIds)
+        mutationBus.emit(AssetMutation.Restored(assetIds))
     }
 
     suspend fun unarchiveAll() {
         api.unarchiveAll()
+        mutationBus.emit(AssetMutation.AllChanged)
     }
 
     suspend fun trash(assetIds: List<String>) {
         api.trashAssets(assetIds)
+        mutationBus.emit(AssetMutation.Removed(assetIds))
     }
 
     suspend fun restore(assetIds: List<String>) {
         api.restoreAssets(assetIds)
+        mutationBus.emit(AssetMutation.Restored(assetIds))
     }
 
     suspend fun restoreAllTrash() {
         api.restoreAllTrash()
+        mutationBus.emit(AssetMutation.AllChanged)
     }
 
     suspend fun purge(assetIds: List<String>) {
         api.purgeAssets(assetIds)
+        mutationBus.emit(AssetMutation.Purged(assetIds))
     }
 
     suspend fun emptyTrash() {
         api.emptyTrash()
+        mutationBus.emit(AssetMutation.AllChanged)
     }
 
     suspend fun listArchived(cursor: Instant? = null, pageSize: Int? = null): AssetPage =

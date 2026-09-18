@@ -286,28 +286,17 @@ private fun MoveButton(
     isMoving: Boolean,
     onMove: () -> Unit,
 ) {
-    Button(
+    val n = count ?: 0
+    com.photonne.app.ui.theme.PrimaryActionButton(
+        label = when {
+            path == null -> stringResource(Res.string.organize_move_pick_destination)
+            n == 0 -> stringResource(Res.string.organize_move_no_matches)
+            else -> stringResource(Res.string.organize_move_action_count, n)
+        },
         onClick = onMove,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        if (isMoving) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-        } else {
-            val n = count ?: 0
-            Text(
-                when {
-                    path == null -> stringResource(Res.string.organize_move_pick_destination)
-                    n == 0 -> stringResource(Res.string.organize_move_no_matches)
-                    else -> stringResource(Res.string.organize_move_action_count, n)
-                }
-            )
-        }
-    }
+        isLoading = isMoving
+    )
 }
 
 /** Trims the internal "/assets/users/{username}" prefix so the destination reads

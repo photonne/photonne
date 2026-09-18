@@ -319,7 +319,7 @@ fun AssetGridCell(
                 sharedContentState = rememberSharedContentState(key = sharedKey),
                 visible = currentDetailId != asset.id,
                 boundsTransform = { _, _ ->
-                    androidx.compose.animation.core.tween(durationMillis = 320)
+                    androidx.compose.animation.core.tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.OVERLAY_MS)
                 }
             )
         }

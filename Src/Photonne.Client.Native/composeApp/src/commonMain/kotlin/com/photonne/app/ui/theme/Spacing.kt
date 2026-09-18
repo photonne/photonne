@@ -34,3 +34,18 @@ object Spacing {
     /** Margen horizontal canónico del contenido de una pantalla. */
     val screenHorizontal: Dp = lg
 }
+
+/**
+ * Duraciones de animación canónicas (punto 51 del roadmap). Antes cada sitio
+ * escribía su tween a mano: 280 en seis sitios, 320 en dos y 220 en uno.
+ */
+object MotionDurations {
+    /** Mostrar/ocultar cromo (barras, cápsulas, controles). */
+    const val CHROME_MS = 280
+
+    /** Capas a pantalla completa: visor, overlays. */
+    const val OVERLAY_MS = 320
+
+    /** Microtransiciones: zoom de doble toque, resaltados. */
+    const val EMPHASIS_MS = 220
+}

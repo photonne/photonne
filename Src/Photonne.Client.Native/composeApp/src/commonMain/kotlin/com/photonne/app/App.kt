@@ -2188,7 +2188,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
                 val enterProgress by animateFloatAsState(
                     targetValue = if (entered) 1f else 0f,
-                    animationSpec = tween(durationMillis = 220),
+                    animationSpec = tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.EMPHASIS_MS),
                     label = "overlayEnter"
                 )
                 val slidePx = with(LocalDensity.current) { 24.dp.toPx() }
@@ -3486,8 +3486,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // keeps the detail composed until the morph finishes — otherwise
             // the photo snaps the last few pixels when the content unmounts
             // mid-spring.
-            enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(durationMillis = 320)),
-            exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(durationMillis = 320)),
+            enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.OVERLAY_MS)),
+            exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.OVERLAY_MS)),
             modifier = Modifier.fillMaxSize()
         ) {
             if (displayCtx != null && displayCtx.startIndex in displayCtx.items.indices) {

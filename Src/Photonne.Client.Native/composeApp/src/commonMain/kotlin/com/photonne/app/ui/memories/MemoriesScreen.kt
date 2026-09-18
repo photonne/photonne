@@ -209,7 +209,9 @@ private fun MemoryRowCard(
 ) {
     MemoryCardFace(
         coverUrl = memory.coverAssetId
-            ?.let { "$baseUrl/api/assets/$it/thumbnail?size=Large" },
+            // Medium basta para una tarjeta de 150x190 dp; Large descargaba
+                // el tamaño de visor para una miniatura.
+                ?.let { "$baseUrl/api/assets/$it/thumbnail?size=Medium" },
         contentDescription = memory.title,
         // The row already says "Días de playa"; the card says which year. Both
         // strings come from the server — neither is assembled here.

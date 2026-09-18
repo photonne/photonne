@@ -1140,7 +1140,7 @@ private fun AssetPage(
                 sharedContentState = rememberSharedContentState(key = "asset-${item.id}"),
                 animatedVisibilityScope = animatedVisibilityScope,
                 boundsTransform = { _, _ ->
-                    androidx.compose.animation.core.tween(durationMillis = 320)
+                    androidx.compose.animation.core.tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.OVERLAY_MS)
                 }
             )
         }

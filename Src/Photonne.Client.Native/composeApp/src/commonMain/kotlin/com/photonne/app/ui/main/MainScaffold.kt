@@ -675,7 +675,7 @@ fun TimelineTopBar(
 ) {
     val dockedFraction by animateFloatAsState(
         targetValue = if (atTop) 1f else 0f,
-        animationSpec = tween(durationMillis = 280),
+        animationSpec = tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.CHROME_MS),
         label = "timelineTopBarDocked"
     )
     Box(modifier = modifier.fillMaxWidth()) {

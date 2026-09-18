@@ -145,7 +145,7 @@ internal fun BoxScope.SubscreenFloatingChrome(
     }
     val chromeAlpha by animateFloatAsState(
         targetValue = if (chromeVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 280),
+        animationSpec = tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.CHROME_MS),
         label = "subscreenChromeAlpha"
     )
     // `scroll` se construye en línea en cada call site, así que es una instancia
@@ -161,7 +161,7 @@ internal fun BoxScope.SubscreenFloatingChrome(
     }
     val dockedFraction by animateFloatAsState(
         targetValue = if (!alwaysFloating && atTop) 1f else 0f,
-        animationSpec = tween(durationMillis = 280),
+        animationSpec = tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.CHROME_MS),
         label = "subscreenChromeDocked"
     )
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
