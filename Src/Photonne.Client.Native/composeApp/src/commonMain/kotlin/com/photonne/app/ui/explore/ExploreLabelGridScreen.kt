@@ -103,7 +103,9 @@ internal fun ExploreLabelGridScreen(
                         title = emptyText
                     )
                 else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    // Adaptive: 2 columnas en un móvil compacto, más en tablet y
+                    // escritorio, sin estirar miniaturas Small a media pantalla.
+                    columns = GridCells.Adaptive(minSize = 160.dp),
                     state = gridState,
                     contentPadding = PaddingValues(
                         start = 16.dp,

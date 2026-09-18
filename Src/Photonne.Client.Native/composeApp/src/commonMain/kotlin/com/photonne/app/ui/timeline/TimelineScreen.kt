@@ -266,7 +266,7 @@ fun TimelineScreen(
     LaunchedEffect(chromeVisible) { onChromeVisibleChange(chromeVisible) }
     val chromeAlpha by animateFloatAsState(
         targetValue = if (chromeVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 280),
+        animationSpec = tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.CHROME_MS),
         label = "timelineChromeAlpha"
     )
     // Space the docked bar occupies at the top: status bar + a standard app-bar
@@ -612,7 +612,7 @@ fun TimelineScreen(
                             if (idx >= 0) {
                                 // Land the row just below its (non-sticky) month
                                 // header so the date shows above it.
-                                val headerPx = with(density) { 56.dp.roundToPx() }
+                                val headerPx = with(density) { com.photonne.app.ui.grid.MonthHeaderHeight.roundToPx() }
                                 runCatching {
                                     gridState.animateScrollToItem(headerCount + idx, -headerPx)
                                 }

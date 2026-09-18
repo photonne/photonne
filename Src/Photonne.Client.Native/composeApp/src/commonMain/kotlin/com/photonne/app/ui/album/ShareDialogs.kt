@@ -398,28 +398,17 @@ fun LeaveAlbumDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(stringResource(Res.string.album_leave_title)) },
-        text = {
-            Column {
-                Text(stringResource(Res.string.album_leave_message, albumName))
-                if (errorMessage != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_leave))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
-            }
-        }
+    // Delegado al diálogo estándar (punto 44): mismo comportamiento, un
+    // único sitio que mantener para progreso, error inline y botones.
+    com.photonne.app.ui.library.ConfirmActionDialog(
+        title = stringResource(Res.string.album_leave_title),
+        message = stringResource(Res.string.album_leave_message, albumName),
+        confirmLabel = stringResource(Res.string.action_leave),
+        isDestructive = true,
+        isSubmitting = isSubmitting,
+        errorMessage = errorMessage,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
     )
 }
 

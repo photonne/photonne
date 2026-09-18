@@ -48,8 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.app_name
-import com.photonne.app.ui.theme.ButtonLoadingIndicator
-import com.photonne.app.ui.theme.actionButtonHeight
+import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.photonneLogoPainter
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -145,17 +144,12 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
         Text(it, color = MaterialTheme.colorScheme.error)
     }
 
-    Button(
+    PrimaryActionButton(
+        label = "Continuar",
         onClick = viewModel::submitServerUrl,
-        enabled = !state.isSubmitting && state.serverUrl.isNotBlank(),
-        modifier = Modifier.fillMaxWidth().actionButtonHeight()
-    ) {
-        if (state.isSubmitting) {
-            ButtonLoadingIndicator()
-        } else {
-            Text("Continuar")
-        }
-    }
+        enabled = state.serverUrl.isNotBlank(),
+        isLoading = state.isSubmitting
+    )
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -238,17 +232,11 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
         Text(it, color = MaterialTheme.colorScheme.error)
     }
 
-    Button(
+    PrimaryActionButton(
+        label = "Entrar",
         onClick = viewModel::submit,
-        enabled = !state.isSubmitting,
-        modifier = Modifier.fillMaxWidth().actionButtonHeight()
-    ) {
-        if (state.isSubmitting) {
-            ButtonLoadingIndicator()
-        } else {
-            Text("Entrar")
-        }
-    }
+        isLoading = state.isSubmitting
+    )
 
     TextButton(
         onClick = viewModel::changeServer,

@@ -57,7 +57,7 @@ import org.jetbrains.compose.resources.stringResource
 private const val MIN_SCALE = 1f
 private const val MAX_SCALE = 5f
 private const val DOUBLE_TAP_SCALE = 2.5f
-private const val DOUBLE_TAP_ANIM_MS = 220
+private const val DOUBLE_TAP_ANIM_MS = com.photonne.app.ui.theme.MotionDurations.EMPHASIS_MS
 
 /**
  * Image that supports pinch-to-zoom, pan and double-tap to toggle

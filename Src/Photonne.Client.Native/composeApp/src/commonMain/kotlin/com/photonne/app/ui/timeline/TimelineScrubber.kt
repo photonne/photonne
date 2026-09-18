@@ -57,8 +57,8 @@ import kotlinx.datetime.LocalDate
 /** Don't bother with a scrubber for content that barely scrolls. */
 private const val MIN_ROWS_FOR_SCRUBBER = 40
 
-/** Inline date-band height — must match MonthHeader in GroupedAssetGrid. */
-private const val HEADER_HEIGHT_DP = 56f
+/** Inline date-band height — misma fuente que MonthHeader (GroupedAssetGrid). */
+private val HEADER_HEIGHT_DP = com.photonne.app.ui.grid.MonthHeaderHeight.value
 
 /**
  * How often the throttled applier teleports the list while scrubbing

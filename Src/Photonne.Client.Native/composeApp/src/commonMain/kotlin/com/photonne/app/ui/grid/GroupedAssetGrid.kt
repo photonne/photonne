@@ -582,6 +582,12 @@ private fun SkeletonCellsRow(
 }
 
 /**
+ * Altura de la cabecera de mes. Única fuente: el scrubber y el cálculo de
+ * 'saltar a fecha' del timeline dependen de que coincida exactamente.
+ */
+val MonthHeaderHeight = 56.dp
+
+/**
  * Inline (non-sticky) date band: an opaque surface strip with the group title.
  * Uniform across server-indexed and on-device groups so the timeline reads
  * cleanly while scrolling; scrolls away with the content like any other row.
@@ -597,7 +603,7 @@ private fun MonthHeader(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .height(56.dp)
+            .height(MonthHeaderHeight)
     ) {
         Text(
             text = title,

@@ -3,12 +3,16 @@ package com.photonne.app.ui.library
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.ui.theme.Spacing
@@ -51,6 +55,15 @@ fun ConfirmActionDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = !isSubmitting) {
+                // Progreso visible mientras se envía: antes el diálogo se
+                // quedaba mudo con los botones deshabilitados.
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(Spacing.sm))
+                }
                 Text(
                     confirmLabel,
                     color = if (isDestructive) MaterialTheme.colorScheme.error
