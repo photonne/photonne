@@ -2,7 +2,7 @@
 
 Auditoría del 2026-09-17 sobre `Src/Photonne.Client.Native/composeApp/src/commonMain/kotlin/com/photonne/app/` (en adelante, las rutas son relativas a esa carpeta). Cinco pasadas de solo lectura: timeline/rejilla/shell, visor/mapa/recuerdos, álbumes/carpetas/organizar/utilidades, búsqueda/personas/ajustes/login/backup, y una transversal de consistencia. `ui/admin` quedó fuera porque se auditó y normalizó el mismo día.
 
-**Estado: Lotes A (`995cd74`), B y C (`83305d5`), D y E (`1fbb212`), I (`6a148d2`, `3490317`), F (`6427912`), G (`ad4eea2`, `232756b`, `733c4a0`) y H (`fa85fcf`, `45825d1`, `2b3e01f`) cerrados. Queda solo "Ideas mayores"** (2026-09-18, sin verificar en dispositivo). Parciales anotados en cada punto. Marca cada punto con `[x]` al cerrarlo y anota el commit.
+**Estado: los 52 puntos correctivos cerrados** — Lotes A (`995cd74`), B y C (`83305d5`), D y E (`1fbb212`), I (`6a148d2`, `3490317`), F (`6427912`), G (`ad4eea2`, `232756b`, `733c4a0`) y H (`fa85fcf`, `45825d1`, `2b3e01f`). (2026-09-19, **sin verificar en dispositivo**.) Varios se cerraron en parcial: el detalle está en cada punto y el resumen por tipo de bloqueo, en "Qué queda". Marca cada punto con `[x]` al cerrarlo y anota el commit.
 
 Fiabilidad de los hallazgos:
 - Comprobados a mano: 1, 2, 4 y 6.
@@ -199,6 +199,91 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
 - [x] **51. Movimiento** (S-M). *Parcial (`3490317`): duraciones canónicas en `MotionDurations` (280/320/220) consumidas por los 9 tween a mano. Pendientes: `animateItem()` en listas, `PredictiveBackHandler` y la animación de salida de overlays.* `animateItem()` en 1 de 45 listas. Vibración solo en selección (`haptics/`). Sin tokens de duración (280 ×6, 320 ×2, 220 ×1). Transición de overlays centralizada en `App.kt:2017-2035`, sin animación de salida. Sin `PredictiveBackHandler`.
 - [x] **52. Bus de mutaciones** (M, `3490317`). `AssetMutationBus` en data/events; `AssetDetailRepository` emite tras confirmar el servidor (todos los flujos masivos pasan por él) y Álbumes y Carpetas refrescan portadas y recuentos en silencio. *Pendiente: migrar los parches manuales de App.kt (1307-1554, 3320-3339) al bus.* `AssetMutationBus` (SharedFlow de Removed/Restored/FavoriteChanged) al que se suscriben los ViewModels, en lugar de las listas a mano de `App.kt:1307-1554` y `:3320-3339`. Tras acciones masivas tampoco se refrescan portadas y recuentos de álbumes y carpetas.
 - [x] **Pull-to-refresh que falta** (S, `6a148d2`): `PersonDetailScreen` (refresh nuevo que conserva la selección válida), `PersonSuggestionsScreen`, `AccountStorageScreen` y `EnrichmentStatusScreen`. *`MapScreen` va con el punto 32 (el gesto chocaría con el paneo) y `MemoryDetailScreen` muestra un contexto estático sin id; ambos pendientes.*
+
+## Qué queda (inventario al cerrar los 52 puntos)
+
+Los 52 puntos correctivos están implementados, pero varios se cerraron en
+parcial. Esto agrupa lo que falta por **tipo de bloqueo**, que es lo que decide
+cuándo se puede retomar cada cosa. El detalle de cada uno sigue anotado en su
+punto.
+
+### Espera una decisión (no se puede avanzar sin ella)
+
+- **43 — patrón de i18n.** Quedan ~160 literales en español dentro de los
+  ViewModels. Hay que elegir antes: `StringResource` dentro de `UiError`, o
+  `getString` en cada ViewModel. La decisión condiciona todo el resto.
+- **44 — pie de las hojas.** ¿Botón principal a todo el ancho, o el pie actual
+  de "Cancelar + acción"? Hoy conviven los dos estilos.
+- **46 — radio de 8 dp.** 17 sitios usan un radio que no existe en el tema: o se
+  añade como token de forma, o se funden en `small` (10 dp).
+- **23 — cadena de calidad del visor.** Encadenar Small→Large→original según el
+  zoom deja sin sentido el botón HD/ORIG. Cambia comportamiento visible.
+
+### Necesita trabajo de plataforma (androidMain/iosMain, no común)
+
+Lo más arriesgado de hacer a ciegas: no hay forma de compilar ni probar en
+dispositivo desde el entorno de trabajo habitual de estas tandas.
+
+- **27 — vídeo**: silencio, estado de error del reproductor y mantener la
+  pantalla encendida durante la reproducción.
+- **20 y 36 — streaming**: subida y descarga pasan por memoria, y de ahí sale el
+  límite de 200 MB por archivo.
+- **35 — backup**: "esperando Wi-Fi y carga" sale de las preferencias, no del
+  estado real del dispositivo.
+- **31 — teselas @2x**: obliga a reescalar la matemática mundo↔píxel que el mapa
+  comparte con su ViewModel.
+
+### Deuda técnica acotada (se puede hacer en cualquier momento)
+
+- **52**: migrar los parches manuales de `App.kt` (1307-1554, 3320-3339) al
+  `AssetMutationBus`, que ya existe y funciona pero convive con ellos.
+- **44**: esqueletos en las 14 pantallas que aún usan spinner a pantalla completa.
+- **46**: adopción de `Spacing.`/`IconSize.` (~1.100 líneas con dp a mano) y
+  deduplicar la lógica de ocultar cromo con `ImmersiveChrome`.
+- **51**: `animateItem()` en las listas, `PredictiveBackHandler` y animación de
+  salida de los overlays.
+- **50**: `WindowSizeClass` y el envoltorio `ContentWidth` de subpantallas.
+- **49**: que sobrevivan los ids de álbum/carpeta/persona abiertos (hoy guardan
+  el objeto completo; necesitan rehidratación por id).
+- **47**: semántica del scrubber, roles y `heading()` globales, y las gráficas
+  que son solo Canvas.
+- **38**: barrido de `KeyboardOptions` en library/, organize/ y utilities/.
+- **37**: `GroupCount`/`GroupKey` siguen sin DTO nativo.
+
+### Depende de una idea mayor
+
+- **39** — el chip "Reglas" que abre el editor y "Convertir en álbum normal"
+  (hoy el editor solo crea).
+- **41** — que la fila de enlace abra el álbum o las subidas de una solicitud.
+- **42** — el "Añadir fotos" del álbum vacío, que necesita el selector de fotos
+  desde dentro del álbum.
+
+### Verificación pendiente
+
+Nada de lo implementado se ha probado en dispositivo: la CI compila
+common + desktop + android en cada push, y eso es todo lo que garantiza. Queda
+por repasar en un teléfono, sobre todo los gestos (inercia del mapa, zoom y
+atrás por capas del visor) y los permisos de Android.
+
+El **PWA no entra en esa CI**, así que los cambios de `mapHelpers.js` y las
+páginas Blazor solo están revisados a mano.
+
+## Fuera del roadmap: clave de API del mapa (`734daa8`)
+
+CARTO empezó a exigir una clave en sus teselas raster a finales de agosto de
+2026; sin ella las sirve con marca de agua "API KEY REQUIRED". No era un fallo
+de la auditoría — es un cambio del proveedor posterior.
+
+La clave se guarda como `ServerSettings.MapTileApiKey`, ajuste global del
+servidor (solo lo escribe un admin, lo lee cualquier usuario autenticado). Va en
+el servidor y no en el binario porque cada instalación usa la suya. Se edita
+desde Administración → Ajustes → Servidor, en el nativo y en la web.
+
+*Pendiente de verificar en un despliegue real*: el parámetro implementado es
+`?key=` según la documentación de CARTO, pero no se pudo probar contra sus
+servidores. Si la marca de agua no desaparece, el parámetro del endpoint
+concreto es otro y se corrige en una línea. El minimapa del visor no se ve
+afectado: usa `tile.openstreetmap.org`, que no pide clave.
 
 ## Ideas mayores (funciones, no correcciones)
 
