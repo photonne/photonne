@@ -356,7 +356,7 @@ private fun FolderListContent(
             // Sin padding las filas fantasma nacían debajo de la cápsula.
             ListRowsSkeleton(
                 contentPadding = PaddingValues(
-                    top = reservedTop,
+                    top = chromeTopReserve,
                     bottom = reservedBottom ?: 0.dp
                 )
             )
