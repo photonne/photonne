@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
@@ -67,6 +68,7 @@ import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_action_search
+import com.photonne.app.resources.albums_badge_smart
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.albums_empty_action_create
 import com.photonne.app.resources.albums_empty_subtitle
@@ -623,6 +625,14 @@ private fun AlbumCard(
                     .padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                if (album.isSmart) {
+                    // Sin distintivo, un álbum de reglas parecía uno normal y
+                    // sus acciones imposibles (añadir fotos) confundían.
+                    OverlayIconBadge(
+                        icon = Icons.Outlined.AutoAwesome,
+                        contentDescription = stringResource(Res.string.albums_badge_smart)
+                    )
+                }
                 if (album.isShared || !album.isOwner) {
                     OverlayIconBadge(
                         icon = Icons.Filled.Person,
@@ -743,6 +753,9 @@ private fun AlbumRow(
                 )
                 // List mode used to show no qualifiers at all, so switching to it
                 // silently dropped what the grid told you about an album.
+                if (album.isSmart) {
+                    MetaBadge(stringResource(Res.string.albums_badge_smart), Icons.Outlined.AutoAwesome)
+                }
                 if (album.isShared || !album.isOwner) {
                     MetaBadge(stringResource(Res.string.albums_badge_shared), Icons.Filled.Person)
                 }

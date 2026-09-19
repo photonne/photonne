@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.rememberCoroutineScope
+import com.photonne.app.resources.share_action_share_failed
+import com.photonne.app.resources.share_action_share_link
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.SubscreenFloatingChrome
@@ -75,9 +78,11 @@ import com.photonne.app.resources.share_revoke_confirm_title
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlin.time.Instant
+import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -104,6 +109,9 @@ fun MyLinksScreen(
     val clipboard = LocalClipboardManager.current
     val snackbar = LocalSnackbarController.current
     val copiedMessage = stringResource(Res.string.share_link_copied)
+    val shareFailedMessage = stringResource(Res.string.share_action_share_failed)
+    val sharing: com.photonne.app.ui.actions.AssetSharing = koinInject()
+    val scope = rememberCoroutineScope()
 
     var editing by remember { mutableStateOf<SentShareLink?>(null) }
     var revoking by remember { mutableStateOf<SentShareLink?>(null) }
@@ -160,6 +168,19 @@ fun MyLinksScreen(
                                 }
                                 clipboard.setText(AnnotatedString(url))
                                 snackbar?.show(copiedMessage)
+                            },
+                            onShare = {
+                                val url = link.shareUrl.ifBlank {
+                                    resolveUrl("/share/${link.token}", apiBaseUrl)
+                                }
+                                scope.launch {
+                                    runCatching { sharing.shareText(url) }
+                                        .onFailure { error ->
+                                            snackbar?.show(
+                                                error.message ?: shareFailedMessage
+                                            )
+                                        }
+                                }
                             },
                             onEdit = { editing = link },
                             onRevoke = { revoking = link }
@@ -236,6 +257,7 @@ private fun MyLinkRow(
     link: SentShareLink,
     baseUrl: String,
     onCopy: () -> Unit,
+    onShare: () -> Unit,
     onEdit: () -> Unit,
     onRevoke: () -> Unit
 ) {
@@ -305,6 +327,12 @@ private fun MyLinkRow(
             Icon(
                 Icons.Outlined.ContentCopy,
                 contentDescription = stringResource(Res.string.share_action_copy)
+            )
+        }
+        IconButton(onClick = onShare) {
+            Icon(
+                Icons.Outlined.Share,
+                contentDescription = stringResource(Res.string.share_action_share_link)
             )
         }
         IconButton(onClick = onEdit) {

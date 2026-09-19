@@ -1,6 +1,8 @@
 package com.photonne.app.ui.actions
 
 import java.awt.Desktop
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -52,6 +54,19 @@ actual class AssetSharing {
             } else {
                 throw AssetSharingUnavailable("OS share not supported on this desktop")
             }
+        }
+    }
+
+    /**
+     * El escritorio no tiene hoja de compartir de texto: lo más cercano y
+     * útil es dejar el enlace en el portapapeles del sistema.
+     */
+    actual suspend fun shareText(text: String, subject: String?) {
+        if (text.isBlank()) return
+        withContext(Dispatchers.IO) {
+            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                ?: throw AssetSharingUnavailable("No system clipboard available")
+            clipboard.setContents(StringSelection(text), null)
         }
     }
 

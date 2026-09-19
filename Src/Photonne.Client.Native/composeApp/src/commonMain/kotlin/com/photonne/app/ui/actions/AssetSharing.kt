@@ -9,6 +9,7 @@ package com.photonne.app.ui.actions
  *   the caller can surface a snackbar.
  * - [saveZip] writes a multi-asset zip into the same place; same
  *   contract.
+ * - [shareText] hands a link (plain text) to the same sheet.
  * - [shareFiles] hands a list of locally-stored files to the OS share
  *   sheet (`Intent.ACTION_SEND_MULTIPLE` on Android, `Activity` view
  *   controller on iOS, default app association on Desktop). The
@@ -32,6 +33,13 @@ expect class AssetSharing {
     ): SavedAssetFile
 
     suspend fun shareFiles(files: List<SavedAssetFile>, mimeType: String)
+
+    /**
+     * Entrega [text] (un enlace de compartición) a la hoja del sistema.
+     * Distinto de [shareFiles]: aquí no hay fichero que escribir, solo el
+     * enlace que el usuario quiere mandar por WhatsApp, correo o lo que use.
+     */
+    suspend fun shareText(text: String, subject: String? = null)
 }
 
 /** Location where a saved asset / zip lives so it can be re-used by the share sheet. */

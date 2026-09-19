@@ -100,6 +100,7 @@
     <string name="albums_scope_mine">Mine</string>
     <string name="albums_scope_shared">Shared</string>
     <string name="albums_badge_shared">Shared</string>
+    <string name="albums_badge_smart">Smart album</string>
     <string name="sync_badge_pending">Waiting to upload</string>
     <string name="sync_badge_uploading">Uploading</string>
     <string name="sync_badge_failed">Upload failed</string>
@@ -149,6 +150,8 @@
     <string name="share_empty">No share links yet. Anyone with the link will be able to view this album.</string>
     <string name="share_action_new">New link</string>
     <string name="share_action_copy">Copy link</string>
+    <string name="share_action_share_link">Share link</string>
+    <string name="share_action_share_failed">Could not open the share sheet</string>
     <string name="share_action_revoke">Revoke link</string>
     <string name="share_create_title">Create share link</string>
     <string name="share_option_password">Protect with password</string>
