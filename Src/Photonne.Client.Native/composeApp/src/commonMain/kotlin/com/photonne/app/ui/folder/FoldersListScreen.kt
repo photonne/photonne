@@ -86,6 +86,7 @@ import com.photonne.app.resources.folders_search_empty_title
 import com.photonne.app.resources.folders_search_placeholder
 import com.photonne.app.resources.folders_shared_empty
 import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.main.CreateAction
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.ListRowsSkeleton
@@ -270,12 +271,11 @@ fun FoldersListScreen(
                 onChromeVisibleChange = {},
                 actions = {
                     if (onCreateFolder != null) {
-                        IconButton(onClick = onCreateFolder) {
-                            Icon(
-                                Icons.Outlined.CreateNewFolder,
-                                contentDescription = stringResource(Res.string.folder_action_new)
-                            )
-                        }
+                        CreateAction(
+                            icon = Icons.Outlined.CreateNewFolder,
+                            contentDescription = stringResource(Res.string.folder_action_new),
+                            onClick = onCreateFolder
+                        )
                     }
                     if (!searching) {
                         IconButton(onClick = viewModel::toggleSearch) {
@@ -353,7 +353,13 @@ private fun FolderListContent(
     } else null
     when {
         isLoading && folders.isEmpty() ->
-            ListRowsSkeleton()
+            // Sin padding las filas fantasma nacían debajo de la cápsula.
+            ListRowsSkeleton(
+                contentPadding = PaddingValues(
+                    top = reservedTop,
+                    bottom = reservedBottom ?: 0.dp
+                )
+            )
         folders.isEmpty() ->
             // "Mi dispositivo" y "Para organizar" son entradas propias: no
             // dependen de que el servidor tenga carpetas, así que la cabecera
@@ -481,8 +487,10 @@ private fun FolderRow(
             contentAlignment = Alignment.Center
         ) {
             Icon(
+                // Carpeta, no lista: SubfolderRow ya usaba Folder y la misma
+                // cosa se dibujaba distinta en cada pantalla.
                 imageVector = if (isSelected) Icons.Filled.CheckCircle
-                else Icons.AutoMirrored.Filled.List,
+                else Icons.Filled.Folder,
                 contentDescription = null,
                 tint = if (isSelected) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant

@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ import com.photonne.app.ui.theme.ListRowsSkeleton
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -84,9 +86,12 @@ fun DeviceFoldersScreen(
 ) {
     val store: DeviceLibraryStore = koinInject()
     var buckets by remember { mutableStateOf<List<DeviceBucket>?>(null) }
-    LaunchedEffect(Unit) {
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    suspend fun reload() {
         buckets = runCatching { store.listBuckets() }.getOrDefault(emptyList())
     }
+    LaunchedEffect(Unit) { reload() }
 
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
@@ -94,8 +99,25 @@ fun DeviceFoldersScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         val loaded = buckets
+        com.photonne.app.ui.theme.PhotonneRefreshableScreen(
+            indicatorTopPadding = reservedTop,
+            isRefreshing = isRefreshing,
+            // El contenido sale de la galería del dispositivo, que cambia al
+            // hacer fotos: refrescar a mano tiene sentido aquí.
+            onRefresh = {
+                if (!isRefreshing) {
+                    isRefreshing = true
+                    scope.launch {
+                        reload()
+                        isRefreshing = false
+                    }
+                }
+            }
+        ) {
         when {
-            loaded == null -> ListRowsSkeleton()
+            loaded == null -> ListRowsSkeleton(
+                contentPadding = PaddingValues(top = reservedTop)
+            )
             loaded.isEmpty() -> EmptyState(
                 icon = Icons.Outlined.Smartphone,
                 title = stringResource(Res.string.device_folders_empty_title),
@@ -118,6 +140,7 @@ fun DeviceFoldersScreen(
                     )
                 }
             }
+        }
         }
 
         SubscreenFloatingChrome(

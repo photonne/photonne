@@ -84,6 +84,7 @@ import com.photonne.app.resources.explore_section_scenes
 import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.people_title
+import com.photonne.app.ui.main.CreateAction
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.main.SearchFieldPill
@@ -254,12 +255,15 @@ fun AlbumsListScreen(
                 onChromeVisibleChange = {},
                 actions = {
                     if (onCreateAlbum != null) {
-                        IconButton(onClick = onCreateAlbum) {
-                            Icon(
-                                Icons.Outlined.Add,
-                                contentDescription = stringResource(Res.string.albums_empty_action_create)
-                            )
-                        }
+                        // CreateAction es el afford de "añadir aquí" de la app
+                        // (tonal, no un icono plano más de la fila).
+                        CreateAction(
+                            icon = Icons.Outlined.Add,
+                            contentDescription = stringResource(
+                                Res.string.albums_empty_action_create
+                            ),
+                            onClick = onCreateAlbum
+                        )
                     }
                     if (!searching) {
                         IconButton(onClick = viewModel::toggleSearch) {

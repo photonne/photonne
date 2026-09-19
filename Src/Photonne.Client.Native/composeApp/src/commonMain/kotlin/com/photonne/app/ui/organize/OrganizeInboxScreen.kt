@@ -80,6 +80,9 @@ fun OrganizeInboxScreen(
     // las cápsulas son HERMANAS — la regla de Haze.
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
+    // La vista de lotes es otra lista: sin su estado aquí, el cromo flotante
+    // no se ocultaba al bajar ni tenía de dónde sacar el blur.
+    val batchesState = androidx.compose.foundation.lazy.rememberLazyListState()
     // Con una selección activa manda la cápsula sólida del Scaffold, que YA
     // empuja la rejilla hacia abajo: reservar además el hueco del cromo
     // flotante dejaría una banda muerta del doble de alta.
@@ -125,6 +128,8 @@ fun OrganizeInboxScreen(
                         ),
                         onPick = onPickSuggestion,
                         onSeeAll = onSeeAllItems,
+                        listState = batchesState,
+                        modifier = Modifier.hazeSource(hazeState),
                         header = { InboxHeader(summary = state.summary) },
                     )
                 state.isEmpty ->
@@ -169,7 +174,20 @@ fun OrganizeInboxScreen(
                 SubscreenFloatingChrome(
                     title = stringResource(Res.string.organize_inbox_title),
                     onBack = onBack,
-                    scroll = SubscreenScroll(
+                    scroll = run {
+                        // Lotes y rejilla son listas distintas: el cromo debe
+                        // seguir a la que se está viendo.
+                        val showingBatches =
+                            !state.showAllItems && state.suggestions.isNotEmpty()
+                        if (showingBatches) SubscreenScroll(
+                            firstVisibleItemIndex = { batchesState.firstVisibleItemIndex },
+                            firstVisibleItemScrollOffset = {
+                                batchesState.firstVisibleItemScrollOffset
+                            },
+                            isScrollInProgress = { batchesState.isScrollInProgress },
+                            scrollToTopMinIndex = 4,
+                            onScrollToTop = { batchesState.animateScrollToItem(0) }
+                        ) else SubscreenScroll(
                         firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
                         firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
                         isScrollInProgress = { gridState.isScrollInProgress },
@@ -180,7 +198,8 @@ fun OrganizeInboxScreen(
                             }
                             gridState.animateScrollToItem(0)
                         }
-                    ),
+                        )
+                    },
                     hazeState = hazeState,
                     onChromeVisibleChange = onChromeVisibleChange,
                     // Fotos a sangre bajo la status bar: sin scrim el reloj se
