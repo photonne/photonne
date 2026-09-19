@@ -569,6 +569,51 @@ private fun FloatingNavBarItem(
 }
 
 /**
+ * La cápsula que envuelve cualquier barra de acciones de selección. Comparte
+ * forma, color, altura y márgenes con [MainNavigationBar] a propósito: la barra
+ * de selección *sustituye* a la nav (ver `resolvedBottomBar`), así que entrar en
+ * selección se lee como que la cápsula cambia de contenido, no como que aparece
+ * otra barra encima.
+ *
+ * Comparte también la estrategia de ancho: se ciñe a sus ítems, va centrada y
+ * los iguala entre sí con el mismo [EqualWidthRow] que la nav. Si en una pantalla
+ * estrecha no caben, el row los encoge en proporción en vez de desbordar.
+ */
+@Composable
+private fun FloatingSelectionBar(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(NavigationBarDefaults.windowInsets)
+            .padding(
+                start = FloatingNavBarHorizontalMargin,
+                end = FloatingNavBarHorizontalMargin,
+                bottom = FloatingNavBarBottomMargin
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = FloatingNavBarShape,
+            // Mismo patrón de cápsula que la nav: transparente + cristal de fondo.
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shadowElevation = 6.dp
+        ) {
+          Box {
+            Box(Modifier.matchParentSize().chromeCapsuleBackdrop())
+            EqualWidthRow(
+                modifier = Modifier
+                    .height(CompactNavBarContentHeight)
+                    .padding(horizontal = FloatingNavBarItemsPadding),
+                horizontalGap = FloatingNavItemGap,
+                content = content
+            )
+          }
+        }
+    }
+}
+
+/**
  * Un botón de la cápsula de selección. Hermano de [FloatingNavBarItem], pero sin
  * estado seleccionado: estos ítems disparan una acción, no marcan dónde estás.
  *
@@ -1419,7 +1464,7 @@ fun FolderCardSelectionBottomBar(
 /**
  * Las acciones del detalle de carpeta (crear subcarpeta + menú de
  * editar/mover/miembros/timeline/borrar) para la cápsula de acciones del cromo
- * flotante. Mismo contenido que las `actions` de [FolderDetailTopBar], extraído
+ * flotante. Mismo contenido que tenía la barra acoplada de Carpeta, extraído
  * para poder inyectarlo también en [SubscreenFloatingChrome].
  */
 @Composable

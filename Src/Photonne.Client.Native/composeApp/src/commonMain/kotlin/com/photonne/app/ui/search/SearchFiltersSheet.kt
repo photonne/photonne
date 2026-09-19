@@ -38,6 +38,7 @@ import com.photonne.app.resources.search_clear_all
 import com.photonne.app.resources.search_date_from
 import com.photonne.app.resources.search_date_range
 import com.photonne.app.resources.search_date_to
+import com.photonne.app.resources.search_filters
 import com.photonne.app.resources.search_filters_loading
 import com.photonne.app.resources.search_objects_count
 import com.photonne.app.resources.search_ocr_hint
