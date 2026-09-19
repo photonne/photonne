@@ -1,5 +1,7 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.resources.admin_settings_server_map_key
+import com.photonne.app.resources.admin_settings_server_map_key_hint
 import com.photonne.app.ui.theme.SecondaryActionButton
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +45,8 @@ class AdminServerSettingsViewModel(
     override val keys = listOf(
         "ServerSettings.PublicUrl",
         "ServerSettings.MaxUploadSizeMb",
-        "ServerSettings.SessionTimeoutMinutes"
+        "ServerSettings.SessionTimeoutMinutes",
+        MAP_TILE_KEY
     )
 
     // AuthService falls back to a day when the timeout was never stored, and
@@ -51,7 +54,9 @@ class AdminServerSettingsViewModel(
     override val defaults = mapOf(
         "ServerSettings.PublicUrl" to "",
         MAX_UPLOAD_KEY to "0",
-        SESSION_TIMEOUT_KEY to "1440"
+        SESSION_TIMEOUT_KEY to "1440",
+        // Vacía = teselas sin clave (CARTO las sirve con marca de agua).
+        MAP_TILE_KEY to ""
     )
 
     override val intRanges = mapOf(
@@ -62,6 +67,13 @@ class AdminServerSettingsViewModel(
     companion object {
         const val MAX_UPLOAD_KEY = "ServerSettings.MaxUploadSizeMb"
         const val SESSION_TIMEOUT_KEY = "ServerSettings.SessionTimeoutMinutes"
+
+        /**
+         * Clave de API de las teselas del mapa. Es un ajuste del servidor
+         * (no del binario) porque cada instalación de Photonne usa la suya:
+         * CARTO las reparte por cliente y pide no compartirlas.
+         */
+        const val MAP_TILE_KEY = "ServerSettings.MapTileApiKey"
     }
 }
 
@@ -108,6 +120,11 @@ fun AdminServerSettingsScreen(
             supporting = stringResource(Res.string.admin_settings_server_session_timeout_hint),
             range = viewModel.intRanges[AdminServerSettingsViewModel.SESSION_TIMEOUT_KEY]
         ) { viewModel.set(AdminServerSettingsViewModel.SESSION_TIMEOUT_KEY, it) }
+        SettingTextField(
+            label = stringResource(Res.string.admin_settings_server_map_key),
+            value = serverState.get(AdminServerSettingsViewModel.MAP_TILE_KEY),
+            supporting = stringResource(Res.string.admin_settings_server_map_key_hint)
+        ) { viewModel.set(AdminServerSettingsViewModel.MAP_TILE_KEY, it) }
     }
 }
 

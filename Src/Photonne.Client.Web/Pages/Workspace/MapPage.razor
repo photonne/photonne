@@ -5,6 +5,7 @@
 @inject IAssetService AssetService
 @inject LayoutService LayoutService
 @inject IJSRuntime JS
+@inject ISettingsService SettingsService
 @implements IAsyncDisposable
 
 @* Mapa de fotos geolocalizadas: /api/assets/map/points + Leaflet con
@@ -92,6 +93,17 @@
         if (!firstRender) return;
 
         _selfRef = DotNetObjectReference.Create(this);
+        // La clave de teselas va ANTES de initMap: si llegara después, la
+        // primera capa se pediría sin clave y saldría con marca de agua.
+        try
+        {
+            var tileKey = await SettingsService.GetSettingAsync("ServerSettings.MapTileApiKey", "");
+            await JS.InvokeVoidAsync("mapHelpers.setApiKey", tileKey);
+        }
+        catch
+        {
+            // Sin clave el mapa sigue funcionando; no merece romper la página.
+        }
         await JS.InvokeVoidAsync("mapHelpers.initMap", "photonne-map",
             40.4168, -3.7038, 5, LayoutService.IsDarkMode ? "dark" : "light");
         _mapInitialized = true;
