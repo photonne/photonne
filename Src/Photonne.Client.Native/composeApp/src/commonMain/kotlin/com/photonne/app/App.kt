@@ -1428,8 +1428,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids) { albumDetailViewModel.refresh(); timelineViewModel.refresh() }
                     },
-                    onRemoveFromAlbum = if (selectedAlbum?.canWrite == true ||
-                        selectedAlbum?.isOwner == true
+                    // En un álbum inteligente el contenido lo deciden las
+                    // reglas: ni quitar fotos ni fijar portada aplican.
+                    onRemoveFromAlbum = if (selectedAlbum?.isSmart != true &&
+                        (selectedAlbum?.canWrite == true ||
+                            selectedAlbum?.isOwner == true)
                     ) {
                         {
                             val albumId = selectedAlbum?.id
@@ -1468,6 +1471,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     } else null,
                     onSetAsCover = if (albumDetailState.selection.size == 1 &&
+                        selectedAlbum?.isSmart != true &&
                         (selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true)
                     ) {
                         {
@@ -2369,6 +2373,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     MoreSubscreen.CreateSmartAlbum -> com.photonne.app.ui.album.smart.SmartAlbumEditorScreen(
                         onBack = { moreSubscreen = null },
+                        onChromeVisibleChange = { subscreenChromeVisible = it },
                         onCreated = { newAlbum ->
                             moreSubscreen = null
                             albumsViewModel.refresh()

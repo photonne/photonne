@@ -79,6 +79,30 @@ actual class AssetSharing {
         }
     }
 
+    actual suspend fun shareText(text: String, subject: String?) {
+        if (text.isBlank()) return
+        withContext(Dispatchers.Main) {
+            val host = topViewController()
+                ?: throw AssetSharingUnavailable("No active window to present the share sheet")
+            val activity = UIActivityViewController(
+                activityItems = listOf(text),
+                applicationActivities = null
+            )
+            activity.popoverPresentationController?.let { popover ->
+                popover.sourceView = host.view
+                host.view.bounds.useContents {
+                    popover.sourceRect = CGRectMake(
+                        x = size.width / 2.0,
+                        y = size.height / 2.0,
+                        width = 0.0,
+                        height = 0.0
+                    )
+                }
+            }
+            host.presentViewController(activity, animated = true, completion = null)
+        }
+    }
+
     private fun writeToShareDir(
         bytes: ByteArray,
         fileName: String,

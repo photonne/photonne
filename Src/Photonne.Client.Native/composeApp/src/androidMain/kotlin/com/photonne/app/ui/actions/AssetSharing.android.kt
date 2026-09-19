@@ -76,6 +76,19 @@ actual class AssetSharing(private val context: Context) {
         context.startActivity(chooser)
     }
 
+    actual suspend fun shareText(text: String, subject: String?) {
+        if (text.isBlank()) return
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+            if (!subject.isNullOrBlank()) putExtra(Intent.EXTRA_SUBJECT, subject)
+        }
+        val chooser = Intent.createChooser(intent, null).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(chooser)
+    }
+
     private fun writeToDownloads(
         bytes: ByteArray,
         fileName: String,

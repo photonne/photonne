@@ -104,6 +104,7 @@
     <string name="albums_scope_mine">Míos</string>
     <string name="albums_scope_shared">Compartidos</string>
     <string name="albums_badge_shared">Compartido</string>
+    <string name="albums_badge_smart">Álbum inteligente</string>
     <string name="sync_badge_pending">Pendiente de subir</string>
     <string name="sync_badge_uploading">Subiendo</string>
     <string name="sync_badge_failed">Fallo al subir</string>
@@ -153,6 +154,8 @@
     <string name="share_empty">No hay enlaces todavía. Cualquiera con el enlace podrá ver el álbum.</string>
     <string name="share_action_new">Nuevo enlace</string>
     <string name="share_action_copy">Copiar enlace</string>
+    <string name="share_action_share_link">Compartir enlace</string>
+    <string name="share_action_share_failed">No se pudo abrir el menú de compartir</string>
     <string name="share_action_revoke">Revocar enlace</string>
     <string name="share_create_title">Crear enlace</string>
     <string name="share_option_password">Proteger con contraseña</string>

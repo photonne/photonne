@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -42,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +64,8 @@ import com.photonne.app.resources.share_action_copy
 import com.photonne.app.resources.share_action_edit
 import com.photonne.app.resources.share_action_new
 import com.photonne.app.resources.share_action_revoke
+import com.photonne.app.resources.share_action_share_failed
+import com.photonne.app.resources.share_action_share_link
 import com.photonne.app.resources.share_attribute_expiry_format
 import com.photonne.app.resources.share_attribute_no_downloads
 import com.photonne.app.resources.share_attribute_password
@@ -88,6 +92,7 @@ import com.photonne.app.resources.share_password_remove
 import com.photonne.app.resources.share_title
 import com.photonne.app.ui.main.LocalSnackbarController
 import kotlin.time.Instant
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -95,6 +100,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,6 +114,9 @@ fun ManageSharesDialog(
     val clipboard = LocalClipboardManager.current
     val snackbar = LocalSnackbarController.current
     val copiedMessage = stringResource(Res.string.share_link_copied)
+    val shareFailedMessage = stringResource(Res.string.share_action_share_failed)
+    val sharing: com.photonne.app.ui.actions.AssetSharing = koinInject()
+    val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = { if (!state.isMutating) onDismiss() },
@@ -146,6 +155,16 @@ fun ManageSharesDialog(
                                     clipboard.setText(AnnotatedString(link.shareUrl))
                                     snackbar?.show(copiedMessage)
                                 },
+                                onShare = {
+                                    scope.launch {
+                                        runCatching { sharing.shareText(link.shareUrl) }
+                                            .onFailure { error ->
+                                                snackbar?.show(
+                                                    error.message ?: shareFailedMessage
+                                                )
+                                            }
+                                    }
+                                },
                                 onEdit = { onEdit(link) },
                                 onRevoke = { onRevoke(link.token) }
                             )
@@ -179,6 +198,7 @@ fun ManageSharesDialog(
 private fun ShareLinkRow(
     link: AlbumShareLink,
     onCopy: () -> Unit,
+    onShare: () -> Unit,
     onEdit: () -> Unit,
     onRevoke: () -> Unit
 ) {
@@ -219,6 +239,14 @@ private fun ShareLinkRow(
             Icon(
                 Icons.Outlined.ContentCopy,
                 contentDescription = stringResource(Res.string.share_action_copy)
+            )
+        }
+        // Copiar servía para pegar a mano; compartir manda el enlace por
+        // donde el usuario lo manda todo (WhatsApp, correo…).
+        IconButton(onClick = onShare) {
+            Icon(
+                Icons.Outlined.Share,
+                contentDescription = stringResource(Res.string.share_action_share_link)
             )
         }
         IconButton(onClick = onEdit) {
