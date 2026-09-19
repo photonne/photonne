@@ -875,6 +875,8 @@
     <string name="admin_settings_server">Server configuration</string>
     <string name="admin_settings_server_subtitle">Public URL, limits and this device\'s connection</string>
     <string name="admin_settings_server_public_url">Public URL</string>
+    <string name="admin_settings_server_map_key">Map API key (CARTO)</string>
+    <string name="admin_settings_server_map_key_hint">Map tiles have required a free key since August 2026; without one they come watermarked. Request it at carto.com/basemaps/apikey. Empty = no key.</string>
     <string name="admin_settings_server_max_upload">Max upload size (MB)</string>
     <string name="admin_settings_server_max_upload_hint">0 = unlimited</string>
     <string name="admin_settings_server_session_timeout">Session timeout (min)</string>

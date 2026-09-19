@@ -33,6 +33,12 @@ data class MapUiState(
     // is closed; the view-model owns it so selection survives a
     // configuration change and so the bulk actions can drop affected
     // assets out of the point list when they succeed.
+    /**
+     * Clave de API de las teselas, leída del ajuste del servidor
+     * (ServerSettings.MapTileApiKey). Null mientras no se ha cargado o si el
+     * administrador no ha puesto ninguna.
+     */
+    val tileApiKey: String? = null,
     val sheetPoints: List<MapPoint>? = null,
     val selection: Set<String> = emptySet(),
     val isBulkMutating: Boolean = false
@@ -44,6 +50,7 @@ class MapViewModel(
     private val repository: MapRepository,
     private val assetRepository: AssetDetailRepository,
     private val albumsRepository: AlbumsRepository,
+    private val settingsRepository: com.photonne.app.data.admin.AdminRepository,
     private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
@@ -51,8 +58,25 @@ class MapViewModel(
     val state: StateFlow<MapUiState> = _state.asStateFlow()
 
     fun ensureLoaded() {
+        loadTileApiKey()
         if (_state.value.firstLoadComplete || _state.value.isLoading) return
         refresh()
+    }
+
+    /**
+     * La clave de teselas vive en el servidor para que cada instalación use la
+     * suya. Se lee una sola vez por sesión del ViewModel y su fallo es mudo: sin
+     * clave el mapa sigue pintándose (con la marca de agua de CARTO), así que no
+     * merece un banner de error encima del mapa.
+     */
+    private fun loadTileApiKey() {
+        if (_state.value.tileApiKey != null) return
+        viewModelScope.launch {
+            runCatching { settingsRepository.getSettingString(MAP_TILE_API_KEY_SETTING) }
+                .onSuccess { key ->
+                    _state.update { it.copy(tileApiKey = key.orEmpty()) }
+                }
+        }
     }
 
     fun refresh() {
@@ -261,6 +285,9 @@ class MapViewModel(
         return Triple(anchor.latitude, anchor.longitude, 12)
     }
 }
+
+/** Misma clave que edita Ajustes del servidor (AdminServerSettingsViewModel). */
+private const val MAP_TILE_API_KEY_SETTING = "ServerSettings.MapTileApiKey"
 
 private fun MapPoint.toSyntheticItem(): TimelineItem = TimelineItem(
     id = id,

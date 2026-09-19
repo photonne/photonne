@@ -46,6 +46,13 @@
                                       FullWidth="true"
                                       Placeholder="https://photos.ejemplo.com"
                                       HelperText="Se usa en enlaces compartidos y notificaciones. Sin barra final." />
+                        <MudTextField T="string"
+                                      Label="Clave de API del mapa (CARTO)"
+                                      @bind-Value="_mapTileApiKey"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      Class="mt-4"
+                                      HelperText="Desde agosto de 2026 las teselas exigen una clave gratuita; sin ella salen con marca de agua. Pídela en carto.com/basemaps/apikey. Vacío = sin clave." />
                     </MudCardContent>
                     <MudCardActions Class="px-4 pb-4">
                         <MudButton Variant="Variant.Filled"
@@ -145,12 +152,16 @@
     private const string KeyPublicUrl           = "ServerSettings.PublicUrl";
     private const string KeyMaxUploadMb         = "ServerSettings.MaxUploadSizeMb";
     private const string KeySessionTimeout      = "ServerSettings.SessionTimeoutMinutes";
+    // Clave de las teselas del mapa: ajuste del servidor porque cada
+    // instalación usa la suya (CARTO las reparte por cliente).
+    private const string KeyMapTileApiKey      = "ServerSettings.MapTileApiKey";
 
     // ── state ─────────────────────────────────────────────────────────────────
     private bool _isAuthorized;
     private bool _loading = true;
 
     private string _publicUrl       = "";
+    private string _mapTileApiKey   = "";
     private int    _maxUploadMb     = 500;
     private int    _sessionTimeoutMinutes = 60;
 
@@ -182,6 +193,7 @@
         _publicUrl          = await SettingsService.GetSettingAsync(KeyPublicUrl, "");
         _maxUploadMb        = ParseInt(await SettingsService.GetSettingAsync(KeyMaxUploadMb, "500"), 1, 10240, 500);
         _sessionTimeoutMinutes = ParseInt(await SettingsService.GetSettingAsync(KeySessionTimeout, "60"), 5, 10080, 60);
+        _mapTileApiKey      = await SettingsService.GetSettingAsync(KeyMapTileApiKey, "");
     }
 
     // ── save handlers ─────────────────────────────────────────────────────────
@@ -191,6 +203,7 @@
         try
         {
             var ok = await SettingsService.SaveSettingAsync(KeyPublicUrl, _publicUrl.TrimEnd('/'));
+            ok &= await SettingsService.SaveSettingAsync(KeyMapTileApiKey, _mapTileApiKey.Trim());
             ShowResult(ok, "Red");
         }
         finally { _savingNetwork = false; }

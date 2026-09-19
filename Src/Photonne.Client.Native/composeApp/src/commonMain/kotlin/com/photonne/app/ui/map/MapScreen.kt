@@ -88,6 +88,7 @@ fun MapScreen(
             onZoomChanged = viewModel::onZoomChanged,
             onClusterClick = viewModel::openClusterSheet,
             onPointClick = onPointOpen,
+            tileApiKey = state.tileApiKey,
             modifier = Modifier.fillMaxSize().hazeSource(mapHazeState)
         )
 

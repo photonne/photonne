@@ -3,6 +3,20 @@ window.mapHelpers = {
     _currentStyle: 'dark',
     _clusterGroup: null,
     _stateRestored: false,
+    // Clave de API de CARTO (ajuste del servidor ServerSettings.MapTileApiKey).
+    // Desde agosto de 2026 las teselas sin clave llevan marca de agua.
+    _apiKey: '',
+
+    setApiKey: function (key) {
+        this._apiKey = key || '';
+    },
+
+    /** URL de teselas del estilo pedido, con la clave si la hay. */
+    _tileUrl: function (style) {
+        const variant = style === 'light' ? 'light_all' : 'dark_all';
+        const base = `https://{s}.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}{r}.png`;
+        return this._apiKey ? `${base}?key=${encodeURIComponent(this._apiKey)}` : base;
+    },
 
     initMap: function (elementId, centerLat, centerLng, zoom, style) {
         if (typeof L === 'undefined') {
@@ -26,13 +40,8 @@ window.mapHelpers = {
 
             let tileUrl, attribution;
 
-            if (style === 'light') {
-                tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-                attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-            } else {
-                tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-                attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-            }
+            tileUrl = this._tileUrl(style);
+            attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
             L.tileLayer(tileUrl, {
                 attribution: attribution,
@@ -155,10 +164,10 @@ window.mapHelpers = {
         let tileUrl, attribution;
 
         if (style === 'light') {
-            tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+            tileUrl = this._tileUrl('light');
             attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
         } else {
-            tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+            tileUrl = this._tileUrl('dark');
             attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
         }
 
@@ -429,9 +438,7 @@ window.miniMapHelpers = {
             keyboard: false
         });
 
-        const tileUrl = isDark
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        const tileUrl = window.mapHelpers._tileUrl(isDark ? 'dark' : 'light');
 
         L.tileLayer(tileUrl, { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
 

@@ -884,6 +884,8 @@
     <string name="admin_settings_server">Configuración del servidor</string>
     <string name="admin_settings_server_subtitle">URL pública, límites y conexión de este dispositivo</string>
     <string name="admin_settings_server_public_url">URL pública</string>
+    <string name="admin_settings_server_map_key">Clave de API del mapa (CARTO)</string>
+    <string name="admin_settings_server_map_key_hint">Las teselas del mapa exigen una clave gratuita desde agosto de 2026; sin ella salen con marca de agua. Pídela en carto.com/basemaps/apikey. Vacío = sin clave.</string>
     <string name="admin_settings_server_max_upload">Tamaño máximo de subida (MB)</string>
     <string name="admin_settings_server_max_upload_hint">0 = sin límite</string>
     <string name="admin_settings_server_session_timeout">Tiempo de sesión (min)</string>

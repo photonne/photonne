@@ -123,9 +123,19 @@ fun OsmMap(
     onZoomChanged: (zoom: Int) -> Unit,
     onClusterClick: (List<MapPoint>) -> Unit,
     onPointClick: (MapPoint) -> Unit,
+    /**
+     * Clave de API de CARTO, del ajuste del servidor. Desde agosto de 2026
+     * las teselas sin clave se sirven con una marca de agua "API KEY
+     * REQUIRED"; vacía o nula se piden igual (el mapa sigue siendo usable).
+     */
+    tileApiKey: String? = null,
     modifier: Modifier = Modifier
 ) {
-    val tileTemplate = if (darkTiles) TILE_URL_TEMPLATE_DARK else TILE_URL_TEMPLATE_LIGHT
+    val baseTemplate = if (darkTiles) TILE_URL_TEMPLATE_DARK else TILE_URL_TEMPLATE_LIGHT
+    val tileTemplate = remember(baseTemplate, tileApiKey) {
+        if (tileApiKey.isNullOrBlank()) baseTemplate
+        else "$baseTemplate?key=$tileApiKey"
+    }
     val backgroundColor = if (darkTiles) MapBackgroundDark else MapBackgroundLight
     var size by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current
