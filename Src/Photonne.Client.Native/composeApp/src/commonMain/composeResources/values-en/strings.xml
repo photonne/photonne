@@ -1405,4 +1405,5 @@
     <string name="smart_album_date_to">Until</string>
     <string name="admin_shared_trash_selected_format">%1$d selected</string>
     <string name="admin_shared_trash_deleted_by_format">Deleted by %1$s</string>
+    <string name="timeline_scrubber_description">Quick scroll through dates</string>
 </resources>

@@ -65,6 +65,7 @@ import com.photonne.app.ui.theme.SkeletonBlock
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
+import androidx.compose.ui.semantics.heading
 
 /**
  * Sentinel returned by the server for assets that exist on disk but
@@ -611,6 +612,7 @@ private fun MonthHeader(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .align(Alignment.CenterStart)
+                .semantics { heading() }
                 .padding(horizontal = 16.dp)
         )
         if (count != null) {

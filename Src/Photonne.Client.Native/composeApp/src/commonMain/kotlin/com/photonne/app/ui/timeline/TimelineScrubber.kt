@@ -53,6 +53,12 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.timeline_scrubber_description
+import org.jetbrains.compose.resources.stringResource
 
 /** Don't bother with a scrubber for content that barely scrolls. */
 private const val MIN_ROWS_FOR_SCRUBBER = 40
@@ -227,6 +233,14 @@ internal fun TimelineScrubber(
             },
             modifier = Modifier.align(Alignment.TopEnd)
         )
+        // Punto 47: el mango era mudo para el lector de pantalla. Se anuncia
+        // como control de desplazamiento rápido, con el mes visible como estado.
+        val scrubberDescription = stringResource(Res.string.timeline_scrubber_description)
+        val currentLabel by remember(prefix, labels) {
+            derivedStateOf {
+                labels.getOrNull(rowIndexForFraction(prefix, scrollFraction)).orEmpty()
+            }
+        }
         // Drag-on-the-handle only. Delta-based: the pointer input sits on
         // the element that moves, so absolute positions would feed back
         // into themselves. Keyed on Unit on purpose — every mutable input
@@ -239,6 +253,10 @@ internal fun TimelineScrubber(
                 .width(HandleTouchWidth)
                 .height(HandleTouchHeight)
                 .pointerHoverIcon(PointerIcon.Hand)
+                .semantics {
+                    contentDescription = scrubberDescription
+                    if (currentLabel.isNotEmpty()) stateDescription = currentLabel
+                }
                 .then(
                     if (visible) {
                         Modifier.pointerInput(Unit) {

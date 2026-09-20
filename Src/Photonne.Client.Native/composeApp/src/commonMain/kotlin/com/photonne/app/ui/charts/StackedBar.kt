@@ -16,6 +16,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 data class StackedSegment(
     val value: Float,
@@ -38,7 +40,9 @@ fun StackedBar(
     barHeight: Dp = 12.dp,
     cornerRadius: Dp = 8.dp,
     trackColor: Color? = null,
-    animationDurationMs: Int = 600
+    animationDurationMs: Int = 600,
+    /** Resumen para el lector de pantalla: un Canvas no dice nada por sí solo. */
+    description: String? = null
 ) {
     val sanitized = segments.filter { it.value > 0f }
     val total = sanitized.fold(0f) { acc, s -> acc + s.value }.coerceAtLeast(0.0001f)
@@ -55,6 +59,9 @@ fun StackedBar(
         modifier = modifier
             .fillMaxWidth()
             .height(barHeight)
+            .then(
+                if (description != null) Modifier.semantics { contentDescription = description } else Modifier
+            )
     ) {
         val radius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx())
         if (trackColor != null) {
