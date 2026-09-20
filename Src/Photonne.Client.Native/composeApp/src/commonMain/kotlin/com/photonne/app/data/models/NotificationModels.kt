@@ -25,7 +25,16 @@ data class NotificationDto(
     val isRead: Boolean = false,
     @Serializable(with = FlexibleInstantSerializer::class)
     val createdAt: Instant,
-    val actionUrl: String? = null
+    val actionUrl: String? = null,
+    /**
+     * Clave de agrupación del servidor: mientras una notificación sin leer con
+     * la misma clave exista, las repeticiones se pliegan en ella (sube
+     * [groupCount] y se reescribe el mensaje) en vez de crear filas nuevas.
+     * Nula en los tipos que no agrupan.
+     */
+    val groupKey: String? = null,
+    /** Cuántas repeticiones se plegaron; 1 si ninguna. El mensaje ya lo cuenta. */
+    val groupCount: Int = 1
 )
 
 @Serializable
