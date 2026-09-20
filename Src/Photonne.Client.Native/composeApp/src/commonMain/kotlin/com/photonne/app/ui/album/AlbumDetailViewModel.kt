@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 
 enum class AlbumDetailSort { Album, Date }
 
@@ -69,10 +71,27 @@ class AlbumDetailViewModel(
     private val assetRepository: AssetDetailRepository,
     private val settings: Settings,
     private val errorFactory: UiErrorFactory,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<AlbumDetailUiState> = _state.asStateFlow()
+
+    init {
+        // Punto 52: las mutaciones confirmadas por el servidor (archivar,
+        // papelera, restaurar, purgar, favorito) llegan por el bus; App.kt ya
+        // no parchea esta lista a mano.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is AssetMutation.Removed -> event.assetIds.forEach(::applyAssetRemovedLocal)
+                    is AssetMutation.Purged -> event.assetIds.forEach(::applyAssetRemovedLocal)
+                    is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
+                    is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
+                }
+            }
+        }
+    }
 
     /** Sort/direction are a global preference shared across all albums. */
     private fun loadInitialState(): AlbumDetailUiState {

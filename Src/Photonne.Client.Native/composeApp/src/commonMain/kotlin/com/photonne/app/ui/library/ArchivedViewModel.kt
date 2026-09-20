@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 
 data class ArchivedUiState(
     val items: List<TimelineItem> = emptyList(),
@@ -40,10 +42,56 @@ class ArchivedViewModel(
     private val repository: AssetDetailRepository,
     private val albumsRepository: AlbumsRepository,
     private val errorFactory: UiErrorFactory,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ArchivedUiState())
     val state: StateFlow<ArchivedUiState> = _state.asStateFlow()
+
+    init {
+        // Punto 52: las mutaciones confirmadas por el servidor (archivar,
+        // papelera, restaurar, purgar, favorito) llegan por el bus; App.kt ya
+        // no parchea esta lista a mano.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is AssetMutation.Removed -> {
+                        event.assetIds.forEach(::applyAssetRemovedLocal)
+                        refreshQuietly()
+                    }
+                    is AssetMutation.Purged -> {
+                        event.assetIds.forEach(::applyAssetRemovedLocal)
+                        refreshQuietly()
+                    }
+                    is AssetMutation.Restored, AssetMutation.AllChanged -> refreshQuietly()
+                    is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
+                }
+            }
+        }
+    }
+
+    /**
+     * Recarga la primera página sin spinner tras una mutación llegada por el
+     * bus: la lista visible sigue siendo válida mientras tanto y un fallo se
+     * queda en silencio (ya se reintentará en el siguiente refresh explícito).
+     * Solo si la pantalla llegó a cargar; si no, ensureLoaded() lo hará.
+     */
+    private fun refreshQuietly() {
+        if (!_state.value.loaded) return
+        viewModelScope.launch {
+            runCatching { repository.listArchived(cursor = null) }
+                .onSuccess { page ->
+                    _state.update {
+                        it.copy(
+                            items = page.items,
+                            hasMore = page.hasMore,
+                            nextCursor = page.nextCursor,
+                            selection = it.selection intersect page.items.map { a -> a.id }.toSet()
+                        )
+                    }
+                }
+        }
+    }
 
     fun ensureLoaded() {
         val snapshot = _state.value

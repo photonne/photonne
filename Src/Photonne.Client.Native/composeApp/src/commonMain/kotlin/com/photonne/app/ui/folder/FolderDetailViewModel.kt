@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 
 data class FolderDetailUiState(
     val folderId: String? = null,
@@ -52,10 +54,27 @@ class FolderDetailViewModel(
     private val albumsRepository: AlbumsRepository,
     private val errorFactory: UiErrorFactory,
     private val settings: Settings,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FolderDetailUiState())
     val state: StateFlow<FolderDetailUiState> = _state.asStateFlow()
+
+    init {
+        // Punto 52: las mutaciones confirmadas por el servidor (archivar,
+        // papelera, restaurar, purgar, favorito) llegan por el bus; App.kt ya
+        // no parchea esta lista a mano.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is AssetMutation.Removed -> event.assetIds.forEach(::applyAssetRemovedLocal)
+                    is AssetMutation.Purged -> event.assetIds.forEach(::applyAssetRemovedLocal)
+                    is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
+                    is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
+                }
+            }
+        }
+    }
 
     /**
      * Order subfolders by the same persisted sort the folder list screen uses,
