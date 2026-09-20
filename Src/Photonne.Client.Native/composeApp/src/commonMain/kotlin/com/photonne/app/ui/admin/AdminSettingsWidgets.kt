@@ -725,7 +725,7 @@ internal fun snapToStep(raw: Float, range: IntRange, step: Int): Int {
 private fun ValueChip(text: String) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
             .padding(horizontal = 10.dp, vertical = Spacing.xs)
     ) {

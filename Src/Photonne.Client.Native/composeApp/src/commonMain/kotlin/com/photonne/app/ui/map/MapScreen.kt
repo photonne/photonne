@@ -148,7 +148,7 @@ fun MapScreen(
                     .padding(horizontal = 16.dp)
                     .padding(top = reservedTop + 8.dp),
                 color = MaterialTheme.colorScheme.errorContainer,
-                shape = RoundedCornerShape(8.dp)
+                shape = MaterialTheme.shapes.small
             ) {
                 Row(
                     modifier = Modifier.padding(start = 12.dp, end = 4.dp),

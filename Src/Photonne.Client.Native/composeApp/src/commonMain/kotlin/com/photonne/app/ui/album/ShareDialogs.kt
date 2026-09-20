@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -101,6 +100,7 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import com.photonne.app.ui.theme.PrimaryActionButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -390,27 +390,20 @@ fun CreateShareDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        onConfirm(
-                            if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
-                            if (passwordEnabled) password else null,
-                            allowDownload,
-                            if (maxViewsEnabled) maxViews.toIntOrNull() else null,
-                            allowUpload
-                        )
-                    },
-                    enabled = canSubmit
-                ) { Text(stringResource(Res.string.action_create)) }
-            }
+            PrimaryActionButton(
+                label = stringResource(Res.string.action_create),
+                onClick = {
+                    onConfirm(
+                        if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
+                        if (passwordEnabled) password else null,
+                        allowDownload,
+                        if (maxViewsEnabled) maxViews.toIntOrNull() else null,
+                        allowUpload
+                    )
+                },
+                enabled = canSubmit,
+                isLoading = isSubmitting
+            )
         }
     }
     if (showExpiryPicker) {
@@ -599,32 +592,25 @@ fun EditShareDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        val passwordPayload = when (passwordAction) {
-                            EditPasswordAction.Keep -> null
-                            EditPasswordAction.Remove -> ""
-                            EditPasswordAction.Change -> newPassword
-                        }
-                        onConfirm(
-                            if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
-                            passwordPayload,
-                            allowDownload,
-                            if (maxViewsEnabled) maxViews.toIntOrNull() else null,
-                            allowUpload
-                        )
-                    },
-                    enabled = canSubmit
-                ) { Text(stringResource(Res.string.action_save)) }
-            }
+            PrimaryActionButton(
+                label = stringResource(Res.string.action_save),
+                onClick = {
+                    val passwordPayload = when (passwordAction) {
+                        EditPasswordAction.Keep -> null
+                        EditPasswordAction.Remove -> ""
+                        EditPasswordAction.Change -> newPassword
+                    }
+                    onConfirm(
+                        if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
+                        passwordPayload,
+                        allowDownload,
+                        if (maxViewsEnabled) maxViews.toIntOrNull() else null,
+                        allowUpload
+                    )
+                },
+                enabled = canSubmit,
+                isLoading = isSubmitting
+            )
         }
     }
     if (showExpiryPicker) {

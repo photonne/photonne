@@ -3,15 +3,12 @@ package com.photonne.app.ui.admin
 import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -42,6 +39,7 @@ import com.photonne.app.resources.admin_user_action_reset_password
 import com.photonne.app.resources.admin_user_action_reset_password_message
 import com.photonne.app.resources.admin_user_action_reset_password_title
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PrimaryActionButton
 
 @Composable
 fun AdminDeleteUserDialog(
@@ -183,18 +181,12 @@ fun AdminResetPasswordDialog(
                 Text(msg, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.height(Spacing.xs))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-                Spacer(Modifier.width(Spacing.sm))
-                Button(enabled = canSubmit, onClick = { onConfirm(newPassword) }) {
-                    Text(stringResource(Res.string.admin_user_action_reset_password))
-                }
-            }
+            PrimaryActionButton(
+                label = stringResource(Res.string.admin_user_action_reset_password),
+                onClick = { onConfirm(newPassword) },
+                enabled = canSubmit,
+                isLoading = isSubmitting
+            )
         }
     }
 }

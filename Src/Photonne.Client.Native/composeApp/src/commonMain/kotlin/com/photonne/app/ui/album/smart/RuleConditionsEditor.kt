@@ -35,7 +35,6 @@ import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -116,6 +115,7 @@ import com.photonne.app.ui.folder.toggleMember
 import coil3.compose.AsyncImage
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PrimaryActionButton
 
 internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates }
 
@@ -387,7 +387,7 @@ private fun SmartPreviewSection(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(88.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
                 }
@@ -639,11 +639,12 @@ private fun SearchSelectScaffold(
             Text(title, style = MaterialTheme.typography.titleMedium)
             header()
             body()
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = onConfirm, enabled = confirmEnabled) { Text(stringResource(Res.string.action_apply)) }
-            }
+            PrimaryActionButton(
+                label = stringResource(Res.string.action_apply),
+                onClick = onConfirm,
+                enabled = confirmEnabled,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -736,7 +737,7 @@ private fun LabelRow(label: LabelRef, baseUrl: String, checked: Boolean, onToggl
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
+        Box(Modifier.size(44.dp).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.surfaceVariant)) {
             label.coverAssetId?.let {
                 AsyncImage(
                     model = "$baseUrl/api/assets/$it/thumbnail?size=Small",
@@ -856,16 +857,12 @@ private fun SelectSheetScaffold(
                 isEmpty -> Text(emptyText, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else -> content()
             }
-            Row(
-                Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = onConfirm, enabled = confirmEnabled) {
-                    Text(stringResource(Res.string.action_apply))
-                }
-            }
+            PrimaryActionButton(
+                label = stringResource(Res.string.action_apply),
+                onClick = onConfirm,
+                enabled = confirmEnabled,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
 }

@@ -110,7 +110,7 @@ fun MemoriesStrip(
                 .then(
                     if (onSeeAll != null) {
                         Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .clickable(onClick = onSeeAll)
                             .semantics {
                                 role = Role.Button

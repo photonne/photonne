@@ -335,7 +335,7 @@ private fun DuplicateAssetRow(
                 color = if (isSelected) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
                 } else Color.Transparent,
-                shape = RoundedCornerShape(8.dp)
+                shape = MaterialTheme.shapes.small
             )
             .clickable(onClick = onToggle)
             .padding(6.dp)

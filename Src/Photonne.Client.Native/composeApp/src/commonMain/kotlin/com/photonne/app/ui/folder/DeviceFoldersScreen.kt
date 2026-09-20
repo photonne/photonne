@@ -217,7 +217,7 @@ private fun DeviceBucketRow(
                 modifier = Modifier
                     .background(
                         MaterialTheme.colorScheme.secondaryContainer,
-                        RoundedCornerShape(8.dp)
+                        MaterialTheme.shapes.small
                     )
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             )

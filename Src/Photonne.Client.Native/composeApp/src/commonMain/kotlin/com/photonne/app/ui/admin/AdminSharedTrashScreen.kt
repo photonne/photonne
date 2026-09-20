@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Folder
@@ -403,7 +402,7 @@ private fun SharedTrashRow(
         SharedTrashThumbnail(
             item = item,
             baseUrl = baseUrl,
-            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp))
+            modifier = Modifier.size(56.dp).clip(MaterialTheme.shapes.small)
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
