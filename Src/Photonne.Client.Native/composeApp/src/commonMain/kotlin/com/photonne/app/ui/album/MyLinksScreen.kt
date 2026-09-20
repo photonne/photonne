@@ -33,7 +33,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -83,6 +82,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 /**
  * "Mis enlaces" (More → Mis enlaces): lists every public share link the user has created —
@@ -127,9 +127,7 @@ fun MyLinksScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading && state.links.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop))
                 state.error != null && state.links.isEmpty() ->
                     Column(
                         modifier = Modifier

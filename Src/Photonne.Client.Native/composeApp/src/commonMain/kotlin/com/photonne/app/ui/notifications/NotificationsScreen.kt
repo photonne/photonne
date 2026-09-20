@@ -85,6 +85,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 @Composable
 fun NotificationsScreen(
@@ -131,10 +132,7 @@ fun NotificationsScreen(
         ) {
             when {
                 state.isLoading && state.items.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator() }
+                    ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop), thumbnailSize = 28.dp)
                 // Una primera carga fallida no es una bandeja vacía: antes caía
                 // en la rama de vacío y decía "total: 0".
                 state.error != null && state.items.isEmpty() ->

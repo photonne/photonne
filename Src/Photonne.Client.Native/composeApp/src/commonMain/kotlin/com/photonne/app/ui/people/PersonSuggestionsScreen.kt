@@ -63,6 +63,7 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.AssetGridSkeleton
 
 @Composable
 fun PersonSuggestionsScreen(
@@ -94,9 +95,7 @@ fun PersonSuggestionsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             state.isInitialLoading ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                AssetGridSkeleton(contentPadding = PaddingValues(top = reservedTop))
             state.error != null && state.items.isEmpty() ->
                 com.photonne.app.ui.error.FullScreenError(
                     error = state.error,

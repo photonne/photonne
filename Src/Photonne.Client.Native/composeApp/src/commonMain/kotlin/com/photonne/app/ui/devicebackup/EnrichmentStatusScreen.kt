@@ -66,6 +66,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 /**
  * Lists every asset the user owns that still has at least one enrichment
@@ -95,9 +96,7 @@ fun EnrichmentStatusScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         when {
             state.isLoading && state.items.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop))
             }
             state.loadError != null -> {
                 Box(

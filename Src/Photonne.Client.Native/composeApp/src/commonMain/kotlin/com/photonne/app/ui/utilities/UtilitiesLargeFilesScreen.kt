@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +58,7 @@ import com.photonne.app.resources.utilities_large_files_total
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 @Composable
 fun UtilitiesLargeFilesScreen(
@@ -88,10 +88,7 @@ fun UtilitiesLargeFilesScreen(
         ) {
             when {
                 state.isLoading && state.items.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator() }
+                    ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop))
                 state.items.isEmpty() ->
                     EmptyState(
                         icon = Icons.Outlined.Storage,

@@ -33,7 +33,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -99,6 +98,7 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.resources.backup_status_verifying
 import com.photonne.app.resources.backup_status_verifying_progress
+import com.photonne.app.ui.theme.AssetGridSkeleton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,9 +160,7 @@ fun BackupPendingScreen(
 
             when {
                 state.isLoading ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    AssetGridSkeleton()
                 state.entries.isEmpty() ->
                     EmptyMessage(stringResource(Res.string.device_backup_empty_folder))
                 else -> MediaGrid(
