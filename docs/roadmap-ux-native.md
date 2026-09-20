@@ -2,7 +2,7 @@
 
 Auditoría del 2026-09-17 sobre `Src/Photonne.Client.Native/composeApp/src/commonMain/kotlin/com/photonne/app/` (en adelante, las rutas son relativas a esa carpeta). Cinco pasadas de solo lectura: timeline/rejilla/shell, visor/mapa/recuerdos, álbumes/carpetas/organizar/utilidades, búsqueda/personas/ajustes/login/backup, y una transversal de consistencia. `ui/admin` quedó fuera porque se auditó y normalizó el mismo día.
 
-**Estado: los 52 puntos correctivos cerrados** — Lotes A (`995cd74`), B y C (`83305d5`), D y E (`1fbb212`), I (`6a148d2`, `3490317`), F (`6427912`), G (`ad4eea2`, `232756b`, `733c4a0`) y H (`fa85fcf`, `45825d1`, `2b3e01f`). (2026-09-19, **sin verificar en dispositivo**.) Varios se cerraron en parcial: el detalle está en cada punto y el resumen por tipo de bloqueo, en "Qué queda". Marca cada punto con `[x]` al cerrarlo y anota el commit.
+**Estado: los 52 puntos correctivos cerrados y la deuda técnica acotada también** (rama `claude/roadmap-ux-pendientes`, 2026-09-20; ver "Qué queda") — Lotes A (`995cd74`), B y C (`83305d5`), D y E (`1fbb212`), I (`6a148d2`, `3490317`), F (`6427912`), G (`ad4eea2`, `232756b`, `733c4a0`) y H (`fa85fcf`, `45825d1`, `2b3e01f`). (2026-09-19, **sin verificar en dispositivo**.) Varios se cerraron en parcial: el detalle está en cada punto y el resumen por tipo de bloqueo, en "Qué queda". Marca cada punto con `[x]` al cerrarlo y anota el commit.
 
 Fiabilidad de los hallazgos:
 - Comprobados a mano: 1, 2, 4 y 6.
@@ -117,7 +117,7 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
 - [x] (`1fbb212`) **24. Gestos de zoom toscos** (M). *Parcial: sin inercia.* `ZoomablePagerImage.kt:79-91` doble toque sin animación; `:98-103` el pellizco ignora el centroide; `:59-66` el arrastre se limita a la caja y no a la imagen; sin inercia. Arreglo: `Animatable` para escala y desplazamiento anclado al centroide.
 - [x] (`1fbb212`) **25. Atrás cierra el visor entero** (S). `App.kt:819-822`. Añadir `PlatformBackHandler` en `AssetDetailScreen` que deshaga en orden: zoom, panel de info, pase automático, apaisado, cerrar.
 - [x] (`1fbb212`) **26. Abrir una foto relacionada pierde el sitio** (M). `App.kt:3350-3362`: `onOpenAsset` sustituye `assetDetail` por un contexto de un elemento. Arreglo: pila de `AssetDetailContext` y, mejor, abrir la fila relacionada como lista del pager.
-- [x] (`1fbb212`) **27. Vídeo y pase automático** (M). *Parcial: sin silencio, sin estado de error del player ni mantener la pantalla encendida (piden tocar las actuals por plataforma).*
+- [x] (`1fbb212`) **27. Vídeo y pase automático** (M). *Parcial (`1fbb212`, `b3687b6`): la pantalla se mantiene encendida durante el pase (KeepScreenOn expect/actual: Android keepScreenOn, iOS idle timer, escritorio no-op). Sin silencio ni estado de error del player: piden tocar los tres reproductores nativos.*
   - `VideoPlayback.isReady` no se lee en común: no hay spinner de carga. La interfaz no tiene estado de error (`ui/asset/VideoPlayback.kt`). No hay silencio. El scrubber solo busca al soltar (`AssetDetailScreen.kt:1271`).
   - El pase avanza con `delay` fijo (`:291-295`) y corta los vídeos. `SlideshowControls` ignora `chromeAlpha` (`:915`).
   - *Sospecha*: la pantalla no se mantiene encendida durante el pase con fotos.
@@ -147,11 +147,11 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
   - `devicebackup/BackupScreen.kt:343-351`: el aviso de permiso denegado está en la sección "Ajustes", plegada por defecto (`:194`). `androidMain/.../NotificationPermission.android.kt:22-35`: `granted` no se relee al volver. Sin enlace a los ajustes del sistema.
   - `BackupScreen.kt:749-761`: "esperando Wi-Fi y carga" sale de las preferencias, no del estado del dispositivo.
 - [x] **36. Subida manual** (M; L en streaming). *Parcial (`733c4a0` + `6a148d2`): el mensaje del límite ya no está en inglés, el banner privado pasa a `UploadErrorBanner` y los botones tienen descripción. Pendiente: progreso determinado por archivo y subida en streaming (el límite de 200 MB viene de cargar en RAM).* Antes: `upload/UploadScreen.kt:191-214` `ErrorBanner` privado; `:342,349,352,211` botones sin descripción; `:244-249` progreso indeterminado; `:292-299` Hecho y Omitido solo cambian de tinte; `UploadViewModel.kt:75` texto en inglés; `:220` límite de 200 MB porque va en RAM (`MediaPicker.kt:12`).
-- [x] **37. Notificaciones** (M, `733c4a0`). Scroll infinito con deduplicación en vez de Anterior/Siguiente; una fila leída y sin `actionUrl` deja de parecer tocable; una ruta sin pantalla nativa lo dice con snackbar; el icono de filtro se describe como "Filtrar notificaciones". *Pendiente: `GroupCount`/`GroupKey` siguen sin DTO nativo.* Antes: `NotificationsScreen.kt:164-174,332-366` paginación "Anterior / Siguiente"; `:154-157` y `App.kt:2816-2843` todas las filas clicables aunque la `actionUrl` no lleve a nada; `:243` icono de filtro descrito como "Todas"; `GroupCount`/`GroupKey` no existen en el DTO nativo (`data/models/NotificationModels.kt:20-29`).
+- [x] **37. Notificaciones** (M, `733c4a0`). Scroll infinito con deduplicación en vez de Anterior/Siguiente; una fila leída y sin `actionUrl` deja de parecer tocable; una ruta sin pantalla nativa lo dice con snackbar; el icono de filtro se describe como "Filtrar notificaciones". *Cerrado (`f9dbf7b`): `GroupKey`/`GroupCount` viajan en la proyección del servidor y en los DTO nativo y web.* Antes: `NotificationsScreen.kt:164-174,332-366` paginación "Anterior / Siguiente"; `:154-157` y `App.kt:2816-2843` todas las filas clicables aunque la `actionUrl` no lleve a nada; `:243` icono de filtro descrito como "Todas"; `GroupCount`/`GroupKey` no existen en el DTO nativo (`data/models/NotificationModels.kt:20-29`).
 
 ## Lote H — Álbumes, carpetas y compartir
 
-- [x] **38. Formularios** (M, `fa85fcf`). Contraseña de enlace oculta con ojo y teclado de contraseña, "Máx. vistas" numérico, hojas de crear y editar con scroll, caducidad sin fechas pasadas; foco inicial y Hecho-para-enviar en nuevo álbum/carpeta y renombrar persona; el selector de carpetas acepta `confirmLabel` ("Seleccionar" en reglas). *Pendiente: barrido completo de `KeyboardOptions` en library/, organize/ y utilities/.* Antes:
+- [x] **38. Formularios** (M, `fa85fcf`). Contraseña de enlace oculta con ojo y teclado de contraseña, "Máx. vistas" numérico, hojas de crear y editar con scroll, caducidad sin fechas pasadas; foco inicial y Hecho-para-enviar en nuevo álbum/carpeta y renombrar persona; el selector de carpetas acepta `confirmLabel` ("Seleccionar" en reglas). *Cerrado (`e7564d1`): library/, organize/ y utilities/ no tienen campos de texto; los 17 campos sin `KeyboardOptions` del resto (buscadores con acción Buscar, nombres y descripciones con mayúscula, usuario/cron/ajustes sin autocorrector, etiqueta con Hecho) quedan cubiertos.* Antes:
   - Cero `KeyboardOptions`/`imeAction`/`KeyboardType`/`PasswordVisualTransformation` en album/, folder/, library/, organize/, utilities/ (`album/smart/` sin revisar en este punto).
   - Sin foco inicial ni Hecho-para-enviar: `ui/album/AlbumDialogs.kt:71`, `ui/folder/FolderDialogs.kt:71`, `people/RenamePersonDialog.kt:61-67`.
   - `ui/album/ShareDialogs.kt:303,518` contraseña en claro; `:319,538` "Máx. vistas" con teclado de texto; `:266,462` hojas sin scroll; `:643` caducidad admite fechas pasadas.
@@ -173,7 +173,7 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
   - Pantallas: `login/LoginScreen.kt:95-258`, `AssetDetailScreen.kt:375,726-728,737,766,1102,1140,1394,1615-1700,1801,1845,1919,1932-1948,2630`, `folder/FolderPickerDialog.kt:156,161,187,210,219,249-263`, `folder/FolderTree.kt:196`, `main/MoreScreen.kt:334,340`, `ShareAssetsDialog.kt:175`, roles en `data/models/PermissionModels.kt:41`.
   - Faltan en `values-en`: `selection_trash_confirm_message`, `selection_trash_done`.
   - ~~Decidir antes el patrón~~ → Marc decide dejarlo en español, sin traducir.
-- [x] **44. Convenciones poco adoptadas** (M). *Parcial (`3490317`, `9fbc285`): `ConfirmActionDialog` enseña progreso al enviar y absorbe las confirmaciones a mano de Mis enlaces (revocar espera al servidor), liberar espacio y salir del álbum; `PrimaryActionButton` en login, mover de reglas y subir ahora. Pie de las hojas decidido y aplicado (`9fbc285`): las 10 hojas con "Cancelar + acción" llevan un `PrimaryActionButton` a todo el ancho con spinner en el sitio de la etiqueta; cancelar es deslizar o atrás. Pendientes: esqueletos en las 14 pantallas con spinner, formularios en `AlertDialog`, cromo acoplado.*
+- [x] **44. Convenciones poco adoptadas** (M). *Parcial (`3490317`, `9fbc285`): `ConfirmActionDialog` enseña progreso al enviar y absorbe las confirmaciones a mano de Mis enlaces (revocar espera al servidor), liberar espacio y salir del álbum; `PrimaryActionButton` en login, mover de reglas y subir ahora. Pie de las hojas decidido y aplicado (`9fbc285`): las 10 hojas con "Cancelar + acción" llevan un `PrimaryActionButton` a todo el ancho con spinner en el sitio de la etiqueta; cancelar es deslizar o atrás. Esqueletos en las 14 pantallas que cargaban con spinner (`d76d21d`). Pendientes: formularios en `AlertDialog` (etiqueta nueva, asignar cara) y el cromo acoplado de tres pantallas.*
   - `PrimaryActionButton` fuera de admin solo en `settings/AccountProfileScreen.kt:141` y `AccountSecurityScreen.kt:120`. Botones principales a mano: `upload/UploadScreen.kt:136`, `organize/OrganizeRuleScreen.kt:289`, `devicebackup/EnrichmentStatusScreen.kt:199`, `BackupScreen.kt:692`, `login/LoginScreen.kt:148,241`, `asset/AssetAiSheet.kt:161`.
   - `ResultSnackbar` en 2 pantallas; `LocalSnackbarController` en 5 ficheros.
   - 14 pantallas con spinner a pantalla completa donde las hermanas usan esqueleto: `AlbumsListScreen.kt:169`, `FolderDetailScreen.kt:137`, `ExploreLabelGridScreen.kt:91`, `NotificationsScreen.kt:128`, `MyLinksScreen.kt:115`, `MemoriesScreen.kt:94`, `PersonSuggestionsScreen.kt:92`, `Utilities{Duplicates:125,LargeFiles:93,Locations:77}`, `UnsupportedFilesScreen.kt:71`, `BackupPendingScreen.kt:164`, `EnrichmentStatusScreen.kt:94`, `AccountStorageScreen.kt:79`.
@@ -182,22 +182,22 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
   - Cromo: `SmartAlbumEditorScreen.kt:63`, `devicebackup/DeviceAssetPreviewScreen.kt:156`, `UploadTopBar`.
   - ~~Decisión de Marc~~ → botón principal a todo el ancho (`9fbc285`): crear/editar álbum, crear/renombrar carpeta, renombrar persona, selector de carpeta destino, crear y editar enlace, descripción y fecha del elemento, los dos selectores de condiciones de reglas, restablecer contraseña. Las hojas con solo "Cerrar" o acciones secundarias no cambian.
 - [x] **45. Código muerto** (S, `6a148d2`). Fuera las 11 `*TopBar` y 4 `*SelectionTopBar` sin llamadores más la `FloatingSelectionBar` huérfana: 687 líneas. 11 `*TopBar` sin llamadores en `main/MainScaffold.kt`: Hub `:836`, FolderDetail `:1491`, Search `:1736`, More `:1749`, Settings `:1772`, Notifications `:1805`, Archived `:1869`, Trash `:1922`, Favorites `:1980`, PersonDetail `:2017`, PersonSuggestions `:2086`.
-- [x] **46. Tokens del tema** (M-L). *Parcial (`3490317`, `9fbc285`): `MonthHeaderHeight` es la única fuente de los 56 dp (rejilla, scrubber y salto a fecha); los 21 `RoundedCornerShape(8.dp)` pasan a `MaterialTheme.shapes.small` (10 dp) por decisión de Marc. Pendientes: adopción masiva de `Spacing.`/`IconSize.` y deduplicar la lógica de ocultar cromo con `ImmersiveChrome`.*
+- [x] **46. Tokens del tema** (M-L). *Parcial (`3490317`, `9fbc285`): `MonthHeaderHeight` es la única fuente de los 56 dp (rejilla, scrubber y salto a fecha); los 21 `RoundedCornerShape(8.dp)` pasan a `MaterialTheme.shapes.small` (10 dp) por decisión de Marc. Los espaciados de la escala (2/4/8/12/16/24/32 dp en padding, PaddingValues, spacedBy y Spacer) pasan a `Spacing.*` en 83 ficheros sin mover un píxel (`23e4065`); el timeline usa `ImmersiveChromeEffect` en vez de su copia (`41c3594`). Pendientes: `IconSize.` (distinguir icono de miniatura en `.size()` no es mecánico) y los valores fuera de escala (6, 10, 14, 20), que son decisión de diseño.*
   - `Spacing.` 15 usos frente a 1091 líneas con dp a mano; `IconSize.` 3 usos frente a 165 `.size(N.dp)`; 69 `RoundedCornerShape` (17 de 8 dp, que no existe en el tema); 21 scrims `Color.Black.copy(alpha)` frente a 5 usos del token.
   - Fuera de escala: padding 6 dp (21), 14 (7), 10 (3), 20 (1); iconos 18 (19), 14 (9), 28 (6).
   - Peores ficheros: `AssetDetailScreen.kt` (85), `AlbumsListScreen.kt` (46), `BackupScreen.kt` (45), `FoldersListScreen.kt` (44), `BackupPendingScreen.kt` (43), `album/smart/RuleConditionsEditor.kt` (40).
   - Timeline: los 56 dp de la cabecera de mes están en tres sitios que deben coincidir (`GroupedAssetGrid.kt:600`, `TimelineScrubber.kt:61`, `TimelineScreen.kt:592`); la lógica de ocultar al bajar está duplicada (`TimelineScreen.kt:204-248`) aunque existe `main/ImmersiveChrome.kt`.
   - ~~Decidir si 8 dp pasa a ser token de forma o se funde en small (10)~~ → fundidos en `small` (`9fbc285`).
-- [x] **47. Accesibilidad** (S-M). *Parcial (`6a148d2`): atrás ya no se anuncia como "Cerrar" (action_back, 5 sitios); descripciones en Subida, menú de búsqueda, borrar búsqueda e insignias de sincronización; Role.Button y lectura única en la barra de selección; objetivos ampliados (aspa de etiqueta, chip de mapas, hoja de IA, árbol de carpetas, círculo de escritorio). Pendientes: tira del visor (34 dp es diseño deliberado del scrubbing), semántica del scrubber, roles/headings globales y gráficas Canvas.*
+- [x] **47. Accesibilidad** (S-M). *Parcial (`6a148d2`): atrás ya no se anuncia como "Cerrar" (action_back, 5 sitios); descripciones en Subida, menú de búsqueda, borrar búsqueda e insignias de sincronización; Role.Button y lectura única en la barra de selección; objetivos ampliados (aspa de etiqueta, chip de mapas, hoja de IA, árbol de carpetas, círculo de escritorio). `heading()` en el título del cromo, las cabeceras de mes y las etiquetas de sección; el scrubber se anuncia con el mes como estado; DonutChart y StackedBar llevan resumen (`ef06b1c`). Pendientes: tira del visor (34 dp es diseño deliberado del scrubbing) y `Role` en los 119 `clickable`.*
   - Flechas de atrás anunciadas como "Cerrar": `SubscreenChrome.kt:234`, `MainScaffold.kt:1496`, `AlbumDetailScreen.kt:447`.
   - `IconButton` sin descripción: `UploadScreen.kt:210,341,348,351`, `SearchScreen.kt:236`, `main/SearchFieldPill.kt:86`.
   - Objetivos pequeños: ✕ de etiqueta 16 dp (`AssetDetailScreen.kt:1890-1893`), tira del visor 34 dp (`:2382`), chip "Abrir en mapas" (`:2200-2205`), botones de la hoja de IA en 40 dp (`AssetAiSheet.kt:222`), `SearchFieldPill.kt:86` y `folder/FolderTree.kt:176` a 32 dp, círculo de selección de escritorio 20 dp (`AssetGrid.kt:496`).
   - 119 `clickable` frente a 7 `Role`; 0 `onClickLabel`, `stateDescription`, `heading()`. `FloatingSelectionBarItem` se lee dos veces y no tiene `Role.Button` (`MainScaffold.kt:641`, `989-992`). Scrubber sin semántica (`TimelineScrubber.kt:235-312`). Insignias de subida sin describir (`AssetGrid.kt:402-409`, `503-528`). Gráficas solo Canvas (`ui/charts/*`).
 - [x] **48. Iconos de la barra de estado** (S-M, `6a148d2`). `SyncSystemBarIcons` (expect/actual) sigue el tema efectivo y fuerza iconos claros con el visor abierto; Android vía WindowCompat. iOS queda no-op anotado (requiere tocar el view controller anfitrión). `androidMain/.../MainActivity.kt:14` llama a `enableEdgeToEdge()` una vez; `ui/theme/PhotonneTheme.kt:129-134` respeta la preferencia de la app. Sin `isAppearanceLightStatusBars` ni `SystemBarStyle`. Arreglo: efecto expect/actual guiado por `LocalIsDarkTheme`, forzando iconos claros sobre el scrim de fotos. iOS sin revisar.
-- [x] **49. Bloqueo en vertical y estado que no sobrevive** (M). *Parcial, opción mínima (`6a148d2`): pestaña y subpantalla de Más con `rememberSaveable`; el bloqueo vertical no aplica en sw >= 600 dp (tablets rotan libres, también al salir del visor). Pendiente: ids de álbum/carpeta/persona abiertos (guardan objetos completos; necesitan rehidratación por id).* `androidMain/AndroidManifest.xml:53` (`screenOrientation="portrait"` también en tablets). `App.kt:663-765` todo con `remember` plano. Propuesta: bloqueo solo en anchos compactos; `rememberSaveable` al menos para pestaña, subpantalla e ids de álbum/carpeta abiertos.
-- [x] **50. Diseño adaptable** (M). *Parcial (`3490317`): Explorar pasa a `GridCells.Adaptive(160.dp)` y las tarjetas de recuerdo piden `Medium`. Pendientes: `WindowSizeClass` y el envoltorio `ContentWidth` de subpantallas.* Cero `WindowSizeClass`. Ancho máximo solo en `LoginScreen.kt:69` y `EmptyState`. `ExploreLabelGridScreen.kt:106` usa `Fixed(2)` con miniaturas `Small`. Tarjetas de recuerdo de 150x190 dp pidiendo `Large` (`MemoriesScreen.kt:203`). Propuesta: un envoltorio `ContentWidth` (`widthIn(max = 720.dp)`) en el andamio de subpantalla.
-- [x] **51. Movimiento** (S-M). *Parcial (`3490317`): duraciones canónicas en `MotionDurations` (280/320/220) consumidas por los 9 tween a mano. Pendientes: `animateItem()` en listas, `PredictiveBackHandler` y la animación de salida de overlays.* `animateItem()` en 1 de 45 listas. Vibración solo en selección (`haptics/`). Sin tokens de duración (280 ×6, 320 ×2, 220 ×1). Transición de overlays centralizada en `App.kt:2017-2035`, sin animación de salida. Sin `PredictiveBackHandler`.
-- [x] **52. Bus de mutaciones** (M, `3490317`). `AssetMutationBus` en data/events; `AssetDetailRepository` emite tras confirmar el servidor (todos los flujos masivos pasan por él) y Álbumes y Carpetas refrescan portadas y recuentos en silencio. *Pendiente: migrar los parches manuales de App.kt (1307-1554, 3320-3339) al bus.* `AssetMutationBus` (SharedFlow de Removed/Restored/FavoriteChanged) al que se suscriben los ViewModels, en lugar de las listas a mano de `App.kt:1307-1554` y `:3320-3339`. Tras acciones masivas tampoco se refrescan portadas y recuentos de álbumes y carpetas.
+- [x] **49. Bloqueo en vertical y estado que no sobrevive** (M). *Parcial, opción mínima (`6a148d2`): pestaña y subpantalla de Más con `rememberSaveable`; el bloqueo vertical no aplica en sw >= 600 dp (tablets rotan libres, también al salir del visor). Cerrado (`5c52360`): álbum, carpeta y persona abiertos guardan solo el id y se rehidratan por `albums/{id}`, `folders/{id}` y el nuevo `people/{id}`; la pila de carpetas no se conserva (atrás vuelve a la raíz).* `androidMain/AndroidManifest.xml:53` (`screenOrientation="portrait"` también en tablets). `App.kt:663-765` todo con `remember` plano. Propuesta: bloqueo solo en anchos compactos; `rememberSaveable` al menos para pestaña, subpantalla e ids de álbum/carpeta abiertos.
+- [x] **50. Diseño adaptable** (M). *Parcial (`3490317`): Explorar pasa a `GridCells.Adaptive(160.dp)` y las tarjetas de recuerdo piden `Medium`. `Modifier.contentWidth()` (720 dp, centrado) en las ocho columnas de formulario y lectura, AdminPageScaffold incluido (`3cc12b5`). Pendiente: `WindowSizeClass` (dependencia nueva, no verificable desde aquí).* Cero `WindowSizeClass`. Ancho máximo solo en `LoginScreen.kt:69` y `EmptyState`. `ExploreLabelGridScreen.kt:106` usa `Fixed(2)` con miniaturas `Small`. Tarjetas de recuerdo de 150x190 dp pidiendo `Large` (`MemoriesScreen.kt:203`). Propuesta: un envoltorio `ContentWidth` (`widthIn(max = 720.dp)`) en el andamio de subpantalla.
+- [x] **51. Movimiento** (S-M). *Parcial (`3490317`): duraciones canónicas en `MotionDurations` (280/320/220) consumidas por los 9 tween a mano. `animateItem()` en todas las listas con clave, AssetGrid incluida (`ea35ce6`). Descartados con motivo: `PredictiveBackHandler` (sin interfaz que consuma el progreso no cambia nada) y la salida animada de overlays (el `when` se resuelve contra el estado actual; explicado en App.kt).* `animateItem()` en 1 de 45 listas. Vibración solo en selección (`haptics/`). Sin tokens de duración (280 ×6, 320 ×2, 220 ×1). Transición de overlays centralizada en `App.kt:2017-2035`, sin animación de salida. Sin `PredictiveBackHandler`.
+- [x] **52. Bus de mutaciones** (M, `3490317`). `AssetMutationBus` en data/events; `AssetDetailRepository` emite tras confirmar el servidor (todos los flujos masivos pasan por él) y Álbumes y Carpetas refrescan portadas y recuentos en silencio. *Cerrado (`7946f0a`): las ocho listas se suscriben al bus (Removed/Purged quitan ids, Restored/AllChanged recargan, FavoriteChanged refleja) y App.kt pierde los dos bloques del visor y los ocho callbacks de Deshacer.* `AssetMutationBus` (SharedFlow de Removed/Restored/FavoriteChanged) al que se suscriben los ViewModels, en lugar de las listas a mano de `App.kt:1307-1554` y `:3320-3339`. Tras acciones masivas tampoco se refrescan portadas y recuentos de álbumes y carpetas.
 - [x] **Pull-to-refresh que falta** (S, `6a148d2`): `PersonDetailScreen` (refresh nuevo que conserva la selección válida), `PersonSuggestionsScreen`, `AccountStorageScreen` y `EnrichmentStatusScreen`. *`MapScreen` va con el punto 32 (el gesto chocaría con el paneo) y `MemoryDetailScreen` muestra un contexto estático sin id; ambos pendientes.*
 
 ## Qué queda (inventario al cerrar los 52 puntos)
@@ -219,10 +219,11 @@ Las cuatro preguntas que bloqueaban trabajo ya tienen respuesta de Marc:
 ### Necesita trabajo de plataforma (androidMain/iosMain, no común)
 
 Lo más arriesgado de hacer a ciegas: no hay forma de compilar ni probar en
-dispositivo desde el entorno de trabajo habitual de estas tandas.
+dispositivo desde el entorno de trabajo habitual de estas tandas (la CI
+compila android y escritorio, pero no iOS).
 
-- **27 — vídeo**: silencio, estado de error del reproductor y mantener la
-  pantalla encendida durante la reproducción.
+- **27 — vídeo**: silencio y estado de error del reproductor (tocar los tres
+  `VideoPlayback` actuals). Mantener la pantalla encendida ya está (`b3687b6`).
 - **20 y 36 — streaming**: subida y descarga pasan por memoria, y de ahí sale el
   límite de 200 MB por archivo.
 - **35 — backup**: "esperando Wi-Fi y carga" sale de las preferencias, no del
@@ -230,22 +231,21 @@ dispositivo desde el entorno de trabajo habitual de estas tandas.
 - **31 — teselas @2x**: obliga a reescalar la matemática mundo↔píxel que el mapa
   comparte con su ViewModel.
 
-### Deuda técnica acotada (se puede hacer en cualquier momento)
+### Deuda técnica acotada
 
-- **52**: migrar los parches manuales de `App.kt` (1307-1554, 3320-3339) al
-  `AssetMutationBus`, que ya existe y funciona pero convive con ellos.
-- **44**: esqueletos en las 14 pantallas que aún usan spinner a pantalla completa.
-- **46**: adopción de `Spacing.`/`IconSize.` (~1.100 líneas con dp a mano) y
-  deduplicar la lógica de ocultar cromo con `ImmersiveChrome`.
-- **51**: `animateItem()` en las listas, `PredictiveBackHandler` y animación de
-  salida de los overlays.
-- **50**: `WindowSizeClass` y el envoltorio `ContentWidth` de subpantallas.
-- **49**: que sobrevivan los ids de álbum/carpeta/persona abiertos (hoy guardan
-  el objeto completo; necesitan rehidratación por id).
-- **47**: semántica del scrubber, roles y `heading()` globales, y las gráficas
-  que son solo Canvas.
-- **38**: barrido de `KeyboardOptions` en library/, organize/ y utilities/.
-- **37**: `GroupCount`/`GroupKey` siguen sin DTO nativo.
+Cerrada en la rama `claude/roadmap-ux-pendientes` (2026-09-20): 52 (`7946f0a`),
+44 esqueletos (`d76d21d`), 51 animateItem (`ea35ce6`), 50 ContentWidth
+(`3cc12b5`), 49 rehidratación (`5c52360`), 47 headings/scrubber/gráficas
+(`ef06b1c`), 46 ImmersiveChrome (`41c3594`) y Spacing (`23e4065`), 38
+(`e7564d1`), 37 (`f9dbf7b`). Queda, todo pequeño y opcional:
+
+- **46**: `IconSize.` en los `.size(N.dp)` que sean iconos, y los valores fuera
+  de escala (6, 10, 14, 20 dp), que ya son decisión de diseño.
+- **47**: `Role.Button` en los 119 `clickable` sin rol.
+- **50**: `WindowSizeClass` (dependencia nueva) si algún día hace falta más que
+  `GridCells.Adaptive` y `contentWidth()`.
+- **44**: los dos formularios en `AlertDialog` (etiqueta nueva, asignar cara) y
+  el cromo acoplado de SmartAlbumEditor, DeviceAssetPreview y Subida.
 
 ### Depende de una idea mayor
 
