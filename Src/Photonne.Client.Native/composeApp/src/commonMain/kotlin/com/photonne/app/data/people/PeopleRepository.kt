@@ -5,6 +5,7 @@ import com.photonne.app.data.models.AssignFaceResponse
 import com.photonne.app.data.models.BulkSuggestionResult
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PeoplePage
+import com.photonne.app.data.models.Person
 import com.photonne.app.data.models.PersonAssetsPage
 import com.photonne.app.data.models.PersonFacesPage
 import com.photonne.app.data.models.PersonSuggestionsPage
@@ -25,6 +26,8 @@ class PeopleRepository(
         limit = limit,
         offset = offset
     )
+
+    suspend fun get(personId: String): Person = api.getPerson(personId)
 
     suspend fun rename(personId: String, name: String?) {
         api.renamePerson(personId, name)
