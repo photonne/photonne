@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import com.photonne.app.ui.theme.Spacing
 
 /** Un año y su posición (0..1) a lo largo de la pista del scrubber. */
 data class ScrubberYearMarker(val year: String, val fraction: Float)
@@ -79,7 +80,7 @@ internal fun FloatingDatePill(
                     text = label,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.sm),
                 )
             }
         }
@@ -142,7 +143,7 @@ internal fun BoxScope.ScrubberYearMarkers(
                     text = m.year,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 3.dp),
                 )
             }
         }

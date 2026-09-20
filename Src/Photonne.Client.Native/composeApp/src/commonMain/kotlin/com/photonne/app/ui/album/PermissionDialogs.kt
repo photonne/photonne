@@ -51,6 +51,7 @@ import com.photonne.app.resources.permissions_invite_role
 import com.photonne.app.resources.permissions_invite_title
 import com.photonne.app.resources.permissions_title
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,18 +70,18 @@ fun ManagePermissionsDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(stringResource(Res.string.permissions_title), style = MaterialTheme.typography.titleLarge)
             Column(
                 modifier = Modifier.heightIn(min = 140.dp, max = 420.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
                 when {
                     state.isLoading && state.members.isEmpty() -> Box(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                     state.members.isEmpty() -> Text(
@@ -89,7 +90,7 @@ fun ManagePermissionsDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     else -> LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(state.members, key = { it.id }) { member ->
@@ -102,7 +103,7 @@ fun ManagePermissionsDialog(
                     }
                 }
                 state.error?.let { err ->
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Spacing.xs))
                     Text(err.userMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
@@ -112,10 +113,10 @@ fun ManagePermissionsDialog(
             ) {
                 TextButton(onClick = onInvite, enabled = !state.isMutating) {
                     Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(Spacing.xs))
                     Text(stringResource(Res.string.action_invite))
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 TextButton(onClick = onDismiss, enabled = !state.isMutating) {
                     Text(stringResource(Res.string.action_close))
                 }
@@ -197,9 +198,9 @@ fun InviteMemberDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 stringResource(Res.string.permissions_invite_title),
@@ -243,7 +244,7 @@ fun InviteMemberDialog(
                     )
                 } else {
                     LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(candidates, key = { it.id }) { user ->
@@ -276,7 +277,7 @@ private fun UserRow(user: ShareableUser, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp)
+            .padding(vertical = Spacing.sm)
     ) {
         Text(user.username, style = MaterialTheme.typography.bodyMedium)
         Text(

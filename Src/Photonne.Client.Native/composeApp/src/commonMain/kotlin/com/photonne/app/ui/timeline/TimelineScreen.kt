@@ -136,6 +136,7 @@ import com.photonne.app.resources.timeline_scope_notice
 import com.photonne.app.resources.timeline_scope_notice_change
 import com.photonne.app.resources.timeline_scope_notice_dismiss
 import com.photonne.app.ui.main.ImmersiveChromeEffect
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1149,7 +1150,7 @@ fun TimelineScreen(
                         // pill and the two overlap; now the handle lands just under it.
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(top = reservedTop + 8.dp)
+                            .padding(top = reservedTop + Spacing.sm)
                     )
 
                     // Mes de lo que hay arriba, flotando centrado en la parte
@@ -1171,7 +1172,7 @@ fun TimelineScreen(
                         hazeState = gridHazeState,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .padding(top = reservedTop + 8.dp)
+                            .padding(top = reservedTop + Spacing.sm)
                     )
 
                     // Bottom-center so it never collides with the scrubber
@@ -1192,7 +1193,7 @@ fun TimelineScreen(
                         // over them (the grid is edge-to-edge at the bottom now).
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = reservedBottom + 8.dp)
+                            .padding(bottom = reservedBottom + Spacing.sm)
                     )
                 }
             }
@@ -1386,16 +1387,16 @@ private suspend fun animateReflow(from: Float, target: Float, onFrame: (Float) -
 @Composable
 private fun TimelineSkeleton(cellMinSize: androidx.compose.ui.unit.Dp) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Spacer(Modifier.height(16.dp))
-        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(Spacing.lg))
+        Box(modifier = Modifier.padding(horizontal = Spacing.lg)) {
             SkeletonChip(width = 120.dp, height = 18.dp)
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(Spacing.md))
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = cellMinSize),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
+            contentPadding = PaddingValues(horizontal = Spacing.xxs, vertical = 0.dp),
             modifier = Modifier.fillMaxSize(),
             userScrollEnabled = false
         ) {
@@ -1526,11 +1527,11 @@ private fun BackupPendingRow(count: Int, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1565,11 +1566,11 @@ private fun LibraryScopeNoticeRow(onChange: () -> Unit, onDismiss: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onChange)
-            .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = Spacing.lg, end = Spacing.xs, top = Spacing.xs, bottom = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

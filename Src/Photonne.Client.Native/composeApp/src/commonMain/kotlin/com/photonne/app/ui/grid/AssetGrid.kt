@@ -174,8 +174,8 @@ fun AssetGrid(
         columns = GridCells.Adaptive(minSize = 110.dp),
         state = gridState,
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
         modifier = gridModifier
     ) {
         if (header != null) {
@@ -418,14 +418,14 @@ fun AssetGridCell(
             // (TopEnd) or the favorite heart (BottomEnd).
             LocalSyncBadge(
                 badge = badge,
-                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp)
+                modifier = Modifier.align(Alignment.BottomStart).padding(Spacing.xs)
             )
         }
         if (asset.isVideo) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(4.dp)
+                    .padding(Spacing.xs)
                     .size(20.dp)
                     .background(Color.Black.copy(alpha = 0.5f), shape = androidx.compose.foundation.shape.CircleShape),
                 contentAlignment = Alignment.Center
@@ -443,7 +443,7 @@ fun AssetGridCell(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(4.dp)
+                    .padding(Spacing.xs)
                     .size(20.dp)
                     .background(Color.Black.copy(alpha = 0.5f), shape = androidx.compose.foundation.shape.CircleShape),
                 contentAlignment = Alignment.Center
@@ -471,7 +471,7 @@ fun AssetGridCell(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(4.dp)
+                    .padding(Spacing.xs)
                     .size(20.dp)
                     .background(MaterialTheme.colorScheme.primary, shape = androidx.compose.foundation.shape.CircleShape),
                 contentAlignment = Alignment.Center

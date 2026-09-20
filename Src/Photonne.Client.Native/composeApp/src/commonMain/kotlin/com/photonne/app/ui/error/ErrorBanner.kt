@@ -51,6 +51,7 @@ import com.photonne.app.resources.error_details_copied
 import com.photonne.app.resources.error_details_copy
 import com.photonne.app.resources.error_details_share_hint
 import com.photonne.app.resources.error_details_title
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Banner de error reusable. Muestra el [UiError.userMessage] y, si hay
@@ -81,7 +82,7 @@ fun ErrorBanner(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.errorContainer)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .padding(horizontal = Spacing.md, vertical = 10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -89,7 +90,7 @@ fun ErrorBanner(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onErrorContainer,
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Spacing.sm))
             Text(
                 text = error.userMessage,
                 color = MaterialTheme.colorScheme.onErrorContainer,
@@ -107,8 +108,8 @@ fun ErrorBanner(
             }
         }
         if (error.technicalDetails != null || onRetry != null) {
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(Spacing.xs))
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 if (error.technicalDetails != null) {
                     OutlinedButton(onClick = { detailsOpen = true }) {
                         Text(stringResource(Res.string.error_banner_view_details))
@@ -148,7 +149,7 @@ fun FullScreenError(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(Spacing.xl)
     ) {
         ErrorBanner(error = error, onRetry = onRetry)
     }
@@ -168,7 +169,7 @@ private fun ErrorDetailsSheet(
     val copiedLabel = stringResource(Res.string.error_details_copied)
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(modifier = Modifier.padding(PaddingValues(horizontal = 20.dp, vertical = 8.dp))) {
+        Column(modifier = Modifier.padding(PaddingValues(horizontal = 20.dp, vertical = Spacing.sm))) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stringResource(Res.string.error_details_title),
@@ -192,30 +193,30 @@ private fun ErrorDetailsSheet(
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             HorizontalDivider()
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Spacing.md))
             Text(
                 text = error.userMessage,
                 style = MaterialTheme.typography.bodyLarge,
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Spacing.md))
             Text(
                 text = error.technicalDetails?.format().orEmpty(),
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(12.dp)
+                    .padding(Spacing.md)
                     .verticalScroll(rememberScrollState()),
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             Text(
                 text = stringResource(Res.string.error_details_share_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Spacing.lg))
         }
     }
 }

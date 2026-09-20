@@ -613,7 +613,7 @@ private fun MonthHeader(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .semantics { heading() }
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = Spacing.lg)
         )
         if (count != null) {
             // Year view: the group's TOTAL, so the truncated sample below
@@ -624,7 +624,7 @@ private fun MonthHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = Spacing.lg)
             )
         } else if (groupState != null && onToggleGroup != null) {
             GroupSelectionCheck(

@@ -49,6 +49,7 @@ import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Don't bother with a scrubber until the album spans several screens. Gated on
@@ -320,7 +321,7 @@ internal fun AlbumGridScrubber(
                     text = handleLabel,
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                    modifier = Modifier.padding(horizontal = Spacing.md, vertical = 5.dp)
                 )
               }
             }

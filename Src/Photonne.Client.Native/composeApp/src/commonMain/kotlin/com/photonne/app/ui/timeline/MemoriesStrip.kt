@@ -60,6 +60,7 @@ import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 private const val StoryDurationMs = 5000L
 
@@ -97,7 +98,7 @@ fun MemoriesStrip(
     // so screen readers announce one button rather than an unlabelled icon.
     val seeAllLabel = stringResource(Res.string.memories_strip_see_all)
 
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 20.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = Spacing.md, bottom = 20.dp)) {
         // Title + chevron are one tap target, sized to their content and pinned
         // left. Deliberately NOT a full-width clickable row: the scrubber lives
         // against the right edge (see TimelineScrubber), and a header hit area
@@ -106,7 +107,7 @@ fun MemoriesStrip(
         // AccountSettingsScreen), which the old TextButton never was.
         Row(
             modifier = Modifier
-                .padding(start = 16.dp)
+                .padding(start = Spacing.lg)
                 .then(
                     if (onSeeAll != null) {
                         Modifier
@@ -121,7 +122,7 @@ fun MemoriesStrip(
                 // 12dp around a titleMedium clears Material's 48dp minimum target.
                 // A bare clickable doesn't apply minimumInteractiveComponentSize
                 // the way TextButton did, so the padding has to earn it.
-                .padding(vertical = 12.dp, horizontal = 4.dp),
+                .padding(vertical = Spacing.md, horizontal = Spacing.xs),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -134,7 +135,7 @@ fun MemoriesStrip(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 2.dp)
+                    modifier = Modifier.padding(start = Spacing.xxs)
                 )
             }
         }
@@ -181,7 +182,7 @@ fun MemoriesStrip(
             val cardWidth = (maxWidth - 32.dp).coerceAtMost(560.dp)
             HorizontalPager(
                 state = pagerState,
-                contentPadding = PaddingValues(horizontal = 16.dp),
+                contentPadding = PaddingValues(horizontal = Spacing.lg),
                 pageSpacing = 12.dp,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -288,8 +289,8 @@ private fun StoryCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = Spacing.md, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             repeat(totalStories) { idx ->
                 val fill: () -> Float = when {

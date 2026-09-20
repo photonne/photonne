@@ -50,6 +50,7 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Two-option chooser shown when the user taps "Share" on the selection
@@ -71,9 +72,9 @@ fun ShareAssetsDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(stringResource(Res.string.action_share), style = MaterialTheme.typography.titleLarge)
             ShareOptionRow(
@@ -81,7 +82,7 @@ fun ShareAssetsDialog(
                 subtitle = stringResource(Res.string.share_choice_direct_subtitle),
                 onClick = onShareDirectly
             )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 ShareOptionRow(
                     title = stringResource(Res.string.share_choice_link),
                     subtitle = stringResource(Res.string.share_choice_link_subtitle),
@@ -121,9 +122,9 @@ private fun ShareOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         Icon(
             imageVector = Icons.Outlined.Share,
@@ -131,7 +132,7 @@ private fun ShareOptionRow(
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
-        Column(modifier = Modifier.padding(end = 8.dp)) {
+        Column(modifier = Modifier.padding(end = Spacing.sm)) {
             Text(title, style = MaterialTheme.typography.bodyMedium)
             Text(
                 subtitle,
@@ -156,9 +157,9 @@ fun ShareLinkResultDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(stringResource(Res.string.share_link_title), style = MaterialTheme.typography.titleLarge)
             Text(
@@ -169,7 +170,7 @@ fun ShareLinkResultDialog(
             SelectionContainer {
                 Text(url, style = MaterialTheme.typography.bodyMedium)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -180,10 +181,10 @@ fun ShareLinkResultDialog(
                     onDismiss()
                 }) {
                     Icon(Icons.Filled.ContentCopy, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(Spacing.xs))
                     Text(stringResource(Res.string.share_link_copy))
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 TextButton(onClick = onDismiss) {
                     Text(stringResource(Res.string.action_close))
                 }

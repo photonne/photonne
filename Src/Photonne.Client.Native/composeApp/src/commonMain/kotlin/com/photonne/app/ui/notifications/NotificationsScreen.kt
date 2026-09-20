@@ -86,6 +86,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun NotificationsScreen(
@@ -120,7 +121,7 @@ fun NotificationsScreen(
                 error = state.error,
                 modifier = Modifier
                     .padding(top = reservedTop)
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .padding(horizontal = Spacing.lg, vertical = 6.dp)
             )
         }
 
@@ -202,7 +203,7 @@ fun NotificationsScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
+                                    .padding(vertical = Spacing.md),
                                 contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator(
@@ -222,7 +223,7 @@ fun NotificationsScreen(
                             ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                            modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs)
                         )
                     }
                 }
@@ -331,9 +332,9 @@ private fun NotificationRow(
                 if (onClick != null) Modifier.clickable(onClick = onClick)
                 else Modifier
             )
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = Spacing.md, vertical = 14.dp),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         Icon(
             imageVector = icon,

@@ -79,6 +79,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun UtilitiesDuplicatesScreen(
@@ -145,7 +146,7 @@ fun UtilitiesDuplicatesScreen(
                             top = 8.dp + reservedTop,
                             bottom = 96.dp + floatingNavBarReservedHeight()
                         ),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.md),
                         modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                     ) {
                         item("summary") {
@@ -155,7 +156,7 @@ fun UtilitiesDuplicatesScreen(
                                     containerColor = MaterialTheme.colorScheme.primaryContainer
                                 )
                             ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
+                                Column(modifier = Modifier.padding(Spacing.lg)) {
                                     Text(
                                         stringResource(
                                             Res.string.utilities_duplicates_summary,
@@ -164,10 +165,10 @@ fun UtilitiesDuplicatesScreen(
                                         ),
                                         style = MaterialTheme.typography.titleSmall
                                     )
-                                    Spacer(Modifier.height(8.dp))
+                                    Spacer(Modifier.height(Spacing.sm))
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                                     ) {
                                         OutlinedButton(
                                             onClick = viewModel::autoSelectKeepingBest,
@@ -223,7 +224,7 @@ fun UtilitiesDuplicatesScreen(
                     .align(Alignment.BottomEnd)
                     // Por encima de la nav flotante, que dibuja a sangre.
                     .padding(bottom = floatingNavBarReservedHeight())
-                    .padding(16.dp)
+                    .padding(Spacing.lg)
             )
         }
 
@@ -289,7 +290,7 @@ private fun DuplicateGroupCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(Spacing.md)) {
             Text(
                 stringResource(
                     Res.string.utilities_duplicates_group_assets,
@@ -298,13 +299,13 @@ private fun DuplicateGroupCard(
                 ),
                 style = MaterialTheme.typography.titleSmall
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             // Each copy is rendered as a row inside the group card so
             // the full path is readable on one line of meta — and we
             // avoid nesting a scrollable grid inside the outer
             // LazyColumn.
             view.group.assets.forEachIndexed { index, asset ->
-                if (index > 0) Spacer(Modifier.height(8.dp))
+                if (index > 0) Spacer(Modifier.height(Spacing.sm))
                 DuplicateAssetRow(
                     asset = asset,
                     baseUrl = baseUrl,
@@ -368,7 +369,7 @@ private fun DuplicateAssetRow(
                     tint = Color.White,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(2.dp)
+                        .padding(Spacing.xxs)
                         .size(16.dp)
                 )
             }
@@ -379,7 +380,7 @@ private fun DuplicateAssetRow(
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(2.dp)
+                        .padding(Spacing.xxs)
                         .background(Color.White, shape = CircleShape)
                         .size(18.dp)
                 )

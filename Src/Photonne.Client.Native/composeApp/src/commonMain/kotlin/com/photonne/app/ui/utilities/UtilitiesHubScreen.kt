@@ -45,6 +45,7 @@ import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.contentWidth
+import com.photonne.app.ui.theme.Spacing
 
 enum class UtilitiesEntry { Duplicates, LargeFiles, Locations }
 
@@ -94,12 +95,12 @@ fun UtilitiesHubScreen(
                 .hazeSource(hazeState)
                 .contentWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             entries.forEach { entry ->
                 UtilitiesEntryRow(entry = entry, onClick = { onOpen(entry.entry) })
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
         }
         SubscreenFloatingChrome(
             title = title,
@@ -128,9 +129,9 @@ private fun UtilitiesEntryRow(entry: UtilitiesEntryDef, onClick: () -> Unit) {
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
             Icon(
                 imageVector = entry.icon,

@@ -101,6 +101,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun AlbumDetailScreen(
@@ -220,7 +221,7 @@ fun AlbumDetailScreen(
                 Column(modifier = Modifier.fillMaxSize()) {
                     hero()
                     Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        modifier = Modifier.fillMaxSize().padding(Spacing.xl),
                         contentAlignment = Alignment.Center
                     ) {
                         ErrorBanner(error = state.error, onRetry = viewModel::refresh)
@@ -292,7 +293,7 @@ fun AlbumDetailScreen(
                     // solapan.
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(top = reservedTop + 8.dp)
+                        .padding(top = reservedTop + Spacing.sm)
                         .padding(bottom = gridContentPadding.calculateBottomPadding())
                 )
 
@@ -331,7 +332,7 @@ fun AlbumDetailScreen(
                     hazeState = albumHazeState,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = reservedTop + 8.dp)
+                        .padding(top = reservedTop + Spacing.sm)
                 )
             }
         }
@@ -438,7 +439,7 @@ private fun AlbumDetailTopBar(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(top = 8.dp, start = 8.dp, end = 8.dp),
+            .padding(top = Spacing.sm, start = Spacing.sm, end = Spacing.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
@@ -509,7 +510,7 @@ private fun AlbumChromeCapsule(
                     .graphicsLayer { alpha = 1f - dockedFraction }
                     .chromeCapsuleBackdrop(hazeState = hazeState)
             )
-            Box(modifier = Modifier.padding(horizontal = 2.dp)) { content() }
+            Box(modifier = Modifier.padding(horizontal = Spacing.xxs)) { content() }
         }
     }
 }
@@ -566,7 +567,7 @@ private fun AlbumHero(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp)
+                .padding(horizontal = Spacing.xl, vertical = Spacing.xl)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -576,7 +577,7 @@ private fun AlbumHero(
                     fontWeight = FontWeight.Bold
                 )
                 if (isShared) {
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Spacing.sm))
                     Icon(
                         imageVector = Icons.Filled.Group,
                         contentDescription = stringResource(Res.string.album_hero_shared),
@@ -589,7 +590,7 @@ private fun AlbumHero(
             Spacer(Modifier.size(8.dp))
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 HeroMetaItem(

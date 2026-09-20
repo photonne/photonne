@@ -53,6 +53,7 @@ import kotlin.math.abs
 import kotlin.math.min
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 private const val MIN_SCALE = 1f
 private const val MAX_SCALE = 5f
@@ -244,7 +245,7 @@ fun ZoomablePagerImage(
                         Icons.Outlined.BrokenImage,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(48.dp).padding(bottom = 4.dp)
+                        modifier = Modifier.size(48.dp).padding(bottom = Spacing.xs)
                     )
                     TextButton(onClick = { retryKey++ }) {
                         Text(

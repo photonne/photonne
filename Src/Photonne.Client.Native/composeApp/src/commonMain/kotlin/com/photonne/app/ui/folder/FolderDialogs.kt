@@ -43,6 +43,7 @@ import com.photonne.app.resources.folder_field_name
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,9 +70,9 @@ fun FolderFormDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge)
             OutlinedTextField(
@@ -105,7 +106,7 @@ fun FolderFormDialog(
                         onCheckedChange = { isSharedSpace = it },
                         enabled = !isSubmitting
                     )
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(Spacing.xs))
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             stringResource(Res.string.folder_create_shared_label),
@@ -122,7 +123,7 @@ fun FolderFormDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             PrimaryActionButton(
                 label = confirmLabel,
                 onClick = { onConfirm(name.trim(), showSharedSpaceOption && isSharedSpace) },

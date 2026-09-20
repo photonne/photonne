@@ -71,6 +71,7 @@ import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.AssetGridSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun FolderDetailScreen(
@@ -136,7 +137,7 @@ fun FolderDetailScreen(
                 state.isLoading && state.items.isEmpty() && state.subFolders.isEmpty() ->
                     AssetGridSkeleton(contentPadding = PaddingValues(top = reservedTop))
                 state.error != null && state.items.isEmpty() && state.subFolders.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
+                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(Spacing.xl)) {
                         com.photonne.app.ui.error.ErrorBanner(
                             error = state.error,
                             onRetry = { state.folderId?.let { id ->
@@ -252,8 +253,8 @@ private fun FolderDetailGrid(
         state = gridState,
         columns = GridCells.Adaptive(minSize = 110.dp),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
         modifier = gridModifier
     ) {
         if (subFolders.isNotEmpty()) {
@@ -290,7 +291,7 @@ private fun FolderDetailGrid(
                     span = { GridItemSpan(maxLineSpan) },
                     contentType = "section-divider"
                 ) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
                 }
             }
         }
@@ -325,7 +326,7 @@ private fun SubfolderCard(
             .fillMaxWidth()
             // The grid arrangement is tight (matching the asset cells); this
             // per-cell padding gives the folder cards their own breathing room.
-            .padding(4.dp)
+            .padding(Spacing.xs)
             .combinedClickable(onClick = onClick, onLongClick = onLongPress),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -355,7 +356,7 @@ private fun SubfolderCard(
                     .align(Alignment.BottomStart)
                     .padding(6.dp)
                     .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = 6.dp, vertical = Spacing.xxs)
             ) {
                 Text(
                     text = "${folder.assetCount}",
@@ -372,7 +373,7 @@ private fun SubfolderCard(
                         .align(Alignment.TopStart)
                         .padding(6.dp)
                         .background(Color.White, shape = RoundedCornerShape(50))
-                        .padding(2.dp)
+                        .padding(Spacing.xxs)
                         .size(20.dp)
                 )
             }
@@ -397,7 +398,7 @@ private fun SubfolderRow(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(

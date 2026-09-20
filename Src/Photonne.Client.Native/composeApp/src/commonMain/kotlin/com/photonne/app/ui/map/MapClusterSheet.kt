@@ -64,6 +64,7 @@ import com.photonne.app.resources.map_action_select_all
 import com.photonne.app.ui.main.LocalSnackbarController
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Bottom sheet that drops in when the user taps a cluster marker. Mirrors
@@ -149,7 +150,7 @@ fun MapClusterSheet(
         onDismissRequest = { if (!isMutating) onDismiss() },
         sheetState = sheetState
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.lg)) {
             if (isSelectionActive) {
                 SelectionHeader(
                     selectedCount = selectedIds.size,
@@ -164,13 +165,13 @@ fun MapClusterSheet(
                 Text(
                     text = stringResource(Res.string.map_cluster_sheet_title, points.size),
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)
                 )
             }
 
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 110.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = Spacing.sm, vertical = Spacing.sm),
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
@@ -205,7 +206,7 @@ private fun SelectionHeader(
     onTrash: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onExit, enabled = !isMutating) {
@@ -217,7 +218,7 @@ private fun SelectionHeader(
         Text(
             text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 4.dp)
+            modifier = Modifier.padding(start = Spacing.xs)
         )
         Box(modifier = Modifier.weight(1f))
         TextButton(onClick = onSelectAll, enabled = !isMutating) {
@@ -279,7 +280,7 @@ private fun ClusterCell(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(4.dp)
+                    .padding(Spacing.xs)
                     .size(20.dp)
                     .clip(CircleShape)
                     .background(

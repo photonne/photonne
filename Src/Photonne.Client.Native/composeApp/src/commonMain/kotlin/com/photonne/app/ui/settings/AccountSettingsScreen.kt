@@ -48,6 +48,7 @@ import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.contentWidth
+import com.photonne.app.ui.theme.Spacing
 
 enum class AccountSettingsSection { Profile, Security, Appearance, Storage }
 
@@ -103,12 +104,12 @@ fun AccountSettingsScreen(
                 .hazeSource(hazeState)
                 .contentWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             entries.forEach { entry ->
                 SettingsRow(entry = entry, onClick = { onOpen(entry.section) })
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
         }
         SubscreenFloatingChrome(
             title = title,
@@ -139,9 +140,9 @@ private fun SettingsRow(entry: SettingsEntry, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(Spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
             Icon(
                 imageVector = entry.icon,

@@ -35,6 +35,7 @@ import com.photonne.app.resources.appearance_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.contentWidth
+import com.photonne.app.ui.theme.Spacing
 
 private val OPTIONS = listOf(
     ThemePreference.System to Res.string.appearance_system,
@@ -62,7 +63,7 @@ fun AccountAppearanceScreen(
                 .hazeSource(hazeState)
                 .contentWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             Text(
                 stringResource(Res.string.appearance_title),
@@ -102,9 +103,9 @@ private fun AppearanceRow(
         modifier = Modifier
             .fillMaxWidth()
             .selectable(selected = isSelected, onClick = onSelect)
-            .padding(vertical = 8.dp),
+            .padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         RadioButton(selected = isSelected, onClick = onSelect)
         Text(stringResource(label), style = MaterialTheme.typography.bodyLarge)

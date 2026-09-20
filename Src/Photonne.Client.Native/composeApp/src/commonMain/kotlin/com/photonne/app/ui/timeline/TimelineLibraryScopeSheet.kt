@@ -42,6 +42,7 @@ import com.photonne.app.resources.timeline_scope_sheet_title
 import com.photonne.app.resources.timeline_scope_synced
 import com.photonne.app.resources.timeline_scope_synced_hint
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Bottom sheet choosing which slice of the device library the timeline
@@ -65,21 +66,21 @@ fun TimelineLibraryScopeSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            contentPadding = PaddingValues(bottom = Spacing.xl)
         ) {
             item("header") {
-                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                Column(modifier = Modifier.padding(horizontal = Spacing.xl)) {
                     Text(
                         stringResource(Res.string.timeline_scope_sheet_title),
                         style = MaterialTheme.typography.titleMedium
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Spacing.xs))
                     Text(
                         stringResource(Res.string.timeline_scope_sheet_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                 }
             }
             // Un dial de cuánto se ve del dispositivo, de más a menos: todo →
@@ -126,7 +127,7 @@ fun TimelineLibraryScopeSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 24.dp, vertical = 16.dp),
+                                .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
                             horizontalArrangement = Arrangement.Center
                         ) {
                             CircularProgressIndicator(
@@ -146,7 +147,7 @@ fun TimelineLibraryScopeSheet(
                                     else scope.bucketIds + bucket.id
                                     onSelect(DeviceLibraryScope.Buckets(ids))
                                 }
-                                .padding(start = 32.dp, end = 24.dp, top = 4.dp, bottom = 4.dp),
+                                .padding(start = Spacing.xxl, end = Spacing.xl, top = Spacing.xs, bottom = Spacing.xs),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(checked = checked, onCheckedChange = null)
@@ -176,7 +177,7 @@ fun TimelineLibraryScopeSheet(
                                             MaterialTheme.colorScheme.secondaryContainer,
                                             MaterialTheme.shapes.small
                                         )
-                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        .padding(horizontal = Spacing.sm, vertical = Spacing.xxs)
                                 )
                             }
                         }
@@ -206,7 +207,7 @@ private fun ScopeModeRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .padding(horizontal = Spacing.xl, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         RadioButton(selected = selected, onClick = null)

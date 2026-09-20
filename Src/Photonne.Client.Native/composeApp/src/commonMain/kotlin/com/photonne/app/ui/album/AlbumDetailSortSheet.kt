@@ -25,6 +25,7 @@ import com.photonne.app.ui.util.SortDirection
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Minimal sort control for an album's photos — sort criterion (album order /
@@ -45,9 +46,9 @@ fun AlbumDetailSortSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
             SectionLabel(stringResource(Res.string.filters_sort_label))
             SegmentedChoiceRow(

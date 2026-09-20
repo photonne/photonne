@@ -101,6 +101,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.PrimaryActionButton
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,18 +126,18 @@ fun ManageSharesDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(stringResource(Res.string.share_title), style = MaterialTheme.typography.titleLarge)
             Column(
                 modifier = Modifier.heightIn(min = 120.dp, max = 420.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 when {
                     state.isLoading && state.links.isEmpty() -> Box(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                     state.links.isEmpty() -> Text(
@@ -145,7 +146,7 @@ fun ManageSharesDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     else -> LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(state.links, key = { it.token }) { link ->
@@ -172,7 +173,7 @@ fun ManageSharesDialog(
                     }
                 }
                 state.error?.let { err ->
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Spacing.xs))
                     Text(err.userMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
@@ -182,10 +183,10 @@ fun ManageSharesDialog(
             ) {
                 TextButton(onClick = onCreate, enabled = !state.isMutating) {
                     Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(Spacing.xs))
                     Text(stringResource(Res.string.share_action_new))
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 TextButton(onClick = onDismiss, enabled = !state.isMutating) {
                     Text(stringResource(Res.string.action_close))
                 }
@@ -307,12 +308,12 @@ fun CreateShareDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = Spacing.lg)
                 // Con teclado abierto en un móvil bajo, sin scroll los campos
                 // del fondo (caducidad, guardar) quedaban inalcanzables.
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 stringResource(Res.string.share_create_title),
@@ -486,10 +487,10 @@ fun EditShareDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = Spacing.lg)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 stringResource(Res.string.share_edit_title),
@@ -633,7 +634,7 @@ private fun PasswordRadioRow(
     onSelect: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xxs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         androidx.compose.material3.RadioButton(
@@ -641,7 +642,7 @@ private fun PasswordRadioRow(
             onClick = onSelect,
             enabled = enabled
         )
-        Spacer(Modifier.width(4.dp))
+        Spacer(Modifier.width(Spacing.xs))
         Text(label, style = MaterialTheme.typography.bodyMedium)
     }
 }

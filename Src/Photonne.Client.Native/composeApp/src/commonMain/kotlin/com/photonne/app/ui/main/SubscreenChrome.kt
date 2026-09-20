@@ -44,6 +44,7 @@ import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Height the floating subscreen chrome occupies at the top: the status bar plus
@@ -206,7 +207,7 @@ internal fun BoxScope.SubscreenFloatingChrome(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 8.dp, start = 8.dp, end = 8.dp),
+                    .padding(top = Spacing.sm, start = Spacing.sm, end = Spacing.sm),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
@@ -306,7 +307,7 @@ private fun SubscreenChromeCapsule(
                     .graphicsLayer { alpha = 1f - dockedFraction }
                     .chromeCapsuleBackdrop(hazeState = hazeState)
             )
-            Box(modifier = Modifier.padding(horizontal = 2.dp)) { content() }
+            Box(modifier = Modifier.padding(horizontal = Spacing.xxs)) { content() }
         }
     }
 }

@@ -48,12 +48,12 @@ fun EmptyState(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(Spacing.xl),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             Box(
                 modifier = Modifier
@@ -81,7 +81,7 @@ fun EmptyState(
                     modifier = Modifier.size(64.dp)
                 )
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Spacing.lg))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
@@ -97,7 +97,7 @@ fun EmptyState(
                 )
             }
             if (!actionLabel.isNullOrBlank() && onAction != null) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Spacing.md))
                 FilledTonalButton(onClick = onAction) {
                     Text(actionLabel)
                 }

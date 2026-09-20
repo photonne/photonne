@@ -66,6 +66,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * "Mi dispositivo": the device library browsed by system folder (bucket),
@@ -170,7 +171,7 @@ private fun DeviceBucketRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = Spacing.lg, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -219,7 +220,7 @@ private fun DeviceBucketRow(
                         MaterialTheme.colorScheme.secondaryContainer,
                         MaterialTheme.shapes.small
                     )
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .padding(horizontal = Spacing.sm, vertical = Spacing.xxs)
             )
         } else {
             IconButton(onClick = onAddToBackup) {

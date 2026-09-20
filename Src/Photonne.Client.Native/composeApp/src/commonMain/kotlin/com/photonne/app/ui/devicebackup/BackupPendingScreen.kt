@@ -101,6 +101,7 @@ import com.photonne.app.resources.backup_status_verifying_progress
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -210,7 +211,7 @@ fun BackupPendingScreen(
                     .align(Alignment.BottomEnd)
                     // Por encima de la nav flotante, que dibuja a sangre.
                     .padding(bottom = floatingNavBarReservedHeight())
-                    .padding(16.dp)
+                    .padding(Spacing.lg)
             )
         }
     }
@@ -357,7 +358,7 @@ private fun PendingActivityCard(state: DeviceBackupUiState, onStop: () -> Unit) 
     if (!verifying && progress == null && summary == null) return
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm),
         colors = CardDefaults.cardColors(
             containerColor = if (verifying || state.isSyncing) {
                 MaterialTheme.colorScheme.primaryContainer
@@ -366,7 +367,7 @@ private fun PendingActivityCard(state: DeviceBackupUiState, onStop: () -> Unit) 
             }
         )
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
             when {
                 verifying -> {
                     val hash = state.hashProgress
@@ -496,8 +497,8 @@ private fun MediaGrid(
         contentPadding = PaddingValues(
             start = 8.dp, end = 8.dp, top = 4.dp, bottom = 96.dp + floatingNavBarReservedHeight()
         ),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         modifier = Modifier.fillMaxSize().hazeSource(hazeState)
     ) {
         if (pending.isNotEmpty()) {
@@ -509,7 +510,7 @@ private fun MediaGrid(
                     if (failedCount > 0) {
                         TextButton(
                             onClick = onIgnoreAllFailed,
-                            modifier = Modifier.padding(start = 4.dp)
+                            modifier = Modifier.padding(start = Spacing.xs)
                         ) {
                             Text(
                                 stringResource(
@@ -591,7 +592,7 @@ private fun SectionLabel(text: String) {
         modifier = Modifier
             .fillMaxWidth()
             .semantics { heading() }
-            .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)
+            .padding(start = Spacing.sm, end = Spacing.sm, top = Spacing.md, bottom = Spacing.xs)
     )
 }
 
@@ -607,7 +608,7 @@ private fun CollapsibleSectionLabel(
             .fillMaxWidth()
             .clickable(onClick = onToggle)
             .semantics { heading() }
-            .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+            .padding(start = Spacing.sm, end = Spacing.sm, top = Spacing.md, bottom = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -652,9 +653,9 @@ private fun PendingRow(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = Spacing.sm, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         Box(
             modifier = Modifier
@@ -675,7 +676,7 @@ private fun PendingRow(
                     tint = Color.White,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(2.dp)
+                        .padding(Spacing.xxs)
                         .size(14.dp)
                 )
             }
@@ -789,7 +790,7 @@ private fun MediaCell(
                 tint = Color.White,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(4.dp)
+                    .padding(Spacing.xs)
                     .size(20.dp)
             )
         }
@@ -799,7 +800,7 @@ private fun MediaCell(
             state = entry.syncState,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(4.dp)
+                .padding(Spacing.xs)
         )
 
         if (entry.isSelected) {
@@ -817,7 +818,7 @@ private fun MediaCell(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(4.dp)
+                    .padding(Spacing.xs)
                     .background(Color.White, shape = CircleShape)
                     .size(20.dp)
             )
@@ -897,7 +898,7 @@ private fun SyncBadge(state: DeviceMediaSyncState, modifier: Modifier = Modifier
 
 @Composable
 private fun EmptyMessage(message: String) {
-    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize().padding(Spacing.xxl), contentAlignment = Alignment.Center) {
         Text(
             message,
             style = MaterialTheme.typography.bodyMedium,

@@ -52,6 +52,7 @@ import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.util.sortedByNatural
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun UtilitiesLocationsScreen(
@@ -76,7 +77,7 @@ fun UtilitiesLocationsScreen(
             state.isLoading && state.roots.isEmpty() ->
                 ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop))
             state.error?.userMessage != null && state.roots.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
                     ErrorBanner(error = state.error, onRetry = viewModel::refresh)
                 }
             state.roots.isEmpty() ->
@@ -172,7 +173,7 @@ private fun FolderRow(
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {

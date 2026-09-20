@@ -116,6 +116,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun FoldersListScreen(
@@ -367,7 +368,7 @@ private fun FolderListContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 8.dp + chromeTopReserve)
+                    .padding(top = Spacing.sm + chromeTopReserve)
             ) {
                 inboxHeader?.invoke()
                 when {
@@ -382,7 +383,7 @@ private fun FolderListContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .verticalScroll(rememberScrollState())
-                                .padding(16.dp)
+                                .padding(Spacing.lg)
                         ) {
                             ErrorBanner(error = state.error, onRetry = onRetry)
                         }
@@ -402,7 +403,7 @@ private fun FolderListContent(
             FolderViewMode.List -> Box(Modifier.fillMaxSize()) {
                 LazyColumn(
                 state = listState,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
                 contentPadding = PaddingValues(
                     top = 8.dp + chromeTopReserve,
                     bottom = reservedBottom ?: 8.dp
@@ -430,8 +431,8 @@ private fun FolderListContent(
             FolderViewMode.Grid -> LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Adaptive(minSize = 100.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     top = 16.dp + chromeTopReserve,
@@ -472,7 +473,7 @@ private fun FolderRow(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -513,8 +514,8 @@ private fun FolderRow(
                 maxLines = 1
             )
             Row(
-                modifier = Modifier.padding(top = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.padding(top = Spacing.xxs),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 Text(
                     text = stringResource(Res.string.albums_count_format, folder.assetCount),
@@ -576,7 +577,7 @@ private fun FolderCard(
                     .align(Alignment.BottomStart)
                     .padding(6.dp)
                     .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = 6.dp, vertical = Spacing.xxs)
             ) {
                 Text(
                     text = "${folder.assetCount}",
@@ -588,7 +589,7 @@ private fun FolderCard(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(6.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
                 // Same order as FolderRow, so a folder reads the same in both view modes.
                 if (folder.isShared) {
@@ -619,7 +620,7 @@ private fun FolderCard(
                         .align(Alignment.TopStart)
                         .padding(6.dp)
                         .background(Color.White, shape = RoundedCornerShape(50))
-                        .padding(2.dp)
+                        .padding(Spacing.xxs)
                         .size(20.dp)
                 )
             }
@@ -673,11 +674,11 @@ private fun OrganizeInboxCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = Spacing.lg, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -735,11 +736,11 @@ private fun DeviceFoldersCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = Spacing.lg, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {

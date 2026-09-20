@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.util.openExternalUrl
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Platform guidance for when [isVideoPlaybackSupported] is false: what the user
@@ -35,7 +36,7 @@ expect val videoPlaybackUnavailableHelp: VideoPlaybackUnavailableHelp?
 fun VideoUnavailableHelpAction(modifier: Modifier = Modifier) {
     val help = videoPlaybackUnavailableHelp ?: return
     Column(
-        modifier = modifier.padding(horizontal = 16.dp),
+        modifier = modifier.padding(horizontal = Spacing.lg),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(

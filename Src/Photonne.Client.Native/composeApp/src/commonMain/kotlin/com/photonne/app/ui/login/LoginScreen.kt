@@ -60,6 +60,7 @@ import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.photonneLogoPainter
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun LoginScreen() {
@@ -75,8 +76,8 @@ fun LoginScreen() {
                 modifier = Modifier
                     .widthIn(max = 360.dp)
                     .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(Spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Image(
@@ -85,7 +86,7 @@ fun LoginScreen() {
                         modifier = Modifier.height(56.dp)
                     )
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
 
                 when (state.step) {
                     LoginStep.ServerUrl -> ServerUrlStep(state, viewModel)
@@ -107,7 +108,7 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(Spacing.sm))
 
     OutlinedTextField(
         value = state.serverUrl,
@@ -173,7 +174,7 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(Spacing.sm))
 
     OutlinedTextField(
         value = state.username,

@@ -42,6 +42,7 @@ import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 private const val LOAD_MORE_THRESHOLD = 6
 
@@ -108,7 +109,7 @@ fun UnsupportedFilesScreen(
                     if (state.isAppending) {
                         item {
                             Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
                                 contentAlignment = Alignment.Center
                             ) { CircularProgressIndicator() }
                         }
@@ -146,7 +147,7 @@ private fun UnsupportedFileRow(
     modifier: Modifier = Modifier
 ) {
     androidx.compose.foundation.layout.Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {

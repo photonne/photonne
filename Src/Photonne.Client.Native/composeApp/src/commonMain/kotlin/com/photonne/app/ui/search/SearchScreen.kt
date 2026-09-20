@@ -83,6 +83,7 @@ import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun SearchScreen(
@@ -124,7 +125,7 @@ fun SearchScreen(
                         )
                     state.error?.userMessage != null && state.results.isEmpty() ->
                         Box(
-                            modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)
+                            modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(Spacing.xl)
                         ) {
                             com.photonne.app.ui.error.ErrorBanner(error = state.error)
                         }
@@ -310,7 +311,7 @@ private fun ActiveFiltersRow(state: SearchUiState, onClick: () -> Unit = {}) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .padding(horizontal = Spacing.md, vertical = Spacing.xs)
     ) {
         items(chips) { chip ->
             AssistChip(onClick = onClick, label = { Text(chip) })

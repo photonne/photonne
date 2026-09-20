@@ -19,6 +19,7 @@ import com.photonne.app.resources.actions_working_download
 import com.photonne.app.resources.actions_working_link
 import com.photonne.app.resources.actions_working_share
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Píldora flotante de operación masiva en curso (descarga/ZIP, compartir,
@@ -47,7 +48,7 @@ fun WorkingPill(
         shadowElevation = 4.dp
     ) {
         Row(
-            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            modifier = Modifier.padding(start = Spacing.lg, end = Spacing.xs, top = Spacing.xs, bottom = Spacing.xs),
             verticalAlignment = Alignment.CenterVertically
         ) {
             CircularProgressIndicator(
@@ -57,7 +58,7 @@ fun WorkingPill(
             Text(
                 message,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(horizontal = 12.dp)
+                modifier = Modifier.padding(horizontal = Spacing.md)
             )
             TextButton(onClick = onCancel) {
                 Text(stringResource(Res.string.action_cancel))

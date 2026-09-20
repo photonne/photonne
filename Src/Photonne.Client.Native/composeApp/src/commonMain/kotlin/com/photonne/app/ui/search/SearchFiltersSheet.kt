@@ -53,6 +53,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -76,10 +77,10 @@ fun SearchFiltersSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = Spacing.lg)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(bottom = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -116,7 +117,7 @@ fun SearchFiltersSheet(
                 stringResource(Res.string.search_date_range),
                 style = MaterialTheme.typography.titleMedium
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 OutlinedButton(
                     onClick = { datePickerFor = DateField.From },
                     modifier = Modifier.weight(1f)
@@ -156,7 +157,7 @@ fun SearchFiltersSheet(
             } else {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                     // El tope evita que una lista larga se coma la hoja, y el
                     // scroll propio hace alcanzable lo que queda por debajo.
                     modifier = Modifier
@@ -186,7 +187,7 @@ fun SearchFiltersSheet(
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                 modifier = Modifier
                     .heightIn(max = 220.dp)
                     .verticalScroll(rememberScrollState())
@@ -212,7 +213,7 @@ fun SearchFiltersSheet(
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                 modifier = Modifier
                     .heightIn(max = 220.dp)
                     .verticalScroll(rememberScrollState())

@@ -51,6 +51,7 @@ import com.photonne.app.resources.map_empty_subtitle
 import com.photonne.app.resources.map_empty_title
 import com.photonne.app.resources.map_title
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun MapScreen(
@@ -97,16 +98,16 @@ fun MapScreen(
                 Surface(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = reservedTop + 8.dp),
+                        .padding(top = reservedTop + Spacing.sm),
                     shape = RoundedCornerShape(16.dp),
                     color = Color.Transparent
                 ) {
                   Box {
                     Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = mapHazeState))
-                    Box(modifier = Modifier.padding(12.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.padding(Spacing.md), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(
                             strokeWidth = 2.dp,
-                            modifier = Modifier.padding(2.dp)
+                            modifier = Modifier.padding(Spacing.xxs)
                         )
                     }
                   }
@@ -115,7 +116,7 @@ fun MapScreen(
                 Surface(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .padding(24.dp),
+                        .padding(Spacing.xl),
                     shape = RoundedCornerShape(16.dp),
                     color = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -123,9 +124,9 @@ fun MapScreen(
                   Box {
                     Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = mapHazeState))
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(Spacing.lg),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
                     ) {
                         Text(
                             stringResource(Res.string.map_empty_title),
@@ -145,20 +146,20 @@ fun MapScreen(
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(horizontal = 16.dp)
-                    .padding(top = reservedTop + 8.dp),
+                    .padding(horizontal = Spacing.lg)
+                    .padding(top = reservedTop + Spacing.sm),
                 color = MaterialTheme.colorScheme.errorContainer,
                 shape = MaterialTheme.shapes.small
             ) {
                 Row(
-                    modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+                    modifier = Modifier.padding(start = Spacing.md, end = Spacing.xs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         message,
                         modifier = Modifier
                             .weight(1f, fill = false)
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = Spacing.sm),
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -183,7 +184,7 @@ fun MapScreen(
         ) {
             Text(
                 stringResource(Res.string.map_attribution),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = Spacing.xxs),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -192,11 +193,11 @@ fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp)
+                .padding(Spacing.lg)
                 // La rejilla del mapa dibuja a sangre bajo la nav flotante; sube los
                 // controles de zoom por encima de la cápsula.
                 .padding(bottom = floatingNavBarReservedHeight()),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
             horizontalAlignment = Alignment.End
         ) {
             FloatingActionButton(

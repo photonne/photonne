@@ -46,6 +46,7 @@ import com.photonne.app.resources.account_security_new
 import com.photonne.app.resources.account_security_submit
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.contentWidth
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun AccountSecurityScreen(
@@ -74,7 +75,7 @@ fun AccountSecurityScreen(
             .hazeSource(hazeState)
             .contentWidth()
             .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         OutlinedTextField(
             value = state.currentPassword,
@@ -142,7 +143,7 @@ fun AccountSecurityScreen(
             Text(msg, color = MaterialTheme.colorScheme.error)
         }
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Spacing.xs))
         PrimaryActionButton(
             label = stringResource(Res.string.account_security_submit),
             enabled = state.canSave,

@@ -27,6 +27,7 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import org.jetbrains.compose.resources.pluralStringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * A memory's assets, already loaded. Both surfaces reach the same screen from
@@ -78,7 +79,7 @@ fun MemoryDetailScreen(
             baseUrl = baseUrl,
             gridState = gridState,
             onItemClick = onItemClick,
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = Spacing.xl),
             header = {
                 MemoryHero(
                     memory = memory,
@@ -156,7 +157,7 @@ private fun MemoryHero(
             ),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+            modifier = Modifier.padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.md, bottom = Spacing.sm),
         )
     }
 }

@@ -44,6 +44,7 @@ import com.photonne.app.resources.people_picker_search_placeholder
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,9 +73,9 @@ fun AddToAlbumDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 stringResource(Res.string.add_to_album_title),
@@ -103,7 +104,7 @@ fun AddToAlbumDialog(
             ) {
                 when {
                     isLoadingAlbums && manualAlbums.isEmpty() -> Box(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                     visibleAlbums.isEmpty() -> Text(
@@ -112,7 +113,7 @@ fun AddToAlbumDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     else -> LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(visibleAlbums, key = { it.id }) { album ->
@@ -121,7 +122,7 @@ fun AddToAlbumDialog(
                     }
                 }
                 if (errorMessage != null) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
@@ -131,10 +132,10 @@ fun AddToAlbumDialog(
             ) {
                 TextButton(onClick = onCreateNew, enabled = !isSubmitting) {
                     Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(Spacing.xs))
                     Text(stringResource(Res.string.album_action_new))
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 TextButton(onClick = onDismiss, enabled = !isSubmitting) {
                     Text(stringResource(Res.string.action_close))
                 }

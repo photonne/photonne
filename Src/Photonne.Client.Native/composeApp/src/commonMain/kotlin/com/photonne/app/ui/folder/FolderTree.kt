@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * A node of the folder tree shown in the collapsible pickers. Built client-side
@@ -137,7 +138,7 @@ fun LazyListScope.renderFolderTree(
 @Composable
 private fun FolderGroupHeaderRow(label: String, expanded: Boolean, enabled: Boolean, onToggle: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onToggle).padding(vertical = 8.dp),
+        Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onToggle).padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -145,7 +146,7 @@ private fun FolderGroupHeaderRow(label: String, expanded: Boolean, enabled: Bool
             contentDescription = if (expanded) "Colapsar" else "Expandir",
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.sm))
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
@@ -180,10 +181,10 @@ private fun FolderTreeRow(
                 )
             }
         } else {
-            Spacer(Modifier.width(32.dp))
+            Spacer(Modifier.width(Spacing.xxl))
         }
         Icon(Icons.Outlined.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.sm))
         Column(Modifier.weight(1f)) {
             Text(
                 node.name,

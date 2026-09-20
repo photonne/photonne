@@ -30,7 +30,7 @@ fun OverlayIconBadge(
                 color = Color.Black.copy(alpha = 0.55f),
                 shape = RoundedCornerShape(50)
             )
-            .padding(4.dp)
+            .padding(Spacing.xs)
     ) {
         Icon(
             imageVector = icon,

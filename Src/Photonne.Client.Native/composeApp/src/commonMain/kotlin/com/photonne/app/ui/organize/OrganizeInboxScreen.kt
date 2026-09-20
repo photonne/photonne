@@ -249,7 +249,7 @@ private const val SCROLL_TO_TOP_SNAP_CELL = 48
 private fun InboxHeader(summary: OrganizeSummary?) {
     val span = remember(summary) { summary?.let { formatCaptureSpan(it.oldest, it.newest) } }
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
     ) {
         if (summary != null && summary.count > 0) {
