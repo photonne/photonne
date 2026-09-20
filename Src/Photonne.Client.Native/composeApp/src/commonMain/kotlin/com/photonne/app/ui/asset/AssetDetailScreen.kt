@@ -619,6 +619,7 @@ fun AssetDetailScreen(
                         isCurrent = isCurrent,
                         authHeaders = authHeaders,
                         onScaleChange = { newScale -> if (isCurrent) currentScale = newScale },
+                        onZoomedPastThreshold = { showOriginal[item.id] = true },
                         onToggleChrome = { chromeVisible = !chromeVisible },
                         zoomEnabled = !infoOpen,
                         resetZoomTick = if (isCurrent) zoomResetTick else 0,
@@ -1108,6 +1109,12 @@ private fun AssetPage(
     isCurrent: Boolean,
     authHeaders: Map<String, String>,
     onScaleChange: (Float) -> Unit,
+    /**
+     * Se dispara la primera vez que el zoom supera [AUTO_ORIGINAL_SCALE] con la
+     * versión Large en pantalla: el llamador marca el original como pedido.
+     * Solo tiene sentido para fotos del servidor; las locales ya son originales.
+     */
+    onZoomedPastThreshold: () -> Unit = {},
     onToggleChrome: () -> Unit = {},
     zoomEnabled: Boolean = true,
     /** Se incrementa para animar el zoom de la página actual de vuelta a 1x. */
@@ -1196,6 +1203,14 @@ private fun AssetPage(
             }
             return@Box
         }
+        // Cadena de calidad por zoom: Large llega por defecto; al ampliar más de
+        // AUTO_ORIGINAL_SCALE se pide el original sin tocar nada. Sticky por
+        // diseño (el mapa showOriginal no vuelve a false al reducir): el original
+        // ya está en caché y bajar a Large solo desperdiciaría nitidez.
+        val serverScaleChange: (Float) -> Unit = { newScale ->
+            if (newScale >= AUTO_ORIGINAL_SCALE && !showOriginal) onZoomedPastThreshold()
+            onScaleChange(newScale)
+        }
         when {
             item.isVideo && isVideoPlaybackSupported && isCurrent &&
                 !isTransitioning && videoPlayback != null -> {
@@ -1237,7 +1252,7 @@ private fun AssetPage(
                     showOriginal = showOriginal,
                     enabled = isCurrent && !isTransitioning,
                     authHeaders = authHeaders,
-                    onScaleChange = onScaleChange,
+                    onScaleChange = serverScaleChange,
                     zoomEnabled = zoomEnabled,
                     contentScale = contentScale,
                     onTap = onToggleChrome,
@@ -1253,7 +1268,7 @@ private fun AssetPage(
                 ZoomablePagerImage(
                     model = imageUrl,
                     contentDescription = item.fileName,
-                    onScaleChange = onScaleChange,
+                    onScaleChange = serverScaleChange,
                     zoomEnabled = zoomEnabled,
                     contentScale = contentScale,
                     onTap = onToggleChrome,
@@ -2344,6 +2359,13 @@ private fun LocationMap(latitude: Double, longitude: Double) {
         }
     }
 }
+
+/**
+ * Zoom a partir del cual el visor pide el original por sí solo (punto 23).
+ * 2x es donde la versión Large (2048 px de lado) empieza a verse blanda en
+ * una pantalla de móvil actual; por debajo no se distingue del original.
+ */
+private const val AUTO_ORIGINAL_SCALE = 2f
 
 private const val MAP_ZOOM = 16
 private val MAP_TILE_DP = 180.dp

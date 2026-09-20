@@ -27,7 +27,6 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
@@ -268,7 +267,7 @@ private fun MyLinkRow(
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(MaterialTheme.shapes.small)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {

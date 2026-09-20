@@ -1597,7 +1597,7 @@ private fun TaskBanner(message: TaskMessage, color: androidx.compose.ui.graphics
 private fun SectionCountPill(count: Int) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = Spacing.sm, vertical = Spacing.xxs)
     ) {

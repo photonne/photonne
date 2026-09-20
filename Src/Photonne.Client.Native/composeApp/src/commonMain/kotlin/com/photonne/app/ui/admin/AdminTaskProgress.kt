@@ -158,7 +158,7 @@ private fun StatCell(item: StatGridItem, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
+        shape = MaterialTheme.shapes.small,
         tonalElevation = 1.dp
     ) {
         Column(

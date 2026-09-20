@@ -38,7 +38,6 @@ import com.photonne.app.resources.organize_review_exclude
 import com.photonne.app.resources.organize_review_include
 import com.photonne.app.ui.selection.GroupSelectionState
 import com.photonne.app.ui.selection.selectionStateOf
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarDefaults
@@ -287,7 +286,7 @@ private fun ReviewCell(
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .toggleable(
                 value = !excluded,

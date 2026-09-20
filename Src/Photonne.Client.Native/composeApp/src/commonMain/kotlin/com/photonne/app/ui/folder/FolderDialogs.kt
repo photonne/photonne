@@ -12,14 +12,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,7 +33,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.folder_create_shared_hint
 import com.photonne.app.resources.folder_create_shared_label
@@ -45,6 +42,7 @@ import com.photonne.app.resources.folder_delete_title
 import com.photonne.app.resources.folder_field_name
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PrimaryActionButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,21 +123,12 @@ fun FolderFormDialog(
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = { onConfirm(name.trim(), showSharedSpaceOption && isSharedSpace) },
-                    enabled = canSubmit
-                ) {
-                    Text(confirmLabel)
-                }
-            }
+            PrimaryActionButton(
+                label = confirmLabel,
+                onClick = { onConfirm(name.trim(), showSharedSpaceOption && isSharedSpace) },
+                enabled = canSubmit,
+                isLoading = isSubmitting
+            )
         }
     }
 }

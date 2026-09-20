@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,7 +22,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,11 +40,11 @@ import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.YearCount
 import com.photonne.app.ui.organize.YearBreakdownChips
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_move
 import com.photonne.app.resources.folder_picker_empty
 import com.photonne.app.resources.folder_picker_root
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PrimaryActionButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -274,34 +270,17 @@ fun FolderPickerDialog(
                     }
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    enabled = canSubmit,
-                    onClick = {
-                        onConfirm(
-                            if (rootSelected) null else selectedId,
-                            showOrganizeByDate && organizeByYear
-                        )
-                    }
-                ) {
-                    if (isSubmitting) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Text(confirmLabel ?: stringResource(Res.string.action_move))
-                }
-            }
+            PrimaryActionButton(
+                label = confirmLabel ?: stringResource(Res.string.action_move),
+                onClick = {
+                    onConfirm(
+                        if (rootSelected) null else selectedId,
+                        showOrganizeByDate && organizeByYear
+                    )
+                },
+                enabled = canSubmit,
+                isLoading = isSubmitting
+            )
         }
     }
 }

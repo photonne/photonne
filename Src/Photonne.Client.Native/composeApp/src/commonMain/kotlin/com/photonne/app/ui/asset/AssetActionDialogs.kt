@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,6 +60,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PrimaryActionButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,18 +92,10 @@ fun EditDescriptionDialog(
                 maxLines = 6
             )
             Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = { onConfirm(value.trim().takeIf { it.isNotEmpty() }) }) {
-                    Text(stringResource(Res.string.action_save))
-                }
-            }
+            PrimaryActionButton(
+                label = stringResource(Res.string.action_save),
+                onClick = { onConfirm(value.trim().takeIf { it.isNotEmpty() }) }
+            )
         }
     }
 }
@@ -274,24 +265,16 @@ fun EditCaptureDateDialog(
                 )
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = {
+            PrimaryActionButton(
+                label = stringResource(Res.string.action_save),
+                onClick = {
                     val combined = LocalDateTime(
                         selectedDate.year, selectedDate.monthNumber, selectedDate.dayOfMonth,
                         timeSeed.first, timeSeed.second, 0
                     ).toInstant(TimeZone.UTC)
                     onConfirm(combined, writeToFile && !isReadOnly)
-                }) {
-                    Text(stringResource(Res.string.action_save))
                 }
-            }
+            )
         }
     }
 
