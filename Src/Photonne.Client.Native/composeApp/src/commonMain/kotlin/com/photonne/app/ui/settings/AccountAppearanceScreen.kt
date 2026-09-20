@@ -34,6 +34,7 @@ import com.photonne.app.resources.appearance_system
 import com.photonne.app.resources.appearance_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.contentWidth
 
 private val OPTIONS = listOf(
     ThemePreference.System to Res.string.appearance_system,
@@ -59,6 +60,7 @@ fun AccountAppearanceScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .hazeSource(hazeState)
+                .contentWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {

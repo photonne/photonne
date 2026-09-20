@@ -44,6 +44,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.contentWidth
 
 enum class UtilitiesEntry { Duplicates, LargeFiles, Locations }
 
@@ -91,6 +92,7 @@ fun UtilitiesHubScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .hazeSource(hazeState)
+                .contentWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {

@@ -43,6 +43,7 @@ import com.photonne.app.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.contentWidth
 
 /**
  * Shell of every admin list: floating chrome, content padded clear of it and
@@ -207,6 +208,7 @@ fun AdminPageScaffold(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .hazeSource(hazeState)
+                    .contentWidth()
                     .padding(
                         start = Spacing.screenHorizontal,
                         end = Spacing.screenHorizontal,
