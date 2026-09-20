@@ -42,7 +42,9 @@ public class GetNotificationsEndpoint : IEndpoint
                 n.Message,
                 n.IsRead,
                 n.CreatedAt,
-                n.ActionUrl
+                n.ActionUrl,
+                n.GroupKey,
+                n.GroupCount
             }),
             TotalCount = total,
             Page = page,

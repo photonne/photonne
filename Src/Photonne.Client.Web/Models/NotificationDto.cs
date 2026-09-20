@@ -17,6 +17,8 @@ public class NotificationDto
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? ActionUrl { get; set; }
+    public string? GroupKey { get; set; }
+    public int GroupCount { get; set; } = 1;
 }
 
 public class NotificationsPageResponse
