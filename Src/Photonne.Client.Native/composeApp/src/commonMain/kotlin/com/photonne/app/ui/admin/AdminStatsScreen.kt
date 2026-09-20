@@ -157,7 +157,9 @@ private fun TotalsOverviewCard(
                     DonutSlice(videoBytes.toFloat().coerceAtLeast(0f), palette.videos)
                 ),
                 modifier = Modifier.size(120.dp),
-                strokeWidth = 14.dp
+                strokeWidth = 14.dp,
+                description = stringResource(Res.string.storage_label_photos) + " " + humanBytes(photoBytes) +
+                    ", " + stringResource(Res.string.storage_label_videos) + " " + humanBytes(videoBytes)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -403,7 +405,9 @@ private fun UserUsageCard(usage: AdminUserUsage) {
                     StackedSegment(usage.videoBytes.toFloat().coerceAtLeast(0f), palette.videos)
                 ),
                 trackColor = MaterialTheme.colorScheme.surface,
-                barHeight = 8.dp
+                barHeight = 8.dp,
+                description = stringResource(Res.string.storage_label_photos) + " " + humanBytes(usage.photoBytes) +
+                    ", " + stringResource(Res.string.storage_label_videos) + " " + humanBytes(usage.videoBytes)
             )
             AdminKeyValueRow(
                 label = stringResource(Res.string.admin_stats_total_photos),

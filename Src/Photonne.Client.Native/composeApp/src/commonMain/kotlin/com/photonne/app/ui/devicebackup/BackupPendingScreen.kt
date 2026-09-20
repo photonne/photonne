@@ -99,6 +99,8 @@ import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.resources.backup_status_verifying
 import com.photonne.app.resources.backup_status_verifying_progress
 import com.photonne.app.ui.theme.AssetGridSkeleton
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -588,6 +590,7 @@ private fun SectionLabel(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
+            .semantics { heading() }
             .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)
     )
 }
@@ -603,6 +606,7 @@ private fun CollapsibleSectionLabel(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
+            .semantics { heading() }
             .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

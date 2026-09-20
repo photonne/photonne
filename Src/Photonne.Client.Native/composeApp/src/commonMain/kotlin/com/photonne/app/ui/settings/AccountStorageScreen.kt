@@ -58,6 +58,8 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 
 @Composable
 fun AccountStorageScreen(
@@ -131,7 +133,9 @@ private fun SectionHeader(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+        modifier = Modifier
+            .semantics { heading() }
+            .padding(horizontal = 4.dp, vertical = 4.dp)
     )
 }
 
@@ -158,8 +162,11 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
             val slices: List<DonutSlice>
             val centerPrimary: String
             val centerSecondary: String?
+            val chartDescription: String
             if (quota != null && percentInt != null) {
                 val remaining = (quota - info.usedBytes).coerceAtLeast(0L)
+                chartDescription = stringResource(Res.string.storage_legend_used) + " " + usedHuman +
+                    ", " + stringResource(Res.string.storage_legend_free) + " " + humanReadableBytes(remaining)
                 slices = listOf(
                     DonutSlice(info.usedBytes.toFloat().coerceAtLeast(0f), palette.photos),
                     DonutSlice(remaining.toFloat().coerceAtLeast(0f), palette.free)
@@ -173,11 +180,15 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
                 )
                 centerPrimary = usedHuman
                 centerSecondary = null
+                chartDescription = stringResource(Res.string.storage_label_photos) + " " +
+                    humanReadableBytes(info.photoBytes) + ", " +
+                    stringResource(Res.string.storage_label_videos) + " " + humanReadableBytes(info.videoBytes)
             }
             DonutChart(
                 slices = slices,
                 modifier = Modifier.size(120.dp),
-                strokeWidth = 14.dp
+                strokeWidth = 14.dp,
+                description = chartDescription
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -306,7 +317,9 @@ private fun BreakdownChart(photoBytes: Long, videoBytes: Long) {
             StackedSegment(videoBytes.toFloat().coerceAtLeast(0f), palette.videos)
         ),
         trackColor = MaterialTheme.colorScheme.surface,
-        barHeight = 10.dp
+        barHeight = 10.dp,
+        description = stringResource(Res.string.storage_label_photos) + " " + humanReadableBytes(photoBytes) +
+            ", " + stringResource(Res.string.storage_label_videos) + " " + humanReadableBytes(videoBytes)
     )
 }
 

@@ -39,6 +39,8 @@ import com.photonne.app.ui.util.SegmentOption
 import com.photonne.app.ui.util.SegmentedChoiceRow
 import com.photonne.app.ui.util.SortDirection
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,6 +154,7 @@ private fun SectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.semantics { heading() }
     )
 }

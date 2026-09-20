@@ -86,6 +86,8 @@ import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.Spacing
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Vertically scrolling form shell shared by every Ajustes subpage. Draws its
@@ -173,7 +175,7 @@ fun AdminSettingsForm(
 @Composable
 fun SettingSectionHeader(title: String, divider: Boolean = true) {
     if (divider) HorizontalDivider()
-    Text(title, style = MaterialTheme.typography.titleSmall)
+    Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
 }
 
 /**

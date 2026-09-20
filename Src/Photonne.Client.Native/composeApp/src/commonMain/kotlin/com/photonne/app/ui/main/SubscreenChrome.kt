@@ -42,6 +42,8 @@ import com.photonne.app.resources.action_back
 import com.photonne.app.resources.action_close
 import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Height the floating subscreen chrome occupies at the top: the status bar plus
@@ -246,10 +248,12 @@ internal fun BoxScope.SubscreenFloatingChrome(
                                     overflow = TextOverflow.Ellipsis,
                                     // Sin botón de atrás el título necesita su propio
                                     // margen izquierdo para no pegarse al borde de la cápsula.
-                                    modifier = Modifier.padding(
-                                        start = if (onBack != null) 0.dp else 14.dp,
-                                        end = 14.dp
-                                    )
+                                    modifier = Modifier
+                                        .semantics { heading() }
+                                        .padding(
+                                            start = if (onBack != null) 0.dp else 14.dp,
+                                            end = 14.dp
+                                        )
                                 )
                             }
                         }

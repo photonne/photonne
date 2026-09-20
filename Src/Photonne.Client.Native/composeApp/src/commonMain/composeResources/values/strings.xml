@@ -1415,4 +1415,5 @@
     <string name="admin_settings_device_error_public_unreachable">No se pudo contactar con la URL pública</string>
     <string name="admin_shared_trash_selected_format">%1$d seleccionados</string>
     <string name="admin_shared_trash_deleted_by_format">Borrado por %1$s</string>
+    <string name="timeline_scrubber_description">Desplazamiento rápido por fechas</string>
 </resources>

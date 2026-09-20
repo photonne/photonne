@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 data class DonutSlice(
     val value: Float,
@@ -41,6 +43,8 @@ fun DonutChart(
     gapDegrees: Float = 2.5f,
     startAngle: Float = -90f,
     animationDurationMs: Int = 700,
+    /** Resumen para el lector de pantalla: un Canvas no dice nada por sí solo. */
+    description: String? = null,
     centerContent: @Composable () -> Unit = {}
 ) {
     val sanitized = slices.filter { it.value > 0f }
@@ -54,7 +58,12 @@ fun DonutChart(
         )
     }
 
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    Box(
+        modifier = modifier.then(
+            if (description != null) Modifier.semantics { contentDescription = description } else Modifier
+        ),
+        contentAlignment = Alignment.Center
+    ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (sanitized.isEmpty()) return@Canvas
             val sw = strokeWidth.toPx()

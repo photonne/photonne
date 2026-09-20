@@ -227,6 +227,8 @@ import kotlin.time.Instant
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Logical grouping for the Run Tasks hub. Order also drives the visual
@@ -1534,6 +1536,7 @@ private fun SectionHeader(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onToggle)
+            .semantics { heading() }
             .padding(horizontal = Spacing.xs)
             .padding(top = Spacing.lg, bottom = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,

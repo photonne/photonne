@@ -136,6 +136,8 @@ import com.photonne.app.resources.backup_source_remove
 import com.photonne.app.resources.backup_source_removed
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 
 /**
  * The Backup tab's landing screen. Order matters here: the master switch, then
@@ -937,7 +939,9 @@ private fun SectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)
+        modifier = Modifier
+            .semantics { heading() }
+            .padding(start = 24.dp, end = 24.dp, top = 8.dp)
     )
 }
 
