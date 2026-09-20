@@ -59,6 +59,9 @@ import com.photonne.app.resources.people_suggestions_accept
 import com.photonne.app.resources.people_suggestions_dismiss
 import com.photonne.app.resources.people_unnamed
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -309,6 +312,10 @@ private fun AssignPersonDialog(
                     onValueChange = { newName = it },
                     label = { Text(stringResource(Res.string.people_face_assign_new)) },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Done
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))

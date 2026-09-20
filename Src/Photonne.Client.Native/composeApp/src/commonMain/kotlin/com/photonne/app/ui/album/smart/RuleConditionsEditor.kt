@@ -118,6 +118,8 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates }
 
@@ -679,6 +681,7 @@ private fun PickerSearchField(query: String, onQueryChange: (String) -> Unit, pl
         value = query,
         onValueChange = onQueryChange,
         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         placeholder = { Text(placeholder) },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         trailingIcon = {

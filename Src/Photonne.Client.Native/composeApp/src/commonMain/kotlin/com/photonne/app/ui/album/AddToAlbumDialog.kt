@@ -42,6 +42,8 @@ import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.people_picker_search_placeholder
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,6 +92,7 @@ fun AddToAlbumDialog(
                         Icon(Icons.Outlined.Search, contentDescription = null)
                     },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     modifier = Modifier.fillMaxWidth()
                 )
             }

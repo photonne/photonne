@@ -132,6 +132,7 @@ fun AccountProfileScreen(
             label = { Text(stringResource(Res.string.account_profile_username)) },
             singleLine = true,
             enabled = !state.isSubmitting,
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth()
         )
 

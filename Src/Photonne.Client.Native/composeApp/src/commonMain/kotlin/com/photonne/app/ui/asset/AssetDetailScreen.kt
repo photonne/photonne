@@ -194,6 +194,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import com.photonne.app.ui.platform.KeepScreenOn
 
 private const val PAGER_PREFETCH_THRESHOLD = 8
 private const val PAGER_DISABLE_THRESHOLD = 1.05f
@@ -261,6 +262,9 @@ fun AssetDetailScreen(
     var slideshowActive by remember { mutableStateOf(false) }
     var slideshowPaused by remember { mutableStateOf(false) }
     var slideshowIntervalSec by remember { mutableStateOf(5) }
+    // Un pase de fotos no genera toques: sin esto la pantalla se apagaba a
+    // mitad (los vídeos ya lo hacían por su cuenta en Android).
+    KeepScreenOn(enabled = slideshowActive && !slideshowPaused)
     val coroutineScope = rememberCoroutineScope()
 
     // Swipe-to-dismiss: vertical drag offset of the whole pager. Driven by an
@@ -2056,6 +2060,9 @@ private fun AddTagDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                 value = text,
                 onValueChange = { text = it },
                 singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                ),
                 placeholder = { Text("p. ej. Vacaciones") }
             )
         },
