@@ -48,6 +48,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 /** Wide enough to read a cover, narrow enough that the next one peeks in and
  * says "this row keeps going". */
@@ -94,9 +95,7 @@ fun MemoriesScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading && state.rows.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop), rowCount = 5, thumbnailSize = 96.dp)
 
                 state.error != null && state.rows.isEmpty() ->
                     com.photonne.app.ui.error.FullScreenError(

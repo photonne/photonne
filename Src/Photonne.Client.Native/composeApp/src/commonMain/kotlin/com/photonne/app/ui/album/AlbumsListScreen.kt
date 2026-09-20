@@ -41,7 +41,6 @@ import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.People
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -112,6 +111,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 @Composable
 fun AlbumsListScreen(
@@ -169,9 +169,7 @@ fun AlbumsListScreen(
                         state.isLoading && state.albums.isEmpty() ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
                                 exploreRow()
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator()
-                                }
+                                ListRowsSkeleton()
                             }
                         state.error != null && state.albums.isEmpty() ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {

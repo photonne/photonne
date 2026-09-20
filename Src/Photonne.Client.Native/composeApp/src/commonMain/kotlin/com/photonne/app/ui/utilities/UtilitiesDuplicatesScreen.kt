@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -79,6 +78,7 @@ import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 @Composable
 fun UtilitiesDuplicatesScreen(
@@ -115,9 +115,7 @@ fun UtilitiesDuplicatesScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading && state.groups.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop), thumbnailSize = 72.dp)
                 state.error != null && state.groups.isEmpty() ->
                     // Con scroll para que PullToRefreshBox reciba el gesto, y
                     // bajo el cromo flotante — antes un fallo de carga caía en

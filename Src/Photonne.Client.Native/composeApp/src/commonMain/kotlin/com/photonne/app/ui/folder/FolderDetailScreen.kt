@@ -28,7 +28,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +70,7 @@ import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.AssetGridSkeleton
 
 @Composable
 fun FolderDetailScreen(
@@ -134,9 +134,7 @@ fun FolderDetailScreen(
         ) {
             when {
                 state.isLoading && state.items.isEmpty() && state.subFolders.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    AssetGridSkeleton(contentPadding = PaddingValues(top = reservedTop))
                 state.error != null && state.items.isEmpty() && state.subFolders.isEmpty() ->
                     Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
                         com.photonne.app.ui.error.ErrorBanner(

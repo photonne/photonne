@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +43,7 @@ import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.AssetGridSkeleton
 
 /**
  * Tile shown in the Scenes / Objects grids. Each label renders a representative
@@ -88,9 +88,7 @@ internal fun ExploreLabelGridScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 isLoading && tiles.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    AssetGridSkeleton(cellMinSize = 160.dp, contentPadding = PaddingValues(top = reservedTop))
                 error != null && tiles.isEmpty() ->
                     com.photonne.app.ui.error.FullScreenError(
                         error = error,

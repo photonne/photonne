@@ -41,6 +41,7 @@ import com.photonne.app.resources.unsupported_files_unsupported_label
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 private const val LOAD_MORE_THRESHOLD = 6
 
@@ -68,9 +69,7 @@ fun UnsupportedFilesScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isInitialLoading ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop))
                 state.error != null && state.items.isEmpty() ->
                     com.photonne.app.ui.error.FullScreenError(
                         error = state.error,

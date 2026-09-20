@@ -28,7 +28,6 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -52,6 +51,7 @@ import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.util.sortedByNatural
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 @Composable
 fun UtilitiesLocationsScreen(
@@ -74,9 +74,7 @@ fun UtilitiesLocationsScreen(
     ) {
         when {
             state.isLoading && state.roots.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop))
             state.error?.userMessage != null && state.roots.isEmpty() ->
                 Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                     ErrorBanner(error = state.error, onRetry = viewModel::refresh)

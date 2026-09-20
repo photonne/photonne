@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -58,6 +57,7 @@ import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.ListRowsSkeleton
 
 @Composable
 fun AccountStorageScreen(
@@ -80,9 +80,7 @@ fun AccountStorageScreen(
     ) {
     when {
         state.isLoading && state.info == null ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop), rowCount = 4, thumbnailSize = 40.dp)
         state.error != null && state.info == null ->
             com.photonne.app.ui.error.FullScreenError(
                 error = state.error,
