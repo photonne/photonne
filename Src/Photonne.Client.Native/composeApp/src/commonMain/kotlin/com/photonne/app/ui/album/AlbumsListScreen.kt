@@ -112,6 +112,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun AlbumsListScreen(
@@ -346,8 +347,8 @@ private fun AlbumsContent(
         AlbumViewMode.Grid -> LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Adaptive(minSize = 100.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
             contentPadding = PaddingValues(
                 start = 16.dp,
                 top = 16.dp + chromeTopReserve,
@@ -394,7 +395,7 @@ private fun AlbumsContent(
         AlbumViewMode.List -> Box(Modifier.fillMaxSize()) {
             LazyColumn(
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
             contentPadding = PaddingValues(
                 top = 8.dp + chromeTopReserve,
                 bottom = reservedBottom ?: 8.dp
@@ -406,7 +407,7 @@ private fun AlbumsContent(
             }
             if (state.groupByYear) {
                 groups.forEach { (year, items) ->
-                    item(key = "year-$year") { YearHeader(year, modifier = Modifier.padding(horizontal = 16.dp)) }
+                    item(key = "year-$year") { YearHeader(year, modifier = Modifier.padding(horizontal = Spacing.lg)) }
                     items(items, key = { it.id }) { album ->
                         AlbumRow(
                             modifier = Modifier.animateItem(),
@@ -453,7 +454,7 @@ private fun YearHeader(year: Int, modifier: Modifier = Modifier) {
         text = year.toString(),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(top = 8.dp, bottom = 4.dp)
+        modifier = modifier.padding(top = Spacing.sm, bottom = Spacing.xs)
     )
 }
 
@@ -465,17 +466,17 @@ private fun ExploreRow(
     onOpenObjects: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm, bottom = Spacing.lg)
     ) {
         Text(
             text = stringResource(Res.string.explore_title),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
+            modifier = Modifier.padding(start = Spacing.lg, bottom = 6.dp)
         )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             ExploreCard(
                 label = stringResource(Res.string.people_title),
@@ -517,7 +518,7 @@ private fun ExploreCard(
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
+            .padding(vertical = Spacing.md, horizontal = Spacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -618,7 +619,7 @@ private fun AlbumCard(
                     .align(Alignment.BottomStart)
                     .padding(6.dp)
                     .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = 6.dp, vertical = Spacing.xxs)
             ) {
                 Text(
                     text = "${album.assetCount}",
@@ -630,7 +631,7 @@ private fun AlbumCard(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(6.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
                 if (album.isSmart) {
                     // Sin distintivo, un álbum de reglas parecía uno normal y
@@ -662,7 +663,7 @@ private fun AlbumCard(
                         .align(Alignment.TopStart)
                         .padding(6.dp)
                         .background(Color.White, shape = RoundedCornerShape(50))
-                        .padding(2.dp)
+                        .padding(Spacing.xxs)
                         .size(20.dp)
                 )
             }
@@ -689,7 +690,7 @@ private fun AlbumRow(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -728,7 +729,7 @@ private fun AlbumRow(
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(2.dp)
+                        .padding(Spacing.xxs)
                         .background(Color.White, shape = RoundedCornerShape(50))
                         .size(16.dp)
                 )
@@ -750,8 +751,8 @@ private fun AlbumRow(
                 )
             }
             Row(
-                modifier = Modifier.padding(top = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = Spacing.xxs),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(

@@ -18,6 +18,7 @@ import com.photonne.app.ui.main.FloatingDatePill
 import com.photonne.app.ui.main.ScrubberYearMarker
 import com.photonne.app.ui.timeline.captureLocalDate
 import dev.chrisbanes.haze.HazeState
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Cromo de scrubber COMPARTIDO para cualquier rejilla uniforme de fotos
@@ -67,7 +68,7 @@ fun BoxScope.PhotoGridScrubberOverlay(
         onDraggingChange = { isScrubbing = it },
         modifier = Modifier
             .align(Alignment.CenterEnd)
-            .padding(top = reservedTop + 8.dp)
+            .padding(top = reservedTop + Spacing.sm)
             .padding(bottom = reservedBottom),
     )
 
@@ -85,7 +86,7 @@ fun BoxScope.PhotoGridScrubberOverlay(
             hazeState = hazeState,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = reservedTop + 8.dp),
+                .padding(top = reservedTop + Spacing.sm),
         )
     }
 }

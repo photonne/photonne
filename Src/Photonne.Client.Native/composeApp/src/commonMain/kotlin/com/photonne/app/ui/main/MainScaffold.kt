@@ -203,6 +203,7 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 enum class MainTab {
     Timeline,
@@ -554,7 +555,7 @@ private fun FloatingNavBarItem(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
             ) {
                 icon()
                 Text(
@@ -650,7 +651,7 @@ private fun FloatingSelectionBarItem(
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
             ) {
                 icon()
                 SelectionLabel(label)
@@ -747,7 +748,7 @@ fun TimelineTopBar(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = 8.dp, end = 8.dp),
+                .padding(top = Spacing.sm, end = Spacing.sm),
             shape = RoundedCornerShape(percent = 50),
             // Transparente: la Surface aporta forma + sombra y recorta el cristal.
             color = Color.Transparent,
@@ -766,7 +767,7 @@ fun TimelineTopBar(
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 2.dp)
+                modifier = Modifier.padding(horizontal = Spacing.xxs)
             ) {
                 // Discreet spinner while the first device-gallery scan runs. Sits
                 // among the actions so it never overlaps the wordmark, and reads

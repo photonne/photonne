@@ -82,6 +82,7 @@ import com.photonne.app.data.version.clientUpdateUrl
 import com.photonne.app.data.version.isNewerVersion
 import com.photonne.app.ui.util.openExternalUrl
 import org.koin.compose.koinInject
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Library shortcut shown on the More tab. Each entry resolves to a
@@ -204,13 +205,13 @@ fun MoreScreen(
             top = 24.dp + reservedTop,
             bottom = 24.dp + floatingNavBarReservedHeight()
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         item("header") {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = Spacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -223,7 +224,7 @@ fun MoreScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
         }
 
         sections.forEach { section ->
@@ -234,7 +235,7 @@ fun MoreScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 24.dp, top = 8.dp, bottom = 4.dp)
+                        .padding(start = Spacing.xl, top = Spacing.sm, bottom = Spacing.xs)
                 )
             }
             val columns = section.columns
@@ -243,8 +244,8 @@ fun MoreScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = Spacing.lg),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     row.forEach { shortcut ->
                         MoreShortcutCard(
@@ -287,7 +288,7 @@ fun MoreScreen(
         }
 
         item("account-settings") {
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             SettingsLikeRow(
                 icon = Icons.Outlined.Settings,
                 label = stringResource(Res.string.account_settings_title),
@@ -308,7 +309,7 @@ fun MoreScreen(
         item("logout") {
             // Misma fila que el resto de destinos de la pantalla: el botón
             // pequeño y centrado rompía el patrón de filas.
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Spacing.lg))
             SettingsLikeRow(
                 icon = Icons.AutoMirrored.Outlined.Logout,
                 label = stringResource(Res.string.action_logout),
@@ -321,14 +322,14 @@ fun MoreScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = Spacing.lg),
                     shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
                     )
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -353,7 +354,7 @@ fun MoreScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
+                    .padding(horizontal = Spacing.xl)
             )
         }
 
@@ -366,7 +367,7 @@ fun MoreScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 6.dp),
+                        .padding(horizontal = Spacing.xl, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     for (attribution in attributions) {
@@ -421,7 +422,7 @@ private fun ManageLinkRow(icon: ImageVector, label: String, onClick: () -> Unit)
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .padding(horizontal = Spacing.xl, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -450,7 +451,7 @@ private fun SettingsLikeRow(icon: ImageVector, label: String, onClick: () -> Uni
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = Spacing.lg)
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
@@ -458,7 +459,7 @@ private fun SettingsLikeRow(icon: ImageVector, label: String, onClick: () -> Uni
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.lg),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconPill(icon = icon)

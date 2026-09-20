@@ -26,6 +26,7 @@ import com.photonne.app.resources.people_merge_confirm_message
 import com.photonne.app.resources.people_merge_confirm_title
 import com.photonne.app.resources.people_unnamed
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Confirmación de fusión con las dos caras delante: fusionar es irreversible
@@ -52,12 +53,12 @@ fun ConfirmMergeDialog(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.lg, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         PersonAvatar(person = source, baseUrl = baseUrl, sizeDp = 64)
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(Spacing.xs))
                         Text(
                             sourceName,
                             style = MaterialTheme.typography.labelMedium,
@@ -71,7 +72,7 @@ fun ConfirmMergeDialog(
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         PersonAvatar(person = target, baseUrl = baseUrl, sizeDp = 64)
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(Spacing.xs))
                         Text(
                             targetName,
                             style = MaterialTheme.typography.labelMedium,
@@ -79,7 +80,7 @@ fun ConfirmMergeDialog(
                         )
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Spacing.md))
                 Text(
                     stringResource(
                         Res.string.people_merge_confirm_message,
@@ -90,7 +91,7 @@ fun ConfirmMergeDialog(
                     textAlign = TextAlign.Center
                 )
                 if (errorMessage != null) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             }

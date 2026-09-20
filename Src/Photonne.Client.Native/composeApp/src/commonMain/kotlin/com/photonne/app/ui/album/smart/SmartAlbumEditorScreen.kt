@@ -50,6 +50,7 @@ import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.theme.contentWidth
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * "Nuevo álbum inteligente" — the dedicated rule editor
@@ -98,7 +99,7 @@ fun SmartAlbumEditorScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
 
             // El error vivía al final, debajo del editor de condiciones: con la
             // lista crecida quedaba fuera de pantalla justo cuando importaba.
@@ -112,7 +113,7 @@ fun SmartAlbumEditorScreen(
                     Text(
                         err.userMessage,
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(Spacing.md),
                     )
                 }
             }
@@ -147,7 +148,7 @@ fun SmartAlbumEditorScreen(
                 onEnsureFolders = viewModel::ensureFolders,
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Spacing.xl))
         }
 
         // Cromo flotante como el resto de subpantallas (la barra acoplada de

@@ -47,6 +47,7 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,9 +120,9 @@ fun FolderPickerDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge)
 
@@ -139,7 +140,7 @@ fun FolderPickerDialog(
                     )
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     ) {
                         recents.forEach { folder ->
                             FilterChip(
@@ -178,14 +179,14 @@ fun FolderPickerDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f, fill = false),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
                 val empty = personalNodes.isEmpty() && sharedNodes.isEmpty()
                 // The root row is hidden while searching, so an empty search must
                 // fall through to the "no results" message even when includeRoot.
                 if (empty && (!includeRoot || searching)) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -196,7 +197,7 @@ fun FolderPickerDialog(
                     }
                 } else {
                     LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         if (includeRoot && !searching) {
@@ -241,7 +242,7 @@ fun FolderPickerDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !isSubmitting) { organizeByYear = !organizeByYear }
-                        .padding(vertical = 2.dp),
+                        .padding(vertical = Spacing.xxs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
@@ -249,7 +250,7 @@ fun FolderPickerDialog(
                         onCheckedChange = { organizeByYear = it },
                         enabled = !isSubmitting
                     )
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(Spacing.xs))
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Organizar por año", style = MaterialTheme.typography.bodyLarge)
                         Text(
@@ -261,7 +262,7 @@ fun FolderPickerDialog(
                 }
                 if (organizeByYear && yearBreakdown.isNotEmpty()) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(start = 48.dp, top = 2.dp),
+                        modifier = Modifier.fillMaxWidth().padding(start = 48.dp, top = Spacing.xxs),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
@@ -294,10 +295,10 @@ private fun RootPickerRow(label: String, selected: Boolean, onSelect: () -> Unit
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onSelect)
-            .padding(top = 2.dp, bottom = 2.dp, end = 4.dp),
+            .padding(top = Spacing.xxs, bottom = Spacing.xxs, end = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(Modifier.width(32.dp))
+        Spacer(Modifier.width(Spacing.xxl))
         Text(
             label,
             style = MaterialTheme.typography.bodyLarge,

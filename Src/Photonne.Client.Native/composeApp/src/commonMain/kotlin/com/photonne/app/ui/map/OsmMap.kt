@@ -68,6 +68,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.photonne.app.ui.theme.Spacing
 
 /** Min/max zoom we ever request from the tile server. CARTO and OSM
  * both go up to 19; we stay one short so re-pinching past max never
@@ -615,7 +616,7 @@ private fun ThumbnailMarker(
                 .size(circleDp.dp)
                 .clip(CircleShape)
                 .background(MarkerBorderColor)
-                .padding(2.dp)
+                .padding(Spacing.xxs)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {

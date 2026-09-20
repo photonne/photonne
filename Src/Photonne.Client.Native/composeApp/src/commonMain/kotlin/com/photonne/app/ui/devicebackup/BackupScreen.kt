@@ -138,6 +138,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * The Backup tab's landing screen. Order matters here: the master switch, then
@@ -216,7 +217,7 @@ fun BackupScreen(
     Box(modifier = Modifier.fillMaxSize()) {
     if (!state.isSupported) {
         Box(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
+            modifier = Modifier.fillMaxSize().padding(Spacing.xxl),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -237,7 +238,7 @@ fun BackupScreen(
         state = listState,
         modifier = Modifier.fillMaxSize().hazeSource(hazeState),
         contentPadding = PaddingValues(top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         item("enable") {
             BackupToggleCard(
@@ -255,7 +256,7 @@ fun BackupScreen(
                     text = stringResource(Res.string.backup_disabled_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    modifier = Modifier.padding(horizontal = Spacing.xl)
                 )
             }
         }
@@ -474,7 +475,7 @@ private fun BackupStatusCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = Spacing.lg),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -483,7 +484,7 @@ private fun BackupStatusCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .padding(horizontal = Spacing.lg, vertical = Spacing.lg)
         ) {
             // ── Headline: the one-line verdict ──────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -681,7 +682,7 @@ private fun BackupStatusCard(
             // "Ver pendientes" the secondary navigation, so the focus is clear.
             if (hasFolder) {
                 Spacer(Modifier.size(12.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     // A running pass can always be stopped — verification of a
                     // huge folder and a multi-gigabyte batch alike used to be
                     // unstoppable short of killing the app.
@@ -769,7 +770,7 @@ private fun CollapsibleHeader(title: String, expanded: Boolean, onToggle: () -> 
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 4.dp),
+            .padding(start = Spacing.xl, end = Spacing.xl, top = Spacing.sm, bottom = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -805,7 +806,7 @@ private fun BackupToggleCard(enabled: Boolean, onChange: (Boolean) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = Spacing.lg),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -815,7 +816,7 @@ private fun BackupToggleCard(enabled: Boolean, onChange: (Boolean) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onChange(!enabled) }
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconPill(icon = Icons.Filled.CloudUpload)
@@ -850,7 +851,7 @@ private fun ToggleRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = Spacing.lg)
             .clickable { onChange(!checked) },
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
@@ -860,7 +861,7 @@ private fun ToggleRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -892,7 +893,7 @@ private fun SettingsRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = Spacing.lg)
             .let { if (onClick != null) it.clickable(onClick = onClick) else it },
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
@@ -902,7 +903,7 @@ private fun SettingsRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconPill(icon = icon)
@@ -941,7 +942,7 @@ private fun SectionHeader(title: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .semantics { heading() }
-            .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+            .padding(start = Spacing.xl, end = Spacing.xl, top = Spacing.sm)
     )
 }
 
@@ -981,21 +982,21 @@ private fun DeviceBucketPickerSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            contentPadding = PaddingValues(bottom = Spacing.xl)
         ) {
             item("header") {
-                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                Column(modifier = Modifier.padding(horizontal = Spacing.xl)) {
                     Text(
                         stringResource(Res.string.backup_bucket_picker_title),
                         style = MaterialTheme.typography.titleMedium
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Spacing.xs))
                     Text(
                         stringResource(Res.string.backup_bucket_picker_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                 }
             }
             items(buckets, key = { "bucket-${it.id}" }) { bucket ->
@@ -1004,7 +1005,7 @@ private fun DeviceBucketPickerSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !added) { onAdd(bucket) }
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                        .padding(horizontal = Spacing.xl, vertical = Spacing.md),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -1048,7 +1049,7 @@ private fun DeviceBucketPickerSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(onClick = onPickOther)
-                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                        .padding(horizontal = Spacing.xl, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -1083,14 +1084,14 @@ private fun NotificationsDeniedCard(
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.xs)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(Spacing.md)) {
             Text(
                 text = stringResource(Res.string.backup_notifications_denied_hint),
                 style = MaterialTheme.typography.bodySmall
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 if (onOpenSettings != null) {
                     TextButton(onClick = onOpenSettings) {
                         Text(

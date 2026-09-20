@@ -62,6 +62,7 @@ import com.photonne.app.resources.admin_user_role_user
 import kotlin.time.Instant
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.contentWidth
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun AccountProfileScreen(
@@ -89,7 +90,7 @@ fun AccountProfileScreen(
             .hazeSource(hazeState)
             .contentWidth()
             .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         state.baseline?.let { user ->
             ProfileSummaryCard(user)
@@ -140,7 +141,7 @@ fun AccountProfileScreen(
             Text(msg, color = MaterialTheme.colorScheme.error)
         }
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Spacing.xs))
         PrimaryActionButton(
             label = stringResource(Res.string.account_profile_save),
             enabled = state.canSave,
@@ -190,9 +191,9 @@ private fun ProfileSummaryCard(user: UserDto) {
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -208,12 +209,12 @@ private fun ProfileSummaryCard(user: UserDto) {
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Spacing.md))
                 Text(
                     text = fullName,
                     style = MaterialTheme.typography.titleMedium
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 AssistChip(
                     onClick = {},
                     enabled = false,
@@ -224,7 +225,7 @@ private fun ProfileSummaryCard(user: UserDto) {
                     )
                 )
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.sm))
             parseProfileInstant(user.createdAt)?.let { instant ->
                 ProfileMetaRow(
                     icon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) },
@@ -254,7 +255,7 @@ private fun ProfileMetaRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         icon()
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.md))
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = caption,

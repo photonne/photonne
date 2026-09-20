@@ -66,6 +66,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import kotlin.time.Clock
+import com.photonne.app.ui.theme.Spacing
 
 /** How often the sheet re-reads the asset while an analysis is queued or
  *  running. A single photo takes the workers seconds, not minutes. */
@@ -147,9 +148,9 @@ fun AssetAiSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(stringResource(Res.string.asset_ai_title), style = MaterialTheme.typography.titleLarge)
             Text(
@@ -178,7 +179,7 @@ fun AssetAiSheet(
             }
 
             if (rows != null) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 FilledTonalButton(
                     onClick = { launch(rows.map { it.analysis }) },
                     enabled = !anyBusy,
@@ -219,7 +220,7 @@ private fun AiAnalysisRowView(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
         modifier = Modifier.fillMaxWidth()
     ) {
         Icon(row.analysis.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)

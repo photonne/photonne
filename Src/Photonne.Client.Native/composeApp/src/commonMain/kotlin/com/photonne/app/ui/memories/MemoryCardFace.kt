@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import com.photonne.app.ui.theme.MemoryCardShape
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * The look of a memory: keepsake corners, cover photo, a gradient that keeps the
@@ -79,8 +80,8 @@ fun MemoryCardFace(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+                .padding(horizontal = Spacing.lg, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
         ) {
             Text(
                 text = title,

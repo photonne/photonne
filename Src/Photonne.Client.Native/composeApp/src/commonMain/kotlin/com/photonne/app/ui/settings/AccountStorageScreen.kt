@@ -60,6 +60,7 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun AccountStorageScreen(
@@ -96,7 +97,7 @@ fun AccountStorageScreen(
                 state = listState,
                 modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 item { SectionHeader(stringResource(Res.string.storage_section_overview)) }
                 item { OverviewCard(info, state.usagePercent, percentInt) }
@@ -135,7 +136,7 @@ private fun SectionHeader(text: String) {
         style = MaterialTheme.typography.titleSmall,
         modifier = Modifier
             .semantics { heading() }
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = Spacing.xs, vertical = Spacing.xs)
     )
 }
 
@@ -152,7 +153,7 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -275,7 +276,7 @@ private fun LibraryCard(lib: StorageLibraryUsageDto) {
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(lib.name, style = MaterialTheme.typography.titleMedium)
@@ -299,7 +300,7 @@ private fun BreakdownCard(photos: Int, videos: Int, photoBytes: Long, videoBytes
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             BreakdownChart(photoBytes, videoBytes)
@@ -341,7 +342,7 @@ private fun BreakdownRows(photos: Int, videos: Int, photoBytes: Long, videoBytes
             humanReadableBytes(videoBytes)
         )
     )
-    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+    HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
     StorageRow(
         label = stringResource(Res.string.storage_label_total),
         value = humanReadableBytes(photoBytes + videoBytes)

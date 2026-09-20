@@ -35,6 +35,7 @@ import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Floating "back to top" pill, shared by every screen with a long photo grid.
@@ -99,7 +100,7 @@ internal fun ScrollToTopPill(
           Box {
             Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {

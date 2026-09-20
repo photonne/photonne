@@ -59,6 +59,7 @@ import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun UtilitiesLargeFilesScreen(
@@ -102,7 +103,7 @@ fun UtilitiesLargeFilesScreen(
                         top = 4.dp + headerReserve,
                         bottom = 24.dp + floatingNavBarReservedHeight()
                     ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                 ) {
                     item("total") {
@@ -114,7 +115,7 @@ fun UtilitiesLargeFilesScreen(
                             ),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                            modifier = Modifier.padding(vertical = Spacing.xs)
                         )
                     }
                     itemsIndexed(
@@ -147,7 +148,7 @@ fun UtilitiesLargeFilesScreen(
             )
             ErrorBanner(
                     error = state.error,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                    modifier = Modifier.padding(horizontal = Spacing.lg, vertical = 6.dp)
                 )
         }
         SubscreenFloatingChrome(
@@ -175,9 +176,9 @@ private fun CountFilterRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         Text(
             stringResource(Res.string.utilities_large_files_count_label),
@@ -208,9 +209,9 @@ private fun LargeFileRow(
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Box(
                 modifier = Modifier
@@ -235,7 +236,7 @@ private fun LargeFileRow(
                         tint = Color.White,
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(2.dp)
+                            .padding(Spacing.xxs)
                             .size(14.dp)
                     )
                 }

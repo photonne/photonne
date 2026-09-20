@@ -47,6 +47,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Bottom sheet that lists every other person the caller has and returns
@@ -83,9 +84,9 @@ fun PersonPickerDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 stringResource(Res.string.people_picker_title),
@@ -109,7 +110,7 @@ fun PersonPickerDialog(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 420.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
                 ) {
                     items(candidates, key = { it.id }) { person ->
                         PersonRow(
@@ -121,7 +122,7 @@ fun PersonPickerDialog(
                     if (isLoading) {
                         item("loading") {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.md),
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 CircularProgressIndicator(
@@ -153,9 +154,9 @@ private fun PersonRow(person: Person, baseUrl: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            .padding(vertical = Spacing.sm, horizontal = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         PersonAvatar(person = person, baseUrl = baseUrl, sizeDp = 56)
         Column {

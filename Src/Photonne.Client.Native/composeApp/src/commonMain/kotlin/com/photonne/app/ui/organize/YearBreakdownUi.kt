@@ -21,6 +21,7 @@ import com.photonne.app.resources.organize_move_summary_body
 import com.photonne.app.resources.organize_year_chip_format
 import com.photonne.app.resources.organize_move_summary_title
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Compact "2026 · 34   2025 · 12" chips describing how assets split across capture
@@ -45,7 +46,7 @@ fun YearBreakdownChips(items: List<YearCount>, modifier: Modifier = Modifier) {
                     text = stringResource(Res.string.organize_year_chip_format, yc.year, yc.count),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = Spacing.xs),
                 )
             }
         }

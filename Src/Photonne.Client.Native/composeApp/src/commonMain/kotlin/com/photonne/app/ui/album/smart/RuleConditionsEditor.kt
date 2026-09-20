@@ -120,6 +120,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import com.photonne.app.ui.theme.Spacing
 
 internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates }
 
@@ -155,9 +156,9 @@ fun RuleConditionsEditor(
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         // Coincidir con: Todas (AND) / Cualquiera (OR)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SectionLabel(stringResource(Res.string.smart_album_match_section))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 FilterChip(
                     selected = matchAll,
                     onClick = { onSetMatchAll(true) },
@@ -172,7 +173,7 @@ fun RuleConditionsEditor(
         }
 
         // Condiciones
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SectionLabel(stringResource(Res.string.smart_album_conditions_section))
             if (conditions.isEmpty()) {
                 Text(
@@ -199,7 +200,7 @@ fun RuleConditionsEditor(
             }
             TextButton(onClick = { sheet = EditorSheet.Menu }) {
                 Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 Text(stringResource(Res.string.smart_album_add_condition))
             }
         }
@@ -299,11 +300,11 @@ private fun ConditionRow(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(condition.icon(), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Spacing.md))
             Column(Modifier.weight(1f)) {
                 Text(condition.title(), style = MaterialTheme.typography.titleSmall)
                 Text(
@@ -407,11 +408,11 @@ private fun SmartPreviewSection(
 @Composable
 private fun AddConditionMenuSheet(onDismiss: () -> Unit, onPick: (EditorSheet) -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Column(Modifier.fillMaxWidth().padding(bottom = Spacing.xl)) {
             Text(
                 stringResource(Res.string.smart_album_add_condition),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(Spacing.lg),
             )
             MenuRow(Icons.Outlined.Person, stringResource(Res.string.smart_album_cond_people)) { onPick(EditorSheet.People) }
             MenuRow(Icons.Outlined.Folder, stringResource(Res.string.smart_album_cond_folders)) { onPick(EditorSheet.Folders) }
@@ -425,11 +426,11 @@ private fun AddConditionMenuSheet(onDismiss: () -> Unit, onPick: (EditorSheet) -
 @Composable
 private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Spacing.lg, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(Spacing.lg))
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
@@ -458,7 +459,7 @@ private fun PeopleSelectSheet(
         onConfirm = { onConfirm(SmartCondition.People(people = selected.mapNotNull { refs[it] }, matchAll = matchAll)) },
         confirmEnabled = selected.isNotEmpty(),
         header = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 FilterChip(selected = !matchAll, onClick = { matchAll = false }, label = { Text(stringResource(Res.string.smart_album_match_any)) })
                 FilterChip(selected = matchAll, onClick = { matchAll = true }, label = { Text(stringResource(Res.string.smart_album_match_all_together)) })
             }
@@ -637,8 +638,8 @@ private fun SearchSelectScaffold(
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.92f)
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp),
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(title, style = MaterialTheme.typography.titleMedium)
@@ -648,7 +649,7 @@ private fun SearchSelectScaffold(
                 label = stringResource(Res.string.action_apply),
                 onClick = onConfirm,
                 enabled = confirmEnabled,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = Spacing.xs),
             )
         }
     }
@@ -697,7 +698,7 @@ private fun PickerSearchField(query: String, onQueryChange: (String) -> Unit, pl
 @Composable
 private fun SelectedChipsHeader(items: List<Pair<String, String>>, onRemove: (String) -> Unit) {
     if (items.isEmpty()) return
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         items.forEach { (id, text) ->
             InputChip(
                 selected = true,
@@ -728,7 +729,7 @@ private fun PersonSelectRow(person: PersonRef, baseUrl: String, checked: Boolean
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.md))
         Text(person.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         Checkbox(checked = checked, onCheckedChange = null)
     }
@@ -753,7 +754,7 @@ private fun LabelRow(label: LabelRef, baseUrl: String, checked: Boolean, onToggl
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.md))
         Text(label.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         Checkbox(checked = checked, onCheckedChange = null)
     }
@@ -781,7 +782,7 @@ private fun DateRangeSheet(
         onConfirm = { onConfirm(SmartCondition.DateRange(from, to)) },
         confirmEnabled = from != null || to != null,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
             androidx.compose.material3.OutlinedButton(onClick = { picking = true }, modifier = Modifier.weight(1f)) {
                 Text(from ?: stringResource(Res.string.smart_album_date_from))
             }
@@ -850,14 +851,14 @@ private fun SelectSheetScaffold(
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             when {
-                isLoading -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                isLoading -> Box(Modifier.fillMaxWidth().padding(Spacing.xl), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
                 isEmpty -> Text(emptyText, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -867,7 +868,7 @@ private fun SelectSheetScaffold(
                 label = stringResource(Res.string.action_apply),
                 onClick = onConfirm,
                 enabled = confirmEnabled,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = Spacing.sm),
             )
         }
     }

@@ -195,6 +195,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.platform.KeepScreenOn
+import com.photonne.app.ui.theme.Spacing
 
 private const val PAGER_PREFETCH_THRESHOLD = 8
 private const val PAGER_DISABLE_THRESHOLD = 1.05f
@@ -1024,7 +1025,7 @@ fun AssetDetailScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .windowInsetsPadding(WindowInsets.navigationBars)
-                        .padding(bottom = 24.dp)
+                        .padding(bottom = Spacing.xl)
                         .graphicsLayer { alpha = chromeAlpha }
                 )
             }
@@ -1198,7 +1199,7 @@ private fun AssetPage(
                                 text = "Reproducción de vídeo no disponible en este sistema",
                                 color = Color.White,
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(16.dp)
+                                modifier = Modifier.padding(Spacing.lg)
                             )
                             VideoUnavailableHelpAction()
                         }
@@ -1347,9 +1348,9 @@ private fun VideoControlsRow(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         IconButton(onClick = { playback.togglePlay() }) {
             Icon(
@@ -1395,7 +1396,7 @@ private fun VideoScrubber(
             dragValue?.let { playback.seekTo((it * duration).toLong()) }
             dragValue = null
         },
-        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.md),
         colors = SliderDefaults.colors(
             thumbColor = Color.White,
             activeTrackColor = Color.White,
@@ -1522,7 +1523,7 @@ private fun LivePhotoPage(
             // status bar lo contaría dos veces.
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 12.dp, top = badgeTopInset)
+                .padding(start = Spacing.md, top = badgeTopInset)
         )
     }
 }
@@ -1673,9 +1674,9 @@ private fun LivePhotoBadge(
                 .chromeCapsuleBackdrop(baseColor = ViewerChromeColor)
         )
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             Icon(
                 imageVector = Icons.Outlined.MotionPhotosOn,
@@ -1722,7 +1723,7 @@ private fun AssetMetadataPanel(
             // doesn't butt up against the asset above or the system buttons.
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 20.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         Text(
             text = detail?.fileName ?: fallback.fileName,
@@ -1829,7 +1830,7 @@ private fun AssetMetadataPanel(
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(20.dp).padding(8.dp))
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(20.dp).padding(Spacing.sm))
             }
         }
         errorMessage?.let {
@@ -1844,9 +1845,9 @@ private data class StatCell(val icon: ImageVector, val value: String, val label:
 @Composable
 private fun ExifGrid(cells: List<StatCell>) {
     if (cells.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         cells.chunked(2).forEach { rowCells ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 rowCells.forEach { cell ->
                     ExifStatCard(cell = cell, modifier = Modifier.weight(1f))
                 }
@@ -1864,7 +1865,7 @@ private fun ExifStatCard(cell: StatCell, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -1912,7 +1913,7 @@ private fun FacesSection(
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Face,
@@ -1963,15 +1964,15 @@ private fun EditableTagsSection(
     onRemoveTag: (String) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Text(
             "Etiquetas",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         androidx.compose.foundation.layout.FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             autoTags.forEach { tag -> TagChip(label = tag, onRemove = null) }
             userTags.forEach { tag -> TagChip(label = tag, onRemove = { onRemoveTag(tag) }) }
@@ -1998,7 +1999,7 @@ private fun TagChip(label: String, onRemove: (() -> Unit)?) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = if (onRemove != null) 6.dp else 12.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             Text(
                 text = label,
@@ -2030,9 +2031,9 @@ private fun AddTagChip(onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.primaryContainer
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             Icon(
                 imageVector = Icons.Filled.Add,
@@ -2089,13 +2090,13 @@ private fun RelatedAssetsRow(
     baseUrl: String,
     onOpenAsset: (TimelineItem) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Text(
             title,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             itemsIndexed(items, key = { _, a -> a.id }) { _, asset ->
                 val item = asset.toTimelineItem()
                 AssetThumbnailImage(
@@ -2130,9 +2131,9 @@ private fun MetadataEditableRow(
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             if (leadingIcon != null) {
                 Icon(
@@ -2169,9 +2170,9 @@ private fun MetadataInfoRow(leadingIcon: ImageVector, label: String, value: Stri
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Icon(
                 imageVector = leadingIcon,
@@ -2199,7 +2200,7 @@ private fun MetadataActionRow(leadingIcon: ImageVector, label: String, onClick: 
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Icon(
                 imageVector = leadingIcon,
@@ -2299,9 +2300,9 @@ private fun LocationMap(latitude: Double, longitude: Double) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(8.dp)
+                    .padding(Spacing.sm)
                     .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = 6.dp, vertical = Spacing.xxs)
             ) {
                 Text(
                     text = stringResource(Res.string.map_attribution_osm),
@@ -2324,14 +2325,14 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(Spacing.sm),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
                         .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .padding(horizontal = 6.dp, vertical = Spacing.xxs)
                 ) {
                     Text(
                         text = formatGps(latitude, longitude),
@@ -2346,9 +2347,9 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                         .clip(RoundedCornerShape(6.dp))
                         .background(PhotonneColors.scrimMedium)
                         .clickable { openExternalUrl(mapsUrl) }
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                        .padding(horizontal = 10.dp, vertical = Spacing.xs),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
@@ -2454,9 +2455,9 @@ private fun SlideshowControls(
             // Misma altura vertical que el resto de cápsulas flotantes.
             modifier = Modifier
                 .height(CompactNavBarContentHeight)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             IconButton(onClick = onTogglePause) {
                 Icon(
@@ -2745,8 +2746,8 @@ private fun AssetActionsBottomBar(
             // según sus ítems. Ceñida a los iconos (sin fillMaxWidth).
             modifier = Modifier
                 .height(CompactNavBarContentHeight)
-                .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(horizontal = Spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (item.isLocalOnly) {

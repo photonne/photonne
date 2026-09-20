@@ -62,6 +62,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneColors
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun UploadScreen(
@@ -127,12 +128,12 @@ private fun Header(
     onClearFinished: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(onClick = onPickFiles) {
@@ -194,9 +195,9 @@ private fun UploadErrorBanner(message: String, onDismiss: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         Icon(
             Icons.Filled.Warning,
@@ -224,9 +225,9 @@ private fun UploadRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = Spacing.lg, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         Thumbnail(item)
         Column(modifier = Modifier.weight(1f)) {
@@ -246,7 +247,7 @@ private fun UploadRow(
                 LinearProgressIndicator(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp)
+                        .padding(top = Spacing.xs)
                         .height(2.dp)
                 )
             }

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.theme.Spacing
 
 data class TopNEntry(
     val label: String,
@@ -78,7 +79,7 @@ fun TopNBars(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(labelWidth).padding(end = 8.dp)
+                    modifier = Modifier.width(labelWidth).padding(end = Spacing.sm)
                 )
                 SingleBar(
                     value = entry.value,

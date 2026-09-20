@@ -49,6 +49,7 @@ import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 /** Wide enough to read a cover, narrow enough that the next one peeks in and
  * says "this row keeps going". */
@@ -181,11 +182,11 @@ private fun MemoryThemeRow(
             text = header,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
+            modifier = Modifier.padding(start = Spacing.lg, end = Spacing.lg, top = 20.dp, bottom = Spacing.sm),
         )
     }
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = Spacing.lg),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(items = row.memories, key = { memory -> "memory:${memory.id}" }) { memory ->

@@ -67,6 +67,7 @@ import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Lists every asset the user owns that still has at least one enrichment
@@ -100,7 +101,7 @@ fun EnrichmentStatusScreen(
             }
             state.loadError != null -> {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    modifier = Modifier.fillMaxSize().padding(Spacing.xl),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -119,13 +120,13 @@ fun EnrichmentStatusScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp + reservedTop, bottom = 8.dp + floatingNavBarReservedHeight()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     item("summary") {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = Spacing.xs),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -180,7 +181,7 @@ private fun EnrichmentAssetCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -190,7 +191,7 @@ private fun EnrichmentAssetCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Spacing.xs))
                     Text(
                         text = stringResource(
                             Res.string.enrichment_card_counts,
@@ -223,7 +224,7 @@ private fun EnrichmentAssetCard(
             }
 
             if (asset.failedTaskTypes.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Spacing.md))
                 FailedTaskChips(
                     failedTypes = asset.failedTaskTypes,
                     retryingTypes = item.perTypeRetrying,
@@ -232,7 +233,7 @@ private fun EnrichmentAssetCard(
             }
 
             item.retryError?.takeIf { it.isNotBlank() }?.let { msg ->
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 Text(
                     text = msg,
                     style = MaterialTheme.typography.bodySmall,

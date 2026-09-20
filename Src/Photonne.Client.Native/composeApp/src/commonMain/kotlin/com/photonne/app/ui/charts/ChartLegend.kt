@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.theme.Spacing
 
 data class LegendItem(
     val color: Color,
@@ -34,7 +35,7 @@ data class LegendItem(
 fun ChartLegend(items: List<LegendItem>, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
         verticalAlignment = Alignment.CenterVertically
     ) {
         items.forEach { item ->

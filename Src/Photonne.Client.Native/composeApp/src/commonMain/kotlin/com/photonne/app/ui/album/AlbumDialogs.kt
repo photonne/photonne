@@ -34,6 +34,7 @@ import com.photonne.app.resources.album_field_description
 import com.photonne.app.resources.album_field_name
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Form sheet used to both create a new album and edit an existing one.
@@ -67,9 +68,9 @@ fun AlbumFormDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge)
             OutlinedTextField(
@@ -99,7 +100,7 @@ fun AlbumFormDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             PrimaryActionButton(
                 label = confirmLabel,
                 onClick = {

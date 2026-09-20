@@ -44,6 +44,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.AssetGridSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Tile shown in the Scenes / Objects grids. Each label renders a representative
@@ -114,8 +115,8 @@ internal fun ExploreLabelGridScreen(
                         end = 16.dp,
                         bottom = 16.dp + floatingNavBarReservedHeight()
                     ),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                 ) {
                     items(tiles, key = { it.name }) { tile ->
@@ -188,8 +189,8 @@ private fun LabelTileCard(tile: ExploreLabelTile, baseUrl: String, onClick: () -
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .background(Color.Black.copy(alpha = 0.45f))
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                    .padding(horizontal = 10.dp, vertical = Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
             ) {
                 Text(
                     text = tile.name.replaceFirstChar { it.titlecase() },

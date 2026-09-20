@@ -31,6 +31,7 @@ import com.photonne.app.resources.people_rename_field
 import com.photonne.app.resources.people_rename_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,9 +53,9 @@ fun RenamePersonDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 stringResource(Res.string.people_rename_title),
@@ -82,7 +83,7 @@ fun RenamePersonDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             PrimaryActionButton(
                 label = stringResource(Res.string.action_save),
                 onClick = { onConfirm(name.trim().takeIf { it.isNotEmpty() }) },

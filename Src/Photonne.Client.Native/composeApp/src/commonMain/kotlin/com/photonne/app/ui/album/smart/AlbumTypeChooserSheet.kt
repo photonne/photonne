@@ -28,6 +28,7 @@ import com.photonne.app.resources.album_type_manual_title
 import com.photonne.app.resources.album_type_smart_subtitle
 import com.photonne.app.resources.album_type_smart_title
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Chooser behind the albums-list create action: pick a classic manual album or a
@@ -42,11 +43,11 @@ fun AlbumTypeChooserSheet(
     onSmart: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Column(Modifier.fillMaxWidth().padding(bottom = Spacing.xl)) {
             Text(
                 stringResource(Res.string.album_action_new),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(Spacing.lg),
             )
             ChooserRow(
                 icon = Icons.Outlined.PhotoAlbum,
@@ -72,11 +73,11 @@ private fun ChooserRow(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Spacing.lg, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(Spacing.lg))
         Column {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(

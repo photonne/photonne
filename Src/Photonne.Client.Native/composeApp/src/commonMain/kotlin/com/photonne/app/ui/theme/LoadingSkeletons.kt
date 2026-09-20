@@ -40,8 +40,8 @@ fun AssetGridSkeleton(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = cellMinSize),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
         // Inerte: tocar un hueco no debe hacer nada, y desplazarlo tampoco
         // tiene sentido cuando no hay contenido debajo.
         userScrollEnabled = false,

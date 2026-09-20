@@ -64,6 +64,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.AssetGridSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 @Composable
 fun PersonSuggestionsScreen(
@@ -104,7 +105,7 @@ fun PersonSuggestionsScreen(
                 )
             state.isEmpty ->
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    modifier = Modifier.fillMaxSize().padding(Spacing.xl),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -138,8 +139,8 @@ fun PersonSuggestionsScreen(
                         end = 12.dp,
                         bottom = 12.dp + floatingNavBarReservedHeight()
                     ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                 ) {
                     items(state.items, key = { it.id }) { suggestion ->
@@ -249,7 +250,7 @@ private fun SuggestionCard(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             IconButton(onClick = onDismiss, enabled = !isPending) {

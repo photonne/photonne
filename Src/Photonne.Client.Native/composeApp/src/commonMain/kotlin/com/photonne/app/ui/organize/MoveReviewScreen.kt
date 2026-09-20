@@ -70,6 +70,7 @@ import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Full-screen "Revisar antes de mover": every asset about to move, grouped by
@@ -139,8 +140,8 @@ fun MoveReviewScreen(
                     top = subscreenChromeReservedTop(),
                     bottom = floatingNavBarReservedHeight(),
                 ),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "subtitle") {
                     Text(
@@ -148,7 +149,7 @@ fun MoveReviewScreen(
                         else stringResource(Res.string.organize_move_review_subtitle_default),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.sm, vertical = Spacing.md),
                     )
                 }
                 groups.forEach { group ->
@@ -250,7 +251,7 @@ private fun ConfirmMoveCapsule(
                     .fillMaxWidth()
                     .height(CompactNavBarContentHeight)
                     .clickable(enabled = enabled, onClick = onClick)
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = Spacing.xl),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -260,7 +261,7 @@ private fun ConfirmMoveCapsule(
                         modifier = Modifier.size(18.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(Spacing.md))
                 }
                 Text(label, style = MaterialTheme.typography.titleSmall)
             }
@@ -308,7 +309,7 @@ private fun ReviewCell(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(4.dp)
+                    .padding(Spacing.xs)
                     .size(20.dp)
                     .background(MaterialTheme.colorScheme.surface, CircleShape),
                 contentAlignment = Alignment.Center,
@@ -340,7 +341,7 @@ private fun YearHeader(
                 onValueChange = { onToggle() },
                 role = Role.Checkbox,
             )
-            .padding(top = 12.dp, bottom = 4.dp, start = 8.dp, end = 8.dp),
+            .padding(top = Spacing.md, bottom = Spacing.xs, start = Spacing.sm, end = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -348,7 +349,7 @@ private fun YearHeader(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.sm))
         Text(
             stringResource(Res.string.organize_year_photo_count, count),
             style = MaterialTheme.typography.bodySmall,

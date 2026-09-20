@@ -83,6 +83,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * "Mis enlaces" (More → Mis enlaces): lists every public share link the user has created —
@@ -134,7 +135,7 @@ fun MyLinksScreen(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .padding(top = reservedTop)
-                            .padding(16.dp)
+                            .padding(Spacing.lg)
                     ) {
                         ErrorBanner(error = state.error, onRetry = viewModel::refresh)
                     }
@@ -145,7 +146,7 @@ fun MyLinksScreen(
                 )
                 else -> LazyColumn(
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
                     contentPadding = PaddingValues(
                         top = 8.dp + reservedTop,
                         bottom = 8.dp + floatingNavBarReservedHeight()
@@ -261,7 +262,7 @@ private fun MyLinkRow(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(

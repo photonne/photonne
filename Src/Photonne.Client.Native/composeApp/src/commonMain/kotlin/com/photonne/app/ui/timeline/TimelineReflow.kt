@@ -22,6 +22,7 @@ import com.photonne.app.ui.grid.columnCountFor
 import com.photonne.app.ui.grid.groupTimelineEntries
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * Samsung-Gallery-style continuous pinch zoom for the timeline.
@@ -272,7 +273,7 @@ private fun ReflowHeaderBand(title: String) {
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = Spacing.lg)
         )
     }
 }

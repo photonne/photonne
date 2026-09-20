@@ -36,6 +36,7 @@ import com.photonne.app.ui.util.SegmentOption
 import com.photonne.app.ui.util.SegmentedChoiceRow
 import com.photonne.app.ui.util.SortDirection
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,9 +53,9 @@ fun FoldersFiltersSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
             Text(
                 stringResource(Res.string.filters_title),

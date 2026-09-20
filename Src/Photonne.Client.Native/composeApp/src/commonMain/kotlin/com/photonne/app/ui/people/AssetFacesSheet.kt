@@ -62,6 +62,7 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,35 +86,35 @@ fun AssetFacesSheet(
         sheetState = sheetState
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.lg)
         ) {
             Text(
                 stringResource(Res.string.people_faces_title),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)
             )
 
             when {
                 state.isLoading ->
                     Box(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                 state.error != null && state.faces.isEmpty() ->
                     com.photonne.app.ui.error.ErrorBanner(
                         error = state.error,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
                     )
                 state.faces.isEmpty() ->
                     Text(
                         stringResource(Res.string.people_faces_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp)
+                        modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xl)
                     )
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
                     items(state.faces, key = { it.id }) { face ->
                         FaceRow(
@@ -166,9 +167,9 @@ private fun FaceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = Spacing.md, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         Box(
             modifier = Modifier
@@ -246,7 +247,7 @@ private fun FaceActions(
     onReject: () -> Unit,
     onSetCover: () -> Unit
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
         if (face.suggestedPersonId != null) {
             IconButton(onClick = onDismissSuggestion, enabled = !isPending) {
                 Icon(
@@ -318,7 +319,7 @@ private fun AssignPersonDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 if (people.isEmpty()) {
                     Text(
                         stringResource(Res.string.people_face_unknown),

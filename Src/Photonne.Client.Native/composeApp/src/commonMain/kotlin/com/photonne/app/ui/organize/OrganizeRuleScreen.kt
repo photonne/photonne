@@ -60,6 +60,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.theme.contentWidth
+import com.photonne.app.ui.theme.Spacing
 
 /**
  * "Para organizar → Mover por condiciones": build a condition rule (reusing the
@@ -119,7 +120,7 @@ fun OrganizeRuleScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
 
             Text(
                 stringResource(Res.string.organize_rule_intro),
@@ -155,7 +156,7 @@ fun OrganizeRuleScreen(
             )
 
             if (state.organizeByYear && state.yearBreakdown.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     Text(
                         stringResource(Res.string.organize_rule_year_split_label),
                         style = MaterialTheme.typography.bodySmall,
@@ -181,7 +182,7 @@ fun OrganizeRuleScreen(
                 onMove = { viewModel.openReview() },
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
         }
 
         // The review overlay is a full-screen opaque Surface hosted by App.kt, so
@@ -236,7 +237,7 @@ private fun DestinationRow(path: String?, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null, tint = MaterialTheme.colorScheme.primary)

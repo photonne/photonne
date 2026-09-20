@@ -52,6 +52,7 @@ import com.photonne.app.ui.asset.isVideoPlaybackSupported
 import com.photonne.app.ui.platform.OrientationController
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 private const val PAGER_DISABLE_THRESHOLD = 1.05f
 
@@ -241,7 +242,7 @@ private fun DeviceAssetPage(
                             text = stringResource(Res.string.device_backup_preview_video_unsupported),
                             color = Color.White,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(Spacing.lg)
                         )
                         VideoUnavailableHelpAction()
                     }

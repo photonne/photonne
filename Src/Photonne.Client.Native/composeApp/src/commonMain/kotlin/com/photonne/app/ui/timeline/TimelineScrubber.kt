@@ -59,6 +59,7 @@ import androidx.compose.ui.semantics.stateDescription
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_scrubber_description
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.Spacing
 
 /** Don't bother with a scrubber for content that barely scrolls. */
 private const val MIN_ROWS_FOR_SCRUBBER = 40
@@ -375,7 +376,7 @@ internal fun TimelineScrubber(
                     text = handleLabel,
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                    modifier = Modifier.padding(horizontal = Spacing.md, vertical = 5.dp)
                 )
               }
             }
