@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.saveable.rememberSaveable
 
 /**
  * Drives the immersive bottom-nav hide/show for a scrollable screen, mirroring
@@ -37,9 +38,20 @@ internal fun ImmersiveChromeEffect(
     firstVisibleItemIndex: () -> Int,
     firstVisibleItemScrollOffset: () -> Int,
     isScrollInProgress: () -> Boolean,
-    onChromeVisibleChange: (Boolean) -> Unit
+    onChromeVisibleChange: (Boolean) -> Unit,
+    /**
+     * Conserva mostrado/oculto al salir y volver (una página del pager como
+     * el timeline); con `remember` plano volvía a `true` y el cromo parpadeaba.
+     */
+    saveable: Boolean = false,
+    /**
+     * Al salir de composición deja el cromo visible. Falso para el timeline,
+     * que vive en el pager y cede el control al destino sin resetear nada.
+     */
+    restoreOnDispose: Boolean = true,
 ): Boolean {
-    var chromeVisible by remember { mutableStateOf(true) }
+    val visibleState = if (saveable) rememberSaveable { mutableStateOf(true) } else remember { mutableStateOf(true) }
+    var chromeVisible by visibleState
     // Small dead-zone so micro-scrolls and fling jitter don't flip the chrome.
     val thresholdPx = with(LocalDensity.current) { 10.dp.toPx() }
     val atTop by remember {
@@ -78,6 +90,6 @@ internal fun ImmersiveChromeEffect(
     // Parked at the very top always shows the bar.
     LaunchedEffect(atTop) { if (atTop) chromeVisible = true }
     LaunchedEffect(chromeVisible) { onChromeVisibleChange(chromeVisible) }
-    DisposableEffect(Unit) { onDispose { onChromeVisibleChange(true) } }
+    DisposableEffect(Unit) { onDispose { if (restoreOnDispose) onChromeVisibleChange(true) } }
     return chromeVisible
 }

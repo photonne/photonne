@@ -135,6 +135,7 @@ import com.photonne.app.resources.backup_timeline_pending_row
 import com.photonne.app.resources.timeline_scope_notice
 import com.photonne.app.resources.timeline_scope_notice_change
 import com.photonne.app.resources.timeline_scope_notice_dismiss
+import com.photonne.app.ui.main.ImmersiveChromeEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -225,45 +226,17 @@ fun TimelineScreen(
                 gridState.firstVisibleItemScrollOffset == 0
         }
     }
-    // rememberSaveable so the pager keeps the chrome's shown/hidden state when
-    // this page scrolls off and back — otherwise it reset to `true` on return,
-    // re-firing the fade + the onChromeVisibleChange hop (the "jump/flash").
-    var chromeVisible by rememberSaveable { mutableStateOf(true) }
-    // Small dead-zone so micro-scrolls and fling jitter don't flip the chrome.
-    val chromeThresholdPx = with(LocalDensity.current) { 10.dp.toPx() }
-    LaunchedEffect(gridState, chromeThresholdPx) {
-        var prevIndex = gridState.firstVisibleItemIndex
-        var prevOffset = gridState.firstVisibleItemScrollOffset
-        snapshotFlow {
-            gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset
-        }.collect { (index, offset) ->
-            // Rows have variable heights, so we can't turn index into pixels.
-            // Within one row compare the offset; when the first visible index
-            // changes we crossed a boundary — take the index sign as direction.
-            val delta = if (index != prevIndex) {
-                (index - prevIndex).toFloat() * (chromeThresholdPx + 1f)
-            } else {
-                (offset - prevOffset).toFloat()
-            }
-            if (delta > chromeThresholdPx) chromeVisible = false
-            else if (delta < -chromeThresholdPx) chromeVisible = true
-            prevIndex = index
-            prevOffset = offset
-        }
-    }
-    // Bring the chrome back a beat after scrolling stops (and on first load).
-    LaunchedEffect(gridState) {
-        snapshotFlow { gridState.isScrollInProgress }.collectLatest { scrolling ->
-            if (!scrolling) {
-                delay(160)
-                chromeVisible = true
-            }
-        }
-    }
-    // Parked at the very top always shows the (docked) bar.
-    LaunchedEffect(atTop) { if (atTop) chromeVisible = true }
-    // Report visibility up so the host can slide the bottom navigation in step.
-    LaunchedEffect(chromeVisible) { onChromeVisibleChange(chromeVisible) }
+    // Misma lógica que el resto de pantallas con scroll (punto 46: antes
+    // estaba duplicada aquí); saveable para que el pager conserve el estado
+    // al salir y volver, y sin restaurar al salir porque la página no muere.
+    val chromeVisible = ImmersiveChromeEffect(
+        firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+        firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
+        isScrollInProgress = { gridState.isScrollInProgress },
+        onChromeVisibleChange = onChromeVisibleChange,
+        saveable = true,
+        restoreOnDispose = false,
+    )
     val chromeAlpha by animateFloatAsState(
         targetValue = if (chromeVisible) 1f else 0f,
         animationSpec = tween(durationMillis = com.photonne.app.ui.theme.MotionDurations.CHROME_MS),
