@@ -110,7 +110,7 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
 
 ## Lote E — Visor de assets
 
-- [x] (`1fbb212`) **23. Sin carga progresiva ni zoom nítido** (M). *Parcial: placeholder + error con reintento hechos; la cadena Small→Large→original por zoom (quitar el botón HD) sigue pendiente.* *Pide opciones antes de tocar.*
+- [x] (`1fbb212`, `9fbc285`) **23. Sin carga progresiva ni zoom nítido** (M). *Cerrado: placeholder + error con reintento (`1fbb212`); original automático al superar 2x de zoom sobre una foto del servidor, conservando el botón HD/ORIG para pedirlo antes o saber qué versión hay en pantalla (`9fbc285`, decisión de Marc 2026-09-20).*
   - `ui/asset/ZoomablePagerImage.kt:110-122`: `AsyncImage` sin `placeholderMemoryCacheKey`, sin spinner, sin `onError`. El esquema de claves de `image/AssetThumbnailImage.kt:88-95` ya permite reutilizar la `Small`.
   - Zoom a 5x sobre `Large` (`AssetDetailScreen.kt:1163-1167`); el original solo con el botón "HD/ORIG" (`:733-741`), sin `contentDescription` y con `Color(0xFFFFB300)`.
   - Arreglo: `placeholderMemoryCacheKey("$thumbUrl|Small")`, estado de error con reintento, y cadena Small→Large→original según el zoom (cambio automático por encima de ~2x) para quitar el botón.
@@ -168,26 +168,26 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
 
 ## Lote I — Consistencia transversal
 
-- [x] **43. Textos** (M + S). *Parcial (`6a148d2`): los fallos masivos repetidos en 10 ViewModels salen del objeto único `ErrorMessages` (data/error) y `selection_trash_*` ya estaban en `values-en`. El patrón (StringResource en `UiError` vs `getString` en el ViewModel) sigue sin decidir, y la migración de los ~160 literales queda a la espera de esa decisión.*
+- [x] **43. Textos** (M + S). *Cerrado por decisión (2026-09-20): los ~160 literales de los ViewModels se quedan en español, sin migrar a recursos. Hecho antes (`6a148d2`): los fallos masivos repetidos en 10 ViewModels salen del objeto único `ErrorMessages` (data/error) y `selection_trash_*` ya estaban en `values-en`.*
   - Unos 160 literales en español en 37 `*ViewModel.kt`. Peores: `folder/FolderDetailViewModel.kt` (11), `album/AlbumDetailViewModel.kt` (11), `people/AssetFacesViewModel.kt` (8), `asset/AssetDetailViewModel.kt` (8). "No se pudo archivar" y "No se pudo mover a la papelera" duplicados en seis ViewModels. `data/error/UiError.kt:95-98` también.
   - Pantallas: `login/LoginScreen.kt:95-258`, `AssetDetailScreen.kt:375,726-728,737,766,1102,1140,1394,1615-1700,1801,1845,1919,1932-1948,2630`, `folder/FolderPickerDialog.kt:156,161,187,210,219,249-263`, `folder/FolderTree.kt:196`, `main/MoreScreen.kt:334,340`, `ShareAssetsDialog.kt:175`, roles en `data/models/PermissionModels.kt:41`.
   - Faltan en `values-en`: `selection_trash_confirm_message`, `selection_trash_done`.
-  - **Decidir antes el patrón**: `StringResource` en `UiError` o `getString` en el ViewModel.
-- [x] **44. Convenciones poco adoptadas** (M). *Parcial (`3490317`): `ConfirmActionDialog` enseña progreso al enviar y absorbe las confirmaciones a mano de Mis enlaces (revocar espera al servidor), liberar espacio y salir del álbum; `PrimaryActionButton` en login, mover de reglas y subir ahora. Pendientes: esqueletos en las 14 pantallas con spinner, formularios en `AlertDialog`, cromo acoplado, y la decisión de Marc sobre el pie de las hojas.*
+  - ~~Decidir antes el patrón~~ → Marc decide dejarlo en español, sin traducir.
+- [x] **44. Convenciones poco adoptadas** (M). *Parcial (`3490317`, `9fbc285`): `ConfirmActionDialog` enseña progreso al enviar y absorbe las confirmaciones a mano de Mis enlaces (revocar espera al servidor), liberar espacio y salir del álbum; `PrimaryActionButton` en login, mover de reglas y subir ahora. Pie de las hojas decidido y aplicado (`9fbc285`): las 10 hojas con "Cancelar + acción" llevan un `PrimaryActionButton` a todo el ancho con spinner en el sitio de la etiqueta; cancelar es deslizar o atrás. Pendientes: esqueletos en las 14 pantallas con spinner, formularios en `AlertDialog`, cromo acoplado.*
   - `PrimaryActionButton` fuera de admin solo en `settings/AccountProfileScreen.kt:141` y `AccountSecurityScreen.kt:120`. Botones principales a mano: `upload/UploadScreen.kt:136`, `organize/OrganizeRuleScreen.kt:289`, `devicebackup/EnrichmentStatusScreen.kt:199`, `BackupScreen.kt:692`, `login/LoginScreen.kt:148,241`, `asset/AssetAiSheet.kt:161`.
   - `ResultSnackbar` en 2 pantallas; `LocalSnackbarController` en 5 ficheros.
   - 14 pantallas con spinner a pantalla completa donde las hermanas usan esqueleto: `AlbumsListScreen.kt:169`, `FolderDetailScreen.kt:137`, `ExploreLabelGridScreen.kt:91`, `NotificationsScreen.kt:128`, `MyLinksScreen.kt:115`, `MemoriesScreen.kt:94`, `PersonSuggestionsScreen.kt:92`, `Utilities{Duplicates:125,LargeFiles:93,Locations:77}`, `UnsupportedFilesScreen.kt:71`, `BackupPendingScreen.kt:164`, `EnrichmentStatusScreen.kt:94`, `AccountStorageScreen.kt:79`.
   - Confirmaciones a mano en vez de `ConfirmActionDialog`: `ShareDialogs.kt:394`, `MyLinksScreen.kt:187`, `UtilitiesDuplicatesScreen.kt:237`, `BackupScreen.kt:379`. `ConfirmActionDialog` no muestra progreso al enviar.
   - Formularios en `AlertDialog`: "Añadir etiqueta" (`AssetDetailScreen.kt:1930`), asignar cara (`people/AssetFacesSheet.kt:302`).
   - Cromo: `SmartAlbumEditorScreen.kt:63`, `devicebackup/DeviceAssetPreviewScreen.kt:156`, `UploadTopBar`.
-  - **Decisión de Marc**: ¿las hojas llevan `PrimaryActionButton` a todo el ancho o mantienen su pie de Cancelar + botón?
+  - ~~Decisión de Marc~~ → botón principal a todo el ancho (`9fbc285`): crear/editar álbum, crear/renombrar carpeta, renombrar persona, selector de carpeta destino, crear y editar enlace, descripción y fecha del elemento, los dos selectores de condiciones de reglas, restablecer contraseña. Las hojas con solo "Cerrar" o acciones secundarias no cambian.
 - [x] **45. Código muerto** (S, `6a148d2`). Fuera las 11 `*TopBar` y 4 `*SelectionTopBar` sin llamadores más la `FloatingSelectionBar` huérfana: 687 líneas. 11 `*TopBar` sin llamadores en `main/MainScaffold.kt`: Hub `:836`, FolderDetail `:1491`, Search `:1736`, More `:1749`, Settings `:1772`, Notifications `:1805`, Archived `:1869`, Trash `:1922`, Favorites `:1980`, PersonDetail `:2017`, PersonSuggestions `:2086`.
-- [x] **46. Tokens del tema** (M-L). *Parcial (`3490317`): `MonthHeaderHeight` es la única fuente de los 56 dp (rejilla, scrubber y salto a fecha). Pendientes: adopción masiva de `Spacing.`/`IconSize.`, decisión del radio de 8 dp, y deduplicar la lógica de ocultar cromo con `ImmersiveChrome`.*
+- [x] **46. Tokens del tema** (M-L). *Parcial (`3490317`, `9fbc285`): `MonthHeaderHeight` es la única fuente de los 56 dp (rejilla, scrubber y salto a fecha); los 21 `RoundedCornerShape(8.dp)` pasan a `MaterialTheme.shapes.small` (10 dp) por decisión de Marc. Pendientes: adopción masiva de `Spacing.`/`IconSize.` y deduplicar la lógica de ocultar cromo con `ImmersiveChrome`.*
   - `Spacing.` 15 usos frente a 1091 líneas con dp a mano; `IconSize.` 3 usos frente a 165 `.size(N.dp)`; 69 `RoundedCornerShape` (17 de 8 dp, que no existe en el tema); 21 scrims `Color.Black.copy(alpha)` frente a 5 usos del token.
   - Fuera de escala: padding 6 dp (21), 14 (7), 10 (3), 20 (1); iconos 18 (19), 14 (9), 28 (6).
   - Peores ficheros: `AssetDetailScreen.kt` (85), `AlbumsListScreen.kt` (46), `BackupScreen.kt` (45), `FoldersListScreen.kt` (44), `BackupPendingScreen.kt` (43), `album/smart/RuleConditionsEditor.kt` (40).
   - Timeline: los 56 dp de la cabecera de mes están en tres sitios que deben coincidir (`GroupedAssetGrid.kt:600`, `TimelineScrubber.kt:61`, `TimelineScreen.kt:592`); la lógica de ocultar al bajar está duplicada (`TimelineScreen.kt:204-248`) aunque existe `main/ImmersiveChrome.kt`.
-  - Decidir si 8 dp pasa a ser token de forma o se funde en small (10).
+  - ~~Decidir si 8 dp pasa a ser token de forma o se funde en small (10)~~ → fundidos en `small` (`9fbc285`).
 - [x] **47. Accesibilidad** (S-M). *Parcial (`6a148d2`): atrás ya no se anuncia como "Cerrar" (action_back, 5 sitios); descripciones en Subida, menú de búsqueda, borrar búsqueda e insignias de sincronización; Role.Button y lectura única en la barra de selección; objetivos ampliados (aspa de etiqueta, chip de mapas, hoja de IA, árbol de carpetas, círculo de escritorio). Pendientes: tira del visor (34 dp es diseño deliberado del scrubbing), semántica del scrubber, roles/headings globales y gráficas Canvas.*
   - Flechas de atrás anunciadas como "Cerrar": `SubscreenChrome.kt:234`, `MainScaffold.kt:1496`, `AlbumDetailScreen.kt:447`.
   - `IconButton` sin descripción: `UploadScreen.kt:210,341,348,351`, `SearchScreen.kt:236`, `main/SearchFieldPill.kt:86`.
@@ -207,17 +207,14 @@ parcial. Esto agrupa lo que falta por **tipo de bloqueo**, que es lo que decide
 cuándo se puede retomar cada cosa. El detalle de cada uno sigue anotado en su
 punto.
 
-### Espera una decisión (no se puede avanzar sin ella)
+### Decisiones tomadas (2026-09-20, rama `claude/roadmap-ux-pendientes`)
 
-- **43 — patrón de i18n.** Quedan ~160 literales en español dentro de los
-  ViewModels. Hay que elegir antes: `StringResource` dentro de `UiError`, o
-  `getString` en cada ViewModel. La decisión condiciona todo el resto.
-- **44 — pie de las hojas.** ¿Botón principal a todo el ancho, o el pie actual
-  de "Cancelar + acción"? Hoy conviven los dos estilos.
-- **46 — radio de 8 dp.** 17 sitios usan un radio que no existe en el tema: o se
-  añade como token de forma, o se funden en `small` (10 dp).
-- **23 — cadena de calidad del visor.** Encadenar Small→Large→original según el
-  zoom deja sin sentido el botón HD/ORIG. Cambia comportamiento visible.
+Las cuatro preguntas que bloqueaban trabajo ya tienen respuesta de Marc:
+
+- **43 — patrón de i18n.** Se queda en español, sin traducir los ~160 literales de los ViewModels. Cerrado sin migración.
+- **44 — pie de las hojas.** Botón principal a todo el ancho (`PrimaryActionButton`); cancelar es deslizar la hoja o el gesto atrás. Aplicado en las 10 hojas (`9fbc285`).
+- **46 — radio de 8 dp.** Fundido en `MaterialTheme.shapes.small` (10 dp). Aplicado (`9fbc285`).
+- **23 — cadena de calidad del visor.** Original automático al superar 2x de zoom, conservando el botón HD/ORIG. Aplicado (`9fbc285`).
 
 ### Necesita trabajo de plataforma (androidMain/iosMain, no común)
 
