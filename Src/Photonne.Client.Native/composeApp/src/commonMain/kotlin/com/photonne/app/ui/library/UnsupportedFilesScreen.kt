@@ -98,6 +98,7 @@ fun UnsupportedFilesScreen(
                             }
                         }
                         UnsupportedFileRow(
+                            modifier = Modifier.animateItem(),
                             file = file,
                             downloadEnabled = !state.isDownloading,
                             onDownload = { onDownload(file) }
@@ -141,10 +142,11 @@ fun UnsupportedFilesScreen(
 private fun UnsupportedFileRow(
     file: UnsupportedFileItem,
     downloadEnabled: Boolean,
-    onDownload: () -> Unit
+    onDownload: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     androidx.compose.foundation.layout.Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {

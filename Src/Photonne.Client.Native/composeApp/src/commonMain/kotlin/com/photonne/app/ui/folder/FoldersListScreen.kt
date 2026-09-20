@@ -414,6 +414,7 @@ private fun FolderListContent(
                 }
                 items(folders, key = { it.id }) { folder ->
                     FolderRow(
+                        modifier = Modifier.animateItem(),
                         folder = folder,
                         isSelected = state.selectedFolderId == folder.id,
                         onClick = { onFolderClick(folder) },
@@ -446,6 +447,7 @@ private fun FolderListContent(
                 }
                 items(folders, key = { it.id }) { folder ->
                     FolderCard(
+                        modifier = Modifier.animateItem(),
                         folder = folder,
                         isSelected = state.selectedFolderId == folder.id,
                         onClick = { onFolderClick(folder) },
@@ -463,10 +465,11 @@ private fun FolderRow(
     folder: FolderSummary,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onLongPress: () -> Unit
+    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -538,10 +541,11 @@ private fun FolderCard(
     folder: FolderSummary,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onLongPress: () -> Unit
+    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress),
         verticalArrangement = Arrangement.spacedBy(6.dp)

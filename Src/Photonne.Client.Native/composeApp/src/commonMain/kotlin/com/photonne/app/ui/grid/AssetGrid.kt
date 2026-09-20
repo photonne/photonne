@@ -193,6 +193,9 @@ fun AssetGrid(
             contentType = { _, _ -> AssetCellContentType }
         ) { index, asset ->
             AssetGridCell(
+                // Punto 51: archivar, borrar o reordenar mueve las celdas en
+                // vez de hacerlas saltar de sitio.
+                modifier = Modifier.animateItem(),
                 asset = asset,
                 baseUrl = baseUrl,
                 onClick = {

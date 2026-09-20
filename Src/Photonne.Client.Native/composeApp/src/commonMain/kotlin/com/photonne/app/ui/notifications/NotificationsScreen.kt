@@ -183,6 +183,7 @@ fun NotificationsScreen(
                         val actionable = notification.actionUrl != null ||
                             !notification.isRead
                         NotificationRow(
+                            modifier = Modifier.animateItem(),
                             notification = notification,
                             onClick = if (actionable) {
                                 {
@@ -313,7 +314,8 @@ private fun NotificationsFilterMenu(
 @Composable
 private fun NotificationRow(
     notification: NotificationDto,
-    onClick: (() -> Unit)?
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier
 ) {
     val (icon, tint) = iconFor(notification.type)
     val rowBackground = if (notification.isRead) {
@@ -322,7 +324,7 @@ private fun NotificationRow(
         MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
     }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(rowBackground)
             .then(

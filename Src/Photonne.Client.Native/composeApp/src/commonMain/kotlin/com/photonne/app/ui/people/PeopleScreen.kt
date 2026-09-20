@@ -147,6 +147,7 @@ fun PeopleScreen(
                     ) {
                         items(state.people, key = { it.id }) { person ->
                             PersonCard(
+                                modifier = Modifier.animateItem(),
                                 person = person,
                                 baseUrl = apiBaseUrl,
                                 onClick = { onPersonClick(person) }
@@ -223,12 +224,13 @@ private const val SCROLL_TO_TOP_SNAP_CELL = 48
 private fun PersonCard(
     person: Person,
     baseUrl: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val displayName = person.name?.takeIf { it.isNotBlank() }
         ?: stringResource(Res.string.people_unnamed)
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 2.dp),
