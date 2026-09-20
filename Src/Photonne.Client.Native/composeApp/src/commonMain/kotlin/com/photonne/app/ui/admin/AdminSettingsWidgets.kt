@@ -348,6 +348,8 @@ fun SettingTextField(
                 onValueChange = onChange,
                 singleLine = true,
                 enabled = enabled,
+                // Rutas, URL y claves: el autocorrector solo estorba.
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                 placeholder = placeholder?.let { { Text(it) } },
                 modifier = Modifier.fillMaxWidth()
             )

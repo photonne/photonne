@@ -45,6 +45,8 @@ import com.photonne.app.resources.people_picker_title
 import com.photonne.app.resources.people_unnamed
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 /**
  * Bottom sheet that lists every other person the caller has and returns
@@ -95,6 +97,7 @@ fun PersonPickerDialog(
                 placeholder = { Text(stringResource(Res.string.people_picker_search_placeholder)) },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 modifier = Modifier.fillMaxWidth()
             )
             if (candidates.isEmpty() && !isLoading) {

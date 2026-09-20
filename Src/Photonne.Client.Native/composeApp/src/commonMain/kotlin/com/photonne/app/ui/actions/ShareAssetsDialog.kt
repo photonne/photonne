@@ -47,6 +47,9 @@ import com.photonne.app.resources.share_link_field_label
 import com.photonne.app.resources.share_link_title
 import com.photonne.app.ui.main.LocalSnackbarController
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /**
  * Two-option chooser shown when the user taps "Share" on the selection
@@ -89,6 +92,10 @@ fun ShareAssetsDialog(
                     onValueChange = { albumName = it },
                     label = { Text(stringResource(Res.string.share_link_album_name_label)) },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
             }

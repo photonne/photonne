@@ -32,6 +32,8 @@ import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.resources.admin_libraries_not_found
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /**
  * Full-page editor used to create or edit an external library, replacing
@@ -81,6 +83,7 @@ fun AdminLibraryEditorScreen(
             label = { Text(stringResource(Res.string.admin_libraries_field_name)) },
             singleLine = true,
             enabled = !isSubmitting,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
@@ -104,6 +107,7 @@ fun AdminLibraryEditorScreen(
             label = { Text(stringResource(Res.string.admin_libraries_field_cron)) },
             singleLine = true,
             enabled = !isSubmitting,
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
             supportingText = {
                 Text(stringResource(Res.string.admin_libraries_cron_hint))
             },

@@ -37,6 +37,8 @@ import com.photonne.app.resources.admin_user_promote_success
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.admin_user_not_found
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 internal const val ADMIN_USER_MIN_PASSWORD_LENGTH = 8
 
@@ -113,6 +115,7 @@ fun AdminUserEditorScreen(
             label = { Text(stringResource(Res.string.account_profile_username)) },
             singleLine = true,
             enabled = !isSubmitting,
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
@@ -130,6 +133,7 @@ fun AdminUserEditorScreen(
             label = { Text(stringResource(Res.string.account_profile_first_name)) },
             singleLine = true,
             enabled = !isSubmitting,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
@@ -138,6 +142,7 @@ fun AdminUserEditorScreen(
             label = { Text(stringResource(Res.string.account_profile_last_name)) },
             singleLine = true,
             enabled = !isSubmitting,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth()
         )
         if (!isEdit) {

@@ -91,6 +91,7 @@ fun AlbumFormDialog(
                 onValueChange = { description = it },
                 label = { Text(stringResource(Res.string.album_field_description)) },
                 enabled = !isSubmitting,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 minLines = 2,
                 maxLines = 4,
                 modifier = Modifier.fillMaxWidth()
