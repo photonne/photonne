@@ -369,6 +369,7 @@ private fun AlbumsContent(
                     }
                     items(items, key = { it.id }) { album ->
                         AlbumCard(
+                            modifier = Modifier.animateItem(),
                             album = album,
                             baseUrl = apiBaseUrl,
                             isSelected = state.selectedAlbumId == album.id,
@@ -380,6 +381,7 @@ private fun AlbumsContent(
             } else {
                 items(albums, key = { it.id }) { album ->
                     AlbumCard(
+                        modifier = Modifier.animateItem(),
                         album = album,
                         baseUrl = apiBaseUrl,
                         isSelected = state.selectedAlbumId == album.id,
@@ -407,6 +409,7 @@ private fun AlbumsContent(
                     item(key = "year-$year") { YearHeader(year, modifier = Modifier.padding(horizontal = 16.dp)) }
                     items(items, key = { it.id }) { album ->
                         AlbumRow(
+                            modifier = Modifier.animateItem(),
                             album = album,
                             baseUrl = apiBaseUrl,
                             isSelected = state.selectedAlbumId == album.id,
@@ -418,6 +421,7 @@ private fun AlbumsContent(
             } else {
                 items(albums, key = { it.id }) { album ->
                     AlbumRow(
+                        modifier = Modifier.animateItem(),
                         album = album,
                         baseUrl = apiBaseUrl,
                         isSelected = state.selectedAlbumId == album.id,
@@ -569,10 +573,11 @@ private fun AlbumCard(
     baseUrl: String,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onLongPress: () -> Unit
+    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress),
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -677,10 +682,11 @@ private fun AlbumRow(
     baseUrl: String,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onLongPress: () -> Unit
+    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(horizontal = 16.dp, vertical = 8.dp),

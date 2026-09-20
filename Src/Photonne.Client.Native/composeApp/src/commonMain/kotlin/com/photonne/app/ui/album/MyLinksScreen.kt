@@ -154,6 +154,7 @@ fun MyLinksScreen(
                 ) {
                     items(state.links, key = { it.token }) { link ->
                         MyLinkRow(
+                            modifier = Modifier.animateItem(),
                             link = link,
                             baseUrl = apiBaseUrl,
                             // Fall back to building the URL from the token when the server
@@ -256,10 +257,11 @@ private fun MyLinkRow(
     onCopy: () -> Unit,
     onShare: () -> Unit,
     onEdit: () -> Unit,
-    onRevoke: () -> Unit
+    onRevoke: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(

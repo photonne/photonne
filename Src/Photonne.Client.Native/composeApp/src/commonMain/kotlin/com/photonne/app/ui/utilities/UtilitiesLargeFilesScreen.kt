@@ -122,6 +122,7 @@ fun UtilitiesLargeFilesScreen(
                         key = { _, item -> item.id }
                     ) { index, item ->
                         LargeFileRow(
+                            modifier = Modifier.animateItem(),
                             item = item,
                             baseUrl = baseUrl,
                             onClick = { onAssetClick(index, state.items) }
@@ -197,10 +198,11 @@ private fun CountFilterRow(
 private fun LargeFileRow(
     item: TimelineItem,
     baseUrl: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
