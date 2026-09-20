@@ -524,6 +524,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val authRepository: AuthRepository = koinInject()
     val albumsRepository: AlbumsRepository = koinInject()
     val peopleRepository: com.photonne.app.data.people.PeopleRepository = koinInject()
+    val foldersRepository: com.photonne.app.data.folder.FoldersRepository = koinInject()
     val errorFactory: com.photonne.app.data.error.UiErrorFactory = koinInject()
     val apiBaseUrl = com.photonne.app.data.api.rememberApiBaseUrl()
     val appVersionStore: com.photonne.app.data.version.AppVersionStore = koinInject()
@@ -782,6 +783,42 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var bulkAddToAlbumFromInbox by remember { mutableStateOf(false) }
     var selectedPerson by remember {
         mutableStateOf<com.photonne.app.data.models.Person?>(null)
+    }
+    // Punto 49: el álbum, la carpeta y la persona abiertos son objetos
+    // completos (no Saveable). Se guarda solo su id y, tras una recreación
+    // (rotación en tablet, muerte de proceso), se vuelven a pedir al
+    // servidor antes de que la pantalla los necesite. La pila de carpetas
+    // no se rehidrata: atrás desde la carpeta restaurada vuelve a la raíz.
+    var savedAlbumId by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+    var savedFolderId by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+    var savedPersonId by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+    var openIdsRehydrated by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        savedAlbumId?.takeIf { selectedAlbum == null }?.let { id ->
+            runCatching { albumsRepository.get(id) }.onSuccess { selectedAlbum = it }
+        }
+        savedFolderId?.takeIf { selectedFolder == null }?.let { id ->
+            runCatching { foldersRepository.get(id) }.onSuccess { selectedFolder = it }
+        }
+        savedPersonId?.takeIf { selectedPerson == null }?.let { id ->
+            runCatching { peopleRepository.get(id) }.onSuccess { selectedPerson = it }
+        }
+        openIdsRehydrated = true
+    }
+    // Solo después de rehidratar: si no, la primera composición (todo a null)
+    // pisaría los ids guardados antes de poder leerlos.
+    LaunchedEffect(openIdsRehydrated, selectedAlbum?.id, selectedFolder?.id, selectedPerson?.id) {
+        if (openIdsRehydrated) {
+            savedAlbumId = selectedAlbum?.id
+            savedFolderId = selectedFolder?.id
+            savedPersonId = selectedPerson?.id
+        }
     }
     var showRenamePerson by remember { mutableStateOf(false) }
     var showMergePicker by remember { mutableStateOf(false) }

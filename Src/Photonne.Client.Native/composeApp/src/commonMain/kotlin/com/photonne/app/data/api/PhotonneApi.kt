@@ -22,6 +22,7 @@ import com.photonne.app.data.models.AssignFaceResponse
 import com.photonne.app.data.models.BulkSuggestionResult
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PeoplePage
+import com.photonne.app.data.models.Person
 import com.photonne.app.data.models.PublicVersionResponse
 import com.photonne.app.data.models.PersonAssetsPage
 import com.photonne.app.data.models.PersonFacesPage
@@ -645,6 +646,7 @@ interface PhotonneApi {
         offset: Int? = null
     ): PeoplePage
     suspend fun renamePerson(personId: String, name: String?)
+    suspend fun getPerson(personId: String): Person
     suspend fun hidePerson(personId: String)
     suspend fun unhidePerson(personId: String)
     suspend fun getPersonAssets(
@@ -2295,6 +2297,17 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "People fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getPerson(personId: String): Person {
+        val response: HttpResponse = client.get("$baseUrl/api/people/$personId")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Person fetch failed (${response.status.value})"
             )
         }
         return response.body()
