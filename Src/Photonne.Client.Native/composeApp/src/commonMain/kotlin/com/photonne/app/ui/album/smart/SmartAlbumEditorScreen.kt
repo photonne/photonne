@@ -49,6 +49,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import com.photonne.app.ui.theme.contentWidth
 
 /**
  * "Nuevo álbum inteligente" — the dedicated rule editor
@@ -88,6 +89,7 @@ fun SmartAlbumEditorScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .hazeSource(hazeState)
+                .contentWidth()
                 .padding(
                     start = 16.dp,
                     end = 16.dp,

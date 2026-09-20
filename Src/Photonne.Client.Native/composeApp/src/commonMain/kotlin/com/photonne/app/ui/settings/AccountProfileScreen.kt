@@ -61,6 +61,7 @@ import com.photonne.app.resources.admin_user_role_admin
 import com.photonne.app.resources.admin_user_role_user
 import kotlin.time.Instant
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.contentWidth
 
 @Composable
 fun AccountProfileScreen(
@@ -86,6 +87,7 @@ fun AccountProfileScreen(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .hazeSource(hazeState)
+            .contentWidth()
             .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
