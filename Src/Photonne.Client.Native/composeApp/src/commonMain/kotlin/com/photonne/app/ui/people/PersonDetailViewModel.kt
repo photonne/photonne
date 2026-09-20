@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 
 data class PersonDetailUiState(
     val personId: String? = null,
@@ -43,10 +45,27 @@ class PersonDetailViewModel(
     private val assetRepository: AssetDetailRepository,
     private val albumsRepository: AlbumsRepository,
     private val errorFactory: UiErrorFactory,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PersonDetailUiState())
     val state: StateFlow<PersonDetailUiState> = _state.asStateFlow()
+
+    init {
+        // Punto 52: las mutaciones confirmadas por el servidor (archivar,
+        // papelera, restaurar, purgar, favorito) llegan por el bus; App.kt ya
+        // no parchea esta lista a mano.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is AssetMutation.Removed -> event.assetIds.forEach(::applyAssetRemovedLocal)
+                    is AssetMutation.Purged -> event.assetIds.forEach(::applyAssetRemovedLocal)
+                    is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
+                    is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
+                }
+            }
+        }
+    }
 
     fun open(personId: String, personName: String?) {
         if (_state.value.personId == personId && _state.value.items.isNotEmpty()) {

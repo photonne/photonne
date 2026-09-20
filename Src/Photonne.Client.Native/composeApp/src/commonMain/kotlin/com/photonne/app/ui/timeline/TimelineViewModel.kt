@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 
 data class TimelineUiState(
     /** Skeleton + loaded contents, newest first — see TimelineBucketStore. */
@@ -48,6 +50,7 @@ class TimelineViewModel(
     private val albumsRepository: AlbumsRepository,
     private val foldersRepository: FoldersRepository,
     private val errorFactory: UiErrorFactory,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TimelineUiState())
@@ -64,6 +67,20 @@ class TimelineViewModel(
         viewModelScope.launch {
             store.yearSummaries.collect { summaries ->
                 _state.update { it.copy(yearSummaries = summaries) }
+            }
+        }
+        // Punto 52: las mutaciones confirmadas por el servidor (archivar,
+        // papelera, restaurar, purgar, favorito) llegan por el bus; App.kt ya
+        // no parchea esta lista a mano.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is AssetMutation.Removed -> removeItemsLocal(event.assetIds)
+                    is AssetMutation.Purged -> removeItemsLocal(event.assetIds)
+                    is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
+                    is AssetMutation.FavoriteChanged ->
+                        store.updateItem(event.assetId) { it.copy(isFavorite = event.isFavorite) }
+                }
             }
         }
         refresh()
@@ -141,6 +158,12 @@ class TimelineViewModel(
     fun removeItemLocal(assetId: String) {
         _state.update { it.copy(selection = it.selection - assetId) }
         viewModelScope.launch { store.removeItem(assetId) }
+    }
+
+    private suspend fun removeItemsLocal(assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        _state.update { it.copy(selection = it.selection - assetIds.toSet()) }
+        store.removeItems(assetIds)
     }
 
     fun setFavorite(assetId: String, isFavorite: Boolean) {

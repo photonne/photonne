@@ -1395,7 +1395,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onTrash = timelineViewModel::bulkTrash,
                     selectedIds = { timelineState.selection.toList() },
                     onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { timelineViewModel.refresh() }
+                        actionsViewModel.undoBulk(kind, ids)
                     },
                 )
             }
@@ -1426,7 +1426,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onTrash = albumDetailViewModel::bulkTrash,
                     selectedIds = { albumDetailState.selection.toList() },
                     onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { albumDetailViewModel.refresh(); timelineViewModel.refresh() }
+                        actionsViewModel.undoBulk(kind, ids)
                     },
                     // En un álbum inteligente el contenido lo deciden las
                     // reglas: ni quitar fotos ni fijar portada aplican.
@@ -1526,7 +1526,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onTrash = folderDetailViewModel::bulkTrash,
                     selectedIds = { folderDetailState.selection.toList() },
                     onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { folderDetailViewModel.refresh(); timelineViewModel.refresh() }
+                        actionsViewModel.undoBulk(kind, ids)
                     },
                     onMove = if (selectedFolder?.isOwner == true) {
                         { showMoveSelectedAssets = true }
@@ -1551,7 +1551,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onTrash = searchViewModel::bulkTrash,
                     selectedIds = { searchState.selection.toList() },
                     onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { searchViewModel.refresh(); timelineViewModel.refresh() }
+                        actionsViewModel.undoBulk(kind, ids)
                     },
                 )
             }
@@ -1574,10 +1574,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onTrash = personDetailViewModel::bulkTrash,
                     selectedIds = { personDetailState.selection.toList() },
                     onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { personDetailState.personId?.let {
-                                personDetailViewModel.open(it, personDetailState.personName)
-                            }
-                            timelineViewModel.refresh() }
+                        actionsViewModel.undoBulk(kind, ids)
                     },
                     onUnlink = {
                         personDetailViewModel.bulkUnlinkFromPerson { detached ->
@@ -1618,7 +1615,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onTrash = organizeInboxViewModel::bulkTrash,
                     selectedIds = { organizeInboxState.selection.toList() },
                     onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { organizeInboxViewModel.refresh(); timelineViewModel.refresh() }
+                        actionsViewModel.undoBulk(kind, ids) { organizeInboxViewModel.refresh() }
                     },
                     onMove = {
                         showMoveSelectedAssetsInbox = true
@@ -1658,7 +1655,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onTrash = favoritesViewModel::bulkTrash,
                     selectedIds = { favoritesState.selection.toList() },
                     onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { favoritesViewModel.refresh(); timelineViewModel.refresh() }
+                        actionsViewModel.undoBulk(kind, ids)
                     },
                 )
             }
@@ -1682,7 +1679,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onTrash = archivedViewModel::bulkTrash,
                     selectedIds = { archivedState.selection.toList() },
                     onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { archivedViewModel.refresh(); timelineViewModel.refresh() }
+                        actionsViewModel.undoBulk(kind, ids)
                     },
                 )
             }
@@ -3518,15 +3515,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onFavoriteChanged = displayCtx.onFavoriteChanged,
                         onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) },
                         onAssetTrashed = { id ->
-                            timelineViewModel.removeItemLocal(id)
-                            if (displayCtx.source == AssetDetailContext.Source.Album) {
-                                albumDetailViewModel.applyAssetRemovedLocal(id)
-                            }
-                            searchViewModel.removeItem(id)
-                            archivedViewModel.applyAssetRemovedLocal(id)
-                            personDetailViewModel.applyAssetRemovedLocal(id)
-                            folderDetailViewModel.applyAssetRemovedLocal(id)
-                            favoritesViewModel.applyAssetRemovedLocal(id)
+                            // Las listas se enteran por AssetMutationBus (punto 52):
+                            // aquí solo queda cerrar el visor y ofrecer Deshacer.
                             // Cierre TOTAL (sin volver a un contexto apilado que
                             // podría contener la foto recién borrada).
                             assetDetailStack = emptyList()
@@ -3545,20 +3535,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     actionsViewModel.undoBulk(
                                         com.photonne.app.ui.actions.BulkUndoKind.Trash,
                                         listOf(id)
-                                    ) { timelineViewModel.refresh() }
+                                    )
                                 }
                             }
                         },
                         onAssetArchived = { id ->
-                            timelineViewModel.removeItemLocal(id)
-                            if (displayCtx.source == AssetDetailContext.Source.Album) {
-                                albumDetailViewModel.applyAssetRemovedLocal(id)
-                            }
-                            searchViewModel.removeItem(id)
-                            trashViewModel.applyAssetRemovedLocal(id)
-                            personDetailViewModel.applyAssetRemovedLocal(id)
-                            folderDetailViewModel.applyAssetRemovedLocal(id)
-                            favoritesViewModel.applyAssetRemovedLocal(id)
                             assetDetailStack = emptyList()
                             assetDetail = null
                             coroutineScope.launch {
@@ -3573,7 +3554,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     actionsViewModel.undoBulk(
                                         com.photonne.app.ui.actions.BulkUndoKind.Archive,
                                         listOf(id)
-                                    ) { timelineViewModel.refresh() }
+                                    )
                                 }
                             }
                         },
