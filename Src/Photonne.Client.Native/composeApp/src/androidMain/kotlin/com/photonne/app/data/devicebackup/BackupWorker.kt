@@ -24,6 +24,7 @@ import com.photonne.app.resources.backup_notification_progress_text
 import com.photonne.app.resources.backup_notification_progress_title
 import com.photonne.app.resources.backup_notification_verifying_title
 import com.photonne.app.resources.backup_status_stop
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
@@ -113,13 +114,20 @@ class BackupWorker(
 
         val runner: BackupRunner = koin.get()
         val progress: BackupProgressBus = koin.get()
-        // Consumed exactly once: a re-run must not resurrect an old selection.
+        // Read now, consumed only once this run ends for good (success, or
+        // the user stopping it): a crash that asks WorkManager to retry must
+        // find the selection again instead of silently skipping the run. A
+        // later run never resurrects it — the slot is emptied at the end.
+        val ledger: BackupLedger = koin.get()
         val selection = selectionKey?.let { key ->
-            val ledger: BackupLedger = koin.get()
-            ledger.takeMeta(key)?.lineSequence()?.filter { it.isNotBlank() }?.toSet()
+            ledger.meta(key)?.lineSequence()?.filter { it.isNotBlank() }?.toSet()
+        }
+        fun consumeSelection() {
+            selectionKey?.let { runCatching { ledger.takeMeta(it) } }
         }
         if (selectionKey != null && selection.isNullOrEmpty()) {
             Log.i(TAG, "Selection payload missing or empty; skipping run")
+            consumeSelection()
             return Result.success()
         }
         return try {
@@ -182,8 +190,16 @@ class BackupWorker(
                             androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE
                         )
                 }
+                consumeSelection()
                 Result.success()
             }
+        } catch (ex: CancellationException) {
+            // The user tapped "Detener" or the OS stopped the worker: not a
+            // crash, and WorkManager already knows. Rethrow so it isn't
+            // logged as one and doesn't ask for a retry.
+            Log.i(TAG, "Backup stopped")
+            consumeSelection()
+            throw ex
         } catch (ex: Throwable) {
             Log.e(TAG, "Background backup crashed", ex)
             // retry() lets WorkManager re-run with its own backoff (10s base).

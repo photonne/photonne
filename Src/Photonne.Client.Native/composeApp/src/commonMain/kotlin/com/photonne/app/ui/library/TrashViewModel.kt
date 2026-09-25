@@ -16,7 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import com.photonne.app.util.suspendRunCatching
 import kotlin.time.Instant
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
@@ -45,6 +47,9 @@ class TrashViewModel(
 
     private val _state = MutableStateFlow(TrashUiState())
     val state: StateFlow<TrashUiState> = _state.asStateFlow()
+
+    /** The single refresh / append in flight; a new first-page load cancels it. */
+    private var pagingJob: Job? = null
 
     init {
         // Punto 52: las mutaciones confirmadas por el servidor (archivar,
@@ -76,8 +81,12 @@ class TrashViewModel(
      */
     private fun refreshQuietly() {
         if (!_state.value.loaded) return
-        viewModelScope.launch {
-            runCatching { repository.listTrashed(cursor = null) }
+        // A full refresh in flight already brings fresh data; an append in
+        // flight would land on top of the replaced first page, so drop it.
+        if (pagingJob?.isActive == true && !_state.value.isAppending) return
+        cancelAppend()
+        pagingJob = viewModelScope.launch {
+            suspendRunCatching { repository.listTrashed(cursor = null) }
                 .onSuccess { page ->
                     _state.update {
                         it.copy(
@@ -91,6 +100,13 @@ class TrashViewModel(
         }
     }
 
+    private fun cancelAppend() {
+        if (_state.value.isAppending) {
+            pagingJob?.cancel()
+            _state.update { it.copy(isAppending = false) }
+        }
+    }
+
     fun ensureLoaded() {
         val snapshot = _state.value
         if (snapshot.loaded || snapshot.isInitialLoading) return
@@ -100,13 +116,15 @@ class TrashViewModel(
     fun refresh() {
         _state.update {
             it.copy(
+                isAppending = false,
                 isRefreshing = it.loaded,
                 isInitialLoading = !it.loaded,
                 error = null
             )
         }
-        viewModelScope.launch {
-            runCatching { repository.listTrashed(cursor = null) }
+        pagingJob?.cancel()
+        pagingJob = viewModelScope.launch {
+            suspendRunCatching { repository.listTrashed(cursor = null) }
                 .onSuccess { page ->
                     _state.update {
                         it.copy(
@@ -135,10 +153,11 @@ class TrashViewModel(
     fun loadMore() {
         val snapshot = _state.value
         if (snapshot.isAppending || snapshot.isInitialLoading || !snapshot.hasMore) return
+        if (pagingJob?.isActive == true) return
         val cursor = snapshot.nextCursor ?: return
         _state.update { it.copy(isAppending = true) }
-        viewModelScope.launch {
-            runCatching { repository.listTrashed(cursor = cursor) }
+        pagingJob = viewModelScope.launch {
+            suspendRunCatching { repository.listTrashed(cursor = cursor) }
                 .onSuccess { page ->
                     _state.update {
                         val existing = it.items.mapTo(HashSet()) { item -> item.id }

@@ -1,5 +1,6 @@
 package com.photonne.app.ui.people
 
+import com.photonne.app.ui.util.withRestored
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
@@ -19,7 +20,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import com.photonne.app.util.suspendRunCatching
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
 
@@ -51,6 +54,13 @@ class PersonDetailViewModel(
     private val _state = MutableStateFlow(PersonDetailUiState())
     val state: StateFlow<PersonDetailUiState> = _state.asStateFlow()
 
+    /**
+     * The page load in flight (first page or append). Opening another person
+     * or refreshing cancels it, and results are dropped unless they still
+     * belong to the open person.
+     */
+    private var loadJob: Job? = null
+
     init {
         // Punto 52: las mutaciones confirmadas por el servidor (archivar,
         // papelera, restaurar, purgar, favorito) llegan por el bus; App.kt ya
@@ -77,10 +87,12 @@ class PersonDetailViewModel(
             personName = personName,
             isInitialLoading = true
         )
-        viewModelScope.launch {
-            runCatching { peopleRepository.assets(personId, limit = PAGE_SIZE, offset = 0) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            suspendRunCatching { peopleRepository.assets(personId, limit = PAGE_SIZE, offset = 0) }
                 .onSuccess { page ->
                     _state.update {
+                        if (it.personId != personId) return@update it
                         val items = page.items.map { p -> p.toTimelineItem() }
                         it.copy(
                             items = items,
@@ -92,7 +104,8 @@ class PersonDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.personId != personId) it
+                        else it.copy(
                             isInitialLoading = false,
                             error = errorFactory.from(error, "No se pudieron cargar las fotos")
                         )
@@ -105,11 +118,13 @@ class PersonDetailViewModel(
     fun refresh() {
         val personId = _state.value.personId ?: return
         if (_state.value.isInitialLoading || _state.value.isRefreshing) return
-        _state.update { it.copy(isRefreshing = true, error = null) }
-        viewModelScope.launch {
-            runCatching { peopleRepository.assets(personId, limit = PAGE_SIZE, offset = 0) }
+        _state.update { it.copy(isRefreshing = true, isAppending = false, error = null) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            suspendRunCatching { peopleRepository.assets(personId, limit = PAGE_SIZE, offset = 0) }
                 .onSuccess { page ->
                     _state.update {
+                        if (it.personId != personId) return@update it
                         val items = page.items.map { p -> p.toTimelineItem() }
                         it.copy(
                             items = items,
@@ -125,7 +140,8 @@ class PersonDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.personId != personId) it
+                        else it.copy(
                             isRefreshing = false,
                             error = errorFactory.from(error, "No se pudieron cargar las fotos")
                         )
@@ -138,9 +154,10 @@ class PersonDetailViewModel(
         val snapshot = _state.value
         val personId = snapshot.personId ?: return
         if (snapshot.isAppending || !snapshot.hasMore || snapshot.isInitialLoading) return
+        if (loadJob?.isActive == true) return
         _state.update { it.copy(isAppending = true) }
-        viewModelScope.launch {
-            runCatching {
+        loadJob = viewModelScope.launch {
+            suspendRunCatching {
                 peopleRepository.assets(
                     personId = personId,
                     limit = PAGE_SIZE,
@@ -149,6 +166,7 @@ class PersonDetailViewModel(
             }
                 .onSuccess { page ->
                     _state.update { previous ->
+                        if (previous.personId != personId) return@update previous
                         val existing = previous.items.mapTo(HashSet()) { it.id }
                         val appended = page.items
                             .filter { it.id !in existing }
@@ -164,7 +182,8 @@ class PersonDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.personId != personId) it
+                        else it.copy(
                             isAppending = false,
                             error = errorFactory.from(error, "No se pudo cargar más")
                         )
@@ -316,6 +335,7 @@ class PersonDetailViewModel(
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val previousItems = _state.value.items
+        val ownerId = _state.value.personId
         _state.update {
             it.copy(
                 isBulkMutating = true,
@@ -334,7 +354,9 @@ class PersonDetailViewModel(
                     val uiError = errorFactory.from(error, errorFallback)
                     _state.update {
                         it.copy(
-                            items = previousItems,
+                            // Only while the same person is still open.
+                            items = if (it.personId != ownerId) it.items
+                                else it.items.withRestored(previousItems, ids.toSet()),
                             isBulkMutating = false,
                             error = uiError
                         )

@@ -1,5 +1,6 @@
 package com.photonne.app.ui.search
 
+import com.photonne.app.ui.util.withRestored
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
@@ -265,7 +266,7 @@ class SearchViewModel(
                     onResult(null)
                 }
                 .onFailure { error ->
-                    onResult(revertBulk(previous, error, ErrorMessages.ARCHIVE_FAILED))
+                    onResult(revertBulk(previous, ids, error, ErrorMessages.ARCHIVE_FAILED))
                 }
         }
     }
@@ -289,7 +290,7 @@ class SearchViewModel(
                     onResult(null)
                 }
                 .onFailure { error ->
-                    onResult(revertBulk(previous, error, ErrorMessages.TRASH_FAILED))
+                    onResult(revertBulk(previous, ids, error, ErrorMessages.TRASH_FAILED))
                 }
         }
     }
@@ -491,13 +492,14 @@ class SearchViewModel(
 
     private fun revertBulk(
         previousItems: List<TimelineItem>,
+        ids: List<String>,
         throwable: Throwable,
         fallback: String
     ): UiError {
         val uiError = errorFactory.from(throwable, fallback)
         _state.update {
             it.copy(
-                results = previousItems,
+                results = it.results.withRestored(previousItems, ids.toSet()),
                 isBulkMutating = false,
                 error = uiError
             )

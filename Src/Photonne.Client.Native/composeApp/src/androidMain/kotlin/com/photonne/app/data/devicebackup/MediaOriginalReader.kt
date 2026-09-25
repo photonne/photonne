@@ -16,8 +16,22 @@ import java.io.InputStream
  */
 internal object MediaPermissions {
 
+    /** Android 14's "selected photos" grant; the constant needs compileSdk 34. */
+    const val READ_MEDIA_VISUAL_USER_SELECTED =
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+
     fun requestSet(): Array<String> = when {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> emptyArray()
+        // Android 14+: the partial grant must ride in the same request, or the
+        // dialog drops the "select photos" option and the app lands in the
+        // compatibility mode whose grant is temporary — the background worker
+        // then loses access. Same set as the device library requests.
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> arrayOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VIDEO,
+            READ_MEDIA_VISUAL_USER_SELECTED,
+            Manifest.permission.ACCESS_MEDIA_LOCATION,
+        )
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> arrayOf(
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO,
@@ -56,8 +70,12 @@ internal object MediaOriginalReader {
             context.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
         if (!granted(Manifest.permission.ACCESS_MEDIA_LOCATION)) return false
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // A partial (Android 14 "selected photos") grant still reads the
+            // chosen items' originals, so it counts too.
             granted(Manifest.permission.READ_MEDIA_IMAGES) ||
-                granted(Manifest.permission.READ_MEDIA_VIDEO)
+                granted(Manifest.permission.READ_MEDIA_VIDEO) ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                    granted(READ_MEDIA_VISUAL_USER_SELECTED))
         } else {
             granted(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
