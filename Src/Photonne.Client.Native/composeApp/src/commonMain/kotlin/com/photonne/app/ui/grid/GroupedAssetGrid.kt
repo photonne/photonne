@@ -443,7 +443,13 @@ internal fun GroupedAssetGrid(
             }
             items(
                 count = segment.body.size,
-                key = { i -> rowLazyKey(segment.body[i]) }
+                key = { i -> rowLazyKey(segment.body[i]) },
+                // Skeleton and photo rows have unrelated layouts; without a
+                // content type the list recycles one as the other and rebuilds
+                // it from scratch — exactly when a month's photos load in.
+                contentType = { i ->
+                    if (segment.body[i] is TimelineRowEntry.SkeletonRow) "skeleton" else "row"
+                }
             ) { i ->
                 when (val entry = segment.body[i]) {
                     is TimelineRowEntry.SkeletonRow -> SkeletonCellsRow(

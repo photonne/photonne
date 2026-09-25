@@ -1,5 +1,6 @@
 package com.photonne.app.ui.album.smart
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,8 +66,8 @@ fun SmartAlbumEditorScreen(
     onChromeVisibleChange: (Boolean) -> Unit = {},
     viewModel: SmartAlbumEditorViewModel = koinViewModel(),
 ) {
-    val state by viewModel.state.collectAsState()
-    val pickers by viewModel.pickers.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val pickers by viewModel.pickers.collectAsStateWithLifecycle()
     val baseUrl = rememberApiBaseUrl()
     val hazeState = remember { HazeState() }
     val scrollState = rememberScrollState()

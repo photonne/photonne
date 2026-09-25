@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.main.ResultSnackbar
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -33,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -252,7 +252,7 @@ class AdminSharedTrashViewModel(
 
 @Composable
 fun AdminSharedTrashScreen(viewModel: AdminSharedTrashViewModel) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val baseUrl = rememberApiBaseUrl()
     // Every entry: it loaded once per app session, so what users deleted since
     // only showed up after restarting the app.

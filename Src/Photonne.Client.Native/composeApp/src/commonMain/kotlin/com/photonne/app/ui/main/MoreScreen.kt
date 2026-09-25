@@ -1,5 +1,6 @@
 package com.photonne.app.ui.main
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -75,7 +76,6 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.version.AppVersionStore
 import com.photonne.app.data.version.clientUpdateUrl
@@ -191,7 +191,7 @@ fun MoreScreen(
     // servidor por delante implica un cliente publicado más nuevo. Solo en las
     // plataformas con URL de descarga (escritorio).
     val versionStore: AppVersionStore = koinInject()
-    val serverVersion by versionStore.serverVersion.collectAsState()
+    val serverVersion by versionStore.serverVersion.collectAsStateWithLifecycle()
     val updateAvailable = clientUpdateUrl != null &&
         isNewerVersion(serverVersion, PhotonneVersion)
 

@@ -1,5 +1,6 @@
 package com.photonne.app.ui.devicebackup
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,7 +38,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -159,8 +159,8 @@ fun BackupScreen(
     onOpenEnrichment: () -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val state by viewModel.state.collectAsState()
-    val enrichmentState by enrichmentViewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val enrichmentState by enrichmentViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.isBackupEnabled) {
         if (state.isBackupEnabled) viewModel.ensureLoaded()
     }

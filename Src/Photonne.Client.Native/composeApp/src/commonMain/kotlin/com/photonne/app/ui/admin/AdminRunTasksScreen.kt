@@ -1,5 +1,7 @@
 package com.photonne.app.ui.admin
 
+import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -60,9 +62,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -1167,12 +1166,14 @@ fun AdminRunTasksScreen(
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
-    val state by viewModel.state.collectAsState()
-    DisposableEffect(viewModel) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    // Poll only while the screen is visible: a DisposableEffect kept hitting
+    // the server every few seconds with the app in the background. The first
+    // poll tick loads the screen, so no separate load() is needed.
+    LifecycleStartEffect(viewModel) {
         viewModel.startPolling()
-        onDispose { viewModel.stopPolling() }
+        onStopOrDispose { viewModel.stopPolling() }
     }
-    LaunchedEffect(Unit) { viewModel.load() }
 
     // Snapshot Clock.now whenever a poll lands so every "hace X" label — and
     // the AI rows' "sin actividad desde hace X" — re-evaluates against the
@@ -1186,13 +1187,17 @@ fun AdminRunTasksScreen(
     // kind, everything else by its type. Keying maintenance by type would light
     // up all nine kinds the moment any one of them ran. Live followers
     // (per-item stream) override the coarser 10s-poll entry while active.
-    val runningByKey = state.backgroundTasks
-        .filter { it.isRunning }
-        .associateBy { it.parameters["kind"] ?: it.type } + state.liveTasks
-    val lastFinishedByKey = state.backgroundTasks
-        .filter { !it.isRunning && it.finishedAt != null }
-        .groupBy { it.parameters["kind"] ?: it.type }
-        .mapValues { (_, list) -> list.maxByOrNull { it.finishedAt!! } }
+    val runningByKey = remember(state.backgroundTasks, state.liveTasks) {
+        state.backgroundTasks
+            .filter { it.isRunning }
+            .associateBy { it.parameters["kind"] ?: it.type } + state.liveTasks
+    }
+    val lastFinishedByKey = remember(state.backgroundTasks) {
+        state.backgroundTasks
+            .filter { !it.isRunning && it.finishedAt != null }
+            .groupBy { it.parameters["kind"] ?: it.type }
+            .mapValues { (_, list) -> list.maxByOrNull { it.finishedAt!! } }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
     state.confirming?.let { task ->

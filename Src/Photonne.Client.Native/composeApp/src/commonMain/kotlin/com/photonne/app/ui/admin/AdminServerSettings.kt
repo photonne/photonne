@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.resources.admin_settings_server_map_key
 import com.photonne.app.resources.admin_settings_server_map_key_hint
 import com.photonne.app.ui.theme.SecondaryActionButton
@@ -8,7 +9,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.error.UiErrorFactory
@@ -85,7 +85,7 @@ fun AdminServerSettingsScreen(
     deviceConnectionViewModel: DeviceConnectionViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val serverState by viewModel.state.collectAsState()
+    val serverState by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.load() }
     LaunchedEffect(Unit) { deviceConnectionViewModel.reload() }
 
@@ -133,7 +133,7 @@ private const val URL_PLACEHOLDER = "https://photos.example.com"
 
 @Composable
 private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     SettingSectionHeader(stringResource(Res.string.admin_settings_device_section))
     Text(

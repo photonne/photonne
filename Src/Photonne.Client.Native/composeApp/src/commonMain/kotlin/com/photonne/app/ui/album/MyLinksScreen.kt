@@ -1,5 +1,6 @@
 package com.photonne.app.ui.album
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -105,7 +105,7 @@ fun MyLinksScreen(
     val listState = rememberLazyListState()
     val viewModel: SentSharesViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
     val snackbar = LocalSnackbarController.current
     val copiedMessage = stringResource(Res.string.share_link_copied)

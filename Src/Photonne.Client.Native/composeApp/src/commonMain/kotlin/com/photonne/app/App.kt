@@ -2,6 +2,7 @@
 
 package com.photonne.app
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.pager.HorizontalPager
@@ -17,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -491,7 +491,7 @@ fun App() {
     }
 
     val themeStore: com.photonne.app.data.settings.ThemePreferenceStore = koinInject()
-    val themePreference by themeStore.value.collectAsState()
+    val themePreference by themeStore.value.collectAsStateWithLifecycle()
 
     val sessionBootstrapper: com.photonne.app.data.auth.SessionBootstrapper = koinInject()
     LaunchedEffect(Unit) {
@@ -506,7 +506,7 @@ fun App() {
             darkBackground = com.photonne.app.ui.theme.LocalIsDarkTheme.current
         )
         val authState: AuthStateHolder = koinInject()
-        val state by authState.state.collectAsState()
+        val state by authState.state.collectAsStateWithLifecycle()
         val sessionStores = viewModel { SessionViewModelStores() }
         when (val current = state) {
             is AuthState.Authenticated -> SessionViewModelScope(sessionStores, current.user.id) {
@@ -618,7 +618,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // picker: organizar es repetitivo y el árbol es largo.
     val recentDestinationsStore: com.photonne.app.data.settings.RecentDestinationsStore =
         koinInject()
-    val recentDestinations by recentDestinationsStore.value.collectAsState()
+    val recentDestinations by recentDestinationsStore.value.collectAsStateWithLifecycle()
     val memoriesViewModel:
         com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
     // The timeline strip's live "on this day" list (above) and the Recuerdos
@@ -673,7 +673,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val organizeRuleViewModel: com.photonne.app.ui.organize.OrganizeRuleViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val deviceBackupViewModel: com.photonne.app.ui.devicebackup.DeviceBackupViewModel = koinViewModel()
-    val deviceBackupState by deviceBackupViewModel.state.collectAsState()
+    val deviceBackupState by deviceBackupViewModel.state.collectAsStateWithLifecycle()
     val enrichmentStatusViewModel: com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel = koinViewModel()
     val utilitiesDuplicatesViewModel:
         com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel = koinViewModel()
@@ -683,10 +683,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.utilities.UtilitiesLocationsViewModel = koinViewModel()
     val exploreFacetsViewModel:
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
-    val memoriesState by memoriesViewModel.state.collectAsState()
+    val memoriesState by memoriesViewModel.state.collectAsStateWithLifecycle()
     val notificationsViewModel:
         com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
-    val notificationsState by notificationsViewModel.state.collectAsState()
+    val notificationsState by notificationsViewModel.state.collectAsStateWithLifecycle()
     val deviceGallery: com.photonne.app.data.devicebackup.DeviceGallery =
         org.koin.compose.koinInject()
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel =
@@ -731,27 +731,27 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.admin.AdminDuplicatesViewModel = koinViewModel()
     val adminBackupViewModel:
         com.photonne.app.ui.admin.AdminBackupViewModel = koinViewModel()
-    val timelineState by timelineViewModel.state.collectAsState()
-    val albumsState by albumsViewModel.state.collectAsState()
-    val albumDetailState by albumDetailViewModel.state.collectAsState()
-    val searchState by searchViewModel.state.collectAsState()
-    val foldersState by foldersViewModel.state.collectAsState()
-    val folderDetailState by folderDetailViewModel.state.collectAsState()
-    val folderPermissionsState by folderPermissionsViewModel.state.collectAsState()
-    val albumSharesState by albumSharesViewModel.state.collectAsState()
-    val albumPermissionsState by albumPermissionsViewModel.state.collectAsState()
-    val archivedState by archivedViewModel.state.collectAsState()
-    val trashState by trashViewModel.state.collectAsState()
-    val favoritesState by favoritesViewModel.state.collectAsState()
-    val unsupportedFilesState by unsupportedFilesViewModel.state.collectAsState()
-    val organizeInboxState by organizeInboxViewModel.state.collectAsState()
-    val organizeRuleState by organizeRuleViewModel.state.collectAsState()
-    val peopleState by peopleViewModel.state.collectAsState()
-    val personDetailState by personDetailViewModel.state.collectAsState()
-    val suggestionsState by personSuggestionsViewModel.state.collectAsState()
-    val assetFacesState by assetFacesViewModel.state.collectAsState()
-    val uploadState by uploadViewModel.state.collectAsState()
-    val actionsState by actionsViewModel.state.collectAsState()
+    val timelineState by timelineViewModel.state.collectAsStateWithLifecycle()
+    val albumsState by albumsViewModel.state.collectAsStateWithLifecycle()
+    val albumDetailState by albumDetailViewModel.state.collectAsStateWithLifecycle()
+    val searchState by searchViewModel.state.collectAsStateWithLifecycle()
+    val foldersState by foldersViewModel.state.collectAsStateWithLifecycle()
+    val folderDetailState by folderDetailViewModel.state.collectAsStateWithLifecycle()
+    val folderPermissionsState by folderPermissionsViewModel.state.collectAsStateWithLifecycle()
+    val albumSharesState by albumSharesViewModel.state.collectAsStateWithLifecycle()
+    val albumPermissionsState by albumPermissionsViewModel.state.collectAsStateWithLifecycle()
+    val archivedState by archivedViewModel.state.collectAsStateWithLifecycle()
+    val trashState by trashViewModel.state.collectAsStateWithLifecycle()
+    val favoritesState by favoritesViewModel.state.collectAsStateWithLifecycle()
+    val unsupportedFilesState by unsupportedFilesViewModel.state.collectAsStateWithLifecycle()
+    val organizeInboxState by organizeInboxViewModel.state.collectAsStateWithLifecycle()
+    val organizeRuleState by organizeRuleViewModel.state.collectAsStateWithLifecycle()
+    val peopleState by peopleViewModel.state.collectAsStateWithLifecycle()
+    val personDetailState by personDetailViewModel.state.collectAsStateWithLifecycle()
+    val suggestionsState by personSuggestionsViewModel.state.collectAsStateWithLifecycle()
+    val assetFacesState by assetFacesViewModel.state.collectAsStateWithLifecycle()
+    val uploadState by uploadViewModel.state.collectAsStateWithLifecycle()
+    val actionsState by actionsViewModel.state.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
     // rememberSaveable: la pestaña y la subpantalla de Más sobreviven a la
@@ -3240,7 +3240,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.AdminLibraries -> {
-                        val usersState by adminUsersViewModel.state.collectAsState()
+                        val usersState by adminUsersViewModel.state.collectAsStateWithLifecycle()
                         LaunchedEffect(Unit) { adminUsersViewModel.ensureLoaded() }
                         com.photonne.app.ui.admin.AdminLibrariesScreen(
                             title = stringResource(Res.string.admin_section_libraries),
@@ -4753,7 +4753,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (bulkAddToAlbumFromMap) {
-        val mapState = mapViewModel.state.collectAsState().value
+        val mapState = mapViewModel.state.collectAsStateWithLifecycle().value
         LaunchedEffect(Unit) { mapViewModel.clearError() }
         AddToAlbumDialog(
             albums = albumsState.albums,

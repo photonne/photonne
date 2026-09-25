@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -88,7 +88,7 @@ fun AdminEnrichmentFailuresScreen(
     onOpenAsset: (AdminEnrichmentFailureDto) -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(initialType) { viewModel.start(initialType) }
     var confirmRetryAll by remember { mutableStateOf(false) }
 

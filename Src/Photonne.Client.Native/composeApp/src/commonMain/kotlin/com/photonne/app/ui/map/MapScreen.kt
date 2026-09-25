@@ -1,5 +1,6 @@
 package com.photonne.app.ui.map
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,7 +61,7 @@ fun MapScreen(
     onBulkAddToAlbum: () -> Unit,
     onBack: () -> Unit
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val apiBaseUrl = rememberApiBaseUrl()
     val darkTiles = MaterialTheme.colorScheme.background.luminance() < 0.5f
     // Los tiles de OsmMap se pintan con Coil (AsyncImage) → contenido Compose que

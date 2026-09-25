@@ -1,5 +1,6 @@
 package com.photonne.app.ui.organize
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +26,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,12 +92,12 @@ fun OrganizeRuleScreen(
     reviewOpen: Boolean = false,
 ) {
     val recentDestinationsStore: RecentDestinationsStore = koinInject()
-    val recentDestinations by recentDestinationsStore.value.collectAsState()
+    val recentDestinations by recentDestinationsStore.value.collectAsStateWithLifecycle()
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
     val scrollState = rememberScrollState()
-    val state by viewModel.state.collectAsState()
-    val pickers by viewModel.pickers.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val pickers by viewModel.pickers.collectAsStateWithLifecycle()
     val baseUrl = rememberApiBaseUrl()
 
     var showFolderPicker by remember { mutableStateOf(false) }

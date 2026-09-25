@@ -173,7 +173,9 @@ internal fun ZoomDissolveLayer(
                             size = "Small",
                             modifier = Modifier
                                 .fillMaxSize()
-                                .graphicsLayer { alpha = 1f - fractionOf(virtualCell()) }
+                                .graphicsLayer { alpha = 1f - fractionOf(virtualCell()) },
+                            contentDescription = null,
+                            crossfade = false
                         )
                     }
                     s.hi?.let { item ->
@@ -183,7 +185,9 @@ internal fun ZoomDissolveLayer(
                             size = "Small",
                             modifier = Modifier
                                 .fillMaxSize()
-                                .graphicsLayer { alpha = fractionOf(virtualCell()) }
+                                .graphicsLayer { alpha = fractionOf(virtualCell()) },
+                            contentDescription = null,
+                            crossfade = false
                         )
                     }
                 }

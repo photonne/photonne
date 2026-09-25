@@ -411,7 +411,10 @@ fun AssetGridCell(
             baseUrl = baseUrl,
             size = "Small",
             modifier = Modifier.fillMaxSize().then(thumbnailSharedMod),
-            enabled = loadThumbnail
+            enabled = loadThumbnail,
+            // The cell's merged semantics already announce the asset.
+            contentDescription = null,
+            crossfade = false
         )
         asset.localSyncBadge?.let { badge ->
             // BottomStart so we don't collide with the video glyph

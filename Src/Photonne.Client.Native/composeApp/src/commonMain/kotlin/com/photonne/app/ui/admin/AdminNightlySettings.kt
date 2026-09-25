@@ -1,9 +1,9 @@
 package com.photonne.app.ui.admin
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.error.UiErrorFactory
@@ -92,7 +92,7 @@ fun AdminNightlySettingsScreen(
     viewModel: AdminNightlySettingsViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.load() }
 
     val modeOptions = listOf(
