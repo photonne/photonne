@@ -36,7 +36,10 @@
     <string name="timeline_device_loading">Finding device photos…</string>
     <string name="timeline_scroll_to_top">Back to top</string>
     <string name="timeline_memories_one_year_ago">1 year ago</string>
-    <string name="timeline_memories_years_ago">%1$d years ago</string>
+    <plurals name="timeline_memories_years_ago">
+        <item quantity="one">%1$d year ago</item>
+        <item quantity="other">%1$d years ago</item>
+    </plurals>
 
     <string name="timeline_year_count">%1$s photos</string>
     <string name="timeline_zoom_action">Grid size</string>
@@ -95,7 +98,10 @@
     <string name="albums_empty_title">No albums yet</string>
     <string name="albums_empty_subtitle">Group your memories into collections so they're easier to find.</string>
     <string name="albums_empty_action_create">Create album</string>
-    <string name="albums_count_format">%1$d items</string>
+    <plurals name="albums_count_format">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
     <string name="albums_title">Albums</string>
     <string name="albums_scope_all">All</string>
     <string name="albums_scope_mine">Mine</string>
@@ -173,7 +179,10 @@
     <string name="share_attribute_password">password</string>
     <string name="share_attribute_max_views_format">max %1$d</string>
     <string name="share_attribute_no_downloads">no downloads</string>
-    <string name="share_attribute_views_format">%1$d views</string>
+    <plurals name="share_attribute_views_format">
+        <item quantity="one">%1$d view</item>
+        <item quantity="other">%1$d views</item>
+    </plurals>
     <string name="share_attribute_upload">photo request</string>
     <string name="share_attribute_uploads_format">%1$d received</string>
     <string name="share_attribute_expiry_format">expires %1$s</string>
@@ -200,7 +209,10 @@
     <string name="backup_bucket_picker_title">Device folders</string>
     <string name="backup_bucket_picker_hint">Choose which phone folders get backed up to the server.</string>
     <string name="backup_bucket_added">Added</string>
-    <string name="backup_bucket_item_count">%1$d items</string>
+    <plurals name="backup_bucket_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
     <string name="backup_bucket_other_folder">Choose another folder…</string>
     <string name="asset_action_edit_description">Edit description</string>
     <string name="asset_action_edit_date">Edit capture date</string>
@@ -315,7 +327,10 @@
     <string name="trash_action_empty">Empty trash</string>
     <string name="trash_dialog_restore_all_message">All trashed items will be moved back to their original folder.</string>
     <string name="trash_dialog_empty_message">This cannot be undone. Every photo in the trash will be deleted permanently.</string>
-    <string name="trash_dialog_purge_message">%1$d items will be deleted permanently. You won't be able to recover them.</string>
+    <plurals name="trash_dialog_purge_message">
+        <item quantity="one">%1$d item will be deleted permanently. You won\'t be able to recover it.</item>
+        <item quantity="other">%1$d items will be deleted permanently. You won\'t be able to recover them.</item>
+    </plurals>
 
     <string name="favorites_title">Favorites</string>
     <string name="favorites_empty_title">No favorites yet</string>
@@ -342,11 +357,17 @@
     <string name="map_action_zoom_in">Zoom in</string>
     <string name="map_action_zoom_out">Zoom out</string>
     <string name="map_marker_single">Photo on the map</string>
-    <string name="map_marker_cluster">Cluster of %1$d photos on the map</string>
+    <plurals name="map_marker_cluster">
+        <item quantity="one">Cluster of %1$d photo on the map</item>
+        <item quantity="other">Cluster of %1$d photos on the map</item>
+    </plurals>
     <string name="map_action_fit_to_data">Center on my photos</string>
     <string name="map_attribution">© OpenStreetMap © CARTO</string>
     <string name="map_attribution_osm">© OpenStreetMap</string>
-    <string name="map_cluster_sheet_title">%1$d photos at this spot</string>
+    <plurals name="map_cluster_sheet_title">
+        <item quantity="one">%1$d photo at this spot</item>
+        <item quantity="other">%1$d photos at this spot</item>
+    </plurals>
     <string name="map_action_select_all">Select all</string>
 
     <string name="people_title">People</string>
@@ -621,7 +642,10 @@
     <string name="admin_stats_coverage_unindexed">Unindexed</string>
     <string name="admin_stats_coverage_verified_at">Verified: %1$s</string>
     <string name="admin_stats_coverage_never">Not verified yet. Run "Indexing coverage" in System › Run tasks.</string>
-    <string name="admin_stats_coverage_offline">%1$d unreachable external library(ies) were left unverified</string>
+    <plurals name="admin_stats_coverage_offline">
+        <item quantity="one">%1$d unreachable external library was left unverified</item>
+        <item quantity="other">%1$d unreachable external libraries were left unverified</item>
+    </plurals>
     <string name="admin_stats_coverage_show_list">Show unindexed files (%1$d)</string>
     <string name="admin_stats_coverage_truncated">Showing the first %1$d</string>
     <string name="admin_stats_per_user">Per-user usage</string>
@@ -666,7 +690,10 @@
     <string name="admin_libraries_field_import_subfolders">Include subfolders</string>
     <string name="admin_libraries_field_cron">Cron schedule (optional)</string>
     <string name="admin_libraries_cron_hint">"@daily, @weekly or cron expression"</string>
-    <string name="admin_libraries_asset_count">%1$d items</string>
+    <plurals name="admin_libraries_asset_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
     <string name="admin_libraries_last_scan">Last scan: %1$s (%2$s)</string>
     <string name="admin_libraries_no_scan">Never scanned</string>
     <string name="admin_libraries_scan_progress">Scanning · %1$d%%</string>
@@ -1022,7 +1049,10 @@
     <string name="device_backup_action_free_space">Free up space (%1$d)</string>
     <string name="device_backup_action_free_space_sized">Free up %2$s (%1$d files)</string>
     <string name="device_backup_free_space_dialog_title">Free up space</string>
-    <string name="device_backup_free_space_dialog_message">%1$d already-synced files will be removed from the device. This cannot be undone.</string>
+    <plurals name="device_backup_free_space_dialog_message">
+        <item quantity="one">%1$d already-synced file will be removed from the device. This cannot be undone.</item>
+        <item quantity="other">%1$d already-synced files will be removed from the device. This cannot be undone.</item>
+    </plurals>
     <string name="device_backup_free_space_confirm">Delete from device</string>
     <string name="device_backup_free_space_cancel">Cancel</string>
     <string name="device_backup_free_space_in_progress">Freeing space…</string>
@@ -1057,23 +1087,38 @@
     <string name="backup_status_all_synced">Everything backed up</string>
     <string name="backup_status_pending">%1$d pending upload</string>
     <string name="backup_status_pending_sized">%1$d pending · %2$s</string>
-    <string name="backup_status_failures">%1$d with upload errors</string>
+    <plurals name="backup_status_failures">
+        <item quantity="one">%1$d with an upload error</item>
+        <item quantity="other">%1$d with upload errors</item>
+    </plurals>
     <string name="backup_status_syncing">Uploading %1$d of %2$d…</string>
-    <string name="backup_uploading_count">Uploading %1$d files…</string>
+    <plurals name="backup_uploading_count">
+        <item quantity="one">Uploading %1$d file…</item>
+        <item quantity="other">Uploading %1$d files…</item>
+    </plurals>
     <string name="backup_status_queued">Queued</string>
     <string name="backup_status_upload_now">Upload now</string>
     <string name="backup_status_recheck">Re-verify</string>
-    <string name="backup_status_enrichment_row">%1$d file(s) processing on the server</string>
+    <plurals name="backup_status_enrichment_row">
+        <item quantity="one">%1$d file processing on the server</item>
+        <item quantity="other">%1$d files processing on the server</item>
+    </plurals>
     <string name="backup_last_run_manual">Last backup: %1$s</string>
     <string name="backup_last_run_background">Last automatic backup: %1$s</string>
     <string name="backup_last_run_counts">%1$d uploaded · %2$d failed</string>
     <string name="backup_time_just_now">just now</string>
     <string name="backup_time_minutes">%1$d min ago</string>
     <string name="backup_time_hours">%1$d h ago</string>
-    <string name="backup_time_days">%1$d days ago</string>
+    <plurals name="backup_time_days">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
     <string name="backup_notification_channel">Backup</string>
     <string name="backup_notification_failures_title">Backup incomplete</string>
-    <string name="backup_notification_failures_text">%1$d file(s) could not be uploaded. Open Photonne to review them.</string>
+    <plurals name="backup_notification_failures_text">
+        <item quantity="one">%1$d file could not be uploaded. Open Photonne to review it.</item>
+        <item quantity="other">%1$d files could not be uploaded. Open Photonne to review them.</item>
+    </plurals>
     <string name="backup_failed_dialog_title">Upload error</string>
     <string name="backup_failed_dialog_no_detail">No additional details from the server.</string>
     <string name="backup_failed_dialog_retry">Retry</string>
@@ -1102,7 +1147,10 @@
     <string name="backup_error_list_folder">Could not list the folder</string>
     <string name="backup_source_add">Add another folder</string>
     <string name="backup_source_remove">Remove folder</string>
-    <string name="backup_timeline_pending_row">%1$d photos still to back up</string>
+    <plurals name="backup_timeline_pending_row">
+        <item quantity="one">%1$d photo still to back up</item>
+        <item quantity="other">%1$d photos still to back up</item>
+    </plurals>
     <string name="backup_status_stop">Stop</string>
     <string name="backup_notifications_denied_hint">Without notification permission you won\'t see progress or a warning when a background backup fails. You can grant it in the system settings.</string>
     <string name="backup_notifications_open_settings">Open settings</string>
@@ -1167,7 +1215,10 @@
     <string name="utilities_duplicates_action_clear">Clear selection</string>
     <string name="utilities_duplicates_action_delete">Delete %1$d (%2$s)</string>
     <string name="utilities_duplicates_confirm_title">Move to trash</string>
-    <string name="utilities_duplicates_confirm_message">%1$d items will be moved to your trash. You can restore them from the web app.</string>
+    <plurals name="utilities_duplicates_confirm_message">
+        <item quantity="one">%1$d item will be moved to your trash. You can restore it from the web app.</item>
+        <item quantity="other">%1$d items will be moved to your trash. You can restore them from the web app.</item>
+    </plurals>
     <string name="utilities_duplicates_open_detail">Open detail</string>
 
     <!-- Large files -->
@@ -1177,7 +1228,10 @@
 
     <!-- Locations -->
     <string name="utilities_locations_empty">No indexed folders yet.</string>
-    <string name="utilities_locations_item_count">%1$d items</string>
+    <plurals name="utilities_locations_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
     <string name="utilities_locations_shared_badge">Shared</string>
     <string name="utilities_locations_external_badge">External library</string>
 
@@ -1191,7 +1245,10 @@
     <string name="notifications_empty_title">No notifications.</string>
     <string name="notifications_empty_unread_title">No unread notifications.</string>
     <string name="notifications_empty_subtitle">Alerts about your library will show up here.</string>
-    <string name="notifications_total">%1$d notifications in total</string>
+    <plurals name="notifications_total">
+        <item quantity="one">%1$d notification in total</item>
+        <item quantity="other">%1$d notifications in total</item>
+    </plurals>
     <string name="notifications_pagination_page">Page %1$d of %2$d</string>
     <string name="notifications_pagination_previous">Previous</string>
     <string name="notifications_pagination_next">Next</string>
@@ -1235,7 +1292,10 @@
     <string name="organize_move_by_year_desc">Year subfolders (2026, 2025…) will be created inside the destination.</string>
     <string name="organize_move_pick_destination">Pick a destination</string>
     <string name="organize_move_no_matches">No matches</string>
-    <string name="organize_move_action_count">Move %1$d photos</string>
+    <plurals name="organize_move_action_count">
+        <item quantity="one">Move %1$d photo</item>
+        <item quantity="other">Move %1$d photos</item>
+    </plurals>
     <string name="organize_review_exclude">Remove from the move</string>
     <string name="organize_review_include">Include again</string>
     <string name="organize_move_review_title">%1$d photos will be moved</string>
@@ -1407,4 +1467,45 @@
     <string name="admin_shared_trash_selected_format">%1$d selected</string>
     <string name="admin_shared_trash_deleted_by_format">Deleted by %1$s</string>
     <string name="timeline_scrubber_description">Quick scroll through dates</string>
+
+    <!-- Visor: panel de información -->
+    <string name="asset_detail_empty">No items</string>
+    <string name="asset_detail_video_unsupported">Video playback isn\'t available on this system</string>
+    <string name="asset_detail_description">Description</string>
+    <string name="asset_detail_description_placeholder">Add a description</string>
+    <string name="asset_detail_capture_date">Capture date</string>
+    <string name="asset_detail_created">Created</string>
+    <string name="asset_detail_size">Size</string>
+    <string name="asset_detail_iso">Sensitivity</string>
+    <string name="asset_detail_aperture">Aperture</string>
+    <string name="asset_detail_shutter">Shutter speed</string>
+    <string name="asset_detail_focal_length">Focal length</string>
+    <string name="asset_detail_camera">Camera</string>
+    <string name="asset_detail_view_faces">View faces</string>
+    <string name="asset_detail_folder">Folder</string>
+    <string name="asset_detail_same_people">Same people</string>
+    <string name="asset_detail_same_day">Same day</string>
+    <string name="asset_detail_tag_add">Add</string>
+    <string name="asset_detail_tag_dialog_title">Add tag</string>
+    <string name="asset_detail_tag_placeholder">e.g. Holidays</string>
+    <plurals name="asset_detail_faces_count">
+        <item quantity="one">Face (%1$d)</item>
+        <item quantity="other">Faces (%1$d)</item>
+    </plurals>
+
+    <!-- Login -->
+    <string name="login_step_server">Step 1 of 2 · Set up the server</string>
+    <string name="login_step_server_hint">Enter the address of your Photonne instance.</string>
+    <string name="login_server_url">Server URL</string>
+    <string name="login_local_url">Local URL (optional)</string>
+    <string name="login_local_url_hint">Used when you\'re on the same Wi-Fi network as the server.</string>
+    <string name="login_continue">Continue</string>
+    <string name="login_step_credentials">Step 2 of 2 · Sign in</string>
+    <string name="login_username">Username or email</string>
+    <string name="login_password">Password</string>
+    <string name="login_password_hide">Hide password</string>
+    <string name="login_password_show">Show password</string>
+    <string name="login_remember_me">Remember me on this device</string>
+    <string name="login_sign_in">Sign in</string>
+    <string name="login_change_server">Change server</string>
 </resources>

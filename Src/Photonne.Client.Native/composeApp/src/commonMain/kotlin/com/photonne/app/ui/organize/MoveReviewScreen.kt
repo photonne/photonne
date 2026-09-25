@@ -69,6 +69,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
 
@@ -198,7 +199,7 @@ fun MoveReviewScreen(
             )
 
             ConfirmMoveCapsule(
-                label = stringResource(Res.string.organize_move_action_count, keptTotal),
+                label = pluralStringResource(Res.plurals.organize_move_action_count, keptTotal, keptTotal),
                 enabled = !isMoving && keptTotal > 0,
                 isMoving = isMoving,
                 onClick = {

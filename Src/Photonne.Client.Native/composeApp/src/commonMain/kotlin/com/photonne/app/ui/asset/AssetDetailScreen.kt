@@ -107,6 +107,27 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.photonne.app.resources.action_back
+import com.photonne.app.resources.asset_detail_empty
+import com.photonne.app.resources.asset_detail_video_unsupported
+import com.photonne.app.resources.asset_detail_description
+import com.photonne.app.resources.asset_detail_description_placeholder
+import com.photonne.app.resources.asset_detail_capture_date
+import com.photonne.app.resources.asset_detail_created
+import com.photonne.app.resources.asset_detail_size
+import com.photonne.app.resources.asset_detail_iso
+import com.photonne.app.resources.asset_detail_aperture
+import com.photonne.app.resources.asset_detail_shutter
+import com.photonne.app.resources.asset_detail_focal_length
+import com.photonne.app.resources.asset_detail_camera
+import com.photonne.app.resources.asset_detail_view_faces
+import com.photonne.app.resources.asset_detail_folder
+import com.photonne.app.resources.asset_detail_same_people
+import com.photonne.app.resources.asset_detail_same_day
+import com.photonne.app.resources.asset_detail_tag_add
+import com.photonne.app.resources.asset_detail_tag_dialog_title
+import com.photonne.app.resources.asset_detail_tag_placeholder
+import com.photonne.app.resources.asset_detail_faces_count
+import com.photonne.app.resources.action_cancel
 import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.ChromeBaseGrayDark
 import com.photonne.app.ui.main.LocalSnackbarController
@@ -190,6 +211,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -420,7 +442,7 @@ fun AssetDetailScreen(
                 modifier = Modifier.fillMaxSize().background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No hay assets", color = Color.White)
+                Text(stringResource(Res.string.asset_detail_empty), color = Color.White)
             }
             return@Scaffold
         }
@@ -1195,7 +1217,7 @@ private fun AssetPage(
                     if (item.isVideo && !isVideoPlaybackSupported) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "Reproducción de vídeo no disponible en este sistema",
+                                text = stringResource(Res.string.asset_detail_video_unsupported),
                                 color = Color.White,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(Spacing.lg)
@@ -1241,7 +1263,7 @@ private fun AssetPage(
                 if (!isVideoPlaybackSupported) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Reproducción de vídeo no disponible en este sistema",
+                            text = stringResource(Res.string.asset_detail_video_unsupported),
                             color = Color.White,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -1735,21 +1757,21 @@ private fun AssetMetadataPanel(
         if (detail != null) {
             MetadataEditableRow(
                 leadingIcon = null,
-                label = "Descripción",
+                label = stringResource(Res.string.asset_detail_description),
                 value = detail.caption?.takeIf { it.isNotBlank() },
-                placeholder = "Añadir descripción",
+                placeholder = stringResource(Res.string.asset_detail_description_placeholder),
                 onClick = onEditDescription
             )
             val captureDate = exif?.dateTaken ?: detail.fileCreatedAt
             MetadataEditableRow(
                 leadingIcon = Icons.Outlined.DateRange,
-                label = "Fecha de captura",
+                label = stringResource(Res.string.asset_detail_capture_date),
                 value = formatInstant(captureDate.toString()),
                 placeholder = "",
                 onClick = onEditDate
             )
         } else {
-            MetadataRow("Creado", formatInstant(fallback.fileCreatedAt.toString()))
+            MetadataRow(stringResource(Res.string.asset_detail_created), formatInstant(fallback.fileCreatedAt.toString()))
         }
 
         // Technical EXIF as a 2-column grid of stat cells — placed ABOVE the
@@ -1761,16 +1783,16 @@ private fun AssetMetadataPanel(
                 val megapixels = width.toLong() * height.toLong() / 1_000_000.0
                 add(StatCell(icon = Icons.Outlined.AspectRatio, value = "${formatOneDecimal(megapixels)} MP", label = "$width × $height"))
             }
-            add(StatCell(icon = Icons.Outlined.Storage, value = formatBytes(detail?.fileSize ?: fallback.fileSize), label = "Tamaño"))
-            exif?.iso?.let { add(StatCell(icon = Icons.Outlined.Iso, value = "ISO $it", label = "Sensibilidad")) }
-            exif?.aperture?.let { add(StatCell(icon = Icons.Outlined.Camera, value = "f/$it", label = "Apertura")) }
-            exif?.shutterSpeed?.let { add(StatCell(icon = Icons.Outlined.ShutterSpeed, value = formatShutter(it), label = "Velocidad")) }
-            exif?.focalLength?.let { add(StatCell(icon = Icons.Outlined.CenterFocusStrong, value = "${it.roundToInt()} mm", label = "Distancia focal")) }
+            add(StatCell(icon = Icons.Outlined.Storage, value = formatBytes(detail?.fileSize ?: fallback.fileSize), label = stringResource(Res.string.asset_detail_size)))
+            exif?.iso?.let { add(StatCell(icon = Icons.Outlined.Iso, value = "ISO $it", label = stringResource(Res.string.asset_detail_iso))) }
+            exif?.aperture?.let { add(StatCell(icon = Icons.Outlined.Camera, value = "f/$it", label = stringResource(Res.string.asset_detail_aperture))) }
+            exif?.shutterSpeed?.let { add(StatCell(icon = Icons.Outlined.ShutterSpeed, value = formatShutter(it), label = stringResource(Res.string.asset_detail_shutter))) }
+            exif?.focalLength?.let { add(StatCell(icon = Icons.Outlined.CenterFocusStrong, value = "${it.roundToInt()} mm", label = stringResource(Res.string.asset_detail_focal_length))) }
         }
         ExifGrid(stats)
 
         exif?.cameraDisplay?.let {
-            MetadataInfoRow(leadingIcon = Icons.Outlined.PhotoCamera, label = "Cámara", value = it)
+            MetadataInfoRow(leadingIcon = Icons.Outlined.PhotoCamera, label = stringResource(Res.string.asset_detail_camera), value = it)
         }
 
         // Location: a cropped map centred exactly on the point (now below EXIF).
@@ -1789,7 +1811,7 @@ private fun AssetMetadataPanel(
         } else if (detail != null && facesFailed) {
             MetadataActionRow(
                 leadingIcon = Icons.Outlined.Face,
-                label = "Ver caras",
+                label = stringResource(Res.string.asset_detail_view_faces),
                 onClick = onOpenFaces
             )
         }
@@ -1807,12 +1829,12 @@ private fun AssetMetadataPanel(
             if (tags.isNotEmpty()) MetadataRow("Etiquetas", tags.joinToString(", "))
         }
 
-        detail?.folderPath?.let { MetadataRow("Carpeta", it) }
+        detail?.folderPath?.let { MetadataRow(stringResource(Res.string.asset_detail_folder), it) }
 
         // Related assets: more of the same people, then more from the same day.
         if (samePersonAssets.isNotEmpty()) {
             RelatedAssetsRow(
-                title = "Mismas personas",
+                title = stringResource(Res.string.asset_detail_same_people),
                 items = samePersonAssets,
                 baseUrl = baseUrl,
                 onOpenAsset = onOpenAsset
@@ -1820,7 +1842,7 @@ private fun AssetMetadataPanel(
         }
         if (sameDayAssets.isNotEmpty()) {
             RelatedAssetsRow(
-                title = "Mismo día",
+                title = stringResource(Res.string.asset_detail_same_day),
                 items = sameDayAssets,
                 baseUrl = baseUrl,
                 onOpenAsset = onOpenAsset
@@ -1921,7 +1943,7 @@ private fun FacesSection(
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "Caras (${faces.size})",
+                    text = pluralStringResource(Res.plurals.asset_detail_faces_count, faces.size, faces.size),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
@@ -2041,7 +2063,7 @@ private fun AddTagChip(onClick: () -> Unit) {
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "Añadir",
+                text = stringResource(Res.string.asset_detail_tag_add),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -2054,7 +2076,7 @@ private fun AddTagDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Añadir etiqueta") },
+        title = { Text(stringResource(Res.string.asset_detail_tag_dialog_title)) },
         text = {
             androidx.compose.material3.OutlinedTextField(
                 value = text,
@@ -2063,17 +2085,17 @@ private fun AddTagDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Done
                 ),
-                placeholder = { Text("p. ej. Vacaciones") }
+                placeholder = { Text(stringResource(Res.string.asset_detail_tag_placeholder)) }
             )
         },
         confirmButton = {
             androidx.compose.material3.TextButton(
                 onClick = { onConfirm(text) },
                 enabled = text.isNotBlank()
-            ) { Text("Añadir") }
+            ) { Text(stringResource(Res.string.asset_detail_tag_add)) }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancelar") }
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         }
     )
 }

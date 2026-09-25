@@ -2,6 +2,7 @@
 
 package com.photonne.app
 
+import org.jetbrains.compose.resources.getPluralString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -4740,7 +4741,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         LaunchedEffect(Unit) { trashViewModel.clearError() }
         com.photonne.app.ui.library.ConfirmActionDialog(
             title = stringResource(Res.string.trash_action_delete_forever),
-            message = stringResource(Res.string.trash_dialog_purge_message, count),
+            message = pluralStringResource(Res.plurals.trash_dialog_purge_message, count, count),
             confirmLabel = stringResource(Res.string.trash_action_delete_forever),
             isDestructive = true,
             isSubmitting = trashState.isBulkMutating,

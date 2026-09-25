@@ -98,6 +98,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.PrimaryActionButton
@@ -215,7 +216,7 @@ private fun ShareLinkRow(
             )
             val passwordAttr = stringResource(Res.string.share_attribute_password)
             val noDownloadsAttr = stringResource(Res.string.share_attribute_no_downloads)
-            val viewsAttr = stringResource(Res.string.share_attribute_views_format, link.viewCount)
+            val viewsAttr = pluralStringResource(Res.plurals.share_attribute_views_format, link.viewCount, link.viewCount)
             val expiryFormat = stringResource(Res.string.share_attribute_expiry_format, "")
             val uploadAttr = stringResource(Res.string.share_attribute_upload)
             val uploadsAttr = stringResource(Res.string.share_attribute_uploads_format, link.uploadCount)

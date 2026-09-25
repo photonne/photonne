@@ -246,10 +246,7 @@ fun UtilitiesDuplicatesScreen(
     if (confirmOpen) {
         ConfirmActionDialog(
             title = stringResource(Res.string.utilities_duplicates_confirm_title),
-            message = stringResource(
-                Res.string.utilities_duplicates_confirm_message,
-                state.totalSelectedCount
-            ),
+            message = pluralStringResource(Res.plurals.utilities_duplicates_confirm_message, state.totalSelectedCount, state.totalSelectedCount),
             confirmLabel = stringResource(Res.string.action_delete),
             isDestructive = true,
             isSubmitting = state.isDeleting,

@@ -79,6 +79,7 @@ import kotlin.time.Instant
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -297,7 +298,7 @@ private fun MyLinkRow(
             )
             val passwordAttr = stringResource(Res.string.share_attribute_password)
             val noDownloadsAttr = stringResource(Res.string.share_attribute_no_downloads)
-            val viewsAttr = stringResource(Res.string.share_attribute_views_format, link.viewCount)
+            val viewsAttr = pluralStringResource(Res.plurals.share_attribute_views_format, link.viewCount, link.viewCount)
             val expiryPrefix = stringResource(Res.string.share_attribute_expiry_format, "").trim()
             val maxViewsAttr = stringResource(
                 Res.string.share_attribute_max_views_format,

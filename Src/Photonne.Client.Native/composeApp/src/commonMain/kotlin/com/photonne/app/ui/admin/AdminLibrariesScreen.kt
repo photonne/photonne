@@ -61,6 +61,7 @@ import com.photonne.app.resources.admin_libraries_scan_cancel
 import com.photonne.app.resources.admin_libraries_permissions_revoke
 import com.photonne.app.resources.admin_libraries_permissions_add
 import com.photonne.app.resources.admin_libraries_scan_starting
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -192,7 +193,7 @@ private fun LibraryCard(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                MetricPill(stringResource(Res.string.admin_libraries_asset_count, library.assetCount))
+                MetricPill(pluralStringResource(Res.plurals.admin_libraries_asset_count, library.assetCount, library.assetCount))
                 library.cronSchedule?.takeIf { it.isNotBlank() }?.let {
                     MetricPill(it)
                 }

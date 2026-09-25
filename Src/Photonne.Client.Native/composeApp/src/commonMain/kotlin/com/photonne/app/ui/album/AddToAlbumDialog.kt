@@ -41,6 +41,7 @@ import com.photonne.app.resources.add_to_album_title
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.people_picker_search_placeholder
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
@@ -154,7 +155,7 @@ private fun AlbumPickerRow(album: AlbumSummary, onClick: () -> Unit) {
     ) {
         Text(album.name, style = MaterialTheme.typography.titleSmall)
         Text(
-            text = stringResource(Res.string.albums_count_format, album.assetCount),
+            text = pluralStringResource(Res.plurals.albums_count_format, album.assetCount, album.assetCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

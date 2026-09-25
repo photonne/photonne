@@ -64,6 +64,7 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.Spacing
@@ -205,7 +206,7 @@ private fun DeviceBucketRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                stringResource(Res.string.backup_bucket_item_count, bucket.itemCount),
+                pluralStringResource(Res.plurals.backup_bucket_item_count, bucket.itemCount, bucket.itemCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

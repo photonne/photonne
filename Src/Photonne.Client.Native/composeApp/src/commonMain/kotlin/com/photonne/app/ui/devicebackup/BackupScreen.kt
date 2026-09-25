@@ -107,6 +107,7 @@ import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlin.time.Clock
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -399,9 +400,7 @@ fun BackupScreen(
     if (showFreeSpaceConfirm) {
         com.photonne.app.ui.library.ConfirmActionDialog(
             title = stringResource(Res.string.device_backup_free_space_dialog_title),
-            message = stringResource(
-                Res.string.device_backup_free_space_dialog_message, syncedCount
-            ),
+            message = pluralStringResource(Res.plurals.device_backup_free_space_dialog_message, syncedCount, syncedCount),
             confirmLabel = stringResource(Res.string.device_backup_free_space_confirm),
             isDestructive = true,
             isSubmitting = false,
@@ -528,9 +527,7 @@ private fun BackupStatusCard(
                                     it.hashedCount, it.hashTotal
                                 ) else stringResource(Res.string.backup_status_verifying)
                             } ?: stringResource(Res.string.backup_status_verifying)
-                            state.failedCount > 0 -> stringResource(
-                                Res.string.backup_status_failures, state.failedCount
-                            )
+                            state.failedCount > 0 -> pluralStringResource(Res.plurals.backup_status_failures, state.failedCount, state.failedCount)
                             pendingCount > 0 -> stringResource(
                                 Res.string.backup_status_pending_sized,
                                 pendingCount,
@@ -661,9 +658,7 @@ private fun BackupStatusCard(
                     )
                     Spacer(Modifier.size(8.dp))
                     Text(
-                        text = stringResource(
-                            Res.string.backup_status_enrichment_row, enrichmentCount
-                        ),
+                        text = pluralStringResource(Res.plurals.backup_status_enrichment_row, enrichmentCount, enrichmentCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f)
@@ -797,7 +792,7 @@ private fun relativeTimeLabel(epochMillis: Long): String {
         minutes < 1 -> stringResource(Res.string.backup_time_just_now)
         minutes < 60 -> stringResource(Res.string.backup_time_minutes, minutes.toInt())
         minutes < 60 * 24 -> stringResource(Res.string.backup_time_hours, (minutes / 60).toInt())
-        else -> stringResource(Res.string.backup_time_days, (minutes / (60 * 24)).toInt())
+        else -> pluralStringResource(Res.plurals.backup_time_days, (minutes / (60 * 24)).toInt(), (minutes / (60 * 24)).toInt())
     }
 }
 
@@ -1022,9 +1017,7 @@ private fun DeviceBucketPickerSheet(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            stringResource(
-                                Res.string.backup_bucket_item_count, bucket.itemCount
-                            ),
+                            pluralStringResource(Res.plurals.backup_bucket_item_count, bucket.itemCount, bucket.itemCount),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

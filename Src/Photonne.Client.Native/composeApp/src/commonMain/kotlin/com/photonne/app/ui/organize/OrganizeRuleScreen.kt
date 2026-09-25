@@ -56,6 +56,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -296,7 +297,7 @@ private fun MoveButton(
         label = when {
             path == null -> stringResource(Res.string.organize_move_pick_destination)
             n == 0 -> stringResource(Res.string.organize_move_no_matches)
-            else -> stringResource(Res.string.organize_move_action_count, n)
+            else -> pluralStringResource(Res.plurals.organize_move_action_count, n, n)
         },
         onClick = onMove,
         enabled = enabled,

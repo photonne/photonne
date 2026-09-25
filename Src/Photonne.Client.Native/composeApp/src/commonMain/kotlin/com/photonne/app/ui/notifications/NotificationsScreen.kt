@@ -83,6 +83,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import com.photonne.app.ui.theme.ListRowsSkeleton
@@ -217,10 +218,7 @@ fun NotificationsScreen(
                     item("total") {
                         Spacer(Modifier.size(8.dp))
                         Text(
-                            text = stringResource(
-                                Res.string.notifications_total,
-                                state.totalCount
-                            ),
+                            text = pluralStringResource(Res.plurals.notifications_total, state.totalCount, state.totalCount),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs)

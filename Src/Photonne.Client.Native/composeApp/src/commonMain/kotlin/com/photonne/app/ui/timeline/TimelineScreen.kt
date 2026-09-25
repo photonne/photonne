@@ -125,6 +125,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import androidx.compose.ui.draw.clip
@@ -1542,7 +1543,7 @@ private fun BackupPendingRow(count: Int, onClick: () -> Unit) {
         )
         Spacer(Modifier.size(12.dp))
         Text(
-            text = stringResource(Res.string.backup_timeline_pending_row, count),
+            text = pluralStringResource(Res.plurals.backup_timeline_pending_row, count, count),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)

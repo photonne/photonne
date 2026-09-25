@@ -108,6 +108,7 @@ import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
@@ -756,7 +757,7 @@ private fun AlbumRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(Res.string.albums_count_format, album.assetCount),
+                    text = pluralStringResource(Res.plurals.albums_count_format, album.assetCount, album.assetCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
