@@ -41,6 +41,7 @@ import com.photonne.app.resources.timeline_scope_sheet_hint
 import com.photonne.app.resources.timeline_scope_sheet_title
 import com.photonne.app.resources.timeline_scope_synced
 import com.photonne.app.resources.timeline_scope_synced_hint
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
 
@@ -160,9 +161,7 @@ fun TimelineLibraryScopeSheet(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    stringResource(
-                                        Res.string.backup_bucket_item_count, bucket.itemCount
-                                    ),
+                                    pluralStringResource(Res.plurals.backup_bucket_item_count, bucket.itemCount, bucket.itemCount),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

@@ -163,7 +163,7 @@ fun MapClusterSheet(
                 )
             } else {
                 Text(
-                    text = stringResource(Res.string.map_cluster_sheet_title, points.size),
+                    text = pluralStringResource(Res.plurals.map_cluster_sheet_title, points.size, points.size),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)
                 )

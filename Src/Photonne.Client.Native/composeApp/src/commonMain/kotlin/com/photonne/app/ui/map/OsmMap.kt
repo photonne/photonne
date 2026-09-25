@@ -586,9 +586,7 @@ private fun ThumbnailMarker(
     val markerDescription = if (marker.count == 1) {
         org.jetbrains.compose.resources.stringResource(Res.string.map_marker_single)
     } else {
-        org.jetbrains.compose.resources.stringResource(
-            Res.string.map_marker_cluster, marker.count
-        )
+        org.jetbrains.compose.resources.pluralStringResource(Res.plurals.map_marker_cluster, marker.count, marker.count)
     }
     val halfPx = with(LocalDensity.current) { (totalDp.dp / 2).toPx().toInt() }
 

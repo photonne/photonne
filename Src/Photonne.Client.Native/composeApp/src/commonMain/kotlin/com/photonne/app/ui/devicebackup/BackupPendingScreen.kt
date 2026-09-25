@@ -94,6 +94,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneColors
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.resources.backup_status_verifying
@@ -403,7 +404,7 @@ private fun PendingActivityCard(state: DeviceBackupUiState, onStop: () -> Unit) 
                     )
                     if (state.isSyncing && progress.inFlight > 0) {
                         Text(
-                            stringResource(Res.string.backup_uploading_count, progress.inFlight),
+                            pluralStringResource(Res.plurals.backup_uploading_count, progress.inFlight, progress.inFlight),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )

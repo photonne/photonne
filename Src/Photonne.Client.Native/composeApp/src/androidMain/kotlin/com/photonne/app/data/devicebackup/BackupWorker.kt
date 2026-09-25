@@ -1,5 +1,6 @@
 package com.photonne.app.data.devicebackup
 
+import org.jetbrains.compose.resources.getPluralString
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -361,7 +362,7 @@ class BackupWorker(
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(context.applicationInfo.icon)
             .setContentTitle(getString(Res.string.backup_notification_failures_title))
-            .setContentText(getString(Res.string.backup_notification_failures_text, failed))
+            .setContentText(getPluralString(Res.plurals.backup_notification_failures_text, failed, failed))
             .setAutoCancel(true)
             .apply { contentIntent?.let { setContentIntent(it) } }
             .build()

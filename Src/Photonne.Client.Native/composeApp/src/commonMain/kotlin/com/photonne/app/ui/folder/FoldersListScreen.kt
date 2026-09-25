@@ -112,6 +112,7 @@ import com.photonne.app.resources.folders_action_filters
 import com.photonne.app.resources.folders_title
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -518,7 +519,7 @@ private fun FolderRow(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 Text(
-                    text = stringResource(Res.string.albums_count_format, folder.assetCount),
+                    text = pluralStringResource(Res.plurals.albums_count_format, folder.assetCount, folder.assetCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

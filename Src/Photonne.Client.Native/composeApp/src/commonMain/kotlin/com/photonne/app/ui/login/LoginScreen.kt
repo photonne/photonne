@@ -56,6 +56,20 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.app_name
+import com.photonne.app.resources.login_step_server
+import com.photonne.app.resources.login_step_server_hint
+import com.photonne.app.resources.login_server_url
+import com.photonne.app.resources.login_local_url
+import com.photonne.app.resources.login_local_url_hint
+import com.photonne.app.resources.login_continue
+import com.photonne.app.resources.login_step_credentials
+import com.photonne.app.resources.login_username
+import com.photonne.app.resources.login_password
+import com.photonne.app.resources.login_password_hide
+import com.photonne.app.resources.login_password_show
+import com.photonne.app.resources.login_remember_me
+import com.photonne.app.resources.login_sign_in
+import com.photonne.app.resources.login_change_server
 import com.photonne.app.resources.login_insecure_public_url
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.ui.theme.PrimaryActionButton
@@ -102,11 +116,11 @@ fun LoginScreen() {
 @Composable
 private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
     Text(
-        "Paso 1 de 2 · Configura el servidor",
+        stringResource(Res.string.login_step_server),
         style = MaterialTheme.typography.bodyMedium
     )
     Text(
-        "Introduce la dirección de tu instancia de Photonne.",
+        stringResource(Res.string.login_step_server_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -115,7 +129,7 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
     OutlinedTextField(
         value = state.serverUrl,
         onValueChange = viewModel::onServerUrlChange,
-        label = { Text("URL del servidor") },
+        label = { Text(stringResource(Res.string.login_server_url)) },
         placeholder = { Text("https://photos.example.com") },
         supportingText = if (ServerUrlStore.isCleartextToPublicHost(state.serverUrl)) {
             {
@@ -138,11 +152,11 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
     OutlinedTextField(
         value = state.localUrl,
         onValueChange = viewModel::onLocalUrlChange,
-        label = { Text("URL local (opcional)") },
+        label = { Text(stringResource(Res.string.login_local_url)) },
         placeholder = { Text("http://192.168.1.10:5000") },
         supportingText = {
             Text(
-                "Se usará cuando estés en la misma red WiFi que el servidor.",
+                stringResource(Res.string.login_local_url_hint),
                 style = MaterialTheme.typography.bodySmall
             )
         },
@@ -165,7 +179,7 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
     }
 
     PrimaryActionButton(
-        label = "Continuar",
+        label = stringResource(Res.string.login_continue),
         onClick = viewModel::submitServerUrl,
         enabled = state.serverUrl.isNotBlank(),
         isLoading = state.isSubmitting
@@ -176,7 +190,7 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
 @Composable
 private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
     Text(
-        "Paso 2 de 2 · Inicia sesión",
+        stringResource(Res.string.login_step_credentials),
         style = MaterialTheme.typography.bodyMedium
     )
     val effectiveUrl = rememberApiBaseUrl().ifEmpty { state.serverUrl }
@@ -190,7 +204,7 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
     OutlinedTextField(
         value = state.username,
         onValueChange = viewModel::onUsernameChange,
-        label = { Text("Usuario o email") },
+        label = { Text(stringResource(Res.string.login_username)) },
         enabled = !state.isSubmitting,
         singleLine = true,
         keyboardOptions = KeyboardOptions(
@@ -213,7 +227,7 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
     OutlinedTextField(
         value = state.password,
         onValueChange = viewModel::onPasswordChange,
-        label = { Text("Contraseña") },
+        label = { Text(stringResource(Res.string.login_password)) },
         visualTransformation = if (passwordVisible) VisualTransformation.None
         else PasswordVisualTransformation(),
         trailingIcon = {
@@ -221,8 +235,8 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
                 Icon(
                     if (passwordVisible) Icons.Outlined.VisibilityOff
                     else Icons.Outlined.Visibility,
-                    contentDescription = if (passwordVisible) "Ocultar contraseña"
-                    else "Mostrar contraseña"
+                    contentDescription = if (passwordVisible) stringResource(Res.string.login_password_hide)
+                    else stringResource(Res.string.login_password_show)
                 )
             }
         },
@@ -257,7 +271,7 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
             enabled = !state.isSubmitting
         )
         Text(
-            "Recuérdame en este dispositivo",
+            stringResource(Res.string.login_remember_me),
             style = MaterialTheme.typography.bodyMedium
         )
     }
@@ -267,7 +281,7 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
     }
 
     PrimaryActionButton(
-        label = "Entrar",
+        label = stringResource(Res.string.login_sign_in),
         onClick = viewModel::submit,
         isLoading = state.isSubmitting
     )
@@ -277,7 +291,7 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
         enabled = !state.isSubmitting,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text("Cambiar servidor")
+        Text(stringResource(Res.string.login_change_server))
     }
 }
 

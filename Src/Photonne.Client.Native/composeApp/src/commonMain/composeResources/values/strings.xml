@@ -40,7 +40,10 @@
     <string name="timeline_device_loading">Buscando fotos del dispositivo…</string>
     <string name="timeline_scroll_to_top">Volver arriba</string>
     <string name="timeline_memories_one_year_ago">Hace 1 año</string>
-    <string name="timeline_memories_years_ago">Hace %1$d años</string>
+    <plurals name="timeline_memories_years_ago">
+        <item quantity="one">Hace %1$d año</item>
+        <item quantity="other">Hace %1$d años</item>
+    </plurals>
 
     <string name="timeline_year_count">%1$s fotos</string>
     <string name="timeline_zoom_action">Tamaño del grid</string>
@@ -99,7 +102,10 @@
     <string name="albums_empty_title">Aún no tienes álbumes</string>
     <string name="albums_empty_subtitle">Agrupa tus recuerdos en colecciones para encontrarlos antes.</string>
     <string name="albums_empty_action_create">Crear álbum</string>
-    <string name="albums_count_format">%1$d elementos</string>
+    <plurals name="albums_count_format">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
     <string name="albums_title">Álbumes</string>
     <string name="albums_scope_all">Todos</string>
     <string name="albums_scope_mine">Míos</string>
@@ -177,7 +183,10 @@
     <string name="share_attribute_password">contraseña</string>
     <string name="share_attribute_max_views_format">máx %1$d</string>
     <string name="share_attribute_no_downloads">sin descargas</string>
-    <string name="share_attribute_views_format">%1$d vistas</string>
+    <plurals name="share_attribute_views_format">
+        <item quantity="one">%1$d vista</item>
+        <item quantity="other">%1$d vistas</item>
+    </plurals>
     <string name="share_attribute_upload">solicitud de fotos</string>
     <string name="share_attribute_uploads_format">%1$d recibidas</string>
     <string name="share_attribute_expiry_format">expira %1$s</string>
@@ -205,7 +214,10 @@
     <string name="backup_bucket_picker_title">Carpetas del dispositivo</string>
     <string name="backup_bucket_picker_hint">Elige qué carpetas del teléfono se copian al servidor.</string>
     <string name="backup_bucket_added">Añadido</string>
-    <string name="backup_bucket_item_count">%1$d elementos</string>
+    <plurals name="backup_bucket_item_count">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
     <string name="backup_bucket_other_folder">Elegir otra carpeta…</string>
     <string name="asset_action_edit_description">Editar descripción</string>
     <string name="asset_action_edit_date">Editar fecha de captura</string>
@@ -348,7 +360,10 @@
     <string name="trash_action_empty">Vaciar papelera</string>
     <string name="trash_dialog_restore_all_message">Todos los elementos de la papelera volverán a su carpeta original.</string>
     <string name="trash_dialog_empty_message">Esta acción no se puede deshacer. Se eliminarán definitivamente todas las fotos de la papelera.</string>
-    <string name="trash_dialog_purge_message">Se eliminarán definitivamente %1$d elementos. No podrás recuperarlos.</string>
+    <plurals name="trash_dialog_purge_message">
+        <item quantity="one">Se eliminará definitivamente %1$d elemento. No podrás recuperarlo.</item>
+        <item quantity="other">Se eliminarán definitivamente %1$d elementos. No podrás recuperarlos.</item>
+    </plurals>
 
     <string name="favorites_title">Favoritos</string>
     <string name="favorites_empty_title">Aún no hay favoritas</string>
@@ -375,11 +390,17 @@
     <string name="map_action_zoom_in">Acercar</string>
     <string name="map_action_zoom_out">Alejar</string>
     <string name="map_marker_single">Foto en el mapa</string>
-    <string name="map_marker_cluster">Grupo de %1$d fotos en el mapa</string>
+    <plurals name="map_marker_cluster">
+        <item quantity="one">Grupo de %1$d foto en el mapa</item>
+        <item quantity="other">Grupo de %1$d fotos en el mapa</item>
+    </plurals>
     <string name="map_action_fit_to_data">Centrar en mis fotos</string>
     <string name="map_attribution">© OpenStreetMap © CARTO</string>
     <string name="map_attribution_osm">© OpenStreetMap</string>
-    <string name="map_cluster_sheet_title">%1$d fotos en este punto</string>
+    <plurals name="map_cluster_sheet_title">
+        <item quantity="one">%1$d foto en este punto</item>
+        <item quantity="other">%1$d fotos en este punto</item>
+    </plurals>
     <string name="map_action_select_all">Seleccionar todo</string>
 
     <string name="people_title">Personas</string>
@@ -628,7 +649,10 @@
     <string name="admin_stats_coverage_unindexed">Sin indexar</string>
     <string name="admin_stats_coverage_verified_at">Verificado: %1$s</string>
     <string name="admin_stats_coverage_never">Aún sin verificar. Lanza «Cobertura de indexación» en Sistema › Ejecutar tareas.</string>
-    <string name="admin_stats_coverage_offline">%1$d biblioteca(s) externa(s) no disponibles quedaron sin verificar</string>
+    <plurals name="admin_stats_coverage_offline">
+        <item quantity="one">%1$d biblioteca externa no disponible quedó sin verificar</item>
+        <item quantity="other">%1$d bibliotecas externas no disponibles quedaron sin verificar</item>
+    </plurals>
     <string name="admin_stats_coverage_show_list">Ver ficheros sin indexar (%1$d)</string>
     <string name="admin_stats_coverage_truncated">Mostrando los primeros %1$d</string>
     <string name="admin_stats_per_user">Uso por usuario</string>
@@ -673,7 +697,10 @@
     <string name="admin_libraries_field_import_subfolders">Incluir subcarpetas</string>
     <string name="admin_libraries_field_cron">Programación cron (opcional)</string>
     <string name="admin_libraries_cron_hint">"@daily, @weekly o expresión cron"</string>
-    <string name="admin_libraries_asset_count">%1$d elementos</string>
+    <plurals name="admin_libraries_asset_count">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
     <string name="admin_libraries_last_scan">Último escaneo: %1$s (%2$s)</string>
     <string name="admin_libraries_no_scan">Sin escaneos todavía</string>
     <string name="admin_libraries_scan_progress">Escaneando · %1$d%%</string>
@@ -1064,7 +1091,10 @@
     <string name="device_backup_action_free_space">Liberar espacio (%1$d)</string>
     <string name="device_backup_action_free_space_sized">Liberar %2$s (%1$d archivos)</string>
     <string name="device_backup_free_space_dialog_title">Liberar espacio</string>
-    <string name="device_backup_free_space_dialog_message">Se borrarán del dispositivo %1$d archivos que ya están sincronizados en la app. Esta acción no se puede deshacer.</string>
+    <plurals name="device_backup_free_space_dialog_message">
+        <item quantity="one">Se borrará del dispositivo %1$d archivo que ya está sincronizado en la app. Esta acción no se puede deshacer.</item>
+        <item quantity="other">Se borrarán del dispositivo %1$d archivos que ya están sincronizados en la app. Esta acción no se puede deshacer.</item>
+    </plurals>
     <string name="device_backup_free_space_confirm">Borrar del dispositivo</string>
     <string name="device_backup_free_space_cancel">Cancelar</string>
     <string name="device_backup_free_space_in_progress">Liberando espacio…</string>
@@ -1099,23 +1129,38 @@
     <string name="backup_status_all_synced">Todo respaldado</string>
     <string name="backup_status_pending">%1$d pendientes de subir</string>
     <string name="backup_status_pending_sized">%1$d pendientes · %2$s</string>
-    <string name="backup_status_failures">%1$d con errores de subida</string>
+    <plurals name="backup_status_failures">
+        <item quantity="one">%1$d con error de subida</item>
+        <item quantity="other">%1$d con errores de subida</item>
+    </plurals>
     <string name="backup_status_syncing">Subiendo %1$d de %2$d…</string>
-    <string name="backup_uploading_count">Subiendo %1$d archivos…</string>
+    <plurals name="backup_uploading_count">
+        <item quantity="one">Subiendo %1$d archivo…</item>
+        <item quantity="other">Subiendo %1$d archivos…</item>
+    </plurals>
     <string name="backup_status_queued">En cola</string>
     <string name="backup_status_upload_now">Subir ahora</string>
     <string name="backup_status_recheck">Volver a verificar</string>
-    <string name="backup_status_enrichment_row">%1$d archivo(s) procesándose en el servidor</string>
+    <plurals name="backup_status_enrichment_row">
+        <item quantity="one">%1$d archivo procesándose en el servidor</item>
+        <item quantity="other">%1$d archivos procesándose en el servidor</item>
+    </plurals>
     <string name="backup_last_run_manual">Última copia: %1$s</string>
     <string name="backup_last_run_background">Última copia automática: %1$s</string>
     <string name="backup_last_run_counts">%1$d subidos · %2$d fallidos</string>
     <string name="backup_time_just_now">hace un momento</string>
     <string name="backup_time_minutes">hace %1$d min</string>
     <string name="backup_time_hours">hace %1$d h</string>
-    <string name="backup_time_days">hace %1$d días</string>
+    <plurals name="backup_time_days">
+        <item quantity="one">hace %1$d día</item>
+        <item quantity="other">hace %1$d días</item>
+    </plurals>
     <string name="backup_notification_channel">Copia de seguridad</string>
     <string name="backup_notification_failures_title">Copia de seguridad incompleta</string>
-    <string name="backup_notification_failures_text">%1$d archivo(s) no se pudieron subir. Abre Photonne para revisarlos.</string>
+    <plurals name="backup_notification_failures_text">
+        <item quantity="one">%1$d archivo no se pudo subir. Abre Photonne para revisarlo.</item>
+        <item quantity="other">%1$d archivos no se pudieron subir. Abre Photonne para revisarlos.</item>
+    </plurals>
     <string name="backup_failed_dialog_title">Error de subida</string>
     <string name="backup_failed_dialog_no_detail">Sin detalles adicionales del servidor.</string>
     <string name="backup_failed_dialog_retry">Reintentar</string>
@@ -1144,7 +1189,10 @@
     <string name="backup_error_list_folder">No se pudo listar la carpeta</string>
     <string name="backup_source_add">Añadir otra carpeta</string>
     <string name="backup_source_remove">Quitar carpeta</string>
-    <string name="backup_timeline_pending_row">%1$d fotos por respaldar</string>
+    <plurals name="backup_timeline_pending_row">
+        <item quantity="one">%1$d foto por respaldar</item>
+        <item quantity="other">%1$d fotos por respaldar</item>
+    </plurals>
     <string name="backup_status_stop">Detener</string>
     <string name="backup_notifications_denied_hint">Sin permiso de notificaciones no verás el progreso ni el aviso si falla una copia en segundo plano. Puedes concederlo en los ajustes del sistema.</string>
     <string name="backup_notifications_open_settings">Abrir ajustes</string>
@@ -1209,7 +1257,10 @@
     <string name="utilities_duplicates_action_clear">Limpiar selección</string>
     <string name="utilities_duplicates_action_delete">Borrar %1$d (%2$s)</string>
     <string name="utilities_duplicates_confirm_title">Mover a la papelera</string>
-    <string name="utilities_duplicates_confirm_message">%1$d elementos se moverán a tu papelera. Podrás restaurarlos desde la app web.</string>
+    <plurals name="utilities_duplicates_confirm_message">
+        <item quantity="one">%1$d elemento se moverá a tu papelera. Podrás restaurarlo desde la app web.</item>
+        <item quantity="other">%1$d elementos se moverán a tu papelera. Podrás restaurarlos desde la app web.</item>
+    </plurals>
     <string name="utilities_duplicates_open_detail">Abrir detalle</string>
 
     <!-- Large files -->
@@ -1219,7 +1270,10 @@
 
     <!-- Locations -->
     <string name="utilities_locations_empty">Aún no tienes carpetas indexadas.</string>
-    <string name="utilities_locations_item_count">%1$d elementos</string>
+    <plurals name="utilities_locations_item_count">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
     <string name="utilities_locations_shared_badge">Compartida</string>
     <string name="utilities_locations_external_badge">Biblioteca externa</string>
 
@@ -1244,7 +1298,10 @@
     <string name="notifications_empty_title">No hay notificaciones.</string>
     <string name="notifications_empty_unread_title">No hay notificaciones sin leer.</string>
     <string name="notifications_empty_subtitle">Aquí aparecerán los avisos sobre tu biblioteca.</string>
-    <string name="notifications_total">%1$d notificaciones en total</string>
+    <plurals name="notifications_total">
+        <item quantity="one">%1$d notificación en total</item>
+        <item quantity="other">%1$d notificaciones en total</item>
+    </plurals>
     <string name="notifications_pagination_page">Página %1$d de %2$d</string>
     <string name="notifications_pagination_previous">Anterior</string>
     <string name="notifications_pagination_next">Siguiente</string>
@@ -1305,7 +1362,10 @@
     <string name="organize_move_by_year_desc">Se crearán subcarpetas por año (2026, 2025…) dentro del destino.</string>
     <string name="organize_move_pick_destination">Elige un destino</string>
     <string name="organize_move_no_matches">Sin coincidencias</string>
-    <string name="organize_move_action_count">Mover %1$d fotos</string>
+    <plurals name="organize_move_action_count">
+        <item quantity="one">Mover %1$d foto</item>
+        <item quantity="other">Mover %1$d fotos</item>
+    </plurals>
     <string name="organize_review_exclude">Quitar del movimiento</string>
     <string name="organize_review_include">Volver a incluir</string>
     <string name="organize_move_review_title">Se moverán %1$d fotos</string>
@@ -1417,4 +1477,45 @@
     <string name="admin_shared_trash_selected_format">%1$d seleccionados</string>
     <string name="admin_shared_trash_deleted_by_format">Borrado por %1$s</string>
     <string name="timeline_scrubber_description">Desplazamiento rápido por fechas</string>
+
+    <!-- Visor: panel de información -->
+    <string name="asset_detail_empty">No hay elementos</string>
+    <string name="asset_detail_video_unsupported">Reproducción de vídeo no disponible en este sistema</string>
+    <string name="asset_detail_description">Descripción</string>
+    <string name="asset_detail_description_placeholder">Añadir descripción</string>
+    <string name="asset_detail_capture_date">Fecha de captura</string>
+    <string name="asset_detail_created">Creado</string>
+    <string name="asset_detail_size">Tamaño</string>
+    <string name="asset_detail_iso">Sensibilidad</string>
+    <string name="asset_detail_aperture">Apertura</string>
+    <string name="asset_detail_shutter">Velocidad</string>
+    <string name="asset_detail_focal_length">Distancia focal</string>
+    <string name="asset_detail_camera">Cámara</string>
+    <string name="asset_detail_view_faces">Ver caras</string>
+    <string name="asset_detail_folder">Carpeta</string>
+    <string name="asset_detail_same_people">Mismas personas</string>
+    <string name="asset_detail_same_day">Mismo día</string>
+    <string name="asset_detail_tag_add">Añadir</string>
+    <string name="asset_detail_tag_dialog_title">Añadir etiqueta</string>
+    <string name="asset_detail_tag_placeholder">p. ej. Vacaciones</string>
+    <plurals name="asset_detail_faces_count">
+        <item quantity="one">Cara (%1$d)</item>
+        <item quantity="other">Caras (%1$d)</item>
+    </plurals>
+
+    <!-- Login -->
+    <string name="login_step_server">Paso 1 de 2 · Configura el servidor</string>
+    <string name="login_step_server_hint">Introduce la dirección de tu instancia de Photonne.</string>
+    <string name="login_server_url">URL del servidor</string>
+    <string name="login_local_url">URL local (opcional)</string>
+    <string name="login_local_url_hint">Se usará cuando estés en la misma red WiFi que el servidor.</string>
+    <string name="login_continue">Continuar</string>
+    <string name="login_step_credentials">Paso 2 de 2 · Inicia sesión</string>
+    <string name="login_username">Usuario o email</string>
+    <string name="login_password">Contraseña</string>
+    <string name="login_password_hide">Ocultar contraseña</string>
+    <string name="login_password_show">Mostrar contraseña</string>
+    <string name="login_remember_me">Recuérdame en este dispositivo</string>
+    <string name="login_sign_in">Entrar</string>
+    <string name="login_change_server">Cambiar servidor</string>
 </resources>

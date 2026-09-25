@@ -69,6 +69,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.Spacing
@@ -430,7 +431,7 @@ private fun SubfolderRow(
                 maxLines = 1
             )
             Text(
-                text = stringResource(Res.string.albums_count_format, folder.assetCount),
+                text = pluralStringResource(Res.plurals.albums_count_format, folder.assetCount, folder.assetCount),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

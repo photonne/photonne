@@ -60,6 +60,7 @@ import com.photonne.app.ui.charts.rememberChartPalette
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import com.photonne.app.resources.admin_stats_per_user_list
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 
@@ -325,7 +326,7 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
             if (coverage.offlineLibraries > 0) {
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
-                    stringResource(Res.string.admin_stats_coverage_offline, coverage.offlineLibraries),
+                    pluralStringResource(Res.plurals.admin_stats_coverage_offline, coverage.offlineLibraries, coverage.offlineLibraries),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )

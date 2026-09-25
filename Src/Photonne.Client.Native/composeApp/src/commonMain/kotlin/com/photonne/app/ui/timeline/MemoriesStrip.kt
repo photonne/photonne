@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
 
@@ -197,7 +198,7 @@ fun MemoriesStrip(
                 val label = if (group.yearsAgo == 1)
                     stringResource(Res.string.timeline_memories_one_year_ago)
                 else
-                    stringResource(Res.string.timeline_memories_years_ago, group.yearsAgo)
+                    pluralStringResource(Res.plurals.timeline_memories_years_ago, group.yearsAgo, group.yearsAgo)
 
                 StoryCard(
                     group = group,

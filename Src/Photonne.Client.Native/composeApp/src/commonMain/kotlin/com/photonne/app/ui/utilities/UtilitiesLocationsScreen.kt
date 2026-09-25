@@ -50,6 +50,7 @@ import com.photonne.app.resources.utilities_locations_shared_badge
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.util.sortedByNatural
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
 import com.photonne.app.ui.theme.Spacing
@@ -207,10 +208,7 @@ private fun FolderRow(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        stringResource(
-                            Res.string.utilities_locations_item_count,
-                            node.assetCount
-                        ),
+                        pluralStringResource(Res.plurals.utilities_locations_item_count, node.assetCount, node.assetCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
