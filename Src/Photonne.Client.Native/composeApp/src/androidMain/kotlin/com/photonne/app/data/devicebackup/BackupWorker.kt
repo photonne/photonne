@@ -13,6 +13,7 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkManager
+import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
 import com.photonne.app.data.api.LocalReachabilityProbe
 import com.photonne.app.data.api.ServerUrlStore
@@ -126,6 +127,11 @@ class BackupWorker(
         fun consumeSelection() {
             selectionKey?.let { runCatching { ledger.takeMeta(it) } }
         }
+        // A stop by the OS (constraints, quota, FGS timeout) gets the work
+        // rescheduled, and that rerun still needs the selection; only the
+        // user cancelling ("Detener") ends the run for good.
+        fun endedForGood(): Boolean =
+            !isStopped || stopReason == WorkInfo.STOP_REASON_CANCELLED_BY_APP
         if (selectionKey != null && selection.isNullOrEmpty()) {
             Log.i(TAG, "Selection payload missing or empty; skipping run")
             consumeSelection()
@@ -191,7 +197,7 @@ class BackupWorker(
                             androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE
                         )
                 }
-                consumeSelection()
+                if (endedForGood()) consumeSelection()
                 Result.success()
             }
         } catch (ex: CancellationException) {
@@ -199,7 +205,7 @@ class BackupWorker(
             // crash, and WorkManager already knows. Rethrow so it isn't
             // logged as one and doesn't ask for a retry.
             Log.i(TAG, "Backup stopped")
-            consumeSelection()
+            if (endedForGood()) consumeSelection()
             throw ex
         } catch (ex: Throwable) {
             Log.e(TAG, "Background backup crashed", ex)

@@ -1,4 +1,8 @@
-@file:OptIn(ExperimentalSettingsImplementation::class)
+@file:OptIn(
+    ExperimentalSettingsImplementation::class,
+    ExperimentalSettingsApi::class,
+    kotlinx.cinterop.ExperimentalForeignApi::class,
+)
 
 package com.photonne.app.di
 
@@ -6,6 +10,7 @@ import com.photonne.app.data.api.IosNetworkMonitor
 import com.photonne.app.data.api.NetworkMonitor
 import com.photonne.app.ui.actions.AssetSharing
 import com.photonne.app.data.auth.SecretSettingKeys
+import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ExperimentalSettingsImplementation
 import com.russhwolf.settings.KeychainSettings
 import com.russhwolf.settings.NSUserDefaultsSettings
