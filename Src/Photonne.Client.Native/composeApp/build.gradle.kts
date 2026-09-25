@@ -20,7 +20,17 @@ sqldelight {
 }
 
 val photonneVersion: String = readPhotonneVersion()
+// Only a prefill for the login wizard. Nothing is baked in unless passed
+// explicitly (-PApiBaseUrl=...), except the emulator's host alias for Android
+// debug builds — a release must never ship a developer's address.
 val apiBaseUrl: String = (findProperty("ApiBaseUrl") as? String).orEmpty()
+val androidDebugApiBaseUrl: String = apiBaseUrl.ifEmpty { "http://10.0.2.2:1107" }
+
+// Release signing, from Gradle properties or environment variables (CI
+// secrets). Without them the release APK is built unsigned.
+fun signingValue(name: String): String? =
+    (findProperty(name) as? String ?: System.getenv(name))?.takeIf { it.isNotBlank() }
+val releaseKeystore: String? = signingValue("PHOTONNE_KEYSTORE_FILE")
 
 val generatedCommonDir = layout.buildDirectory.dir("generated/photonne/commonMain/kotlin")
 val writePhotonneVersion = tasks.register("writePhotonneVersion") {
@@ -165,7 +175,6 @@ android {
         targetSdk = 35
         versionCode = photonneVersion.toVersionCode()
         versionName = photonneVersion
-        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildFeatures { buildConfig = true }
@@ -179,8 +188,33 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = signingValue("PHOTONNE_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("PHOTONNE_KEY_ALIAS")
+                keyPassword = signingValue("PHOTONNE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
-        getByName("release") { isMinifyEnabled = false }
+        getByName("debug") {
+            buildConfigField("String", "API_BASE_URL", "\"$androidDebugApiBaseUrl\"")
+        }
+        getByName("release") {
+            buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            if (releaseKeystore != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 }
 
@@ -205,7 +239,7 @@ compose.desktop {
             // reflexión y no llevamos reglas; el tamaño no compensa el riesgo.
             isEnabled.set(false)
         }
-        jvmArgs += "-Dphotonne.api.baseUrl=$apiBaseUrl"
+        if (apiBaseUrl.isNotEmpty()) jvmArgs += "-Dphotonne.api.baseUrl=$apiBaseUrl"
     }
 }
 

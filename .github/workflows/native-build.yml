@@ -34,7 +34,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          # Must match compileSdk in composeApp/build.gradle.kts.
+          packages: 'platform-tools platforms;android-37'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -51,10 +52,59 @@ jobs:
       - name: Run common tests on JVM
         run: ./gradlew :composeApp:desktopTest --stacktrace
 
+      # R8 + resource shrinking + lintVital: catches missing keep rules and
+      # fatal lint issues before a release is cut. Unsigned without secrets.
+      - name: Assemble Android release
+        run: ./gradlew :composeApp:assembleRelease --stacktrace
+
+      - name: Upload R8 mapping
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-r8-mapping
+          path: Src/Photonne.Client.Native/composeApp/build/outputs/mapping/release/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: native-test-reports
+          path: Src/Photonne.Client.Native/composeApp/build/reports/
+          retention-days: 7
+
+  ios:
+    name: Compile + test iOS (macOS)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: Src/Photonne.Client.Native
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # iosMain (Keychain, PhotoKit, BGTaskScheduler) only compiles here.
+      - name: Compile iOS (simulator + device)
+        run: ./gradlew :composeApp:compileKotlinIosSimulatorArm64 :composeApp:compileKotlinIosArm64 --stacktrace
+
+      - name: Run common tests on the iOS simulator
+        run: ./gradlew :composeApp:iosSimulatorArm64Test --stacktrace
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-ios-test-reports
           path: Src/Photonne.Client.Native/composeApp/build/reports/
           retention-days: 7

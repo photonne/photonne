@@ -53,6 +53,10 @@ jobs:
         if: runner.os != 'Windows'
         run: chmod +x ./gradlew
 
+      # Never ship an installer whose tests fail.
+      - name: Run tests
+        run: ./gradlew :composeApp:desktopTest --stacktrace
+
       - name: Package installer
         run: ./gradlew :composeApp:packageReleaseDistributionForCurrentOS --stacktrace
 
