@@ -32,6 +32,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 
 const val SKIP_AUTH_HEADER = "X-Photonne-Skip-Auth"
+const val ONE_SHOT_BODY_HEADER = "X-Photonne-One-Shot-Body"
 
 internal val photonneJson: Json = Json {
     ignoreUnknownKeys = true
@@ -41,6 +42,16 @@ internal val photonneJson: Json = Json {
 
 fun HttpRequestBuilder.skipAuthRefresh() {
     headers { append(SKIP_AUTH_HEADER, "1") }
+}
+
+/**
+ * Marks a request whose body can only be sent once (a streamed upload). On a
+ * 401 the session is still refreshed, but the request is NOT resent: replaying
+ * it would push a half-drained channel under the original Content-Length. The
+ * 401 reaches the caller, which reopens its source and retries.
+ */
+fun HttpRequestBuilder.oneShotBody() {
+    headers { append(ONE_SHOT_BODY_HEADER, "1") }
 }
 
 /**
@@ -60,7 +71,10 @@ private enum class RefreshOutcome {
 
 /**
  * Refresh-on-401 mirror of Photonne.Client.Web/Services/AuthRefreshHandler.cs.
- * Uses a mutex so concurrent 401s only trigger one refresh.
+ * Uses a mutex so concurrent 401s only trigger one refresh: a request that
+ * waited on the lock first checks whether the token it was sent with has
+ * already been replaced, and just retries if so. Spending the refresh token
+ * again would fail once the server rotates it and log the user out.
  */
 fun buildPhotonneHttpClient(
     engine: HttpClientEngine,
@@ -76,7 +90,8 @@ fun buildPhotonneHttpClient(
     tokenStorage: TokenStorage,
     authState: AuthStateHolder,
     onConnectionError: (() -> Unit)? = null,
-    trustedUrlsProvider: (() -> List<String>)? = null
+    trustedUrlsProvider: (() -> List<String>)? = null,
+    httpLogging: Boolean = false,
 ): HttpClient {
     val refreshMutex = Mutex()
 
@@ -127,13 +142,18 @@ fun buildPhotonneHttpClient(
             // hold the refresh mutex below.
             connectTimeoutMillis = 4_000
         }
-        install(Logging) {
-            logger = object : Logger {
-                override fun log(message: String) {
-                    println("[Ktor] $message")
+        // Off in release builds: request lines include share-link tokens, and
+        // on Android stdout ends up in logcat, readable by adb and bug reports.
+        if (httpLogging) {
+            install(Logging) {
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        println("[Ktor] $message")
+                    }
                 }
+                level = LogLevel.INFO
+                sanitizeHeader { it == HttpHeaders.Authorization }
             }
-            level = LogLevel.INFO
         }
     }
 
@@ -149,7 +169,11 @@ fun buildPhotonneHttpClient(
             return@intercept execute(request)
         }
 
-        tokenStorage.getAccessToken()?.let { token ->
+        val oneShot = request.headers[ONE_SHOT_BODY_HEADER] != null
+        request.headers.remove(ONE_SHOT_BODY_HEADER)
+
+        val sentToken = tokenStorage.getAccessToken()
+        sentToken?.let { token ->
             request.headers[HttpHeaders.Authorization] = "Bearer $token"
         }
 
@@ -169,7 +193,13 @@ fun buildPhotonneHttpClient(
         if (firstCall.response.status != HttpStatusCode.Unauthorized) return@intercept firstCall
 
         val outcome = refreshMutex.withLock {
-            attemptRefresh(client, baseUrlProvider(), tokenStorage)
+            val current = tokenStorage.getAccessToken()
+            if (current != null && current != sentToken) {
+                // Another request refreshed while this one was in flight.
+                RefreshOutcome.Success
+            } else {
+                attemptRefresh(client, baseUrlProvider(), tokenStorage)
+            }
         }
         when (outcome) {
             RefreshOutcome.Success -> Unit // fall through to retry with the new token
@@ -185,6 +215,9 @@ fun buildPhotonneHttpClient(
                 return@intercept firstCall
             }
         }
+
+        // The body is gone: let the caller retry with a fresh source.
+        if (oneShot) return@intercept firstCall
 
         val retry = HttpRequestBuilder().takeFrom(request)
         tokenStorage.getAccessToken()?.let { token ->

@@ -14,6 +14,7 @@ actual fun platformModule() = module {
     // Cifrado en reposo (tokens, "recordarme"), con migración desde el
     // java.util.prefs en claro que se usaba antes.
     single<Settings> { DesktopSecureSettings.createDefault() }
+    single<Settings>(SecureSettings) { get<Settings>() }
     single<HttpClientEngine> { CIO.create() }
     single<com.photonne.app.data.api.ConnectionRecycler> {
         object : com.photonne.app.data.api.ConnectionRecycler {

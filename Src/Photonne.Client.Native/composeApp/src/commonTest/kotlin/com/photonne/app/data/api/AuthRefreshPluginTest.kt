@@ -6,12 +6,16 @@ import com.photonne.app.data.auth.TokenStorage
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -241,5 +245,90 @@ class AuthRefreshPluginTest {
         // A connection failure is not an auth failure — session untouched.
         assertEquals(0, storage.clearedTimes)
         assertEquals(AuthState.Unknown, authState.state.value)
+    }
+
+    @Test
+    fun concurrent_401s_spend_the_refresh_token_once() = runTest {
+        val storage = FakeTokenStorage()
+        val authState = AuthStateHolder()
+        var refreshCalls = 0
+        // Both requests must be in flight with the old token before either
+        // gets its 401, as happens with parallel backup uploads.
+        val bothSent = CompletableDeferred<Unit>()
+        var oldTokenRequests = 0
+
+        val engine = MockEngine { request ->
+            val auth = request.headers[HttpHeaders.Authorization]
+            when {
+                request.url.encodedPath == "/api/auth/refresh" -> {
+                    refreshCalls++
+                    respond(
+                        content = ByteReadChannel("""{"token":"new-access","refreshToken":"refresh-2"}"""),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
+                auth == "Bearer old-access" -> {
+                    if (++oldTokenRequests == 2) bothSent.complete(Unit)
+                    bothSent.await()
+                    respond("", HttpStatusCode.Unauthorized)
+                }
+                auth == "Bearer new-access" -> respond("ok", HttpStatusCode.OK)
+                else -> respond("nope", HttpStatusCode.NotFound)
+            }
+        }
+
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrl = "http://test.local",
+            tokenStorage = storage,
+            authState = authState
+        )
+
+        val responses = listOf(
+            async { client.get("http://test.local/api/a") },
+            async { client.get("http://test.local/api/b") },
+        ).awaitAll()
+
+        responses.forEach { assertEquals(HttpStatusCode.OK, it.status) }
+        assertEquals(1, refreshCalls)
+        assertEquals(0, storage.clearedTimes)
+    }
+
+    @Test
+    fun one_shot_body_is_not_replayed_after_refresh() = runTest {
+        val storage = FakeTokenStorage()
+        val authState = AuthStateHolder()
+        var uploadCalls = 0
+
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/auth/refresh" -> respond(
+                    content = ByteReadChannel("""{"token":"new-access","refreshToken":"refresh-2"}"""),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> {
+                    uploadCalls++
+                    assertEquals(null, request.headers[ONE_SHOT_BODY_HEADER])
+                    respond("", HttpStatusCode.Unauthorized)
+                }
+            }
+        }
+
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrl = "http://test.local",
+            tokenStorage = storage,
+            authState = authState
+        )
+
+        val response = client.post("http://test.local/api/assets/upload") { oneShotBody() }
+
+        // The 401 reaches the caller untouched, but the session is refreshed
+        // so the caller's own retry goes out with the new token.
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals(1, uploadCalls)
+        assertEquals("new-access", storage.getAccessToken())
     }
 }

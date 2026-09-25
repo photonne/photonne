@@ -101,16 +101,26 @@ import org.koin.dsl.module
 
 data class PhotonneAppConfig(
     val apiBaseUrl: String? = null,
-    val useFakeMemories: Boolean = false
+    val useFakeMemories: Boolean = false,
+    /** Logs every HTTP request line. Debug builds only: URLs carry share tokens. */
+    val httpLogging: Boolean = false,
 )
+
+/**
+ * Qualifier for the [com.russhwolf.settings.Settings] that holds secrets (session
+ * tokens, remembered credentials). Every platform module must bind it: Android
+ * and desktop alias their already-encrypted default store, iOS backs it with the
+ * Keychain because its default store is plain `NSUserDefaults`.
+ */
+val SecureSettings = org.koin.core.qualifier.named("secureSettings")
 
 expect fun platformModule(): org.koin.core.module.Module
 
 fun commonModule(config: PhotonneAppConfig) = module {
     single { config }
     singleOf(::AuthStateHolder)
-    single<TokenStorage> { SettingsTokenStorage(get()) }
-    single { RememberedCredentialsStore(get()) }
+    single<TokenStorage> { SettingsTokenStorage(get(SecureSettings)) }
+    single { RememberedCredentialsStore(get(SecureSettings)) }
     single { ServerUrlStore(get()) }
     single<HttpClient> {
         val urlStore = get<ServerUrlStore>()
@@ -125,7 +135,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
             // Ambas URLs, no solo la efectiva: una petición lanzada contra la
             // pública justo cuando la sonda cambia a la local seguiría siendo
             // del servidor Photonne.
-            trustedUrlsProvider = { listOfNotNull(urlStore.getPublic(), urlStore.getLocal()) }
+            trustedUrlsProvider = { listOfNotNull(urlStore.getPublic(), urlStore.getLocal()) },
+            httpLogging = config.httpLogging,
         )
     }
     single<PhotonneApi> {

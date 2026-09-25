@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Photonne</string>
+    <string name="login_insecure_public_url">This address uses unencrypted HTTP outside your local network: your password and session would travel in clear text over the internet. Use https:// whenever you can.</string>
 
     <string name="tab_timeline">Photos</string>
     <string name="tab_albums">Albums</string>

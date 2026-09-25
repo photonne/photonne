@@ -1,5 +1,8 @@
 package com.photonne.app.di
 
+import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.photonne.app.data.api.AndroidNetworkMonitor
@@ -23,20 +26,9 @@ import java.util.concurrent.TimeUnit
 
 actual fun platformModule() = module {
     single<NetworkMonitor> { AndroidNetworkMonitor(androidContext()) }
-    single<Settings> {
-        val context = androidContext()
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        val prefs = EncryptedSharedPreferences.create(
-            context,
-            "photonne_secure_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-        SharedPreferencesSettings(prefs)
-    }
+    single<Settings> { SharedPreferencesSettings(openSecurePrefs(androidContext())) }
+    // The default store is already encrypted at rest.
+    single<Settings>(SecureSettings) { get<Settings>() }
     // One pool shared by the Ktor API/image client AND the ExoPlayer video
     // data source, so a single eviction reaches every socket. The 30 s
     // keep-alive (default is 5 min) is the second half of the half-open-socket
@@ -96,4 +88,38 @@ actual fun platformModule() = module {
     single { AssetSharing(androidContext()) }
     single { com.photonne.app.data.devicebackup.DeviceGallery(androidContext()) }
     single { com.photonne.app.data.devicelibrary.DeviceLibrary(androidContext()) }
+}
+
+private const val SECURE_PREFS_NAME = "photonne_secure_prefs"
+
+/**
+ * Opens the encrypted preferences, recovering from an unreadable file.
+ *
+ * The Keystore master key never leaves the device, so a prefs file restored
+ * from a backup or device transfer (or left behind by a Keystore reset) can't
+ * be decrypted and `create()` throws. Without recovery that exception fires
+ * while Koin builds the graph and the app crashes on every launch. The file
+ * only holds the session and cached preferences, so wiping it and starting
+ * logged out is the correct outcome.
+ */
+private fun openSecurePrefs(context: Context): SharedPreferences {
+    fun create(): SharedPreferences {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        return EncryptedSharedPreferences.create(
+            context,
+            SECURE_PREFS_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+    return try {
+        create()
+    } catch (e: Exception) {
+        Log.w("Photonne", "Secure prefs unreadable, resetting them", e)
+        context.deleteSharedPreferences(SECURE_PREFS_NAME)
+        create()
+    }
 }
