@@ -2,7 +2,6 @@
 
 package com.photonne.app
 
-import org.jetbrains.compose.resources.getPluralString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
