@@ -572,6 +572,9 @@ private fun SessionViewModelScope(
     CompositionLocalProvider(LocalViewModelStoreOwner provides owner, content = content)
 }
 
+/** Whose selection the shared add-to-album dialog adds. */
+private enum class BulkAddSource { Search, Map, Favorites, People, Folder, Archive, Album, Inbox }
+
 @Composable
 private fun SessionLoadingScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -833,14 +836,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showInviteMember by remember { mutableStateOf(false) }
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
     var bulkAddToAlbum by remember { mutableStateOf<Boolean>(false) }
-    var bulkAddToAlbumFromSearch by remember { mutableStateOf(false) }
-    var bulkAddToAlbumFromMap by remember { mutableStateOf(false) }
-    var bulkAddToAlbumFromFavorites by remember { mutableStateOf(false) }
-    var bulkAddToAlbumFromPeople by remember { mutableStateOf(false) }
-    var bulkAddToAlbumFromFolder by remember { mutableStateOf(false) }
-    var bulkAddToAlbumFromArchive by remember { mutableStateOf(false) }
-    var bulkAddToAlbumFromAlbum by remember { mutableStateOf(false) }
-    var bulkAddToAlbumFromInbox by remember { mutableStateOf(false) }
+    var bulkAddSource by remember { mutableStateOf<BulkAddSource?>(null) }
     var selectedPerson by remember {
         mutableStateOf<com.photonne.app.data.models.Person?>(null)
     }
@@ -1515,7 +1511,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(albumDetailState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddToAlbumFromAlbum = true },
+                    onAddToAlbum = { bulkAddSource = BulkAddSource.Album },
                     onDownload = {
                         actionsViewModel.download(albumDetailState.selection.toList())
                     },
@@ -1615,7 +1611,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(folderDetailState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddToAlbumFromFolder = true },
+                    onAddToAlbum = { bulkAddSource = BulkAddSource.Folder },
                     onDownload = {
                         actionsViewModel.download(folderDetailState.selection.toList())
                     },
@@ -1640,7 +1636,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(searchState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddToAlbumFromSearch = true },
+                    onAddToAlbum = { bulkAddSource = BulkAddSource.Search },
                     onDownload = {
                         actionsViewModel.download(searchState.selection.toList())
                     },
@@ -1663,7 +1659,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(personDetailState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddToAlbumFromPeople = true },
+                    onAddToAlbum = { bulkAddSource = BulkAddSource.People },
                     onDownload = {
                         actionsViewModel.download(personDetailState.selection.toList())
                     },
@@ -1704,7 +1700,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(organizeInboxState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddToAlbumFromInbox = true },
+                    onAddToAlbum = { bulkAddSource = BulkAddSource.Inbox },
                     onDownload = {
                         actionsViewModel.download(organizeInboxState.selection.toList())
                     },
@@ -1744,7 +1740,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(favoritesState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddToAlbumFromFavorites = true },
+                    onAddToAlbum = { bulkAddSource = BulkAddSource.Favorites },
                     onDownload = {
                         actionsViewModel.download(favoritesState.selection.toList())
                     },
@@ -1768,7 +1764,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(archivedState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddToAlbumFromArchive = true },
+                    onAddToAlbum = { bulkAddSource = BulkAddSource.Archive },
                     onDownload = {
                         actionsViewModel.download(archivedState.selection.toList())
                     },
@@ -2743,7 +2739,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             )
                             mapViewModel.closeClusterSheet()
                         },
-                        onBulkAddToAlbum = { bulkAddToAlbumFromMap = true },
+                        onBulkAddToAlbum = { bulkAddSource = BulkAddSource.Map },
                         onBack = { moreSubscreen = null }
                     )
                     MoreSubscreen.PeopleSuggestions ->
@@ -4357,26 +4353,64 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
-    if (bulkAddToAlbumFromSearch) {
-        LaunchedEffect(Unit) { searchViewModel.clearError() }
+    // One add-to-album dialog for every screen's selection bar; [bulkAddSource]
+    // says whose selection it adds.
+    bulkAddSource?.let { source ->
+        val (isSubmitting, errorMessage) = when (source) {
+            BulkAddSource.Search -> searchState.isBulkMutating to searchState.error?.userMessage
+            BulkAddSource.Map -> mapViewModel.state.collectAsStateWithLifecycle().value
+                .let { it.isBulkMutating to it.error?.userMessage }
+            BulkAddSource.Favorites -> favoritesState.isBulkMutating to favoritesState.error?.userMessage
+            BulkAddSource.People -> personDetailState.isBulkMutating to personDetailState.error?.userMessage
+            BulkAddSource.Folder -> folderDetailState.isBulkMutating to folderDetailState.error?.userMessage
+            BulkAddSource.Archive -> archivedState.isBulkMutating to archivedState.error?.userMessage
+            BulkAddSource.Album -> albumDetailState.isBulkMutating to albumDetailState.error?.userMessage
+            BulkAddSource.Inbox -> organizeInboxState.isBulkMutating to organizeInboxState.error?.userMessage
+        }
+        LaunchedEffect(source) {
+            when (source) {
+                BulkAddSource.Search -> searchViewModel.clearError()
+                BulkAddSource.Map -> mapViewModel.clearError()
+                BulkAddSource.Favorites -> favoritesViewModel.clearError()
+                BulkAddSource.People -> personDetailViewModel.clearError()
+                BulkAddSource.Folder -> folderDetailViewModel.clearError()
+                BulkAddSource.Archive -> archivedViewModel.clearError()
+                BulkAddSource.Album -> albumDetailViewModel.clearError()
+                BulkAddSource.Inbox -> organizeInboxViewModel.clearError()
+            }
+        }
         AddToAlbumDialog(
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = searchState.isBulkMutating,
-            errorMessage = searchState.error?.userMessage,
+            isSubmitting = isSubmitting,
+            errorMessage = errorMessage,
             onCreateNew = {
-                bulkAddToAlbumFromSearch = false
+                bulkAddSource = null
                 showCreateAlbum = true
             },
             onAlbumSelected = { album ->
-                searchViewModel.bulkAddToAlbum(album.id) { added ->
+                val onAdded: (List<com.photonne.app.data.models.TimelineItem>) -> Unit = { added ->
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    albumDetailViewModel.applyAssetsAdded(album.id, added)
-                    bulkAddToAlbumFromSearch = false
+                    // Adding from inside an album never targets that same album's
+                    // open list, so only other sources patch the detail view.
+                    if (source != BulkAddSource.Album) {
+                        albumDetailViewModel.applyAssetsAdded(album.id, added)
+                    }
+                    bulkAddSource = null
                     showAddedToAlbumSnackbar(added.size, album.name)
                 }
+                when (source) {
+                    BulkAddSource.Search -> searchViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Map -> mapViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Favorites -> favoritesViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.People -> personDetailViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Folder -> folderDetailViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Archive -> archivedViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Album -> albumDetailViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Inbox -> organizeInboxViewModel.bulkAddToAlbum(album.id, onAdded)
+                }
             },
-            onDismiss = { bulkAddToAlbumFromSearch = false }
+            onDismiss = { bulkAddSource = null }
         )
     }
 
@@ -4537,29 +4571,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.organize.MoveSummaryDialog(
             outcome = outcome,
             onDismiss = organizeInboxViewModel::clearMoveSummary
-        )
-    }
-
-    if (bulkAddToAlbumFromInbox) {
-        LaunchedEffect(Unit) { organizeInboxViewModel.clearError() }
-        AddToAlbumDialog(
-            albums = albumsState.albums,
-            isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = organizeInboxState.isBulkMutating,
-            errorMessage = organizeInboxState.error?.userMessage,
-            onCreateNew = {
-                bulkAddToAlbumFromInbox = false
-                showCreateAlbum = true
-            },
-            onAlbumSelected = { album ->
-                organizeInboxViewModel.bulkAddToAlbum(album.id) { added ->
-                    albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    albumDetailViewModel.applyAssetsAdded(album.id, added)
-                    bulkAddToAlbumFromInbox = false
-                    showAddedToAlbumSnackbar(added.size, album.name)
-                }
-            },
-            onDismiss = { bulkAddToAlbumFromInbox = false }
         )
     }
 
@@ -4753,53 +4764,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
-    if (bulkAddToAlbumFromMap) {
-        val mapState = mapViewModel.state.collectAsStateWithLifecycle().value
-        LaunchedEffect(Unit) { mapViewModel.clearError() }
-        AddToAlbumDialog(
-            albums = albumsState.albums,
-            isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = mapState.isBulkMutating,
-            errorMessage = mapState.error?.userMessage,
-            onCreateNew = {
-                bulkAddToAlbumFromMap = false
-                showCreateAlbum = true
-            },
-            onAlbumSelected = { album ->
-                mapViewModel.bulkAddToAlbum(album.id) { added ->
-                    albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    albumDetailViewModel.applyAssetsAdded(album.id, added)
-                    bulkAddToAlbumFromMap = false
-                    showAddedToAlbumSnackbar(added.size, album.name)
-                }
-            },
-            onDismiss = { bulkAddToAlbumFromMap = false }
-        )
-    }
-
-    if (bulkAddToAlbumFromPeople) {
-        LaunchedEffect(Unit) { personDetailViewModel.clearError() }
-        AddToAlbumDialog(
-            albums = albumsState.albums,
-            isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = personDetailState.isBulkMutating,
-            errorMessage = personDetailState.error?.userMessage,
-            onCreateNew = {
-                bulkAddToAlbumFromPeople = false
-                showCreateAlbum = true
-            },
-            onAlbumSelected = { album ->
-                personDetailViewModel.bulkAddToAlbum(album.id) { added ->
-                    albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    albumDetailViewModel.applyAssetsAdded(album.id, added)
-                    bulkAddToAlbumFromPeople = false
-                    showAddedToAlbumSnackbar(added.size, album.name)
-                }
-            },
-            onDismiss = { bulkAddToAlbumFromPeople = false }
-        )
-    }
-
     val activePerson = selectedPerson
     if (showRenamePerson && activePerson != null) {
         com.photonne.app.ui.people.RenamePersonDialog(
@@ -4884,99 +4848,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                 }
             }
-        )
-    }
-
-    if (bulkAddToAlbumFromFolder) {
-        LaunchedEffect(Unit) { folderDetailViewModel.clearError() }
-        AddToAlbumDialog(
-            albums = albumsState.albums,
-            isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = folderDetailState.isBulkMutating,
-            errorMessage = folderDetailState.error?.userMessage,
-            onCreateNew = {
-                bulkAddToAlbumFromFolder = false
-                showCreateAlbum = true
-            },
-            onAlbumSelected = { album ->
-                folderDetailViewModel.bulkAddToAlbum(album.id) { added ->
-                    albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    albumDetailViewModel.applyAssetsAdded(album.id, added)
-                    bulkAddToAlbumFromFolder = false
-                    showAddedToAlbumSnackbar(added.size, album.name)
-                }
-            },
-            onDismiss = { bulkAddToAlbumFromFolder = false }
-        )
-    }
-
-    if (bulkAddToAlbumFromAlbum) {
-        LaunchedEffect(Unit) { albumDetailViewModel.clearError() }
-        AddToAlbumDialog(
-            albums = albumsState.albums,
-            isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = albumDetailState.isBulkMutating,
-            errorMessage = albumDetailState.error?.userMessage,
-            onCreateNew = {
-                bulkAddToAlbumFromAlbum = false
-                showCreateAlbum = true
-            },
-            onAlbumSelected = { album ->
-                albumDetailViewModel.bulkAddToAlbum(album.id) { added ->
-                    albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    bulkAddToAlbumFromAlbum = false
-                    showAddedToAlbumSnackbar(added.size, album.name)
-                }
-            },
-            onDismiss = { bulkAddToAlbumFromAlbum = false }
-        )
-    }
-
-    if (bulkAddToAlbumFromArchive) {
-        LaunchedEffect(Unit) { archivedViewModel.clearError() }
-        AddToAlbumDialog(
-            albums = albumsState.albums,
-            isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = archivedState.isBulkMutating,
-            errorMessage = archivedState.error?.userMessage,
-            onCreateNew = {
-                bulkAddToAlbumFromArchive = false
-                showCreateAlbum = true
-            },
-            onAlbumSelected = { album ->
-                archivedViewModel.bulkAddToAlbum(album.id) { added ->
-                    albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    albumDetailViewModel.applyAssetsAdded(album.id, added)
-                    bulkAddToAlbumFromArchive = false
-                    showAddedToAlbumSnackbar(added.size, album.name)
-                }
-            },
-            onDismiss = { bulkAddToAlbumFromArchive = false }
-        )
-    }
-
-    if (bulkAddToAlbumFromFavorites) {
-        // Este diálogo no existía: la barra de selección de Favoritos ponía el
-        // flag y aquí no lo leía nadie, así que el botón no hacía nada.
-        LaunchedEffect(Unit) { favoritesViewModel.clearError() }
-        AddToAlbumDialog(
-            albums = albumsState.albums,
-            isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = favoritesState.isBulkMutating,
-            errorMessage = favoritesState.error?.userMessage,
-            onCreateNew = {
-                bulkAddToAlbumFromFavorites = false
-                showCreateAlbum = true
-            },
-            onAlbumSelected = { album ->
-                favoritesViewModel.bulkAddToAlbum(album.id) { added ->
-                    albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    albumDetailViewModel.applyAssetsAdded(album.id, added)
-                    bulkAddToAlbumFromFavorites = false
-                    showAddedToAlbumSnackbar(added.size, album.name)
-                }
-            },
-            onDismiss = { bulkAddToAlbumFromFavorites = false }
         )
     }
 
