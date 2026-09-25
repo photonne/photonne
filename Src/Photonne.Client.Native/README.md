@@ -182,7 +182,9 @@ campo cuando aún no hay URL guardada:
 
 1. `-PApiBaseUrl=...` al ejecutar Gradle (Desktop y Android).
 2. `PHOTONNE_API_BASE_URL` como variable de entorno (Desktop).
-3. `BuildConfig.API_BASE_URL` (Android).
+3. `BuildConfig.API_BASE_URL` (Android): en debug, `-PApiBaseUrl` o, si no se
+   pasa, `http://10.0.2.2:1107` (el host visto desde el emulador); en release
+   solo el valor pasado explícitamente, nunca una dirección de desarrollo.
 4. `PhotonneApiBaseUrl` en `Info.plist` (iOS, ver `iosApp/Configuration/Config.xcconfig`).
 5. Por defecto: `http://localhost:1107` (puerto definido en `.env.example`).
 
@@ -190,6 +192,20 @@ El cliente añade automáticamente `Authorization: Bearer <jwt>` en cada
 petición, y reintenta una sola vez tras un `401` llamando a
 `/api/auth/refresh` (replica el patrón de
 `Src/Photonne.Client.Web/Services/AuthRefreshHandler.cs`).
+
+## Android: build de release
+
+`./gradlew :composeApp:assembleRelease` minimiza con R8 (reglas en
+`composeApp/proguard-rules.pro`; el mapping queda en
+`composeApp/build/outputs/mapping/release/`). La firma se toma de propiedades de
+Gradle o variables de entorno; sin ellas el APK sale sin firmar:
+
+| Variable | Contenido |
+| --- | --- |
+| `PHOTONNE_KEYSTORE_FILE` | Ruta al keystore |
+| `PHOTONNE_KEYSTORE_PASSWORD` | Contraseña del keystore |
+| `PHOTONNE_KEY_ALIAS` | Alias de la clave |
+| `PHOTONNE_KEY_PASSWORD` | Contraseña de la clave |
 
 ## iOS: cómo crear el proyecto Xcode
 
