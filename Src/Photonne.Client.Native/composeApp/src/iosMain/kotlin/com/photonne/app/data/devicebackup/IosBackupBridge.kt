@@ -10,7 +10,13 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 import platform.BackgroundTasks.BGProcessingTaskRequest
 import platform.BackgroundTasks.BGTaskScheduler
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.value
 import platform.Foundation.NSDate
+import platform.Foundation.NSError
 import platform.Foundation.NSLog
 import platform.Foundation.dateWithTimeIntervalSinceNow
 
@@ -128,16 +134,16 @@ object IosBackupBridge : KoinComponent {
             earliestBeginDate = NSDate.dateWithTimeIntervalSinceNow(MIN_DELAY_SECONDS)
         }
 
-        try {
-            BGTaskScheduler.sharedScheduler.submitTaskRequest(request, error = null)
+        // Submission can fail when the user has restricted background
+        // refresh, or when iOS is throttling us. Log and move on; the next
+        // foreground prefs change will re-attempt.
+        val error = submit(request)
+        if (error == null) {
             NSLog(
                 "[IosBackup] scheduled next BGProcessingTask — requireCharging=${prefs.requireCharging}"
             )
-        } catch (ex: Throwable) {
-            // Submission can fail when the user has restricted background
-            // refresh, or when iOS is throttling us. Log and move on; the
-            // next foreground prefs change will re-attempt.
-            NSLog("[IosBackup] failed to schedule next task: ${ex.message}")
+        } else {
+            NSLog("[IosBackup] failed to schedule next task: $error")
         }
     }
 
@@ -162,12 +168,36 @@ object IosBackupBridge : KoinComponent {
             earliestBeginDate = null
         }
 
-        try {
-            BGTaskScheduler.sharedScheduler.submitTaskRequest(request, error = null)
+        val error = submit(request)
+        if (error == null) {
             NSLog("[IosBackup] requested immediate BGProcessingTask")
-        } catch (ex: Throwable) {
-            NSLog("[IosBackup] failed to request immediate task: ${ex.message}")
+        } else {
+            NSLog("[IosBackup] failed to request immediate task: $error")
         }
+    }
+
+    /**
+     * Why the last submission failed (background refresh disabled, too many
+     * pending requests, unsupported on the simulator…), or null after a
+     * successful one.
+     */
+    @Volatile
+    var lastScheduleError: String? = null
+        private set
+
+    /**
+     * Submits [request] and returns the failure reason, or null on success.
+     * Objective-C reports the failure through the NSError out-parameter and
+     * the Boolean result, never as an exception, so a Kotlin try/catch around
+     * the call (with `error = null`) could not see it.
+     */
+    private fun submit(request: BGProcessingTaskRequest): String? = memScoped {
+        val errorRef = alloc<ObjCObjectVar<NSError?>>()
+        val submitted = BGTaskScheduler.sharedScheduler.submitTaskRequest(request, errorRef.ptr)
+        val reason = if (submitted) null
+            else errorRef.value?.localizedDescription ?: "unknown error"
+        lastScheduleError = reason
+        reason
     }
 
     /** Removes any pending BGTask request. Called when the user disables auto-backup. */

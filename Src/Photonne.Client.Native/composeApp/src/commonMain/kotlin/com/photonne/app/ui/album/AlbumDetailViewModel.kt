@@ -1,5 +1,6 @@
 package com.photonne.app.ui.album
 
+import com.photonne.app.ui.util.withRestored
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
@@ -23,7 +24,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import com.photonne.app.util.suspendRunCatching
 import kotlinx.coroutines.supervisorScope
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
@@ -76,6 +79,13 @@ class AlbumDetailViewModel(
 
     private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<AlbumDetailUiState> = _state.asStateFlow()
+
+    /**
+     * The album load in flight. Opening another album (or refreshing) cancels
+     * it, and results are dropped unless they still belong to the open album:
+     * drilling quickly from album A to B must never show A's photos in B.
+     */
+    private var loadJob: Job? = null
 
     init {
         // Punto 52: las mutaciones confirmadas por el servidor (archivar,
@@ -134,14 +144,19 @@ class AlbumDetailViewModel(
             direction = _state.value.direction,
             isLoading = true
         )
-        viewModelScope.launch {
-            runCatching { repository.assets(albumId) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            suspendRunCatching { repository.assets(albumId) }
                 .onSuccess { items ->
-                    _state.update { it.copy(items = items, isLoading = false) }
+                    _state.update {
+                        if (it.albumId != albumId) it
+                        else it.copy(items = items, isLoading = false)
+                    }
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.albumId != albumId) it
+                        else it.copy(
                             isLoading = false,
                             error = errorFactory.from(error, "No se pudo cargar el álbum")
                         )
@@ -159,8 +174,9 @@ class AlbumDetailViewModel(
     fun refresh() {
         val albumId = _state.value.albumId ?: return
         _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
-            runCatching {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            suspendRunCatching {
                 supervisorScope {
                     val assets = async { repository.assets(albumId) }
                     val details = async {
@@ -171,7 +187,8 @@ class AlbumDetailViewModel(
             }
                 .onSuccess { (items, details) ->
                     _state.update {
-                        it.copy(
+                        if (it.albumId != albumId) it
+                        else it.copy(
                             items = items,
                             albumName = details?.name ?: it.albumName,
                             albumDescription = details?.description ?: it.albumDescription,
@@ -181,7 +198,8 @@ class AlbumDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.albumId != albumId) it
+                        else it.copy(
                             isLoading = false,
                             error = errorFactory.from(error, "No se pudo cargar el álbum")
                         )
@@ -454,6 +472,7 @@ class AlbumDetailViewModel(
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val previousItems = _state.value.items
+        val ownerId = _state.value.albumId
         _state.update {
             it.copy(
                 isBulkMutating = true,
@@ -472,7 +491,9 @@ class AlbumDetailViewModel(
                     val uiError = errorFactory.from(error, errorFallback)
                     _state.update {
                         it.copy(
-                            items = previousItems,
+                            // Only while the same album is still open.
+                            items = if (it.albumId != ownerId) it.items
+                                else it.items.withRestored(previousItems, ids.toSet()),
                             isBulkMutating = false,
                             error = uiError
                         )

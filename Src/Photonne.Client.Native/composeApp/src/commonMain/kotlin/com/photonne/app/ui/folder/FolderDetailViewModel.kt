@@ -1,5 +1,6 @@
 package com.photonne.app.ui.folder
 
+import com.photonne.app.ui.util.withRestored
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
@@ -21,7 +22,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import com.photonne.app.util.suspendRunCatching
 import kotlinx.coroutines.supervisorScope
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
@@ -59,6 +62,13 @@ class FolderDetailViewModel(
 
     private val _state = MutableStateFlow(FolderDetailUiState())
     val state: StateFlow<FolderDetailUiState> = _state.asStateFlow()
+
+    /**
+     * The folder load in flight. Opening another folder (or refreshing) cancels
+     * it, and results are dropped unless they still belong to the open folder,
+     * so drilling quickly never shows the previous folder's contents.
+     */
+    private var loadJob: Job? = null
 
     init {
         // Punto 52: las mutaciones confirmadas por el servidor (archivar,
@@ -106,8 +116,9 @@ class FolderDetailViewModel(
             isLoading = true,
             viewMode = viewMode
         )
-        viewModelScope.launch {
-            runCatching {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            suspendRunCatching {
                 supervisorScope {
                     val assets = async { repository.assets(folderId) }
                     val details = async {
@@ -118,7 +129,8 @@ class FolderDetailViewModel(
             }
                 .onSuccess { (items, details) ->
                     _state.update {
-                        it.copy(
+                        if (it.folderId != folderId) it
+                        else it.copy(
                             items = items,
                             subFolders = sortSubfolders(details?.subFolders.orEmpty()),
                             isLoading = false
@@ -127,7 +139,8 @@ class FolderDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.folderId != folderId) it
+                        else it.copy(
                             isLoading = false,
                             error = errorFactory.from(error, "No se pudo cargar la carpeta")
                         )
@@ -144,8 +157,9 @@ class FolderDetailViewModel(
     fun refresh() {
         val folderId = _state.value.folderId ?: return
         _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
-            runCatching {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            suspendRunCatching {
                 supervisorScope {
                     val assets = async { repository.assets(folderId) }
                     val details = async {
@@ -156,7 +170,8 @@ class FolderDetailViewModel(
             }
                 .onSuccess { (items, details) ->
                     _state.update {
-                        it.copy(
+                        if (it.folderId != folderId) it
+                        else it.copy(
                             items = items,
                             subFolders = sortSubfolders(details?.subFolders.orEmpty()),
                             isLoading = false
@@ -165,7 +180,8 @@ class FolderDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.folderId != folderId) it
+                        else it.copy(
                             isLoading = false,
                             error = errorFactory.from(error, "No se pudo cargar la carpeta")
                         )
@@ -452,6 +468,7 @@ class FolderDetailViewModel(
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val previousItems = _state.value.items
+        val ownerId = _state.value.folderId
         _state.update {
             it.copy(
                 isBulkMutating = true,
@@ -470,7 +487,9 @@ class FolderDetailViewModel(
                     val uiError = errorFactory.from(error, errorFallback)
                     _state.update {
                         it.copy(
-                            items = previousItems,
+                            // Only while the same folder is still open.
+                            items = if (it.folderId != ownerId) it.items
+                                else it.items.withRestored(previousItems, ids.toSet()),
                             isBulkMutating = false,
                             error = uiError
                         )

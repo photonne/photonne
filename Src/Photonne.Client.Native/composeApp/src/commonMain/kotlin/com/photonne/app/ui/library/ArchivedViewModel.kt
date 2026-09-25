@@ -1,5 +1,6 @@
 package com.photonne.app.ui.library
 
+import com.photonne.app.ui.util.withRestored
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
@@ -17,7 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import com.photonne.app.util.suspendRunCatching
 import kotlin.time.Instant
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
@@ -47,6 +50,9 @@ class ArchivedViewModel(
 
     private val _state = MutableStateFlow(ArchivedUiState())
     val state: StateFlow<ArchivedUiState> = _state.asStateFlow()
+
+    /** The single refresh / append in flight; a new first-page load cancels it. */
+    private var pagingJob: Job? = null
 
     init {
         // Punto 52: las mutaciones confirmadas por el servidor (archivar,
@@ -78,8 +84,12 @@ class ArchivedViewModel(
      */
     private fun refreshQuietly() {
         if (!_state.value.loaded) return
-        viewModelScope.launch {
-            runCatching { repository.listArchived(cursor = null) }
+        // A full refresh in flight already brings fresh data; an append in
+        // flight would land on top of the replaced first page, so drop it.
+        if (pagingJob?.isActive == true && !_state.value.isAppending) return
+        cancelAppend()
+        pagingJob = viewModelScope.launch {
+            suspendRunCatching { repository.listArchived(cursor = null) }
                 .onSuccess { page ->
                     _state.update {
                         it.copy(
@@ -93,6 +103,13 @@ class ArchivedViewModel(
         }
     }
 
+    private fun cancelAppend() {
+        if (_state.value.isAppending) {
+            pagingJob?.cancel()
+            _state.update { it.copy(isAppending = false) }
+        }
+    }
+
     fun ensureLoaded() {
         val snapshot = _state.value
         if (snapshot.loaded || snapshot.isInitialLoading) return
@@ -102,13 +119,15 @@ class ArchivedViewModel(
     fun refresh() {
         _state.update {
             it.copy(
+                isAppending = false,
                 isRefreshing = it.loaded,
                 isInitialLoading = !it.loaded,
                 error = null
             )
         }
-        viewModelScope.launch {
-            runCatching { repository.listArchived(cursor = null) }
+        pagingJob?.cancel()
+        pagingJob = viewModelScope.launch {
+            suspendRunCatching { repository.listArchived(cursor = null) }
                 .onSuccess { page ->
                     _state.update {
                         it.copy(
@@ -137,10 +156,11 @@ class ArchivedViewModel(
     fun loadMore() {
         val snapshot = _state.value
         if (snapshot.isAppending || snapshot.isInitialLoading || !snapshot.hasMore) return
+        if (pagingJob?.isActive == true) return
         val cursor = snapshot.nextCursor ?: return
         _state.update { it.copy(isAppending = true) }
-        viewModelScope.launch {
-            runCatching { repository.listArchived(cursor = cursor) }
+        pagingJob = viewModelScope.launch {
+            suspendRunCatching { repository.listArchived(cursor = cursor) }
                 .onSuccess { page ->
                     _state.update {
                         val existing = it.items.mapTo(HashSet()) { item -> item.id }
@@ -276,7 +296,7 @@ class ArchivedViewModel(
                     val uiError = errorFactory.from(error, ErrorMessages.TRASH_FAILED)
                     _state.update {
                         it.copy(
-                            items = previousItems,
+                            items = it.items.withRestored(previousItems, ids.toSet()),
                             isBulkMutating = false,
                             error = uiError
                         )
