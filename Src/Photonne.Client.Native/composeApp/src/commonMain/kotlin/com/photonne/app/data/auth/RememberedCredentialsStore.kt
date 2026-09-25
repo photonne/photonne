@@ -31,7 +31,7 @@ class RememberedCredentialsStore(private val settings: Settings) {
     private fun Settings.getStringOrEmpty(key: String): String =
         if (hasKey(key)) getString(key, "") else ""
 
-    private companion object {
+    internal companion object {
         const val KEY_ENABLED = "photonne.auth.remember.enabled"
         const val KEY_USERNAME = "photonne.auth.remember.username"
         const val KEY_PASSWORD = "photonne.auth.remember.password"

@@ -50,14 +50,30 @@ class SettingsTokenStorage(private val settings: Settings) : TokenStorage {
         settings.remove(KEY_USER)
     }
 
-    private companion object {
+    internal companion object {
         const val KEY_ACCESS = "photonne.auth.access"
         const val KEY_REFRESH = "photonne.auth.refresh"
         const val KEY_USER = "photonne.auth.user"
         const val KEY_DEVICE = "photonne.device.id"
-        val json = Json { ignoreUnknownKeys = true }
+        private val json = Json { ignoreUnknownKeys = true }
     }
 }
 
 private fun Settings.getStringOrNull(key: String): String? =
     if (hasKey(key)) getString(key, "").takeIf { it.isNotEmpty() } else null
+
+/**
+ * Every key the secure store owns, so a platform can migrate them out of an
+ * older, less protected store.
+ */
+object SecretSettingKeys {
+    val strings: List<String> = listOf(
+        SettingsTokenStorage.KEY_ACCESS,
+        SettingsTokenStorage.KEY_REFRESH,
+        SettingsTokenStorage.KEY_USER,
+        SettingsTokenStorage.KEY_DEVICE,
+        RememberedCredentialsStore.KEY_USERNAME,
+        RememberedCredentialsStore.KEY_PASSWORD,
+    )
+    val booleans: List<String> = listOf(RememberedCredentialsStore.KEY_ENABLED)
+}

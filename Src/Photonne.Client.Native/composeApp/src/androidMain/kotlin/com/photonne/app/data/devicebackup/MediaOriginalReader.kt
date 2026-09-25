@@ -39,9 +39,9 @@ internal object MediaPermissions {
  * (location intact) is a MediaStore content URI wrapped with
  * [MediaStore.setRequireOriginal], which requires the permission.
  *
- * We resolve the picked SAF/document file to its MediaStore entry by display
- * name (cameras use unique timestamped names) and, when present, prefer an
- * exact size match. Callers fall back to the plain (redacted) SAF stream when
+ * MediaStore items are used as-is; SAF/document files are resolved to their
+ * MediaStore entry by display name and only accepted on an unambiguous match
+ * (see [resolveOriginal]). Callers fall back to the plain (redacted) SAF stream when
  * this returns null: API < 29 never redacts, and files outside MediaStore can
  * only be read through SAF anyway.
  */
@@ -64,18 +64,37 @@ internal object MediaOriginalReader {
     }
 
     /**
-     * Resolves [displayName] to a MediaStore content URI wrapped so the read
+     * Resolves the media to a MediaStore content URI wrapped so the read
      * returns the original (location-bearing) bytes, plus that original's
-     * size. Returns null when the file isn't in MediaStore or the permission
-     * isn't held.
+     * size. Returns null when the file can't be pinned to exactly one
+     * MediaStore row or the permission isn't held.
+     *
+     * When [sourceUri] already is a MediaStore item (bucket-based folders),
+     * that exact row is used: resolving by name there could pick another
+     * file that happens to share it (`IMG_0001.jpg` in Camera and in
+     * WhatsApp) and upload the wrong bytes under this media's identity.
+     * SAF documents fall back to a display-name lookup, but only a candidate
+     * whose stored SIZE matches [expectedSize] (or the sole candidate when
+     * the size is unknown) is accepted; anything ambiguous returns null so
+     * the caller reads the SAF stream, which is always the right file.
      */
     fun resolveOriginal(
         context: Context,
+        sourceUri: Uri?,
         displayName: String,
         isVideo: Boolean,
         expectedSize: Long,
     ): Original? {
         if (!hasMediaLocationAccess(context)) return null
+
+        if (sourceUri != null && isMediaStoreItem(sourceUri)) {
+            val size = runCatching {
+                context.contentResolver.query(
+                    sourceUri, arrayOf(MediaStore.MediaColumns.SIZE), null, null, null
+                )?.use { c -> if (c.moveToFirst()) c.getLong(0) else null }
+            }.getOrNull() ?: return null
+            return Original(MediaStore.setRequireOriginal(sourceUri), size)
+        }
 
         val collection = if (isVideo)
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI
@@ -85,10 +104,11 @@ internal object MediaOriginalReader {
         val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
         val args = arrayOf(displayName)
 
-        var firstUri: Uri? = null
-        var firstSize = 0L
+        var candidates = 0
+        var onlyUri: Uri? = null
+        var onlySize = 0L
         var exactUri: Uri? = null
-        var exactSize = 0L
+        var exactMatches = 0
         runCatching {
             context.contentResolver.query(collection, projection, selection, args, null)?.use { c ->
                 val idCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
@@ -97,35 +117,46 @@ internal object MediaOriginalReader {
                     val id = c.getLong(idCol)
                     val size = c.getLong(sizeCol)
                     val uri = ContentUris.withAppendedId(collection, id)
-                    if (firstUri == null) {
-                        firstUri = uri
-                        firstSize = size
-                    }
+                    candidates++
+                    onlyUri = uri
+                    onlySize = size
                     // Redaction shrinks the on-read payload but not the stored
                     // SIZE, so an exact match is the strongest disambiguator
                     // when several files share a name.
-                    if (expectedSize > 0 && size == expectedSize && exactUri == null) {
+                    if (expectedSize > 0 && size == expectedSize) {
+                        exactMatches++
                         exactUri = uri
-                        exactSize = size
                     }
                 }
             }
         }.getOrNull()
 
-        val chosen = exactUri ?: firstUri ?: return null
-        val chosenSize = if (exactUri != null) exactSize else firstSize
-        val original = MediaStore.setRequireOriginal(chosen)
-        return Original(original, chosenSize)
+        return when {
+            // Unique name + size match: the same file.
+            exactMatches == 1 -> Original(MediaStore.setRequireOriginal(exactUri!!), expectedSize)
+            // No size to compare against: only trust a unique name.
+            expectedSize <= 0 && candidates == 1 ->
+                Original(MediaStore.setRequireOriginal(onlyUri!!), onlySize)
+            else -> null
+        }
     }
+
+    /** A MediaStore item row (`content://media/<volume>/<images|video|file>/<id>`),
+     *  excluding Photo Picker URIs, which can't be opened as originals. */
+    private fun isMediaStoreItem(uri: Uri): Boolean =
+        uri.authority == MediaStore.AUTHORITY &&
+            uri.pathSegments.none { it == "picker" || it == "picker_get_content" } &&
+            uri.lastPathSegment?.toLongOrNull() != null
 
     /** Convenience: opens an original-bytes stream, or null to fall back to SAF. */
     fun openOriginalStream(
         context: Context,
+        sourceUri: Uri?,
         displayName: String,
         isVideo: Boolean,
         expectedSize: Long,
     ): InputStream? {
-        val ref = resolveOriginal(context, displayName, isVideo, expectedSize) ?: return null
+        val ref = resolveOriginal(context, sourceUri, displayName, isVideo, expectedSize) ?: return null
         return runCatching { context.contentResolver.openInputStream(ref.uri) }.getOrNull()
     }
 }

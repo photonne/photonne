@@ -131,4 +131,22 @@ class ServerUrlStoreTest {
         val store = ServerUrlStore(InMemorySettings())
         assertFailsWith<ServerUrlNotConfiguredException> { store.requireBaseUrl() }
     }
+
+    @Test
+    fun flags_cleartext_only_for_public_hosts() {
+        assertTrue(ServerUrlStore.isCleartextToPublicHost("http://photos.example.com"))
+        assertTrue(ServerUrlStore.isCleartextToPublicHost("http://203.0.113.7:8080"))
+
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("https://photos.example.com"))
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("photos.example.com")) // normalized to https
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("http://192.168.1.10:5000"))
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("http://10.0.0.2"))
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("http://172.20.1.1"))
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("http://100.101.102.103")) // Tailscale
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("http://nas.local:1107"))
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("http://nas"))
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("http://localhost:1107"))
+        assertFalse(ServerUrlStore.isCleartextToPublicHost("http://[fd00::1]:1107"))
+        assertFalse(ServerUrlStore.isCleartextToPublicHost(""))
+    }
 }

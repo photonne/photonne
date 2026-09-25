@@ -48,7 +48,7 @@ actual fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit
                         // MediaStore and the permission is held; otherwise the
                         // plain SAF stream.
                         val bytes = MediaOriginalReader.openOriginalStream(
-                            context, name, isVideo, meta.size ?: 0L
+                            context, uri, name, isVideo, meta.size ?: 0L
                         )?.use { it.readBytes() }
                             ?: resolver.openInputStream(uri)?.use { it.readBytes() }
                             ?: return@runCatching null

@@ -29,6 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
@@ -502,14 +507,68 @@ fun App() {
         )
         val authState: AuthStateHolder = koinInject()
         val state by authState.state.collectAsState()
+        val sessionStores = viewModel { SessionViewModelStores() }
         when (val current = state) {
-            is AuthState.Authenticated -> AuthenticatedApp(user = current)
-            AuthState.Unauthenticated -> LoginScreen()
+            is AuthState.Authenticated -> SessionViewModelScope(sessionStores, current.user.id) {
+                AuthenticatedApp(user = current)
+            }
+            AuthState.Unauthenticated -> {
+                // Logout (or a rejected refresh): drop every view model of the
+                // finished session so the next login starts clean.
+                LaunchedEffect(Unit) { sessionStores.clear() }
+                LoginScreen()
+            }
             // Booting: restoring a persisted session. Show a neutral splash so
             // the login screen never flashes before the timeline appears.
             AuthState.Unknown -> SessionLoadingScreen()
         }
     }
+}
+
+/**
+ * Holds the [ViewModelStore] of the signed-in session. It lives in the
+ * platform's own store (so it survives configuration changes like the view
+ * models did before) but is cleared on logout or when a different user signs
+ * in, so no timeline, selection or admin state of one account can resurface in
+ * the next one.
+ */
+private class SessionViewModelStores : ViewModel() {
+    private var sessionKey: String? = null
+    private var store: ViewModelStore? = null
+
+    fun storeFor(key: String): ViewModelStore {
+        val current = store
+        if (current != null && sessionKey == key) return current
+        current?.clear()
+        return ViewModelStore().also {
+            store = it
+            sessionKey = key
+        }
+    }
+
+    fun clear() {
+        store?.clear()
+        store = null
+        sessionKey = null
+    }
+
+    override fun onCleared() = clear()
+}
+
+/** Scopes every `koinViewModel()` in [content] to the session of [sessionKey]. */
+@Composable
+private fun SessionViewModelScope(
+    stores: SessionViewModelStores,
+    sessionKey: String,
+    content: @Composable () -> Unit,
+) {
+    val owner = remember(stores, sessionKey) {
+        val store = stores.storeFor(sessionKey)
+        object : ViewModelStoreOwner {
+            override val viewModelStore: ViewModelStore = store
+        }
+    }
+    CompositionLocalProvider(LocalViewModelStoreOwner provides owner, content = content)
 }
 
 @Composable

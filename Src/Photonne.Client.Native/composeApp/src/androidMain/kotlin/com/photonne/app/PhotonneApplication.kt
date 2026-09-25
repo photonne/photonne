@@ -17,7 +17,8 @@ class PhotonneApplication : Application() {
                 commonModule(
                     PhotonneAppConfig(
                         apiBaseUrl = BuildConfig.API_BASE_URL.takeIf { it.isNotBlank() },
-                        useFakeMemories = false
+                        useFakeMemories = false,
+                        httpLogging = BuildConfig.DEBUG,
                     )
                 ),
                 platformModule()

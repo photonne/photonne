@@ -44,12 +44,17 @@ fun main() {
         ?: System.getenv("PHOTONNE_FAKE_MEMORIES"))
         ?.equals("true", ignoreCase = true) == true
 
+    val httpLogging = (System.getProperty("photonne.http.log")
+        ?: System.getenv("PHOTONNE_HTTP_LOG"))
+        ?.equals("true", ignoreCase = true) == true
+
     startKoin {
         modules(
             commonModule(
                 PhotonneAppConfig(
                     apiBaseUrl = apiBaseUrl,
-                    useFakeMemories = useFakeMemories
+                    useFakeMemories = useFakeMemories,
+                    httpLogging = httpLogging,
                 )
             ),
             platformModule()

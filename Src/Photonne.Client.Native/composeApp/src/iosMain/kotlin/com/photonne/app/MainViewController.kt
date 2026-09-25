@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalNativeApi::class)
+
 package com.photonne.app
 
 import androidx.compose.ui.window.ComposeUIViewController
@@ -5,6 +7,7 @@ import com.photonne.app.di.PhotonneAppConfig
 import com.photonne.app.di.commonModule
 import com.photonne.app.di.platformModule
 import org.koin.core.context.startKoin
+import kotlin.native.Platform
 
 private var koinStarted = false
 
@@ -18,7 +21,8 @@ fun MainViewController(
                 commonModule(
                     PhotonneAppConfig(
                         apiBaseUrl = apiBaseUrl?.takeIf { it.isNotBlank() },
-                        useFakeMemories = useFakeMemories
+                        useFakeMemories = useFakeMemories,
+                        httpLogging = Platform.isDebugBinary,
                     )
                 ),
                 platformModule()

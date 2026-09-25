@@ -1729,6 +1729,8 @@ class PhotonneApiClient(
 
         try {
             val response: HttpResponse = client.post("$baseUrl/api/assets/upload") {
+                // The pumped channel can't be replayed after a 401.
+                oneShotBody()
                 // Fail fast if the transfer stalls (network switched away)
                 // rather than parking the streamed body forever.
                 backupIdleTimeout()

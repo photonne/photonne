@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.app_name
+import com.photonne.app.resources.login_insecure_public_url
+import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.photonneLogoPainter
 import org.jetbrains.compose.resources.stringResource
@@ -115,6 +117,15 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
         onValueChange = viewModel::onServerUrlChange,
         label = { Text("URL del servidor") },
         placeholder = { Text("https://photos.example.com") },
+        supportingText = if (ServerUrlStore.isCleartextToPublicHost(state.serverUrl)) {
+            {
+                Text(
+                    stringResource(Res.string.login_insecure_public_url),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        } else null,
         enabled = !state.isSubmitting,
         singleLine = true,
         keyboardOptions = KeyboardOptions(

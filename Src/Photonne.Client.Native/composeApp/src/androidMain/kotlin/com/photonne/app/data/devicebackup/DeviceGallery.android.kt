@@ -257,7 +257,7 @@ actual class DeviceGallery(private val context: Context) {
             // the file looked "not synced" forever. Mirror the resolution and
             // the size bound so the dedup/verification key always matches.
             val original = MediaOriginalReader.resolveOriginal(
-                context, media.displayName, isVideo, media.sizeBytes
+                context, Uri.parse(media.uri), media.displayName, isVideo, media.sizeBytes
             )
             if (original != null) {
                 val stream = context.contentResolver.openInputStream(original.uri)
@@ -309,7 +309,7 @@ actual class DeviceGallery(private val context: Context) {
         // Prefer the original MediaStore bytes (location intact). Its SIZE is
         // the authoritative content length for the upload.
         val original = MediaOriginalReader.resolveOriginal(
-            context, media.displayName, isVideo, media.sizeBytes
+            context, Uri.parse(media.uri), media.displayName, isVideo, media.sizeBytes
         )
         if (original != null) {
             val stream = context.contentResolver.openInputStream(original.uri)

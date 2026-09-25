@@ -19,6 +19,7 @@ import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.NSFileHandle
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSLock
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSUUID
 import platform.Foundation.closeFile
@@ -142,10 +143,29 @@ actual class DeviceGallery {
         NSFileManager.defaultManager.createFileAtPath(tmpPath, contents = null, attributes = null)
         val handle = NSFileHandle.fileHandleForWritingAtPath(tmpPath)
             ?: throw DeviceGalleryUnavailable("Cannot create temp file for ${media.displayName}")
+        // PhotoKit keeps calling the data handler on its own queue until the
+        // cancelled request winds down, and writing to a closed NSFileHandle
+        // raises an NSException that Kotlin can't catch: it kills the app.
+        // Writes and the close are serialised so no chunk lands after close.
+        val handleLock = NSLock()
+        var handleClosed = false
         try {
-            streamResourceData(resource) { data -> handle.writeData(data) }
+            streamResourceData(resource) { data ->
+                handleLock.lock()
+                try {
+                    if (!handleClosed) handle.writeData(data)
+                } finally {
+                    handleLock.unlock()
+                }
+            }
         } finally {
-            handle.closeFile()
+            handleLock.lock()
+            try {
+                handleClosed = true
+                handle.closeFile()
+            } finally {
+                handleLock.unlock()
+            }
         }
 
         val path = Path(tmpPath)
@@ -282,7 +302,8 @@ private suspend fun streamResourceData(
         // passes false on purpose — see DeviceGallery.computeSha256.
         networkAccessAllowed = allowNetwork
     }
-    PHAssetResourceManager.defaultManager().requestDataForAssetResource(
+    val manager = PHAssetResourceManager.defaultManager()
+    val requestId = manager.requestDataForAssetResource(
         resource = resource,
         options = options,
         dataReceivedHandler = { data ->
@@ -300,6 +321,9 @@ private suspend fun streamResourceData(
             }
         }
     )
+    // Stop PhotoKit from pulling (and possibly downloading from iCloud) data
+    // nobody will read once the backup is stopped.
+    cont.invokeOnCancellation { manager.cancelDataRequest(requestId) }
 }
 
 /**

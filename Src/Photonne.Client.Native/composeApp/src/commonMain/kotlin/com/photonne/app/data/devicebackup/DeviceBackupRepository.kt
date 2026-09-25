@@ -5,6 +5,7 @@ import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.devicelibrary.DeviceIdentity
 import com.photonne.app.data.devicelibrary.DeviceIdentityMap
 import com.photonne.app.data.upload.UploadRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -440,7 +441,9 @@ class DeviceBackupRepository(
      * backoff up to [maxAttempts] times, re-opening the source each try.
      * Permanent failures (quota, oversize, forbidden, unauthorized) bail
      * immediately so we don't keep retrying something the server will
-     * never accept.
+     * never accept. The one exception is the first 401: the streamed body
+     * can't be replayed by the auth plugin, which only refreshes the token,
+     * so the upload is resent once, right away, with a reopened source.
      */
     suspend fun upload(
         media: DeviceMedia,
@@ -448,7 +451,9 @@ class DeviceBackupRepository(
         onProgress: ((fraction: Float) -> Unit)? = null
     ): com.photonne.app.data.api.UploadAssetResponse {
         var lastError: Throwable? = null
-        repeat(maxAttempts) { attempt ->
+        var retriedAfterRefresh = false
+        var attempt = 0
+        while (attempt < maxAttempts) {
             try {
                 return gallery.withUploadSource(media) { source, sizeBytes ->
                     uploads.uploadStream(
@@ -465,14 +470,23 @@ class DeviceBackupRepository(
                         }
                     )
                 }
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Throwable) {
                 lastError = ex
+                if (!retriedAfterRefresh && (ex as? PhotonneApiException)?.status == 401) {
+                    // Expired access token: the plugin has refreshed it (or
+                    // logged out, and this retry fails with 401 again).
+                    retriedAfterRefresh = true
+                    continue
+                }
                 if (!ex.toUploadFailureReason().isRetryable) {
                     throw ex // permanent — no point retrying
                 }
                 if (attempt < maxAttempts - 1) {
                     delay(retryDelayFor(attempt))
                 }
+                attempt++
             }
         }
         throw lastError ?: RuntimeException("Upload failed after $maxAttempts attempts")

@@ -108,6 +108,43 @@ class ServerUrlStore(private val settings: Settings) {
             ) trimmed
             else "https://$trimmed"
         }
+
+        /**
+         * True when [raw] would send credentials in cleartext across the
+         * internet: plain `http://` to a host that is not on a private network.
+         * LAN and VPN addresses (RFC 1918, CGNAT/Tailscale, link-local,
+         * `.local`, single-label names) are fine over HTTP and not flagged.
+         */
+        fun isCleartextToPublicHost(raw: String): Boolean {
+            val url = normalize(raw)
+            if (!url.startsWith("http://", ignoreCase = true)) return false
+            val host = runCatching { io.ktor.http.Url(url).host }.getOrNull()
+                ?.lowercase()?.removePrefix("[")?.removeSuffix("]")
+                ?: return false
+            return !isPrivateHost(host)
+        }
+
+        private fun isPrivateHost(host: String): Boolean {
+            if (host.isEmpty() || host == "localhost") return true
+            if (host.contains(':')) {
+                // IPv6: loopback, link-local (fe80::/10), unique local (fc00::/7).
+                return host == "::1" || host.startsWith("fe8") || host.startsWith("fe9") ||
+                    host.startsWith("fea") || host.startsWith("feb") ||
+                    host.startsWith("fc") || host.startsWith("fd")
+            }
+            val octets = host.split('.').map { it.toIntOrNull() }
+            if (octets.size == 4 && octets.all { it != null && it in 0..255 }) {
+                val (a, b) = octets.map { it!! }
+                return a == 10 || a == 127 ||
+                    (a == 172 && b in 16..31) ||
+                    (a == 192 && b == 168) ||
+                    (a == 169 && b == 254) ||
+                    (a == 100 && b in 64..127)
+            }
+            return '.' !in host ||
+                host.endsWith(".local") || host.endsWith(".lan") ||
+                host.endsWith(".home.arpa") || host.endsWith(".internal")
+        }
     }
 }
 
