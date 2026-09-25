@@ -1,5 +1,6 @@
 package com.photonne.app.ui.timeline
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -42,7 +43,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -260,13 +260,13 @@ fun TimelineScreen(
     val selectionChrome = rememberLatchedDuringDrag(dragSelectState, state.isSelectionActive)
 
     val zoomStore: TimelineZoomStore = koinInject()
-    val zoomLevel by zoomStore.value.collectAsState()
+    val zoomLevel by zoomStore.value.collectAsStateWithLifecycle()
     // The device library is a first-class timeline source: the WHOLE local
     // gallery, read instantly from the platform's media index, with no
     // backup or network dependency (see DeviceLibraryStore). Server state
     // hydrates on top and dedups per bucket.
     val deviceLibrary: DeviceLibraryStore = koinInject()
-    val deviceLibraryState by deviceLibrary.state.collectAsState()
+    val deviceLibraryState by deviceLibrary.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { deviceLibrary.ensureStarted() }
     val requestLibraryAccess = rememberDeviceLibraryAccessRequester(
         onResult = deviceLibrary::onAccessResult
@@ -285,8 +285,8 @@ fun TimelineScreen(
     // Which slice of the device library shows (Solo cámara by default) — a
     // visibility preference, independent from the backup-folder list.
     val scopeStore: DeviceLibraryScopeStore = koinInject()
-    val libraryScope by scopeStore.value.collectAsState()
-    val scopeNoticeDismissed by scopeStore.noticeDismissed.collectAsState()
+    val libraryScope by scopeStore.value.collectAsStateWithLifecycle()
+    val scopeNoticeDismissed by scopeStore.noticeDismissed.collectAsStateWithLifecycle()
     val backupStateStore: DeviceBackupStateStore = koinInject()
     var scopeSheetOpen by remember { mutableStateOf(false) }
     var scopeBuckets by remember { mutableStateOf<List<DeviceBucket>?>(null) }

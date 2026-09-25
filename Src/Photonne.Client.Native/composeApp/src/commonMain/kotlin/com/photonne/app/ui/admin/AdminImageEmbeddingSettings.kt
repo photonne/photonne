@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,7 +103,7 @@ fun AdminImageEmbeddingSettingsScreen(
     onOpenNightly: () -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.load() }
 
     val originalModel = state.original[AdminImageEmbeddingSettingsViewModel.MODEL_VERSION_KEY]

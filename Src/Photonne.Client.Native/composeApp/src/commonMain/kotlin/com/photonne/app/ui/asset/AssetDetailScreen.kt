@@ -1,5 +1,6 @@
 package com.photonne.app.ui.asset
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.Animatable
@@ -91,8 +92,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -233,8 +232,8 @@ fun AssetDetailScreen(
     val viewModel: AssetDetailViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
     val tokenStorage: TokenStorage = koinInject()
-    val state by viewModel.state.collectAsState()
-    val details by viewModel.details.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val details by viewModel.details.collectAsStateWithLifecycle()
 
     // Los fallos de acción del visor (favorito, etiqueta, fecha, descripción…)
     // solo se pintaban como una línea roja al fondo del panel de info, que
@@ -2571,8 +2570,11 @@ private fun AssetThumbnailStrip(
         }
     }
 
-    val continuousPos by remember(pagerState) {
-        derivedStateOf { pagerState.currentPage + pagerState.currentPageOffsetFraction }
+    // Read only inside graphicsLayer below: the position changes every frame
+    // of a swipe, and reading it during composition recomposed every visible
+    // thumbnail on every frame. In the layer block only drawing is redone.
+    val continuousPos: () -> Float = remember(pagerState) {
+        { pagerState.currentPage + pagerState.currentPageOffsetFraction }
     }
 
     BoxWithConstraints(modifier = modifier) {
@@ -2600,16 +2602,6 @@ private fun AssetThumbnailStrip(
             )
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                val signed = index - continuousPos
-                val proximity = 1f - abs(signed).coerceIn(0f, 1f)
-                // High min scale keeps off-centre slots nearly touching, while
-                // the centred slot grows well past its box so the current asset
-                // reads as clearly larger than the rest.
-                val scale = lerp(0.94f, centerScale, proximity)
-                // Push each side rigidly away from the centre by the bulge so
-                // the grown centre opens a gap instead of covering its
-                // neighbours; clamped to ±1 slot it tapers smoothly mid-scrub.
-                val push = signed.coerceIn(-1f, 1f) * centerBulgePx
                 Box(
                     modifier = Modifier
                         .width(slotWidth)
@@ -2619,9 +2611,20 @@ private fun AssetThumbnailStrip(
                         // ellas, y una miniatura translúcida sobre otra imagen se
                         // lee como suciedad, no como profundidad.
                         .graphicsLayer {
+                            val signed = index - continuousPos()
+                            val proximity = 1f - abs(signed).coerceIn(0f, 1f)
+                            // High min scale keeps off-centre slots nearly
+                            // touching, while the centred slot grows well past
+                            // its box so the current asset reads as clearly
+                            // larger than the rest.
+                            val scale = lerp(0.94f, centerScale, proximity)
                             scaleX = scale
                             scaleY = scale
-                            translationX = push
+                            // Push each side rigidly away from the centre by the
+                            // bulge so the grown centre opens a gap instead of
+                            // covering its neighbours; clamped to ±1 slot it
+                            // tapers smoothly mid-scrub.
+                            translationX = signed.coerceIn(-1f, 1f) * centerBulgePx
                         }
                         .clip(RoundedCornerShape(5.dp))
                         .background(Color.Black.copy(alpha = 0.35f))

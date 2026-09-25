@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.photonne.app.data.models.TimelineItem
 
 /**
@@ -67,6 +68,16 @@ fun AssetThumbnailImage(
      * jump, which is exactly the work that made fast scrubbing stutter.
      */
     enabled: Boolean = true,
+    /**
+     * Null when the caller already labels the image, as grid cells do with
+     * their merged semantics; otherwise TalkBack reads the file name twice.
+     */
+    contentDescription: String? = item.fileName,
+    /**
+     * Grid cells turn this off: a disk/network hit fading in over ~200 ms reads
+     * as flicker while flinging through hundreds of thumbnails.
+     */
+    crossfade: Boolean = true,
 ) {
     if (!enabled) {
         Box(modifier = modifier)
@@ -85,12 +96,13 @@ fun AssetThumbnailImage(
     // appearing to reload; it also smooths normal LazyGrid recycling. The key
     // includes [size] so the grid (Small) and the detail poster (larger) don't
     // collide on local items, whose model is size-agnostic.
-    val request = remember(model, size) {
+    val request = remember(model, size, crossfade) {
         model?.let {
             ImageRequest.Builder(platformContext)
                 .data(it)
                 .memoryCacheKey("$it|$size")
                 .placeholderMemoryCacheKey("$it|$size")
+                .crossfade(crossfade)
                 .build()
         }
     }
@@ -98,7 +110,7 @@ fun AssetThumbnailImage(
         if (request != null && !failed) {
             AsyncImage(
                 model = request,
-                contentDescription = item.fileName,
+                contentDescription = contentDescription,
                 contentScale = contentScale,
                 modifier = Modifier.fillMaxSize(),
                 onError = { failed = true }

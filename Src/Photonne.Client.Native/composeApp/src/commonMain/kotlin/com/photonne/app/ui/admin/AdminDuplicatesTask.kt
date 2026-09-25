@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.SecondaryActionButton
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.resources.admin_duplicates_error_run
@@ -14,7 +15,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -137,7 +137,7 @@ fun AdminDuplicatesScreen(
     viewModel: AdminDuplicatesViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     var nowMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
     LaunchedEffect(state.isRunning) {

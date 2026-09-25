@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.SecondaryActionButton
 import com.photonne.app.ui.main.ResultSnackbar
 import com.photonne.app.ui.theme.Spacing
@@ -23,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -142,8 +142,8 @@ fun AdminTrashSettingsScreen(
     viewModel: AdminTrashSettingsViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val settings by viewModel.state.collectAsState()
-    val stats by viewModel.trashStats.collectAsState()
+    val settings by viewModel.state.collectAsStateWithLifecycle()
+    val stats by viewModel.trashStats.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         viewModel.load()
         viewModel.loadStats()

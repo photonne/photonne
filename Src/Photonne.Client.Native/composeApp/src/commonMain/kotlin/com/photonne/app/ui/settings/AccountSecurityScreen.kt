@@ -1,5 +1,6 @@
 package com.photonne.app.ui.settings
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -23,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -58,7 +58,7 @@ fun AccountSecurityScreen(
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
     val scrollState = rememberScrollState()
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     // The result goes where every other one in the app goes: the snackbar.
     ResultSnackbar(
         message = stringResource(Res.string.account_security_changed).takeIf { state.successMessage != null },

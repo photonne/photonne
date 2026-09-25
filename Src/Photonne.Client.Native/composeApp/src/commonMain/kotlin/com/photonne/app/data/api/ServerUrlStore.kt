@@ -1,7 +1,7 @@
 package com.photonne.app.data.api
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -159,6 +159,6 @@ class ServerUrlNotConfiguredException :
 @Composable
 fun rememberApiBaseUrl(): String {
     val store: ServerUrlStore = koinInject()
-    val url by store.effectiveBaseUrl.collectAsState()
+    val url by store.effectiveBaseUrl.collectAsStateWithLifecycle()
     return url.orEmpty()
 }

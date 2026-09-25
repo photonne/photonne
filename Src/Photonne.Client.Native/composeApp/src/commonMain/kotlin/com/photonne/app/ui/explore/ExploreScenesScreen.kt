@@ -1,8 +1,8 @@
 package com.photonne.app.ui.explore
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
@@ -17,7 +17,7 @@ fun ExploreScenesScreen(
     onBack: () -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val baseUrl = rememberApiBaseUrl()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
