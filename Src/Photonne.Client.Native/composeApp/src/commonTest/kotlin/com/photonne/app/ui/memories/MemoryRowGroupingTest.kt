@@ -39,7 +39,7 @@ class MemoryRowGroupingTest {
     }
 
     @Test
-    fun `themed memories fold into one row per theme, years inside`() {
+    fun `themed memories fold into one row per theme - years inside`() {
         val rows = groupIntoRows(
             listOf(
                 memory("1", MemoryKind.CuratedScene, "Días de playa de 2024", "scene:beach", "Días de playa", "2024", year = 2024),
@@ -62,7 +62,7 @@ class MemoryRowGroupingTest {
      * ranked.
      */
     @Test
-    fun `a row of periods runs newest first, not by score`() {
+    fun `a row of periods runs newest first - not by score`() {
         val rows = groupIntoRows(
             listOf(
                 // Score order, exactly as the feed returns it.
