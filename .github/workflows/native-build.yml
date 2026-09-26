@@ -34,8 +34,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
-          # Must match compileSdk in composeApp/build.gradle.kts.
-          packages: 'platform-tools platforms;android-37'
+          # The compileSdk platform (37) isn't in the runner's sdkmanager
+          # channel under that name; AGP downloads it on demand, as before.
+          # build-tools 35+ brings the `zipalign -P 16` used below.
+          packages: 'platform-tools build-tools;35.0.0'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
