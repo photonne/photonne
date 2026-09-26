@@ -75,7 +75,7 @@ internal object MediaOriginalReader {
             granted(Manifest.permission.READ_MEDIA_IMAGES) ||
                 granted(Manifest.permission.READ_MEDIA_VIDEO) ||
                 (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-                    granted(READ_MEDIA_VISUAL_USER_SELECTED))
+                    granted(MediaPermissions.READ_MEDIA_VISUAL_USER_SELECTED))
         } else {
             granted(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
