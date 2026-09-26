@@ -57,6 +57,20 @@ class DeviceBackupRepository(
         ledger.clearFolder(folderUri)
     }
 
+    /** Stops backing up one folder but keeps its ledger rows for now, so an
+     *  "undo" brings it back with its verdicts and "Omitir" choices intact.
+     *  [purgeForgottenFolder] drops them once the undo window is over. */
+    fun detachFolder(folderUri: String) {
+        stateStore.removeFolder(folderUri)
+    }
+
+    /** Drops the ledger rows of a folder [detachFolder] removed — unless it was
+     *  added back meanwhile, in which case those rows are live again. */
+    fun purgeForgottenFolder(folderUri: String) {
+        if (stateStore.savedFolders().any { it.uri == folderUri }) return
+        ledger.clearFolder(folderUri)
+    }
+
     /** Last scanned media per saved folder, persisted so the timeline can show
      *  device-only photos instantly on launch before the fresh re-scan
      *  completes. Empty for folders never scanned. */

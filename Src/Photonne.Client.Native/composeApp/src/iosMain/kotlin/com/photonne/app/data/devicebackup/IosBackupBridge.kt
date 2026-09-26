@@ -4,6 +4,7 @@ package com.photonne.app.data.devicebackup
 
 import com.photonne.app.data.api.LocalReachabilityProbe
 import com.photonne.app.data.api.ServerUrlStore
+import com.photonne.app.data.auth.TokenStorage
 import kotlin.concurrent.Volatile
 import kotlinx.cinterop.ExperimentalForeignApi
 import org.koin.core.component.KoinComponent
@@ -65,7 +66,8 @@ object IosBackupBridge : KoinComponent {
      */
     fun currentPreferences(): BackgroundSyncPreferences {
         val store: DeviceBackupStateStore = get()
-        return store.backgroundSyncPreferences()
+        // Signed out ⇒ disabled, so Swift neither runs nor re-schedules.
+        return store.sessionAwareSyncPreferences(get())
     }
 
     /**
@@ -75,7 +77,12 @@ object IosBackupBridge : KoinComponent {
      */
     suspend fun runBackup(): Boolean {
         val store: DeviceBackupStateStore = get()
+        val tokenStorage: TokenStorage = get()
 
+        if (!tokenStorage.hasSession()) {
+            NSLog("[IosBackup] no signed-in session — skipping run")
+            return true
+        }
         if (!store.isAutoBackupEnabled() || !store.isBackupEnabled()) {
             NSLog("[IosBackup] auto-backup disabled — skipping run")
             return true
@@ -98,7 +105,7 @@ object IosBackupBridge : KoinComponent {
         val runner: BackupRunner = get()
         stopRequested = false
         return try {
-            val outcome = runner.runBackup(folders, shouldContinue = { !stopRequested })
+            val outcome = runner.runBackup(folders, shouldContinue = { !stopRequested && tokenStorage.hasSession() })
             NSLog(
                 "[IosBackup] done — total=${outcome.total} uploaded=${outcome.uploaded} " +
                     "skipped=${outcome.skipped} failed=${outcome.failed}"

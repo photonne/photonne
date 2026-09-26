@@ -50,6 +50,25 @@ actual class AssetSharing {
         writeToShareDir(bytes = bytes, fileName = fileName, mimeType = "application/zip")
     }
 
+    /** Same private temp directory the share sheet already fed from: iOS
+     *  never writes to Photos unless the user picks "Save Image" there. */
+    actual suspend fun stageForShare(
+        bytes: ByteArray,
+        fileName: String,
+        mimeType: String
+    ): SavedAssetFile = withContext(Dispatchers.Default) {
+        writeToShareDir(bytes = bytes, fileName = fileName, mimeType = mimeType)
+    }
+
+    actual suspend fun clearShareCache() = withContext(Dispatchers.Default) {
+        val manager = NSFileManager.defaultManager
+        val dir = shareDirPath()
+        manager.contentsOfDirectoryAtPath(dir, error = null)?.forEach { name ->
+            manager.removeItemAtPath("$dir/$name", error = null)
+        }
+        Unit
+    }
+
     actual suspend fun shareFiles(files: List<SavedAssetFile>, mimeType: String) {
         if (files.isEmpty()) return
         // The share sheet must be presented on the main thread, on top of
@@ -103,12 +122,14 @@ actual class AssetSharing {
         }
     }
 
+    private fun shareDirPath(): String = NSTemporaryDirectory() + "photonne-share"
+
     private fun writeToShareDir(
         bytes: ByteArray,
         fileName: String,
         mimeType: String
     ): SavedAssetFile {
-        val dir = NSTemporaryDirectory() + "photonne-share"
+        val dir = shareDirPath()
         NSFileManager.defaultManager.createDirectoryAtPath(
             path = dir,
             withIntermediateDirectories = true,

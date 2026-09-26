@@ -66,6 +66,7 @@ import com.photonne.app.resources.selection_archive_done
 import com.photonne.app.resources.selection_moved_to_folder_done
 import com.photonne.app.resources.selection_removed_from_album_done
 import com.photonne.app.resources.selection_trash_done
+import com.photonne.app.resources.selection_deleted_permanently_done
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_system_enrichment_failures
 import com.photonne.app.resources.account_section_appearance
@@ -1975,6 +1976,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     val snackbarController = rememberSnackbarController()
+    // Papelera del servidor (J5): el visor lo consulta al borrar para no
+    // ofrecer Deshacer sobre un borrado definitivo.
+    val serverTrashPolicy: com.photonne.app.data.actions.ServerTrashPolicy = koinInject()
     // Canal único de feedback: el toast de "descarga guardada" que el VM de acciones
     // ya componía en statusMessage pero que no se pintaba en ninguna parte.
     LaunchedEffect(actionsState.statusMessage) {
@@ -3614,7 +3618,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             assetDetailStack = emptyList()
                             assetDetail = null
                             // El visor se cerraba en silencio: confirmación con
-                            // Deshacer, como las acciones en bloque.
+                            // Deshacer, como las acciones en bloque. Con la
+                            // papelera del servidor apagada el borrado es
+                            // definitivo: mensaje sin Deshacer.
+                            if (!serverTrashPolicy.enabled.value) {
+                                coroutineScope.launch {
+                                    snackbarController.show(
+                                        org.jetbrains.compose.resources.getPluralString(
+                                            Res.plurals.selection_deleted_permanently_done, 1, 1
+                                        )
+                                    )
+                                }
+                                return@AssetDetailScreen
+                            }
                             coroutineScope.launch {
                                 snackbarController.show(
                                     message = org.jetbrains.compose.resources.getPluralString(

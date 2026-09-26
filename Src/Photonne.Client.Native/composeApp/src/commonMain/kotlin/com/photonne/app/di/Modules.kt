@@ -149,6 +149,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { UiErrorFactory(urlStore = get(), versionStore = get()) }
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
+    single { com.photonne.app.data.actions.ServerTrashPolicy(get()) }
     singleOf(::SessionBootstrapper)
     singleOf(::AdminRepository)
     single { com.photonne.app.data.utilities.UtilitiesRepository(get()) }

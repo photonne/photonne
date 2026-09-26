@@ -10,11 +10,16 @@ package com.photonne.app.ui.actions
  * - [saveZip] writes a multi-asset zip into the same place; same
  *   contract.
  * - [shareText] hands a link (plain text) to the same sheet.
- * - [shareFiles] hands a list of locally-stored files to the OS share
- *   sheet (`Intent.ACTION_SEND_MULTIPLE` on Android, `Activity` view
- *   controller on iOS, default app association on Desktop). The
- *   caller is expected to have written the files to disk via
- *   [saveAsset] / [saveZip] first.
+ * - [stageForShare] writes one file into the app's PRIVATE share cache
+ *   (never the gallery nor Downloads): sharing must not leave a local
+ *   copy behind — it duplicated the photo on the phone and the backup
+ *   then picked it up as new. [clearShareCache] drops the previous
+ *   share's files first.
+ * - [shareFiles] hands a list of staged files to the OS share sheet
+ *   (`Intent.ACTION_SEND` / `ACTION_SEND_MULTIPLE` on Android,
+ *   `UIActivityViewController` on iOS, default app association on
+ *   Desktop). Several photos go as several files, never a ZIP: chat
+ *   apps show a ZIP as a document, not as photos.
  *
  * iOS does not have a real implementation yet; the actual just
  * throws so the surrounding view-model can surface a localized
@@ -31,6 +36,16 @@ expect class AssetSharing {
         bytes: ByteArray,
         fileName: String
     ): SavedAssetFile
+
+    /** Writes [bytes] into the private share cache and returns its location. */
+    suspend fun stageForShare(
+        bytes: ByteArray,
+        fileName: String,
+        mimeType: String
+    ): SavedAssetFile
+
+    /** Deletes whatever earlier shares left in the private share cache. */
+    suspend fun clearShareCache()
 
     suspend fun shareFiles(files: List<SavedAssetFile>, mimeType: String)
 

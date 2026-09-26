@@ -61,6 +61,22 @@ data class UpdateProfileRequest(
     val lastName: String? = null
 )
 
+/** Impact of renaming the signed-in user (`GET /api/users/me/rename-preview`):
+ *  the rename moves the user's storage folder and rewrites every path. */
+@Serializable
+data class RenamePreviewDto(
+    val isValid: Boolean = false,
+    val isNoChange: Boolean = false,
+    val errorMessage: String? = null,
+    val currentUsername: String = "",
+    val newUsername: String = "",
+    val currentVirtualPath: String? = null,
+    val newVirtualPath: String? = null,
+    val folderExistsOnDisk: Boolean = false,
+    val assetsToUpdate: Int = 0,
+    val foldersToUpdate: Int = 0
+)
+
 @Serializable
 data class ChangePasswordRequest(
     val currentPassword: String,

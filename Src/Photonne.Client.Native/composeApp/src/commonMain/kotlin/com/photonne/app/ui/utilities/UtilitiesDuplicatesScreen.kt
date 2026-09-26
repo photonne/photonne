@@ -58,6 +58,10 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.selection_deleted_permanently_done
+import com.photonne.app.resources.trash_disabled_delete_confirm
+import com.photonne.app.resources.trash_disabled_delete_message
+import com.photonne.app.resources.trash_disabled_delete_title
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.selection_trash_done
@@ -243,11 +247,29 @@ fun UtilitiesDuplicatesScreen(
         )
     }
 
+    // Papelera apagada en el servidor ⇒ borrado definitivo, sin Deshacer.
+    val trashEnabled = com.photonne.app.ui.actions.rememberServerTrashEnabled()
+    val deletedDoneMessage = pluralStringResource(
+        Res.plurals.selection_deleted_permanently_done,
+        state.totalSelectedCount,
+        state.totalSelectedCount
+    )
     if (confirmOpen) {
         ConfirmActionDialog(
-            title = stringResource(Res.string.utilities_duplicates_confirm_title),
-            message = pluralStringResource(Res.plurals.utilities_duplicates_confirm_message, state.totalSelectedCount, state.totalSelectedCount),
-            confirmLabel = stringResource(Res.string.action_delete),
+            title = stringResource(
+                if (trashEnabled) Res.string.utilities_duplicates_confirm_title
+                else Res.string.trash_disabled_delete_title
+            ),
+            message = pluralStringResource(
+                if (trashEnabled) Res.plurals.utilities_duplicates_confirm_message
+                else Res.plurals.trash_disabled_delete_message,
+                state.totalSelectedCount,
+                state.totalSelectedCount
+            ),
+            confirmLabel = stringResource(
+                if (trashEnabled) Res.string.action_delete
+                else Res.string.trash_disabled_delete_confirm
+            ),
             isDestructive = true,
             isSubmitting = state.isDeleting,
             errorMessage = confirmError,
@@ -264,8 +286,12 @@ fun UtilitiesDuplicatesScreen(
                         confirmError = error.userMessage
                     } else {
                         confirmOpen = false
-                        snackbar?.show(trashDoneMessage, undoLabel) {
-                            onUndoTrash(deleted)
+                        if (trashEnabled) {
+                            snackbar?.show(trashDoneMessage, undoLabel) {
+                                onUndoTrash(deleted)
+                            }
+                        } else {
+                            snackbar?.show(deletedDoneMessage)
                         }
                     }
                 }

@@ -14,6 +14,11 @@ interface TokenStorage {
     fun getUser(): UserDto? = null
     fun saveUser(user: UserDto) {}
     fun clear()
+
+    /** True while an account is signed in on this device. Background work
+     *  (backup worker, scheduler reconcile) checks it: without a session
+     *  there is no account to upload to. */
+    fun hasSession(): Boolean = getRefreshToken() != null || getAccessToken() != null
 }
 
 class SettingsTokenStorage(private val settings: Settings) : TokenStorage {

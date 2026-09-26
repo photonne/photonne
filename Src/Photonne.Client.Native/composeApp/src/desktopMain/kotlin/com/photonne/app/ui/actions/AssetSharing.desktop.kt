@@ -15,8 +15,8 @@ import kotlinx.coroutines.withContext
  * default app via `java.awt.Desktop.open`, which on most platforms
  * surfaces a system share-sheet-equivalent. There's no concept of
  * `ACTION_SEND_MULTIPLE` on the desktop, so for a multi-file share
- * we open the first file and rely on the user dragging the rest
- * — documented in the share dialog copy.
+ * we open the temp folder holding them and rely on the user dragging
+ * them where they're needed.
  */
 actual class AssetSharing {
 
@@ -41,6 +41,27 @@ actual class AssetSharing {
         SavedAssetFile(path = path, displayName = File(path).name, mimeType = "application/zip")
     }
 
+    /** Temp directory, not a save dialog: "share" stages, it doesn't ask
+     *  where to keep a copy (that's what Download is for). */
+    actual suspend fun stageForShare(
+        bytes: ByteArray,
+        fileName: String,
+        mimeType: String
+    ): SavedAssetFile = withContext(Dispatchers.IO) {
+        val safeName = fileName.replace('/', '_').replace('\\', '_').ifBlank { "shared" }
+        val target = File(shareDir(), safeName)
+        target.writeBytes(bytes)
+        SavedAssetFile(path = target.absolutePath, displayName = safeName, mimeType = mimeType)
+    }
+
+    actual suspend fun clearShareCache() = withContext(Dispatchers.IO) {
+        shareDir().listFiles()?.forEach { it.deleteRecursively() }
+        Unit
+    }
+
+    private fun shareDir(): File =
+        File(System.getProperty("java.io.tmpdir"), "photonne-share").apply { mkdirs() }
+
     actual suspend fun shareFiles(files: List<SavedAssetFile>, mimeType: String) {
         if (files.isEmpty()) return
         withContext(Dispatchers.IO) {
@@ -48,7 +69,13 @@ actual class AssetSharing {
                 throw AssetSharingUnavailable("OS share not supported on this desktop")
             }
             val desktop = Desktop.getDesktop()
-            val target = File(files.first().path)
+            // No share sheet on the desktop: one file opens in its default app
+            // as before; several open the folder holding them, ready to drag.
+            val target = if (files.size == 1) {
+                File(files.first().path)
+            } else {
+                File(files.first().path).parentFile ?: File(files.first().path)
+            }
             if (desktop.isSupported(Desktop.Action.OPEN)) {
                 desktop.open(target)
             } else {

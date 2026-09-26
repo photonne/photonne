@@ -103,6 +103,14 @@ data class DeviceBackupUiState(
      * when the pass is our own, so the UI knows which cancel path applies.
      */
     val activeOrigin: BackupOrigin? = null,
+    /**
+     * True once a FULL verification against the server finished cleanly in
+     * this session. "Liberar espacio" deletes device files on the strength of
+     * the Synced verdicts, and the ledger's may be stale (the asset was moved
+     * to the server trash since, the pass that produced them was cut short):
+     * only a fresh, complete, error-free check makes them safe to act on.
+     */
+    val isVerifiedThisSession: Boolean = false,
     val backgroundSync: BackgroundSyncPreferences = BackgroundSyncPreferences(
         enabled = false,
         requireWifi = true,
@@ -155,11 +163,24 @@ data class DeviceBackupUiState(
     val canStopCurrentPass: Boolean
         get() = (isSyncing || isCheckingHashes) && activeOrigin != BackupOrigin.Background
 
+    /** Why "Liberar espacio" is off right now, or null when it's safe. */
+    val freeSpaceBlock: FreeSpaceBlock?
+        get() = when {
+            isCheckingHashes -> FreeSpaceBlock.Verifying
+            isSyncing -> FreeSpaceBlock.Uploading
+            isFreeingSpace -> FreeSpaceBlock.Freeing
+            !isVerifiedThisSession -> FreeSpaceBlock.NotVerified
+            else -> null
+        }
+
     /** How much local storage "free up space" would actually reclaim. */
     val syncedBytes: Long get() = entries
         .filter { it.syncState is DeviceMediaSyncState.Synced }
         .sumOf { it.media.sizeBytes }
 }
+
+/** Reasons "Liberar espacio" is disabled, each explained in the UI. */
+enum class FreeSpaceBlock { Verifying, Uploading, Freeing, NotVerified }
 
 /** Progress snapshot while the manual sync is uploading files. */
 data class SyncProgress(
@@ -539,15 +560,22 @@ class DeviceBackupViewModel(
         applyFolders(repository.savedFolders())
     }
 
-    /** Stops backing up one folder and drops its files from the grid. */
+    /** Stops backing up one folder and drops its files from the grid. Its
+     *  ledger survives until [commitFolderRemoval] (the undo window closing),
+     *  so undoing restores the verdicts and the skipped files stay skipped. */
     fun removeFolder(folderUri: String) {
-        repository.forgetFolder(folderUri)
+        repository.detachFolder(folderUri)
         _state.update { current ->
             current.copy(
                 folders = current.folders.filterNot { it.uri == folderUri },
                 entries = current.entries.filterNot { it.folderUri == folderUri }
             )
         }
+    }
+
+    /** The undo for [removeFolder] expired: forget the folder's ledger. */
+    fun commitFolderRemoval(folderUri: String) {
+        runCatching { repository.purgeForgottenFolder(folderUri) }
     }
 
     fun clearMessages() {
@@ -597,7 +625,15 @@ class DeviceBackupViewModel(
         if (folders.isEmpty()) return
         if (_state.value.isCheckingHashes) return
         ownPassActive = true
-        _state.update { it.copy(isCheckingHashes = true, error = null, hashProgress = null) }
+        _state.update {
+            it.copy(
+                isCheckingHashes = true,
+                error = null,
+                hashProgress = null,
+                // A new full check re-earns the right to free space.
+                isVerifiedThisSession = it.isVerifiedThisSession && !fullReconcile
+            )
+        }
         viewModelScope.launch {
             val byFolder = _state.value.entries.groupBy({ it.folderUri }, { it.media })
             val result = runCatching {
@@ -628,11 +664,21 @@ class DeviceBackupViewModel(
                 }
                 merged.toMap()
             }
+            // Still flagged at the end ⇒ nobody stopped it midway.
+            val ranToEnd = _state.value.isCheckingHashes
             result
-                .onSuccess { states -> applySyncStates(states) }
+                .onSuccess { states ->
+                    applySyncStates(states)
+                    if (fullReconcile && ranToEnd) {
+                        _state.update { it.copy(isVerifiedThisSession = true) }
+                    }
+                }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, getString(Res.string.backup_error_verify)))
+                        it.copy(
+                            error = errorFactory.from(error, getString(Res.string.backup_error_verify)),
+                            isVerifiedThisSession = false
+                        )
                     }
                 }
             _state.update { it.copy(isCheckingHashes = false, hashProgress = null) }
@@ -1057,6 +1103,7 @@ class DeviceBackupViewModel(
      *  (rememberDeviceMediaDeleter), because API 29+ rejects a bare
      *  delete on media the app doesn't own. */
     fun syncedMediaStoreUris(): List<String> = _state.value.entries
+        .takeIf { _state.value.freeSpaceBlock == null }.orEmpty()
         .filter {
             it.syncState is DeviceMediaSyncState.Synced &&
                 it.media.uri.startsWith(MEDIASTORE_ITEM_URI_PREFIX)
@@ -1089,7 +1136,7 @@ class DeviceBackupViewModel(
     }
 
     fun freeUpSyncedSpace() {
-        if (_state.value.isFreeingSpace || _state.value.isSyncing) return
+        if (_state.value.freeSpaceBlock != null) return
         val targets = _state.value.entries.filter {
             // MediaStore-backed entries are freed through the system consent
             // flow (see syncedMediaStoreUris) — a bare delete would fail for

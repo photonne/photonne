@@ -53,6 +53,9 @@ import com.photonne.app.resources.asset_description_dialog_title
 import com.photonne.app.resources.asset_description_field
 import com.photonne.app.resources.asset_trash_message
 import com.photonne.app.resources.asset_trash_title
+import com.photonne.app.resources.trash_disabled_delete_confirm
+import com.photonne.app.resources.trash_disabled_delete_message_single
+import com.photonne.app.resources.trash_disabled_delete_title
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDateTime
@@ -366,12 +369,22 @@ private fun SuggestionRow(label: String, instant: Instant, onUse: () -> Unit) {
 fun TrashAssetDialog(
     fileName: String,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    /** The server has its trash off: this deletes for good, say so. */
+    permanent: Boolean = false
 ) {
     ConfirmActionDialog(
-        title = stringResource(Res.string.asset_trash_title),
-        message = stringResource(Res.string.asset_trash_message, fileName),
-        confirmLabel = stringResource(Res.string.action_delete),
+        title = stringResource(
+            if (permanent) Res.string.trash_disabled_delete_title else Res.string.asset_trash_title
+        ),
+        message = if (permanent) {
+            stringResource(Res.string.trash_disabled_delete_message_single, fileName)
+        } else {
+            stringResource(Res.string.asset_trash_message, fileName)
+        },
+        confirmLabel = stringResource(
+            if (permanent) Res.string.trash_disabled_delete_confirm else Res.string.action_delete
+        ),
         isDestructive = true,
         isSubmitting = false,
         onDismiss = onDismiss,

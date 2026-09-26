@@ -150,6 +150,21 @@ class DeviceBackupStateStore(private val settings: Settings) {
         settings.putString(KEY_LAST_RUN, json.encodeToString(run))
     }
 
+    /**
+     * A different account just signed in on this device: the previous one's
+     * backup setup must not carry over, or the next pass would upload the
+     * whole phone into the new account without asking. Backup goes off and
+     * the origins are forgotten; the user sets it up again for this account.
+     * Transport preferences (Wi-Fi, charging, turbo) are about the device,
+     * not the account, so they stay.
+     */
+    fun resetForNewAccount() {
+        setBackupEnabled(false)
+        settings.remove(KEY_AUTO_BACKUP)
+        clearFolders()
+        settings.remove(KEY_LAST_RUN)
+    }
+
     private companion object {
         /** Pre-multi-folder single folder; read once, then migrated away. */
         const val KEY_FOLDER = "device_backup.folder"
@@ -181,6 +196,21 @@ data class LastBackupRun(
 private data class CachedMedia(
     val folders: Map<String, List<DeviceMedia>> = emptyMap()
 )
+
+/**
+ * [DeviceBackupStateStore.backgroundSyncPreferences] with the session folded
+ * in: with nobody signed in (logout, or a refresh the server rejected) there is
+ * no account to upload to, so nothing may stay scheduled — whatever the stored
+ * switches say. Every path that hands preferences to the OS scheduler outside
+ * a signed-in screen (process start, boot, worker re-arm, iOS BGTask) goes
+ * through this.
+ */
+fun DeviceBackupStateStore.sessionAwareSyncPreferences(
+    tokenStorage: com.photonne.app.data.auth.TokenStorage
+): BackgroundSyncPreferences {
+    val prefs = backgroundSyncPreferences()
+    return if (tokenStorage.hasSession()) prefs else prefs.copy(enabled = false)
+}
 
 /** Immutable snapshot of the user's background-sync configuration. */
 data class BackgroundSyncPreferences(
