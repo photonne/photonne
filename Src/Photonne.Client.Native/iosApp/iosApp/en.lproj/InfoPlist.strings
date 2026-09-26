@@ -1,0 +1,4 @@
+/* Permission prompts shown by iOS, in English. */
+"NSLocalNetworkUsageDescription" = "Photonne needs access to your local network to find your photo server when you're at home.";
+"NSPhotoLibraryUsageDescription" = "Photonne needs access to your library to back up your photos and videos to your server.";
+"NSPhotoLibraryAddUsageDescription" = "Photonne needs permission to save the photos and videos you download from your server to your library.";

@@ -164,15 +164,17 @@ kotlin {
 android {
     namespace = "com.photonne.app"
     // 37 es el mínimo que exigen haze 1.7, coil 3.6 y media3 1.11 para compilar contra ellas.
-    // targetSdk se queda en 35 a propósito: subirlo activa comportamientos nuevos del sistema
-    // en tiempo de ejecución y eso hay que probarlo en dispositivo, no es parte de actualizar
-    // dependencias.
+    // targetSdk 36 (Android 16) es el mínimo que Google Play exige desde el 31-08-2026 para
+    // publicar apps nuevas y actualizaciones. Cambios de comportamiento que afectan a la app:
+    // el edge-to-edge ya no se puede desactivar (ya lo usamos, enableEdgeToEdge), el gesto de
+    // atrás predictivo va por OnBackPressedDispatcher (lo usa BackHandler) y en pantallas
+    // grandes (sw >= 600 dp) el sistema ignora screenOrientation="portrait".
     compileSdk = 37
 
     defaultConfig {
         applicationId = "com.photonne.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = photonneVersion.toVersionCode()
         versionName = photonneVersion
     }
@@ -258,10 +260,21 @@ fun readPhotonneVersion(): String {
     return "0.0.0"
 }
 
+/**
+ * MAJOR.MINOR.PATCH → MMMmmmppp (1.153.2 → 1_153_002). Play rejects any
+ * upload whose versionCode isn't higher than the last one, so the encoding
+ * must keep ordering: the old `major*10_000 + minor*100 + patch` overflowed
+ * once minor passed 99 (1.153.2 → 25302 > 2.0.0 → 20000). Three digits per
+ * part and a 2_100 major ceiling keep it under Int.MAX_VALUE and above every
+ * code the old scheme produced.
+ */
 fun String.toVersionCode(): Int {
     val parts = split('.', '-').take(3).mapNotNull { it.toIntOrNull() }
     val major = parts.getOrNull(0) ?: 0
     val minor = parts.getOrNull(1) ?: 0
     val patch = parts.getOrNull(2) ?: 0
-    return major * 10_000 + minor * 100 + patch
+    require(minor < 1_000 && patch < 1_000 && major < 2_100) {
+        "Version $this doesn't fit the MMMmmmppp versionCode scheme"
+    }
+    return major * 1_000_000 + minor * 1_000 + patch
 }

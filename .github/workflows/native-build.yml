@@ -55,7 +55,16 @@ jobs:
       # R8 + resource shrinking + lintVital: catches missing keep rules and
       # fatal lint issues before a release is cut. Unsigned without secrets.
       - name: Assemble Android release
-        run: ./gradlew :composeApp:assembleRelease --stacktrace
+        run: ./gradlew :composeApp:assembleRelease :composeApp:bundleRelease --stacktrace
+
+      # Play requires 16 KB page-size compatible native libraries (targetSdk
+      # 35+). Fails if any .so in the bundle isn't 16 KB aligned.
+      - name: Check 16 KB alignment
+        run: |
+          apk=$(ls composeApp/build/outputs/apk/release/*.apk | head -n1)
+          zipalign=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n1)zipalign
+          "$zipalign" -c -P 16 -v 4 "$apk" | grep -v "(OK" || true
+          "$zipalign" -c -P 16 4 "$apk"
 
       - name: Upload R8 mapping
         uses: actions/upload-artifact@v7
@@ -100,6 +109,14 @@ jobs:
 
       - name: Run common tests on the iOS simulator
         run: ./gradlew :composeApp:iosSimulatorArm64Test --stacktrace
+
+      # The Xcode app itself: Swift sources, Info.plist, privacy manifest and
+      # the Gradle framework embed. Unsigned simulator build.
+      - name: Build the Xcode app (simulator)
+        run: |
+          xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp \
+            -configuration Release -sdk iphonesimulator \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build
 
       - name: Upload test reports on failure
         if: failure()
