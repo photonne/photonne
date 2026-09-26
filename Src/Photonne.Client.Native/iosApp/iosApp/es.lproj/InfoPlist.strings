@@ -1,0 +1,4 @@
+/* Textos de los permisos que muestra iOS, en español. */
+"NSLocalNetworkUsageDescription" = "Photonne necesita acceder a tu red local para detectar el servidor de fotos cuando estás en casa.";
+"NSPhotoLibraryUsageDescription" = "Photonne necesita acceso a tu galería para hacer copia de seguridad de tus fotos y vídeos en el servidor.";
+"NSPhotoLibraryAddUsageDescription" = "Photonne necesita permiso para guardar en tu galería las fotos y vídeos que descargues del servidor.";

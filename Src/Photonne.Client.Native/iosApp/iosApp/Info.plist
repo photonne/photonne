@@ -20,6 +20,15 @@
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>es</string>
+        <string>en</string>
+    </array>
+    <!-- Only standard HTTPS/TLS from the OS: exempt from export compliance,
+         so App Store Connect doesn't ask on every build. -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>PhotonneApiBaseUrl</key>
@@ -35,6 +44,16 @@
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
+    <!-- iPad (TARGETED_DEVICE_FAMILY 1,2): App Store validation rejects an
+         iPad build that supports multitasking without all four orientations
+         (ITMS-90474). The portrait lock on iPhone stays in AppDelegate. -->
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsLocalNetworking</key>
@@ -42,6 +61,10 @@
     </dict>
     <key>NSLocalNetworkUsageDescription</key>
     <string>Photonne necesita acceder a tu red local para detectar el servidor de fotos cuando estás en casa.</string>
+    <!-- Share sheet "Save Image/Video" writes to the library; without this
+         key iOS terminates the app on that action. -->
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Photonne necesita permiso para guardar en tu galería las fotos y vídeos que descargues del servidor.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Photonne necesita acceso a tu galería para hacer copia de seguridad de tus fotos y vídeos en el servidor.</string>
     <key>CADisableMinimumFrameDurationOnPhone</key>
