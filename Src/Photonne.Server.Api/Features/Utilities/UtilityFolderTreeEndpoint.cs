@@ -62,6 +62,10 @@ public class UtilityFolderTreeEndpoint : IEndpoint
             .Where(p => p.UserId == userId)
             .ToListAsync(cancellationToken);
 
+        var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
+        var deletableGrantIds = permissions.Where(p => p.CanDelete).Select(p => p.FolderId).ToHashSet();
+        var folderById = allFolders.ToDictionary(f => f.Id);
+
         var folderDict = allFolders.ToDictionary(f => f.Id, f =>
         {
             var userPerm = permissions.FirstOrDefault(p => p.FolderId == f.Id);
@@ -84,6 +88,8 @@ public class UtilityFolderTreeEndpoint : IEndpoint
                 IsOwner = FoldersEndpoint.OwnsByPath(f.Path, usernameToIdMap, userId)
                     || (isAdmin && FoldersEndpoint.IsInSharedSpace(f.Path))
                     || (userPerm?.CanManagePermissions ?? false),
+                CanWrite = FoldersEndpoint.HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, writableGrantIds, folderById),
+                CanDelete = FoldersEndpoint.HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, deletableGrantIds, folderById),
                 IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                 SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var cnt) ? cnt : 0,
                 SubFolders = new List<FolderResponse>()

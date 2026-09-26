@@ -36,7 +36,7 @@ public class UpdateDescriptionEndpoint : IEndpoint
         if (asset == null)
             return Results.NotFound(new { error = "Asset no encontrado." });
 
-        if (!IsAssetInUserRoot(asset.FullPath, username))
+        if (!AssetMetadataPermissions.IsInUserRoot(asset.FullPath, username))
             return Results.Forbid();
 
         asset.Caption = string.IsNullOrWhiteSpace(request.Caption)
@@ -52,12 +52,6 @@ public class UpdateDescriptionEndpoint : IEndpoint
     {
         var claim = user.FindFirst(ClaimTypes.NameIdentifier);
         return Guid.TryParse(claim?.Value, out userId);
-    }
-
-    private static bool IsAssetInUserRoot(string assetPath, string username)
-    {
-        var normalized = assetPath.Replace('\\', '/');
-        return normalized.Contains($"/users/{username}/", StringComparison.OrdinalIgnoreCase);
     }
 }
 

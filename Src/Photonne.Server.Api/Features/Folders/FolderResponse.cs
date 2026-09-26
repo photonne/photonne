@@ -17,6 +17,10 @@ public class FolderResponse
     // folder or any ancestor). Mirrors CanWriteFolderAsync. Used to offer only
     // writable folders as move destinations in the client picker.
     public bool CanWrite { get; set; }
+    // True when the requesting user may delete this folder (and trash the
+    // assets inside it). Mirrors CanDeleteFolderAsync. Clients gate "Delete"
+    // on it instead of guessing from IsOwner.
+    public bool CanDelete { get; set; }
     public int SharedWithCount { get; set; }
     public Guid? ExternalLibraryId { get; set; }
 

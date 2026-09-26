@@ -110,7 +110,8 @@ public class AssetDetailEndpoint : IEndpoint
                 Caption = asset.Caption,
                 AiDescription = asset.AiDescription,
                 IsReadOnly = asset.ExternalLibraryId.HasValue,
-                IsOwner = asset.OwnerId == userId
+                IsOwner = asset.OwnerId == userId,
+                CanEdit = AssetMetadataPermissions.CanEdit(asset.FullPath, asset.DeletedAt != null, user.GetUsername())
             };
 
             return Results.Ok(response);

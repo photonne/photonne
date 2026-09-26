@@ -61,7 +61,7 @@ public class AssetTagsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Asset no encontrado." });
         }
 
-        if (!IsAssetInUserRoot(asset.FullPath, username))
+        if (!AssetMetadataPermissions.IsInUserRoot(asset.FullPath, username))
         {
             return Results.Forbid();
         }
@@ -138,7 +138,7 @@ public class AssetTagsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Asset no encontrado." });
         }
 
-        if (!IsAssetInUserRoot(asset.FullPath, username))
+        if (!AssetMetadataPermissions.IsInUserRoot(asset.FullPath, username))
         {
             return Results.Forbid();
         }
@@ -244,18 +244,6 @@ public class AssetTagsEndpoint : IEndpoint
         userId = Guid.Empty;
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         return userIdClaim != null && Guid.TryParse(userIdClaim.Value, out userId);
-    }
-
-    private static bool IsAssetInUserRoot(string assetPath, string username)
-    {
-        var normalized = assetPath.Replace('\\', '/');
-        var virtualRoot = $"/assets/users/{username}/";
-        if (normalized.StartsWith(virtualRoot, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return normalized.Contains($"/users/{username}/", StringComparison.OrdinalIgnoreCase);
     }
 }
 

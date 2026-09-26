@@ -244,7 +244,7 @@
     <string name="asset_date_suggestion_use">Usar</string>
     <string name="asset_date_readonly_note">Biblioteca externa de solo lectura: no se puede escribir en el archivo.</string>
     <string name="asset_trash_title">Mover a la papelera</string>
-    <string name="asset_trash_message">"%1$s" se moverá a la papelera. Podrás restaurarlo desde la app web.</string>
+    <string name="asset_trash_message">"%1$s" se moverá a la papelera y saldrá de los álbumes en los que esté; restaurarlo no lo devuelve a ellos.</string>
     <plurals name="selection_trash_confirm_message">
         <item quantity="one">%1$d foto se moverá a la papelera. Podrás restaurarla desde la papelera.</item>
         <item quantity="other">%1$d fotos se moverán a la papelera. Podrás restaurarlas desde la papelera.</item>
@@ -263,6 +263,24 @@
     <plurals name="selection_deleted_permanently_done">
         <item quantity="one">%1$d foto eliminada definitivamente</item>
         <item quantity="other">%1$d fotos eliminadas definitivamente</item>
+    </plurals>
+    <plurals name="selection_restore_done">
+        <item quantity="one">%1$d foto restaurada</item>
+        <item quantity="other">%1$d fotos restauradas</item>
+    </plurals>
+    <string name="asset_purge_message">"%1$s" se eliminará definitivamente. No se puede deshacer.</string>
+    <plurals name="selection_trash_blocked_foreign">
+        <item quantity="one">%1$d foto es de otro miembro</item>
+        <item quantity="other">%1$d fotos son de otros miembros</item>
+    </plurals>
+    <string name="selection_trash_blocked_folder">No tienes permiso para borrar en esta carpeta</string>
+    <plurals name="album_trash_warning">
+        <item quantity="one">%1$d foto irá a la papelera y saldrá de este álbum y de los demás en los que esté. Restaurarla no la devuelve a los álbumes.</item>
+        <item quantity="other">%1$d fotos irán a la papelera y saldrán de este álbum y de los demás en los que estén. Restaurarlas no las devuelve a los álbumes.</item>
+    </plurals>
+    <plurals name="album_trash_warning_shared">
+        <item quantity="one">%1$d foto irá a la papelera y saldrá de este álbum compartido (sus miembros dejarán de verla) y de los demás en los que esté. Restaurarla no la devuelve a los álbumes.</item>
+        <item quantity="other">%1$d fotos irán a la papelera y saldrán de este álbum compartido (sus miembros dejarán de verlas) y de los demás en los que estén. Restaurarlas no las devuelve a los álbumes.</item>
     </plurals>
     <plurals name="selection_added_to_album_done">
         <item quantity="one">%1$d foto añadida a %2$s</item>

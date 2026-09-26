@@ -61,7 +61,11 @@ fun AddToAlbumDialog(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // Un álbum inteligente calcula su contenido con reglas: añadirle fotos a
     // mano no tiene sentido y el servidor lo rechazaría. Fuera de la lista.
-    val manualAlbums = remember(albums) { albums.filterNot { it.isSmart } }
+    // Tampoco los compartidos en los que solo puedo ver: el servidor exige
+    // permiso de escritura y respondía 403 al elegirlos.
+    val manualAlbums = remember(albums) {
+        albums.filter { !it.isSmart && (it.isOwner || it.canWrite) }
+    }
     var query by remember { mutableStateOf("") }
     val visibleAlbums = remember(manualAlbums, query) {
         if (query.isBlank()) manualAlbums
