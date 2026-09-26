@@ -113,11 +113,15 @@ jobs:
         run: ./gradlew :composeApp:iosSimulatorArm64Test --stacktrace
 
       # The Xcode app itself: Swift sources, Info.plist, privacy manifest and
-      # the Gradle framework embed. Unsigned simulator build.
+      # the Gradle framework embed. Unsigned simulator build in Debug: a
+      # Release configuration makes Kotlin/Native run its fully optimised
+      # link, which takes well over half an hour on a hosted runner and
+      # validates nothing extra here.
       - name: Build the Xcode app (simulator)
+        timeout-minutes: 25
         run: |
           xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp \
-            -configuration Release -sdk iphonesimulator \
+            -configuration Debug -sdk iphonesimulator \
             ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build
 
       - name: Upload test reports on failure
