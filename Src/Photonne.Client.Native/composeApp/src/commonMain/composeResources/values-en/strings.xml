@@ -239,7 +239,7 @@
     <string name="asset_date_suggestion_use">Use</string>
     <string name="asset_date_readonly_note">Read-only external library: the file can\'t be modified.</string>
     <string name="asset_trash_title">Move to trash</string>
-    <string name="asset_trash_message">"%1$s" will be moved to the trash. You can restore it from the web app.</string>
+    <string name="asset_trash_message">"%1$s" will be moved to the trash and removed from any albums it is in; restoring it won’t put it back in them.</string>
     <string name="asset_metadata_location">Location</string>
     <string name="asset_metadata_open_map">View on Maps</string>
 
@@ -507,6 +507,24 @@
     <plurals name="selection_deleted_permanently_done">
         <item quantity="one">%1$d photo deleted permanently</item>
         <item quantity="other">%1$d photos deleted permanently</item>
+    </plurals>
+    <plurals name="selection_restore_done">
+        <item quantity="one">%1$d photo restored</item>
+        <item quantity="other">%1$d photos restored</item>
+    </plurals>
+    <string name="asset_purge_message">"%1$s" will be deleted permanently. This can’t be undone.</string>
+    <plurals name="selection_trash_blocked_foreign">
+        <item quantity="one">%1$d photo belongs to another member</item>
+        <item quantity="other">%1$d photos belong to other members</item>
+    </plurals>
+    <string name="selection_trash_blocked_folder">You don’t have permission to delete in this folder</string>
+    <plurals name="album_trash_warning">
+        <item quantity="one">%1$d photo will go to the trash and leave this album and any others it is in. Restoring it won’t put it back in the albums.</item>
+        <item quantity="other">%1$d photos will go to the trash and leave this album and any others they are in. Restoring them won’t put them back in the albums.</item>
+    </plurals>
+    <plurals name="album_trash_warning_shared">
+        <item quantity="one">%1$d photo will go to the trash and leave this shared album (its members will stop seeing it) and any others it is in. Restoring it won’t put it back in the albums.</item>
+        <item quantity="other">%1$d photos will go to the trash and leave this shared album (its members will stop seeing them) and any others they are in. Restoring them won’t put them back in the albums.</item>
     </plurals>
     <plurals name="selection_added_to_album_done">
         <item quantity="one">%1$d photo added to %2$s</item>

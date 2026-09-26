@@ -57,6 +57,9 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.RestoreFromTrash
+import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Camera
 import androidx.compose.material.icons.outlined.CenterFocusStrong
@@ -185,6 +188,11 @@ import com.photonne.app.resources.asset_action_more
 import com.photonne.app.resources.asset_action_open_in_maps
 import com.photonne.app.resources.asset_action_delete_device
 import com.photonne.app.resources.asset_action_trash
+import com.photonne.app.resources.archive_action_unarchive
+import com.photonne.app.resources.asset_purge_message
+import com.photonne.app.resources.trash_action_delete_forever
+import com.photonne.app.resources.trash_action_restore
+import com.photonne.app.resources.trash_disabled_delete_title
 import com.photonne.app.resources.asset_action_show_original
 import com.photonne.app.resources.asset_action_show_preview
 import com.photonne.app.resources.asset_metadata_location
@@ -234,6 +242,15 @@ fun AssetDetailScreen(
     onAddToAlbum: (TimelineItem) -> Unit = {},
     onAssetTrashed: (assetId: String) -> Unit = {},
     onAssetArchived: (assetId: String) -> Unit = {},
+    /**
+     * Where the viewer was opened from. Archive swaps Archive for Unarchive;
+     * Trash leaves only Restore and Delete permanently (the asset is not
+     * editable or favouritable while in the trash).
+     */
+    mode: AssetViewerMode = AssetViewerMode.Default,
+    onAssetUnarchived: (assetId: String) -> Unit = {},
+    onAssetRestored: (assetId: String) -> Unit = {},
+    onAssetPurged: (assetId: String) -> Unit = {},
     onOpenFaces: (assetId: String) -> Unit = {},
     /** Bumped by the host when the faces sheet closes, so the inline faces of
      *  the visible asset are re-read (the sheet may have changed them). */
@@ -396,7 +413,24 @@ fun AssetDetailScreen(
     var showEditDescription by remember { mutableStateOf(false) }
     var showEditDate by remember { mutableStateOf(false) }
     var showTrashConfirm by remember { mutableStateOf(false) }
+    var showPurgeConfirm by remember { mutableStateOf(false) }
     val currentItem = items.getOrNull(pagerState.currentPage)
+    val isTrashMode = mode == AssetViewerMode.Trash
+    // Descripción, fecha y etiquetas solo si el servidor las aceptaría (fuera
+    // del espacio personal respondía 403). Hasta tener el detalle no se
+    // ofrecen: sin él tampoco hay valor que editar.
+    val currentCanEdit = !isTrashMode && currentItem != null &&
+        (state.detail?.takeIf { it.id == currentItem.id }?.canEdit ?: false)
+    // Archivar o desarchivar según de dónde se abrió el visor.
+    val archiveToggle: () -> Unit = {
+        currentItem?.let { item ->
+            if (mode == AssetViewerMode.Archive) {
+                viewModel.unarchive(item.id) { id -> onAssetUnarchived(id) }
+            } else {
+                viewModel.archive(item.id) { id -> onAssetArchived(id) }
+            }
+        }
+    }
     LaunchedEffect(facesRevision) {
         if (facesRevision > 0) currentItem?.let { viewModel.refreshFaces(it.id) }
     }
@@ -408,6 +442,7 @@ fun AssetDetailScreen(
     // only entries have nothing on the server to analyse.
     var showAiSheet by remember { mutableStateOf(false) }
     val canAnalyze = currentItem != null &&
+        !isTrashMode &&
         !currentItem.isVideo &&
         !currentItem.id.startsWith("device:") &&
         (state.detail?.takeIf { it.id == currentItem.id }?.isOwner ?: true)
@@ -686,6 +721,7 @@ fun AssetDetailScreen(
                         facesFailed = isCurrent && state.facesFailed,
                         samePersonAssets = if (isCurrent) state.samePersonAssets else emptyList(),
                         sameDayAssets = if (isCurrent) state.sameDayAssets else emptyList(),
+                        canEdit = !isTrashMode && pageDetail?.canEdit == true,
                         onEditDescription = { showEditDescription = true },
                         onEditDate = { showEditDate = true },
                         onOpenFaces = { onOpenFaces(item.id) },
@@ -828,7 +864,27 @@ fun AssetDetailScreen(
                         // Landscape: the bottom action bar is hidden, so its
                         // actions live here as a floating overflow on the right —
                         // favourite / album / info inline, the rest under ⋮.
-                        if (landscapeMode && currentItem != null && !isLocalOnly) {
+                        if (landscapeMode && currentItem != null && !isLocalOnly && isTrashMode) {
+                            // Desde la papelera solo caben restaurar y borrar
+                            // para siempre, como en la barra inferior.
+                            IconButton(onClick = {
+                                viewModel.restore(currentItem.id) { id -> onAssetRestored(id) }
+                            }) {
+                                Icon(
+                                    Icons.Outlined.RestoreFromTrash,
+                                    contentDescription = stringResource(Res.string.trash_action_restore),
+                                    tint = Color.White
+                                )
+                            }
+                            IconButton(onClick = { showPurgeConfirm = true }) {
+                                Icon(
+                                    Icons.Outlined.DeleteForever,
+                                    contentDescription = stringResource(Res.string.trash_action_delete_forever),
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                        if (landscapeMode && currentItem != null && !isLocalOnly && !isTrashMode) {
                             IconButton(onClick = {
                                 viewModel.toggleFavorite(currentItem.id) { confirmed ->
                                     onFavoriteChanged(currentItem.id, confirmed)
@@ -875,24 +931,28 @@ fun AssetDetailScreen(
                                         leadingIcon = { Icon(Icons.Outlined.Download, contentDescription = null) },
                                         onClick = { showOverflow = false; onDownload(currentItem) }
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(Res.string.asset_action_edit_description)) },
-                                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                                        onClick = { showOverflow = false; showEditDescription = true }
-                                    )
+                                    if (currentCanEdit) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(Res.string.asset_action_edit_description)) },
+                                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                                            onClick = { showOverflow = false; showEditDescription = true }
+                                        )
+                                    }
                                     DropdownMenuItem(
                                         text = { Text(stringResource(Res.string.asset_action_faces)) },
                                         leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
                                         onClick = { showOverflow = false; onOpenFaces(currentItem.id) }
                                     )
                                     // Faltaba en apaisado; en vertical sí está.
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(Res.string.asset_action_edit_date)) },
-                                        leadingIcon = {
-                                            Icon(Icons.Outlined.DateRange, contentDescription = null)
-                                        },
-                                        onClick = { showOverflow = false; showEditDate = true }
-                                    )
+                                    if (currentCanEdit) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(Res.string.asset_action_edit_date)) },
+                                            leadingIcon = {
+                                                Icon(Icons.Outlined.DateRange, contentDescription = null)
+                                            },
+                                            onClick = { showOverflow = false; showEditDate = true }
+                                        )
+                                    }
                                     if (canAnalyze) {
                                         DropdownMenuItem(
                                             text = { Text(stringResource(Res.string.asset_action_analyze)) },
@@ -900,13 +960,9 @@ fun AssetDetailScreen(
                                             onClick = { showOverflow = false; showAiSheet = true }
                                         )
                                     }
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(Res.string.asset_action_archive)) },
-                                        leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
-                                        onClick = {
-                                            showOverflow = false
-                                            viewModel.archive(currentItem.id) { id -> onAssetArchived(id) }
-                                        }
+                                    ArchiveToggleMenuItem(
+                                        isArchiveMode = mode == AssetViewerMode.Archive,
+                                        onClick = { showOverflow = false; archiveToggle() }
                                     )
                                     DropdownMenuItem(
                                         text = { Text(stringResource(Res.string.asset_action_trash)) },
@@ -985,6 +1041,7 @@ fun AssetDetailScreen(
                     if (!landscapeMode) {
                         AssetActionsBottomBar(
                             item = currentItem,
+                            mode = mode,
                             hazeState = viewerHazeState,
                             isFavorite = currentIsFavorite,
                             showOverflow = showOverflow,
@@ -1001,15 +1058,17 @@ fun AssetDetailScreen(
                                 coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
                             },
                             onTrashRequest = { showTrashConfirm = true },
-                            onEditDescription = { showEditDescription = true },
-                            onEditDate = { showEditDate = true },
+                            onEditDescription = if (currentCanEdit) {
+                                { showEditDescription = true }
+                            } else null,
+                            onEditDate = if (currentCanEdit) { { showEditDate = true } } else null,
                             onOpenFaces = { onOpenFaces(currentItem.id) },
                             onAnalyze = if (canAnalyze) { { showAiSheet = true } } else null,
-                            onArchive = {
-                                viewModel.archive(currentItem.id) { id ->
-                                    onAssetArchived(id)
-                                }
+                            onArchive = archiveToggle,
+                            onRestore = {
+                                viewModel.restore(currentItem.id) { id -> onAssetRestored(id) }
                             },
+                            onPurgeRequest = { showPurgeConfirm = true },
                             onDeleteFromDevice = onDeleteFromDevice?.let { handler ->
                                 { handler(currentItem) }
                             }
@@ -1104,6 +1163,45 @@ fun AssetDetailScreen(
             }
         )
     }
+    if (showPurgeConfirm && currentItem != null) {
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.trash_disabled_delete_title),
+            message = stringResource(Res.string.asset_purge_message, currentItem.fileName),
+            confirmLabel = stringResource(Res.string.trash_action_delete_forever),
+            isDestructive = true,
+            isSubmitting = false,
+            onDismiss = { showPurgeConfirm = false },
+            onConfirm = {
+                showPurgeConfirm = false
+                viewModel.purge(currentItem.id) { id -> onAssetPurged(id) }
+            }
+        )
+    }
+}
+
+/** Where the viewer was opened from; decides which actions it offers. */
+enum class AssetViewerMode { Default, Archive, Trash }
+
+/** "Archivar" normally; "Desarchivar" when the viewer was opened from Archive. */
+@Composable
+private fun ArchiveToggleMenuItem(isArchiveMode: Boolean, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = {
+            Text(
+                stringResource(
+                    if (isArchiveMode) Res.string.archive_action_unarchive
+                    else Res.string.asset_action_archive
+                )
+            )
+        },
+        leadingIcon = {
+            Icon(
+                if (isArchiveMode) Icons.Outlined.Unarchive else Icons.Outlined.Archive,
+                contentDescription = null
+            )
+        },
+        onClick = onClick
+    )
 }
 
 /**
@@ -1728,6 +1826,9 @@ private fun AssetMetadataPanel(
     facesFailed: Boolean,
     samePersonAssets: List<com.photonne.app.data.models.PersonAsset>,
     sameDayAssets: List<com.photonne.app.data.models.PersonAsset>,
+    /** False → description, date and tags are shown read-only (the server
+     *  would reject the edit). */
+    canEdit: Boolean,
     onEditDescription: () -> Unit,
     onEditDate: () -> Unit,
     onOpenFaces: () -> Unit,
@@ -1756,7 +1857,7 @@ private fun AssetMetadataPanel(
 
         // Editable description + capture date — only for server-backed assets
         // (a local-only asset has no detail and can't be edited).
-        if (detail != null) {
+        if (detail != null && canEdit) {
             MetadataEditableRow(
                 leadingIcon = null,
                 label = stringResource(Res.string.asset_detail_description),
@@ -1771,6 +1872,16 @@ private fun AssetMetadataPanel(
                 value = formatInstant(captureDate.toString()),
                 placeholder = "",
                 onClick = onEditDate
+            )
+        } else if (detail != null) {
+            // Solo lectura: mismos datos, sin la invitación a editarlos.
+            detail.caption?.takeIf { it.isNotBlank() }?.let {
+                MetadataRow(stringResource(Res.string.asset_detail_description), it)
+            }
+            val captureDate = exif?.dateTaken ?: detail.fileCreatedAt
+            MetadataRow(
+                stringResource(Res.string.asset_detail_capture_date),
+                formatInstant(captureDate.toString())
             )
         } else {
             MetadataRow(stringResource(Res.string.asset_detail_created), formatInstant(fallback.fileCreatedAt.toString()))
@@ -1819,13 +1930,16 @@ private fun AssetMetadataPanel(
         }
 
         // Editable tags: auto tags fixed, user tags removable, plus "+ Añadir".
-        if (detail != null) {
+        if (detail != null && canEdit) {
             EditableTagsSection(
                 userTags = detail.userTags,
                 autoTags = detail.autoTags,
                 onAddTag = onAddTag,
                 onRemoveTag = onRemoveTag
             )
+        } else if (detail != null) {
+            val tags = detail.autoTags + detail.userTags
+            if (tags.isNotEmpty()) MetadataRow("Etiquetas", tags.joinToString(", "))
         } else {
             val tags = fallback.tags
             if (tags.isNotEmpty()) MetadataRow("Etiquetas", tags.joinToString(", "))
@@ -2712,6 +2826,7 @@ private fun ViewerChromeCapsule(
 @Composable
 private fun AssetActionsBottomBar(
     item: TimelineItem,
+    mode: AssetViewerMode = AssetViewerMode.Default,
     hazeState: HazeState? = null,
     isFavorite: Boolean,
     showOverflow: Boolean,
@@ -2722,10 +2837,14 @@ private fun AssetActionsBottomBar(
     onDownload: () -> Unit,
     onShowInfo: () -> Unit,
     onTrashRequest: () -> Unit,
-    onEditDescription: () -> Unit,
-    onEditDate: () -> Unit,
+    // Null hides the entry: the server would reject the edit.
+    onEditDescription: (() -> Unit)?,
+    onEditDate: (() -> Unit)?,
     onOpenFaces: () -> Unit,
+    /** Archive, or Unarchive when [mode] is Archive. */
     onArchive: () -> Unit,
+    onRestore: () -> Unit = {},
+    onPurgeRequest: () -> Unit = {},
     onDeleteFromDevice: (() -> Unit)? = null,
     // Null hides the entry: videos have no AI passes, and the server only
     // lets the owner run them.
@@ -2797,6 +2916,23 @@ private fun AssetActionsBottomBar(
                         )
                     }
                 }
+            } else if (mode == AssetViewerMode.Trash) {
+                // En la papelera la foto no se edita ni se marca: solo vuelve a
+                // su sitio o se va para siempre (patrón de Google Fotos).
+                IconButton(onClick = onRestore) {
+                    Icon(
+                        Icons.Outlined.RestoreFromTrash,
+                        contentDescription = stringResource(Res.string.trash_action_restore),
+                        tint = Color.White
+                    )
+                }
+                IconButton(onClick = onPurgeRequest) {
+                    Icon(
+                        Icons.Outlined.DeleteForever,
+                        contentDescription = stringResource(Res.string.trash_action_delete_forever),
+                        tint = Color.White
+                    )
+                }
             } else {
                 IconButton(onClick = onToggleFavorite) {
                     Icon(
@@ -2848,22 +2984,26 @@ private fun AssetActionsBottomBar(
                                 onDownload()
                             }
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.asset_action_edit_description)) },
-                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                            onClick = {
-                                onShowOverflowChange(false)
-                                onEditDescription()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.asset_action_edit_date)) },
-                            leadingIcon = { Icon(Icons.Outlined.DateRange, contentDescription = null) },
-                            onClick = {
-                                onShowOverflowChange(false)
-                                onEditDate()
-                            }
-                        )
+                        if (onEditDescription != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.asset_action_edit_description)) },
+                                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                                onClick = {
+                                    onShowOverflowChange(false)
+                                    onEditDescription()
+                                }
+                            )
+                        }
+                        if (onEditDate != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.asset_action_edit_date)) },
+                                leadingIcon = { Icon(Icons.Outlined.DateRange, contentDescription = null) },
+                                onClick = {
+                                    onShowOverflowChange(false)
+                                    onEditDate()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.asset_action_faces)) },
                             leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
@@ -2882,9 +3022,8 @@ private fun AssetActionsBottomBar(
                                 }
                             )
                         }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.asset_action_archive)) },
-                            leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
+                        ArchiveToggleMenuItem(
+                            isArchiveMode = mode == AssetViewerMode.Archive,
                             onClick = {
                                 onShowOverflowChange(false)
                                 onArchive()

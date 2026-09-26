@@ -370,19 +370,69 @@ class AssetDetailViewModel(
         }
     }
 
+    /** Viewer opened from Archive: takes [assetId] back to the timeline. */
+    fun unarchive(assetId: String, onCompleted: (assetId: String) -> Unit = {}) =
+        runLocationChange(assetId, ErrorMessages.UNARCHIVE_FAILED, onCompleted) {
+            repository.unarchive(listOf(assetId))
+        }
+
+    /** Viewer opened from Trash: restores [assetId] to where it came from. */
+    fun restore(assetId: String, onCompleted: (assetId: String) -> Unit = {}) =
+        runLocationChange(assetId, ErrorMessages.RESTORE_FAILED, onCompleted) {
+            repository.restore(listOf(assetId))
+        }
+
+    /** Viewer opened from Trash: deletes [assetId] for good. */
+    fun purge(assetId: String, onCompleted: (assetId: String) -> Unit = {}) =
+        runLocationChange(assetId, "No se pudo eliminar definitivamente", onCompleted) {
+            repository.purge(listOf(assetId))
+        }
+
+    /**
+     * Shared tail of the actions that move the asset out of the list the
+     * viewer was opened from. The list itself learns through the
+     * AssetMutationBus the repository emits on; here only the cached detail
+     * is dropped (it no longer describes where the asset lives).
+     */
+    private fun runLocationChange(
+        assetId: String,
+        fallbackMessage: String,
+        onCompleted: (assetId: String) -> Unit,
+        call: suspend () -> Unit
+    ) {
+        viewModelScope.launch {
+            runCatching { call() }
+                .onSuccess {
+                    cache.remove(assetId)
+                    publishCache()
+                    onCompleted(assetId)
+                }
+                .onFailure { error ->
+                    _state.update { it.copy(error = errorFactory.from(error, fallbackMessage)) }
+                }
+        }
+    }
+
     fun updateDescription(assetId: String, description: String?) {
         val cleaned = description?.trim()?.takeIf { it.isNotEmpty() }
-        // Optimistic local update — both cache and visible state.
-        cache[assetId]?.let { cache[assetId] = it.copy(caption = cleaned); publishCache() }
-        _state.update { current ->
-            val detail = current.detail
-            if (detail != null && detail.id == assetId) {
-                current.copy(detail = detail.copy(caption = cleaned))
-            } else current
+        val previous = currentDetail(assetId)?.caption
+        fun apply(caption: String?) {
+            cache[assetId]?.let { cache[assetId] = it.copy(caption = caption); publishCache() }
+            _state.update { current ->
+                val detail = current.detail
+                if (detail != null && detail.id == assetId) {
+                    current.copy(detail = detail.copy(caption = caption))
+                } else current
+            }
         }
+        // Optimistic local update — both cache and visible state.
+        apply(cleaned)
         viewModelScope.launch {
             runCatching { repository.updateDescription(assetId, cleaned) }
                 .onFailure { error ->
+                    // El valor rechazado se quedaba pintado como si se hubiera
+                    // guardado: vuelve el anterior y sale el error.
+                    apply(previous)
                     _state.update {
                         it.copy(error = errorFactory.from(error, "No se pudo actualizar la descripción"))
                     }
@@ -407,6 +457,9 @@ class AssetDetailViewModel(
     fun updateCaptureDate(assetId: String, dateTaken: Instant, writeToFile: Boolean) {
         fun withDate(d: AssetDetail, date: Instant): AssetDetail =
             d.copy(exif = (d.exif ?: ExifData()).copy(dateTaken = date))
+        // Snapshot to roll back to if the server rejects the change.
+        val previousCached = cache[assetId]
+        val previousVisible = _state.value.detail?.takeIf { it.id == assetId }
 
         // Optimistic local update — both cache and visible state.
         cache[assetId]?.let { cache[assetId] = withDate(it, dateTaken); publishCache() }
@@ -427,8 +480,15 @@ class AssetDetailViewModel(
                     }
                 }
                 .onFailure { error ->
-                    _state.update {
-                        it.copy(error = errorFactory.from(error, "No se pudo actualizar la fecha de captura"))
+                    previousCached?.let { cache[assetId] = it; publishCache() }
+                    _state.update { current ->
+                        val detail = current.detail
+                        val reverted = if (previousVisible != null && detail?.id == assetId) {
+                            current.copy(detail = previousVisible)
+                        } else current
+                        reverted.copy(
+                            error = errorFactory.from(error, "No se pudo actualizar la fecha de captura")
+                        )
                     }
                 }
         }

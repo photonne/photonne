@@ -37,6 +37,9 @@ public class AssetDetailResponse
     /// <summary>The caller owns the asset. Owner-only actions (per-photo AI
     /// analysis) are offered on this, not on read access.</summary>
     public bool IsOwner { get; set; }
+    /// <summary>The caller may edit description, capture date and tags. Same
+    /// rule as the edit endpoints (<see cref="Photonne.Server.Api.Shared.Services.AssetMetadataPermissions"/>).</summary>
+    public bool CanEdit { get; set; }
 }
 
 public class ExifDataResponse

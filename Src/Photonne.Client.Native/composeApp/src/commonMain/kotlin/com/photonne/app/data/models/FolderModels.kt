@@ -19,6 +19,9 @@ data class FolderSummary(
     // the folder-list/tree endpoints; used to offer only writable folders as
     // move destinations.
     val canWrite: Boolean = true,
+    // True when the current user may delete this folder (and trash what's in
+    // it). Emitted by every folder response; mirrors CanDeleteFolderAsync.
+    val canDelete: Boolean = true,
     val sharedWithCount: Int = 0,
     val externalLibraryId: String? = null,
     // Per-user opt-out: I only administer this shared folder; keep it out of my

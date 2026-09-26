@@ -36,6 +36,10 @@ data class AssetDetail(
      *  server; defaults to true so an older server that doesn't say still
      *  offers the action (and answers 403 with a reason if it isn't). */
     val isOwner: Boolean = true,
+    /** The caller may edit description, capture date and tags (the server's
+     *  own rule for those endpoints). Defaults to true for older servers that
+     *  don't send it; they still answer 403 and the viewer reverts. */
+    val canEdit: Boolean = true,
 ) {
     val isVideo: Boolean get() = type.equals("VIDEO", ignoreCase = true)
 }

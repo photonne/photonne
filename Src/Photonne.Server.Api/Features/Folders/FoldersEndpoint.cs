@@ -160,6 +160,18 @@ public class FoldersEndpoint : IEndpoint
                 }
             }
 
+            // Same flags as every other folder response. A library is a
+            // read-only mirror, so these are normally false; clients also gate
+            // on ExternalLibraryId.
+            var isAdmin = user.IsInRole("Admin");
+            var libAccess = new Dictionary<Guid, (bool CanWrite, bool CanDelete)>();
+            foreach (var f in rootFolder.SubFolders.Prepend(rootFolder))
+            {
+                libAccess[f.Id] = (
+                    await CanWriteFolderAsync(dbContext, userId, f.Id, isAdmin, cancellationToken),
+                    await CanDeleteFolderAsync(dbContext, userId, f.Id, isAdmin, cancellationToken));
+            }
+
             var response = new FolderResponse
             {
                 Id = rootFolder.Id,
@@ -177,6 +189,8 @@ public class FoldersEndpoint : IEndpoint
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
                 IsOwner = false,
+                CanWrite = libAccess[rootFolder.Id].CanWrite,
+                CanDelete = libAccess[rootFolder.Id].CanDelete,
                 IsShared = false,
                 ExternalLibraryId = rootFolder.ExternalLibraryId,
                 SubFolders = rootFolder.SubFolders.Select(sf => new FolderResponse
@@ -196,6 +210,8 @@ public class FoldersEndpoint : IEndpoint
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
                     IsOwner = false,
+                    CanWrite = libAccess.GetValueOrDefault(sf.Id).CanWrite,
+                    CanDelete = libAccess.GetValueOrDefault(sf.Id).CanDelete,
                     IsShared = false,
                     ExternalLibraryId = sf.ExternalLibraryId
                 }).ToList()
@@ -258,25 +274,13 @@ public class FoldersEndpoint : IEndpoint
 
             var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
 
-            // Write access is inherited down a shared subtree (a grant lives on
-            // the share root). Walk each folder's parent chain in-memory against
-            // the user's Write grants — mirrors CanWriteFolderAsync without a
-            // per-folder round-trip.
+            // Write/Delete access is inherited down a shared subtree (a grant
+            // lives on the share root). Walk each folder's parent chain in-memory
+            // against the user's grants — mirrors CanWriteFolderAsync /
+            // CanDeleteFolderAsync without a per-folder round-trip.
             var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
+            var deletableGrantIds = permissions.Where(p => p.CanDelete).Select(p => p.FolderId).ToHashSet();
             var folderById = folders.ToDictionary(f => f.Id);
-            bool HasInheritedWrite(Folder folder)
-            {
-                var current = folder;
-                var guard = 0;
-                while (current != null && guard++ < 64)
-                {
-                    if (writableGrantIds.Contains(current.Id)) return true;
-                    current = current.ParentFolderId.HasValue
-                        && folderById.TryGetValue(current.ParentFolderId.Value, out var parent)
-                        ? parent : null;
-                }
-                return false;
-            }
 
             var response = folders.Select(f =>
             {
@@ -300,10 +304,8 @@ public class FoldersEndpoint : IEndpoint
                     IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
                         || (isAdmin && IsInSharedSpace(f.Path))
                         || (userPerm?.CanManagePermissions ?? false),
-                    CanWrite = !VirtualPath.IsStructuralContainer(f.Path)
-                        && (OwnsByPath(f.Path, usernameToIdMap, userId)
-                            || (isAdmin && IsInSharedSpace(f.Path))
-                            || HasInheritedWrite(f)),
+                    CanWrite = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, writableGrantIds, folderById),
+                    CanDelete = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, deletableGrantIds, folderById),
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     ExternalLibraryId = f.ExternalLibraryId,
@@ -408,6 +410,19 @@ public class FoldersEndpoint : IEndpoint
                 }
             }
 
+            // Write/Delete flags for the folder and each subfolder, from the same
+            // helpers that gate the mutating endpoints — the detail screen used
+            // to receive them unset and guess from IsOwner.
+            var canWrite = await CanWriteFolderAsync(dbContext, userId, folder.Id, isAdmin, cancellationToken);
+            var canDelete = await CanDeleteFolderAsync(dbContext, userId, folder.Id, isAdmin, cancellationToken);
+            var subfolderAccess = new Dictionary<Guid, (bool CanWrite, bool CanDelete)>();
+            foreach (var sf in folder.SubFolders)
+            {
+                subfolderAccess[sf.Id] = (
+                    await CanWriteFolderAsync(dbContext, userId, sf.Id, isAdmin, cancellationToken),
+                    await CanDeleteFolderAsync(dbContext, userId, sf.Id, isAdmin, cancellationToken));
+            }
+
             var response = new FolderResponse
             {
                 Id = folder.Id,
@@ -427,6 +442,8 @@ public class FoldersEndpoint : IEndpoint
                 IsOwner = ownerIdFromPath == userId
                     || (isAdmin && IsInSharedSpace(folder.Path))
                     || (userPermission?.CanManagePermissions ?? false),
+                CanWrite = canWrite,
+                CanDelete = canDelete,
                 IsShared = folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                 SharedWithCount = sharedCount,
                 ExternalLibraryId = folder.ExternalLibraryId,
@@ -450,6 +467,8 @@ public class FoldersEndpoint : IEndpoint
                     IsOwner = OwnsByPath(sf.Path, usernameToIdMap, userId)
                         || (isAdmin && IsInSharedSpace(sf.Path))
                         || (subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? false),
+                    CanWrite = subfolderAccess.GetValueOrDefault(sf.Id).CanWrite,
+                    CanDelete = subfolderAccess.GetValueOrDefault(sf.Id).CanDelete,
                     IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     ExternalLibraryId = sf.ExternalLibraryId,
                     ExcludedFromDiscovery = excludedFolderIds.Contains(sf.Id)
@@ -611,24 +630,12 @@ public class FoldersEndpoint : IEndpoint
                 .Where(p => p.UserId == userId)
                 .ToListAsync(cancellationToken);
 
-            // Write access is inherited down a shared subtree (grant on the
-            // share root). Walk the parent chain in-memory — see the flat list
-            // handler above.
+            // Write/Delete access is inherited down a shared subtree (grant on
+            // the share root). Walk the parent chain in-memory — see the flat
+            // list handler above.
             var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
+            var deletableGrantIds = permissions.Where(p => p.CanDelete).Select(p => p.FolderId).ToHashSet();
             var folderByIdForWrite = allFolders.ToDictionary(f => f.Id);
-            bool HasInheritedWrite(Folder folder)
-            {
-                var current = folder;
-                var guard = 0;
-                while (current != null && guard++ < 64)
-                {
-                    if (writableGrantIds.Contains(current.Id)) return true;
-                    current = current.ParentFolderId.HasValue
-                        && folderByIdForWrite.TryGetValue(current.ParentFolderId.Value, out var parent)
-                        ? parent : null;
-                }
-                return false;
-            }
 
             // Build tree structure
             var folderDict = allFolders.ToDictionary(f => f.Id, f =>
@@ -653,10 +660,8 @@ public class FoldersEndpoint : IEndpoint
                     IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
                         || (isAdmin && IsInSharedSpace(f.Path))
                         || (userPerm?.CanManagePermissions ?? false),
-                    CanWrite = !VirtualPath.IsStructuralContainer(f.Path)
-                        && (OwnsByPath(f.Path, usernameToIdMap, userId)
-                            || (isAdmin && IsInSharedSpace(f.Path))
-                            || HasInheritedWrite(f)),
+                    CanWrite = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, writableGrantIds, folderByIdForWrite),
+                    CanDelete = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, deletableGrantIds, folderByIdForWrite),
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     SubFolders = new List<FolderResponse>()
@@ -781,6 +786,10 @@ public class FoldersEndpoint : IEndpoint
             CreatedAt = folder.CreatedAt,
             AssetCount = 0,
             IsOwner = true,
+            // The creator either owns the path or just got a full grant on it
+            // (EnsureFolderPermissionAsync).
+            CanWrite = true,
+            CanDelete = true,
             IsShared = normalizedPath.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase)
         };
 
@@ -942,7 +951,9 @@ public class FoldersEndpoint : IEndpoint
             Name = folder.Name,
             ParentFolderId = folder.ParentFolderId,
             CreatedAt = folder.CreatedAt,
-            AssetCount = await dbContext.Assets.CountAsync(a => a.FolderId == folder.Id && a.DeletedAt == null, cancellationToken)
+            AssetCount = await dbContext.Assets.CountAsync(a => a.FolderId == folder.Id && a.DeletedAt == null, cancellationToken),
+            CanWrite = await CanWriteFolderAsync(dbContext, userId, folder.Id, user.IsInRole("Admin"), cancellationToken),
+            CanDelete = await CanDeleteFolderAsync(dbContext, userId, folder.Id, user.IsInRole("Admin"), cancellationToken)
         };
 
         return Results.Ok(response);
@@ -1231,6 +1242,37 @@ public class FoldersEndpoint : IEndpoint
             GrantedByUserId = userId
         });
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// In-memory twin of <see cref="CanWriteFolderAsync"/> / <see cref="CanDeleteFolderAsync"/>
+    /// for the list/tree handlers, which already hold every folder and the
+    /// user's grants: structural containers never, own personal space and (for
+    /// admins) the shared space always, otherwise a matching grant on the folder
+    /// or any ancestor (<paramref name="grantIds"/> = folders with that grant).
+    /// </summary>
+    internal static bool HasFolderAccessInMemory(
+        Folder folder,
+        IReadOnlyDictionary<string, Guid> usernameToIdMap,
+        Guid userId,
+        bool isAdmin,
+        HashSet<Guid> grantIds,
+        IReadOnlyDictionary<Guid, Folder> folderById)
+    {
+        if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
+        if (OwnsByPath(folder.Path, usernameToIdMap, userId)) return true;
+        if (isAdmin && IsInSharedSpace(folder.Path)) return true;
+
+        var current = folder;
+        var guard = 0;
+        while (current != null && guard++ < 64)
+        {
+            if (grantIds.Contains(current.Id)) return true;
+            current = current.ParentFolderId.HasValue
+                && folderById.TryGetValue(current.ParentFolderId.Value, out var parent)
+                ? parent : null;
+        }
+        return false;
     }
 
     private enum FolderPermissionKind { Read, Write, Delete, ManagePermissions }

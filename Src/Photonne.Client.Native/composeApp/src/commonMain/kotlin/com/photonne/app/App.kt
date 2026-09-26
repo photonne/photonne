@@ -41,6 +41,11 @@ import com.photonne.app.resources.notifications_no_screen
 import com.photonne.app.resources.organize_skipped_done
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.action_undo
+import com.photonne.app.resources.album_trash_warning
+import com.photonne.app.resources.album_trash_warning_shared
+import com.photonne.app.resources.selection_trash_blocked_foreign
+import com.photonne.app.resources.selection_trash_blocked_folder
+import com.photonne.app.resources.selection_restore_done
 import com.photonne.app.resources.logout_confirm_message
 import com.photonne.app.resources.member_remove_confirm_action
 import com.photonne.app.resources.member_remove_confirm_message
@@ -63,6 +68,7 @@ import com.photonne.app.resources.people_suggestions_dismiss_all_title
 import com.photonne.app.resources.people_suggestions_dismissed_done
 import com.photonne.app.resources.selection_added_to_album_done
 import com.photonne.app.resources.selection_archive_done
+import com.photonne.app.resources.selection_unarchive_done
 import com.photonne.app.resources.selection_moved_to_folder_done
 import com.photonne.app.resources.selection_removed_from_album_done
 import com.photonne.app.resources.selection_trash_done
@@ -213,7 +219,9 @@ private data class AssetDetailContext(
     val onLoadMore: () -> Unit,
     val onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit
 ) {
-    enum class Source { Timeline, Album }
+    /** Archive/Trash change the viewer's actions (Unarchive; Restore + Delete
+     *  permanently) — see [com.photonne.app.ui.asset.AssetViewerMode]. */
+    enum class Source { Timeline, Album, Archive, Trash }
 }
 
 private data class AddToAlbumState(
@@ -1504,8 +1512,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
                 val removeUndoLabel = stringResource(Res.string.action_undo)
                 val removeSnackbar = LocalSnackbarController.current
+                // Un álbum compartido mezcla fotos de varios miembros: una ajena
+                // hacía fallar la papelera de todo el lote. Se desactiva y se
+                // explica. Y como mandar a la papelera saca la foto de TODOS los
+                // álbumes (y restaurarla no la devuelve), se avisa antes.
+                val untrashable = com.photonne.app.ui.actions.countUntrashable(
+                    albumDetailState.items, albumDetailState.selection, user.user.username
+                )
+                val albumTrashBlocked = if (untrashable > 0) pluralStringResource(
+                    Res.plurals.selection_trash_blocked_foreign, untrashable, untrashable
+                ) else null
+                val albumTrashWarning = pluralStringResource(
+                    if (selectedAlbum?.isShared == true) Res.plurals.album_trash_warning_shared
+                    else Res.plurals.album_trash_warning,
+                    removeCount,
+                    removeCount
+                )
                 AssetSelectionBottomBar(
                     selectedCount = albumDetailState.selection.size,
+                    trashDisabledReason = albumTrashBlocked,
+                    trashConfirmMessage = albumTrashWarning,
                     isMutating = albumDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1589,10 +1615,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     // Members management for a subfolder is reached by opening it
                     // and using the detail top bar; the selection bar stays focused
                     // on the rename/delete the user asked for.
+                    // Mismos flags que el servidor (CanWrite/CanDelete) y nada
+                    // de mutar una biblioteca externa, como en la lista.
+                    val subfolderIsExternal = subfolder.externalLibraryId != null
                     com.photonne.app.ui.main.FolderCardSelectionBottomBar(
                         canManageMembers = false,
-                        canRename = subfolder.isOwner,
-                        canDelete = subfolder.isOwner,
+                        canRename = subfolder.canWrite && !subfolderIsExternal,
+                        canDelete = subfolder.canDelete && !subfolderIsExternal,
                         isMutating = folderDetailState.isMutating,
                         onManageMembers = {},
                         onRename = { showEditSubfolder = true },
@@ -1604,8 +1633,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         selectedTab == MainTab.Folders && selectedFolder != null &&
             folderDetailState.isSelectionActive -> {
             {
+                // Sin CanDelete en la carpeta (o en una biblioteca externa) el
+                // servidor rechaza la papelera: se desactiva con el motivo.
+                val folderTrashBlocked = if (selectedFolder?.canDelete == false ||
+                    selectedFolder?.externalLibraryId != null
+                ) stringResource(Res.string.selection_trash_blocked_folder) else null
                 AssetSelectionBottomBar(
                     selectedCount = folderDetailState.selection.size,
+                    trashDisabledReason = folderTrashBlocked,
                     isMutating = folderDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1621,7 +1656,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
-                    onMove = if (selectedFolder?.isOwner == true) {
+                    // El servidor pide escritura en la carpeta de origen, no
+                    // ser su dueño.
+                    onMove = if (selectedFolder?.canWrite == true &&
+                        selectedFolder?.externalLibraryId == null
+                    ) {
                         { showMoveSelectedAssets = true }
                     } else null
                 )
@@ -1787,7 +1826,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         canManageMembers = target.isOwner || target.canManagePermissions,
                         canEdit = target.canWrite || target.isOwner,
                         canLeave = !target.isOwner,
-                        canDelete = target.isOwner,
+                        canDelete = target.isOwner || target.canDelete,
                         isMutating = albumsState.isMutating,
                         onManageMembers = {
                             pendingActionAlbum = target
@@ -1821,8 +1860,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 {
                     com.photonne.app.ui.main.FolderCardSelectionBottomBar(
                         canManageMembers = target.isOwner && target.isShared,
-                        canRename = target.isOwner && !isExternal,
-                        canDelete = target.isOwner && !isExternal,
+                        canRename = target.canWrite && !isExternal,
+                        canDelete = target.canDelete && !isExternal,
                         isMutating = foldersState.isMutating,
                         onManageMembers = {
                             pendingActionFolder = target
@@ -2394,11 +2433,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             },
                             viewModel = folderDetailViewModel,
                             actions = {
+                                // Cada acción con el flag que comprueba el
+                                // servidor (antes todo colgaba de isOwner) y sin
+                                // tocar bibliotecas externas, como en la lista.
+                                val openedIsExternal = openedFolder.externalLibraryId != null
                                 FolderDetailChromeActions(
-                                    canEdit = openedFolder.isOwner,
-                                    canDelete = openedFolder.isOwner,
-                                    canManageMembers = openedFolder.isOwner,
-                                    canMove = openedFolder.isOwner,
+                                    canEdit = openedFolder.canWrite && !openedIsExternal,
+                                    canDelete = openedFolder.canDelete && !openedIsExternal,
+                                    canManageMembers = openedFolder.isOwner && !openedIsExternal,
+                                    canMove = openedFolder.canWrite && !openedIsExternal,
                                     onEdit = { showEditFolder = true },
                                     onMove = { showMoveFolder = true },
                                     onDelete = { showDeleteFolder = true },
@@ -2418,7 +2461,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                             excludedFromDiscovery = !nextIncluded
                                         )
                                     },
-                                    onCreateSubfolder = if (openedFolder.externalLibraryId == null) {
+                                    onCreateSubfolder = if (!openedIsExternal && openedFolder.canWrite) {
                                         { showCreateFolder = true }
                                     } else null
                                 )
@@ -2930,7 +2973,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 assetDetail = AssetDetailContext(
                                     items = archivedState.items,
                                     startIndex = index,
-                                    source = AssetDetailContext.Source.Timeline,
+                                    source = AssetDetailContext.Source.Archive,
                                     hasMore = archivedState.hasMore,
                                     onLoadMore = archivedViewModel::loadMore,
                                     onFavoriteChanged = { id, isFav ->
@@ -2994,7 +3037,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                             assetDetail = AssetDetailContext(
                                                 items = trashState.items,
                                                 startIndex = index,
-                                                source = AssetDetailContext.Source.Timeline,
+                                                source = AssetDetailContext.Source.Trash,
                                                 hasMore = trashState.hasMore,
                                                 onLoadMore = trashViewModel::loadMore,
                                                 onFavoriteChanged = { id, isFav ->
@@ -3610,6 +3653,57 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         animatedVisibilityScope = this@AnimatedVisibility,
                         onFavoriteChanged = displayCtx.onFavoriteChanged,
                         onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) },
+                        mode = when (displayCtx.source) {
+                            AssetDetailContext.Source.Archive ->
+                                com.photonne.app.ui.asset.AssetViewerMode.Archive
+                            AssetDetailContext.Source.Trash ->
+                                com.photonne.app.ui.asset.AssetViewerMode.Trash
+                            else -> com.photonne.app.ui.asset.AssetViewerMode.Default
+                        },
+                        // Desarchivar / restaurar / borrar para siempre: la foto
+                        // sale de Archivo o Papelera por el AssetMutationBus; aquí
+                        // se cierra el visor y se confirma, como con archivar.
+                        onAssetUnarchived = { id ->
+                            assetDetailStack = emptyList()
+                            assetDetail = null
+                            coroutineScope.launch {
+                                snackbarController.show(
+                                    message = org.jetbrains.compose.resources.getPluralString(
+                                        Res.plurals.selection_unarchive_done, 1, 1
+                                    ),
+                                    actionLabel = org.jetbrains.compose.resources.getString(
+                                        Res.string.action_undo
+                                    )
+                                ) {
+                                    actionsViewModel.undoBulk(
+                                        com.photonne.app.ui.actions.BulkUndoKind.Unarchive,
+                                        listOf(id)
+                                    )
+                                }
+                            }
+                        },
+                        onAssetRestored = { _ ->
+                            assetDetailStack = emptyList()
+                            assetDetail = null
+                            coroutineScope.launch {
+                                snackbarController.show(
+                                    org.jetbrains.compose.resources.getPluralString(
+                                        Res.plurals.selection_restore_done, 1, 1
+                                    )
+                                )
+                            }
+                        },
+                        onAssetPurged = { _ ->
+                            assetDetailStack = emptyList()
+                            assetDetail = null
+                            coroutineScope.launch {
+                                snackbarController.show(
+                                    org.jetbrains.compose.resources.getPluralString(
+                                        Res.plurals.selection_deleted_permanently_done, 1, 1
+                                    )
+                                )
+                            }
+                        },
                         onAssetTrashed = { id ->
                             // Las listas se enteran por AssetMutationBus (punto 52):
                             // aquí solo queda cerrar el visor y ofrecer Deshacer.
@@ -4309,12 +4403,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (showMoveFolder && openedFolder != null) {
         com.photonne.app.ui.folder.FolderPickerDialog(
             title = stringResource(Res.string.folder_move_title),
-            folders = foldersState.personalFolders,
+            // Mismos destinos que los otros selectores (toda la profundidad,
+            // personales y compartidas con escritura). Antes solo ofrecía las
+            // personales de primer nivel. La propia carpeta y su subárbol los
+            // poda excludeFolderId.
+            folders = foldersState.moveDestinations,
             isSubmitting = folderDetailState.isMutating,
             errorMessage = folderDetailState.error?.userMessage,
             excludeFolderId = openedFolder.id,
             includeRoot = true,
-            initialSelectionId = openedFolder.parentFolderId,
+            // Padre actual preseleccionado; si no es un destino listado (la raíz
+            // personal), queda marcada la raíz.
+            initialSelectionId = openedFolder.parentFolderId?.takeIf { parentId ->
+                foldersState.moveDestinations.any { it.id == parentId }
+            },
             onDismiss = {
                 showMoveFolder = false
                 folderDetailViewModel.clearError()

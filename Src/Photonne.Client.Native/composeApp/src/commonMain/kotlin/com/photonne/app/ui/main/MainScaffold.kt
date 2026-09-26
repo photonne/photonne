@@ -175,6 +175,7 @@ import com.photonne.app.resources.selection_action_close
 import com.photonne.app.resources.selection_action_more
 import com.photonne.app.resources.selection_action_remove_from_album
 import com.photonne.app.resources.selection_action_trash
+import com.photonne.app.resources.asset_trash_title
 import com.photonne.app.resources.selection_count
 import com.photonne.app.resources.selection_label_add_to_album
 import com.photonne.app.resources.selection_label_deselect_all
@@ -932,7 +933,20 @@ fun AssetSelectionBottomBar(
     onMove: (() -> Unit)? = null,
     onUnlink: (() -> Unit)? = null,
     onRemoveFromAlbum: (() -> Unit)? = null,
-    onSetAsCover: (() -> Unit)? = null
+    onSetAsCover: (() -> Unit)? = null,
+    /**
+     * Por qué la papelera no se puede aplicar a esta selección (fotos de otros
+     * miembros, carpeta sin permiso de borrado…). No null → la entrada sale
+     * desactivada con este texto debajo, en vez de lanzar un lote que el
+     * servidor rechaza entero con un 403.
+     */
+    trashDisabledReason: String? = null,
+    /**
+     * Aviso previo a mover a la papelera cuando hay algo que Deshacer no
+     * recupera (p. ej. la pertenencia a álbumes). Null → sin diálogo, como
+     * siempre: se ejecuta y se ofrece Deshacer.
+     */
+    trashConfirmMessage: String? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     // Papelera y archivar en bloque son REVERSIBLES, así que no preguntan: se
@@ -991,12 +1005,27 @@ fun AssetSelectionBottomBar(
         selectedCount,
         selectedCount
     )
+    var confirmTrash by remember { mutableStateOf(false) }
     fun requestTrash() {
-        if (trashEnabled) {
-            runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
-        } else {
-            confirmPermanentDelete = true
+        when {
+            !trashEnabled -> confirmPermanentDelete = true
+            trashConfirmMessage != null -> confirmTrash = true
+            else -> runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
         }
+    }
+    if (confirmTrash && trashConfirmMessage != null) {
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.asset_trash_title),
+            message = trashConfirmMessage,
+            confirmLabel = stringResource(Res.string.selection_action_trash),
+            isDestructive = true,
+            isSubmitting = isMutating,
+            onDismiss = { confirmTrash = false },
+            onConfirm = {
+                confirmTrash = false
+                runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
+            }
+        )
     }
     if (confirmPermanentDelete) {
         com.photonne.app.ui.library.ConfirmActionDialog(
@@ -1163,20 +1192,32 @@ fun AssetSelectionBottomBar(
                                 }
                             )
                         }
+                        val trashAllowed = trashDisabledReason == null
                         DropdownMenuItem(
                             text = {
-                                Text(
-                                    stringResource(Res.string.selection_action_trash),
-                                    color = MaterialTheme.colorScheme.error
-                                )
+                                Column {
+                                    Text(
+                                        stringResource(Res.string.selection_action_trash),
+                                        color = if (trashAllowed) MaterialTheme.colorScheme.error
+                                        else Color.Unspecified
+                                    )
+                                    if (trashDisabledReason != null) {
+                                        Text(
+                                            trashDisabledReason,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
                             },
                             leadingIcon = {
                                 Icon(
                                     Icons.Outlined.Delete,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
+                                    tint = if (trashAllowed) MaterialTheme.colorScheme.error
+                                    else LocalContentColor.current
                                 )
                             },
+                            enabled = trashAllowed,
                             onClick = {
                                 menuOpen = false
                                 requestTrash()

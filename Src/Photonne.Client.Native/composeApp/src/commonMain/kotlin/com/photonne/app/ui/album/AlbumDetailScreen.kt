@@ -360,7 +360,9 @@ fun AlbumDetailScreen(
                 AlbumDetailTopBar(
                     atTop = atTop,
                     canEdit = album.canWrite || album.isOwner,
-                    canDelete = album.isOwner,
+                    // El servidor deja borrar a quien tenga CanDelete, no solo
+                    // al dueño.
+                    canDelete = album.isOwner || album.canDelete,
                     canShare = album.canWrite || album.isOwner,
                     canManageMembers = album.isOwner || album.canManagePermissions,
                     canLeave = !album.isOwner,
