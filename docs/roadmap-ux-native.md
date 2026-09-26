@@ -301,3 +301,88 @@ afectado: usa `tile.openstreetmap.org`, que no pide clave.
 - [ ] **Descubrimiento del servidor en el login** (mDNS o QR desde el admin web) y "Probar conexión" por URL.
 - [ ] **Herramientas de limpieza como flujos**: Archivos grandes con selección múltiple, Duplicados con "quedarse con la mejor" y comparación, Papelera con "se borra en N días", crear carpeta en el destino del selector de mover.
 - [ ] **Pasada de ventana ancha**: nav en cápsula, Recuerdos y teselas de Más se estiran en escritorio y tablet.
+
+---
+
+# Segunda auditoría (2026-09-26)
+
+Cuatro revisores de solo lectura (timeline y navegación · visor, mapa, personas y búsqueda · álbumes, carpetas y herramientas · backup, ajustes, login y plataforma). Se les dio todo lo anterior para que no lo repitieran. Rutas relativas a `composeApp/src/commonMain/kotlin/com/photonne/app/` salvo las del servidor (`Photonne.Server.Api/…`). Las revisaron leyendo el código; he comprobado a mano J1, J6, K1, K3 (el `CanWrite` de `GetFolderById`), L1, L2, L3 y L12. Nada ejecutado en dispositivo.
+
+## Lote J — Datos y cuenta (lo más grave)
+
+- [ ] **J1. Cerrar sesión no para el backup, y otra cuenta hereda los orígenes** · S-M · `data/auth/AuthRepository.kt:29-32`, `data/devicebackup/DeviceBackupStateStore.kt:94-111`, `androidMain/.../BackupWorker.kt:73-80`. `logout()` solo borra tokens; el interruptor, los orígenes y WorkManager siguen vivos. Al entrar con otro usuario, `ensureScope` borra el registro y la siguiente pasada sube todo el móvil a la cuenta nueva sin preguntar. Cancelar el scheduler al salir; con otro usuario, backup apagado o pregunta.
+- [ ] **J2. Renombrar usuario o cambiar contraseña rompe credenciales recordadas y registro** · S · `ui/settings/AccountSecurityViewModel.kt:74-79`, `AccountProfileViewModel.kt:102-113`. `RememberedCredentialsStore` no se actualiza; el registro se agrupa por `servidor|username`, así que renombrar lo borra (rehash de toda la galería, se pierden los "Omitir"). El nativo renombra sin la vista previa `me/rename-preview` que sí usa la web. Agrupar por `user.id`, actualizar credenciales, confirmar con la vista previa.
+- [ ] **J3. "Liberar espacio" actúa sobre veredictos sin confirmar** · S · `ui/devicebackup/BackupScreen.kt:706-710`, `DeviceBackupViewModel.kt:630-675`. Solo se desactiva con `isSyncing`, no mientras verifica ni si la verificación falló. *Sospecha*: puede borrar del móvil fotos que en el servidor están en la papelera. Exigir verificación completa y correcta en la sesión.
+- [ ] **J4. Deshacer tras quitar un origen no deshace** · S · `BackupScreen.kt:317-319` → `data/devicebackup/DeviceBackupRepository.kt:55-58`. `forgetFolder` limpia el registro al instante; al deshacer vuelve la carpeta sin veredictos ni "Omitidos", y lo omitido se sube. Borrar el registro cuando caduque el snackbar.
+- [ ] **J5. Con la papelera desactivada en el servidor, "Movidas a la papelera · Deshacer" miente** · S-M · `Photonne.Server.Api/.../AssetsEndpoint.cs:124-133` borra definitivamente. El cliente solo lee `TrashSettings.Enabled` en admin (lo puede leer cualquiera, `SettingsEndpoint.cs:44`). Leerlo y, si está apagada, confirmar "Eliminar definitivamente" sin Deshacer.
+- [ ] **J6. Compartir deja una copia en la galería y varias fotos salen en ZIP** · M · `ui/actions/AssetSelectionActionsViewModel.kt:178-195`, `androidMain/.../AssetSharing.android.kt:23-29, 97-116`. `shareDirectly` pasa por `saveAsset` → MediaStore `Download/Photonne`: queda una copia local (duplicado, y candidata al backup). Con más de una, un `.zip` que WhatsApp no muestra como fotos. Ficheros en `cacheDir` y `ACTION_SEND_MULTIPLE`.
+
+## Lote K — Permisos que la interfaz no refleja (el servidor da 403)
+
+- [ ] **K1. El visor no sabe si viene de Papelera o Archivo** · M · `App.kt:207-216`, `ui/asset/AssetDetailScreen.kt:2883-2890, 903-909`. `Source` solo es Timeline/Album: desde Archivo ofrece "Archivar" (y su Deshacer lo desarchiva); desde Papelera, "Mover a la papelera" y su Deshacer lo restaura. Faltan Desarchivar, Restaurar y Eliminar definitivamente. Añadir `Source.Archive` y `Source.Trash`.
+- [ ] **K2. Ediciones del visor que el servidor rechaza, y el valor rechazado se queda** · S-M · `AssetDetailScreen.kt:1756-1826, 2849-2864`, `AssetDetailViewModel.kt:373-434`. Descripción, fecha y etiquetas dan 403 fuera de `/users/{username}/` (`UpdateDescriptionEndpoint.cs:39`, `UpdateCaptureDateEndpoint.cs:50`, `AssetTagsEndpoint.cs:63`). Descripción y fecha son optimistas y no revierten. `canEdit` en el DTO + revertir.
+- [ ] **K3. Permisos de carpeta incoherentes entre lista, detalle y servidor** · M. Detalle con solo `isOwner` sin mirar `externalLibraryId` (`App.kt:2394-2397`, `:1593`); "Nueva subcarpeta" en solo lectura (`:2419`, servidor exige escritura en `FoldersEndpoint.cs:728`); mover fotos pide `isOwner` pero el servidor `CanWrite` (`:1623` vs `FoldersEndpoint.cs:1117`); `GetFolderById` no rellena `CanWrite` (`FoldersEndpoint.cs:427-452`). Emitir `CanWrite`/`CanDelete` siempre y decidir con ellos.
+- [ ] **K4. "Mover carpeta" solo ofrece carpetas personales de primer nivel** · S · `App.kt:4296` usa `personalFolders`. Usar `moveDestinations` como los otros tres selectores.
+- [ ] **K5. Papelera masiva todo-o-nada y sin aviso de álbumes compartidos** · M · `App.kt:1517-1518, 1617-1618`, `AssetsEndpoint.cs:106-150`. En un álbum compartido, una foto ajena hace fallar el lote entero; borrar una propia la quita de todos los álbumes sin decirlo.
+- [ ] **K6. "Añadir a álbum" lista álbumes sin permiso de escritura; "Borrar álbum" ignora `CanDelete`** · S · `ui/album/AddToAlbumDialog.kt:64`, `AlbumDetailScreen.kt:363`, `AlbumsEndpoint.cs:630, 733, 824`.
+
+## Lote L — Flujos rotos o que se cortan
+
+- [ ] **L1. "Nuevo álbum" desde "Añadir a álbum" crea el álbum vacío** · S · `App.kt:4386-4389` y `:4583-4586` (visor). `pendingBulkAddOnCreate` solo existe en el timeline. Y ahí, si el alta falla tras crear, el error va al banner del timeline y reintentar duplica el álbum (`:3727`). Un único `pendingAddTarget`.
+- [ ] **L2. Explorar → etiqueta → Atrás lleva a Fotos** · S · `App.kt:2687-2701`. Recordar el origen como `adminEnrichmentReturnTo`.
+- [ ] **L3. El visor desde Búsqueda se para en la primera página** · S · `App.kt:2439-2443` pasa `hasMore = false`. Pasar `searchState.hasMore` y `loadMore`.
+- [ ] **L4. El visor desde Fotos se para al final de los meses cargados** · M · `App.kt:2103-2112`, `grid/BucketTimelineEntries.kt:219`. `onLoadMore` con meses vecinos, o `/timeline-neighbors` (el servidor ya lo tiene).
+- [ ] **L5. Búsqueda semántica tope 50 en silencio** · S · `ui/search/SearchViewModel.kt:465`, `SemanticSearchEndpoint.cs:70`.
+- [ ] **L6. "Seleccionar todo" solo coge lo cargado en Favoritos, Archivados y Para organizar** · S · `App.kt:1357-1419`. Lo mismo que el punto 18 arregló en el timeline.
+- [ ] **L7. Sin red, el banner del timeline tapa la barra superior y no se cierra** · S · `ui/timeline/TimelineScreen.kt:1225-1249`; primera carga fallida sin fotos locales = cuerpo en blanco (`:370`).
+- [ ] **L8. Cambiar la fecha no mueve la foto** · S · `AssetDetailViewModel.kt:407`, `data/events/AssetMutationBus.kt` sin evento de fecha.
+- [ ] **L9. Recuerdos rancios** · S · `ui/timeline/MemoriesViewModel.kt:29` solo carga en `init`; ni pull-to-refresh, ni cambio de día, ni bus. El detalle (`ui/memories/MemoryDetailScreen.kt:40-45`) sigue enseñando fotos borradas.
+- [ ] **L10. Archivos grandes y Duplicados no escuchan el bus; un fallo de carga en Archivos grandes dice "no hay archivos"** · S · `ui/utilities/UtilitiesLargeFilesScreen.kt:93-97, 149-152`.
+- [ ] **L11. Con cuota llena o sesión caducada el backup sube cada archivo para recibir el mismo rechazo** · M · `data/devicebackup/BackupRunner.kt:42, 137`, `UploadFailureReason.kt:108-112`. Además quedan como permanentes y el automático no los reintenta tras resolverlo. Cortar la pasada y tarjeta "Sin espacio (X de Y)".
+- [ ] **L12. La subida refresca el timeline entero por cada archivo** · S · `App.kt:2476, 2480`. Un refresco al vaciar la cola.
+
+## Lote M — Errores y sesión
+
+- [ ] **M1. Se pierde el mensaje concreto del servidor** · S · `data/error/UiError.kt:105-112`: en 400/404/409 sale el genérico ("No se pudo cambiar la contraseña") aunque el servidor diga "La contraseña actual no es correcta".
+- [ ] **M2. "Sesión expirada" cuando falla el refresco por red** · S · `data/api/AuthRefreshPlugin.kt:211-216`. Debería ser error de conexión.
+- [ ] **M3. Caducidad real: vuelve al login sin motivo** · S · `AuthRefreshPlugin.kt:206-209`, `App.kt:515-519`. Estado `SessionExpired` con aviso.
+- [ ] **M4. Notificaciones del backup sin destino** · S · `androidMain/.../BackupWorker.kt:329-373`: la de progreso no abre nada; la de fallos abre Fotos, no Pendientes.
+
+## Lote N — Consistencia menor
+
+- [ ] **N1.** Acciones del visor distintas en vertical y apaisado (`AssetDetailScreen.kt:830-915` vs `:2799-2890`); el punto 28 quería un solo modelo.
+- [ ] **N2.** Marcador suelto del mapa abre un visor de una foto; un clúster sí desliza (`App.kt:2708-2729`).
+- [ ] **N3.** Retocar Álbumes o Carpetas no vuelve arriba (`App.kt:1941-1958`).
+- [ ] **N4.** Háptica de rechazo = la de entrar en selección (`TimelineScreen.kt:942`).
+- [ ] **N5.** Pendientes elige origen con SAF y Backup con MediaStore (`ui/devicebackup/BackupPendingScreen.kt:119, 151`).
+- [ ] **N6.** "Mover a carpeta" falta en Álbum, Búsqueda, Favoritos y Archivados (`App.kt:1506-1648`; diálogo atado al timeline en `:4450`).
+- [ ] **N7.** Detalle de álbum carga con spinner (`ui/album/AlbumDetailScreen.kt:210-219`).
+- [ ] **N8.** Ubicaciones no abre nada al tocar una hoja (`ui/utilities/UtilitiesLocationsScreen.kt:171`); su error no reserva el cromo (`:80-83`).
+- [ ] **N9.** `autoTags` en crudo ("LivePhoto", "HDR") y añadir etiqueta sin autocompletar con `GET /api/tags` (`AssetDetailScreen.kt:1998, 2076-2097`).
+- [ ] **N10.** URL pública/local solo editable por admin; un usuario no ve a qué servidor está conectado (`ui/admin/AdminServerSettings.kt:104, 135`).
+- [ ] **N11.** El ⋮ de la Papelera sin `contentDescription` (`App.kt:3054`).
+- [ ] **N12.** `AssetDetail.aiDescription` es un campo muerto (ni el servidor lo rellena ni el cliente lo pinta).
+
+## Funciones nuevas (no están en "Ideas mayores")
+
+Con el servidor ya preparado:
+- [ ] **Apartadas de "Para organizar"**: `OrganizeRepository.excluded()` e `includeAgain` existen y nadie los llama; hoy lo apartado solo vuelve con el Deshacer del snackbar.
+- [ ] **Personas con buscador y orden** (`GET /api/people` acepta `search`, `sort`, `unnamedFirst`); el filtro de búsqueda solo ve 80 personas (`data/search/SearchRepository.kt:45`).
+- [ ] **Asignar cara**: el campo no filtra (200 cargadas) y un nombre existente crea otra persona (`ui/people/AssetFacesSheet.kt:298-384`). Encaja con la idea mayor de fusionar.
+- [ ] **Tocar una cara abre la persona** (`AssetDetailScreen.kt:1929`); la hoja queda para editar.
+- [ ] **Texto detectado, objetos y escenas en el panel de info** (`/api/assets/{id}/text`, `/objects`, `/scenes` sin uso), tocables hacia la búsqueda.
+- [ ] **Explorar con buscador** (hoy se corta en 200 etiquetas, `ui/explore/ExploreFacetsViewModel.kt:44-45`).
+- [ ] **Resumen al terminar una subida**: "N subidas · Ver · Añadir a álbum" (los `assetId` ya se guardan).
+
+Solo cliente:
+- [ ] **Favorito en bloque** en la barra de selección (bucle sobre las no favoritas, o endpoint `set` idempotente).
+- [ ] **Selección múltiple en el detalle de un recuerdo.**
+- [ ] **Al cerrar el visor, la rejilla va a la última foto vista** (`currentDetailAssetId` solo alimenta el morph).
+- [ ] **Cabeceras "Hoy" / "Ayer" y sin año en el año en curso** (`grid/DayFormat.kt`).
+- [ ] **Escritorio: Ctrl+A y Supr en las rejillas** (la idea mayor solo cubre el visor).
+
+Plataforma:
+- [ ] **"Compartir con Photonne"** desde otras apps (`ACTION_SEND`/`SEND_MULTIPLE` + extensión iOS) → Subida.
+- [ ] **Abrir `/share/{token}` en la app** (App Links / Universal Links).
+- [ ] **Estado "Sin conexión con <host>"** global en vez del error genérico de cada pantalla (`data/api/NetworkMonitor.kt`).
+- [ ] **Notificaciones del servidor fuera de la app**: consultar `unread-count` desde el worker periódico y publicarlo como notificación local.
