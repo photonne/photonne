@@ -24,7 +24,9 @@ fun reconcileBackupSchedule() {
     }
     val store: DeviceBackupStateStore = koin.get()
     val scheduler: BackgroundSyncScheduler = koin.get()
-    scheduler.apply(store.backgroundSyncPreferences())
+    // Without a signed-in session nothing may stay scheduled, whatever the
+    // stored switches say (they're kept for when the same account returns).
+    scheduler.apply(store.sessionAwareSyncPreferences(koin.get()))
 }
 
 /**

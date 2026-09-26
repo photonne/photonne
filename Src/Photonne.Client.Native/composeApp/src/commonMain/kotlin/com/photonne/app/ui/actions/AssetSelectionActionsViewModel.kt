@@ -161,8 +161,14 @@ class AssetSelectionActionsViewModel(
     }
 
     /**
-     * Hands the selection to the OS share sheet. Same single/multi
-     * split as [download]: 1 asset → original file, N assets → ZIP.
+     * Hands the selection to the OS share sheet: every original, one file
+     * each, staged in the app's private share cache.
+     *
+     * It used to go through [download]'s path: the file landed in the
+     * gallery's `Download/Photonne` (a duplicate on the phone that the backup
+     * then saw as new) and several photos travelled as one ZIP that chat apps
+     * show as a document. Now nothing touches the gallery and N photos are N
+     * files (`ACTION_SEND_MULTIPLE` / several URLs on iOS).
      */
     fun shareDirectly(assetIds: List<String>) {
         if (assetIds.isEmpty() || _state.value.working != AssetActionWorking.Idle) return
@@ -175,23 +181,18 @@ class AssetSelectionActionsViewModel(
         }
         workingJob = viewModelScope.launch {
             runCatching {
-                val files = if (assetIds.size == 1) {
-                    val content = repository.downloadOriginal(assetIds.first())
-                    listOf(
-                        sharing.saveAsset(
-                            bytes = content.bytes,
-                            fileName = content.suggestedFileName,
-                            mimeType = content.mimeType
-                        )
+                sharing.clearShareCache()
+                val usedNames = HashSet<String>()
+                // One at a time: only one original is held in memory at once.
+                val files = assetIds.map { id ->
+                    val content = repository.downloadOriginal(id)
+                    sharing.stageForShare(
+                        bytes = content.bytes,
+                        fileName = uniqueShareName(content.suggestedFileName, usedNames),
+                        mimeType = content.mimeType
                     )
-                } else {
-                    val zip = repository.downloadZip(
-                        assetIds = assetIds,
-                        fileName = defaultZipName()
-                    )
-                    listOf(sharing.saveZip(bytes = zip, fileName = "${defaultZipName()}.zip"))
                 }
-                val mimeType = files.firstOrNull()?.mimeType ?: "application/octet-stream"
+                val mimeType = commonShareMimeType(files.map { it.mimeType })
                 sharing.shareFiles(files = files, mimeType = mimeType)
             }
                 .onSuccess {
@@ -215,6 +216,31 @@ class AssetSelectionActionsViewModel(
                     }
                 }
         }
+    }
+
+    /** Two originals called IMG_0001.jpg (different folders or cameras) would
+     *  overwrite each other in the share cache: suffix the repeats. */
+    private fun uniqueShareName(name: String, used: MutableSet<String>): String {
+        if (used.add(name)) return name
+        val dot = name.lastIndexOf('.')
+        val base = if (dot > 0) name.substring(0, dot) else name
+        val ext = if (dot > 0) name.substring(dot) else ""
+        var n = 2
+        while (true) {
+            val candidate = "$base ($n)$ext"
+            if (used.add(candidate)) return candidate
+            n++
+        }
+    }
+
+    // The narrowest MIME type covering every file: the exact type when they
+    // all match, the family wildcard for mixed photos, and the catch-all
+    // wildcard for photos plus videos.
+    private fun commonShareMimeType(types: List<String>): String {
+        val distinct = types.distinct()
+        if (distinct.size == 1) return distinct.first()
+        val families = distinct.map { it.substringBefore('/') }.distinct()
+        return if (families.size == 1) "${families.first()}/*" else "*/*"
     }
 
     /**

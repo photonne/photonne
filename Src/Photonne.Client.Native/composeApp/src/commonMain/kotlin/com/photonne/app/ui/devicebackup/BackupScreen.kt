@@ -93,6 +93,9 @@ import com.photonne.app.resources.backup_source_label
 import com.photonne.app.resources.backup_source_none
 import com.photonne.app.resources.backup_source_pick
 import com.photonne.app.resources.device_backup_action_free_space_sized
+import com.photonne.app.resources.device_backup_free_space_blocked_unverified
+import com.photonne.app.resources.device_backup_free_space_blocked_uploading
+import com.photonne.app.resources.device_backup_free_space_blocked_verifying
 import com.photonne.app.resources.device_backup_free_space_cancel
 import com.photonne.app.resources.device_backup_free_space_confirm
 import com.photonne.app.resources.device_backup_free_space_dialog_message
@@ -314,9 +317,18 @@ fun BackupScreen(
                     IconButton(onClick = {
                         // Reversible: quitarlo no borra nada del servidor, así
                         // que snackbar con Deshacer en lugar de confirmación.
+                        // El registro de la carpeta (veredictos, "Omitidos")
+                        // solo se borra cuando caduca el Deshacer.
                         viewModel.removeFolder(folder.uri)
-                        snackbar?.show(removedMessage, undoLabel) {
-                            viewModel.onFolderPicked(folder)
+                        if (snackbar == null) {
+                            viewModel.commitFolderRemoval(folder.uri)
+                        } else {
+                            snackbar.show(
+                                message = removedMessage,
+                                actionLabel = undoLabel,
+                                onAction = { viewModel.onFolderPicked(folder) },
+                                onDismissed = { viewModel.commitFolderRemoval(folder.uri) }
+                            )
                         }
                     }) {
                         Icon(
@@ -704,9 +716,10 @@ private fun BackupStatusCard(
                     // makes it safe, not as a loose destructive row at the very
                     // bottom of the screen.
                     if (state.syncedCount > 0) {
+                        val freeSpaceBlock = state.freeSpaceBlock
                         TextButton(
                             onClick = onFreeSpace,
-                            enabled = !state.isSyncing && !state.isFreeingSpace,
+                            enabled = freeSpaceBlock == null,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
@@ -722,7 +735,29 @@ private fun BackupStatusCard(
                                     state.syncedCount,
                                     humanBytes(state.syncedBytes)
                                 ),
-                                color = MaterialTheme.colorScheme.error
+                                color = if (freeSpaceBlock == null) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                }
+                            )
+                        }
+                        // Disabled without a word read as broken: say why.
+                        val blockedReason = when (freeSpaceBlock) {
+                            FreeSpaceBlock.Verifying ->
+                                stringResource(Res.string.device_backup_free_space_blocked_verifying)
+                            FreeSpaceBlock.Uploading ->
+                                stringResource(Res.string.device_backup_free_space_blocked_uploading)
+                            FreeSpaceBlock.NotVerified ->
+                                stringResource(Res.string.device_backup_free_space_blocked_unverified)
+                            FreeSpaceBlock.Freeing, null -> null
+                        }
+                        if (blockedReason != null) {
+                            Text(
+                                text = blockedReason,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.sm)
                             )
                         }
                     }

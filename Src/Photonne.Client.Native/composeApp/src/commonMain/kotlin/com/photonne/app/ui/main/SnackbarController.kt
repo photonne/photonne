@@ -53,23 +53,39 @@ class SnackbarController(
      *
      * Se usa [SnackbarDuration.Long] cuando hay acción: cuatro segundos es
      * poco para leer el mensaje y decidir.
+     *
+     * [onDismissed] corre cuando el snackbar se va SIN que se pulse la acción
+     * (caduca, lo sustituye otro o se desmonta el host): es el momento de
+     * consolidar lo que el Deshacer aún podía revertir.
      */
     fun show(
         message: String,
         actionLabel: String? = null,
-        onAction: (() -> Unit)? = null
+        onAction: (() -> Unit)? = null,
+        onDismissed: (() -> Unit)? = null
     ) {
-        if (message.isBlank()) return
+        if (message.isBlank()) {
+            onDismissed?.invoke()
+            return
+        }
         scope.launch {
-            hostState.currentSnackbarData?.dismiss()
-            val result = hostState.showSnackbar(
-                message = message,
-                actionLabel = actionLabel.takeIf { onAction != null },
-                withDismissAction = false,
-                duration = if (onAction != null) SnackbarDuration.Long
-                else SnackbarDuration.Short
-            )
-            if (result == SnackbarResult.ActionPerformed) onAction?.invoke()
+            var acted = false
+            try {
+                hostState.currentSnackbarData?.dismiss()
+                val result = hostState.showSnackbar(
+                    message = message,
+                    actionLabel = actionLabel.takeIf { onAction != null },
+                    withDismissAction = false,
+                    duration = if (onAction != null) SnackbarDuration.Long
+                    else SnackbarDuration.Short
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    acted = true
+                    onAction?.invoke()
+                }
+            } finally {
+                if (!acted) onDismissed?.invoke()
+            }
         }
     }
 }

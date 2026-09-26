@@ -117,6 +117,10 @@ import androidx.compose.material3.TextButton
 import com.photonne.app.resources.action_back
 import com.photonne.app.resources.selection_action_skip_organize
 import com.photonne.app.resources.action_undo
+import com.photonne.app.resources.selection_deleted_permanently_done
+import com.photonne.app.resources.trash_disabled_delete_confirm
+import com.photonne.app.resources.trash_disabled_delete_message
+import com.photonne.app.resources.trash_disabled_delete_title
 import com.photonne.app.resources.selection_archive_done
 import com.photonne.app.resources.selection_unarchive_done
 import com.photonne.app.resources.action_collaborators
@@ -977,6 +981,41 @@ fun AssetSelectionBottomBar(
     // count + More. The context action takes Download's slot.
     val hasContextAction = onMove != null || onRemoveFromAlbum != null ||
         onSetAsCover != null || onUnlink != null
+
+    // Con la papelera desactivada en el servidor, "mover a la papelera" borra
+    // para siempre: nada de Deshacer (mentiría) y confirmación explícita.
+    val trashEnabled = com.photonne.app.ui.actions.rememberServerTrashEnabled()
+    var confirmPermanentDelete by remember { mutableStateOf(false) }
+    val deletedDoneMessage = pluralStringResource(
+        Res.plurals.selection_deleted_permanently_done,
+        selectedCount,
+        selectedCount
+    )
+    fun requestTrash() {
+        if (trashEnabled) {
+            runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
+        } else {
+            confirmPermanentDelete = true
+        }
+    }
+    if (confirmPermanentDelete) {
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.trash_disabled_delete_title),
+            message = pluralStringResource(
+                Res.plurals.trash_disabled_delete_message,
+                selectedCount,
+                selectedCount
+            ),
+            confirmLabel = stringResource(Res.string.trash_disabled_delete_confirm),
+            isDestructive = true,
+            isSubmitting = isMutating,
+            onDismiss = { confirmPermanentDelete = false },
+            onConfirm = {
+                confirmPermanentDelete = false
+                onTrash { error -> snackbar?.show(error?.userMessage ?: deletedDoneMessage) }
+            }
+        )
+    }
     FloatingSelectionBar {
         FloatingSelectionBarItem(
             onClick = onShare,
@@ -1140,7 +1179,7 @@ fun AssetSelectionBottomBar(
                             },
                             onClick = {
                                 menuOpen = false
-                                runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
+                                requestTrash()
                             }
                         )
                     }

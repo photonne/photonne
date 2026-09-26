@@ -67,7 +67,7 @@ data class LedgerEntry(
  * bulk HTTP call instead of a full re-hash + per-file lookup.
  *
  * Verdicts are only meaningful against one account on one server: callers
- * must invoke [ensureScope] with the current "serverUrl|username" pair —
+ * must invoke [ensureScope] with the current "serverUrl|userId" pair —
  * a mismatch wipes the ledger so stale "synced" flags never leak across
  * accounts (the same guarantee the old in-memory model gave for free).
  */
@@ -77,9 +77,20 @@ class BackupLedger(private val database: PhotonneDatabase) {
 
     // ─── Account scope ───────────────────────────────────────────────────────
 
-    fun ensureScope(scope: String) {
+    /**
+     * Binds the ledger to [scope] ("serverUrl|userId") and tells the caller
+     * whether the account changed. [legacyScope] is the pre-user-id key
+     * ("serverUrl|username") of the same account: a ledger still tagged with
+     * it is adopted as-is instead of wiped, so upgrading never rehashes the
+     * whole gallery nor loses the user's "Omitir" choices.
+     */
+    fun ensureScope(scope: String, legacyScope: String? = null): ScopeChange {
         val current = queries.selectMeta(META_SCOPE).executeAsOneOrNull()
-        if (current == scope) return
+        if (current == scope) return ScopeChange.Same
+        if (current != null && current == legacyScope) {
+            queries.upsertMeta(META_SCOPE, scope)
+            return ScopeChange.Same
+        }
         queries.transaction {
             queries.clearAll()
             // The device↔server identity map is scoped to the same account:
@@ -88,6 +99,17 @@ class BackupLedger(private val database: PhotonneDatabase) {
             database.deviceIdentityQueries.clearIdentities()
             queries.upsertMeta(META_SCOPE, scope)
         }
+        return if (current == null) ScopeChange.Fresh else ScopeChange.Switched
+    }
+
+    /** What [ensureScope] found about the previous account on this install. */
+    enum class ScopeChange {
+        /** Same account as last time (possibly re-keyed from its legacy scope). */
+        Same,
+        /** A different account than the last one that signed in here. */
+        Switched,
+        /** No account had signed in before (fresh install or wiped ledger). */
+        Fresh
     }
 
     fun clear() {

@@ -35,6 +35,31 @@ actual class AssetSharing(private val context: Context) {
         writeToDownloads(bytes = bytes, fileName = fileName, mimeType = "application/zip")
     }
 
+    /**
+     * Stages into `cacheDir/shared` — app-private, vended through the
+     * FileProvider — and nowhere else: no MediaStore row, so sharing leaves
+     * no copy in the gallery for the backup to pick up.
+     */
+    actual suspend fun stageForShare(
+        bytes: ByteArray,
+        fileName: String,
+        mimeType: String
+    ): SavedAssetFile = withContext(Dispatchers.IO) {
+        val safeName = fileName.replace('/', '_').ifBlank { "shared" }
+        val target = File(shareDir(), safeName)
+        target.writeBytes(bytes)
+        SavedAssetFile(path = target.absolutePath, displayName = safeName, mimeType = mimeType)
+    }
+
+    /** The receiving app reads the files after we return, so the previous
+     *  share's files are only dropped when a new share starts. */
+    actual suspend fun clearShareCache() = withContext(Dispatchers.IO) {
+        shareDir().listFiles()?.forEach { it.deleteRecursively() }
+        Unit
+    }
+
+    private fun shareDir(): File = File(context.cacheDir, "shared").apply { mkdirs() }
+
     actual suspend fun shareFiles(files: List<SavedAssetFile>, mimeType: String) {
         if (files.isEmpty()) return
         // FileProvider URIs survive `Intent.ACTION_SEND_MULTIPLE` better

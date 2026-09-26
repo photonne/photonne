@@ -17,6 +17,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
 import com.photonne.app.data.api.LocalReachabilityProbe
 import com.photonne.app.data.api.ServerUrlStore
+import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.backup_notification_channel
 import com.photonne.app.resources.backup_notification_channel_progress
@@ -71,6 +72,14 @@ class BackupWorker(
         }
 
         val stateStore: DeviceBackupStateStore = koin.get()
+        // Signed out (or the server rejected the refresh): there is no account
+        // to upload to. Logout already cancels the schedule; this covers a job
+        // that was already queued, and one re-armed by a stale reconcile.
+        val tokenStorage: TokenStorage = koin.get()
+        if (!tokenStorage.hasSession()) {
+            Log.i(TAG, "No signed-in session; skipping run")
+            return Result.success()
+        }
         // The periodic job honours the auto-backup opt-in; an explicit
         // foreground request is the user asking right now, so it only needs the
         // master backup switch on.
@@ -148,7 +157,8 @@ class BackupWorker(
                         folders = folders,
                         // WorkManager flips isStopped on cancellation (the user
                         // tapping "Detener") and when the OS reclaims the worker.
-                        shouldContinue = { !isStopped },
+                        // Signing out mid-pass stops it between files too.
+                        shouldContinue = { !isStopped && tokenStorage.hasSession() },
                         // A foreground pass is the user tapping "Subir ahora", so
                         // record it as a manual run, not a scheduled background one.
                         origin = if (isForeground) BackupOrigin.Foreground
@@ -193,7 +203,7 @@ class BackupWorker(
                 if (isNewMediaRun) {
                     (koin.get<BackgroundSyncScheduler>() as? BackgroundSyncSchedulerAndroid)
                         ?.armNewMediaTrigger(
-                            stateStore.backgroundSyncPreferences(),
+                            stateStore.sessionAwareSyncPreferences(tokenStorage),
                             androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE
                         )
                 }

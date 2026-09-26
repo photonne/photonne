@@ -7,6 +7,7 @@ import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.models.RenamePreviewDto
 import com.photonne.app.data.models.UserDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,10 @@ data class AccountProfileUiState(
     val error: UiError? = null,
     val successMessage: String? = null,
     val baseline: UserDto? = null,
+    /** Impact of the pending username change, awaiting the user's OK. The
+     *  rename moves the storage folder and rewrites every path, so it's
+     *  confirmed with the numbers first — as the web does. */
+    val renamePreview: RenamePreviewDto? = null,
 ) {
     val canSave: Boolean
         get() {
@@ -102,7 +107,55 @@ class AccountProfileViewModel(
     fun save() {
         val current = _state.value
         if (!current.canSave) return
+        val newUsername = current.username.trim()
+        val usernameChanged = newUsername != current.baseline?.username?.trim()
         _state.update { it.copy(isSubmitting = true, error = null, successMessage = null) }
+        if (!usernameChanged) {
+            submit(current)
+            return
+        }
+        viewModelScope.launch {
+            runCatching { repository.previewRename(newUsername) }
+                .onSuccess { preview ->
+                    when {
+                        !preview.isValid -> _state.update {
+                            it.copy(
+                                isSubmitting = false,
+                                error = UiError(
+                                    userMessage = preview.errorMessage
+                                        ?: "El nuevo nombre de usuario no es válido"
+                                )
+                            )
+                        }
+                        preview.isNoChange -> submit(current)
+                        else -> _state.update {
+                            it.copy(isSubmitting = false, renamePreview = preview)
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = errorFactory.from(error, "No se pudo comprobar el cambio de nombre")
+                        )
+                    }
+                }
+        }
+    }
+
+    /** The user accepted the rename impact: apply the whole profile. */
+    fun confirmRename() {
+        if (_state.value.renamePreview == null) return
+        _state.update { it.copy(renamePreview = null, isSubmitting = true) }
+        submit(_state.value)
+    }
+
+    fun dismissRename() {
+        _state.update { it.copy(renamePreview = null) }
+    }
+
+    private fun submit(current: AccountProfileUiState) {
         viewModelScope.launch {
             runCatching {
                 repository.updateProfile(

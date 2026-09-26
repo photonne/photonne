@@ -687,6 +687,7 @@ interface PhotonneApi {
         request: com.photonne.app.data.models.ChangePasswordRequest
     ): com.photonne.app.data.models.ChangePasswordResponse
     suspend fun getStorageInfo(): com.photonne.app.data.models.StorageInfoDto
+    suspend fun previewMyRename(newUsername: String): com.photonne.app.data.models.RenamePreviewDto
 
     // Administration ---------------------------------------------------------
     suspend fun adminListUsers(): List<UserDto>
@@ -2556,6 +2557,21 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = parseErrorMessage(response) ?: "Password change failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun previewMyRename(
+        newUsername: String
+    ): com.photonne.app.data.models.RenamePreviewDto {
+        val response: HttpResponse = client.get("$baseUrl/api/users/me/rename-preview") {
+            parameter("newUsername", newUsername)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Rename preview failed"
             )
         }
         return response.body()

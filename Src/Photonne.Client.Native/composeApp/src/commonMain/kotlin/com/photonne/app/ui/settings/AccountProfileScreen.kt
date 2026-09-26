@@ -52,6 +52,9 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_profile_email
 import com.photonne.app.resources.account_profile_first_name
 import com.photonne.app.resources.account_profile_last_name
+import com.photonne.app.resources.account_profile_rename_confirm
+import com.photonne.app.resources.account_profile_rename_message
+import com.photonne.app.resources.account_profile_rename_title
 import com.photonne.app.resources.account_profile_save
 import com.photonne.app.resources.account_profile_saved
 import com.photonne.app.resources.account_profile_summary_account_created
@@ -81,6 +84,26 @@ fun AccountProfileScreen(
         onShown = viewModel::consumeSuccess
     )
     LaunchedEffect(Unit) { viewModel.load() }
+
+    state.renamePreview?.let { preview ->
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.account_profile_rename_title),
+            message = stringResource(
+                Res.string.account_profile_rename_message,
+                preview.currentUsername,
+                preview.newUsername,
+                preview.currentVirtualPath.orEmpty(),
+                preview.newVirtualPath.orEmpty(),
+                preview.assetsToUpdate,
+                preview.foldersToUpdate
+            ),
+            confirmLabel = stringResource(Res.string.account_profile_rename_confirm),
+            isDestructive = false,
+            isSubmitting = state.isSubmitting,
+            onDismiss = viewModel::dismissRename,
+            onConfirm = viewModel::confirmRename
+        )
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(

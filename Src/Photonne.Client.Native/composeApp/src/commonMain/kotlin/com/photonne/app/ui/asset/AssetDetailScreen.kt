@@ -1092,9 +1092,11 @@ fun AssetDetailScreen(
         )
     }
 
+    val trashEnabled = com.photonne.app.ui.actions.rememberServerTrashEnabled()
     if (showTrashConfirm && currentItem != null) {
         TrashAssetDialog(
             fileName = currentItem.fileName,
+            permanent = !trashEnabled,
             onDismiss = { showTrashConfirm = false },
             onConfirm = {
                 showTrashConfirm = false

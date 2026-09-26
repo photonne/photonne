@@ -253,6 +253,17 @@
         <item quantity="one">%1$d foto movida a la papelera</item>
         <item quantity="other">%1$d fotos movidas a la papelera</item>
     </plurals>
+    <string name="trash_disabled_delete_title">Eliminar definitivamente</string>
+    <string name="trash_disabled_delete_confirm">Eliminar definitivamente</string>
+    <string name="trash_disabled_delete_message_single">La papelera está desactivada en el servidor: «%1$s» se eliminará definitivamente. No se puede deshacer.</string>
+    <plurals name="trash_disabled_delete_message">
+        <item quantity="one">La papelera está desactivada en el servidor: %1$d foto se eliminará definitivamente. No se puede deshacer.</item>
+        <item quantity="other">La papelera está desactivada en el servidor: %1$d fotos se eliminarán definitivamente. No se puede deshacer.</item>
+    </plurals>
+    <plurals name="selection_deleted_permanently_done">
+        <item quantity="one">%1$d foto eliminada definitivamente</item>
+        <item quantity="other">%1$d fotos eliminadas definitivamente</item>
+    </plurals>
     <plurals name="selection_added_to_album_done">
         <item quantity="one">%1$d foto añadida a %2$s</item>
         <item quantity="other">%1$d fotos añadidas a %2$s</item>
@@ -573,6 +584,9 @@
     <string name="account_profile_username">Nombre de usuario</string>
     <string name="account_profile_save">Guardar cambios</string>
     <string name="account_profile_saved">Perfil actualizado</string>
+    <string name="account_profile_rename_title">Cambiar nombre de usuario</string>
+    <string name="account_profile_rename_message">De «%1$s» a «%2$s».\n\nEl servidor renombrará tu carpeta (%3$s → %4$s) y actualizará %5$d archivos y %6$d carpetas. La operación es atómica: se completa entera o se revierte.</string>
+    <string name="account_profile_rename_confirm">Renombrar</string>
     <string name="account_profile_summary_account_created">Cuenta creada</string>
     <string name="account_profile_summary_last_login">Último acceso</string>
     <string name="account_security_current">Contraseña actual</string>
@@ -1098,6 +1112,9 @@
     <string name="device_backup_free_space_confirm">Borrar del dispositivo</string>
     <string name="device_backup_free_space_cancel">Cancelar</string>
     <string name="device_backup_free_space_in_progress">Liberando espacio…</string>
+    <string name="device_backup_free_space_blocked_verifying">Disponible cuando termine la comprobación con el servidor.</string>
+    <string name="device_backup_free_space_blocked_uploading">Disponible cuando termine la subida en curso.</string>
+    <string name="device_backup_free_space_blocked_unverified">Para liberar espacio, antes hay que comprobar con el servidor que todo sigue ahí. Toca el icono de volver a verificar.</string>
     <string name="device_backup_preview_back">Volver</string>
     <string name="device_backup_preview_open_detail">Detalles</string>
     <string name="device_backup_preview_video_unsupported">Reproducción de vídeo no disponible en este sistema</string>

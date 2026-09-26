@@ -497,6 +497,17 @@
         <item quantity="one">%1$d photo moved to the trash</item>
         <item quantity="other">%1$d photos moved to the trash</item>
     </plurals>
+    <string name="trash_disabled_delete_title">Delete permanently</string>
+    <string name="trash_disabled_delete_confirm">Delete permanently</string>
+    <string name="trash_disabled_delete_message_single">The trash is turned off on the server: “%1$s” will be deleted permanently. This can’t be undone.</string>
+    <plurals name="trash_disabled_delete_message">
+        <item quantity="one">The trash is turned off on the server: %1$d photo will be deleted permanently. This can’t be undone.</item>
+        <item quantity="other">The trash is turned off on the server: %1$d photos will be deleted permanently. This can’t be undone.</item>
+    </plurals>
+    <plurals name="selection_deleted_permanently_done">
+        <item quantity="one">%1$d photo deleted permanently</item>
+        <item quantity="other">%1$d photos deleted permanently</item>
+    </plurals>
     <plurals name="selection_added_to_album_done">
         <item quantity="one">%1$d photo added to %2$s</item>
         <item quantity="other">%1$d photos added to %2$s</item>
@@ -566,6 +577,9 @@
     <string name="account_profile_username">Username</string>
     <string name="account_profile_save">Save changes</string>
     <string name="account_profile_saved">Profile updated</string>
+    <string name="account_profile_rename_title">Change username</string>
+    <string name="account_profile_rename_message">From “%1$s” to “%2$s”.\n\nThe server will rename your folder (%3$s → %4$s) and update %5$d files and %6$d folders. The operation is atomic: it either completes fully or is rolled back.</string>
+    <string name="account_profile_rename_confirm">Rename</string>
     <string name="account_profile_summary_account_created">Account created</string>
     <string name="account_profile_summary_last_login">Last access</string>
     <string name="account_security_current">Current password</string>
@@ -1056,6 +1070,9 @@
     <string name="device_backup_free_space_confirm">Delete from device</string>
     <string name="device_backup_free_space_cancel">Cancel</string>
     <string name="device_backup_free_space_in_progress">Freeing space…</string>
+    <string name="device_backup_free_space_blocked_verifying">Available once the check against the server finishes.</string>
+    <string name="device_backup_free_space_blocked_uploading">Available once the current upload finishes.</string>
+    <string name="device_backup_free_space_blocked_unverified">To free up space, first check with the server that everything is still there. Tap the re-verify icon.</string>
     <string name="device_backup_preview_back">Back</string>
     <string name="device_backup_preview_open_detail">Details</string>
     <string name="device_backup_preview_video_unsupported">Video playback is not available on this platform</string>

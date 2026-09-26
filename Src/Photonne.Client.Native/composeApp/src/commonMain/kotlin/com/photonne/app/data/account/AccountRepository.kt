@@ -3,8 +3,10 @@ package com.photonne.app.data.account
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
+import com.photonne.app.data.auth.RememberedCredentialsStore
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.ChangePasswordRequest
+import com.photonne.app.data.models.RenamePreviewDto
 import com.photonne.app.data.models.StorageInfoDto
 import com.photonne.app.data.models.UpdateProfileRequest
 import com.photonne.app.data.models.UserDto
@@ -18,7 +20,8 @@ import com.photonne.app.data.models.UserDto
 class AccountRepository(
     private val api: PhotonneApi,
     private val authStateHolder: AuthStateHolder,
-    private val tokenStorage: TokenStorage
+    private val tokenStorage: TokenStorage,
+    private val rememberedCredentials: RememberedCredentialsStore
 ) {
     suspend fun refreshCurrentUser(): UserDto {
         val user = api.getCurrentUser()
@@ -43,8 +46,19 @@ class AccountRepository(
         )
         tokenStorage.saveUser(updated)
         authStateHolder.update(AuthState.Authenticated(updated))
+        // "Recordar credenciales" stored the old username: without this the
+        // next manual sign-in would pre-fill a login that no longer exists.
+        rememberedCredentials.get()?.let { saved ->
+            if (saved.username != updated.username) {
+                rememberedCredentials.save(updated.username, saved.password)
+            }
+        }
         return updated
     }
+
+    /** What renaming to [newUsername] would move on the server. */
+    suspend fun previewRename(newUsername: String): RenamePreviewDto =
+        api.previewMyRename(newUsername)
 
     suspend fun changePassword(currentPassword: String, newPassword: String) {
         api.changePassword(
@@ -53,6 +67,10 @@ class AccountRepository(
                 newPassword = newPassword
             )
         )
+        // Same for the remembered password: keep it working after the change.
+        rememberedCredentials.get()?.let { saved ->
+            rememberedCredentials.save(saved.username, newPassword)
+        }
     }
 
     suspend fun getStorageInfo(): StorageInfoDto = api.getStorageInfo()

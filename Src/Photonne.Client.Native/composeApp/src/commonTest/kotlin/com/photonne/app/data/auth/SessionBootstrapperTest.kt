@@ -68,7 +68,8 @@ class SessionBootstrapperTest {
         val account = AccountRepository(
             api = PhotonneApiClient(client, "http://test.local"),
             authStateHolder = authState,
-            tokenStorage = storage
+            tokenStorage = storage,
+            rememberedCredentials = RememberedCredentialsStore(InMemorySettings())
         )
         return SessionBootstrapper(storage, urlStore, authState, account)
     }

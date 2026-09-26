@@ -60,6 +60,10 @@ import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.resources.selection_count
 import com.photonne.app.resources.selection_trash_confirm_message
 import com.photonne.app.resources.selection_trash_done
+import com.photonne.app.resources.selection_deleted_permanently_done
+import com.photonne.app.resources.trash_disabled_delete_confirm
+import com.photonne.app.resources.trash_disabled_delete_message
+import com.photonne.app.resources.trash_disabled_delete_title
 import com.photonne.app.resources.map_action_select_all
 import com.photonne.app.ui.main.LocalSnackbarController
 import org.jetbrains.compose.resources.pluralStringResource
@@ -107,22 +111,36 @@ fun MapClusterSheet(
         selectedIds.size,
         selectedIds.size
     )
+    // Papelera apagada en el servidor ⇒ el borrado es definitivo: dilo.
+    val trashEnabled = com.photonne.app.ui.actions.rememberServerTrashEnabled()
+    val deletedDoneMessage = pluralStringResource(
+        Res.plurals.selection_deleted_permanently_done,
+        selectedIds.size,
+        selectedIds.size
+    )
     if (showTrashConfirm) {
         ConfirmActionDialog(
-            title = stringResource(Res.string.asset_trash_title),
+            title = stringResource(
+                if (trashEnabled) Res.string.asset_trash_title
+                else Res.string.trash_disabled_delete_title
+            ),
             message = pluralStringResource(
-                Res.plurals.selection_trash_confirm_message,
+                if (trashEnabled) Res.plurals.selection_trash_confirm_message
+                else Res.plurals.trash_disabled_delete_message,
                 selectedIds.size,
                 selectedIds.size
             ),
-            confirmLabel = stringResource(Res.string.action_delete),
+            confirmLabel = stringResource(
+                if (trashEnabled) Res.string.action_delete
+                else Res.string.trash_disabled_delete_confirm
+            ),
             isDestructive = true,
             isSubmitting = isMutating,
             onDismiss = { showTrashConfirm = false },
             onConfirm = {
                 showTrashConfirm = false
                 onTrash()
-                snackbar?.show(trashDoneMessage)
+                snackbar?.show(if (trashEnabled) trashDoneMessage else deletedDoneMessage)
             }
         )
     }
