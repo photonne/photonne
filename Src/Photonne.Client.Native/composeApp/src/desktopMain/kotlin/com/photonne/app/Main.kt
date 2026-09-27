@@ -10,6 +10,9 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -29,6 +32,7 @@ import com.photonne.app.di.platformModule
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.photonne_app_icon
 import com.photonne.app.ui.navigation.DesktopBackDispatcher
+import com.photonne.app.ui.selection.SelectionShortcuts
 import java.awt.Dimension
 import java.util.prefs.Preferences
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -88,7 +92,7 @@ fun main() {
             icon = painterResource(Res.drawable.photonne_app_icon),
             // onKeyEvent (no preview): el campo con foco ve la tecla primero,
             // así Escape en un buscador no navega hacia atrás por sorpresa.
-            onKeyEvent = ::handleBackKey
+            onKeyEvent = { handleBackKey(it) || handleSelectionKey(it) }
         ) {
             LaunchedEffect(Unit) {
                 window.minimumSize = Dimension(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
@@ -118,6 +122,25 @@ private fun handleBackKey(event: KeyEvent): Boolean {
     val isBack = event.key == Key.Escape ||
         (event.key == Key.DirectionLeft && event.isAltPressed)
     return isBack && DesktopBackDispatcher.dispatch()
+}
+
+/**
+ * Atajos de las rejillas con selección: Ctrl/Cmd+A selecciona todo lo que la
+ * pantalla ofrece y Supr/Retroceso manda la selección a la papelera. Llegan
+ * por onKeyEvent como Escape, así que un campo de texto con foco se queda sus
+ * Ctrl+A y Retroceso.
+ */
+private fun handleSelectionKey(event: KeyEvent): Boolean {
+    if (event.type != KeyEventType.KeyDown) return false
+    val command = event.isCtrlPressed || event.isMetaPressed
+    return when {
+        command && !event.isAltPressed && event.key == Key.A ->
+            SelectionShortcuts.selectAll()
+        !command && !event.isAltPressed && !event.isShiftPressed &&
+            (event.key == Key.Delete || event.key == Key.Backspace) ->
+            SelectionShortcuts.delete()
+        else -> false
+    }
 }
 
 /**

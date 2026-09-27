@@ -375,11 +375,11 @@ Con el servidor ya preparado:
 - [x] **Resumen al terminar una subida**: "N subidas · Ver · Añadir a álbum" (los `assetId` ya se guardan). — hecho: "Ver" abre el visor con lo subido.
 
 Solo cliente:
-- [ ] **Favorito en bloque** en la barra de selección (bucle sobre las no favoritas, o endpoint `set` idempotente).
-- [ ] **Selección múltiple en el detalle de un recuerdo.**
-- [ ] **Al cerrar el visor, la rejilla va a la última foto vista** (`currentDetailAssetId` solo alimenta el morph).
-- [ ] **Cabeceras "Hoy" / "Ayer" y sin año en el año en curso** (`grid/DayFormat.kt`).
-- [ ] **Escritorio: Ctrl+A y Supr en las rejillas** (la idea mayor solo cubre el visor).
+- [x] **Favorito en bloque** en la barra de selección (bucle sobre las no favoritas, o endpoint `set` idempotente). — hecho: en el menú ⋮ de la barra común; "Quitar de favoritos" si todas ya lo son; toggle solo sobre las que cambian (4 a la vez), sin endpoint nuevo, snackbar con recuento y fallos.
+- [x] **Selección múltiple en el detalle de un recuerdo.** — hecho: pulsación larga/arrastre en banda, barras estándar (compartir, álbum vía `BulkAddSource.Memory`, descargar, mover, favorito, archivar, papelera con Deshacer que devuelve la foto a su sitio).
+- [x] **Al cerrar el visor, la rejilla va a la última foto vista** (`currentDetailAssetId` solo alimenta el morph). — hecho: la rejilla que abrió el visor lo sigue por debajo (timeline, álbum, carpeta, búsqueda, favoritos, archivados, persona, recuerdo…); en el timeline reintenta cuando llega el bucket.
+- [x] **Cabeceras "Hoy" / "Ayer" y sin año en el año en curso** (`grid/DayFormat.kt`). — hecho: solo cabeceras de día; los meses no cambian.
+- [x] **Escritorio: Ctrl+A y Supr en las rejillas** (la idea mayor solo cubre el visor). — hecho: Ctrl/Cmd+A donde hay "Seleccionar todo" (el timeline no lo ofrece); Supr/Retroceso lanza la papelera de la barra (misma confirmación, Deshacer y bloqueos).
 
 Plataforma:
 - [ ] **"Compartir con Photonne"** desde otras apps (`ACTION_SEND`/`SEND_MULTIPLE` + extensión iOS) → Subida.

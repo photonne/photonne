@@ -227,6 +227,19 @@ private fun FolderDetailGrid(
     // en vez de darse por hecho.
     val preludeCount = if (subFolders.isEmpty()) 0
     else subFolders.size + if (items.isNotEmpty()) 1 else 0
+    // Al cerrar el visor abierto desde aquí, la última foto vista vuelve a
+    // pantalla (ver ViewerReturnState).
+    val viewerOrigin = com.photonne.app.ui.grid.rememberViewerReturnOrigin()
+    val markViewerOrigin = com.photonne.app.ui.grid.rememberMarkViewerOrigin(viewerOrigin)
+    com.photonne.app.ui.grid.ViewerReturnScrollEffect(
+        token = viewerOrigin,
+        gridState = gridState,
+        indexOf = { id ->
+            val i = items.indexOfFirst { it.id == id }
+            if (i < 0) -1 else i + preludeCount
+        },
+        items, preludeCount
+    )
     val dragSelectAdapter = rememberLazyGridDragSelectAdapter(
         gridState = gridState,
         headerCount = { preludeCount },
@@ -304,7 +317,10 @@ private fun FolderDetailGrid(
             AssetGridCell(
                 asset = asset,
                 baseUrl = baseUrl,
-                onClick = { onItemClick(index) },
+                onClick = {
+                    if (selection.isEmpty()) markViewerOrigin()
+                    onItemClick(index)
+                },
                 // Con arrastre en banda el long-press lo posee la rejilla.
                 onLongClick = if (dragSelect != null) null else ({ onItemLongClick(index) }),
                 onSecondaryClick = { onItemLongClick(index) },

@@ -255,6 +255,20 @@
         <item quantity="one">%1$d foto movida a la papelera</item>
         <item quantity="other">%1$d fotos movidas a la papelera</item>
     </plurals>
+    <string name="selection_action_favorite_add">Añadir a favoritos</string>
+    <string name="selection_action_favorite_remove">Quitar de favoritos</string>
+    <plurals name="selection_favorite_added_done">
+        <item quantity="one">%1$d foto añadida a favoritos</item>
+        <item quantity="other">%1$d fotos añadidas a favoritos</item>
+    </plurals>
+    <plurals name="selection_favorite_removed_done">
+        <item quantity="one">%1$d foto quitada de favoritos</item>
+        <item quantity="other">%1$d fotos quitadas de favoritos</item>
+    </plurals>
+    <plurals name="selection_favorite_failed">
+        <item quantity="one">No se pudo cambiar %1$d foto</item>
+        <item quantity="other">No se pudieron cambiar %1$d fotos</item>
+    </plurals>
     <string name="trash_disabled_delete_title">Eliminar definitivamente</string>
     <string name="trash_disabled_delete_confirm">Eliminar definitivamente</string>
     <string name="trash_disabled_delete_message_single">La papelera está desactivada en el servidor: «%1$s» se eliminará definitivamente. No se puede deshacer.</string>

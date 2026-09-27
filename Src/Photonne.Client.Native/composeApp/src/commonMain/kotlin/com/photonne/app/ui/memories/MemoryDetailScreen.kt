@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
@@ -23,6 +24,9 @@ import com.photonne.app.resources.album_hero_photos
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
+import com.photonne.app.ui.grid.chromeSelectionActive
+import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
+import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
@@ -43,6 +47,11 @@ data class MemoryDetailContext(
     val subtitle: String?,
     val coverAssetId: String?,
     val items: List<TimelineItem>,
+    /**
+     * Las fotos con las que se abrió, en su orden curado. Lo borrado sale de
+     * [items]; si luego se deshace, vuelve a su sitio a partir de esta lista.
+     */
+    val openedItems: List<TimelineItem> = items,
 )
 
 /**
@@ -63,8 +72,23 @@ fun MemoryDetailScreen(
     baseUrl: String,
     onItemClick: (Int) -> Unit,
     onBack: () -> Unit,
+    /**
+     * Selección múltiple: pulsación larga (o clic derecho) selecciona, el
+     * arrastre en banda extiende y, con algo marcado, el cromo flotante cede
+     * el sitio a las barras de selección estándar que pasa el host.
+     */
+    selection: Set<String> = emptySet(),
+    onItemLongClick: ((Int) -> Unit)? = null,
+    onApplySelection: (SelectionPatch) -> Unit = {},
+    selectionTopBar: @Composable () -> Unit = {},
+    selectionBottomBar: @Composable () -> Unit = {},
 ) {
     val gridState = rememberLazyGridState()
+    val gestures = rememberAssetGridSelectionGestures(
+        onApplySelection = onApplySelection,
+        enabled = onItemLongClick != null
+    )
+    val selectionActive = gestures.chromeSelectionActive(selection.isNotEmpty())
     // Opaque: this draws over the tab that opened it, and a transparent
     // background would let the timeline show through the grid's gaps.
     Box(
@@ -79,6 +103,9 @@ fun MemoryDetailScreen(
             baseUrl = baseUrl,
             gridState = gridState,
             onItemClick = onItemClick,
+            onItemLongClick = onItemLongClick,
+            selectedIds = selection,
+            dragSelect = if (onItemLongClick != null) gestures.dragSelect else null,
             contentPadding = PaddingValues(bottom = Spacing.xl),
             header = {
                 MemoryHero(
@@ -97,24 +124,33 @@ fun MemoryDetailScreen(
             showDates = false,
             reservedTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
             reservedBottom = 24.dp,
-            selectionActive = false,
+            selectionActive = selectionActive,
             hazeState = null,
         )
 
-        // Cromo flotante fijo: el botón de volver vivía dentro de la portada y
-        // se iba con el scroll, dejando la pantalla sin salida visible.
-        SubscreenFloatingChrome(
-            title = memory.title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
-                firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
-                isScrollInProgress = { gridState.isScrollInProgress },
-                scrollToTopMinIndex = 12,
-                onScrollToTop = { gridState.animateScrollToItem(0) }
-            ),
-            hazeState = null
-        )
+        if (selectionActive) {
+            Box(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
+                selectionTopBar()
+            }
+            Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                selectionBottomBar()
+            }
+        } else {
+            // Cromo flotante fijo: el botón de volver vivía dentro de la portada y
+            // se iba con el scroll, dejando la pantalla sin salida visible.
+            SubscreenFloatingChrome(
+                title = memory.title,
+                onBack = onBack,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+                    firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
+                    isScrollInProgress = { gridState.isScrollInProgress },
+                    scrollToTopMinIndex = 12,
+                    onScrollToTop = { gridState.animateScrollToItem(0) }
+                ),
+                hazeState = null
+            )
+        }
     }
 }
 

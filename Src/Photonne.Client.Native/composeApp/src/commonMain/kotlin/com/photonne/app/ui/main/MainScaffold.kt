@@ -69,6 +69,8 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.HeartBroken
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.material3.CircularProgressIndicator
@@ -176,6 +178,8 @@ import com.photonne.app.resources.selection_action_close
 import com.photonne.app.resources.selection_action_more
 import com.photonne.app.resources.selection_action_remove_from_album
 import com.photonne.app.resources.selection_action_trash
+import com.photonne.app.resources.selection_action_favorite_add
+import com.photonne.app.resources.selection_action_favorite_remove
 import com.photonne.app.resources.asset_trash_title
 import com.photonne.app.resources.selection_count
 import com.photonne.app.resources.selection_label_add_to_album
@@ -955,7 +959,14 @@ fun AssetSelectionBottomBar(
      * recupera (p. ej. la pertenencia a álbumes). Null → sin diálogo, como
      * siempre: se ejecuta y se ofrece Deshacer.
      */
-    trashConfirmMessage: String? = null
+    trashConfirmMessage: String? = null,
+    /**
+     * Favorito en bloque (menú ⋮: la barra ya va llena). Con [allFavorite] la
+     * entrada es "Quitar de favoritos"; si no, "Añadir a favoritos". Null → sin
+     * entrada (p. ej. selección solo de archivos del dispositivo).
+     */
+    onToggleFavorite: (() -> Unit)? = null,
+    allFavorite: Boolean = false
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     // Papelera y archivar en bloque son REVERSIBLES, así que no preguntan: se
@@ -1026,6 +1037,18 @@ fun AssetSelectionBottomBar(
             else -> runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
         }
     }
+    // Escritorio: Supr/Retroceso con selección = esta misma papelera, con su
+    // confirmación, su Deshacer y la política del servidor. Si está bloqueada
+    // se explica por qué en vez de no hacer nada.
+    com.photonne.app.ui.selection.SelectionShortcutsHandler(
+        onDelete = {
+            when {
+                isMutating -> Unit
+                trashDisabledReason != null -> snackbar?.show(trashDisabledReason)
+                else -> requestTrash()
+            }
+        }
+    )
     if (confirmTrash && trashConfirmMessage != null) {
         com.photonne.app.ui.library.ConfirmActionDialog(
             title = stringResource(Res.string.asset_trash_title),
@@ -1173,6 +1196,29 @@ fun AssetSelectionBottomBar(
                                     Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null)
                                 },
                                 onClick = { menuOpen = false; onMove() }
+                            )
+                        }
+                        onToggleFavorite?.let { toggleFavorite ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            if (allFavorite) Res.string.selection_action_favorite_remove
+                                            else Res.string.selection_action_favorite_add
+                                        )
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (allFavorite) Icons.Outlined.HeartBroken
+                                        else Icons.Outlined.FavoriteBorder,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    toggleFavorite()
+                                }
                             )
                         }
                         DropdownMenuItem(
