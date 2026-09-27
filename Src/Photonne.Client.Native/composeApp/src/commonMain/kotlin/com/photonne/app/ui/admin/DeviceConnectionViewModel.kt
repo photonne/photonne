@@ -18,6 +18,9 @@ data class DeviceConnectionUiState(
     val publicUrl: String = "",
     val localUrl: String = "",
     val localReachable: Boolean = false,
+    /** La dirección que la app usa AHORA (la local si responde, si no la
+     *  pública): lo que Cuenta → Conexión enseña como "Conectado a". */
+    val effectiveUrl: String = "",
     val isProbing: Boolean = false,
     val isSaving: Boolean = false,
     // validación local, no errores HTTP — no migrado a UiError
@@ -27,7 +30,7 @@ data class DeviceConnectionUiState(
 
 /**
  * Per-device editor for the public/local server URLs shown in
- * Administración → Ajustes → Configuración del servidor. Writes to
+ * Cuenta → Conexión (antes solo en la configuración del servidor, de admin). Writes to
  * [ServerUrlStore] (local-only) and re-probes [LocalReachabilityProbe] so the
  * effective URL switches immediately, without reopening the login wizard.
  */
@@ -43,7 +46,8 @@ class DeviceConnectionViewModel(
     private fun loadInitial(): DeviceConnectionUiState = DeviceConnectionUiState(
         publicUrl = store.getPublic().orEmpty(),
         localUrl = store.getLocal().orEmpty(),
-        localReachable = store.isLocalReachable()
+        localReachable = store.isLocalReachable(),
+        effectiveUrl = store.effectiveBaseUrl.value.orEmpty()
     )
 
     fun reload() {
@@ -131,6 +135,7 @@ class DeviceConnectionViewModel(
                 publicUrl = normalizedPublic,
                 localUrl = normalizedLocal.orEmpty(),
                 localReachable = reachable,
+                effectiveUrl = store.effectiveBaseUrl.value.orEmpty(),
                 infoMessage = SAVED
             )
         }

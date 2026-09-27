@@ -31,6 +31,8 @@ class AssetDetailRepository(
     suspend fun removeTag(assetId: String, tag: String): List<String> =
         api.removeAssetTag(assetId, tag)
 
+    suspend fun getUserTags(): List<String> = api.getUserTags()
+
     suspend fun toggleFavorite(assetId: String): Boolean =
         api.toggleFavorite(assetId).also { isFavorite ->
             mutationBus.emit(AssetMutation.FavoriteChanged(assetId, isFavorite))

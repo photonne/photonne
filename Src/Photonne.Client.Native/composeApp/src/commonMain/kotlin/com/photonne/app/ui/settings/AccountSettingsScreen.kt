@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Person
@@ -32,6 +33,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_section_appearance
+import com.photonne.app.resources.account_section_connection
+import com.photonne.app.resources.account_section_connection_subtitle
 import com.photonne.app.resources.account_section_appearance_subtitle
 import com.photonne.app.resources.account_section_profile
 import com.photonne.app.resources.account_section_profile_subtitle
@@ -50,7 +53,7 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.contentWidth
 import com.photonne.app.ui.theme.Spacing
 
-enum class AccountSettingsSection { Profile, Security, Appearance, Storage }
+enum class AccountSettingsSection { Profile, Security, Appearance, Storage, Connection }
 
 private data class SettingsEntry(
     val section: AccountSettingsSection,
@@ -93,6 +96,12 @@ fun AccountSettingsScreen(
             Res.string.account_section_storage,
             Res.string.account_section_storage_subtitle,
             Icons.Outlined.Storage
+        ),
+        SettingsEntry(
+            AccountSettingsSection.Connection,
+            Res.string.account_section_connection,
+            Res.string.account_section_connection_subtitle,
+            Icons.Outlined.Dns
         )
     )
 

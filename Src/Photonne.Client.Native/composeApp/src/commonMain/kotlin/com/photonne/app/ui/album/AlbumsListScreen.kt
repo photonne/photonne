@@ -131,7 +131,9 @@ fun AlbumsListScreen(
      * at its scroll end so it can draw edge-to-edge behind the bar, like Fotos.
      */
     immersive: Boolean = false,
-    onChromeVisibleChange: (Boolean) -> Unit = {}
+    onChromeVisibleChange: (Boolean) -> Unit = {},
+    /** Se incrementa al retocar la pestaña Álbumes ya activa: volver arriba. */
+    scrollToTopTick: Int = 0
 ) {
     val viewModel: AlbumsViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
@@ -142,6 +144,12 @@ fun AlbumsListScreen(
     val listState = rememberLazyListState()
     val hazeState = remember { HazeState() }
     val isGrid = state.viewMode == AlbumViewMode.Grid
+    // Retocar la pestaña ya activa en su raíz vuelve arriba, como Fotos.
+    LaunchedEffect(scrollToTopTick) {
+        if (scrollToTopTick > 0) {
+            if (isGrid) gridState.animateScrollToItem(0) else listState.animateScrollToItem(0)
+        }
+    }
     // La búsqueda también va en la cápsula flotante (campo dentro), como el
     // buscador global: solo una selección activa la sustituye por la barra sólida.
     val floatingChrome = !state.isSelectionActive

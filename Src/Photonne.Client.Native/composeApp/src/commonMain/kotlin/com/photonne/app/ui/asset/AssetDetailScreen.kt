@@ -129,6 +129,14 @@ import com.photonne.app.resources.asset_detail_same_day
 import com.photonne.app.resources.asset_detail_tag_add
 import com.photonne.app.resources.asset_detail_tag_dialog_title
 import com.photonne.app.resources.asset_detail_tag_placeholder
+import com.photonne.app.resources.asset_detail_tags_label
+import com.photonne.app.resources.asset_auto_tag_live_photo
+import com.photonne.app.resources.asset_auto_tag_burst
+import com.photonne.app.resources.asset_auto_tag_panorama
+import com.photonne.app.resources.asset_auto_tag_screenshot
+import com.photonne.app.resources.asset_auto_tag_hdr
+import com.photonne.app.resources.asset_auto_tag_portrait
+import com.photonne.app.resources.asset_auto_tag_motion_part
 import com.photonne.app.resources.asset_detail_faces_count
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.ui.format.humanBytes
@@ -731,6 +739,7 @@ fun AssetDetailScreen(
                         onOpenFaces = { onOpenFaces(item.id) },
                         onAddTag = { tag -> viewModel.addTag(item.id, tag) },
                         onRemoveTag = { tag -> viewModel.removeTag(item.id, tag) },
+                        tagSuggestions = viewModel::userTagSuggestions,
                         onOpenAsset = onOpenAsset
                     )
                 }
@@ -787,6 +796,41 @@ fun AssetDetailScreen(
                     }
                 }
             }
+
+            // Un solo modelo de acciones para las dos disposiciones (Lote N1).
+            val currentViewerActions = currentItem?.let { item ->
+                viewerActions(
+                    item = item,
+                    mode = mode,
+                    isFavorite = currentIsFavorite,
+                    onToggleFavorite = {
+                        viewModel.toggleFavorite(item.id) { confirmed ->
+                            onFavoriteChanged(item.id, confirmed)
+                        }
+                    },
+                    onShare = { onShare(item) },
+                    onTrashRequest = { showTrashConfirm = true },
+                    onShowInfo = {
+                        coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
+                    },
+                    onAddToAlbum = { onAddToAlbum(item) },
+                    onDownload = { onDownload(item) },
+                    onEditDescription = if (currentCanEdit) {
+                        { showEditDescription = true }
+                    } else null,
+                    onEditDate = if (currentCanEdit) { { showEditDate = true } } else null,
+                    onOpenFaces = { onOpenFaces(item.id) },
+                    onAnalyze = if (canAnalyze) { { showAiSheet = true } } else null,
+                    onArchive = archiveToggle,
+                    onRestore = {
+                        viewModel.restore(item.id) { id -> onAssetRestored(id) }
+                    },
+                    onPurgeRequest = { showPurgeConfirm = true },
+                    onDeleteFromDevice = onDeleteFromDevice?.let { handler ->
+                        { handler(item) }
+                    }
+                )
+            }.orEmpty()
 
             // Skip the top bar entirely once faded out so it can't intercept
             // taps meant for the asset underneath (immersive mode).
@@ -865,140 +909,15 @@ fun AssetDetailScreen(
                                 )
                             }
                         }
-                        // Landscape: the bottom action bar is hidden, so its
-                        // actions live here as a floating overflow on the right —
-                        // favourite / album / info inline, the rest under ⋮.
-                        if (landscapeMode && currentItem != null && !isLocalOnly && isTrashMode) {
-                            // Desde la papelera solo caben restaurar y borrar
-                            // para siempre, como en la barra inferior.
-                            IconButton(onClick = {
-                                viewModel.restore(currentItem.id) { id -> onAssetRestored(id) }
-                            }) {
-                                Icon(
-                                    Icons.Outlined.RestoreFromTrash,
-                                    contentDescription = stringResource(Res.string.trash_action_restore),
-                                    tint = Color.White
-                                )
-                            }
-                            IconButton(onClick = { showPurgeConfirm = true }) {
-                                Icon(
-                                    Icons.Outlined.DeleteForever,
-                                    contentDescription = stringResource(Res.string.trash_action_delete_forever),
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                        if (landscapeMode && currentItem != null && !isLocalOnly && !isTrashMode) {
-                            IconButton(onClick = {
-                                viewModel.toggleFavorite(currentItem.id) { confirmed ->
-                                    onFavoriteChanged(currentItem.id, confirmed)
-                                }
-                            }) {
-                                Icon(
-                                    imageVector = if (currentIsFavorite) Icons.Filled.Favorite
-                                    else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = if (currentIsFavorite) "Quitar favorito" else "Marcar favorito",
-                                    tint = if (currentIsFavorite) PhotonneColors.favorite else Color.White
-                                )
-                            }
-                            IconButton(onClick = { onShare(currentItem) }) {
-                                Icon(Icons.Outlined.Share, contentDescription = stringResource(Res.string.selection_label_share),
-                                    tint = Color.White)
-                            }
-                            IconButton(onClick = { onAddToAlbum(currentItem) }) {
-                                Icon(Icons.Outlined.AddToPhotos, contentDescription = stringResource(Res.string.selection_action_add_to_album),
-                                    tint = Color.White)
-                            }
-                            IconButton(onClick = {
-                                coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
-                            }) {
-                                Icon(
-                                    Icons.Outlined.Info,
-                                    contentDescription = stringResource(Res.string.asset_action_details),
-                                    tint = Color.White
-                                )
-                            }
-                            Box {
-                                IconButton(onClick = { showOverflow = true }) {
-                                    Icon(
-                                        Icons.Outlined.MoreVert,
-                                        contentDescription = stringResource(Res.string.asset_action_more),
-                                        tint = Color.White
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = showOverflow,
-                                    onDismissRequest = { showOverflow = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(Res.string.asset_action_download)) },
-                                        leadingIcon = { Icon(Icons.Outlined.Download, contentDescription = null) },
-                                        onClick = { showOverflow = false; onDownload(currentItem) }
-                                    )
-                                    if (currentCanEdit) {
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(Res.string.asset_action_edit_description)) },
-                                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                                            onClick = { showOverflow = false; showEditDescription = true }
-                                        )
-                                    }
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(Res.string.asset_action_faces)) },
-                                        leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
-                                        onClick = { showOverflow = false; onOpenFaces(currentItem.id) }
-                                    )
-                                    // Faltaba en apaisado; en vertical sí está.
-                                    if (currentCanEdit) {
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(Res.string.asset_action_edit_date)) },
-                                            leadingIcon = {
-                                                Icon(Icons.Outlined.DateRange, contentDescription = null)
-                                            },
-                                            onClick = { showOverflow = false; showEditDate = true }
-                                        )
-                                    }
-                                    if (canAnalyze) {
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(Res.string.asset_action_analyze)) },
-                                            leadingIcon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
-                                            onClick = { showOverflow = false; showAiSheet = true }
-                                        )
-                                    }
-                                    ArchiveToggleMenuItem(
-                                        isArchiveMode = mode == AssetViewerMode.Archive,
-                                        onClick = { showOverflow = false; archiveToggle() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(Res.string.asset_action_trash)) },
-                                        leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
-                                        onClick = { showOverflow = false; showTrashConfirm = true }
-                                    )
-                                }
-                            }
-                        }
-                        // Una foto SOLO-dispositivo en apaisado se quedaba sin
-                        // acciones (ni Info ni Eliminar del dispositivo).
-                        if (landscapeMode && currentItem != null && isLocalOnly) {
-                            IconButton(onClick = {
-                                coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
-                            }) {
-                                Icon(
-                                    Icons.Outlined.Info,
-                                    contentDescription = stringResource(Res.string.asset_action_details),
-                                    tint = Color.White
-                                )
-                            }
-                            if (onDeleteFromDevice != null) {
-                                IconButton(onClick = { onDeleteFromDevice(currentItem) }) {
-                                    Icon(
-                                        Icons.Outlined.Delete,
-                                        contentDescription = stringResource(
-                                            Res.string.asset_action_delete_device
-                                        ),
-                                        tint = Color.White
-                                    )
-                                }
-                            }
+                        // Landscape: the bottom action bar is hidden, so the
+                        // SAME action model moves up here (Lote N1): identical
+                        // inline icons and ⋮ contents, in the same order.
+                        if (landscapeMode && currentItem != null) {
+                            ViewerActionButtons(
+                                actions = currentViewerActions,
+                                showOverflow = showOverflow,
+                                onShowOverflowChange = { showOverflow = it }
+                            )
                         }
                       }
                     }
@@ -1044,38 +963,10 @@ fun AssetDetailScreen(
                     // overflow, leaving only the thumbnail strip down here.
                     if (!landscapeMode) {
                         AssetActionsBottomBar(
-                            item = currentItem,
-                            mode = mode,
+                            actions = currentViewerActions,
                             hazeState = viewerHazeState,
-                            isFavorite = currentIsFavorite,
                             showOverflow = showOverflow,
-                            onShowOverflowChange = { showOverflow = it },
-                            onToggleFavorite = {
-                                viewModel.toggleFavorite(currentItem.id) { confirmed ->
-                                    onFavoriteChanged(currentItem.id, confirmed)
-                                }
-                            },
-                            onAddToAlbum = { onAddToAlbum(currentItem) },
-                            onShare = { onShare(currentItem) },
-                            onDownload = { onDownload(currentItem) },
-                            onShowInfo = {
-                                coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
-                            },
-                            onTrashRequest = { showTrashConfirm = true },
-                            onEditDescription = if (currentCanEdit) {
-                                { showEditDescription = true }
-                            } else null,
-                            onEditDate = if (currentCanEdit) { { showEditDate = true } } else null,
-                            onOpenFaces = { onOpenFaces(currentItem.id) },
-                            onAnalyze = if (canAnalyze) { { showAiSheet = true } } else null,
-                            onArchive = archiveToggle,
-                            onRestore = {
-                                viewModel.restore(currentItem.id) { id -> onAssetRestored(id) }
-                            },
-                            onPurgeRequest = { showPurgeConfirm = true },
-                            onDeleteFromDevice = onDeleteFromDevice?.let { handler ->
-                                { handler(currentItem) }
-                            }
+                            onShowOverflowChange = { showOverflow = it }
                         )
                     }
                 }
@@ -1198,28 +1089,6 @@ class AssetViewerFeed(
     val hasMore: () -> Boolean,
     val loadMore: () -> Unit
 )
-
-/** "Archivar" normally; "Desarchivar" when the viewer was opened from Archive. */
-@Composable
-private fun ArchiveToggleMenuItem(isArchiveMode: Boolean, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = {
-            Text(
-                stringResource(
-                    if (isArchiveMode) Res.string.archive_action_unarchive
-                    else Res.string.asset_action_archive
-                )
-            )
-        },
-        leadingIcon = {
-            Icon(
-                if (isArchiveMode) Icons.Outlined.Unarchive else Icons.Outlined.Archive,
-                contentDescription = null
-            )
-        },
-        onClick = onClick
-    )
-}
 
 /**
  * A [ContentScale] that blends from [ContentScale.Fit] (fraction 0) to
@@ -1851,6 +1720,7 @@ private fun AssetMetadataPanel(
     onOpenFaces: () -> Unit,
     onAddTag: (String) -> Unit,
     onRemoveTag: (String) -> Unit,
+    tagSuggestions: suspend () -> List<String>,
     onOpenAsset: (TimelineItem) -> Unit
 ) {
     val exif = detail?.exif
@@ -1952,14 +1822,21 @@ private fun AssetMetadataPanel(
                 userTags = detail.userTags,
                 autoTags = detail.autoTags,
                 onAddTag = onAddTag,
-                onRemoveTag = onRemoveTag
+                onRemoveTag = onRemoveTag,
+                tagSuggestions = tagSuggestions
             )
         } else if (detail != null) {
-            val tags = detail.autoTags + detail.userTags
-            if (tags.isNotEmpty()) MetadataRow("Etiquetas", tags.joinToString(", "))
+            val tags = detail.autoTags.map { autoTagLabel(it) } + detail.userTags
+            if (tags.isNotEmpty()) {
+                MetadataRow(stringResource(Res.string.asset_detail_tags_label), tags.joinToString(", "))
+            }
         } else {
-            val tags = fallback.tags
-            if (tags.isNotEmpty()) MetadataRow("Etiquetas", tags.joinToString(", "))
+            // Sin detalle no se sabe cuáles son automáticas: se traducen las que
+            // coinciden con el enum del servidor y el resto sale tal cual.
+            val tags = fallback.tags.map { autoTagLabel(it) }
+            if (tags.isNotEmpty()) {
+                MetadataRow(stringResource(Res.string.asset_detail_tags_label), tags.joinToString(", "))
+            }
         }
 
         detail?.folderPath?.let { MetadataRow(stringResource(Res.string.asset_detail_folder), it) }
@@ -2115,12 +1992,13 @@ private fun EditableTagsSection(
     userTags: List<String>,
     autoTags: List<String>,
     onAddTag: (String) -> Unit,
-    onRemoveTag: (String) -> Unit
+    onRemoveTag: (String) -> Unit,
+    tagSuggestions: suspend () -> List<String>
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Text(
-            "Etiquetas",
+            stringResource(Res.string.asset_detail_tags_label),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -2128,13 +2006,15 @@ private fun EditableTagsSection(
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
-            autoTags.forEach { tag -> TagChip(label = tag, onRemove = null) }
+            autoTags.forEach { tag -> TagChip(label = autoTagLabel(tag), onRemove = null) }
             userTags.forEach { tag -> TagChip(label = tag, onRemove = { onRemoveTag(tag) }) }
             AddTagChip(onClick = { showAddDialog = true })
         }
     }
     if (showAddDialog) {
         AddTagDialog(
+            existingTags = userTags,
+            loadSuggestions = tagSuggestions,
             onDismiss = { showAddDialog = false },
             onConfirm = { value ->
                 showAddDialog = false
@@ -2204,22 +2084,76 @@ private fun AddTagChip(onClick: () -> Unit) {
     }
 }
 
+/**
+ * Texto de una etiqueta automática (enum `AssetTagType` del servidor, que llega
+ * con su nombre en inglés: "LivePhoto", "HDR"…). Lo que no sea del enum —una
+ * etiqueta de usuario en el fallback sin detalle— se devuelve tal cual.
+ */
 @Composable
-private fun AddTagDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+private fun autoTagLabel(tag: String): String = when (tag.lowercase()) {
+    "livephoto" -> stringResource(Res.string.asset_auto_tag_live_photo)
+    "burst" -> stringResource(Res.string.asset_auto_tag_burst)
+    "panorama" -> stringResource(Res.string.asset_auto_tag_panorama)
+    "screenshot" -> stringResource(Res.string.asset_auto_tag_screenshot)
+    "hdr" -> stringResource(Res.string.asset_auto_tag_hdr)
+    "portrait" -> stringResource(Res.string.asset_auto_tag_portrait)
+    "motionphotopart" -> stringResource(Res.string.asset_auto_tag_motion_part)
+    else -> tag
+}
+
+/** Máximo de sugerencias bajo el campo: más no caben sin tapar el teclado. */
+private const val TAG_SUGGESTION_LIMIT = 6
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun AddTagDialog(
+    existingTags: List<String>,
+    loadSuggestions: suspend () -> List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
     var text by remember { mutableStateOf("") }
+    // Las etiquetas propias (GET /api/tags) se piden al abrir y se filtran al
+    // teclear; tocar una la añade directamente, sin reescribirla.
+    var known by remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(Unit) { known = loadSuggestions() }
+    val suggestions = remember(text, known, existingTags) {
+        val query = text.trim()
+        known.asSequence()
+            .filter { candidate -> existingTags.none { it.equals(candidate, ignoreCase = true) } }
+            .filter { query.isEmpty() || it.contains(query, ignoreCase = true) }
+            .filterNot { it.equals(query, ignoreCase = true) }
+            .take(TAG_SUGGESTION_LIMIT)
+            .toList()
+    }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.asset_detail_tag_dialog_title)) },
         text = {
-            androidx.compose.material3.OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                singleLine = true,
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Done
-                ),
-                placeholder = { Text(stringResource(Res.string.asset_detail_tag_placeholder)) }
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                androidx.compose.material3.OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    placeholder = { Text(stringResource(Res.string.asset_detail_tag_placeholder)) }
+                )
+                if (suggestions.isNotEmpty()) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                    ) {
+                        suggestions.forEach { suggestion ->
+                            androidx.compose.material3.SuggestionChip(
+                                onClick = { onConfirm(suggestion) },
+                                label = { Text(suggestion) }
+                            )
+                        }
+                    }
+                }
+            }
         },
         confirmButton = {
             androidx.compose.material3.TextButton(
@@ -2842,30 +2776,10 @@ private fun ViewerChromeCapsule(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AssetActionsBottomBar(
-    item: TimelineItem,
-    mode: AssetViewerMode = AssetViewerMode.Default,
+    actions: List<ViewerAction>,
     hazeState: HazeState? = null,
-    isFavorite: Boolean,
     showOverflow: Boolean,
     onShowOverflowChange: (Boolean) -> Unit,
-    onToggleFavorite: () -> Unit,
-    onAddToAlbum: () -> Unit,
-    onShare: () -> Unit,
-    onDownload: () -> Unit,
-    onShowInfo: () -> Unit,
-    onTrashRequest: () -> Unit,
-    // Null hides the entry: the server would reject the edit.
-    onEditDescription: (() -> Unit)?,
-    onEditDate: (() -> Unit)?,
-    onOpenFaces: () -> Unit,
-    /** Archive, or Unarchive when [mode] is Archive. */
-    onArchive: () -> Unit,
-    onRestore: () -> Unit = {},
-    onPurgeRequest: () -> Unit = {},
-    onDeleteFromDevice: (() -> Unit)? = null,
-    // Null hides the entry: videos have no AI passes, and the server only
-    // lets the owner run them.
-    onAnalyze: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // Cápsula flotante, misma geometría que la nav y que la barra de selección:
@@ -2913,142 +2827,11 @@ private fun AssetActionsBottomBar(
             horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (item.isLocalOnly) {
-                IconButton(onClick = onShowInfo) {
-                    Icon(
-                        Icons.Outlined.Info,
-                        contentDescription = stringResource(Res.string.asset_action_details),
-                        tint = Color.White
-                    )
-                }
-                if (onDeleteFromDevice != null) {
-                    // Straight to the platform flow — the OS shows its own
-                    // confirmation (see rememberDeviceMediaTrasher).
-                    IconButton(onClick = onDeleteFromDevice) {
-                        Icon(
-                            Icons.Outlined.Delete,
-                            contentDescription =
-                                stringResource(Res.string.asset_action_delete_device),
-                            tint = Color.White
-                        )
-                    }
-                }
-            } else if (mode == AssetViewerMode.Trash) {
-                // En la papelera la foto no se edita ni se marca: solo vuelve a
-                // su sitio o se va para siempre (patrón de Google Fotos).
-                IconButton(onClick = onRestore) {
-                    Icon(
-                        Icons.Outlined.RestoreFromTrash,
-                        contentDescription = stringResource(Res.string.trash_action_restore),
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onPurgeRequest) {
-                    Icon(
-                        Icons.Outlined.DeleteForever,
-                        contentDescription = stringResource(Res.string.trash_action_delete_forever),
-                        tint = Color.White
-                    )
-                }
-            } else {
-                IconButton(onClick = onToggleFavorite) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Filled.Favorite
-                        else Icons.Outlined.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Quitar favorito" else "Marcar favorito",
-                        tint = if (isFavorite) PhotonneColors.favorite else Color.White
-                    )
-                }
-                IconButton(onClick = onShare) {
-                    Icon(
-                        Icons.Outlined.Share,
-                        contentDescription = stringResource(Res.string.selection_label_share),
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onTrashRequest) {
-                    Icon(
-                        Icons.Outlined.Delete,
-                        contentDescription = stringResource(Res.string.asset_action_trash),
-                        tint = Color.White
-                    )
-                }
-                Box {
-                    IconButton(onClick = { onShowOverflowChange(true) }) {
-                        Icon(
-                            Icons.Outlined.MoreVert,
-                            contentDescription = stringResource(Res.string.asset_action_more),
-                            tint = Color.White
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = showOverflow,
-                        onDismissRequest = { onShowOverflowChange(false) }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.add_to_album_title)) },
-                            leadingIcon = { Icon(Icons.Outlined.AddToPhotos, contentDescription = null) },
-                            onClick = {
-                                onShowOverflowChange(false)
-                                onAddToAlbum()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.asset_action_download)) },
-                            leadingIcon = { Icon(Icons.Outlined.Download, contentDescription = null) },
-                            onClick = {
-                                onShowOverflowChange(false)
-                                onDownload()
-                            }
-                        )
-                        if (onEditDescription != null) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.asset_action_edit_description)) },
-                                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                                onClick = {
-                                    onShowOverflowChange(false)
-                                    onEditDescription()
-                                }
-                            )
-                        }
-                        if (onEditDate != null) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.asset_action_edit_date)) },
-                                leadingIcon = { Icon(Icons.Outlined.DateRange, contentDescription = null) },
-                                onClick = {
-                                    onShowOverflowChange(false)
-                                    onEditDate()
-                                }
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.asset_action_faces)) },
-                            leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
-                            onClick = {
-                                onShowOverflowChange(false)
-                                onOpenFaces()
-                            }
-                        )
-                        if (onAnalyze != null) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.asset_action_analyze)) },
-                                leadingIcon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
-                                onClick = {
-                                    onShowOverflowChange(false)
-                                    onAnalyze()
-                                }
-                            )
-                        }
-                        ArchiveToggleMenuItem(
-                            isArchiveMode = mode == AssetViewerMode.Archive,
-                            onClick = {
-                                onShowOverflowChange(false)
-                                onArchive()
-                            }
-                        )
-                    }
-                }
-            }
+            ViewerActionButtons(
+                actions = actions,
+                showOverflow = showOverflow,
+                onShowOverflowChange = onShowOverflowChange
+            )
         }
           }
         }

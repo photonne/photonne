@@ -38,6 +38,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderTreeNode
@@ -60,6 +62,9 @@ fun UtilitiesLocationsScreen(
     title: String,
     onBack: () -> Unit,
     viewModel: UtilitiesLocationsViewModel,
+    /** Abre el detalle de la carpeta tocada (hoja, o el texto de una fila con
+     *  hijos; el chevron sigue desplegando). */
+    onFolderClick: (FolderTreeNode) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val reservedTop = subscreenChromeReservedTop()
@@ -78,7 +83,14 @@ fun UtilitiesLocationsScreen(
             state.isLoading && state.roots.isEmpty() ->
                 ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop))
             state.error?.userMessage != null && state.roots.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
+                // El error también reserva el alto del cromo flotante: sin esto
+                // el banner quedaba tapado por la cápsula del título.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = reservedTop)
+                        .padding(Spacing.lg)
+                ) {
                     ErrorBanner(error = state.error, onRetry = viewModel::refresh)
                 }
             state.roots.isEmpty() ->
@@ -102,7 +114,8 @@ fun UtilitiesLocationsScreen(
                         node = root,
                         depth = 0,
                         expanded = state.expanded,
-                        onToggle = viewModel::toggle
+                        onToggle = viewModel::toggle,
+                        onOpen = onFolderClick
                     )
                 }
             }
@@ -132,7 +145,8 @@ private fun LazyListScope.renderFolder(
     node: FolderTreeNode,
     depth: Int,
     expanded: Set<String>,
-    onToggle: (String) -> Unit
+    onToggle: (String) -> Unit,
+    onOpen: (FolderTreeNode) -> Unit
 ) {
     item(key = node.id) {
         FolderRow(
@@ -140,7 +154,8 @@ private fun LazyListScope.renderFolder(
             depth = depth,
             isExpanded = node.id in expanded,
             hasChildren = node.subFolders.isNotEmpty(),
-            onToggle = { onToggle(node.id) }
+            onToggle = { onToggle(node.id) },
+            onOpen = { onOpen(node) }
         )
     }
     if (node.id in expanded) {
@@ -149,7 +164,8 @@ private fun LazyListScope.renderFolder(
                 node = child,
                 depth = depth + 1,
                 expanded = expanded,
-                onToggle = onToggle
+                onToggle = onToggle,
+                onOpen = onOpen
             )
         }
     }
@@ -161,14 +177,16 @@ private fun FolderRow(
     depth: Int,
     isExpanded: Boolean,
     hasChildren: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onOpen: () -> Unit
 ) {
     val indent = (depth * 16).dp
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = indent)
-            .clickable(enabled = hasChildren, onClick = onToggle),
+            // Tocar la fila abre la carpeta; solo el chevron despliega.
+            .clickable(onClick = onOpen),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -180,7 +198,13 @@ private fun FolderRow(
         ) {
             // Caret only renders when the folder has children so leaf
             // rows don't reserve dead space at the start of the row.
-            Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .clickable(enabled = hasChildren, onClick = onToggle),
+                contentAlignment = Alignment.Center
+            ) {
                 if (hasChildren) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Filled.KeyboardArrowDown

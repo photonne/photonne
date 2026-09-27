@@ -185,6 +185,7 @@ import com.photonne.app.resources.selection_label_leave
 import com.photonne.app.resources.selection_label_members
 import com.photonne.app.resources.selection_label_more
 import com.photonne.app.resources.selection_label_move
+import com.photonne.app.resources.folder_move_assets_title
 import com.photonne.app.resources.selection_label_remove
 import com.photonne.app.resources.selection_label_select_all
 import com.photonne.app.resources.selection_label_set_cover
@@ -1003,6 +1004,10 @@ fun AssetSelectionBottomBar(
     // count + More. The context action takes Download's slot.
     val hasContextAction = onMove != null || onRemoveFromAlbum != null ||
         onSetAsCover != null || onUnlink != null
+    // Mover solo ocupa hueco en la barra si es la única acción de contexto; en
+    // un álbum (Quitar, Portada) baja al menú ⋮ para no desbordarla.
+    val moveInBar = onMove != null && onRemoveFromAlbum == null &&
+        onSetAsCover == null && onUnlink == null
 
     // Con la papelera desactivada en el servidor, "mover a la papelera" borra
     // para siempre: nada de Deshacer (mentiría) y confirmación explícita.
@@ -1089,7 +1094,7 @@ fun AssetSelectionBottomBar(
                 }
             )
         }
-        if (onMove != null) {
+        if (onMove != null && moveInBar) {
             FloatingSelectionBarItem(
                 onClick = onMove,
                 enabled = !isMutating,
@@ -1159,6 +1164,15 @@ fun AssetSelectionBottomBar(
                                     Icon(Icons.Outlined.Download, contentDescription = null)
                                 },
                                 onClick = { menuOpen = false; onDownload() }
+                            )
+                        }
+                        if (onMove != null && !moveInBar) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.folder_move_assets_title)) },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null)
+                                },
+                                onClick = { menuOpen = false; onMove() }
                             )
                         }
                         DropdownMenuItem(

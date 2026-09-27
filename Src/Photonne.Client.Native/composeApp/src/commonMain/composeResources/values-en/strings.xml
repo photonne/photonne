@@ -218,6 +218,8 @@
     <string name="asset_action_edit_date">Edit capture date</string>
     <string name="asset_action_open_in_maps">Open in Maps</string>
     <string name="asset_action_more">More actions</string>
+    <string name="asset_action_favorite_add">Add to favorites</string>
+    <string name="asset_action_favorite_remove">Remove from favorites</string>
     <string name="slideshow_start">Start slideshow</string>
     <string name="slideshow_exit">Exit slideshow</string>
     <string name="slideshow_play">Resume</string>
@@ -519,6 +521,10 @@
         <item quantity="one">%1$d photo belongs to another member</item>
         <item quantity="other">%1$d photos belong to other members</item>
     </plurals>
+    <plurals name="selection_move_blocked_read_only">
+        <item quantity="one">%1$d photo is in an external (read-only) library and can’t be moved</item>
+        <item quantity="other">%1$d photos are in an external (read-only) library and can’t be moved</item>
+    </plurals>
     <string name="selection_trash_blocked_folder">You don’t have permission to delete in this folder</string>
     <plurals name="album_trash_warning">
         <item quantity="one">%1$d photo will go to the trash and leave this album and any others it is in. Restoring it won’t put it back in the albums.</item>
@@ -591,6 +597,9 @@
     <string name="account_section_appearance_subtitle">Light, dark or follow the system</string>
     <string name="account_section_storage">Storage</string>
     <string name="account_section_storage_subtitle">Current usage and quota</string>
+    <string name="account_section_connection">Connection</string>
+    <string name="account_section_connection_subtitle">Server you\'re connected to and this device\'s addresses</string>
+    <string name="account_connection_server">Connected to</string>
     <string name="account_profile_first_name">First name</string>
     <string name="account_profile_last_name">Last name</string>
     <string name="account_profile_email">Email</string>
@@ -1530,6 +1539,14 @@
     <string name="asset_detail_tag_add">Add</string>
     <string name="asset_detail_tag_dialog_title">Add tag</string>
     <string name="asset_detail_tag_placeholder">e.g. Holidays</string>
+    <string name="asset_detail_tags_label">Tags</string>
+    <string name="asset_auto_tag_live_photo">Live Photo</string>
+    <string name="asset_auto_tag_burst">Burst</string>
+    <string name="asset_auto_tag_panorama">Panorama</string>
+    <string name="asset_auto_tag_screenshot">Screenshot</string>
+    <string name="asset_auto_tag_hdr">HDR</string>
+    <string name="asset_auto_tag_portrait">Portrait</string>
+    <string name="asset_auto_tag_motion_part">Live Photo video</string>
     <plurals name="asset_detail_faces_count">
         <item quantity="one">Face (%1$d)</item>
         <item quantity="other">Faces (%1$d)</item>

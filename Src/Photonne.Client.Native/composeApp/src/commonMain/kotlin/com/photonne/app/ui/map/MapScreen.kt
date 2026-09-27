@@ -56,7 +56,10 @@ import com.photonne.app.ui.theme.Spacing
 @Composable
 fun MapScreen(
     viewModel: MapViewModel,
-    onPointOpen: (MapPoint) -> Unit,
+    /** Marcador suelto: los puntos visibles en el viewport, del más reciente
+     *  al más antiguo, y el índice del tocado (Lote N2: antes el visor se
+     *  abría con una sola foto y no se podía deslizar, a diferencia del clúster). */
+    onPointOpen: (List<MapPoint>, Int) -> Unit,
     onClusterPhotoOpen: (List<MapPoint>, Int) -> Unit,
     onBulkAddToAlbum: () -> Unit,
     onBack: () -> Unit
@@ -88,7 +91,19 @@ fun MapScreen(
             onCenterChanged = viewModel::onCenterChanged,
             onZoomChanged = viewModel::onZoomChanged,
             onClusterClick = viewModel::openClusterSheet,
-            onPointClick = onPointOpen,
+            onPointClick = { tapped ->
+                val visible = visiblePoints(
+                    points = state.points,
+                    centerLat = state.centerLat,
+                    centerLng = state.centerLng,
+                    zoom = state.zoom,
+                    widthPx = mapSizePx.width,
+                    heightPx = mapSizePx.height
+                )
+                val ordered = (if (visible.any { it.id == tapped.id }) visible else visible + tapped)
+                    .sortedByDescending { it.date }
+                onPointOpen(ordered, ordered.indexOfFirst { it.id == tapped.id }.coerceAtLeast(0))
+            },
             tileApiKey = state.tileApiKey,
             modifier = Modifier.fillMaxSize().hazeSource(mapHazeState)
         )
@@ -264,5 +279,26 @@ fun MapScreen(
             onArchive = viewModel::bulkArchive,
             onTrash = viewModel::bulkTrash
         )
+    }
+}
+
+/** Puntos cuyo marcador cae dentro del rectángulo visible del mapa. Sin tamaño
+ *  medido todavía no hay viewport que mirar y se devuelve vacío (el llamador
+ *  añade el punto tocado). */
+private fun visiblePoints(
+    points: List<MapPoint>,
+    centerLat: Double,
+    centerLng: Double,
+    zoom: Int,
+    widthPx: Int,
+    heightPx: Int
+): List<MapPoint> {
+    if (widthPx <= 0 || heightPx <= 0) return emptyList()
+    val center = project(LatLng(centerLat, centerLng), zoom)
+    val halfW = widthPx / 2.0
+    val halfH = heightPx / 2.0
+    return points.filter { p ->
+        val w = project(LatLng(p.latitude, p.longitude), zoom)
+        kotlin.math.abs(w.x - center.x) <= halfW && kotlin.math.abs(w.y - center.y) <= halfH
     }
 }

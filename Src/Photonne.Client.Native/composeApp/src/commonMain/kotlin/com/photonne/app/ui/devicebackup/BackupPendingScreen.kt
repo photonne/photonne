@@ -59,7 +59,6 @@ import coil3.compose.AsyncImage
 import com.photonne.app.data.devicebackup.DeviceGallery
 import com.photonne.app.data.devicebackup.DeviceMediaSyncState
 import com.photonne.app.data.devicebackup.DeviceMediaType
-import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.backup_action_ignore
@@ -116,9 +115,12 @@ fun BackupPendingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
-    val pickFolder = rememberDeviceFolderPicker(
+    // Mismo selector de orígenes que Copia de seguridad (MediaStore, con el
+    // SAF clásico como "Otra carpeta"), no el SAF a pelo.
+    val pickFolder = rememberBackupSourcePicker(
         gallery = gallery,
-        onPicked = viewModel::onFolderPicked
+        viewModel = viewModel,
+        addedUris = remember(state.folders) { state.folders.mapTo(HashSet()) { it.uri } }
     )
     var previewStartUri by remember { mutableStateOf<String?>(null) }
     var failedDialogUri by remember { mutableStateOf<String?>(null) }

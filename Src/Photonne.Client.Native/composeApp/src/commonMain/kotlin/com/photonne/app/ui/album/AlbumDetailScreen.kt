@@ -36,7 +36,6 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -92,6 +91,7 @@ import com.photonne.app.ui.main.ScrollToTopPill
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.ui.main.ImmersiveChromeEffect
+import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
@@ -210,12 +210,9 @@ fun AlbumDetailScreen(
             state.isLoading && state.items.isEmpty() ->
                 Column(modifier = Modifier.fillMaxSize()) {
                     hero()
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    // Mismo esqueleto que el detalle de carpeta: la rejilla se
+                    // anuncia con su forma en vez de un spinner centrado.
+                    AssetGridSkeleton(modifier = Modifier.fillMaxSize())
                 }
             state.error?.userMessage != null && state.items.isEmpty() ->
                 Column(modifier = Modifier.fillMaxSize()) {

@@ -44,6 +44,7 @@ import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.album_trash_warning
 import com.photonne.app.resources.album_trash_warning_shared
 import com.photonne.app.resources.selection_trash_blocked_foreign
+import com.photonne.app.resources.selection_move_blocked_read_only
 import com.photonne.app.resources.selection_trash_blocked_folder
 import com.photonne.app.resources.selection_restore_done
 import com.photonne.app.resources.logout_confirm_message
@@ -79,6 +80,7 @@ import com.photonne.app.resources.account_section_appearance
 import com.photonne.app.resources.account_section_profile
 import com.photonne.app.resources.account_section_security
 import com.photonne.app.resources.account_section_storage
+import com.photonne.app.resources.account_section_connection
 import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.admin_section_libraries
 import com.photonne.app.resources.admin_section_settings
@@ -122,6 +124,7 @@ import com.photonne.app.resources.folder_move_title
 import com.photonne.app.resources.trash_action_delete_forever
 import com.photonne.app.resources.trash_action_empty
 import com.photonne.app.resources.trash_action_restore_all
+import com.photonne.app.resources.action_more
 import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
@@ -235,6 +238,15 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
+/**
+ * "Mover a carpeta" sobre una selección cualquiera (Lote N6): los ids y qué
+ * hacer al terminar. El diálogo ya no está atado a la selección del timeline.
+ */
+private class MoveSelectionRequest(
+    val assetIds: List<String>,
+    val onMoved: () -> Unit
+)
+
 private enum class MoreSubscreen {
     Upload,
     CreateSmartAlbum,
@@ -265,6 +277,7 @@ private enum class MoreSubscreen {
     AccountSecurity,
     AccountAppearance,
     AccountStorage,
+    AccountConnection,
     Notifications,
     Administration,
     AdminUsers,
@@ -388,7 +401,8 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AccountProfile,
     MoreSubscreen.AccountSecurity,
     MoreSubscreen.AccountAppearance,
-    MoreSubscreen.AccountStorage -> MoreSubscreen.AccountSettings
+    MoreSubscreen.AccountStorage,
+    MoreSubscreen.AccountConnection -> MoreSubscreen.AccountSettings
     MoreSubscreen.AdminUsers,
     MoreSubscreen.AdminLibraries,
     MoreSubscreen.AdminStats,
@@ -837,6 +851,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     )
     // Retocar la pestaña Fotos activa vuelve arriba (consumido por TimelineScreen).
     var timelineScrollToTopTick by remember { mutableStateOf(0) }
+    var albumsScrollToTopTick by remember { mutableStateOf(0) }
+    var foldersScrollToTopTick by remember { mutableStateOf(0) }
     // The bucket the "Mi dispositivo" detail subscreen shows. Survives going
     // back to the bucket list (harmless), reset on every open.
     var deviceFolderBucket by remember {
@@ -970,6 +986,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
     var showMoveSelectedAssetsTimeline by remember { mutableStateOf(false) }
     var showMoveSelectedAssetsInbox by remember { mutableStateOf(false) }
+    var moveSelectionRequest by remember { mutableStateOf<MoveSelectionRequest?>(null) }
+    var moveSelectionSubmitting by remember { mutableStateOf(false) }
+    var moveSelectionError by remember { mutableStateOf<String?>(null) }
     // Non-null while the inbox move "Revisar" grid is open: the chosen destination.
     var inboxReviewTarget by remember { mutableStateOf<String?>(null) }
     // Resumen del reparto por año tras mover por condiciones: se confirma antes
@@ -1001,6 +1020,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreSubscreen = returnTo.second
         } else {
             selectedTab = MainTab.Timeline
+        }
+    }
+    // Carpeta abierta desde Ubicaciones (Lote N8): al salir de su raíz, Atrás
+    // vuelve a esa subpantalla (y a la pestaña de debajo), no a la lista de
+    // Carpetas. Cualquier toque en la barra de navegación lo olvida.
+    var folderReturnTo by remember { mutableStateOf<Pair<MainTab, MoreSubscreen>?>(null) }
+    fun folderBack() {
+        if (folderBackStack.isNotEmpty()) {
+            selectedFolder = folderBackStack.removeAt(folderBackStack.lastIndex)
+            return
+        }
+        selectedFolder = null
+        val returnTo = folderReturnTo
+        folderReturnTo = null
+        if (returnTo != null) {
+            selectedTab = returnTo.first
+            moreSubscreen = returnTo.second
         }
     }
     // Lote M4: una notificación del backup abre su pantalla (progreso) o sus
@@ -1132,11 +1168,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive ->
                 organizeInboxViewModel.clearSelection()
             selectedTab == MainTab.Albums && selectedAlbum != null -> albumBack()
-            selectedTab == MainTab.Folders && selectedFolder != null -> {
-                selectedFolder = if (folderBackStack.isNotEmpty()) {
-                    folderBackStack.removeAt(folderBackStack.lastIndex)
-                } else null
-            }
+            selectedTab == MainTab.Folders && selectedFolder != null -> folderBack()
             moreSubscreen == MoreSubscreen.People && selectedPerson != null -> {
                 selectedPerson = null
             }
@@ -1259,6 +1291,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.AccountSecurity,
         MoreSubscreen.AccountAppearance,
         MoreSubscreen.AccountStorage,
+        MoreSubscreen.AccountConnection,
         MoreSubscreen.Administration,
         MoreSubscreen.AdminUsers,
         MoreSubscreen.AdminUserEditor,
@@ -1550,6 +1583,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreSubscreen == MoreSubscreen.AccountSecurity -> { }
             moreSubscreen == MoreSubscreen.AccountAppearance -> { }
             moreSubscreen == MoreSubscreen.AccountStorage -> { }
+            moreSubscreen == MoreSubscreen.AccountConnection -> { }
             moreSubscreen == MoreSubscreen.Administration -> { }
             moreSubscreen == MoreSubscreen.AdminUsers -> { }
             moreSubscreen == MoreSubscreen.AdminUserEditor -> { }
@@ -1642,6 +1676,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     selectedIds = { albumDetailState.selection.toList() },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
+                    },
+                    onMove = run {
+                        val unmovable = com.photonne.app.ui.actions.countUnmovable(
+                            albumDetailState.items, albumDetailState.selection
+                        )
+                        val moveBlocked = if (unmovable > 0) pluralStringResource(
+                            Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
+                        ) else null
+                        val moveSnackbar = LocalSnackbarController.current
+                        {
+                            if (moveBlocked != null) {
+                                moveSnackbar?.show(moveBlocked)
+                            } else {
+                                moveSelectionError = null
+                                moveSelectionRequest = MoveSelectionRequest(
+                                    assetIds = albumDetailState.selection.toList(),
+                                    onMoved = albumDetailViewModel::clearSelection
+                                )
+                            }
+                        }
                     },
                     // En un álbum inteligente el contenido lo deciden las
                     // reglas: ni quitar fotos ni fijar portada aplican.
@@ -1781,6 +1835,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
+                    onMove = run {
+                        val unmovable = com.photonne.app.ui.actions.countUnmovable(
+                            searchState.results, searchState.selection
+                        )
+                        val moveBlocked = if (unmovable > 0) pluralStringResource(
+                            Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
+                        ) else null
+                        val moveSnackbar = LocalSnackbarController.current
+                        {
+                            if (moveBlocked != null) {
+                                moveSnackbar?.show(moveBlocked)
+                            } else {
+                                moveSelectionError = null
+                                moveSelectionRequest = MoveSelectionRequest(
+                                    assetIds = searchState.selection.toList(),
+                                    onMoved = searchViewModel::clearSelection
+                                )
+                            }
+                        }
+                    },
                 )
             }
         }
@@ -1885,6 +1959,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
+                    onMove = run {
+                        val unmovable = com.photonne.app.ui.actions.countUnmovable(
+                            favoritesState.items, favoritesState.selection
+                        )
+                        val moveBlocked = if (unmovable > 0) pluralStringResource(
+                            Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
+                        ) else null
+                        val moveSnackbar = LocalSnackbarController.current
+                        {
+                            if (moveBlocked != null) {
+                                moveSnackbar?.show(moveBlocked)
+                            } else {
+                                moveSelectionError = null
+                                moveSelectionRequest = MoveSelectionRequest(
+                                    assetIds = favoritesState.selection.toList(),
+                                    onMoved = favoritesViewModel::clearSelection
+                                )
+                            }
+                        }
+                    },
                 )
             }
         }
@@ -1908,6 +2002,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     selectedIds = { archivedState.selection.toList() },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
+                    },
+                    onMove = run {
+                        val unmovable = com.photonne.app.ui.actions.countUnmovable(
+                            archivedState.items, archivedState.selection
+                        )
+                        val moveBlocked = if (unmovable > 0) pluralStringResource(
+                            Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
+                        ) else null
+                        val moveSnackbar = LocalSnackbarController.current
+                        {
+                            if (moveBlocked != null) {
+                                moveSnackbar?.show(moveBlocked)
+                            } else {
+                                moveSelectionError = null
+                                moveSelectionRequest = MoveSelectionRequest(
+                                    assetIds = archivedState.selection.toList(),
+                                    onMoved = archivedViewModel::clearSelection
+                                )
+                            }
+                        }
                     },
                 )
             }
@@ -2082,8 +2196,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         ) {
             timelineScrollToTopTick++
         }
+        // Lo mismo en Álbumes y Carpetas, solo en su raíz: con un álbum o una
+        // carpeta abiertos el retoque sigue cerrándolos (abajo).
+        if (tab == MainTab.Albums && selectedTab == MainTab.Albums &&
+            moreSubscreen == null && selectedPerson == null && selectedAlbum == null
+        ) {
+            albumsScrollToTopTick++
+        }
+        if (tab == MainTab.Folders && selectedTab == MainTab.Folders &&
+            moreSubscreen == null && selectedPerson == null && selectedFolder == null
+        ) {
+            foldersScrollToTopTick++
+        }
         moreSubscreen = null
         selectedPerson = null
+        folderReturnTo = null
         if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
         if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
             selectedFolder = null
@@ -2318,7 +2445,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onOpenObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
                                 onOpenFilters = { showAlbumsFilters = true },
                                 immersive = albumsImmersive,
-                                onChromeVisibleChange = { albumsChromeVisible = it }
+                                onChromeVisibleChange = { albumsChromeVisible = it },
+                                scrollToTopTick = albumsScrollToTopTick
                             )
                         }
                     }
@@ -2359,7 +2487,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onOpenFilters = { showFoldersFilters = true },
                                 onCreateFolder = foldersCreate,
                                 immersive = foldersImmersive,
-                                onChromeVisibleChange = { foldersChromeVisible = it }
+                                onChromeVisibleChange = { foldersChromeVisible = it },
+                                scrollToTopTick = foldersScrollToTopTick
                             )
                         }
                     }
@@ -2495,11 +2624,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             parentFolderId = openedFolder.parentFolderId,
                             title = (folderDetailState.folderName ?: openedFolder.name)
                                 .ifBlank { openedFolder.path },
-                            onBack = {
-                                selectedFolder = if (folderBackStack.isNotEmpty()) {
-                                    folderBackStack.removeAt(folderBackStack.lastIndex)
-                                } else null
-                            },
+                            onBack = { folderBack() },
                             onItemClick = { index ->
                                 if (folderDetailState.isSelectionActive) {
                                     folderDetailState.items.getOrNull(index)?.let {
@@ -2825,7 +2950,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             title = stringResource(Res.string.utilities_section_locations),
                             onBack = { moreSubscreen = MoreSubscreen.Utilities },
                             onChromeVisibleChange = { subscreenChromeVisible = it },
-                            viewModel = utilitiesLocationsViewModel
+                            viewModel = utilitiesLocationsViewModel,
+                            onFolderClick = { node ->
+                                coroutineScope.launch {
+                                    // El resumen real trae los permisos (escribir,
+                                    // borrar); sin red se abre con lo que da el
+                                    // árbol, en solo lectura, y el detalle pinta
+                                    // su propio error con Reintentar.
+                                    val folder = runCatching { foldersRepository.get(node.id) }
+                                        .getOrElse {
+                                            com.photonne.app.data.models.FolderSummary(
+                                                id = node.id,
+                                                path = node.path,
+                                                name = node.name,
+                                                parentFolderId = node.parentFolderId,
+                                                createdAt = kotlin.time.Clock.System.now(),
+                                                assetCount = node.assetCount,
+                                                isShared = node.isShared,
+                                                isOwner = node.isOwner,
+                                                canWrite = false,
+                                                canDelete = false,
+                                                externalLibraryId = node.externalLibraryId
+                                            )
+                                        }
+                                    folderReturnTo = selectedTab to MoreSubscreen.UtilitiesLocations
+                                    folderBackStack.clear()
+                                    selectedFolder = folder
+                                    moreSubscreen = null
+                                    selectedTab = MainTab.Folders
+                                }
+                            }
                         )
                     MoreSubscreen.Memories ->
                         com.photonne.app.ui.memories.MemoriesScreen(
@@ -2871,14 +3025,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
-                        onPointOpen = { point ->
+                        onPointOpen = { visiblePoints, index ->
                             // Single-marker tap → open the asset viewer
-                            // seeded with that one item. The viewer
-                            // re-fetches asset detail on display, so a
-                            // synthetic TimelineItem is enough.
+                            // seeded with every point visible in the
+                            // viewport (by date), starting at the tapped
+                            // one, so it swipes like a cluster does. The
+                            // viewer re-fetches asset detail on display, so
+                            // synthetic TimelineItems are enough.
                             assetDetail = AssetDetailContext(
-                                items = listOf(point.toSyntheticTimelineItem()),
-                                startIndex = 0,
+                                items = visiblePoints.map { it.toSyntheticTimelineItem() },
+                                startIndex = index,
                                 source = AssetDetailContext.Source.Timeline,
                                 hasMore = false,
                                 onLoadMore = {},
@@ -3237,7 +3393,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         ) {
                                             Icon(
                                                 Icons.Filled.MoreVert,
-                                                contentDescription = null
+                                                contentDescription = stringResource(Res.string.action_more)
                                             )
                                         }
                                         androidx.compose.material3.DropdownMenu(
@@ -3334,6 +3490,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         MoreSubscreen.AccountAppearance
                                     com.photonne.app.ui.settings.AccountSettingsSection.Storage ->
                                         MoreSubscreen.AccountStorage
+                                    com.photonne.app.ui.settings.AccountSettingsSection.Connection ->
+                                        MoreSubscreen.AccountConnection
                                 }
                             }
                         )
@@ -3364,6 +3522,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
                             onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = accountStorageViewModel
+                        )
+                    MoreSubscreen.AccountConnection ->
+                        com.photonne.app.ui.settings.AccountConnectionScreen(
+                            title = stringResource(Res.string.account_section_connection),
+                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            viewModel = deviceConnectionViewModel
                         )
                     MoreSubscreen.Administration ->
                         com.photonne.app.ui.admin.AdministrationScreen(
@@ -3602,8 +3767,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             title = stringResource(Res.string.admin_settings_server),
                             onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
                             onChromeVisibleChange = { subscreenChromeVisible = it },
-                            viewModel = adminServerSettingsViewModel,
-                            deviceConnectionViewModel = deviceConnectionViewModel
+                            viewModel = adminServerSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsTrash ->
                         com.photonne.app.ui.admin.AdminTrashSettingsScreen(
@@ -4519,9 +4683,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 folderDetailViewModel.delete { folderId ->
                     showDeleteFolder = false
                     foldersViewModel.applyDelete(folderId)
-                    selectedFolder = if (folderBackStack.isNotEmpty()) {
-                        folderBackStack.removeAt(folderBackStack.lastIndex)
-                    } else null
+                    folderBack()
                 }
             }
         )
@@ -4807,27 +4969,86 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
-    if (showMoveSelectedAssetsTimeline) {
+    // "Mover a carpeta" de una selección: el mismo diálogo para el timeline
+    // (que refresca su store en su ViewModel) y para Álbum, Búsqueda,
+    // Favoritos y Archivados, que solo necesitan los ids (Lote N6).
+    @Composable
+    fun MoveAssetsToFolderDialog(
+        isSubmitting: Boolean,
+        errorMessage: String?,
+        onDismiss: () -> Unit,
+        onMove: (targetFolderId: String, targetName: String?) -> Unit
+    ) {
         com.photonne.app.ui.folder.FolderPickerDialog(
             title = stringResource(Res.string.folder_move_assets_title),
             folders = foldersState.moveDestinations,
-            isSubmitting = timelineState.isBulkMutating,
-            errorMessage = timelineState.error?.userMessage,
+            isSubmitting = isSubmitting,
+            errorMessage = errorMessage,
             includeRoot = false,
             recentDestinationIds = recentDestinations,
+            onDismiss = onDismiss,
+            onConfirm = { targetFolderId, _ ->
+                if (targetFolderId != null) {
+                    recentDestinationsStore.record(targetFolderId)
+                    onMove(
+                        targetFolderId,
+                        foldersState.moveDestinations.firstOrNull { it.id == targetFolderId }?.name
+                    )
+                }
+            }
+        )
+    }
+
+    if (showMoveSelectedAssetsTimeline) {
+        MoveAssetsToFolderDialog(
+            isSubmitting = timelineState.isBulkMutating,
+            errorMessage = timelineState.error?.userMessage,
             onDismiss = {
                 showMoveSelectedAssetsTimeline = false
                 timelineViewModel.clearError()
             },
-            onConfirm = { targetFolderId, _ ->
-                if (targetFolderId != null) {
-                    recentDestinationsStore.record(targetFolderId)
-                    val targetName = foldersState.moveDestinations
-                        .firstOrNull { it.id == targetFolderId }?.name
-                    timelineViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
-                        showMoveSelectedAssetsTimeline = false
-                        foldersViewModel.refreshOrganizeCount()
-                        showMovedToFolderSnackbar(movedIds.size, targetName)
+            onMove = { targetFolderId, targetName ->
+                timelineViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
+                    showMoveSelectedAssetsTimeline = false
+                    foldersViewModel.refreshOrganizeCount()
+                    showMovedToFolderSnackbar(movedIds.size, targetName)
+                }
+            }
+        )
+    }
+
+    moveSelectionRequest?.let { request ->
+        MoveAssetsToFolderDialog(
+            isSubmitting = moveSelectionSubmitting,
+            errorMessage = moveSelectionError,
+            onDismiss = {
+                if (!moveSelectionSubmitting) {
+                    moveSelectionRequest = null
+                    moveSelectionError = null
+                }
+            },
+            onMove = { targetFolderId, targetName ->
+                if (!moveSelectionSubmitting) {
+                    moveSelectionSubmitting = true
+                    moveSelectionError = null
+                    coroutineScope.launch {
+                        runCatching {
+                            foldersRepository.moveAssets(
+                                sourceFolderId = null,
+                                targetFolderId = targetFolderId,
+                                assetIds = request.assetIds
+                            )
+                        }.onSuccess {
+                            moveSelectionSubmitting = false
+                            moveSelectionRequest = null
+                            request.onMoved()
+                            foldersViewModel.refreshOrganizeCount()
+                            showMovedToFolderSnackbar(request.assetIds.size, targetName)
+                        }.onFailure { error ->
+                            moveSelectionSubmitting = false
+                            moveSelectionError =
+                                errorFactory.from(error, "No se pudo mover").userMessage
+                        }
                     }
                 }
             }

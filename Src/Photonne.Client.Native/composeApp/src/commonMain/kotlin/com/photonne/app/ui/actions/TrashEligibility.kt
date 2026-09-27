@@ -17,6 +17,17 @@ fun countUntrashable(items: List<TimelineItem>, ids: Set<String>, username: Stri
     return items.count { it.id in ids && !isTrashableBy(it, username) }
 }
 
+/**
+ * Seleccionadas que "Mover a carpeta" no puede tocar según lo que el cliente
+ * sabe: las de una biblioteca externa (solo lectura). El servidor pide además
+ * escritura en la carpeta de cada foto, que puede venir de una compartición;
+ * eso no se adivina aquí y, si falla, el diálogo enseña su 403.
+ */
+fun countUnmovable(items: List<TimelineItem>, ids: Set<String>): Int {
+    if (ids.isEmpty()) return 0
+    return items.count { it.id in ids && it.isReadOnly }
+}
+
 private fun isTrashableBy(item: TimelineItem, username: String): Boolean {
     if (item.isReadOnly) return false
     val path = item.fullPath.replace('\\', '/')
