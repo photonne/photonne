@@ -32,35 +32,12 @@ actual fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
-        val resolver = context.contentResolver
         scope.launch {
             val files = withContext(Dispatchers.IO) {
                 // OpenMultipleDocuments has no OS-imposed selection cap like
                 // the Photo Picker did; keep our own so a whole-folder
                 // selection can't queue an unbounded in-memory batch.
-                uris.take(MAX_SELECTION).mapNotNull { uri ->
-                    runCatching {
-                        val meta = queryMeta(resolver, uri)
-                        val name = meta.name ?: "upload"
-                        val mime = resolver.getType(uri) ?: "application/octet-stream"
-                        val isVideo = mime.startsWith("video/")
-                        // Original bytes (GPS intact) when the file is in
-                        // MediaStore and the permission is held; otherwise the
-                        // plain SAF stream.
-                        val bytes = MediaOriginalReader.openOriginalStream(
-                            context, uri, name, isVideo, meta.size ?: 0L
-                        )?.use { it.readBytes() }
-                            ?: resolver.openInputStream(uri)?.use { it.readBytes() }
-                            ?: return@runCatching null
-                        PickedFile(
-                            name = name,
-                            mimeType = mime,
-                            sizeBytes = bytes.size.toLong(),
-                            bytes = bytes,
-                            lastModifiedMillis = meta.lastModified
-                        )
-                    }.getOrNull()
-                }
+                uris.take(MAX_SELECTION).mapNotNull { uri -> readPickedFile(context, uri) }
             }
             currentOnPicked.value(files)
         }
@@ -81,6 +58,53 @@ actual fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit
     }
 }
 
+/**
+ * Lee [uri] entero como [PickedFile]: los bytes ORIGINALES (GPS intacto) si el
+ * archivo está en MediaStore y hay permiso; si no, el flujo tal cual. Lo usan el
+ * selector y "Compartir con Photonne" (MainActivity), que tiene que leer en el
+ * momento, mientras dura el permiso temporal del intent.
+ *
+ * Con [maxBytes], un archivo que ya se sabe más grande no se lee: vuelve sin
+ * bytes y con su tamaño real, y la cola de subida lo descarta y lo cuenta en su
+ * aviso de "superan el límite" (leerlo entero en memoria para eso no tiene
+ * sentido).
+ */
+internal fun readPickedFile(
+    context: android.content.Context,
+    uri: android.net.Uri,
+    maxBytes: Long? = null
+): PickedFile? = runCatching {
+    val resolver = context.contentResolver
+    val meta = queryMeta(resolver, uri)
+    val name = meta.name ?: "upload"
+    val mime = resolver.getType(uri) ?: "application/octet-stream"
+    val isVideo = mime.startsWith("video/")
+    val knownSize = meta.size
+    if (maxBytes != null && knownSize != null && knownSize > maxBytes) {
+        return@runCatching PickedFile(
+            name = name,
+            mimeType = mime,
+            sizeBytes = knownSize,
+            bytes = ByteArray(0),
+            lastModifiedMillis = meta.lastModified
+        )
+    }
+    // Original bytes (GPS intact) when the file is in MediaStore and the
+    // permission is held; otherwise the plain SAF stream.
+    val bytes = MediaOriginalReader.openOriginalStream(
+        context, uri, name, isVideo, knownSize ?: 0L
+    )?.use { it.readBytes() }
+        ?: resolver.openInputStream(uri)?.use { it.readBytes() }
+        ?: return@runCatching null
+    PickedFile(
+        name = name,
+        mimeType = mime,
+        sizeBytes = bytes.size.toLong(),
+        bytes = bytes,
+        lastModifiedMillis = meta.lastModified
+    )
+}.getOrNull()
+
 private data class DocMeta(val name: String?, val size: Long?, val lastModified: Long?)
 
 private fun queryMeta(resolver: android.content.ContentResolver, uri: android.net.Uri): DocMeta {
@@ -89,7 +113,21 @@ private fun queryMeta(resolver: android.content.ContentResolver, uri: android.ne
         android.provider.OpenableColumns.SIZE,
         android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED
     )
-    return resolver.query(uri, projection, null, null, null)?.use { cursor ->
+    // Una URI compartida desde otra app no es siempre un documento SAF: un
+    // proveedor que no conoce COLUMN_LAST_MODIFIED rechaza la proyección entera.
+    // Entonces se vuelve a pedir solo lo que todo proveedor abrible garantiza.
+    val cursor = runCatching { resolver.query(uri, projection, null, null, null) }.getOrNull()
+        ?: runCatching {
+            resolver.query(
+                uri,
+                arrayOf(
+                    android.provider.OpenableColumns.DISPLAY_NAME,
+                    android.provider.OpenableColumns.SIZE
+                ),
+                null, null, null
+            )
+        }.getOrNull()
+    return cursor?.use { cursor ->
         if (!cursor.moveToFirst()) return@use DocMeta(null, null, null)
         val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
         val sizeIdx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
@@ -102,4 +140,5 @@ private fun queryMeta(resolver: android.content.ContentResolver, uri: android.ne
     } ?: DocMeta(null, null, null)
 }
 
-private const val MAX_SELECTION = 50
+/** Tope de archivos por tanda, también para lo compartido desde otra app. */
+internal const val MAX_SELECTION = 50

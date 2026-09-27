@@ -20,6 +20,21 @@
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
+    <!-- Enlaces compartidos: la web pública ofrece "Abrir en la app" con
+         photonne://share/{token}. Esquema propio y no Universal Links porque
+         cada instalación tiene su dominio y no hay apple-app-site-association
+         que verificar. Lo recoge onOpenURL en iOSApp.swift. -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.photonne.app.share</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>photonne</string>
+            </array>
+        </dict>
+    </array>
     <key>CFBundleLocalizations</key>
     <array>
         <string>es</string>

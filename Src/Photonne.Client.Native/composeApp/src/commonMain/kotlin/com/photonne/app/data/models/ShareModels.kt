@@ -74,3 +74,43 @@ data class SentShareLink(
         shareUrl = shareUrl
     )
 }
+
+/**
+ * Vista pública de un enlace (`GET /api/share/{token}`, sin sesión): lo mismo
+ * que pinta la página web `/share/{token}`. Las URL de miniatura y contenido
+ * vienen relativas al servidor que emitió el enlace (con `?pw=` si lo lleva).
+ */
+@Serializable
+data class PublicShareContent(
+    val token: String = "",
+    val requiresPassword: Boolean = false,
+    val wrongPassword: Boolean = false,
+    val allowDownload: Boolean = true,
+    val allowUpload: Boolean = false,
+    val album: PublicSharedAlbum? = null,
+    val assets: List<PublicSharedAsset>? = null,
+    @Serializable(with = FlexibleInstantSerializer::class) val expiresAt: Instant? = null
+)
+
+@Serializable
+data class PublicSharedAlbum(
+    val name: String = "",
+    val description: String? = null,
+    val assetCount: Int = 0,
+    val coverThumbnailUrl: String? = null
+)
+
+@Serializable
+data class PublicSharedAsset(
+    val id: String,
+    val fileName: String = "",
+    /** "Image" / "Video" (nombre del enum del servidor). */
+    val type: String = "",
+    val fileSize: Long = 0,
+    val width: Int? = null,
+    val height: Int? = null,
+    val thumbnailUrl: String = "",
+    val contentUrl: String = ""
+) {
+    val isVideo: Boolean get() = type.equals("Video", ignoreCase = true)
+}

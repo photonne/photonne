@@ -323,6 +323,6 @@ class UploadViewModel(
 
     companion object {
         const val MAX_MB_PER_FILE = 200
-        private const val MAX_BYTES_PER_FILE = MAX_MB_PER_FILE * 1024L * 1024L
+        const val MAX_BYTES_PER_FILE = MAX_MB_PER_FILE * 1024L * 1024L
     }
 }

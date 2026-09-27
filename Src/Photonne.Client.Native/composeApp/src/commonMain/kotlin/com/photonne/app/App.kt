@@ -517,6 +517,11 @@ fun App() {
     LaunchedEffect(reachabilityProbe) {
         reachabilityProbe.start(probeScope)
     }
+    // Estado global "Sin conexión" (píldora del cromo superior).
+    val connectivityMonitor: com.photonne.app.data.api.ConnectivityMonitor = koinInject()
+    LaunchedEffect(connectivityMonitor) {
+        connectivityMonitor.start(probeScope)
+    }
 
     // Recuperación proactiva al volver a primer plano: purga los sockets
     // medio-abiertos y re-sondea la reachability ANTES de que el primer request
@@ -530,8 +535,11 @@ fun App() {
         var first = true
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) {
+                connectivityMonitor.setForeground(true)
                 if (first) first = false
                 else recoveryScope.launch { foregroundRecovery.onEnterForeground() }
+            } else if (event == Lifecycle.Event.ON_STOP) {
+                connectivityMonitor.setForeground(false)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -759,6 +767,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         memoriesLifecycleOwner.lifecycle.addObserver(observer)
         onDispose { memoriesLifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    val activityNotifications: com.photonne.app.data.notifications.ActivityNotifications =
+        koinInject()
+    val activityNotificationsEnabled by activityNotifications.enabled.collectAsStateWithLifecycle()
     val notificationsViewModel:
         com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
     val notificationsState by notificationsViewModel.state.collectAsStateWithLifecycle()
@@ -1175,12 +1186,40 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
         }
     }
+    // Enlace compartido abierto desde fuera (photonne://share/{token}): tapa la
+    // pantalla como un recuerdo; Atrás lo cierra.
+    val sharedLinkViewModel: com.photonne.app.ui.share.SharedLinkViewModel = koinViewModel()
+    val sharedLinkState by sharedLinkViewModel.state.collectAsStateWithLifecycle()
+    val sharedLinkOpen = sharedLinkState.target != null
     // Lote M4: una notificación del backup abre su pantalla (progreso) o sus
     // Pendientes (fallos). Se consume una vez, también con la app ya abierta.
+    // Funciones nuevas 3/3: también lo compartido desde otra app (Subida con
+    // la cola ya cargada), los enlaces photonne:// y el aviso de actividad.
     val externalDestination by com.photonne.app.ui.main.ExternalNavigation.pending
         .collectAsStateWithLifecycle()
     LaunchedEffect(externalDestination) {
         when (com.photonne.app.ui.main.ExternalNavigation.consume()) {
+            com.photonne.app.ui.main.ExternalDestination.Upload -> {
+                val files = com.photonne.app.ui.main.ExternalNavigation.consumeSharedFiles()
+                assetDetail = null
+                sharedLinkViewModel.close()
+                selectedTab = MainTab.More
+                moreSubscreen = MoreSubscreen.Upload
+                uploadViewModel.enqueue(files) { timelineViewModel.refresh() }
+            }
+            com.photonne.app.ui.main.ExternalDestination.SharedLink -> {
+                com.photonne.app.ui.main.ExternalNavigation.consumeSharedLink()?.let { target ->
+                    assetDetail = null
+                    sharedLinkViewModel.open(target)
+                }
+            }
+            com.photonne.app.ui.main.ExternalDestination.Notifications -> {
+                assetDetail = null
+                sharedLinkViewModel.close()
+                selectedTab = MainTab.More
+                moreSubscreen = MoreSubscreen.Notifications
+                notificationsViewModel.refresh()
+            }
             com.photonne.app.ui.main.ExternalDestination.Backup -> {
                 assetDetail = null
                 selectedTab = MainTab.More
@@ -1255,6 +1294,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var overlayForward by remember { mutableStateOf(true) }
     val canHandleBack = (
         assetDetail != null ||
+        sharedLinkOpen ||
         memoryDetail != null ||
         isAnySelectionActive ||
         selectedAlbum != null ||
@@ -1270,6 +1310,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         overlayForward = false
         when {
             assetDetail != null -> { closeAssetDetail() }
+            sharedLinkOpen -> sharedLinkViewModel.close()
             // Before every selection case: an open memory covers the screen, so
             // back closes what you're actually looking at, not what's underneath.
             memoryDetail != null -> {
@@ -3884,6 +3925,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             title = stringResource(Res.string.account_settings_title),
                             onBack = { moreSubscreen = null },
                             onChromeVisibleChange = { subscreenChromeVisible = it },
+                            activityNotificationsEnabled = activityNotificationsEnabled
+                                .takeIf { activityNotifications.isSupported },
+                            onActivityNotificationsChange = activityNotifications::setEnabled,
                             onOpen = { section ->
                                 moreSubscreen = when (section) {
                                     com.photonne.app.ui.settings.AccountSettingsSection.Profile ->
@@ -5994,14 +6038,34 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
+    // Enlace compartido abierto desde fuera: sobre todo lo demás (el visor se
+    // cierra al abrirlo), bajo el snackbar.
+    if (sharedLinkOpen) {
+        com.photonne.app.ui.share.SharedLinkScreen(
+            state = sharedLinkState,
+            onBack = sharedLinkViewModel::close,
+            onSubmitPassword = sharedLinkViewModel::submitPassword,
+            onRetry = sharedLinkViewModel::retry
+        )
+    }
+
     // Host del snackbar sobre todo lo demás. Entra por arriba, bajo el cromo
     // flotante (barra de estado + cápsula): abajo caía sobre la nav flotante y
     // sobre el botón que lo acababa de provocar.
+    // Encima, la píldora "Sin conexión": el snackbar entra justo debajo de ella.
+    val connectivityMonitor: com.photonne.app.data.api.ConnectivityMonitor = koinInject()
+    val connectivity by connectivityMonitor.status.collectAsStateWithLifecycle()
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        com.photonne.app.ui.main.TopSnackbarHost(
-            hostState = snackbarController.hostState,
-            modifier = Modifier.padding(top = com.photonne.app.ui.main.subscreenChromeReservedTop())
-        )
+        Column(
+            modifier = Modifier.padding(top = com.photonne.app.ui.main.subscreenChromeReservedTop()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            com.photonne.app.ui.main.ConnectivityPill(
+                status = connectivity,
+                onRetry = connectivityMonitor::retry
+            )
+            com.photonne.app.ui.main.TopSnackbarHost(hostState = snackbarController.hostState)
+        }
     }
 
     // Píldora de operación masiva (descarga/ZIP/compartir/enlace) con Cancelar,

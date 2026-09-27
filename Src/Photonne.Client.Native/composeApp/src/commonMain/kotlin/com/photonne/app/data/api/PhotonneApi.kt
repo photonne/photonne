@@ -595,6 +595,18 @@ interface PhotonneApi {
         allowUpload: Boolean
     ): ShareUpdateResult
     suspend fun revokeShare(token: String)
+
+    /**
+     * Vista pública de un enlace compartido (sin sesión). [serverUrl] es el
+     * servidor que lo emitió cuando no es el de la sesión (llega en el enlace
+     * `photonne://share/{token}?server=`); null usa el configurado. El token de
+     * sesión nunca viaja a un servidor ajeno (ver trustedHosts del cliente).
+     */
+    suspend fun getPublicShare(
+        token: String,
+        password: String? = null,
+        serverUrl: String? = null
+    ): com.photonne.app.data.models.PublicShareContent
     suspend fun getShareableUsers(): List<ShareableUser>
     suspend fun listAlbumPermissions(albumId: String): List<AlbumPermission>
     suspend fun setAlbumPermission(
@@ -1824,6 +1836,22 @@ class PhotonneApiClient(
         ) {
             throw response.apiException("Revoke share link failed (${response.status.value})")
         }
+    }
+
+    override suspend fun getPublicShare(
+        token: String,
+        password: String?,
+        serverUrl: String?
+    ): com.photonne.app.data.models.PublicShareContent {
+        val server = serverUrl ?: baseUrl
+        val response: HttpResponse = client.get("$server/api/share/${token.encodeURLPathPart()}") {
+            skipAuthRefresh()
+            password?.takeIf { it.isNotEmpty() }?.let { parameter("pw", it) }
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Shared link fetch failed (${response.status.value})")
+        }
+        return response.body()
     }
 
     override suspend fun getShareableUsers(): List<ShareableUser> {

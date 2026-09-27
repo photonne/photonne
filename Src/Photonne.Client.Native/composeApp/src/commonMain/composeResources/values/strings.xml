@@ -1620,4 +1620,30 @@
     <string name="login_sign_in">Entrar</string>
     <string name="login_change_server">Cambiar servidor</string>
     <string name="login_session_expired">Tu sesión ha caducado. Vuelve a iniciar sesión.</string>
+
+    <!-- Funciones nuevas 3/3: enlaces compartidos abiertos en la app -->
+    <string name="shared_link_title">Enlace compartido</string>
+    <string name="shared_link_password_title">Enlace protegido con contraseña</string>
+    <string name="shared_link_password_subtitle">Introduce la contraseña para ver el contenido.</string>
+    <string name="shared_link_password_label">Contraseña</string>
+    <string name="shared_link_password_wrong">Contraseña incorrecta</string>
+    <string name="shared_link_password_submit">Acceder</string>
+    <string name="shared_link_expired_title">Este enlace ha caducado</string>
+    <string name="shared_link_expired_subtitle">Quien lo compartió puede generar uno nuevo.</string>
+    <string name="shared_link_not_found_title">Contenido no encontrado</string>
+    <string name="shared_link_not_found_subtitle">Es posible que el enlace se haya revocado.</string>
+    <string name="shared_link_empty">Este álbum aún no tiene fotos.</string>
+    <string name="shared_link_server">Compartido desde %1$s</string>
+    <!-- Estado de conexión global -->
+    <string name="connectivity_offline">Sin conexión</string>
+    <string name="connectivity_server_unreachable">Sin conexión con %1$s</string>
+    <!-- Avisos de actividad del servidor fuera de la app -->
+    <string name="activity_notification_channel">Actividad</string>
+    <plurals name="activity_notification_title">
+        <item quantity="one">%1$d notificación nueva</item>
+        <item quantity="other">%1$d notificaciones nuevas</item>
+    </plurals>
+    <string name="settings_activity_notifications">Avisos de actividad</string>
+    <string name="settings_activity_notifications_subtitle">Notificación del sistema cuando el servidor te deja notificaciones nuevas, con la app cerrada</string>
+    <string name="settings_activity_notifications_denied">Sin permiso de notificaciones no te llegarán estos avisos.</string>
 </resources>
