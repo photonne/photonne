@@ -12,6 +12,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_settings_server_max_upload
 import com.photonne.app.resources.admin_settings_server_max_upload_hint
 import com.photonne.app.resources.admin_settings_server_public_url
+import com.photonne.app.resources.admin_settings_server_public_url_hint
 import com.photonne.app.resources.admin_settings_server_session_timeout
 import com.photonne.app.resources.admin_settings_server_session_timeout_hint
 import org.jetbrains.compose.resources.stringResource
@@ -82,7 +83,8 @@ fun AdminServerSettingsScreen(
         SettingTextField(
             label = stringResource(Res.string.admin_settings_server_public_url),
             value = serverState.get("ServerSettings.PublicUrl"),
-            placeholder = URL_PLACEHOLDER
+            placeholder = URL_PLACEHOLDER,
+            supporting = stringResource(Res.string.admin_settings_server_public_url_hint)
         ) { viewModel.set("ServerSettings.PublicUrl", it) }
         SettingNumberField(
             stringResource(Res.string.admin_settings_server_max_upload),

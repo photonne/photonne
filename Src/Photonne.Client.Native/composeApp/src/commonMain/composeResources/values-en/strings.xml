@@ -972,19 +972,20 @@
     <string name="admin_settings_server">Server configuration</string>
     <string name="admin_settings_server_subtitle">Public URL, limits and this device\'s connection</string>
     <string name="admin_settings_server_public_url">Public URL</string>
+    <string name="admin_settings_server_public_url_hint">Address used to build shared links. It is the same for every user; each device\'s connection is set in Account → Connection.</string>
     <string name="admin_settings_server_map_key">Map API key (CARTO)</string>
     <string name="admin_settings_server_map_key_hint">Map tiles have required a free key since August 2026; without one they come watermarked. Request it at carto.com/basemaps/apikey. Empty = no key.</string>
     <string name="admin_settings_server_max_upload">Max upload size (MB)</string>
     <string name="admin_settings_server_max_upload_hint">0 = unlimited</string>
     <string name="admin_settings_server_session_timeout">Session timeout (min)</string>
     <string name="admin_settings_device_section">This device connection</string>
-    <string name="admin_settings_device_section_hint">Stored only on this device. The local URL is used automatically when reachable (same WiFi as the server).</string>
-    <string name="admin_settings_device_public_url">Public URL</string>
-    <string name="admin_settings_device_local_url">Local URL (optional)</string>
+    <string name="admin_settings_device_section_hint">Stored only on this device and used only for the app to reach the server. The home address is used automatically when you are on the same WiFi as the server. Links you share don\'t depend on this: they use the server\'s public URL, set by an administrator.</string>
+    <string name="admin_settings_device_public_url">Address away from home</string>
+    <string name="admin_settings_device_local_url">Address at home (optional)</string>
     <string name="admin_settings_device_local_url_hint">e.g. http://192.168.1.10:5000</string>
-    <string name="admin_settings_device_status_local">Connected via the local URL</string>
-    <string name="admin_settings_device_status_public">Connected via the public URL</string>
-    <string name="admin_settings_device_status_public_no_local">Connected via the public URL (no local URL configured)</string>
+    <string name="admin_settings_device_status_local">Connected over your home network</string>
+    <string name="admin_settings_device_status_public">Connected from away from home</string>
+    <string name="admin_settings_device_status_public_no_local">Connected from away from home (no home address configured)</string>
     <string name="admin_settings_device_probe_button">Test local connection</string>
     <string name="admin_settings_device_probe_reachable">Local URL responds.</string>
     <string name="admin_settings_device_probe_unreachable">Local URL did not respond from this network.</string>
@@ -1464,8 +1465,8 @@
     <string name="admin_trash_error_cleanup">Couldn\'t complete the cleanup</string>
     <string name="admin_settings_device_error_local_missing">Enter a local URL first</string>
     <string name="admin_settings_device_error_local_invalid">The local URL isn\'t valid</string>
-    <string name="admin_settings_device_error_public_invalid">The public URL isn\'t valid</string>
-    <string name="admin_settings_device_error_public_unreachable">Couldn\'t reach the public URL</string>
+    <string name="admin_settings_device_error_public_invalid">The away-from-home address isn\'t valid</string>
+    <string name="admin_settings_device_error_public_unreachable">Couldn\'t reach the away-from-home address</string>
     <string name="action_accept">OK</string>
     <string name="action_apply">Apply</string>
     <string name="action_clear">Clear</string>
