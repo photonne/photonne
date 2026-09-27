@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.NotificationDto
+import com.photonne.app.data.notifications.ActivityNotifications
 import com.photonne.app.data.notifications.NotificationsRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +46,7 @@ data class NotificationsUiState(
 class NotificationsViewModel(
     private val repository: NotificationsRepository,
     private val errorFactory: UiErrorFactory,
+    private val activityNotifications: ActivityNotifications,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NotificationsUiState())
@@ -222,6 +224,9 @@ class NotificationsViewModel(
                 runCatching { repository.unreadCount() }
                     .onSuccess { count ->
                         _state.update { it.copy(unreadCount = count) }
+                        // Lo que ya cuenta la campana no se vuelve a avisar
+                        // fuera de la app.
+                        activityNotifications.markSeen(count)
                     }
                 delay(POLL_INTERVAL_MS)
             }

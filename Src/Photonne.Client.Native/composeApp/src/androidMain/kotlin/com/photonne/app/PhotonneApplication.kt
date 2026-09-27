@@ -29,5 +29,11 @@ class PhotonneApplication : Application() {
         // only in the backup ViewModel's init, which meant nothing rearmed the
         // periodic work until the user opened the app.
         reconcileBackupSchedule()
+        // Igual con los avisos de actividad (solo con sesión y el ajuste activo).
+        runCatching {
+            org.koin.core.context.GlobalContext.get()
+                .get<com.photonne.app.data.notifications.ActivityNotifications>()
+                .reconcile()
+        }
     }
 }

@@ -167,3 +167,36 @@
     .share-upload-btn:hover {
         filter: brightness(1.1);
     }
+
+    /* ── Abrir en la app ────────────────────────────────── */
+    /* Solo en móvil (pantalla táctil y estrecha): en escritorio no hay app que
+       recoja el esquema photonne:// y el enlace no haría nada. */
+    .share-open-app {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .share-open-app--hero {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 2;
+        padding: 6px 12px;
+        border-radius: 16px;
+        background: rgba(0,0,0,0.35);
+        color: white;
+    }
+
+    .share-open-app--inline {
+        color: var(--mud-palette-primary, #594ae2);
+    }
+
+    @media (pointer: coarse) and (max-width: 900px) {
+        .share-open-app {
+            display: inline-flex;
+        }
+    }

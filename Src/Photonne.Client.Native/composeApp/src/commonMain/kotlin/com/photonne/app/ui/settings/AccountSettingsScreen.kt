@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Person
@@ -24,7 +25,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,6 +45,12 @@ import com.photonne.app.resources.account_section_security
 import com.photonne.app.resources.account_section_security_subtitle
 import com.photonne.app.resources.account_section_storage
 import com.photonne.app.resources.account_section_storage_subtitle
+import com.photonne.app.resources.backup_notifications_allow
+import com.photonne.app.resources.backup_notifications_open_settings
+import com.photonne.app.resources.settings_activity_notifications
+import com.photonne.app.resources.settings_activity_notifications_denied
+import com.photonne.app.resources.settings_activity_notifications_subtitle
+import com.photonne.app.data.devicebackup.rememberNotificationPermission
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -67,7 +76,13 @@ fun AccountSettingsScreen(
     title: String,
     onBack: () -> Unit,
     onOpen: (AccountSettingsSection) -> Unit,
-    onChromeVisibleChange: (Boolean) -> Unit = {}
+    onChromeVisibleChange: (Boolean) -> Unit = {},
+    /**
+     * "Avisos de actividad" (notificación del sistema con lo nuevo del servidor
+     * con la app cerrada). Null donde la plataforma no lo tiene: no sale.
+     */
+    activityNotificationsEnabled: Boolean? = null,
+    onActivityNotificationsChange: (Boolean) -> Unit = {},
 ) {
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
@@ -117,6 +132,12 @@ fun AccountSettingsScreen(
         ) {
             entries.forEach { entry ->
                 SettingsRow(entry = entry, onClick = { onOpen(entry.section) })
+            }
+            if (activityNotificationsEnabled != null) {
+                ActivityNotificationsRow(
+                    enabled = activityNotificationsEnabled,
+                    onChange = onActivityNotificationsChange
+                )
             }
             Spacer(Modifier.height(Spacing.sm))
         }
@@ -177,6 +198,76 @@ private fun SettingsRow(entry: SettingsEntry, onClick: () -> Unit) {
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Interruptor en la misma tarjeta que el resto de secciones. Activarlo pide el
+ * permiso de notificaciones (Android 13+) en ese momento; si falta, lo dice
+ * debajo con el botón para concederlo.
+ */
+@Composable
+private fun ActivityNotificationsRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val permission = rememberNotificationPermission()
+    val toggle = { value: Boolean ->
+        onChange(value)
+        if (value && !permission.isGranted) permission.request()
+    }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { toggle(!enabled) },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.lg),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.lg)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.NotificationsActive,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(Res.string.settings_activity_notifications),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    stringResource(Res.string.settings_activity_notifications_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = enabled, onCheckedChange = { toggle(it) })
+        }
+        if (enabled && !permission.isGranted) {
+            Column(
+                modifier = Modifier.padding(start = Spacing.lg, end = Spacing.lg, bottom = Spacing.sm)
+            ) {
+                Text(
+                    stringResource(Res.string.settings_activity_notifications_denied),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                val openSettings = permission.openSystemSettings
+                TextButton(onClick = openSettings ?: permission.request) {
+                    Text(
+                        stringResource(
+                            if (openSettings != null) Res.string.backup_notifications_open_settings
+                            else Res.string.backup_notifications_allow
+                        )
+                    )
+                }
             }
         }
     }

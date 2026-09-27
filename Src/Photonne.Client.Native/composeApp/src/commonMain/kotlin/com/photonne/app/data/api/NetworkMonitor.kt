@@ -13,4 +13,11 @@ import kotlinx.coroutines.flow.Flow
  */
 interface NetworkMonitor {
     val changes: Flow<Unit>
+
+    /**
+     * Si el dispositivo tiene ahora mismo una red con salida (no si el
+     * servidor responde: eso lo decide [ConnectivityMonitor]). Por defecto
+     * true donde no hay forma fiable de saberlo (escritorio).
+     */
+    fun isNetworkAvailable(): Boolean = true
 }

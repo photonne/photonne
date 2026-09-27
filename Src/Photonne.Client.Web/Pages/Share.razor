@@ -2,6 +2,7 @@
 @layout PublicLayout
 @inject IShareService ShareService
 @inject IJSRuntime JS
+@inject HttpClient Http
 
 <PageTitle>@_pageTitle - Photonne</PageTitle>
 
@@ -39,6 +40,7 @@ else if (_requiresPassword)
                    OnClick="SubmitPassword" Disabled="_loading">
             Acceder
         </MudButton>
+        <a class="share-open-app share-open-app--inline mt-4" href="@_appLink">Abrir en la app</a>
     </div>
 }
 else if (_content == null)
@@ -67,6 +69,14 @@ else if (_content.Album != null)
             {
                 <div class="share-album-hero-bg share-album-hero-bg--empty"></div>
             }
+
+            @* Solo en móvil (ver .share-open-app): abre el enlace en la app nativa
+               por su esquema propio; cada instalación tiene su dominio, así que
+               no hay App Links/Universal Links verificables. *@
+            <a class="share-open-app share-open-app--hero" href="@_appLink">
+                <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" />
+                Abrir en la app
+            </a>
 
             @if (_content.AllowDownload && assets.Any())
             {
@@ -221,6 +231,11 @@ else if (_content.Album != null)
     private int _uploadFailedCount = 0;
 
     private string _pageTitle => _content?.Album?.Name ?? "Álbum compartido";
+
+    // photonne://share/{token}?server=<origen de la API>: la app abre el enlace
+    // contra el servidor que lo emitió, aunque su sesión sea de otro.
+    private string _appLink =>
+        $"photonne://share/{Uri.EscapeDataString(Token)}?server={Uri.EscapeDataString(Http.BaseAddress?.ToString().TrimEnd('/') ?? string.Empty)}";
 
     protected override async Task OnInitializedAsync()
     {

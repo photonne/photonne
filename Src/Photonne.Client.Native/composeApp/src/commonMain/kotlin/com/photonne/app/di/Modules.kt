@@ -97,6 +97,7 @@ import com.photonne.app.ui.utilities.UtilitiesLocationsViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.module.dsl.singleOf
+import com.photonne.app.ui.share.SharedLinkViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
@@ -133,7 +134,10 @@ fun commonModule(config: PhotonneAppConfig) = module {
             authState = get(),
             // Resolved lazily (only invoked on a request-time connection
             // failure) so the probe→client construction order isn't a cycle.
-            onConnectionError = { get<LocalReachabilityProbe>().requestReprobe() },
+            onConnectionError = {
+                get<LocalReachabilityProbe>().requestReprobe()
+                get<com.photonne.app.data.api.ConnectivityMonitor>().reportConnectionError()
+            },
             // Ambas URLs, no solo la efectiva: una petición lanzada contra la
             // pública justo cuando la sonda cambia a la local seguiría siendo
             // del servidor Photonne.
@@ -150,6 +154,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
         PhotonneApiClient(get(), baseUrlProvider = { urlStore.requireBaseUrl() })
     }
     single { LocalReachabilityProbe(get(), get(), get()) }
+    single { com.photonne.app.data.api.ConnectivityMonitor(get(), get(), get()) }
     single { com.photonne.app.data.api.ForegroundRecovery(get(), get()) }
     single { AppVersionStore(get()) }
     single { UiErrorFactory(urlStore = get(), versionStore = get()) }
@@ -205,6 +210,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { com.photonne.app.data.timeline.TimelineBucketStore(api = get()) }
     singleOf(::MemoriesRepository)
     singleOf(::NotificationsRepository)
+    single { com.photonne.app.data.notifications.createActivityNotificationScheduler() }
+    single { com.photonne.app.data.notifications.ActivityNotifications(get(), get(), get()) }
     singleOf(::AssetDetailRepository)
     single { com.photonne.app.data.events.AssetMutationBus() }
     singleOf(::AlbumsRepository)
@@ -227,6 +234,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AlbumDetailViewModel)
     viewModelOf(::AlbumSharesViewModel)
     viewModelOf(::SentSharesViewModel)
+    viewModelOf(::SharedLinkViewModel)
     viewModelOf(::AlbumPermissionsViewModel)
     viewModelOf(::FoldersViewModel)
     viewModelOf(::FolderDetailViewModel)

@@ -6,6 +6,7 @@ import com.photonne.app.data.devicebackup.BackgroundSyncScheduler
 import com.photonne.app.data.devicebackup.BackupLedger
 import com.photonne.app.data.devicebackup.DeviceBackupStateStore
 import com.photonne.app.data.models.UserDto
+import com.photonne.app.data.notifications.ActivityNotifications
 
 class AuthRepository(
     private val api: PhotonneApi,
@@ -14,7 +15,8 @@ class AuthRepository(
     private val backupLedger: BackupLedger,
     private val serverUrlStore: ServerUrlStore,
     private val backupStateStore: DeviceBackupStateStore,
-    private val backupScheduler: BackgroundSyncScheduler
+    private val backupScheduler: BackgroundSyncScheduler,
+    private val activityNotifications: ActivityNotifications
 ) {
     suspend fun login(username: String, password: String): Result<Unit> = runCatching {
         val deviceId = tokenStorage.getDeviceId()
@@ -25,6 +27,8 @@ class AuthRepository(
         // session reads the backup setup as soon as it's created, so it must
         // already be the right one for this account.
         runCatching { bindBackupToAccount(response.user) }
+        // Avisos de actividad con la app cerrada: solo con sesión.
+        activityNotifications.reconcile()
         authStateHolder.update(AuthState.Authenticated(response.user))
     }
 
@@ -72,5 +76,7 @@ class AuthRepository(
                 backupStateStore.backgroundSyncPreferences().copy(enabled = false)
             )
         }
+        // Tampoco quedan avisos de actividad de una cuenta sin sesión.
+        runCatching { activityNotifications.onSignedOut() }
     }
 }

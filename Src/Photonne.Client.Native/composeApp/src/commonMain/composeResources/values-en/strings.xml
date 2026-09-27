@@ -1610,4 +1610,30 @@
     <string name="login_sign_in">Sign in</string>
     <string name="login_change_server">Change server</string>
     <string name="login_session_expired">Your session has expired. Please sign in again.</string>
+
+    <!-- New features 3/3: shared links opened in the app -->
+    <string name="shared_link_title">Shared link</string>
+    <string name="shared_link_password_title">Password-protected link</string>
+    <string name="shared_link_password_subtitle">Enter the password to see the content.</string>
+    <string name="shared_link_password_label">Password</string>
+    <string name="shared_link_password_wrong">Wrong password</string>
+    <string name="shared_link_password_submit">Open</string>
+    <string name="shared_link_expired_title">This link has expired</string>
+    <string name="shared_link_expired_subtitle">Whoever shared it can create a new one.</string>
+    <string name="shared_link_not_found_title">Content not found</string>
+    <string name="shared_link_not_found_subtitle">The link may have been revoked.</string>
+    <string name="shared_link_empty">This album has no photos yet.</string>
+    <string name="shared_link_server">Shared from %1$s</string>
+    <!-- Global connection status -->
+    <string name="connectivity_offline">Offline</string>
+    <string name="connectivity_server_unreachable">Can't reach %1$s</string>
+    <!-- Server activity alerts outside the app -->
+    <string name="activity_notification_channel">Activity</string>
+    <plurals name="activity_notification_title">
+        <item quantity="one">%1$d new notification</item>
+        <item quantity="other">%1$d new notifications</item>
+    </plurals>
+    <string name="settings_activity_notifications">Activity alerts</string>
+    <string name="settings_activity_notifications_subtitle">System notification when the server leaves you new notifications, with the app closed</string>
+    <string name="settings_activity_notifications_denied">Without notification permission these alerts won't reach you.</string>
 </resources>

@@ -37,4 +37,10 @@ class AndroidNetworkMonitor(private val context: Context) : NetworkMonitor {
     }
         .buffer(capacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
         .onStart { emit(Unit) }
+
+    override fun isNetworkAvailable(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 }
