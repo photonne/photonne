@@ -90,6 +90,20 @@ class LoginViewModel(
         _state.value = _state.value.copy(password = value, error = null)
     }
 
+    /**
+     * Lote M3: al volver al login porque la sesión caducó, el usuario de esa
+     * sesión ya viene escrito. Si lo recordado es de otra cuenta, su
+     * contraseña no sirve para esta y se vacía. Sin nombre o con lo recordado
+     * de la misma cuenta no se toca nada.
+     */
+    fun prefillExpiredUsername(username: String?) {
+        val name = username?.trim().orEmpty()
+        val current = _state.value
+        if (name.isEmpty() || current.isSubmitting) return
+        if (current.username.equals(name, ignoreCase = true)) return
+        _state.value = current.copy(username = name, password = "", error = null)
+    }
+
     fun onRememberMeChange(value: Boolean) {
         _state.value = _state.value.copy(rememberMe = value)
     }

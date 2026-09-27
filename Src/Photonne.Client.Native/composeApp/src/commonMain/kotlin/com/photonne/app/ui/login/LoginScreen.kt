@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
@@ -30,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +72,8 @@ import com.photonne.app.resources.login_password_show
 import com.photonne.app.resources.login_remember_me
 import com.photonne.app.resources.login_sign_in
 import com.photonne.app.resources.login_change_server
+import com.photonne.app.resources.login_session_expired
+import com.photonne.app.data.auth.AuthState
 import com.photonne.app.resources.login_insecure_public_url
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.ui.theme.PrimaryActionButton
@@ -79,9 +83,12 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(expiredSession: AuthState.SessionExpired? = null) {
     val viewModel: LoginViewModel = koinViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(expiredSession) {
+        expiredSession?.let { viewModel.prefillExpiredUsername(it.username) }
+    }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -104,11 +111,36 @@ fun LoginScreen() {
                 }
                 Spacer(Modifier.height(Spacing.xs))
 
+                if (expiredSession != null) SessionExpiredNotice()
+
                 when (state.step) {
                     LoginStep.ServerUrl -> ServerUrlStep(state, viewModel)
                     LoginStep.Credentials -> CredentialsStep(state, viewModel)
                 }
             }
+        }
+    }
+}
+
+/** Lote M3: la sesión caducó sola; sin esto el login aparecía sin motivo. */
+@Composable
+private fun SessionExpiredNotice() {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            modifier = Modifier.padding(Spacing.md)
+        ) {
+            Icon(Icons.Outlined.Info, contentDescription = null)
+            Text(
+                stringResource(Res.string.login_session_expired),
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }

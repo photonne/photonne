@@ -137,6 +137,10 @@ fun commonModule(config: PhotonneAppConfig) = module {
             // del servidor Photonne.
             trustedUrlsProvider = { listOfNotNull(urlStore.getPublic(), urlStore.getLocal()) },
             httpLogging = config.httpLogging,
+            // Caducidad real de la sesión: lo mismo que un logout voluntario
+            // (cortar el backup). Resuelto en la llamada, como el de arriba:
+            // AuthRepository depende del cliente.
+            onSessionExpired = { get<AuthRepository>().stopBackupForSignOut() },
         )
     }
     single<PhotonneApi> {

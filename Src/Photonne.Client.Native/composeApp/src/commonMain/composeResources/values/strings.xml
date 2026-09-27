@@ -1560,4 +1560,5 @@
     <string name="login_remember_me">Recuérdame en este dispositivo</string>
     <string name="login_sign_in">Entrar</string>
     <string name="login_change_server">Cambiar servidor</string>
+    <string name="login_session_expired">Tu sesión ha caducado. Vuelve a iniciar sesión.</string>
 </resources>

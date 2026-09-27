@@ -526,11 +526,13 @@ fun App() {
             is AuthState.Authenticated -> SessionViewModelScope(sessionStores, current.user.id) {
                 AuthenticatedApp(user = current)
             }
-            AuthState.Unauthenticated -> {
+            AuthState.Unauthenticated, is AuthState.SessionExpired -> {
                 // Logout (or a rejected refresh): drop every view model of the
                 // finished session so the next login starts clean.
                 LaunchedEffect(Unit) { sessionStores.clear() }
-                LoginScreen()
+                // Solo la caducidad explica por qué se vuelve al login; un
+                // logout voluntario llega sin aviso.
+                LoginScreen(expiredSession = current as? AuthState.SessionExpired)
             }
             // Booting: restoring a persisted session. Show a neutral splash so
             // the login screen never flashes before the timeline appears.
@@ -999,6 +1001,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreSubscreen = returnTo.second
         } else {
             selectedTab = MainTab.Timeline
+        }
+    }
+    // Lote M4: una notificación del backup abre su pantalla (progreso) o sus
+    // Pendientes (fallos). Se consume una vez, también con la app ya abierta.
+    val externalDestination by com.photonne.app.ui.main.ExternalNavigation.pending
+        .collectAsStateWithLifecycle()
+    LaunchedEffect(externalDestination) {
+        when (com.photonne.app.ui.main.ExternalNavigation.consume()) {
+            com.photonne.app.ui.main.ExternalDestination.Backup -> {
+                assetDetail = null
+                selectedTab = MainTab.More
+                moreSubscreen = MoreSubscreen.DeviceBackup
+            }
+            com.photonne.app.ui.main.ExternalDestination.BackupPending -> {
+                assetDetail = null
+                selectedTab = MainTab.More
+                moreSubscreen = MoreSubscreen.DeviceBackupPending
+            }
+            null -> Unit
         }
     }
     // Vuelta a la bandeja tras un movimiento por condiciones, con el contador y

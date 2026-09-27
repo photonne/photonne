@@ -1,6 +1,5 @@
 package com.photonne.app.data.api
 
-import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.RefreshTokenRequest
@@ -55,6 +54,16 @@ fun HttpRequestBuilder.oneShotBody() {
 }
 
 /**
+ * The request came back 401 and renewing the session could not reach the
+ * server (network error, timeout, 5xx). The session is still valid: this is a
+ * connection failure, not an auth one. The name keeps "Connect" in it on
+ * purpose — [com.photonne.app.data.devicebackup.toUploadFailureReason] classifies
+ * by class name and must see a network error here, never an expired session.
+ */
+class SessionRefreshUnreachableConnectException :
+    RuntimeException("Could not reach the server to renew the session")
+
+/**
  * Outcome of a token refresh attempt. The distinction between [AuthRejected]
  * and [Transient] is what keeps a transient network blip — extremely common
  * mid network-switch, or when the refresh itself hits a public URL that is
@@ -92,6 +101,7 @@ fun buildPhotonneHttpClient(
     onConnectionError: (() -> Unit)? = null,
     trustedUrlsProvider: (() -> List<String>)? = null,
     httpLogging: Boolean = false,
+    onSessionExpired: (() -> Unit)? = null,
 ): HttpClient {
     val refreshMutex = Mutex()
 
@@ -204,15 +214,25 @@ fun buildPhotonneHttpClient(
         when (outcome) {
             RefreshOutcome.Success -> Unit // fall through to retry with the new token
             RefreshOutcome.AuthRejected -> {
+                // Caducidad real: el estado pasa a SessionExpired (la pantalla
+                // de login lo explica) y [onSessionExpired] aplica lo mismo que
+                // un logout (cortar el backup). Si el usuario ya había cerrado
+                // sesión, es un 401 rezagado: ni aviso ni efectos.
+                val username = tokenStorage.getUser()?.username
                 tokenStorage.clear()
-                authState.update(AuthState.Unauthenticated)
+                if (authState.expireSession(username)) onSessionExpired?.invoke()
                 return@intercept firstCall
             }
             RefreshOutcome.Transient -> {
                 // Network/timeout/5xx during refresh — inconclusive. Do NOT clear
-                // a valid session; surface the original 401 and let the next
-                // request retry once connectivity / the effective URL is correct.
-                return@intercept firstCall
+                // a valid session. Nor surface the original 401: every caller
+                // reads a 401 as "session expired" (UiError, the backup's
+                // "Sesión caducada" block), and the session is alive — what
+                // failed is reaching the server. Report it as the connection
+                // failure it is and let the next request retry once
+                // connectivity / the effective URL is correct.
+                onConnectionError?.invoke()
+                throw SessionRefreshUnreachableConnectException()
             }
         }
 
