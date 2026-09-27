@@ -89,6 +89,7 @@ import com.photonne.app.data.devicelibrary.DeviceLibraryScopeStore
 import com.photonne.app.data.devicelibrary.DeviceLibraryStore
 import com.photonne.app.data.devicelibrary.rememberDeviceLibraryAccessRequester
 import com.photonne.app.ui.grid.BucketEntriesResult
+import com.photonne.app.ui.grid.TimelineRunFollower
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.image.DeviceThumbnailPrefetcher
 import com.photonne.app.ui.grid.GroupedGridDragSelect
@@ -150,7 +151,11 @@ fun TimelineScreen(
      * local items in-place via their `localUri`/`localThumbnailModel`
      * fields, so the same viewer covers both kinds.
      */
-    onOpenAsset: (items: List<com.photonne.app.data.models.TimelineItem>, mergedIndex: Int) -> Unit,
+    onOpenAsset: (
+        items: List<com.photonne.app.data.models.TimelineItem>,
+        mergedIndex: Int,
+        feed: com.photonne.app.ui.asset.AssetViewerFeed
+    ) -> Unit,
     /**
      * The grid reports which bucket keys ("yyyy-MM") are on or near the
      * viewport; the ViewModel loads their contents. Replaces the old
@@ -163,6 +168,8 @@ fun TimelineScreen(
      */
     onEnsureYearSummaries: (sample: Int) -> Unit = {},
     onRefresh: () -> Unit = {},
+    /** Cierra el banner de error del timeline (sin red, fallo de un mes…). */
+    onDismissError: () -> Unit = {},
     onToggleSelection: ((assetId: String) -> Unit)? = null,
     /**
      * Marca o desmarca varios assets a la vez, sin alternar uno a uno: el
@@ -348,6 +355,15 @@ fun TimelineScreen(
                     TimelineSkeleton(cellMinSize = effectiveCellMinSize)
                 state.isEmpty && localItems.isEmpty() ->
                     TimelineEmptyState(onOpenUpload = onOpenUpload)
+                // Primera carga fallida (sin red, servidor caído) y nada local
+                // que enseñar: error a pantalla completa con reintento en vez
+                // de un cuerpo en blanco. Por debajo del cromo superior.
+                state.error != null && state.buckets.isEmpty() && localItems.isEmpty() ->
+                    com.photonne.app.ui.error.FullScreenError(
+                        error = state.error,
+                        onRetry = onRefresh,
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
                 // Year view before its summaries arrive: full-screen skeleton
                 // (the ensure effect below fires the fetch).
                 isYearView && state.yearSummaries == null ->
@@ -977,7 +993,25 @@ fun TimelineScreen(
                                         val run = contiguousRunAround(mergedIndex, bucketEntries)
                                         if (run != null) {
                                             val (runItems, runStart) = run
-                                            onOpenAsset(runItems, mergedIndex - runStart)
+                                            // Al llegar al final de la tanda el
+                                            // visor pide el mes siguiente y
+                                            // sigue: ya no se para en el último
+                                            // mes cargado (solo hacia meses más
+                                            // antiguos; ver TimelineRunFollower).
+                                            val follower = TimelineRunFollower(runItems)
+                                            val feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                                items = { follower.follow(packed?.entries) },
+                                                hasMore = {
+                                                    follower.follow(packed?.entries)
+                                                    follower.nextBucketKey != null
+                                                },
+                                                loadMore = {
+                                                    follower.nextBucketKey?.let { key ->
+                                                        onBucketsVisible(listOf(key))
+                                                    }
+                                                }
+                                            )
+                                            onOpenAsset(runItems, mergedIndex - runStart, feed)
                                         }
                                     }
                                 }
@@ -1237,13 +1271,18 @@ fun TimelineScreen(
                     )
                 }
             }
-            state.error?.let {
+            // Con la rejilla en pantalla el error va en un banner que se puede
+            // cerrar, colocado DEBAJO de la cápsula superior (no la tapa: la
+            // búsqueda y el salto a fecha siguen a mano sin red). Si el error
+            // ya ocupa la pantalla completa (arriba), no se repite aquí.
+            val errorIsFullScreen = state.buckets.isEmpty() && localItems.isEmpty()
+            state.error?.takeIf { !errorIsFullScreen }?.let {
                 com.photonne.app.ui.error.ErrorBanner(
                     error = it,
-                    // Clear the status-bar icons — the grid is edge-to-edge here.
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .windowInsetsPadding(WindowInsets.statusBars),
+                        .padding(top = reservedTop),
+                    onDismiss = onDismissError,
                     onRetry = onRefresh,
                 )
             }

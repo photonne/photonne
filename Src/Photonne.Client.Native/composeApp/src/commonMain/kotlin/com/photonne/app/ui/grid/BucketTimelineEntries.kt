@@ -228,6 +228,65 @@ internal fun contiguousRunAround(
 }
 
 /**
+ * Continuación hacia delante (meses más antiguos) de una tanda de visor abierta
+ * con [contiguousRunAround]: los elementos de la tanda viva que siguen al último
+ * de [opened] que aún existe, más la clave del siguiente mes que hay que cargar
+ * para seguir (null cuando la tanda ya llega al mes más antiguo). Al cargar ese
+ * mes, [buildBucketEntries] lo une a la misma tanda y aparece en la siguiente
+ * llamada. Solo hacia delante: anteponer meses más recientes desplazaría el
+ * índice del pager bajo el dedo.
+ */
+internal data class RunContinuation(
+    val items: List<TimelineItem>,
+    val nextBucketKey: String?
+)
+
+internal fun runContinuationAfter(
+    opened: List<TimelineItem>,
+    result: BucketEntriesResult
+): RunContinuation {
+    val none = RunContinuation(emptyList(), null)
+    if (opened.isEmpty() || result.loadedRanges.isEmpty()) return none
+    val indexById = HashMap<String, Int>(result.mergedItems.size)
+    result.mergedItems.forEachIndexed { i, item -> indexById[item.id] = i }
+    // El último abierto puede haberse borrado; vale cualquiera anterior.
+    val anchor = opened.asReversed().firstNotNullOfOrNull { indexById[it.id] } ?: return none
+    val clicked = result.loadedRanges.firstOrNull { anchor in it.range } ?: return none
+    val run = result.loadedRanges.filter { it.runId == clicked.runId }
+    val end = run.last().range.last
+    val openedIds = opened.mapTo(HashSet()) { it.id }
+    val tail = result.mergedItems.subList(anchor + 1, end + 1).filterNot { it.id in openedIds }
+    val lastKeyIndex = result.bucketOrder.indexOf(run.last().bucketKey)
+    val next = if (lastKeyIndex >= 0) result.bucketOrder.getOrNull(lastKeyIndex + 1) else null
+    return RunContinuation(tail, next)
+}
+
+/**
+ * Sigue una tanda de visor abierta desde el timeline a medida que llegan meses:
+ * acumula lo que se va añadiendo al final (nunca lo retira, aunque el almacén
+ * descargue luego esos meses) y recuerda qué mes toca pedir a continuación.
+ * Se crea una por apertura del visor; [follow] es barata si el resultado no ha
+ * cambiado.
+ */
+internal class TimelineRunFollower(private val opened: List<TimelineItem>) {
+    private var appended: List<TimelineItem> = emptyList()
+    private var lastResult: BucketEntriesResult? = null
+
+    var nextBucketKey: String? = null
+        private set
+
+    fun follow(result: BucketEntriesResult?): List<TimelineItem> {
+        if (result != null && result !== lastResult) {
+            lastResult = result
+            val continuation = runContinuationAfter(opened + appended, result)
+            if (continuation.items.isNotEmpty()) appended = appended + continuation.items
+            nextBucketKey = continuation.nextBucketKey
+        }
+        return appended
+    }
+}
+
+/**
  * Expands the visible bucket keys with their immediate neighbours in
  * [BucketEntriesResult.bucketOrder] so scrolling into a month never starts
  * from a cold skeleton. Preserves order, drops duplicates.

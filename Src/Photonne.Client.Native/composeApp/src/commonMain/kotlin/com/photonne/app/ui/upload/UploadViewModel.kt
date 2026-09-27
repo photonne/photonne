@@ -53,7 +53,12 @@ class UploadViewModel(
     private var nextId = 0L
     private var worker: Job? = null
 
-    fun enqueue(files: List<PickedFile>, onAssetUploaded: (assetId: String) -> Unit = {}) {
+    /**
+     * [onQueueDrained] corre UNA vez cuando la cola se vacía y algo nuevo ha
+     * entrado en el servidor (lote L12): antes el timeline se recargaba
+     * entero por cada archivo subido.
+     */
+    fun enqueue(files: List<PickedFile>, onQueueDrained: () -> Unit = {}) {
         if (files.isEmpty()) return
         val newItems = files
             .filter { it.sizeBytes <= MAX_BYTES_PER_FILE }
@@ -76,7 +81,7 @@ class UploadViewModel(
                 else it.pickerError
             )
         }
-        ensureWorker(onAssetUploaded)
+        ensureWorker(onQueueDrained)
     }
 
     fun pickerErrorRaised(message: String) {
@@ -87,7 +92,7 @@ class UploadViewModel(
         _state.update { it.copy(pickerError = null) }
     }
 
-    fun retry(id: Long, onAssetUploaded: (assetId: String) -> Unit = {}) {
+    fun retry(id: Long, onQueueDrained: () -> Unit = {}) {
         _state.update { previous ->
             previous.copy(
                 items = previous.items.map { item ->
@@ -99,7 +104,7 @@ class UploadViewModel(
                 }
             )
         }
-        ensureWorker(onAssetUploaded)
+        ensureWorker(onQueueDrained)
     }
 
     fun remove(id: Long) {
@@ -145,21 +150,29 @@ class UploadViewModel(
         }
     }
 
-    private fun ensureWorker(onAssetUploaded: (assetId: String) -> Unit) {
+    private fun ensureWorker(onQueueDrained: () -> Unit) {
         if (worker?.isActive == true) return
         worker = viewModelScope.launch {
             _state.update { it.copy(isUploading = true) }
-            while (isActive) {
-                val pick = _state.value.items.firstOrNull { it.status == UploadStatus.Queued }
-                    ?: break
-                runOne(pick.id, onAssetUploaded)
+            var uploadedAny = false
+            try {
+                while (isActive) {
+                    val pick = _state.value.items.firstOrNull { it.status == UploadStatus.Queued }
+                        ?: break
+                    if (runOne(pick.id)) uploadedAny = true
+                }
+                _state.update { it.copy(isUploading = false) }
+            } finally {
+                // También si "Cancelar todo" corta la cola: lo ya subido
+                // tiene que aparecer igualmente.
+                if (uploadedAny) onQueueDrained()
             }
-            _state.update { it.copy(isUploading = false) }
         }
     }
 
-    private suspend fun runOne(itemId: Long, onAssetUploaded: (String) -> Unit) {
-        val current = _state.value.items.firstOrNull { it.id == itemId } ?: return
+    /** Sube un elemento; true si ha entrado algo nuevo en el servidor. */
+    private suspend fun runOne(itemId: Long): Boolean {
+        val current = _state.value.items.firstOrNull { it.id == itemId } ?: return false
         val bytes = current.bytes
         if (bytes == null) {
             _state.update {
@@ -171,7 +184,7 @@ class UploadViewModel(
                     }
                 )
             }
-            return
+            return false
         }
         _state.update {
             it.copy(
@@ -201,7 +214,6 @@ class UploadViewModel(
                     }
                 )
             }
-            response.assetId?.takeIf { !alreadyExisted }?.let(onAssetUploaded)
         }.onFailure { error ->
             _state.update {
                 it.copy(
@@ -214,6 +226,11 @@ class UploadViewModel(
                 )
             }
         }
+        val landed = outcome.getOrNull()?.let { response ->
+            response.assetId != null &&
+                !response.message.contains("already exists", ignoreCase = true)
+        } ?: false
+        return landed
     }
 
     companion object {

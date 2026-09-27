@@ -39,7 +39,9 @@ internal fun selectUploadCandidates(
     when (val state = states[media.uri]) {
         is DeviceMediaSyncState.Synced, DeviceMediaSyncState.Ignored -> false
         is DeviceMediaSyncState.Failed ->
-            retryPermanentFailures || state.reason.isRetryable
+            // Cuota llena y sesión caducada no son del archivo (lote L11): si
+            // la pasada llega aquí es que el bloqueo ya se levantó.
+            retryPermanentFailures || state.reason.isRetryable || state.reason.blocksPass
         else -> true
     }
 }
@@ -55,7 +57,9 @@ class BackupRunner(
         val uploaded: Int,
         val skipped: Int,
         val failed: Int,
-        val failuresByReason: Map<UploadFailureReason, Int>
+        val failuresByReason: Map<UploadFailureReason, Int>,
+        /** La pasada se cortó por la cuenta (cuota llena, sesión caducada). */
+        val blockedBy: UploadFailureReason? = null
     )
 
     /**
@@ -74,6 +78,25 @@ class BackupRunner(
         shouldContinue: () -> Boolean = { true },
         origin: BackupOrigin = BackupOrigin.Background,
         only: Set<String>? = null
+    ): Result {
+        // Lote L11: una pasada programada no insiste mientras la cuenta siga
+        // igual que cuando se cortó (misma sesión, misma cuota). Las que pide
+        // el usuario sí prueban: es él quien dice que ya lo ha resuelto.
+        if (origin == BackupOrigin.Background && repository.passBlockHolds()) {
+            return Result(
+                total = 0, uploaded = 0, skipped = 0, failed = 0,
+                failuresByReason = emptyMap(),
+                blockedBy = repository.passBlock()?.reason
+            )
+        }
+        return runPass(folders, shouldContinue, origin, only)
+    }
+
+    private suspend fun runPass(
+        folders: List<DeviceFolderRef>,
+        shouldContinue: () -> Boolean,
+        origin: BackupOrigin,
+        only: Set<String>?
     ): Result = try {
         progress.start(BackupPhase.Verifying, origin)
 
@@ -161,11 +184,16 @@ class BackupRunner(
         // Upload with bounded concurrency (see [uploadInParallel]). The
         // callbacks run under the helper's mutex, so these plain vars/map stay
         // consistent without locking here.
+        // Lote L11: con la cuota llena o la sesión caducada el siguiente
+        // archivo recibirá el mismo rechazo; la pasada se corta al primero
+        // (los que ya estaban en vuelo terminan).
+        var blockedBy: UploadFailureReason? = null
+        var landed = 0
         uploadInParallel(
             pending = pending,
             concurrency = repository.uploadConcurrency(),
             upload = { media, report -> repository.upload(media, onProgress = report) },
-            shouldContinue = shouldContinue,
+            shouldContinue = { blockedBy == null && shouldContinue() },
             onItemStart = { media ->
                 progress.update {
                     it.copy(
@@ -193,14 +221,17 @@ class BackupRunner(
                 when (outcome) {
                     is UploadOutcome.Uploaded -> {
                         uploaded++
+                        landed++
                         repository.markUploaded(owner.uri, media.uri, outcome.assetId)
                     }
                     is UploadOutcome.Skipped -> {
                         skipped++
+                        landed++
                         repository.markUploaded(owner.uri, media.uri, outcome.assetId)
                     }
                     is UploadOutcome.Failed -> {
                         failed++
+                        if (outcome.reason.blocksPass && blockedBy == null) blockedBy = outcome.reason
                         failuresByReason[outcome.reason] =
                             (failuresByReason[outcome.reason] ?: 0) + 1
                         repository.markUploadFailed(
@@ -231,8 +262,18 @@ class BackupRunner(
             uploaded = uploaded,
             skipped = skipped,
             failed = failed,
-            failuresByReason = failuresByReason.toMap()
+            failuresByReason = failuresByReason.toMap(),
+            blockedBy = blockedBy
         )
+
+        // El bloqueo se anota al cortarse y se olvida en cuanto una subida
+        // entra (la cuenta vuelve a aceptar archivos).
+        val blocker = blockedBy
+        if (blocker != null) {
+            repository.recordPassBlock(blocker, Clock.System.now().toEpochMilliseconds())
+        } else if (landed > 0) {
+            repository.clearPassBlock()
+        }
 
         // Leave a visible trace so the status card can show "last sync ran at
         // X, uploaded Y" — the answer to "is background sync actually working?"

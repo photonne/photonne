@@ -139,6 +139,7 @@ import com.photonne.app.resources.archive_action_unarchive_all
 import com.photonne.app.resources.selection_action_deselect_all
 import com.photonne.app.resources.selection_action_download
 import com.photonne.app.resources.selection_action_select_all
+import com.photonne.app.resources.selection_action_select_loaded
 import com.photonne.app.resources.folder_action_actions
 import com.photonne.app.resources.folder_action_move
 import com.photonne.app.resources.folder_action_new
@@ -853,6 +854,9 @@ fun AssetSelectionTopBar(
     onClose: () -> Unit,
     totalCount: Int = 0,
     onSelectAll: (() -> Unit)? = null,
+    /** La lista pagina y quedan elementos sin cargar: "Seleccionar todo"
+     *  mentiría, así que se rotula "Seleccionar lo cargado (N)". */
+    selectAllLoadedOnly: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     // "Select all" lives here, next to the count, because it controls the
@@ -879,7 +883,11 @@ fun AssetSelectionTopBar(
             )
         },
         actions = {
-            if (onSelectAll != null) {
+            if (onSelectAll != null && selectAllLoadedOnly && !allSelected) {
+                TextButton(onClick = onSelectAll, enabled = !isMutating) {
+                    Text(stringResource(Res.string.selection_action_select_loaded, totalCount))
+                }
+            } else if (onSelectAll != null) {
                 IconButton(onClick = onSelectAll, enabled = !isMutating) {
                     Icon(
                         Icons.Outlined.SelectAll,

@@ -150,6 +150,23 @@ class DeviceBackupStateStore(private val settings: Settings) {
         settings.putString(KEY_LAST_RUN, json.encodeToString(run))
     }
 
+    // Lote L11: por qué se cortó la última pasada (cuota llena, sesión
+    // caducada), para que la pantalla lo diga y el automático no insista
+    // hasta que cambie algo.
+
+    fun passBlock(): BackupPassBlock? {
+        val raw = settings.getStringOrNull(KEY_PASS_BLOCK) ?: return null
+        return runCatching { json.decodeFromString<BackupPassBlock>(raw) }.getOrNull()
+    }
+
+    fun savePassBlock(block: BackupPassBlock) {
+        settings.putString(KEY_PASS_BLOCK, json.encodeToString(block))
+    }
+
+    fun clearPassBlock() {
+        settings.remove(KEY_PASS_BLOCK)
+    }
+
     /**
      * A different account just signed in on this device: the previous one's
      * backup setup must not carry over, or the next pass would upload the
@@ -163,6 +180,7 @@ class DeviceBackupStateStore(private val settings: Settings) {
         settings.remove(KEY_AUTO_BACKUP)
         clearFolders()
         settings.remove(KEY_LAST_RUN)
+        clearPassBlock()
     }
 
     private companion object {
@@ -176,6 +194,7 @@ class DeviceBackupStateStore(private val settings: Settings) {
         const val KEY_REQUIRE_CHARGING = "device_backup.require_charging"
         const val KEY_TURBO = "device_backup.turbo"
         const val KEY_LAST_RUN = "device_backup.last_run"
+        const val KEY_PASS_BLOCK = "device_backup.pass_block"
     }
 }
 
@@ -188,6 +207,22 @@ data class LastBackupRun(
     val failed: Int,
     /** True when the pass came from WorkManager/BGTaskScheduler. */
     val background: Boolean
+)
+
+/**
+ * Lote L11: la última pasada se cortó por un motivo de la cuenta, no de los
+ * archivos. [usedBytes]/[quotaBytes] son la foto de `users/me/storage` al
+ * cortarse (para "Sin espacio (X de Y)" y para saber cuándo cambia la cuota);
+ * [sessionKey] identifica la sesión que recibió el 401, para saber cuándo se
+ * ha vuelto a entrar.
+ */
+@Serializable
+data class BackupPassBlock(
+    val reason: UploadFailureReason,
+    val usedBytes: Long? = null,
+    val quotaBytes: Long? = null,
+    val sessionKey: String? = null,
+    val atMillis: Long = 0L
 )
 
 /** Persisted device-scan cache, one media list per folder URI, so a scan from

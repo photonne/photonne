@@ -150,6 +150,30 @@ class TimelineBucketStore(
     }
 
     /**
+     * Recarga solo [keys] (p. ej. los meses de origen y destino de una foto
+     * cuya fecha ha cambiado): trae el esqueleto de nuevo para los recuentos
+     * —el destino puede ser un mes que no existía— pero conserva el contenido
+     * cargado del resto de meses, a diferencia de [refresh].
+     */
+    suspend fun reloadBuckets(keys: Set<String>) {
+        if (keys.isEmpty()) return
+        val skeleton = fetchOffMain { api.getTimelineBuckets() }
+        mutex.withLock {
+            val previous = _buckets.value.associateBy { it.key }
+            _buckets.value = skeleton.map { entry ->
+                val prev = previous[entry.key]
+                if (prev != null && entry.key !in keys) prev
+                else TimelineBucketState(key = entry.key, count = entry.count)
+            }
+            keys.forEach { lastTouched.remove(it) }
+            // La vista por años es una muestra de la misma biblioteca.
+            _yearSummaries.value = null
+            yearSampleSize = 0
+        }
+        ensureLoaded(keys.toList())
+    }
+
+    /**
      * Removes an asset from its (loaded) bucket and decrements the count so
      * the reserved height tracks reality. Buckets that reach zero stay in
      * the skeleton with count 0 — the grid simply renders nothing for them;

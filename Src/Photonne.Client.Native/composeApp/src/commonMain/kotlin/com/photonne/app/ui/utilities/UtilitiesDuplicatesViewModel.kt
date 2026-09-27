@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.UserDuplicateGroup
 import com.photonne.app.data.utilities.UtilitiesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,10 +52,47 @@ data class UtilitiesDuplicatesUiState(
 class UtilitiesDuplicatesViewModel(
     private val repository: UtilitiesRepository,
     private val errorFactory: UiErrorFactory,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UtilitiesDuplicatesUiState())
     val state: StateFlow<UtilitiesDuplicatesUiState> = _state.asStateFlow()
+
+    init {
+        // Lote L10: una copia borrada desde el visor sale de su grupo (y el
+        // grupo, si ya no tiene duplicados); lo que vuelve pide recargar.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is AssetMutation.Removed -> removeAssets(event.assetIds)
+                    is AssetMutation.Purged -> removeAssets(event.assetIds)
+                    is AssetMutation.Restored, AssetMutation.AllChanged ->
+                        if (_state.value.groups.isNotEmpty()) load()
+                    is AssetMutation.FavoriteChanged, is AssetMutation.DateChanged -> Unit
+                }
+            }
+        }
+    }
+
+    private fun removeAssets(assetIds: List<String>) {
+        val ids = assetIds.toSet()
+        _state.update { current ->
+            current.copy(
+                groups = current.groups.mapNotNull { view ->
+                    if (view.group.assets.none { it.id in ids }) return@mapNotNull view
+                    val remaining = view.group.assets.filterNot { it.id in ids }
+                    if (remaining.size < 2) return@mapNotNull null
+                    view.copy(
+                        group = view.group.copy(
+                            assets = remaining,
+                            totalSize = remaining.sumOf { it.fileSize }
+                        ),
+                        selectedAssetIds = view.selectedAssetIds - ids
+                    )
+                }
+            )
+        }
+    }
 
     fun ensureLoaded() {
         if (_state.value.groups.isNotEmpty() || _state.value.isLoading) return

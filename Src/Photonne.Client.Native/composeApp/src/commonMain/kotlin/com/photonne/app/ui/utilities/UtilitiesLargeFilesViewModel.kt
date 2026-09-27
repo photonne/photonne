@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.utilities.UtilitiesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,10 +34,37 @@ data class UtilitiesLargeFilesUiState(
 class UtilitiesLargeFilesViewModel(
     private val repository: UtilitiesRepository,
     private val errorFactory: UiErrorFactory,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UtilitiesLargeFilesUiState())
     val state: StateFlow<UtilitiesLargeFilesUiState> = _state.asStateFlow()
+
+    init {
+        // Lote L10: lo borrado o archivado desde el visor sale de la lista; lo
+        // que vuelve pide recargar (solo si la pantalla ya se había cargado).
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is AssetMutation.Removed -> removeItems(event.assetIds)
+                    is AssetMutation.Purged -> removeItems(event.assetIds)
+                    is AssetMutation.Restored, AssetMutation.AllChanged ->
+                        if (_state.value.items.isNotEmpty()) load()
+                    is AssetMutation.FavoriteChanged -> _state.update { current ->
+                        current.copy(items = current.items.map {
+                            if (it.id == event.assetId) it.copy(isFavorite = event.isFavorite) else it
+                        })
+                    }
+                    is AssetMutation.DateChanged -> Unit
+                }
+            }
+        }
+    }
+
+    private fun removeItems(assetIds: List<String>) {
+        val ids = assetIds.toSet()
+        _state.update { current -> current.copy(items = current.items.filterNot { it.id in ids }) }
+    }
 
     fun ensureLoaded() {
         if (_state.value.items.isNotEmpty() || _state.value.isLoading) return

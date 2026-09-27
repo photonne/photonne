@@ -39,7 +39,8 @@ class DeviceBackupRepository(
     private val stateStore: DeviceBackupStateStore,
     private val ledger: BackupLedger,
     private val identityMap: DeviceIdentityMap,
-    private val progress: BackupProgressBus
+    private val progress: BackupProgressBus,
+    private val tokenStorage: com.photonne.app.data.auth.TokenStorage
 ) {
 
     val isSupported: Boolean get() = gallery.isSupported
@@ -444,6 +445,64 @@ class DeviceBackupRepository(
     fun lastRun(): LastBackupRun? = stateStore.lastRun()
 
     fun recordLastRun(run: LastBackupRun) = stateStore.recordLastRun(run)
+
+    // ─── Pasada cortada por la cuenta (lote L11) ─────────────────────────────
+
+    fun passBlock(): BackupPassBlock? = stateStore.passBlock()
+
+    fun clearPassBlock() = stateStore.clearPassBlock()
+
+    /**
+     * Guarda por qué se cortó la pasada. Con cuota llena se anota también el
+     * uso y la cuota del servidor: lo que pinta la tarjeta y lo que dice
+     * cuándo ha cambiado algo.
+     */
+    suspend fun recordPassBlock(reason: UploadFailureReason, nowMillis: Long) {
+        val storage = if (reason == UploadFailureReason.QuotaExceeded) storageOrNull() else null
+        stateStore.savePassBlock(
+            BackupPassBlock(
+                reason = reason,
+                usedBytes = storage?.usedBytes,
+                quotaBytes = storage?.quotaBytes,
+                sessionKey = currentSessionKey(),
+                atMillis = nowMillis
+            )
+        )
+    }
+
+    /**
+     * Para una pasada programada: true mientras el bloqueo siga en pie (misma
+     * sesión tras un 401; mismo uso y misma cuota tras llenarse). Si algo ha
+     * cambiado —se ha vuelto a entrar, el admin subió la cuota, se liberó
+     * espacio— lo levanta y devuelve false, y la pasada reintenta los
+     * rechazados. Sin respuesta del servidor sobre la cuota, sigue en pie.
+     */
+    suspend fun passBlockHolds(): Boolean {
+        val block = stateStore.passBlock() ?: return false
+        val holds = when (block.reason) {
+            UploadFailureReason.Unauthorized -> currentSessionKey() == block.sessionKey
+            UploadFailureReason.QuotaExceeded -> {
+                val storage = storageOrNull()
+                storage == null ||
+                    (storage.usedBytes == block.usedBytes && storage.quotaBytes == block.quotaBytes)
+            }
+            else -> false
+        }
+        if (!holds) stateStore.clearPassBlock()
+        return holds
+    }
+
+    private suspend fun storageOrNull(): com.photonne.app.data.models.StorageInfoDto? = try {
+        api.getStorageInfo()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Throwable) {
+        null
+    }
+
+    /** Huella de la sesión actual (no el token): cambia al volver a entrar. */
+    private fun currentSessionKey(): String? =
+        tokenStorage.getRefreshToken()?.hashCode()?.toString(16)
 
     /**
      * Streams [media] to the server without ever holding the payload in

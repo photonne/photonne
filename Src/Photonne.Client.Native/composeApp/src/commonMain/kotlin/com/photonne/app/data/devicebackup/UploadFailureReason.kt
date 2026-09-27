@@ -95,6 +95,15 @@ fun Throwable.toUploadFailureDetail(): String? {
 }
 
 /**
+ * Lote L11: fallos que no son del archivo sino de la cuenta (cuota llena,
+ * sesión caducada). El siguiente archivo va a recibir el mismo rechazo, así
+ * que la pasada se corta al primero; y no se tratan como permanentes: se
+ * reintentan en cuanto se resuelve (ver [BackupPassBlock]).
+ */
+val UploadFailureReason.blocksPass: Boolean
+    get() = this == UploadFailureReason.QuotaExceeded || this == UploadFailureReason.Unauthorized
+
+/**
  * Permanent reasons stop the retry loop immediately. Transient ones get
  * retried with backoff.
  */

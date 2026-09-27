@@ -90,6 +90,13 @@ fun UtilitiesLargeFilesScreen(
             when {
                 state.isLoading && state.items.isEmpty() ->
                     ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop))
+                // Lote L10: un fallo de carga no es "no hay archivos grandes".
+                state.error != null && state.items.isEmpty() ->
+                    com.photonne.app.ui.error.FullScreenError(
+                        error = state.error,
+                        onRetry = viewModel::refresh,
+                        modifier = Modifier.padding(top = headerReserve)
+                    )
                 state.items.isEmpty() ->
                     EmptyState(
                         icon = Icons.Outlined.Storage,
@@ -146,10 +153,13 @@ fun UtilitiesLargeFilesScreen(
                 options = UtilitiesLargeFilesUiState.CountOptions,
                 onSelect = viewModel::setCount
             )
+            // Con la lista en pantalla el error va en banner; sin ella ya lo
+            // enseña el error a pantalla completa de arriba.
             ErrorBanner(
-                    error = state.error,
-                    modifier = Modifier.padding(horizontal = Spacing.lg, vertical = 6.dp)
-                )
+                error = state.error?.takeIf { state.items.isNotEmpty() },
+                modifier = Modifier.padding(horizontal = Spacing.lg, vertical = 6.dp),
+                onRetry = viewModel::refresh
+            )
         }
         SubscreenFloatingChrome(
             title = title,

@@ -164,7 +164,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
             stateStore = get(),
             ledger = get(),
             identityMap = get(),
-            progress = get()
+            progress = get(),
+            tokenStorage = get()
         )
     }
     single { com.photonne.app.data.devicelibrary.DeviceIdentityMap(get()) }

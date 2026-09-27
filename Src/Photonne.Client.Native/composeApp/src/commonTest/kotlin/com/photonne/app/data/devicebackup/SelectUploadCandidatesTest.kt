@@ -26,7 +26,8 @@ class SelectUploadCandidatesTest {
         media("unknown"),
         media("not-synced"),
         media("failed-network"),
-        media("failed-quota")
+        media("failed-quota"),
+        media("failed-too-large")
     )
 
     private val states = mapOf(
@@ -35,15 +36,18 @@ class SelectUploadCandidatesTest {
         "unknown" to DeviceMediaSyncState.Unknown,
         "not-synced" to DeviceMediaSyncState.NotSynced,
         "failed-network" to DeviceMediaSyncState.Failed(UploadFailureReason.NetworkError, null),
-        "failed-quota" to DeviceMediaSyncState.Failed(UploadFailureReason.QuotaExceeded, null)
+        "failed-quota" to DeviceMediaSyncState.Failed(UploadFailureReason.QuotaExceeded, null),
+        "failed-too-large" to DeviceMediaSyncState.Failed(UploadFailureReason.FileTooLarge, null)
     )
 
     @Test
     fun scheduledPassSkipsSyncedIgnoredAndPermanentFailures() {
         val selected = selectUploadCandidates(items, states, retryPermanentFailures = false)
 
+        // Cuota llena no es un fallo del archivo (lote L11): el automático lo
+        // reintenta una vez levantado el bloqueo de la pasada.
         assertEquals(
-            listOf("unknown", "not-synced", "failed-network"),
+            listOf("unknown", "not-synced", "failed-network", "failed-quota"),
             selected.map { it.uri }
         )
     }
@@ -53,7 +57,7 @@ class SelectUploadCandidatesTest {
         val selected = selectUploadCandidates(items, states, retryPermanentFailures = true)
 
         assertEquals(
-            listOf("unknown", "not-synced", "failed-network", "failed-quota"),
+            listOf("unknown", "not-synced", "failed-network", "failed-quota", "failed-too-large"),
             selected.map { it.uri }
         )
     }
