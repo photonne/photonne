@@ -101,3 +101,27 @@ data class ThumbnailInfo(
     val height: Int,
     val assetId: String
 )
+
+/** Una línea de texto reconocido (OCR) — `GET /api/assets/{id}/text`. */
+@Serializable
+data class RecognizedTextLine(
+    val text: String = "",
+    val confidence: Float = 0f,
+    val lineIndex: Int = 0,
+)
+
+/** Un objeto detectado — `GET /api/assets/{id}/objects` (uno por caja, así
+ *  que la misma etiqueta puede repetirse). */
+@Serializable
+data class DetectedObject(
+    val label: String = "",
+    val confidence: Float = 0f,
+)
+
+/** Una escena clasificada — `GET /api/assets/{id}/scenes`, por rango. */
+@Serializable
+data class ClassifiedScene(
+    val label: String = "",
+    val confidence: Float = 0f,
+    val rank: Int = 0,
+)

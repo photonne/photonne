@@ -78,12 +78,17 @@ public class ListPeopleEndpoint : IEndpoint
         // Ordering: optional "unnamed first" pre-sort puts Persons without a name
         // at the top so the user is nudged to label them. The body sort keys are
         // "name" or "facecount"; default mirrors the previous behavior (faces desc).
-        IOrderedQueryable<Person> ordered = unnamedFirst == true
-            ? q.OrderByDescending(p => p.Name == null)
-            : q.OrderBy(p => 0); // identity placeholder
-
+        // Ordenar por nombre sin "unnamedFirst" deja a los sin nombre al FINAL:
+        // si no, su clave vacía los ponía delante de la "A" y el orden por
+        // nombre empezaba con un muro de "Sin nombre".
         var asc = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase);
         var key = sort?.ToLowerInvariant();
+        IOrderedQueryable<Person> ordered = unnamedFirst == true
+            ? q.OrderByDescending(p => p.Name == null)
+            : key == "name"
+                ? q.OrderBy(p => p.Name == null)
+                : q.OrderBy(p => 0); // identity placeholder
+
         ordered = key switch
         {
             "name" => asc

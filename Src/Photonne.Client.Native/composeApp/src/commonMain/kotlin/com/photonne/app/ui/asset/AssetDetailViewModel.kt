@@ -12,6 +12,7 @@ import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PersonAsset
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +33,13 @@ data class AssetDetailUiState(
     val facesFailed: Boolean = false,
     val samePersonAssets: List<PersonAsset> = emptyList(),
     val sameDayAssets: List<PersonAsset> = emptyList(),
+    /** Texto reconocido (OCR), líneas unidas en orden de lectura; null si no
+     *  hay (o aún no se ha pedido: se pide al abrir el panel). */
+    val recognizedText: String? = null,
+    /** Etiquetas de objetos detectados, sin repetir, por confianza. */
+    val objectLabels: List<String> = emptyList(),
+    /** Etiquetas de escenas, por rango. */
+    val sceneLabels: List<String> = emptyList(),
 )
 
 /**
@@ -64,7 +72,16 @@ class AssetDetailViewModel(
         val faces: List<Face>? = null,
         val samePersonAssets: List<PersonAsset>? = null,
         val sameDayAssets: List<PersonAsset>? = null,
+        /** Lo que ha visto la IA (OCR, objetos, escenas): solo se pide con el
+         *  panel de info abierto — casi nadie lo abre en cada foto. */
+        val ai: AiExtras? = null,
     )
+    private data class AiExtras(
+        val text: String?,
+        val objects: List<String>,
+        val scenes: List<String>,
+    )
+    private var aiJob: Job? = null
     private val extrasCache = mutableMapOf<String, Extras>()
     private var extrasJob: Job? = null
     private var facesRefreshJob: Job? = null
@@ -160,6 +177,44 @@ class AssetDetailViewModel(
     }
 
     /**
+     * Texto, objetos y escenas de [assetId], para el panel de info. Lo llama la
+     * pantalla cuando el panel está abierto; nunca bloquea nada y un fallo (o
+     * un asset ajeno, que da 404) se queda en "no hay", sin sección.
+     */
+    fun loadAiExtras(assetId: String) {
+        if (assetId.startsWith("device:")) return
+        if (extrasCache[assetId]?.ai != null) return
+        aiJob?.cancel()
+        aiJob = viewModelScope.launch {
+            // Las tres a la vez: cada una es una consulta pequeña e independiente.
+            val text = async { fetchOrNull { repository.getText(assetId) } }
+            val objects = async { fetchOrNull { repository.getObjects(assetId) } }
+            val scenes = async { fetchOrNull { repository.getScenes(assetId) } }
+            val ai = AiExtras(
+                text = text.await().orEmpty()
+                    .sortedBy { it.lineIndex }
+                    .map { it.text.trim() }
+                    .filter { it.isNotEmpty() }
+                    .joinToString("\n")
+                    .takeIf { it.isNotBlank() },
+                objects = objects.await().orEmpty()
+                    .sortedByDescending { it.confidence }
+                    .map { it.label }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .take(MAX_AI_LABELS),
+                scenes = scenes.await().orEmpty()
+                    .sortedBy { it.rank }
+                    .map { it.label }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .take(MAX_AI_LABELS),
+            )
+            updateExtras(assetId) { it.copy(ai = ai) }
+        }
+    }
+
+    /**
      * Drops what's cached for [assetId] and loads it again: detail (tags,
      * description) and every extra. For after an AI analysis finished on the
      * server, when the cached copy is exactly what's stale.
@@ -235,6 +290,9 @@ class AssetDetailViewModel(
                     facesFailed = false,
                     samePersonAssets = extras.samePersonAssets.orEmpty(),
                     sameDayAssets = extras.sameDayAssets.orEmpty(),
+                    recognizedText = extras.ai?.text,
+                    objectLabels = extras.ai?.objects.orEmpty(),
+                    sceneLabels = extras.ai?.scenes.orEmpty(),
                 )
             } else current
         }
@@ -513,5 +571,10 @@ class AssetDetailViewModel(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    private companion object {
+        /** Chips de objetos/escenas por foto: más allá de esto es ruido. */
+        const val MAX_AI_LABELS = 8
     }
 }

@@ -1,6 +1,8 @@
 package com.photonne.app.ui.people
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import com.photonne.app.resources.people_face_assign_to
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,7 +80,10 @@ fun AssetFacesSheet(
     onUnassign: (faceId: String) -> Unit,
     onReject: (faceId: String) -> Unit,
     onSetCover: (personId: String, faceId: String) -> Unit,
-    onCancelAssign: () -> Unit
+    onCancelAssign: () -> Unit,
+    onPickerQueryChange: (String) -> Unit = {},
+    /** Toque en el nombre de una cara ya asignada: abre esa persona. */
+    onOpenPerson: ((personId: String) -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -130,6 +135,9 @@ fun AssetFacesSheet(
                             onReject = { onReject(face.id) },
                             onSetCover = {
                                 face.personId?.let { onSetCover(it, face.id) }
+                            },
+                            onOpenPerson = face.personId?.let { personId ->
+                                onOpenPerson?.let { open -> { open(personId) } }
                             }
                         )
                     }
@@ -141,7 +149,11 @@ fun AssetFacesSheet(
     val assigningId = state.assigningFaceId
     if (assigningId != null) {
         AssignPersonDialog(
-            people = state.people,
+            people = state.pickerPeople,
+            query = state.pickerQuery,
+            isSearching = state.pickerSearching,
+            exactMatch = state.pickerExactMatch,
+            onQueryChange = onPickerQueryChange,
             baseUrl = baseUrl,
             onDismiss = onCancelAssign,
             onPickExisting = { personId -> onAssignToPerson(assigningId, personId) },
@@ -162,7 +174,8 @@ private fun FaceRow(
     onAssign: () -> Unit,
     onUnassign: () -> Unit,
     onReject: () -> Unit,
-    onSetCover: () -> Unit
+    onSetCover: () -> Unit,
+    onOpenPerson: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -204,7 +217,17 @@ private fun FaceRow(
                 face.personId != null -> Text(
                     personName?.takeIf { it.isNotBlank() }
                         ?: stringResource(Res.string.people_unnamed),
-                    style = labelStyle
+                    style = labelStyle,
+                    // El nombre lleva a la persona: la hoja es para editar, pero
+                    // desde aquí también se quiere ver "todas las de Ana".
+                    color = if (onOpenPerson != null) MaterialTheme.colorScheme.primary
+                    else androidx.compose.ui.graphics.Color.Unspecified,
+                    modifier = if (onOpenPerson != null) {
+                        Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable(onClick = onOpenPerson)
+                            .padding(vertical = Spacing.xxs)
+                    } else Modifier
                 )
                 face.suggestedPersonId != null -> Text(
                     stringResource(
@@ -297,12 +320,18 @@ private fun FaceActions(
 @Composable
 private fun AssignPersonDialog(
     people: List<com.photonne.app.data.models.Person>,
+    query: String,
+    isSearching: Boolean,
+    exactMatch: com.photonne.app.data.models.Person?,
+    onQueryChange: (String) -> Unit,
     baseUrl: String,
     onDismiss: () -> Unit,
     onPickExisting: (personId: String) -> Unit,
     onCreateNew: (name: String) -> Unit
 ) {
-    var newName by remember { mutableStateOf("") }
+    // El campo sirve para las dos cosas: filtra la lista (en el servidor) y,
+    // si no hay nadie con ese nombre, es el nombre de la persona nueva.
+    val newName = query
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.people_face_assign)) },
@@ -310,8 +339,16 @@ private fun AssignPersonDialog(
             Column(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = newName,
-                    onValueChange = { newName = it },
+                    onValueChange = onQueryChange,
                     label = { Text(stringResource(Res.string.people_face_assign_new)) },
+                    trailingIcon = if (isSearching) {
+                        {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else null,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
@@ -368,11 +405,23 @@ private fun AssignPersonDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onCreateNew(newName) },
-                enabled = newName.trim().isNotEmpty()
-            ) {
-                Text(stringResource(Res.string.action_save))
+            if (exactMatch != null) {
+                // Ya hay alguien con ese nombre: asignar, no duplicar.
+                TextButton(onClick = { onPickExisting(exactMatch.id) }) {
+                    Text(
+                        stringResource(
+                            Res.string.people_face_assign_to,
+                            exactMatch.name.orEmpty()
+                        )
+                    )
+                }
+            } else {
+                TextButton(
+                    onClick = { onCreateNew(newName) },
+                    enabled = newName.trim().isNotEmpty()
+                ) {
+                    Text(stringResource(Res.string.action_save))
+                }
             }
         },
         dismissButton = {

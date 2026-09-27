@@ -39,6 +39,10 @@ import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.resources.notifications_no_screen
 import com.photonne.app.resources.organize_skipped_done
+import com.photonne.app.resources.organize_excluded_included_done
+import com.photonne.app.resources.organize_excluded_action_include
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.album_trash_warning
@@ -232,6 +236,17 @@ private data class AssetDetailContext(
     enum class Source { Timeline, Album, Archive, Trash }
 }
 
+/** Visor del que se salió desde su panel de info (una cara → la persona, una
+ *  escena u objeto → la búsqueda): Atrás desde allí vuelve a esa foto, y a la
+ *  pantalla que había debajo. */
+private data class ViewerReturn(
+    val tab: MainTab,
+    val subscreen: MoreSubscreen?,
+    val person: com.photonne.app.data.models.Person?,
+    val viewer: AssetDetailContext,
+    val viewerStack: List<AssetDetailContext>
+)
+
 private data class AddToAlbumState(
     val asset: TimelineItem,
     val isSubmitting: Boolean = false,
@@ -267,6 +282,7 @@ private enum class MoreSubscreen {
     UnsupportedFiles,
     OrganizeInbox,
     OrganizeRule,
+    OrganizeExcluded,
     DeviceFolders,
     DeviceFolderDetail,
     Memories,
@@ -427,7 +443,8 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AdminSystemRunTasks,
     MoreSubscreen.AdminSystemEnrichmentFailures,
     MoreSubscreen.AdminSystemBackup -> MoreSubscreen.AdminSystemHub
-    MoreSubscreen.OrganizeRule -> MoreSubscreen.OrganizeInbox
+    MoreSubscreen.OrganizeRule,
+    MoreSubscreen.OrganizeExcluded -> MoreSubscreen.OrganizeInbox
     MoreSubscreen.DeviceFolderDetail -> MoreSubscreen.DeviceFolders
     MoreSubscreen.Upload,
     MoreSubscreen.DeviceFolders,
@@ -602,7 +619,7 @@ private fun SessionViewModelScope(
 }
 
 /** Whose selection the shared add-to-album dialog adds. */
-private enum class BulkAddSource { Search, Map, Favorites, People, Folder, Archive, Album, Inbox }
+private enum class BulkAddSource { Search, Map, Favorites, People, Folder, Archive, Album, Inbox, Upload }
 
 /**
  * Qué hay que añadir al álbum que se está creando cuando se llega a "Nuevo
@@ -712,6 +729,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val unsupportedFilesViewModel: com.photonne.app.ui.library.UnsupportedFilesViewModel = koinViewModel()
     val organizeInboxViewModel: com.photonne.app.ui.organize.OrganizeInboxViewModel = koinViewModel()
+    val organizeExcludedViewModel: com.photonne.app.ui.organize.OrganizeExcludedViewModel = koinViewModel()
     // Lo resuelve aquí (y no dentro de la pantalla) porque la rejilla de revisión
     // se hospeda FUERA del MainScaffold y necesita el mismo estado.
     val organizeRuleViewModel: com.photonne.app.ui.organize.OrganizeRuleViewModel = koinViewModel()
@@ -799,6 +817,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val favoritesState by favoritesViewModel.state.collectAsStateWithLifecycle()
     val unsupportedFilesState by unsupportedFilesViewModel.state.collectAsStateWithLifecycle()
     val organizeInboxState by organizeInboxViewModel.state.collectAsStateWithLifecycle()
+    val organizeExcludedState by organizeExcludedViewModel.state.collectAsStateWithLifecycle()
     val organizeRuleState by organizeRuleViewModel.state.collectAsStateWithLifecycle()
     val peopleState by peopleViewModel.state.collectAsStateWithLifecycle()
     val personDetailState by personDetailViewModel.state.collectAsStateWithLifecycle()
@@ -1009,10 +1028,55 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // Buscar abierto desde una etiqueta de Explorar: Atrás vuelve a esa
     // subpantalla (y a la pestaña que había debajo), no a Fotos.
     var searchReturnTo by remember { mutableStateOf<Pair<MainTab, MoreSubscreen>?>(null) }
+    // Búsqueda abierta desde una escena u objeto del visor: Atrás vuelve a la foto.
+    var searchViewerReturn by remember { mutableStateOf<ViewerReturn?>(null) }
     LaunchedEffect(selectedTab) {
-        if (selectedTab != MainTab.Search) searchReturnTo = null
+        if (selectedTab != MainTab.Search) {
+            searchReturnTo = null
+            searchViewerReturn = null
+        }
+    }
+    fun restoreViewer(returnTo: ViewerReturn) {
+        selectedTab = returnTo.tab
+        moreSubscreen = returnTo.subscreen
+        selectedPerson = returnTo.person
+        // Si debajo había otra persona abierta, su detalle vuelve a cargarse:
+        // el view model es uno solo y ahora tiene la que se abrió desde la cara.
+        returnTo.person?.let { personDetailViewModel.open(it.id, it.name) }
+        assetDetailStack = returnTo.viewerStack
+        assetDetail = returnTo.viewer
+    }
+    /** Fotografía del visor abierto (en la foto que se está viendo) para volver
+     *  a él; null si no hay visor. */
+    fun viewerReturnPoint(): ViewerReturn? {
+        val ctx = assetDetail ?: return null
+        val atIndex = ctx.items.indexOfFirst { it.id == currentDetailAssetId }
+            .takeIf { it >= 0 } ?: ctx.startIndex
+        return ViewerReturn(
+            tab = selectedTab,
+            subscreen = moreSubscreen,
+            person = selectedPerson,
+            viewer = ctx.copy(startIndex = atIndex),
+            viewerStack = assetDetailStack
+        )
+    }
+    /** Escena u objeto tocado en el panel de info: búsqueda filtrada por él. */
+    fun openSearchFromViewer(applyFilter: () -> Unit) {
+        val returnPoint = viewerReturnPoint() ?: return
+        applyFilter()
+        assetDetailStack = emptyList()
+        assetDetail = null
+        moreSubscreen = null
+        selectedTab = MainTab.Search
+        searchReturnTo = null
+        searchViewerReturn = returnPoint
     }
     fun searchBack() {
+        searchViewerReturn?.let { returnTo ->
+            searchViewerReturn = null
+            restoreViewer(returnTo)
+            return
+        }
         val returnTo = searchReturnTo
         searchReturnTo = null
         if (returnTo != null) {
@@ -1037,6 +1101,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         if (returnTo != null) {
             selectedTab = returnTo.first
             moreSubscreen = returnTo.second
+        }
+    }
+    // Persona abierta desde una cara del visor: Atrás vuelve a la foto.
+    var personReturnTo by remember { mutableStateOf<ViewerReturn?>(null) }
+    fun personBack() {
+        selectedPerson = null
+        val returnTo = personReturnTo
+        personReturnTo = null
+        if (returnTo != null) restoreViewer(returnTo)
+    }
+    /**
+     * Toque en una cara con persona: cierra el visor y abre esa persona. Solo
+     * llega el id (la cara no trae el nombre), así que se abre ya con él y el
+     * nombre y el resto se completan en cuanto responde el servidor.
+     */
+    fun openPersonFromViewer(personId: String) {
+        personReturnTo = viewerReturnPoint() ?: return
+        assetDetailStack = emptyList()
+        assetDetail = null
+        selectedTab = MainTab.More
+        moreSubscreen = MoreSubscreen.People
+        selectedPerson = com.photonne.app.data.models.Person(id = personId)
+        personDetailViewModel.open(personId, null)
+        coroutineScope.launch {
+            runCatching { peopleRepository.get(personId) }.onSuccess { person ->
+                if (selectedPerson?.id == personId) {
+                    selectedPerson = person
+                    personDetailViewModel.open(person.id, person.name)
+                }
+            }
         }
     }
     // Lote M4: una notificación del backup abre su pantalla (progreso) o sus
@@ -1113,7 +1207,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         (moreSubscreen == MoreSubscreen.Trash && trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive) ||
         (moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
             personDetailState.isSelectionActive) ||
-        (moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive)
+        (moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive) ||
+        (moreSubscreen == MoreSubscreen.OrganizeExcluded && organizeExcludedState.isSelectionActive)
     )
     var overlayForward by remember { mutableStateOf(true) }
     val canHandleBack = (
@@ -1167,11 +1262,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 personDetailState.isSelectionActive -> personDetailViewModel.clearSelection()
             moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive ->
                 organizeInboxViewModel.clearSelection()
+            moreSubscreen == MoreSubscreen.OrganizeExcluded && organizeExcludedState.isSelectionActive ->
+                organizeExcludedViewModel.clearSelection()
             selectedTab == MainTab.Albums && selectedAlbum != null -> albumBack()
             selectedTab == MainTab.Folders && selectedFolder != null -> folderBack()
-            moreSubscreen == MoreSubscreen.People && selectedPerson != null -> {
-                selectedPerson = null
-            }
+            moreSubscreen == MoreSubscreen.People && selectedPerson != null -> personBack()
             moreSubscreen == MoreSubscreen.AdminUserEditor -> {
                 adminUserEditorId = null
                 adminUsersViewModel.clearMessages()
@@ -1268,6 +1363,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.DeviceFolderDetail,
         MoreSubscreen.Map -> true
         MoreSubscreen.OrganizeInbox -> !organizeInboxState.isSelectionActive
+        MoreSubscreen.OrganizeExcluded -> !organizeExcludedState.isSelectionActive
         MoreSubscreen.Favorites -> !favoritesState.isSelectionActive
         MoreSubscreen.Archived -> !archivedState.isSelectionActive
         MoreSubscreen.UnsupportedFiles -> true
@@ -1497,6 +1593,38 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreSubscreen == MoreSubscreen.OrganizeInbox -> {
             }
             moreSubscreen == MoreSubscreen.OrganizeRule -> { }
+            // Apartadas: con selección, la barra acoplada lleva "Devolver a la
+            // bandeja" (una sola acción, como Restaurar en la papelera).
+            moreSubscreen == MoreSubscreen.OrganizeExcluded &&
+                organizeExcludedState.isSelectionActive -> {
+                val snackbar = LocalSnackbarController.current
+                val includedCount = organizeExcludedState.selection.size
+                val includedMessage = pluralStringResource(
+                    Res.plurals.organize_excluded_included_done, includedCount, includedCount
+                )
+                AssetSelectionTopBar(
+                    selectedCount = organizeExcludedState.selection.size,
+                    totalCount = organizeExcludedState.items.size,
+                    isMutating = organizeExcludedState.isBulkMutating,
+                    onClose = organizeExcludedViewModel::clearSelection,
+                    onSelectAll = organizeExcludedViewModel::toggleSelectAll,
+                    selectAllLoadedOnly = organizeExcludedState.hasMore
+                ) {
+                    TextButton(
+                        onClick = {
+                            organizeExcludedViewModel.includeSelected {
+                                snackbar?.show(includedMessage)
+                                organizeInboxViewModel.refresh()
+                                foldersViewModel.refreshOrganizeCount()
+                            }
+                        },
+                        enabled = !organizeExcludedState.isBulkMutating
+                    ) {
+                        Text(stringResource(Res.string.organize_excluded_action_include))
+                    }
+                }
+            }
+            moreSubscreen == MoreSubscreen.OrganizeExcluded -> { }
             moreSubscreen == MoreSubscreen.UtilitiesDuplicates -> { }
             moreSubscreen == MoreSubscreen.UtilitiesLargeFiles -> { }
             moreSubscreen == MoreSubscreen.UtilitiesLocations -> { }
@@ -2211,6 +2339,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         moreSubscreen = null
         selectedPerson = null
         folderReturnTo = null
+        personReturnTo = null
         if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
         if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
             selectedFolder = null
@@ -2766,7 +2895,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onRemove = uploadViewModel::remove,
                         onCancelAll = uploadViewModel::cancelAll,
                         onClearFinished = uploadViewModel::clearFinished,
-                        onDismissPickerError = uploadViewModel::clearPickerError
+                        onDismissPickerError = uploadViewModel::clearPickerError,
+                        onViewBatch = {
+                            uploadState.lastBatch?.takeIf { it.isNotEmpty() }?.let { batch ->
+                                assetDetail = AssetDetailContext(
+                                    items = batch,
+                                    startIndex = 0,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        },
+                        onAddBatchToAlbum = { bulkAddSource = BulkAddSource.Upload },
+                        onDismissBatch = uploadViewModel::dismissBatchSummary
                     )
                     MoreSubscreen.DeviceBackup ->
                         com.photonne.app.ui.devicebackup.BackupScreen(
@@ -2869,6 +3014,49 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onSeeAllItems = organizeInboxViewModel::showAllItems,
                             onBackToSuggestions = organizeInboxViewModel::showSuggestions,
                             onApplySelection = organizeInboxViewModel::applySelection,
+                            onOpenExcluded = {
+                                organizeExcludedViewModel.refresh()
+                                moreSubscreen = MoreSubscreen.OrganizeExcluded
+                            },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                        )
+                    MoreSubscreen.OrganizeExcluded ->
+                        com.photonne.app.ui.organize.OrganizeExcludedScreen(
+                            state = organizeExcludedState,
+                            onLoad = organizeExcludedViewModel::ensureLoaded,
+                            onRefresh = organizeExcludedViewModel::refresh,
+                            onLoadMore = organizeExcludedViewModel::loadMore,
+                            onItemClick = { index ->
+                                if (organizeExcludedState.isSelectionActive) {
+                                    organizeExcludedState.items.getOrNull(index)?.let {
+                                        organizeExcludedViewModel.toggleSelection(it.id)
+                                    }
+                                } else {
+                                    assetDetail = AssetDetailContext(
+                                        items = organizeExcludedViewModel.state.value.items,
+                                        startIndex = index,
+                                        source = AssetDetailContext.Source.Timeline,
+                                        hasMore = organizeExcludedState.hasMore,
+                                        onLoadMore = organizeExcludedViewModel::loadMore,
+                                        feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                            items = { organizeExcludedState.items },
+                                            hasMore = { organizeExcludedState.hasMore },
+                                            loadMore = organizeExcludedViewModel::loadMore
+                                        ),
+                                        onFavoriteChanged = { id, isFav ->
+                                            timelineViewModel.setFavorite(id, isFav)
+                                        }
+                                    )
+                                }
+                            },
+                            onItemLongClick = { index ->
+                                organizeExcludedState.items.getOrNull(index)?.let {
+                                    organizeExcludedViewModel.toggleSelection(it.id)
+                                }
+                            },
+                            onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                            onApplySelection = organizeExcludedViewModel::applySelection,
+                            onErrorShown = organizeExcludedViewModel::clearError,
                             onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.OrganizeRule ->
@@ -3097,6 +3285,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onLoad = peopleViewModel::ensureLoaded,
                                 onRefresh = peopleViewModel::refresh,
                                 onBack = { moreSubscreen = null },
+                                onToggleSearch = peopleViewModel::toggleSearch,
+                                onSearchChange = peopleViewModel::setSearch,
+                                onSortChange = peopleViewModel::setSort,
                                 onRecluster = {
                                     // El servidor devuelve cuántas personas nuevas
                                     // salieron del reagrupado; antes se descartaba.
@@ -3158,7 +3349,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 },
                                 onLoadMore = personDetailViewModel::loadMore,
                                 onApplySelection = personDetailViewModel::applySelection,
-                                onBack = { selectedPerson = null },
+                                onBack = ::personBack,
                                 onRename = { showRenamePerson = true },
                                 onSuggestions = {
                                     personSuggestionsViewModel.open(person.id, person.name)
@@ -4081,6 +4272,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             assetFacesViewModel.open(assetId)
                             showAssetFacesSheet = true
                         },
+                        onOpenPerson = { personId -> openPersonFromViewer(personId) },
+                        onSearchScene = { label ->
+                            openSearchFromViewer { searchViewModel.showResultsForSceneLabel(label) }
+                        },
+                        onSearchObject = { label ->
+                            openSearchFromViewer { searchViewModel.showResultsForObjectLabel(label) }
+                        },
                         facesRevision = assetFacesRevision,
                         onShare = { item -> actionsViewModel.shareDirectly(listOf(item.id)) },
                         onDownload = { item -> actionsViewModel.download(listOf(item.id)) },
@@ -4154,6 +4352,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 BulkAddSource.Archive -> archivedState.isBulkMutating to archivedState.error?.userMessage
                 BulkAddSource.Album -> albumDetailState.isBulkMutating to albumDetailState.error?.userMessage
                 BulkAddSource.Inbox -> organizeInboxState.isBulkMutating to organizeInboxState.error?.userMessage
+                BulkAddSource.Upload -> uploadState.isBulkMutating to uploadState.error?.userMessage
             }
         }
         fun clearPendingAddError(target: PendingAddTarget?) {
@@ -4170,6 +4369,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     BulkAddSource.Archive -> archivedViewModel.clearError()
                     BulkAddSource.Album -> albumDetailViewModel.clearError()
                     BulkAddSource.Inbox -> organizeInboxViewModel.clearError()
+                    BulkAddSource.Upload -> uploadViewModel.clearError()
                 }
             }
         }
@@ -4220,6 +4420,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     BulkAddSource.Archive -> archivedViewModel.bulkAddToAlbum(album.id, onAdded)
                     BulkAddSource.Album -> albumDetailViewModel.bulkAddToAlbum(album.id, onAdded)
                     BulkAddSource.Inbox -> organizeInboxViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Upload -> uploadViewModel.addBatchToAlbum(album.id, onAdded)
                 }
             }
         }
@@ -4869,6 +5070,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onToggleObject = searchViewModel::toggleObjectLabel,
             onToggleScene = searchViewModel::toggleSceneLabel,
             onTogglePerson = searchViewModel::togglePerson,
+            onPeopleQueryChange = searchViewModel::setPeopleQuery,
             onClearAll = searchViewModel::clearAll
         )
     }
@@ -4886,6 +5088,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             BulkAddSource.Archive -> archivedState.isBulkMutating to archivedState.error?.userMessage
             BulkAddSource.Album -> albumDetailState.isBulkMutating to albumDetailState.error?.userMessage
             BulkAddSource.Inbox -> organizeInboxState.isBulkMutating to organizeInboxState.error?.userMessage
+            BulkAddSource.Upload -> uploadState.isBulkMutating to uploadState.error?.userMessage
         }
         LaunchedEffect(source) {
             when (source) {
@@ -4897,6 +5100,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 BulkAddSource.Archive -> archivedViewModel.clearError()
                 BulkAddSource.Album -> albumDetailViewModel.clearError()
                 BulkAddSource.Inbox -> organizeInboxViewModel.clearError()
+                BulkAddSource.Upload -> uploadViewModel.clearError()
             }
         }
         AddToAlbumDialog(
@@ -4929,6 +5133,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     BulkAddSource.Archive -> archivedViewModel.bulkAddToAlbum(album.id, onAdded)
                     BulkAddSource.Album -> albumDetailViewModel.bulkAddToAlbum(album.id, onAdded)
                     BulkAddSource.Inbox -> organizeInboxViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Upload -> uploadViewModel.addBatchToAlbum(album.id, onAdded)
                 }
             },
             onDismiss = { bulkAddSource = null }
@@ -5475,7 +5680,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     peopleViewModel.refresh()
                 }
             },
-            onCancelAssign = assetFacesViewModel::cancelAssigning
+            onCancelAssign = assetFacesViewModel::cancelAssigning,
+            onPickerQueryChange = assetFacesViewModel::setPickerQuery,
+            onOpenPerson = { personId ->
+                showAssetFacesSheet = false
+                assetFacesViewModel.close()
+                assetFacesRevision++
+                openPersonFromViewer(personId)
+            }
         )
     }
 

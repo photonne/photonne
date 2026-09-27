@@ -11,6 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.foundation.layout.size
+import com.photonne.app.resources.people_search_no_results
+import com.photonne.app.resources.people_picker_search_placeholder
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -65,6 +72,7 @@ fun SearchFiltersSheet(
     onToggleObject: (String) -> Unit,
     onToggleScene: (String) -> Unit,
     onTogglePerson: (String) -> Unit,
+    onPeopleQueryChange: (String) -> Unit = {},
     onClearAll: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -144,10 +152,32 @@ fun SearchFiltersSheet(
             }
 
             // People
+            val visiblePeople = state.visiblePeople
             Text(
-                stringResource(Res.string.search_people_count, state.people.size),
+                stringResource(Res.string.search_people_count, visiblePeople.size),
                 style = MaterialTheme.typography.titleMedium
             )
+            // Busca en el servidor: la lista de abajo solo trae las primeras,
+            // y filtrar por alguien de fuera de ellas era imposible.
+            OutlinedTextField(
+                value = state.peopleQuery,
+                onValueChange = onPeopleQueryChange,
+                placeholder = { Text(stringResource(Res.string.people_picker_search_placeholder)) },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                trailingIcon = if (state.peopleSearching) {
+                    { CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp)) }
+                } else null,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (state.peopleSearchResults?.isEmpty() == true && !state.peopleSearching) {
+                Text(
+                    stringResource(Res.string.people_search_no_results, state.peopleQuery.trim()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             if (state.facetsLoading && state.people.isEmpty()) {
                 Text(
                     stringResource(Res.string.search_filters_loading),
@@ -164,7 +194,7 @@ fun SearchFiltersSheet(
                         .heightIn(max = 220.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    for (person in state.people) {
+                    for (person in visiblePeople) {
                         FilterChip(
                             selected = person.id in state.selectedPersonIds,
                             onClick = { onTogglePerson(person.id) },

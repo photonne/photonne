@@ -1,5 +1,18 @@
 package com.photonne.app.ui.asset
 
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.derivedStateOf
+import com.photonne.app.resources.asset_ai_scenes
+import com.photonne.app.resources.asset_ai_objects
+import com.photonne.app.resources.asset_detail_text_title
+import com.photonne.app.resources.asset_detail_text_copy
+import com.photonne.app.resources.asset_detail_text_copied
+import com.photonne.app.resources.asset_detail_text_more
+import com.photonne.app.resources.asset_detail_text_less
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -260,6 +273,11 @@ fun AssetDetailScreen(
     onAssetRestored: (assetId: String) -> Unit = {},
     onAssetPurged: (assetId: String) -> Unit = {},
     onOpenFaces: (assetId: String) -> Unit = {},
+    /** Toque en una cara con persona asignada (tira del panel de info). */
+    onOpenPerson: (personId: String) -> Unit = {},
+    /** Toque en una escena / un objeto del panel: búsqueda filtrada por ella. */
+    onSearchScene: (label: String) -> Unit = {},
+    onSearchObject: (label: String) -> Unit = {},
     /** Bumped by the host when the faces sheet closes, so the inline faces of
      *  the visible asset are re-read (the sheet may have changed them). */
     facesRevision: Int = 0,
@@ -445,6 +463,12 @@ fun AssetDetailScreen(
     }
     LaunchedEffect(facesRevision) {
         if (facesRevision > 0) currentItem?.let { viewModel.refreshFaces(it.id) }
+    }
+    // Texto, objetos y escenas: solo con el panel de info abierto (y para la
+    // foto que se está viendo), nunca al pasar fotos con el panel cerrado.
+    val infoPanelOpen by remember { derivedStateOf { infoProgress.value > 0f } }
+    LaunchedEffect(infoPanelOpen, currentItem?.id) {
+        if (infoPanelOpen) currentItem?.let { viewModel.loadAiExtras(it.id) }
     }
     val currentIsFavorite = state.detail
         ?.takeIf { it.id == currentItem?.id }?.isFavorite
@@ -737,6 +761,12 @@ fun AssetDetailScreen(
                         onEditDescription = { showEditDescription = true },
                         onEditDate = { showEditDate = true },
                         onOpenFaces = { onOpenFaces(item.id) },
+                        onOpenPerson = onOpenPerson,
+                        recognizedText = if (isCurrent) state.recognizedText else null,
+                        objectLabels = if (isCurrent) state.objectLabels else emptyList(),
+                        sceneLabels = if (isCurrent) state.sceneLabels else emptyList(),
+                        onSearchScene = onSearchScene,
+                        onSearchObject = onSearchObject,
                         onAddTag = { tag -> viewModel.addTag(item.id, tag) },
                         onRemoveTag = { tag -> viewModel.removeTag(item.id, tag) },
                         tagSuggestions = viewModel::userTagSuggestions,
@@ -1718,6 +1748,12 @@ private fun AssetMetadataPanel(
     onEditDescription: () -> Unit,
     onEditDate: () -> Unit,
     onOpenFaces: () -> Unit,
+    onOpenPerson: (personId: String) -> Unit,
+    recognizedText: String?,
+    objectLabels: List<String>,
+    sceneLabels: List<String>,
+    onSearchScene: (String) -> Unit,
+    onSearchObject: (String) -> Unit,
     onAddTag: (String) -> Unit,
     onRemoveTag: (String) -> Unit,
     tagSuggestions: suspend () -> List<String>,
@@ -1807,7 +1843,12 @@ private fun AssetMetadataPanel(
         // overflow menu still reaches the sheet); the plain row only comes back
         // if the request failed, so the sheet stays reachable from here.
         if (detail != null && faces.isNotEmpty()) {
-            FacesSection(faces = faces, baseUrl = baseUrl, onOpenFaces = onOpenFaces)
+            FacesSection(
+                faces = faces,
+                baseUrl = baseUrl,
+                onOpenFaces = onOpenFaces,
+                onOpenPerson = onOpenPerson
+            )
         } else if (detail != null && facesFailed) {
             MetadataActionRow(
                 leadingIcon = Icons.Outlined.Face,
@@ -1836,6 +1877,26 @@ private fun AssetMetadataPanel(
             val tags = fallback.tags.map { autoTagLabel(it) }
             if (tags.isNotEmpty()) {
                 MetadataRow(stringResource(Res.string.asset_detail_tags_label), tags.joinToString(", "))
+            }
+        }
+
+        // Lo que ha visto la IA. Cada sección solo aparece si hay algo: se
+        // carga perezosamente al abrir el panel y nunca bloquea lo de arriba.
+        if (detail != null) {
+            recognizedText?.let { RecognizedTextSection(text = it) }
+            if (sceneLabels.isNotEmpty()) {
+                AiLabelsSection(
+                    title = stringResource(Res.string.asset_ai_scenes),
+                    labels = sceneLabels,
+                    onClick = onSearchScene
+                )
+            }
+            if (objectLabels.isNotEmpty()) {
+                AiLabelsSection(
+                    title = stringResource(Res.string.asset_ai_objects),
+                    labels = objectLabels,
+                    onClick = onSearchObject
+                )
             }
         }
 
@@ -1927,13 +1988,15 @@ private fun ExifStatCard(cell: StatCell, modifier: Modifier = Modifier) {
 /**
  * Detected faces as a horizontal strip of circular thumbnails. The whole
  * section is tappable (and a trailing chevron makes that obvious) so it opens
- * the full faces sheet where the user assigns/edits people.
+ * the full faces sheet where the user assigns/edits people. Cada cara con
+ * persona asignada abre esa persona; la hoja queda para editar.
  */
 @Composable
 private fun FacesSection(
     faces: List<com.photonne.app.data.models.Face>,
     baseUrl: String,
-    onOpenFaces: () -> Unit
+    onOpenFaces: () -> Unit,
+    onOpenPerson: (personId: String) -> Unit
 ) {
     Surface(
         onClick = onOpenFaces,
@@ -1967,6 +2030,9 @@ private fun FacesSection(
             }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(faces, key = { _, f -> f.id }) { _, face ->
+                    // Una cara con persona lleva a esa persona; sin persona,
+                    // a la hoja de caras, que es donde se asigna.
+                    val personId = face.personId
                     AsyncImage(
                         model = "$baseUrl/api/faces/${face.id}/thumbnail",
                         contentDescription = null,
@@ -1975,6 +2041,9 @@ private fun FacesSection(
                             .size(56.dp)
                             .clip(androidx.compose.foundation.shape.CircleShape)
                             .background(MaterialTheme.colorScheme.surface)
+                            .clickable {
+                                if (personId != null) onOpenPerson(personId) else onOpenFaces()
+                            }
                     )
                 }
             }
@@ -2021,6 +2090,98 @@ private fun EditableTagsSection(
                 onAddTag(value)
             }
         )
+    }
+}
+
+/**
+ * Texto reconocido en la foto (OCR), copiable. Si es largo se muestra recortado
+ * con "Ver todo": un ticket o una captura pueden traer cientos de líneas.
+ */
+@Composable
+private fun RecognizedTextSection(text: String) {
+    var expanded by remember(text) { mutableStateOf(false) }
+    val isLong = remember(text) {
+        text.length > RECOGNIZED_TEXT_COLLAPSED_CHARS ||
+            text.count { it == '\n' } >= RECOGNIZED_TEXT_COLLAPSED_LINES
+    }
+    val clipboard = LocalClipboardManager.current
+    val snackbar = LocalSnackbarController.current
+    val copiedMessage = stringResource(Res.string.asset_detail_text_copied)
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(Res.string.asset_detail_text_title),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = {
+                clipboard.setText(AnnotatedString(text))
+                snackbar?.show(copiedMessage)
+            }) {
+                Icon(
+                    Icons.Outlined.ContentCopy,
+                    contentDescription = stringResource(Res.string.asset_detail_text_copy),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = if (expanded || !isLong) Int.MAX_VALUE else RECOGNIZED_TEXT_COLLAPSED_LINES,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (isLong) {
+            TextButton(
+                onClick = { expanded = !expanded },
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text(
+                    stringResource(
+                        if (expanded) Res.string.asset_detail_text_less
+                        else Res.string.asset_detail_text_more
+                    )
+                )
+            }
+        }
+    }
+}
+
+private const val RECOGNIZED_TEXT_COLLAPSED_LINES = 4
+private const val RECOGNIZED_TEXT_COLLAPSED_CHARS = 240
+
+/** Escenas u objetos como chips; tocar uno abre la búsqueda filtrada por él. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun AiLabelsSection(title: String, labels: List<String>, onClick: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            labels.forEach { label ->
+                Surface(
+                    onClick = { onClick(label) },
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
     }
 }
 

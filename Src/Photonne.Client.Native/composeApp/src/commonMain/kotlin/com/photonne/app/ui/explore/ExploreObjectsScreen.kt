@@ -21,7 +21,7 @@ fun ExploreObjectsScreen(
     val baseUrl = rememberApiBaseUrl()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
-    val tiles = state.objects.map {
+    val tiles = (state.objectResults ?: state.objects).map {
         ExploreLabelTile(name = it.label, assetCount = it.assetCount, coverAssetId = it.coverAssetId)
     }
     ExploreLabelGridScreen(
@@ -34,6 +34,9 @@ fun ExploreObjectsScreen(
         onBack = onBack,
         onRefresh = viewModel::refresh,
         onTileClick = onObjectClick,
+        query = state.objectsQuery,
+        onQueryChange = viewModel::setObjectsQuery,
+        isSearching = state.objectsSearching,
         onChromeVisibleChange = onChromeVisibleChange
     )
 }

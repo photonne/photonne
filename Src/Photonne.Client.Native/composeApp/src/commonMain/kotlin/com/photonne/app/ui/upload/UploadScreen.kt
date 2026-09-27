@@ -35,6 +35,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
+import org.jetbrains.compose.resources.pluralStringResource
+import com.photonne.app.resources.upload_batch_done
+import com.photonne.app.resources.upload_batch_view
+import com.photonne.app.resources.upload_batch_add_to_album
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -73,7 +78,10 @@ fun UploadScreen(
     onRemove: (Long) -> Unit,
     onCancelAll: () -> Unit,
     onClearFinished: () -> Unit,
-    onDismissPickerError: () -> Unit
+    onDismissPickerError: () -> Unit,
+    onViewBatch: () -> Unit = {},
+    onAddBatchToAlbum: () -> Unit = {},
+    onDismissBatch: () -> Unit = {}
 ) {
     val pickMedia = rememberMediaPicker(onPicked)
     val onPickFiles: () -> Unit = {
@@ -99,6 +107,16 @@ fun UploadScreen(
 
         state.pickerError?.let { error ->
             UploadErrorBanner(message = error, onDismiss = onDismissPickerError)
+        }
+
+        state.lastBatch?.let { batch ->
+            BatchSummaryCard(
+                count = batch.size,
+                isBusy = state.isBulkMutating,
+                onView = onViewBatch,
+                onAddToAlbum = onAddBatchToAlbum,
+                onDismiss = onDismissBatch
+            )
         }
 
         if (state.items.isEmpty()) {
@@ -172,6 +190,57 @@ private fun Header(
         )
     }
     HorizontalDivider()
+}
+
+/**
+ * Resumen al terminar una tanda: lo subido ya está en el servidor y lo normal
+ * es querer verlo o meterlo en un álbum — antes había que ir a buscarlo al
+ * timeline entre todo lo demás.
+ */
+@Composable
+private fun BatchSummaryCard(
+    count: Int,
+    isBusy: Boolean,
+    onView: () -> Unit,
+    onAddToAlbum: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
+    ) {
+        Column(modifier = Modifier.padding(start = Spacing.lg, end = Spacing.xs, top = Spacing.xs, bottom = Spacing.xs)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = PhotonneColors.success,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.size(Spacing.sm))
+                Text(
+                    pluralStringResource(Res.plurals.upload_batch_done, count, count),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_close))
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                TextButton(onClick = onView) {
+                    Text(stringResource(Res.string.upload_batch_view))
+                }
+                TextButton(onClick = onAddToAlbum, enabled = !isBusy) {
+                    Text(stringResource(Res.string.upload_batch_add_to_album))
+                }
+            }
+        }
+    }
 }
 
 @Composable

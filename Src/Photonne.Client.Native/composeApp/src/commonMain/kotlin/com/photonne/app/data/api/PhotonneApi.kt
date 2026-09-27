@@ -648,7 +648,11 @@ interface PhotonneApi {
         search: String? = null,
         includeHidden: Boolean = false,
         limit: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
+        /** "name" | "facecount"; null = nº de caras desc (el del servidor). */
+        sort: String? = null,
+        sortDir: String? = null,
+        unnamedFirst: Boolean = false
     ): PeoplePage
     suspend fun renamePerson(personId: String, name: String?)
     suspend fun getPerson(personId: String): Person
@@ -678,6 +682,12 @@ interface PhotonneApi {
     suspend fun mergePeople(targetPersonId: String, sourcePersonId: String)
     suspend fun reclusterPeople(): ReclusterResponse
     suspend fun getAssetFaces(assetId: String): List<Face>
+    /** Texto reconocido (OCR), en orden de lectura. Solo del propietario (404 si no). */
+    suspend fun getAssetText(assetId: String): List<com.photonne.app.data.models.RecognizedTextLine>
+    /** Objetos detectados, por confianza. Solo del propietario (404 si no). */
+    suspend fun getAssetObjects(assetId: String): List<com.photonne.app.data.models.DetectedObject>
+    /** Escenas clasificadas, por rango. Solo del propietario (404 si no). */
+    suspend fun getAssetScenes(assetId: String): List<com.photonne.app.data.models.ClassifiedScene>
     suspend fun listPersonFaces(
         personId: String,
         limit: Int? = null,
@@ -2072,11 +2082,17 @@ class PhotonneApiClient(
         search: String?,
         includeHidden: Boolean,
         limit: Int?,
-        offset: Int?
+        offset: Int?,
+        sort: String?,
+        sortDir: String?,
+        unnamedFirst: Boolean
     ): PeoplePage {
         val response: HttpResponse = client.get("$baseUrl/api/people") {
             if (!search.isNullOrBlank()) parameter("search", search)
             if (includeHidden) parameter("includeHidden", true)
+            if (sort != null) parameter("sort", sort)
+            if (sortDir != null) parameter("sortDir", sortDir)
+            if (unnamedFirst) parameter("unnamedFirst", true)
             if (limit != null) parameter("limit", limit)
             if (offset != null) parameter("offset", offset)
         }
@@ -2210,6 +2226,30 @@ class PhotonneApiClient(
         val response: HttpResponse = client.post("$baseUrl/api/people/recluster")
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Recluster failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getAssetText(assetId: String): List<com.photonne.app.data.models.RecognizedTextLine> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/text")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Asset text fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getAssetObjects(assetId: String): List<com.photonne.app.data.models.DetectedObject> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/objects")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Asset objects fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getAssetScenes(assetId: String): List<com.photonne.app.data.models.ClassifiedScene> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/scenes")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Asset scenes fetch failed (${response.status.value})")
         }
         return response.body()
     }

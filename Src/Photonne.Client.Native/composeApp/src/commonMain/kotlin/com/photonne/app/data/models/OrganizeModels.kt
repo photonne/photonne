@@ -16,6 +16,9 @@ data class OrganizeSummary(
     val count: Int = 0,
     val oldest: String? = null,
     val newest: String? = null,
+    /** Lo apartado de la bandeja: no cuenta en [count], pero da la entrada
+     *  "Apartadas (N)" para revisarlo y devolverlo. */
+    val excludedCount: Int = 0,
 )
 
 /** One capture-year bucket, shared by the move preview ("se repartirán en…") and
