@@ -955,7 +955,7 @@ fun TimelineScreen(
                         val localOnlyRejectMessage =
                             stringResource(Res.string.timeline_local_only_not_selectable)
                         val rejectLocalOnlySelection = {
-                            rejectHaptics.perform(HapticEvent.SelectionStart)
+                            rejectHaptics.perform(HapticEvent.Reject)
                             rejectSnackbar?.show(localOnlyRejectMessage)
                             Unit
                         }

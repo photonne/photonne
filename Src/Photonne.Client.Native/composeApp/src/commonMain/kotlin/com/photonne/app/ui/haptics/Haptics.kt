@@ -21,7 +21,11 @@ enum class HapticEvent {
     CellCrossed,
 
     /** Se levanta el dedo con la selección hecha. */
-    SelectionEnd
+    SelectionEnd,
+
+    /** Un gesto no se puede cumplir (p. ej. seleccionar una foto solo local):
+     *  el "no" del sistema, distinto del golpe de entrar en selección. */
+    Reject
 }
 
 @Stable

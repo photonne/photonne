@@ -30,7 +30,6 @@ data class AssetDetail(
     val isArchived: Boolean = false,
     val isFileMissing: Boolean = false,
     val caption: String? = null,
-    val aiDescription: String? = null,
     val isReadOnly: Boolean = false,
     /** The caller owns the asset. Per-asset AI analysis is owner-only on the
      *  server; defaults to true so an older server that doesn't say still

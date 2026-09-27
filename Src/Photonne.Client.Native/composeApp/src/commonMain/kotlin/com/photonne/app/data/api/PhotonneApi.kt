@@ -434,6 +434,9 @@ interface PhotonneApi {
     suspend fun addAssetTags(assetId: String, tags: List<String>): List<String>
     /** Removes one user tag from an asset. Returns the asset's full (merged) tag list. */
     suspend fun removeAssetTag(assetId: String, tag: String): List<String>
+    /** The caller's own user tags (`GET /api/tags`), alphabetical; [query]
+     *  filters server-side (accent-insensitive). Feeds the add-tag autocomplete. */
+    suspend fun getUserTags(query: String? = null): List<String>
     /** Other assets captured on the same calendar day (the asset itself excluded). */
     suspend fun getSameDayAssets(assetId: String, limit: Int = 12): PersonAssetsPage
     suspend fun updateAssetCaptureDate(
@@ -1320,6 +1323,16 @@ class PhotonneApiClient(
             throw response.apiException("Remove tag failed (${response.status.value})")
         }
         return response.body<AssetTagsResponse>().tags
+    }
+
+    override suspend fun getUserTags(query: String?): List<String> {
+        val response: HttpResponse = client.get("$baseUrl/api/tags") {
+            if (!query.isNullOrBlank()) parameter("query", query)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Get tags failed (${response.status.value})")
+        }
+        return response.body()
     }
 
     override suspend fun getSameDayAssets(assetId: String, limit: Int): PersonAssetsPage {

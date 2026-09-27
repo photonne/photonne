@@ -253,12 +253,29 @@ class AssetDetailViewModel(
         updateTags(assetId, snapshot.tags + tag, snapshot.userTags + tag)
         viewModelScope.launch {
             runCatching { repository.addTags(assetId, listOf(tag)) }
-                .onSuccess { merged -> reconcileTags(assetId, merged) }
+                .onSuccess { merged ->
+                    reconcileTags(assetId, merged)
+                    userTagsCache = userTagsCache?.let { known ->
+                        if (known.any { it.equals(tag, ignoreCase = true) }) known else known + tag
+                    }
+                }
                 .onFailure { error ->
                     updateTags(assetId, snapshot.tags, snapshot.userTags)
                     _state.update { it.copy(error = errorFactory.from(error, "No se pudo añadir la etiqueta")) }
                 }
         }
+    }
+
+    // Etiquetas propias para autocompletar "Añadir etiqueta". Se piden una vez
+    // por visor (son pocas y el filtrado es local, al teclear); un fallo deja
+    // la lista vacía y el diálogo sigue funcionando a mano.
+    private var userTagsCache: List<String>? = null
+
+    suspend fun userTagSuggestions(): List<String> {
+        userTagsCache?.let { return it }
+        return runCatching { repository.getUserTags() }
+            .onSuccess { userTagsCache = it }
+            .getOrDefault(emptyList())
     }
 
     /** Removes a user tag from [assetId] optimistically, reverting on failure. */

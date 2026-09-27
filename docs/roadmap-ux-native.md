@@ -350,18 +350,18 @@ Cuatro revisores de solo lectura (timeline y navegación · visor, mapa, persona
 
 ## Lote N — Consistencia menor
 
-- [ ] **N1.** Acciones del visor distintas en vertical y apaisado (`AssetDetailScreen.kt:830-915` vs `:2799-2890`); el punto 28 quería un solo modelo.
-- [ ] **N2.** Marcador suelto del mapa abre un visor de una foto; un clúster sí desliza (`App.kt:2708-2729`).
-- [ ] **N3.** Retocar Álbumes o Carpetas no vuelve arriba (`App.kt:1941-1958`).
-- [ ] **N4.** Háptica de rechazo = la de entrar en selección (`TimelineScreen.kt:942`).
-- [ ] **N5.** Pendientes elige origen con SAF y Backup con MediaStore (`ui/devicebackup/BackupPendingScreen.kt:119, 151`).
-- [ ] **N6.** "Mover a carpeta" falta en Álbum, Búsqueda, Favoritos y Archivados (`App.kt:1506-1648`; diálogo atado al timeline en `:4450`).
-- [ ] **N7.** Detalle de álbum carga con spinner (`ui/album/AlbumDetailScreen.kt:210-219`).
-- [ ] **N8.** Ubicaciones no abre nada al tocar una hoja (`ui/utilities/UtilitiesLocationsScreen.kt:171`); su error no reserva el cromo (`:80-83`).
-- [ ] **N9.** `autoTags` en crudo ("LivePhoto", "HDR") y añadir etiqueta sin autocompletar con `GET /api/tags` (`AssetDetailScreen.kt:1998, 2076-2097`).
-- [ ] **N10.** URL pública/local solo editable por admin; un usuario no ve a qué servidor está conectado (`ui/admin/AdminServerSettings.kt:104, 135`).
-- [ ] **N11.** El ⋮ de la Papelera sin `contentDescription` (`App.kt:3054`).
-- [ ] **N12.** `AssetDetail.aiDescription` es un campo muerto (ni el servidor lo rellena ni el cliente lo pinta).
+- [x] **N1.** Acciones del visor distintas en vertical y apaisado (`AssetDetailScreen.kt:830-915` vs `:2799-2890`); el punto 28 quería un solo modelo. — hecho: `viewerActions` (ui/asset/ViewerActions.kt) es el único modelo y `ViewerActionButtons` lo pinta en la barra inferior y en la cápsula superior: a la vista Favorito · Compartir · Papelera · Info; en ⋮ Añadir a álbum · Descargar · Editar descripción · Editar fecha · Caras · Analizar · Archivar/Desarchivar. Papelera y solo-dispositivo mantienen sus variantes.
+- [x] **N2.** Marcador suelto del mapa abre un visor de una foto; un clúster sí desliza (`App.kt:2708-2729`). — hecho: el visor se siembra con los puntos del viewport, del más reciente al más antiguo, empezando en el tocado.
+- [x] **N3.** Retocar Álbumes o Carpetas no vuelve arriba (`App.kt:1941-1958`). — hecho: `albumsScrollToTopTick`/`foldersScrollToTopTick` como Fotos; con un álbum o carpeta abiertos el retoque sigue cerrándolos.
+- [x] **N4.** Háptica de rechazo = la de entrar en selección (`TimelineScreen.kt:942`). — hecho: `HapticEvent.Reject` (Android REJECT en API 30+, doble tic antes; iOS notificación de error; escritorio nada).
+- [x] **N5.** Pendientes elige origen con SAF y Backup con MediaStore (`ui/devicebackup/BackupPendingScreen.kt:119, 151`). — hecho: `rememberBackupSourcePicker` compartido (hoja de MediaStore con "Otra carpeta" al SAF).
+- [x] **N6.** "Mover a carpeta" falta en Álbum, Búsqueda, Favoritos y Archivados (`App.kt:1506-1648`; diálogo atado al timeline en `:4450`). — hecho: `MoveAssetsToFolderDialog` común + `MoveSelectionRequest` para Álbum, Búsqueda, Favoritos y Archivados; las de biblioteca externa (solo lectura) se explican en un snackbar, el resto del permiso lo decide el servidor y su error sale en el diálogo. En el álbum, Mover va al ⋮ (la barra ya lleva Quitar/Portada).
+- [x] **N7.** Detalle de álbum carga con spinner (`ui/album/AlbumDetailScreen.kt:210-219`). — hecho.
+- [x] **N8.** Ubicaciones no abre nada al tocar una hoja (`ui/utilities/UtilitiesLocationsScreen.kt:171`); su error no reserva el cromo (`:80-83`). — hecho: la fila abre la carpeta (y Atrás vuelve a Ubicaciones), el chevron despliega; el error reserva el cromo.
+- [x] **N9.** `autoTags` en crudo ("LivePhoto", "HDR") y añadir etiqueta sin autocompletar con `GET /api/tags` (`AssetDetailScreen.kt:1998, 2076-2097`). — hecho: textos es/en para el enum `AssetTagType`; el diálogo sugiere las etiquetas propias de `GET /api/tags` (nuevo `getUserTags`).
+- [x] **N10.** URL pública/local solo editable por admin; un usuario no ve a qué servidor está conectado (`ui/admin/AdminServerSettings.kt:104, 135`). — hecho: Cuenta → Conexión ("Conectado a", red local/pública, URL pública y local de este dispositivo, que son ajustes locales del `ServerUrlStore`); la sección sale de la configuración de admin, donde queda solo la URL pública global del servidor.
+- [x] **N11.** El ⋮ de la Papelera sin `contentDescription` (`App.kt:3054`). — hecho.
+- [x] **N12.** `AssetDetail.aiDescription` es un campo muerto (ni el servidor lo rellena ni el cliente lo pinta). — hecho en el cliente; el DTO del servidor lo conserva porque la web lo pinta (`AssetInfoPanel.razor`).
 
 ## Funciones nuevas (no están en "Ideas mayores")
 

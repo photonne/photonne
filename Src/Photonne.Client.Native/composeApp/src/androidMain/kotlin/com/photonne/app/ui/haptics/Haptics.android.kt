@@ -14,6 +14,16 @@ import androidx.compose.ui.platform.LocalView
  */
 private class AndroidHaptics(private val view: View) : PhotonneHaptics {
     override fun perform(event: HapticEvent) {
+        // REJECT llegó en API 30; por debajo se imita con un doble tic corto,
+        // que se lee como "no" y no se confunde con el long-press.
+        if (event == HapticEvent.Reject && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            view.postDelayed(
+                { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) },
+                REJECT_FALLBACK_GAP_MS
+            )
+            return
+        }
         view.performHapticFeedback(constantFor(event))
     }
 
@@ -32,6 +42,12 @@ private class AndroidHaptics(private val view: View) : PhotonneHaptics {
                 HapticFeedbackConstants.CLOCK_TICK
             }
         HapticEvent.SelectionEnd -> HapticFeedbackConstants.CONTEXT_CLICK
+        // Solo se llega aquí en API 30+ (ver perform).
+        HapticEvent.Reject -> HapticFeedbackConstants.REJECT
+    }
+
+    private companion object {
+        const val REJECT_FALLBACK_GAP_MS = 90L
     }
 }
 

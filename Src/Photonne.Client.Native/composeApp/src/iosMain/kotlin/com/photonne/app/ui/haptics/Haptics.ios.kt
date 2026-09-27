@@ -5,6 +5,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import platform.UIKit.UIImpactFeedbackGenerator
 import platform.UIKit.UIImpactFeedbackStyle
+import platform.UIKit.UINotificationFeedbackGenerator
+import platform.UIKit.UINotificationFeedbackType
 import platform.UIKit.UISelectionFeedbackGenerator
 
 /**
@@ -19,7 +21,8 @@ import platform.UIKit.UISelectionFeedbackGenerator
 private class IosHaptics(
     private val impact: UIImpactFeedbackGenerator,
     private val soft: UIImpactFeedbackGenerator,
-    private val selection: UISelectionFeedbackGenerator
+    private val selection: UISelectionFeedbackGenerator,
+    private val notification: UINotificationFeedbackGenerator
 ) : PhotonneHaptics {
 
     override fun perform(event: HapticEvent) {
@@ -27,6 +30,9 @@ private class IosHaptics(
             HapticEvent.SelectionStart -> impact.impactOccurred()
             HapticEvent.CellCrossed -> selection.selectionChanged()
             HapticEvent.SelectionEnd -> soft.impactOccurred()
+            HapticEvent.Reject -> notification.notificationOccurred(
+                UINotificationFeedbackType.UINotificationFeedbackTypeError
+            )
         }
     }
 
@@ -34,6 +40,7 @@ private class IosHaptics(
         impact.prepare()
         soft.prepare()
         selection.prepare()
+        notification.prepare()
     }
 }
 
@@ -47,7 +54,8 @@ actual fun rememberPhotonneHaptics(): PhotonneHaptics {
             soft = UIImpactFeedbackGenerator(
                 UIImpactFeedbackStyle.UIImpactFeedbackStyleLight
             ),
-            selection = UISelectionFeedbackGenerator()
+            selection = UISelectionFeedbackGenerator(),
+            notification = UINotificationFeedbackGenerator()
         )
     }
     // Una primera preparación al montar deja el motor listo para el long-press

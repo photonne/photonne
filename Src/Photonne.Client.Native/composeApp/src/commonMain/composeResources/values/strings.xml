@@ -223,6 +223,8 @@
     <string name="asset_action_edit_date">Editar fecha de captura</string>
     <string name="asset_action_open_in_maps">Abrir en Mapas</string>
     <string name="asset_action_more">Más acciones</string>
+    <string name="asset_action_favorite_add">Marcar favorito</string>
+    <string name="asset_action_favorite_remove">Quitar favorito</string>
     <string name="slideshow_start">Iniciar pase de diapositivas</string>
     <string name="slideshow_exit">Salir del pase</string>
     <string name="slideshow_play">Reanudar</string>
@@ -272,6 +274,10 @@
     <plurals name="selection_trash_blocked_foreign">
         <item quantity="one">%1$d foto es de otro miembro</item>
         <item quantity="other">%1$d fotos son de otros miembros</item>
+    </plurals>
+    <plurals name="selection_move_blocked_read_only">
+        <item quantity="one">%1$d foto es de una biblioteca externa (solo lectura) y no se puede mover</item>
+        <item quantity="other">%1$d fotos son de una biblioteca externa (solo lectura) y no se pueden mover</item>
     </plurals>
     <string name="selection_trash_blocked_folder">No tienes permiso para borrar en esta carpeta</string>
     <plurals name="album_trash_warning">
@@ -598,6 +604,9 @@
     <string name="account_section_appearance_subtitle">Tema claro, oscuro o automático</string>
     <string name="account_section_storage">Almacenamiento</string>
     <string name="account_section_storage_subtitle">Uso actual y cuota</string>
+    <string name="account_section_connection">Conexión</string>
+    <string name="account_section_connection_subtitle">Servidor al que te conectas y direcciones de este dispositivo</string>
+    <string name="account_connection_server">Conectado a</string>
     <string name="account_profile_first_name">Nombre</string>
     <string name="account_profile_last_name">Apellidos</string>
     <string name="account_profile_email">Correo electrónico</string>
@@ -1540,6 +1549,14 @@
     <string name="asset_detail_tag_add">Añadir</string>
     <string name="asset_detail_tag_dialog_title">Añadir etiqueta</string>
     <string name="asset_detail_tag_placeholder">p. ej. Vacaciones</string>
+    <string name="asset_detail_tags_label">Etiquetas</string>
+    <string name="asset_auto_tag_live_photo">Live Photo</string>
+    <string name="asset_auto_tag_burst">Ráfaga</string>
+    <string name="asset_auto_tag_panorama">Panorámica</string>
+    <string name="asset_auto_tag_screenshot">Captura de pantalla</string>
+    <string name="asset_auto_tag_hdr">HDR</string>
+    <string name="asset_auto_tag_portrait">Retrato</string>
+    <string name="asset_auto_tag_motion_part">Vídeo de Live Photo</string>
     <plurals name="asset_detail_faces_count">
         <item quantity="one">Cara (%1$d)</item>
         <item quantity="other">Caras (%1$d)</item>
