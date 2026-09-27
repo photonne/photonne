@@ -208,6 +208,8 @@ fun TimelineScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val pullState = rememberPullToRefreshState()
     val gridState = rememberLazyListState()
+    val viewerOrigin = com.photonne.app.ui.grid.rememberViewerReturnOrigin()
+    val markViewerOrigin = com.photonne.app.ui.grid.rememberMarkViewerOrigin(viewerOrigin)
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) {
             // Mismo atajo que la píldora de subir: teletransporte previo para
@@ -630,6 +632,22 @@ fun TimelineScreen(
                         pendingZoomAnchor = null
                     }
 
+                    // Al cerrar el visor abierto desde aquí, la última foto vista
+                    // vuelve a pantalla (ver ViewerReturnState). Va con `rows` de
+                    // clave: si el visor pasó a un mes cuyo contenido aún no está,
+                    // se reintenta en cuanto el bucket llega.
+                    com.photonne.app.ui.grid.ViewerReturnScrollEffect(
+                        token = viewerOrigin,
+                        listState = gridState,
+                        indexOf = { id ->
+                            if (isYearView) -1 else {
+                                val idx = findRowIndexForAsset(rows, id)
+                                if (idx < 0) -1 else headerCount + idx
+                            }
+                        },
+                        rows, headerCount, isYearView
+                    )
+
                     LaunchedEffect(pendingJumpDate, rows) {
                         val target = pendingJumpDate ?: return@LaunchedEffect
                         if (rows.isEmpty()) {
@@ -987,6 +1005,7 @@ fun TimelineScreen(
                                         // activa: vibración + aviso.
                                         rejectLocalOnlySelection()
                                     else -> {
+                                        markViewerOrigin()
                                         // The pager gets the contiguous loaded
                                         // run around the click, so swiping never
                                         // silently skips an unloaded month.

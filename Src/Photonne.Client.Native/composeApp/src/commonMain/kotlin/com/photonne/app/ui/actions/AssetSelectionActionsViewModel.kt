@@ -10,7 +10,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.toLocalDateTime
 
 enum class AssetActionWorking { Idle, Downloading, Sharing, CreatingLink }
@@ -70,6 +73,45 @@ class AssetSelectionActionsViewModel(
                         it.copy(error = errorFactory.from(error, "No se pudo deshacer"))
                     }
                 }
+        }
+    }
+
+    /**
+     * Favorito en bloque sin endpoint nuevo: el servidor solo tiene el toggle
+     * por asset, así que se llama SOLO sobre las que tienen que cambiar
+     * ([assetIds] ya viene filtrado por el host) con 4 peticiones a la vez.
+     * El toggle es relativo: si el estado local estaba rancio y el servidor
+     * devuelve el contrario al pedido, se vuelve a conmutar una vez. Cada
+     * toggle emite `FavoriteChanged` en el bus (lo hace el repositorio), así
+     * que todas las listas se enteran. [onResult] recibe cuántas cambiaron y
+     * cuántas fallaron, para el snackbar con errores parciales.
+     */
+    fun setFavorites(
+        assetIds: List<String>,
+        favorite: Boolean,
+        onResult: (changed: Int, failed: Int) -> Unit,
+    ) {
+        if (assetIds.isEmpty()) {
+            onResult(0, 0)
+            return
+        }
+        viewModelScope.launch {
+            val gate = kotlinx.coroutines.sync.Semaphore(4)
+            val outcomes = kotlinx.coroutines.coroutineScope {
+                assetIds.map { id ->
+                    async {
+                        gate.withPermit {
+                            runCatching {
+                                var now = assets.toggleFavorite(id)
+                                if (now != favorite) now = assets.toggleFavorite(id)
+                                now == favorite
+                            }.getOrDefault(false)
+                        }
+                    }
+                }.awaitAll()
+            }
+            val changed = outcomes.count { it }
+            onResult(changed, outcomes.size - changed)
         }
     }
 

@@ -112,7 +112,7 @@ internal fun dayKeyOf(instant: Instant): String {
 
 internal fun dayLabelOf(instant: Instant): String {
     val date = instant.captureLocalDate()
-    return formatLocalizedDay(date)
+    return formatDayHeader(date)
 }
 
 internal fun yearKeyOf(instant: Instant): String =

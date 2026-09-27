@@ -139,6 +139,19 @@ fun AssetGrid(
     }
 
     val headerCount = if (header != null) 1 else 0
+    // Al cerrar el visor abierto desde aquí, la última foto vista vuelve a
+    // pantalla (ver ViewerReturnState).
+    val viewerOrigin = rememberViewerReturnOrigin()
+    val markViewerOrigin = rememberMarkViewerOrigin(viewerOrigin)
+    ViewerReturnScrollEffect(
+        token = viewerOrigin,
+        gridState = gridState,
+        indexOf = { id ->
+            val i = items.indexOfFirst { it.id == id }
+            if (i < 0) -1 else i + headerCount
+        },
+        items, headerCount
+    )
     // Ancla del Shift+clic: la última celda tocada (toggle, long-press, clic
     // derecho o clic en selección). Por id y no por índice: la paginación
     // añade elementos y el índice del ancla se movería bajo el usuario.
@@ -202,6 +215,7 @@ fun AssetGrid(
                     // Un clic con selección activa alterna la celda (lo hace el
                     // caller), así que también mueve el ancla del rango.
                     if (selectedIds.isNotEmpty()) rangeAnchorId = asset.id
+                    else markViewerOrigin()
                     onItemClick(index)
                 },
                 // Con arrastre en banda el long-press lo posee la rejilla.

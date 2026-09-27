@@ -77,6 +77,9 @@ import com.photonne.app.resources.selection_unarchive_done
 import com.photonne.app.resources.selection_moved_to_folder_done
 import com.photonne.app.resources.selection_removed_from_album_done
 import com.photonne.app.resources.selection_trash_done
+import com.photonne.app.resources.selection_favorite_added_done
+import com.photonne.app.resources.selection_favorite_removed_done
+import com.photonne.app.resources.selection_favorite_failed
 import com.photonne.app.resources.selection_deleted_permanently_done
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_system_enrichment_failures
@@ -619,7 +622,7 @@ private fun SessionViewModelScope(
 }
 
 /** Whose selection the shared add-to-album dialog adds. */
-private enum class BulkAddSource { Search, Map, Favorites, People, Folder, Archive, Album, Inbox, Upload }
+private enum class BulkAddSource { Search, Map, Favorites, People, Folder, Archive, Album, Inbox, Upload, Memory }
 
 /**
  * Qué hay que añadir al álbum que se está creando cuando se llega a "Nuevo
@@ -897,22 +900,61 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val assetMutationBus: com.photonne.app.data.events.AssetMutationBus = koinInject()
     LaunchedEffect(assetMutationBus) {
         assetMutationBus.events.collect { event ->
-            val removed = when (event) {
-                is com.photonne.app.data.events.AssetMutation.Removed -> event.assetIds
-                is com.photonne.app.data.events.AssetMutation.Purged -> event.assetIds
-                else -> return@collect
-            }.toSet()
             val memory = memoryDetail ?: return@collect
-            val remaining = memory.items.filterNot { it.id in removed }
-            if (remaining.size != memory.items.size) {
-                memoryDetail = if (remaining.isEmpty()) null else memory.copy(items = remaining)
+            when (event) {
+                // Favorito (visor o favorito en bloque): el rótulo de la barra de
+                // selección depende de este flag.
+                is com.photonne.app.data.events.AssetMutation.FavoriteChanged -> {
+                    fun List<TimelineItem>.patched() = map {
+                        if (it.id == event.assetId) it.copy(isFavorite = event.isFavorite) else it
+                    }
+                    memoryDetail = memory.copy(
+                        items = memory.items.patched(),
+                        openedItems = memory.openedItems.patched()
+                    )
+                }
+                // Deshacer de la papelera/archivar lanzado desde el recuerdo: las
+                // fotos vuelven a su sitio en el orden curado original.
+                is com.photonne.app.data.events.AssetMutation.Restored -> {
+                    val back = event.assetIds.toSet()
+                    val current = memory.items.mapTo(HashSet()) { it.id }
+                    if (memory.openedItems.none { it.id in back && it.id !in current }) {
+                        return@collect
+                    }
+                    memoryDetail = memory.copy(
+                        items = memory.openedItems.filter { it.id in current || it.id in back }
+                    )
+                }
+                is com.photonne.app.data.events.AssetMutation.Removed,
+                is com.photonne.app.data.events.AssetMutation.Purged -> {
+                    val removed = when (event) {
+                        is com.photonne.app.data.events.AssetMutation.Removed -> event.assetIds
+                        is com.photonne.app.data.events.AssetMutation.Purged -> event.assetIds
+                        else -> emptyList()
+                    }.toSet()
+                    val remaining = memory.items.filterNot { it.id in removed }
+                    if (remaining.size != memory.items.size) {
+                        memoryDetail = if (remaining.isEmpty()) null else memory.copy(items = remaining)
+                    }
+                }
+                else -> Unit
             }
         }
     }
+    // Selección múltiple del recuerdo abierto (tanda 2 de funciones nuevas).
+    val memorySelectionViewModel: com.photonne.app.ui.memories.MemorySelectionViewModel =
+        koinViewModel()
+    val memorySelectionState by memorySelectionViewModel.state.collectAsStateWithLifecycle()
+    // Cerrar o cambiar de recuerdo no arrastra la selección al siguiente.
+    val openMemoryKey = memoryDetail?.let { it.title to it.coverAssetId }
+    LaunchedEffect(openMemoryKey) { memorySelectionViewModel.clearSelection() }
     // Tracks the asset shown by the viewer's pager — drives the
     // grid → detail shared-element morph. Null when the viewer is closed
     // so all grid thumbnails return to their normal visible state.
     var currentDetailAssetId by remember { mutableStateOf<String?>(null) }
+    // Qué rejilla abrió el visor: esa sigue a la foto vista para que al cerrar
+    // la miniatura esté en pantalla (tanda 2 de funciones nuevas).
+    val viewerReturnState = remember { com.photonne.app.ui.grid.ViewerReturnState() }
     var showCreateAlbum by remember { mutableStateOf(false) }
     var showAlbumTypeChooser by remember { mutableStateOf(false) }
     var showEditAlbum by remember { mutableStateOf(false) }
@@ -1230,7 +1272,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             assetDetail != null -> { closeAssetDetail() }
             // Before every selection case: an open memory covers the screen, so
             // back closes what you're actually looking at, not what's underneath.
-            memoryDetail != null -> { memoryDetail = null }
+            memoryDetail != null -> {
+                if (memorySelectionState.isSelectionActive) {
+                    memorySelectionViewModel.clearSelection()
+                } else {
+                    memoryDetail = null
+                }
+            }
             // Igual con la revisión previa a mover: tapa la pantalla entera (y no
             // se cierra a media confirmación, que el movimiento es irreversible).
             inboxReviewTarget != null ->
@@ -1282,6 +1330,44 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedTab != MainTab.Timeline -> { selectedTab = MainTab.Timeline }
         }
     }
+
+    // Escritorio: Ctrl/Cmd+A selecciona lo mismo que el "Seleccionar todo" de
+    // la barra de cada pantalla (el timeline no lo ofrece: se pagina sobre toda
+    // la biblioteca). Solo selecciona: si ya está todo, no deselecciona.
+    fun selectAllOf(selected: Int, total: Int, toggle: () -> Unit): (() -> Unit)? =
+        if (total <= 0) null else ({ if (selected < total) toggle() })
+    val selectAllShortcut: (() -> Unit)? = when {
+        assetDetail != null -> null
+        memoryDetail != null -> memoryDetail?.let { memory ->
+            selectAllOf(memorySelectionState.selection.size, memory.items.size) {
+                memorySelectionViewModel.toggleSelectAll(memory.items.map { it.id })
+            }
+        }
+        selectedTab == MainTab.Albums && selectedAlbum != null ->
+            selectAllOf(albumDetailState.selection.size, albumDetailState.items.size,
+                albumDetailViewModel::toggleSelectAll)
+        selectedTab == MainTab.Folders && selectedFolder != null &&
+            !folderDetailState.isSubfolderSelectionActive ->
+            selectAllOf(folderDetailState.selection.size, folderDetailState.items.size,
+                folderDetailViewModel::toggleSelectAll)
+        selectedTab == MainTab.Search ->
+            selectAllOf(searchState.selection.size, searchState.results.size,
+                searchViewModel::toggleSelectAll)
+        moreSubscreen == MoreSubscreen.Favorites ->
+            selectAllOf(favoritesState.selection.size, favoritesState.items.size,
+                favoritesViewModel::toggleSelectAll)
+        moreSubscreen == MoreSubscreen.Archived ->
+            selectAllOf(archivedState.selection.size, archivedState.items.size,
+                archivedViewModel::toggleSelectAll)
+        moreSubscreen == MoreSubscreen.People && selectedPerson != null ->
+            selectAllOf(personDetailState.selection.size, personDetailState.items.size,
+                personDetailViewModel::toggleSelectAll)
+        moreSubscreen == MoreSubscreen.OrganizeInbox ->
+            selectAllOf(organizeInboxState.selection.size, organizeInboxState.items.size,
+                organizeInboxViewModel::toggleSelectAll)
+        else -> null
+    }
+    com.photonne.app.ui.selection.SelectionShortcutsHandler(onSelectAll = selectAllShortcut)
 
     // ---- Horizontal swipe between the four primary tabs ----
     // The bottom-nav tabs, in bar order, become pages of a HorizontalPager so a
@@ -1419,6 +1505,51 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // al entrar a cualquier subpantalla se reinicia la nav a visible; las que sí
     // scrollean la vuelven a reportar en cuanto se mueven.
     LaunchedEffect(moreSubscreen) { subscreenChromeVisible = true }
+
+    /**
+     * Favorito en bloque desde la barra de selección. Si TODAS las
+     * seleccionadas ya son favoritas la acción es quitar; si no, añadir. Solo
+     * se llama al servidor por las que tienen que cambiar, y el snackbar dice
+     * cuántas cambiaron y cuántas fallaron. Lo local del dispositivo no tiene
+     * favorito en el servidor y se ignora.
+     */
+    fun runBulkFavorite(
+        items: List<TimelineItem>,
+        selection: Set<String>,
+        snackbar: com.photonne.app.ui.main.SnackbarController?,
+        clearSelection: () -> Unit,
+    ) {
+        val selected = items.filter { it.id in selection && !it.isLocalOnly }
+        if (selected.isEmpty()) return
+        val favorite = !selected.all { it.isFavorite }
+        val pending = selected.filter { it.isFavorite != favorite }.map { it.id }
+        clearSelection()
+        actionsViewModel.setFavorites(pending, favorite) { changed, failed ->
+            coroutineScope.launch {
+                val done = org.jetbrains.compose.resources.getPluralString(
+                    if (favorite) Res.plurals.selection_favorite_added_done
+                    else Res.plurals.selection_favorite_removed_done,
+                    // Las que ya estaban como se pedía cuentan como hechas.
+                    selected.size - failed,
+                    selected.size - failed
+                )
+                val message = if (failed == 0) done else {
+                    val failedText = org.jetbrains.compose.resources.getPluralString(
+                        Res.plurals.selection_favorite_failed, failed, failed
+                    )
+                    if (changed == 0 && selected.size == failed) failedText
+                    else "$done · $failedText"
+                }
+                snackbar?.show(message)
+            }
+        }
+    }
+
+    /** ¿Todas las seleccionadas (del servidor) son ya favoritas? Decide el rótulo. */
+    fun selectionAllFavorite(items: List<TimelineItem>, selection: Set<String>): Boolean {
+        val selected = items.filter { it.id in selection && !it.isLocalOnly }
+        return selected.isNotEmpty() && selected.all { it.isFavorite }
+    }
 
     val topBar: @Composable () -> Unit = {
         when {
@@ -1753,6 +1884,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onArchive = timelineViewModel::bulkArchive,
                     onTrash = timelineViewModel::bulkTrash,
                     selectedIds = { timelineState.selection.toList() },
+                    allFavorite = selectionAllFavorite(timelineState.loadedItems, timelineState.selection),
+                    onToggleFavorite = run {
+                        val favoriteSnackbar = LocalSnackbarController.current
+                        {
+                            runBulkFavorite(
+                                timelineState.loadedItems, timelineState.selection, favoriteSnackbar,
+                                timelineViewModel::clearSelection
+                            )
+                        }
+                    },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
@@ -1802,6 +1943,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onArchive = albumDetailViewModel::bulkArchive,
                     onTrash = albumDetailViewModel::bulkTrash,
                     selectedIds = { albumDetailState.selection.toList() },
+                    allFavorite = selectionAllFavorite(albumDetailState.items, albumDetailState.selection),
+                    onToggleFavorite = run {
+                        val favoriteSnackbar = LocalSnackbarController.current
+                        {
+                            runBulkFavorite(
+                                albumDetailState.items, albumDetailState.selection, favoriteSnackbar,
+                                albumDetailViewModel::clearSelection
+                            )
+                        }
+                    },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
@@ -1931,6 +2082,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onArchive = folderDetailViewModel::bulkArchive,
                     onTrash = folderDetailViewModel::bulkTrash,
                     selectedIds = { folderDetailState.selection.toList() },
+                    allFavorite = selectionAllFavorite(folderDetailState.items, folderDetailState.selection),
+                    onToggleFavorite = run {
+                        val favoriteSnackbar = LocalSnackbarController.current
+                        {
+                            runBulkFavorite(
+                                folderDetailState.items, folderDetailState.selection, favoriteSnackbar,
+                                folderDetailViewModel::clearSelection
+                            )
+                        }
+                    },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
@@ -1960,6 +2121,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onArchive = searchViewModel::bulkArchive,
                     onTrash = searchViewModel::bulkTrash,
                     selectedIds = { searchState.selection.toList() },
+                    allFavorite = selectionAllFavorite(searchState.results, searchState.selection),
+                    onToggleFavorite = run {
+                        val favoriteSnackbar = LocalSnackbarController.current
+                        {
+                            runBulkFavorite(
+                                searchState.results, searchState.selection, favoriteSnackbar,
+                                searchViewModel::clearSelection
+                            )
+                        }
+                    },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
@@ -2003,6 +2174,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onArchive = personDetailViewModel::bulkArchive,
                     onTrash = personDetailViewModel::bulkTrash,
                     selectedIds = { personDetailState.selection.toList() },
+                    allFavorite = selectionAllFavorite(personDetailState.items, personDetailState.selection),
+                    onToggleFavorite = run {
+                        val favoriteSnackbar = LocalSnackbarController.current
+                        {
+                            runBulkFavorite(
+                                personDetailState.items, personDetailState.selection, favoriteSnackbar,
+                                personDetailViewModel::clearSelection
+                            )
+                        }
+                    },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
@@ -2044,6 +2225,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onArchive = organizeInboxViewModel::bulkArchive,
                     onTrash = organizeInboxViewModel::bulkTrash,
                     selectedIds = { organizeInboxState.selection.toList() },
+                    allFavorite = selectionAllFavorite(organizeInboxState.items, organizeInboxState.selection),
+                    onToggleFavorite = run {
+                        val favoriteSnackbar = LocalSnackbarController.current
+                        {
+                            runBulkFavorite(
+                                organizeInboxState.items, organizeInboxState.selection, favoriteSnackbar,
+                                organizeInboxViewModel::clearSelection
+                            )
+                        }
+                    },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids) { organizeInboxViewModel.refresh() }
                     },
@@ -2084,6 +2275,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onArchive = favoritesViewModel::bulkArchive,
                     onTrash = favoritesViewModel::bulkTrash,
                     selectedIds = { favoritesState.selection.toList() },
+                    allFavorite = selectionAllFavorite(favoritesState.items, favoritesState.selection),
+                    onToggleFavorite = run {
+                        val favoriteSnackbar = LocalSnackbarController.current
+                        {
+                            runBulkFavorite(
+                                favoritesState.items, favoritesState.selection, favoriteSnackbar,
+                                favoritesViewModel::clearSelection
+                            )
+                        }
+                    },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
@@ -2128,6 +2329,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onArchive = { done -> archivedViewModel.bulkUnarchive(onResult = done) },
                     onTrash = archivedViewModel::bulkTrash,
                     selectedIds = { archivedState.selection.toList() },
+                    allFavorite = selectionAllFavorite(archivedState.items, archivedState.selection),
+                    onToggleFavorite = run {
+                        val favoriteSnackbar = LocalSnackbarController.current
+                        {
+                            runBulkFavorite(
+                                archivedState.items, archivedState.selection, favoriteSnackbar,
+                                archivedViewModel::clearSelection
+                            )
+                        }
+                    },
                     onUndo = { kind, ids ->
                         actionsViewModel.undoBulk(kind, ids)
                     },
@@ -2247,6 +2458,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         } else {
             kotlinx.coroutines.delay(360)
             currentDetailAssetId = null
+            viewerReturnState.clear()
         }
     }
 
@@ -2415,6 +2627,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     CompositionLocalProvider(
         LocalSharedTransitionScope provides this,
         LocalCurrentDetailAssetId provides currentDetailAssetId,
+        com.photonne.app.ui.grid.LocalViewerReturn provides viewerReturnState,
         LocalSnackbarController provides snackbarController
     ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -4077,20 +4290,100 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         // Above the tabs but below the viewer, so tapping a photo covers the
         // memory rather than replacing it — back then lands on the grid again.
         memoryDetail?.let { memory ->
+            val memorySelection = memorySelectionState.selection
             com.photonne.app.ui.memories.MemoryDetailScreen(
                 memory = memory,
                 baseUrl = apiBaseUrl,
                 onItemClick = { index ->
-                    assetDetail = AssetDetailContext(
-                        items = memory.items,
-                        startIndex = index,
-                        source = AssetDetailContext.Source.Timeline,
-                        hasMore = false,
-                        onLoadMore = {},
-                        onFavoriteChanged = timelineViewModel::setFavorite
+                    if (memorySelectionState.isSelectionActive) {
+                        memory.items.getOrNull(index)?.let {
+                            memorySelectionViewModel.toggleSelection(it.id)
+                        }
+                    } else {
+                        assetDetail = AssetDetailContext(
+                            items = memory.items,
+                            startIndex = index,
+                            source = AssetDetailContext.Source.Timeline,
+                            hasMore = false,
+                            onLoadMore = {},
+                            onFavoriteChanged = timelineViewModel::setFavorite
+                        )
+                    }
+                },
+                onBack = { memoryDetail = null },
+                selection = memorySelection,
+                onItemLongClick = { index ->
+                    memory.items.getOrNull(index)?.let {
+                        memorySelectionViewModel.toggleSelection(it.id)
+                    }
+                },
+                onApplySelection = memorySelectionViewModel::applySelection,
+                selectionTopBar = {
+                    AssetSelectionTopBar(
+                        selectedCount = memorySelection.size,
+                        totalCount = memory.items.size,
+                        isMutating = memorySelectionState.isBulkMutating ||
+                            actionsState.working != AssetActionWorking.Idle,
+                        onClose = memorySelectionViewModel::clearSelection,
+                        onSelectAll = {
+                            memorySelectionViewModel.toggleSelectAll(memory.items.map { it.id })
+                        }
                     )
                 },
-                onBack = { memoryDetail = null }
+                selectionBottomBar = {
+                    // Un recuerdo mezcla fotos de cualquier sitio (también de
+                    // álbumes compartidos): lo ajeno no se puede mandar a la
+                    // papelera ni mover, igual que en un álbum.
+                    val untrashable = com.photonne.app.ui.actions.countUntrashable(
+                        memory.items, memorySelection, user.user.username
+                    )
+                    val memoryTrashBlocked = if (untrashable > 0) pluralStringResource(
+                        Res.plurals.selection_trash_blocked_foreign, untrashable, untrashable
+                    ) else null
+                    AssetSelectionBottomBar(
+                        selectedCount = memorySelection.size,
+                        trashDisabledReason = memoryTrashBlocked,
+                        isMutating = memorySelectionState.isBulkMutating ||
+                            actionsState.working != AssetActionWorking.Idle,
+                        onShare = { actionsViewModel.beginShare(memorySelection.toList()) },
+                        onAddToAlbum = { bulkAddSource = BulkAddSource.Memory },
+                        onDownload = { actionsViewModel.download(memorySelection.toList()) },
+                        onArchive = memorySelectionViewModel::bulkArchive,
+                        onTrash = memorySelectionViewModel::bulkTrash,
+                        selectedIds = { memorySelection.toList() },
+                        onUndo = { kind, ids -> actionsViewModel.undoBulk(kind, ids) },
+                        allFavorite = selectionAllFavorite(memory.items, memorySelection),
+                        onToggleFavorite = run {
+                            val favoriteSnackbar = LocalSnackbarController.current
+                            {
+                                runBulkFavorite(
+                                    memory.items, memorySelection, favoriteSnackbar,
+                                    memorySelectionViewModel::clearSelection
+                                )
+                            }
+                        },
+                        onMove = run {
+                            val unmovable = com.photonne.app.ui.actions.countUnmovable(
+                                memory.items, memorySelection
+                            )
+                            val moveBlocked = if (unmovable > 0) pluralStringResource(
+                                Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
+                            ) else null
+                            val moveSnackbar = LocalSnackbarController.current
+                            {
+                                if (moveBlocked != null) {
+                                    moveSnackbar?.show(moveBlocked)
+                                } else {
+                                    moveSelectionError = null
+                                    moveSelectionRequest = MoveSelectionRequest(
+                                        assetIds = memorySelection.toList(),
+                                        onMoved = memorySelectionViewModel::clearSelection
+                                    )
+                                }
+                            }
+                        },
+                    )
+                }
             )
         }
 
@@ -4353,6 +4646,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 BulkAddSource.Album -> albumDetailState.isBulkMutating to albumDetailState.error?.userMessage
                 BulkAddSource.Inbox -> organizeInboxState.isBulkMutating to organizeInboxState.error?.userMessage
                 BulkAddSource.Upload -> uploadState.isBulkMutating to uploadState.error?.userMessage
+                BulkAddSource.Memory -> memorySelectionState.isBulkMutating to memorySelectionState.error?.userMessage
             }
         }
         fun clearPendingAddError(target: PendingAddTarget?) {
@@ -4370,6 +4664,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     BulkAddSource.Album -> albumDetailViewModel.clearError()
                     BulkAddSource.Inbox -> organizeInboxViewModel.clearError()
                     BulkAddSource.Upload -> uploadViewModel.clearError()
+                    BulkAddSource.Memory -> memorySelectionViewModel.clearError()
                 }
             }
         }
@@ -4421,6 +4716,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     BulkAddSource.Album -> albumDetailViewModel.bulkAddToAlbum(album.id, onAdded)
                     BulkAddSource.Inbox -> organizeInboxViewModel.bulkAddToAlbum(album.id, onAdded)
                     BulkAddSource.Upload -> uploadViewModel.addBatchToAlbum(album.id, onAdded)
+                    BulkAddSource.Memory -> memorySelectionViewModel.bulkAddToAlbum(
+                        album.id, memoryDetail?.items.orEmpty(), onAdded
+                    )
                 }
             }
         }
@@ -5089,6 +5387,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             BulkAddSource.Album -> albumDetailState.isBulkMutating to albumDetailState.error?.userMessage
             BulkAddSource.Inbox -> organizeInboxState.isBulkMutating to organizeInboxState.error?.userMessage
             BulkAddSource.Upload -> uploadState.isBulkMutating to uploadState.error?.userMessage
+            BulkAddSource.Memory -> memorySelectionState.isBulkMutating to memorySelectionState.error?.userMessage
         }
         LaunchedEffect(source) {
             when (source) {
@@ -5101,6 +5400,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 BulkAddSource.Album -> albumDetailViewModel.clearError()
                 BulkAddSource.Inbox -> organizeInboxViewModel.clearError()
                 BulkAddSource.Upload -> uploadViewModel.clearError()
+                BulkAddSource.Memory -> memorySelectionViewModel.clearError()
             }
         }
         AddToAlbumDialog(
@@ -5134,6 +5434,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     BulkAddSource.Album -> albumDetailViewModel.bulkAddToAlbum(album.id, onAdded)
                     BulkAddSource.Inbox -> organizeInboxViewModel.bulkAddToAlbum(album.id, onAdded)
                     BulkAddSource.Upload -> uploadViewModel.addBatchToAlbum(album.id, onAdded)
+                    BulkAddSource.Memory -> memorySelectionViewModel.bulkAddToAlbum(
+                        album.id, memoryDetail?.items.orEmpty(), onAdded
+                    )
                 }
             },
             onDismiss = { bulkAddSource = null }

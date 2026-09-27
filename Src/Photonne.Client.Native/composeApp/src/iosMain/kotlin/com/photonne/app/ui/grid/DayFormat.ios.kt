@@ -9,7 +9,7 @@ import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale
 
 @OptIn(ExperimentalForeignApi::class)
-actual fun formatLocalizedDay(date: LocalDate): String {
+actual fun formatLocalizedDay(date: LocalDate, withYear: Boolean): String {
     val components = NSDateComponents().apply {
         year = date.year.toLong()
         month = date.monthNumber.toLong()
@@ -20,10 +20,10 @@ actual fun formatLocalizedDay(date: LocalDate): String {
     val formatter = NSDateFormatter().apply {
         locale = NSLocale.currentLocale
         dateFormat = NSDateFormatter.dateFormatFromTemplate(
-            "EEEdMMMyyyy",
+            if (withYear) "EEEdMMMyyyy" else "EEEdMMM",
             options = 0u,
             locale = NSLocale.currentLocale
-        ) ?: "EEE, d MMM yyyy"
+        ) ?: if (withYear) "EEE, d MMM yyyy" else "EEE, d MMM"
     }
     return formatter.stringFromDate(nsDate)
 }
