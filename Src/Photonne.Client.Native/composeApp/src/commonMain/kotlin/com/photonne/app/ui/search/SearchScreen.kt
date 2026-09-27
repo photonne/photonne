@@ -58,6 +58,7 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_more
 import com.photonne.app.resources.search_filters_only_text
+import com.photonne.app.resources.search_semantic_capped
 import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -166,7 +167,27 @@ fun SearchScreen(
                         ),
                         // Los filtros activos viajan como cabecera de la rejilla:
                         // se desplazan con los resultados en vez de flotar.
-                        header = { ActiveFiltersRow(state = state, onClick = onOpenFilters) },
+                        header = {
+                            Column {
+                                ActiveFiltersRow(state = state, onClick = onOpenFilters)
+                                // La semántica no pagina: con el tope lleno se
+                                // dice, en vez de dar a entender que no hay más.
+                                if (state.semanticCapped) {
+                                    Text(
+                                        text = stringResource(
+                                            Res.string.search_semantic_capped,
+                                            SearchViewModel.SEMANTIC_LIMIT
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(
+                                            horizontal = Spacing.md,
+                                            vertical = Spacing.xs
+                                        )
+                                    )
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                     )
                 }

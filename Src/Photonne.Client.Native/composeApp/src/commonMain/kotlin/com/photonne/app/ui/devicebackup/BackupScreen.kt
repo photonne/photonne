@@ -54,6 +54,11 @@ import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
 import com.photonne.app.data.devicebackup.rememberNotificationPermission
 import com.photonne.app.resources.backup_notifications_allow
 import com.photonne.app.resources.backup_notifications_denied_hint
+import com.photonne.app.resources.backup_blocked_quota_title
+import com.photonne.app.resources.backup_blocked_quota_title_sized
+import com.photonne.app.resources.backup_blocked_quota_body
+import com.photonne.app.resources.backup_blocked_session_title
+import com.photonne.app.resources.backup_blocked_session_body
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.background_sync_auto_hint
 import com.photonne.app.resources.background_sync_auto_label
@@ -276,6 +281,13 @@ fun BackupScreen(
                     onRequest = notifications.request
                 )
             }
+        }
+
+        // Lote L11: la pasada se cortó por la cuenta (cuota llena, sesión
+        // caducada). Va antes del estado: explica los fallos que éste cuenta.
+        val passBlock = state.passBlock
+        if (state.isBackupEnabled && passBlock != null) {
+            item("pass-blocked") { BackupBlockedCard(passBlock) }
         }
 
         // The answer to "am I backed up?" comes first. It used to sit at the
@@ -1093,6 +1105,44 @@ private fun DeviceBucketPickerSheet(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Lote L11: por qué la copia está parada cuando la culpa no es de los
+ * archivos. Con cuota llena enseña el uso y la cuota que dio el servidor.
+ */
+@Composable
+private fun BackupBlockedCard(block: com.photonne.app.data.devicebackup.BackupPassBlock) {
+    val isQuota = block.reason == com.photonne.app.data.devicebackup.UploadFailureReason.QuotaExceeded
+    val used = block.usedBytes
+    val quota = block.quotaBytes
+    val title = when {
+        !isQuota -> stringResource(Res.string.backup_blocked_session_title)
+        used != null && quota != null -> stringResource(
+            Res.string.backup_blocked_quota_title_sized, humanBytes(used), humanBytes(quota)
+        )
+        else -> stringResource(Res.string.backup_blocked_quota_title)
+    }
+    androidx.compose.material3.Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.lg, vertical = Spacing.xs)
+    ) {
+        Column(modifier = Modifier.padding(Spacing.md)) {
+            Text(text = title, style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.size(Spacing.xs))
+            Text(
+                text = stringResource(
+                    if (isQuota) Res.string.backup_blocked_quota_body
+                    else Res.string.backup_blocked_session_body
+                ),
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }

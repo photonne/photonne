@@ -328,18 +328,18 @@ Cuatro revisores de solo lectura (timeline y navegación · visor, mapa, persona
 
 ## Lote L — Flujos rotos o que se cortan
 
-- [ ] **L1. "Nuevo álbum" desde "Añadir a álbum" crea el álbum vacío** · S · `App.kt:4386-4389` y `:4583-4586` (visor). `pendingBulkAddOnCreate` solo existe en el timeline. Y ahí, si el alta falla tras crear, el error va al banner del timeline y reintentar duplica el álbum (`:3727`). Un único `pendingAddTarget`.
-- [ ] **L2. Explorar → etiqueta → Atrás lleva a Fotos** · S · `App.kt:2687-2701`. Recordar el origen como `adminEnrichmentReturnTo`.
-- [ ] **L3. El visor desde Búsqueda se para en la primera página** · S · `App.kt:2439-2443` pasa `hasMore = false`. Pasar `searchState.hasMore` y `loadMore`.
-- [ ] **L4. El visor desde Fotos se para al final de los meses cargados** · M · `App.kt:2103-2112`, `grid/BucketTimelineEntries.kt:219`. `onLoadMore` con meses vecinos, o `/timeline-neighbors` (el servidor ya lo tiene).
-- [ ] **L5. Búsqueda semántica tope 50 en silencio** · S · `ui/search/SearchViewModel.kt:465`, `SemanticSearchEndpoint.cs:70`.
-- [ ] **L6. "Seleccionar todo" solo coge lo cargado en Favoritos, Archivados y Para organizar** · S · `App.kt:1357-1419`. Lo mismo que el punto 18 arregló en el timeline.
-- [ ] **L7. Sin red, el banner del timeline tapa la barra superior y no se cierra** · S · `ui/timeline/TimelineScreen.kt:1225-1249`; primera carga fallida sin fotos locales = cuerpo en blanco (`:370`).
-- [ ] **L8. Cambiar la fecha no mueve la foto** · S · `AssetDetailViewModel.kt:407`, `data/events/AssetMutationBus.kt` sin evento de fecha.
-- [ ] **L9. Recuerdos rancios** · S · `ui/timeline/MemoriesViewModel.kt:29` solo carga en `init`; ni pull-to-refresh, ni cambio de día, ni bus. El detalle (`ui/memories/MemoryDetailScreen.kt:40-45`) sigue enseñando fotos borradas.
-- [ ] **L10. Archivos grandes y Duplicados no escuchan el bus; un fallo de carga en Archivos grandes dice "no hay archivos"** · S · `ui/utilities/UtilitiesLargeFilesScreen.kt:93-97, 149-152`.
-- [ ] **L11. Con cuota llena o sesión caducada el backup sube cada archivo para recibir el mismo rechazo** · M · `data/devicebackup/BackupRunner.kt:42, 137`, `UploadFailureReason.kt:108-112`. Además quedan como permanentes y el automático no los reintenta tras resolverlo. Cortar la pasada y tarjeta "Sin espacio (X de Y)".
-- [ ] **L12. La subida refresca el timeline entero por cada archivo** · S · `App.kt:2476, 2480`. Un refresco al vaciar la cola.
+- [x] **L1. "Nuevo álbum" desde "Añadir a álbum" crea el álbum vacío** · S · `App.kt:4386-4389` y `:4583-4586` (visor). `pendingBulkAddOnCreate` solo existe en el timeline. Y ahí, si el alta falla tras crear, el error va al banner del timeline y reintentar duplica el álbum (`:3727`). Un único `pendingAddTarget`.
+- [x] **L2. Explorar → etiqueta → Atrás lleva a Fotos** · S · `App.kt:2687-2701`. Recordar el origen como `adminEnrichmentReturnTo`.
+- [x] **L3. El visor desde Búsqueda se para en la primera página** · S · `App.kt:2439-2443` pasa `hasMore = false`. Pasar `searchState.hasMore` y `loadMore`. — de paso, Favoritos/Archivados/Papelera/Persona/Para organizar ya pasaban `hasMore` pero el visor era una foto fija de la lista: ahora todos siguen la lista viva (`AssetViewerFeed`), añadiendo al final sin mover el índice.
+- [x] **L4. El visor desde Fotos se para al final de los meses cargados** · M · `App.kt:2103-2112`, `grid/BucketTimelineEntries.kt:219`. `onLoadMore` con meses vecinos, o `/timeline-neighbors` (el servidor ya lo tiene). — parcial: solo hacia delante (meses más antiguos) con `ensureVisible` del mes siguiente (`TimelineRunFollower`); hacia atrás no, anteponer desplazaría el índice del pager.
+- [x] **L5. Búsqueda semántica tope 50 en silencio** · S · `ui/search/SearchViewModel.kt:465`, `SemanticSearchEndpoint.cs:70`.
+- [x] **L6. "Seleccionar todo" solo coge lo cargado en Favoritos, Archivados y Para organizar** · S · `App.kt:1357-1419`. Lo mismo que el punto 18 arregló en el timeline. — el servidor no da los ids de toda la lista, así que con más páginas se rotula "Seleccionar lo cargado (N)".
+- [x] **L7. Sin red, el banner del timeline tapa la barra superior y no se cierra** · S · `ui/timeline/TimelineScreen.kt:1225-1249`; primera carga fallida sin fotos locales = cuerpo en blanco (`:370`). — banner con cerrar, bajo la cápsula; sin nada que enseñar, `FullScreenError` con reintento.
+- [x] **L8. Cambiar la fecha no mueve la foto** · S · `AssetDetailViewModel.kt:407`, `data/events/AssetMutationBus.kt` sin evento de fecha. — `AssetMutation.DateChanged`; el timeline recarga el mes de origen y el de destino (`TimelineBucketStore.reloadBuckets`), álbum, carpeta y búsqueda recargan.
+- [x] **L9. Recuerdos rancios** · S · `ui/timeline/MemoriesViewModel.kt:29` solo carga en `init`; ni pull-to-refresh, ni cambio de día, ni bus. El detalle (`ui/memories/MemoryDetailScreen.kt:40-45`) sigue enseñando fotos borradas.
+- [x] **L10. Archivos grandes y Duplicados no escuchan el bus; un fallo de carga en Archivos grandes dice "no hay archivos"** · S · `ui/utilities/UtilitiesLargeFilesScreen.kt:93-97, 149-152`.
+- [x] **L11. Con cuota llena o sesión caducada el backup sube cada archivo para recibir el mismo rechazo** · M · `data/devicebackup/BackupRunner.kt:42, 137`, `UploadFailureReason.kt:108-112`. Además quedan como permanentes y el automático no los reintenta tras resolverlo. Cortar la pasada y tarjeta "Sin espacio (X de Y)". — `BackupPassBlock` persistido: el automático no insiste mientras sigan la misma sesión o el mismo uso/cuota.
+- [x] **L12. La subida refresca el timeline entero por cada archivo** · S · `App.kt:2476, 2480`. Un refresco al vaciar la cola.
 
 ## Lote M — Errores y sesión
 

@@ -107,6 +107,7 @@ import com.photonne.app.resources.admin_system_duplicates
 import com.photonne.app.resources.admin_system_run_tasks
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.action_create
+import com.photonne.app.resources.action_retry
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.album_action_edit
 import com.photonne.app.resources.album_action_new
@@ -217,7 +218,11 @@ private data class AssetDetailContext(
     val source: Source,
     val hasMore: Boolean,
     val onLoadMore: () -> Unit,
-    val onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit
+    val onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit,
+    /** Lista viva del origen: con ella el visor ve las páginas (o meses) que
+     *  llegan después de abrirlo; sin ella [items] es una foto fija y
+     *  [hasMore]/[onLoadMore] no llegan a ninguna parte. */
+    val feed: com.photonne.app.ui.asset.AssetViewerFeed? = null
 ) {
     /** Archive/Trash change the viewer's actions (Unarchive; Restore + Delete
      *  permanently) — see [com.photonne.app.ui.asset.AssetViewerMode]. */
@@ -583,6 +588,17 @@ private fun SessionViewModelScope(
 /** Whose selection the shared add-to-album dialog adds. */
 private enum class BulkAddSource { Search, Map, Favorites, People, Folder, Archive, Album, Inbox }
 
+/**
+ * Qué hay que añadir al álbum que se está creando cuando se llega a "Nuevo
+ * álbum" desde un "Añadir a álbum": la selección de una pantalla (null =
+ * timeline) o el asset abierto en el visor. Sin esto el álbum nacía vacío en
+ * todos los orígenes salvo el timeline.
+ */
+private sealed interface PendingAddTarget {
+    data class Selection(val source: BulkAddSource?) : PendingAddTarget
+    data class Asset(val item: TimelineItem) : PendingAddTarget
+}
+
 @Composable
 private fun SessionLoadingScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -696,6 +712,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val exploreFacetsViewModel:
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
     val memoriesState by memoriesViewModel.state.collectAsStateWithLifecycle()
+    // Lote L9: "en este día" caduca a medianoche; al volver a primer plano en
+    // otro día la tira se recarga.
+    val memoriesLifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(memoriesLifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) memoriesViewModel.refreshIfDayChanged()
+        }
+        memoriesLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { memoriesLifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val notificationsViewModel:
         com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
     val notificationsState by notificationsViewModel.state.collectAsStateWithLifecycle()
@@ -828,6 +854,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var memoryDetail by remember {
         mutableStateOf<com.photonne.app.ui.memories.MemoryDetailContext?>(null)
     }
+    // Lote L9: el recuerdo abierto lleva sus fotos en mano (no tiene
+    // ViewModel), así que lo borrado o archivado desde el visor se le quita
+    // aquí; si se queda vacío, se cierra.
+    val assetMutationBus: com.photonne.app.data.events.AssetMutationBus = koinInject()
+    LaunchedEffect(assetMutationBus) {
+        assetMutationBus.events.collect { event ->
+            val removed = when (event) {
+                is com.photonne.app.data.events.AssetMutation.Removed -> event.assetIds
+                is com.photonne.app.data.events.AssetMutation.Purged -> event.assetIds
+                else -> return@collect
+            }.toSet()
+            val memory = memoryDetail ?: return@collect
+            val remaining = memory.items.filterNot { it.id in removed }
+            if (remaining.size != memory.items.size) {
+                memoryDetail = if (remaining.isEmpty()) null else memory.copy(items = remaining)
+            }
+        }
+    }
     // Tracks the asset shown by the viewer's pager — drives the
     // grid → detail shared-element morph. Null when the viewer is closed
     // so all grid thumbnails return to their normal visible state.
@@ -907,7 +951,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var assetFacesRevision by remember { mutableStateOf(0) }
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlin.time.Instant?>(null) }
-    var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
+    var pendingAddTarget by remember { mutableStateOf<PendingAddTarget?>(null) }
+    // Álbum ya creado cuyo alta falló: reintentar solo repite el alta, nunca
+    // crea un segundo álbum.
+    var pendingAddAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
+    var pendingAssetAddSubmitting by remember { mutableStateOf(false) }
+    var pendingAssetAddError by remember { mutableStateOf<String?>(null) }
     var showCreateFolder by remember { mutableStateOf(false) }
     var showEditFolder by remember { mutableStateOf(false) }
     var showDeleteFolder by remember { mutableStateOf(false) }
@@ -935,6 +984,22 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     var moreSubscreen by androidx.compose.runtime.saveable.rememberSaveable {
         mutableStateOf<MoreSubscreen?>(null)
+    }
+    // Buscar abierto desde una etiqueta de Explorar: Atrás vuelve a esa
+    // subpantalla (y a la pestaña que había debajo), no a Fotos.
+    var searchReturnTo by remember { mutableStateOf<Pair<MainTab, MoreSubscreen>?>(null) }
+    LaunchedEffect(selectedTab) {
+        if (selectedTab != MainTab.Search) searchReturnTo = null
+    }
+    fun searchBack() {
+        val returnTo = searchReturnTo
+        searchReturnTo = null
+        if (returnTo != null) {
+            selectedTab = returnTo.first
+            moreSubscreen = returnTo.second
+        } else {
+            selectedTab = MainTab.Timeline
+        }
     }
     // Vuelta a la bandeja tras un movimiento por condiciones, con el contador y
     // la rejilla al día.
@@ -1065,6 +1130,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 moreSubscreen = MoreSubscreen.AdminLibraries
             }
             moreSubscreen != null -> { moreSubscreen = parentMoreSubscreen(moreSubscreen!!) }
+            selectedTab == MainTab.Search -> searchBack()
             selectedTab != MainTab.Timeline -> { selectedTab = MainTab.Timeline }
         }
     }
@@ -1366,7 +1432,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     totalCount = organizeInboxState.items.size,
                     isMutating = organizeInboxState.isBulkMutating,
                     onClose = organizeInboxViewModel::clearSelection,
-                    onSelectAll = organizeInboxViewModel::toggleSelectAll
+                    onSelectAll = organizeInboxViewModel::toggleSelectAll,
+                    // El servidor no da los ids de toda la lista: solo se
+                    // puede seleccionar lo cargado, y así se rotula.
+                    selectAllLoadedOnly = organizeInboxState.hasMore
                 )
             // Para organizar pinta su propio cromo flotante (con "Mover por
             // condiciones" en su cápsula de acciones); con una selección activa
@@ -1411,7 +1480,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     isMutating = favoritesState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onClose = favoritesViewModel::clearSelection,
-                    onSelectAll = favoritesViewModel::toggleSelectAll
+                    onSelectAll = favoritesViewModel::toggleSelectAll,
+                    // El servidor no da los ids de toda la lista: solo se
+                    // puede seleccionar lo cargado, y así se rotula.
+                    selectAllLoadedOnly = favoritesState.hasMore
                 )
             // Favoritos pinta su propio cromo flotante dentro de la pantalla
             // (ver floatingChromeSubscreen); aquí no va barra acoplada.
@@ -1425,7 +1497,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     isMutating = archivedState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onClose = archivedViewModel::clearSelection,
-                    onSelectAll = archivedViewModel::toggleSelectAll
+                    onSelectAll = archivedViewModel::toggleSelectAll,
+                    // El servidor no da los ids de toda la lista: solo se
+                    // puede seleccionar lo cargado, y así se rotula.
+                    selectAllLoadedOnly = archivedState.hasMore
                 )
             // Archivados pinta su propio cromo flotante dentro de la pantalla.
             moreSubscreen == MoreSubscreen.Archived -> {
@@ -2142,21 +2217,30 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         // es de verdad la pestaña visible.
                         memoriesAutoPlay = selectedTab == MainTab.Timeline &&
                             assetDetail == null,
-                        onOpenAsset = { mergedItems, mergedIndex ->
+                        onOpenAsset = { mergedItems, mergedIndex, feed ->
                             assetDetail = AssetDetailContext(
                                 items = mergedItems,
-                                // The pager is bounded to the contiguous
-                                // loaded bucket run TimelineScreen handed us.
+                                // The pager starts on the contiguous loaded
+                                // bucket run TimelineScreen handed us; the feed
+                                // appends older months as the viewer reaches
+                                // the end of it.
                                 startIndex = mergedIndex,
                                 source = AssetDetailContext.Source.Timeline,
                                 hasMore = false,
                                 onLoadMore = {},
-                                onFavoriteChanged = timelineViewModel::setFavorite
+                                onFavoriteChanged = timelineViewModel::setFavorite,
+                                feed = feed
                             )
                         },
                         onBucketsVisible = timelineViewModel::ensureVisible,
                         onEnsureYearSummaries = timelineViewModel::ensureYearSummaries,
-                        onRefresh = timelineViewModel::refresh,
+                        // El pull-to-refresh de Fotos también trae la tira
+                        // de Recuerdos (lote L9).
+                        onRefresh = {
+                            timelineViewModel.refresh()
+                            memoriesViewModel.refresh()
+                        },
+                        onDismissError = timelineViewModel::clearError,
                         onToggleSelection = timelineViewModel::toggleSelection,
                         onSetSelected = timelineViewModel::setSelected,
                         onApplySelection = timelineViewModel::applySelection,
@@ -2475,7 +2559,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     com.photonne.app.ui.search.SearchScreen(
                     viewModel = searchViewModel,
                     onOpenFilters = { showSearchFilters = true },
-                    onBack = { selectedTab = MainTab.Timeline },
+                    onBack = { searchBack() },
                     onChromeVisibleChange = { searchChromeVisible = it },
                     onItemClick = { index ->
                         if (searchState.isSelectionActive) {
@@ -2487,8 +2571,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 items = searchState.results,
                                 startIndex = index,
                                 source = AssetDetailContext.Source.Timeline,
-                                hasMore = false,
-                                onLoadMore = {},
+                                hasMore = searchState.hasMore,
+                                onLoadMore = searchViewModel::loadMore,
+                                // La búsqueda pagina: el visor sigue a la lista
+                                // viva en vez de pararse en la primera página.
+                                feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                    items = { searchState.results },
+                                    hasMore = { searchState.hasMore },
+                                    loadMore = searchViewModel::loadMore
+                                ),
                                 onFavoriteChanged = { id, isFav ->
                                     searchViewModel.setFavorite(id, isFav)
                                     timelineViewModel.setFavorite(id, isFav)
@@ -2607,6 +2698,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         source = AssetDetailContext.Source.Timeline,
                                         hasMore = organizeInboxState.hasMore,
                                         onLoadMore = organizeInboxViewModel::loadMore,
+                                        feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                            items = { organizeInboxState.items },
+                                            hasMore = { organizeInboxState.hasMore },
+                                            loadMore = organizeInboxViewModel::loadMore
+                                        ),
                                         onFavoriteChanged = { id, isFav ->
                                             timelineViewModel.setFavorite(id, isFav)
                                         }
@@ -2733,6 +2829,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // is just a deep-linking surface for the search engine.
                             onSceneClick = { label ->
                                 searchViewModel.showResultsForSceneLabel(label)
+                                searchReturnTo = selectedTab to MoreSubscreen.ExploreScenes
                                 moreSubscreen = null
                                 selectedTab = MainTab.Search
                             },
@@ -2744,6 +2841,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             viewModel = exploreFacetsViewModel,
                             onObjectClick = { label ->
                                 searchViewModel.showResultsForObjectLabel(label)
+                                searchReturnTo = selectedTab to MoreSubscreen.ExploreObjects
                                 moreSubscreen = null
                                 selectedTab = MainTab.Search
                             },
@@ -2864,6 +2962,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                             source = AssetDetailContext.Source.Timeline,
                                             hasMore = personDetailState.hasMore,
                                             onLoadMore = personDetailViewModel::loadMore,
+                                            feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                                items = { personDetailState.items },
+                                                hasMore = { personDetailState.hasMore },
+                                                loadMore = personDetailViewModel::loadMore
+                                            ),
                                             onFavoriteChanged = { id, isFav ->
                                                 personDetailViewModel.setFavorite(id, isFav)
                                                 timelineViewModel.setFavorite(id, isFav)
@@ -2943,6 +3046,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     source = AssetDetailContext.Source.Timeline,
                                     hasMore = favoritesState.hasMore,
                                     onLoadMore = favoritesViewModel::loadMore,
+                                    feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                        items = { favoritesState.items },
+                                        hasMore = { favoritesState.hasMore },
+                                        loadMore = favoritesViewModel::loadMore
+                                    ),
                                     onFavoriteChanged = { id, isFav ->
                                         favoritesViewModel.setFavorite(id, isFav)
                                         timelineViewModel.setFavorite(id, isFav)
@@ -2976,6 +3084,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     source = AssetDetailContext.Source.Archive,
                                     hasMore = archivedState.hasMore,
                                     onLoadMore = archivedViewModel::loadMore,
+                                    feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                        items = { archivedState.items },
+                                        hasMore = { archivedState.hasMore },
+                                        loadMore = archivedViewModel::loadMore
+                                    ),
                                     onFavoriteChanged = { id, isFav ->
                                         archivedViewModel.setFavorite(id, isFav)
                                         timelineViewModel.setFavorite(id, isFav)
@@ -3040,6 +3153,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                                 source = AssetDetailContext.Source.Trash,
                                                 hasMore = trashState.hasMore,
                                                 onLoadMore = trashViewModel::loadMore,
+                                                feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                                    items = { trashState.items },
+                                                    hasMore = { trashState.hasMore },
+                                                    loadMore = trashViewModel::loadMore
+                                                ),
                                                 onFavoriteChanged = { id, isFav ->
                                                     // Trashed assets ignore favorite changes
                                                     // server-side, but keep the local copy
@@ -3643,11 +3761,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 // pagerState seeded at the new startIndex — whenever the
                 // user opens a different asset.
                 key(displayCtx) {
+                    // Con fuente viva, lo nuevo se AÑADE al final de la lista
+                    // con la que se abrió: nada se reordena ni desaparece bajo
+                    // el dedo, y el índice actual no se mueve.
+                    val feed = displayCtx.feed
+                    val liveItems = feed?.items?.invoke()
+                    val viewerItems = remember(displayCtx.items, liveItems) {
+                        if (liveItems == null) {
+                            displayCtx.items
+                        } else {
+                            val known = displayCtx.items.mapTo(HashSet()) { it.id }
+                            val extra = liveItems.filterNot { it.id in known }
+                            if (extra.isEmpty()) displayCtx.items else displayCtx.items + extra
+                        }
+                    }
                     AssetDetailScreen(
-                        items = displayCtx.items,
+                        items = viewerItems,
                         startIndex = displayCtx.startIndex,
-                        hasMore = displayCtx.hasMore,
-                        onLoadMore = displayCtx.onLoadMore,
+                        hasMore = feed?.hasMore?.invoke() ?: displayCtx.hasMore,
+                        onLoadMore = feed?.loadMore ?: displayCtx.onLoadMore,
                         onBack = { closeAssetDetail() },
                         onPageChanged = { id -> currentDetailAssetId = id },
                         animatedVisibilityScope = this@AnimatedVisibility,
@@ -3820,30 +3952,118 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (showCreateAlbum) {
+        val addTarget = pendingAddTarget
+        val mapBulkState = mapViewModel.state.collectAsStateWithLifecycle().value
+        // Estado del alta pendiente según el origen: el error se enseña en la
+        // propia hoja del álbum, no en el banner de la pantalla de origen.
+        val (addSubmitting, addError) = when (addTarget) {
+            null -> false to null
+            is PendingAddTarget.Asset -> pendingAssetAddSubmitting to pendingAssetAddError
+            is PendingAddTarget.Selection -> when (addTarget.source) {
+                null -> timelineState.isBulkMutating to timelineState.error?.userMessage
+                BulkAddSource.Search -> searchState.isBulkMutating to searchState.error?.userMessage
+                BulkAddSource.Map -> mapBulkState.isBulkMutating to mapBulkState.error?.userMessage
+                BulkAddSource.Favorites -> favoritesState.isBulkMutating to favoritesState.error?.userMessage
+                BulkAddSource.People -> personDetailState.isBulkMutating to personDetailState.error?.userMessage
+                BulkAddSource.Folder -> folderDetailState.isBulkMutating to folderDetailState.error?.userMessage
+                BulkAddSource.Archive -> archivedState.isBulkMutating to archivedState.error?.userMessage
+                BulkAddSource.Album -> albumDetailState.isBulkMutating to albumDetailState.error?.userMessage
+                BulkAddSource.Inbox -> organizeInboxState.isBulkMutating to organizeInboxState.error?.userMessage
+            }
+        }
+        fun clearPendingAddError(target: PendingAddTarget?) {
+            when (target) {
+                null -> Unit
+                is PendingAddTarget.Asset -> pendingAssetAddError = null
+                is PendingAddTarget.Selection -> when (target.source) {
+                    null -> timelineViewModel.clearError()
+                    BulkAddSource.Search -> searchViewModel.clearError()
+                    BulkAddSource.Map -> mapViewModel.clearError()
+                    BulkAddSource.Favorites -> favoritesViewModel.clearError()
+                    BulkAddSource.People -> personDetailViewModel.clearError()
+                    BulkAddSource.Folder -> folderDetailViewModel.clearError()
+                    BulkAddSource.Archive -> archivedViewModel.clearError()
+                    BulkAddSource.Album -> albumDetailViewModel.clearError()
+                    BulkAddSource.Inbox -> organizeInboxViewModel.clearError()
+                }
+            }
+        }
+        fun finishCreateFlow(album: AlbumSummary, addedCount: Int?) {
+            val target = pendingAddTarget
+            showCreateAlbum = false
+            pendingAddTarget = null
+            pendingAddAlbum = null
+            if (target == null || target == PendingAddTarget.Selection(null)) {
+                // Timeline (y creación directa): se abre el álbum recién creado.
+                selectedTab = MainTab.Albums
+                selectedAlbum = album
+            } else if (addedCount != null) {
+                // Desde otras pantallas o el visor se queda donde estaba.
+                showAddedToAlbumSnackbar(addedCount, album.name)
+            }
+        }
+        fun addPendingTo(album: AlbumSummary) {
+            val onAdded: (List<TimelineItem>) -> Unit = { added ->
+                albumsViewModel.applyAssetsAdded(album.id, added.size)
+                finishCreateFlow(album, added.size)
+            }
+            when (val target = pendingAddTarget) {
+                null -> finishCreateFlow(album, null)
+                is PendingAddTarget.Asset -> {
+                    pendingAssetAddSubmitting = true
+                    pendingAssetAddError = null
+                    coroutineScope.launch {
+                        runCatching { albumsRepository.addAsset(album.id, target.item.id) }
+                            .onSuccess {
+                                pendingAssetAddSubmitting = false
+                                albumsViewModel.applyAssetAdded(album.id)
+                                finishCreateFlow(album, 1)
+                            }
+                            .onFailure { error ->
+                                pendingAssetAddSubmitting = false
+                                pendingAssetAddError = error.message ?: "No se pudo añadir al álbum"
+                            }
+                    }
+                }
+                is PendingAddTarget.Selection -> when (target.source) {
+                    null -> timelineViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Search -> searchViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Map -> mapViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Favorites -> favoritesViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.People -> personDetailViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Folder -> folderDetailViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Archive -> archivedViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Album -> albumDetailViewModel.bulkAddToAlbum(album.id, onAdded)
+                    BulkAddSource.Inbox -> organizeInboxViewModel.bulkAddToAlbum(album.id, onAdded)
+                }
+            }
+        }
+        LaunchedEffect(Unit) { clearPendingAddError(pendingAddTarget) }
+        val createdAlbum = pendingAddAlbum
         AlbumFormDialog(
             title = stringResource(Res.string.album_action_new),
-            confirmLabel = stringResource(Res.string.action_create),
-            isSubmitting = albumsState.isMutating || timelineState.isBulkMutating,
-            errorMessage = albumsState.error?.userMessage,
+            // Álbum ya creado y alta fallida: el botón solo reintenta el alta.
+            confirmLabel = stringResource(
+                if (createdAlbum != null) Res.string.action_retry else Res.string.action_create
+            ),
+            initialName = createdAlbum?.name.orEmpty(),
+            initialDescription = createdAlbum?.description,
+            isSubmitting = albumsState.isMutating || addSubmitting,
+            errorMessage = albumsState.error?.userMessage ?: addError,
             onDismiss = {
+                clearPendingAddError(pendingAddTarget)
                 showCreateAlbum = false
-                pendingBulkAddOnCreate = false
+                pendingAddTarget = null
+                pendingAddAlbum = null
                 albumsViewModel.clearError()
             },
             onConfirm = { name, description ->
-                albumsViewModel.create(name, description) { newAlbum ->
-                    if (pendingBulkAddOnCreate) {
-                        pendingBulkAddOnCreate = false
-                        timelineViewModel.bulkAddToAlbum(newAlbum.id) { added ->
-                            albumsViewModel.applyAssetsAdded(newAlbum.id, added.size)
-                            showCreateAlbum = false
-                            selectedTab = MainTab.Albums
-                            selectedAlbum = newAlbum
-                        }
-                    } else {
-                        showCreateAlbum = false
-                        selectedTab = MainTab.Albums
-                        selectedAlbum = newAlbum
+                if (createdAlbum != null) {
+                    addPendingTo(createdAlbum)
+                } else {
+                    albumsViewModel.create(name, description) { newAlbum ->
+                        if (pendingAddTarget != null) pendingAddAlbum = newAlbum
+                        addPendingTo(newAlbum)
                     }
                 }
             }
@@ -4177,7 +4397,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             errorMessage = timelineState.error?.userMessage,
             onCreateNew = {
                 bulkAddToAlbum = false
-                pendingBulkAddOnCreate = true
+                pendingAddTarget = PendingAddTarget.Selection(null)
                 showCreateAlbum = true
             },
             onAlbumSelected = { album ->
@@ -4503,6 +4723,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             errorMessage = errorMessage,
             onCreateNew = {
                 bulkAddSource = null
+                pendingAddTarget = PendingAddTarget.Selection(source)
                 showCreateAlbum = true
             },
             onAlbumSelected = { album ->
@@ -4700,6 +4921,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             errorMessage = addToAlbumState.errorMessage,
             onCreateNew = {
                 addToAlbum = null
+                pendingAddTarget = PendingAddTarget.Asset(addToAlbumState.asset)
+                pendingAssetAddError = null
                 showCreateAlbum = true
             },
             onAlbumSelected = { album ->

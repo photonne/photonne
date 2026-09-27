@@ -386,6 +386,10 @@ fun AssetDetailScreen(
         }
     }
 
+    // hasMore puede cambiar sin que cambie la lista (el visor sigue una fuente
+    // viva que carga páginas o meses): el efecto lee siempre el valor actual.
+    val currentHasMore by androidx.compose.runtime.rememberUpdatedState(hasMore)
+    val currentOnLoadMore by androidx.compose.runtime.rememberUpdatedState(onLoadMore)
     LaunchedEffect(pagerState, items) {
         snapshotFlow { pagerState.currentPage }
             .distinctUntilChanged()
@@ -403,8 +407,8 @@ fun AssetDetailScreen(
                 viewModel.prefetch(
                     listOfNotNull(items.getOrNull(index - 1)?.id, items.getOrNull(index + 1)?.id)
                 )
-                if (hasMore && index >= items.size - PAGER_PREFETCH_THRESHOLD) {
-                    onLoadMore()
+                if (currentHasMore && index >= items.size - PAGER_PREFETCH_THRESHOLD) {
+                    currentOnLoadMore()
                 }
             }
     }
@@ -1181,6 +1185,19 @@ fun AssetDetailScreen(
 
 /** Where the viewer was opened from; decides which actions it offers. */
 enum class AssetViewerMode { Default, Archive, Trash }
+
+/**
+ * Fuente viva del visor: la lista de origen sigue creciendo (páginas, meses del
+ * timeline) después de abrirlo. [items] y [hasMore] leen estado de Compose, así
+ * que quien los invoque en composición se recompone al llegar datos nuevos; el
+ * anfitrión solo AÑADE al final lo que no estaba, para que el índice actual no
+ * se mueva.
+ */
+class AssetViewerFeed(
+    val items: () -> List<com.photonne.app.data.models.TimelineItem>,
+    val hasMore: () -> Boolean,
+    val loadMore: () -> Unit
+)
 
 /** "Archivar" normally; "Desarchivar" when the viewer was opened from Archive. */
 @Composable

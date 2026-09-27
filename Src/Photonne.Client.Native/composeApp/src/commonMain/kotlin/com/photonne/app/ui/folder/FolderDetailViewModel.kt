@@ -81,6 +81,8 @@ class FolderDetailViewModel(
                     is AssetMutation.Purged -> event.assetIds.forEach(::applyAssetRemovedLocal)
                     is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
                     is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
+                    // Lote L8: la foto cambia de sitio en el orden por fecha.
+                    is AssetMutation.DateChanged -> refresh()
                 }
             }
         }

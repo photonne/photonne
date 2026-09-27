@@ -294,6 +294,7 @@
     <string name="search_mode_semantic">AI</string>
     <string name="search_filters">Filters</string>
     <string name="search_filters_only_text">Filters only apply to text search</string>
+    <string name="search_semantic_capped">Showing the %1$d closest matches</string>
     <string name="search_clear_all">Clear</string>
     <string name="search_idle_title">Start searching</string>
     <string name="search_idle_subtitle">Type a term or apply filters to see results.</string>
@@ -471,6 +472,7 @@
 
     <string name="selection_action_select_all">Select all</string>
     <string name="selection_action_deselect_all">Deselect all</string>
+    <string name="selection_action_select_loaded">Select loaded (%1$d)</string>
     <string name="asset_action_details">Details</string>
     <string name="asset_a11y_video">Video</string>
     <string name="asset_a11y_live_photo">Motion photo</string>
@@ -1187,6 +1189,11 @@
         <item quantity="other">%1$d photos still to back up</item>
     </plurals>
     <string name="backup_status_stop">Stop</string>
+    <string name="backup_blocked_quota_title">Out of space on the server</string>
+    <string name="backup_blocked_quota_title_sized">Out of space on the server (%1$s of %2$s)</string>
+    <string name="backup_blocked_quota_body">Backup has stopped: the server is refusing more files. Free up space or ask the administrator for more quota; it will resume on its own once that changes.</string>
+    <string name="backup_blocked_session_title">Session expired</string>
+    <string name="backup_blocked_session_body">Backup has stopped because the server no longer accepts your session. Sign in again and it will resume on its own.</string>
     <string name="backup_notifications_denied_hint">Without notification permission you won\'t see progress or a warning when a background backup fails. You can grant it in the system settings.</string>
     <string name="backup_notifications_open_settings">Open settings</string>
     <string name="backup_notifications_allow">Allow</string>

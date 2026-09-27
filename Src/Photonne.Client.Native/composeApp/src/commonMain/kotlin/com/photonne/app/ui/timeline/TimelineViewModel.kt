@@ -80,6 +80,7 @@ class TimelineViewModel(
                     is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
                     is AssetMutation.FavoriteChanged ->
                         store.updateItem(event.assetId) { it.copy(isFavorite = event.isFavorite) }
+                    is AssetMutation.DateChanged -> onDateChanged(event)
                 }
             }
         }
@@ -145,6 +146,27 @@ class TimelineViewModel(
         viewModelScope.launch {
             runCatching { store.ensureYearSummaries(sample) }
                 .onFailure { error ->
+                    _state.update {
+                        it.copy(error = errorFactory.from(error, "Error al cargar el timeline"))
+                    }
+                }
+        }
+    }
+
+    /**
+     * Fecha de captura cambiada (lote L8): recarga el mes donde estaba la
+     * foto y el mes al que va (recuentos del esqueleto incluidos, que el
+     * destino puede ser un mes nuevo). El resto de meses cargados se quedan.
+     */
+    private fun onDateChanged(event: AssetMutation.DateChanged) {
+        val oldKey = _state.value.buckets
+            .firstOrNull { bucket -> bucket.items?.any { it.id == event.assetId } == true }
+            ?.key
+        val newKey = com.photonne.app.ui.grid.bucketKeyOf(event.capturedAt)
+        viewModelScope.launch {
+            runCatching { store.reloadBuckets(setOfNotNull(oldKey, newKey)) }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
                     _state.update {
                         it.copy(error = errorFactory.from(error, "Error al cargar el timeline"))
                     }

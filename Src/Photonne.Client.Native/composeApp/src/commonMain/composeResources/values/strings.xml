@@ -355,6 +355,7 @@
     <string name="search_mode_semantic">IA</string>
     <string name="search_filters">Filtros</string>
     <string name="search_filters_only_text">Los filtros solo aplican a la búsqueda de texto</string>
+    <string name="search_semantic_capped">Mostrando los %1$d más parecidos</string>
     <string name="search_clear_all">Limpiar</string>
     <string name="search_idle_title">Empieza a buscar</string>
     <string name="search_idle_subtitle">Escribe un término o aplica filtros para ver resultados.</string>
@@ -533,6 +534,7 @@
 
     <string name="selection_action_select_all">Seleccionar todo</string>
     <string name="selection_action_deselect_all">Deseleccionar todo</string>
+    <string name="selection_action_select_loaded">Seleccionar lo cargado (%1$d)</string>
     <string name="asset_action_details">Detalles</string>
     <string name="asset_a11y_video">Vídeo</string>
     <string name="asset_a11y_live_photo">Foto en movimiento</string>
@@ -1229,6 +1231,11 @@
         <item quantity="other">%1$d fotos por respaldar</item>
     </plurals>
     <string name="backup_status_stop">Detener</string>
+    <string name="backup_blocked_quota_title">Sin espacio en el servidor</string>
+    <string name="backup_blocked_quota_title_sized">Sin espacio en el servidor (%1$s de %2$s)</string>
+    <string name="backup_blocked_quota_body">La copia se ha detenido: el servidor rechaza más archivos. Libera espacio o pide más cuota al administrador; se reanudará sola cuando cambie.</string>
+    <string name="backup_blocked_session_title">Sesión caducada</string>
+    <string name="backup_blocked_session_body">La copia se ha detenido porque el servidor ya no acepta tu sesión. Vuelve a iniciar sesión y se reanudará sola.</string>
     <string name="backup_notifications_denied_hint">Sin permiso de notificaciones no verás el progreso ni el aviso si falla una copia en segundo plano. Puedes concederlo en los ajustes del sistema.</string>
     <string name="backup_notifications_open_settings">Abrir ajustes</string>
     <string name="backup_notifications_allow">Permitir</string>

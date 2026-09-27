@@ -42,6 +42,9 @@ data class SearchUiState(
     val selectedSceneLabels: Set<String> = emptySet(),
     val results: List<TimelineItem> = emptyList(),
     val hasMore: Boolean = false,
+    /** La semántica no pagina: true si la respuesta llenó el tope, es decir,
+     *  hay más parecidas que no se muestran. */
+    val semanticCapped: Boolean = false,
     val isLoading: Boolean = false,
     val isAppending: Boolean = false,
     val error: UiError? = null,
@@ -100,6 +103,8 @@ class SearchViewModel(
                     is AssetMutation.Purged -> event.assetIds.forEach(::removeItem)
                     is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
                     is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
+                    // Lote L8: la foto cambia de sitio en el orden por fecha.
+                    is AssetMutation.DateChanged -> refresh()
                 }
             }
         }
@@ -122,6 +127,7 @@ class SearchViewModel(
                 mode = mode,
                 results = emptyList(),
                 hasMore = false,
+                semanticCapped = false,
                 error = null,
                 selection = emptySet()
             )
@@ -175,6 +181,7 @@ class SearchViewModel(
                 selectedSceneLabels = setOf(label),
                 results = emptyList(),
                 hasMore = false,
+                semanticCapped = false,
                 error = null,
                 selection = emptySet()
             )
@@ -196,6 +203,7 @@ class SearchViewModel(
                 selectedSceneLabels = emptySet(),
                 results = emptyList(),
                 hasMore = false,
+                semanticCapped = false,
                 error = null,
                 selection = emptySet()
             )
@@ -331,6 +339,7 @@ class SearchViewModel(
                 selectedPersonIds = emptySet(),
                 results = emptyList(),
                 hasMore = false,
+                semanticCapped = false,
                 error = null,
                 selection = emptySet()
             )
@@ -434,6 +443,7 @@ class SearchViewModel(
                 it.copy(
                     results = emptyList(),
                     hasMore = false,
+                    semanticCapped = false,
                     isLoading = false,
                     isAppending = false
                 )
@@ -464,7 +474,13 @@ class SearchViewModel(
                     if (snapshot.query.isBlank()) {
                         emptyList<TimelineItem>() to false
                     } else {
-                        val semantic = repository.semanticSearch(snapshot.query.trim())
+                        // Se pide el tope del servidor (antes el 50 por
+                        // defecto, cortado en silencio); si llega lleno, la
+                        // pantalla lo dice.
+                        val semantic = repository.semanticSearch(
+                            snapshot.query.trim(),
+                            limit = SEMANTIC_LIMIT
+                        )
                         semantic.items.map { it.asset } to false
                     }
                 }
@@ -476,6 +492,8 @@ class SearchViewModel(
                         isLoading = false,
                         results = items,
                         hasMore = hasMore,
+                        semanticCapped = snapshot.mode == SearchMode.Semantic &&
+                            items.size >= SEMANTIC_LIMIT,
                         selection = emptySet()
                     )
                 }
@@ -509,5 +527,7 @@ class SearchViewModel(
 
     companion object {
         private const val DEBOUNCE_MILLIS = 350L
+        /** Tope de `/assets/search/semantic` (SemanticSearchEndpoint). */
+        const val SEMANTIC_LIMIT = 200
     }
 }

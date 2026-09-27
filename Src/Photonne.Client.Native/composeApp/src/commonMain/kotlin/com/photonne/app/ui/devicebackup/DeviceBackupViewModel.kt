@@ -18,6 +18,7 @@ import com.photonne.app.data.devicebackup.withBackgroundExecution
 import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.DeviceBackupRepository
 import com.photonne.app.data.devicebackup.LastBackupRun
+import com.photonne.app.data.devicebackup.blocksPass
 import kotlin.time.Clock
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
@@ -90,6 +91,8 @@ data class DeviceBackupUiState(
     val statusMessage: String? = null,
     val lastSyncSummary: SyncSummary? = null,
     val lastRun: LastBackupRun? = null,
+    /** Lote L11: la última pasada se cortó por la cuenta (cuota, sesión). */
+    val passBlock: com.photonne.app.data.devicebackup.BackupPassBlock? = null,
     /**
      * Live upload fraction per device URI for a pass driven by the worker.
      * Kept out of [entries] on purpose: patching a 20k-item list on every
@@ -221,6 +224,7 @@ class DeviceBackupViewModel(
             isSupported = repository.isSupported,
             isBackupEnabled = repository.isBackupEnabled(),
             lastRun = repository.lastRun(),
+            passBlock = repository.passBlock(),
             backgroundSync = repository.backgroundSyncPreferences()
         )
     )
@@ -324,7 +328,8 @@ class DeviceBackupViewModel(
                     hashProgress = null,
                     syncProgress = null,
                     externalItemProgress = emptyMap(),
-                    lastRun = finished
+                    lastRun = finished,
+                    passBlock = repository.passBlock()
                 )
             }
             refreshFromLedger(force = true)
@@ -462,7 +467,7 @@ class DeviceBackupViewModel(
         if (_state.value.isLoading) return
         if (!repository.isSupported) return
         // A background pass may have run since we last looked.
-        _state.update { it.copy(lastRun = repository.lastRun()) }
+        _state.update { it.copy(lastRun = repository.lastRun(), passBlock = repository.passBlock()) }
         val loaded = _state.value.folders
         if (loaded.isNotEmpty()) {
             refreshFolderContents(loaded)
@@ -935,6 +940,9 @@ class DeviceBackupViewModel(
         var failed = 0
         var inFlight = 0
         var bytesDone = 0L
+        // Lote L11: mismo corte que BackupRunner al primer rechazo de cuenta.
+        var blockedBy: UploadFailureReason? = null
+        var landed = 0
 
         // Marks an entry Synced and refreshes the progress snapshot. Shared
         // by the Uploaded and Skipped (server-side dedup) outcomes, which
@@ -972,7 +980,7 @@ class DeviceBackupViewModel(
             pending = selected.map { it.media },
             concurrency = repository.uploadConcurrency(),
             upload = { media, report -> repository.upload(media, onProgress = report) },
-            shouldContinue = { _state.value.isSyncing },
+            shouldContinue = { _state.value.isSyncing && blockedBy == null },
             onItemStart = { media ->
                 inFlight++
                 _state.update { current ->
@@ -1001,14 +1009,17 @@ class DeviceBackupViewModel(
                 when (outcome) {
                     is UploadOutcome.Uploaded -> {
                         completed++
+                        landed++
                         markSynced(media, outcome.assetId)
                     }
                     is UploadOutcome.Skipped -> {
                         skipped++
+                        landed++
                         markSynced(media, outcome.assetId)
                     }
                     is UploadOutcome.Failed -> {
                         failed++
+                        if (outcome.reason.blocksPass && blockedBy == null) blockedBy = outcome.reason
                         failureReasonCounts[outcome.reason] =
                             (failureReasonCounts[outcome.reason] ?: 0) + 1
                         folderUriOf(media.uri)?.let { folderUri ->
@@ -1048,11 +1059,18 @@ class DeviceBackupViewModel(
             background = false
         )
         repository.recordLastRun(run)
+        val blocker = blockedBy
+        if (blocker != null) {
+            repository.recordPassBlock(blocker, run.finishedAtMillis)
+        } else if (landed > 0) {
+            repository.clearPassBlock()
+        }
         ownPassActive = false
         _state.update {
             it.copy(
                 isSyncing = false,
                 lastRun = run,
+                passBlock = repository.passBlock(),
                 lastSyncSummary = SyncSummary(
                     completed = completed,
                     skipped = skipped,

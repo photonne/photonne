@@ -71,6 +71,7 @@ class FavoritesViewModel(
                     }
                     is AssetMutation.Restored, AssetMutation.AllChanged -> refreshQuietly()
                     is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
+                    is AssetMutation.DateChanged -> Unit
                 }
             }
         }

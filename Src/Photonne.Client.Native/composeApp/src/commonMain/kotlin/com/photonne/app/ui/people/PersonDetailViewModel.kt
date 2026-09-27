@@ -72,6 +72,7 @@ class PersonDetailViewModel(
                     is AssetMutation.Purged -> event.assetIds.forEach(::applyAssetRemovedLocal)
                     is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
                     is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
+                    is AssetMutation.DateChanged -> Unit
                 }
             }
         }

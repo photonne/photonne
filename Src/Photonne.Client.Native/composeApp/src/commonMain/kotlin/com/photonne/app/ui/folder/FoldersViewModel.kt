@@ -133,7 +133,8 @@ class FoldersViewModel(
                     is com.photonne.app.data.events.AssetMutation.Purged,
                     com.photonne.app.data.events.AssetMutation.AllChanged ->
                         refreshQuietly()
-                    is com.photonne.app.data.events.AssetMutation.FavoriteChanged -> Unit
+                    is com.photonne.app.data.events.AssetMutation.FavoriteChanged,
+                    is com.photonne.app.data.events.AssetMutation.DateChanged -> Unit
                 }
             }
         }

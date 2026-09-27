@@ -2,6 +2,7 @@ package com.photonne.app.data.events
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlin.time.Instant
 
 /**
  * Mutación de assets confirmada por el servidor (punto 52 del roadmap).
@@ -28,6 +29,12 @@ sealed interface AssetMutation {
 
     /** Favorito conmutado en el servidor. */
     data class FavoriteChanged(val assetId: String, val isFavorite: Boolean) : AssetMutation
+
+    /**
+     * Fecha de captura cambiada a mano (lote L8): la foto cambia de sitio en
+     * las listas ordenadas por fecha y, en el timeline, de mes.
+     */
+    data class DateChanged(val assetId: String, val capturedAt: Instant) : AssetMutation
 
     /**
      * Operación global sin lista de ids (vaciar papelera, restaurar todo,
