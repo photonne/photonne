@@ -981,19 +981,20 @@
     <string name="admin_settings_server">Configuración del servidor</string>
     <string name="admin_settings_server_subtitle">URL pública, límites y conexión de este dispositivo</string>
     <string name="admin_settings_server_public_url">URL pública</string>
+    <string name="admin_settings_server_public_url_hint">Dirección con la que se generan los enlaces compartidos. Es común a todos los usuarios; la conexión de cada dispositivo se configura en Cuenta → Conexión.</string>
     <string name="admin_settings_server_map_key">Clave de API del mapa (CARTO)</string>
     <string name="admin_settings_server_map_key_hint">Las teselas del mapa exigen una clave gratuita desde agosto de 2026; sin ella salen con marca de agua. Pídela en carto.com/basemaps/apikey. Vacío = sin clave.</string>
     <string name="admin_settings_server_max_upload">Tamaño máximo de subida (MB)</string>
     <string name="admin_settings_server_max_upload_hint">0 = sin límite</string>
     <string name="admin_settings_server_session_timeout">Tiempo de sesión (min)</string>
     <string name="admin_settings_device_section">Conexión de este dispositivo</string>
-    <string name="admin_settings_device_section_hint">Se guarda solo en este dispositivo. La URL local se usará automáticamente cuando esté disponible (misma red WiFi que el servidor).</string>
-    <string name="admin_settings_device_public_url">URL pública</string>
-    <string name="admin_settings_device_local_url">URL local (opcional)</string>
+    <string name="admin_settings_device_section_hint">Se guardan solo en este dispositivo y sirven únicamente para que la app se conecte al servidor. La dirección de casa se usa automáticamente cuando estás en la misma WiFi que el servidor. Los enlaces que compartes no dependen de esto: usan la URL pública del servidor, que configura un administrador.</string>
+    <string name="admin_settings_device_public_url">Dirección desde fuera de casa</string>
+    <string name="admin_settings_device_local_url">Dirección en casa (opcional)</string>
     <string name="admin_settings_device_local_url_hint">Ej. http://192.168.1.10:5000</string>
-    <string name="admin_settings_device_status_local">Conectado usando la URL local</string>
-    <string name="admin_settings_device_status_public">Conectado usando la URL pública</string>
-    <string name="admin_settings_device_status_public_no_local">Conectado usando la URL pública (no hay URL local configurada)</string>
+    <string name="admin_settings_device_status_local">Conectado por la red de casa</string>
+    <string name="admin_settings_device_status_public">Conectado desde fuera de casa</string>
+    <string name="admin_settings_device_status_public_no_local">Conectado desde fuera de casa (no hay dirección de casa configurada)</string>
     <string name="admin_settings_device_probe_button">Probar conexión local</string>
     <string name="admin_settings_device_probe_reachable">La URL local responde.</string>
     <string name="admin_settings_device_probe_unreachable">La URL local no responde desde esta red.</string>
@@ -1560,8 +1561,8 @@
     <string name="admin_trash_error_cleanup">No se pudo completar la limpieza</string>
     <string name="admin_settings_device_error_local_missing">Introduce primero una URL local</string>
     <string name="admin_settings_device_error_local_invalid">La URL local no es válida</string>
-    <string name="admin_settings_device_error_public_invalid">La URL pública no es válida</string>
-    <string name="admin_settings_device_error_public_unreachable">No se pudo contactar con la URL pública</string>
+    <string name="admin_settings_device_error_public_invalid">La dirección desde fuera de casa no es válida</string>
+    <string name="admin_settings_device_error_public_unreachable">No se pudo contactar con la dirección desde fuera de casa</string>
     <string name="admin_shared_trash_selected_format">%1$d seleccionados</string>
     <string name="admin_shared_trash_deleted_by_format">Borrado por %1$s</string>
     <string name="timeline_scrubber_description">Desplazamiento rápido por fechas</string>
