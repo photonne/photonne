@@ -2,6 +2,7 @@ package com.photonne.app.data.error
 
 import com.photonne.app.PhotonneVersion
 import com.photonne.app.data.api.PhotonneApiException
+import com.photonne.app.data.api.SessionRefreshUnreachableConnectException
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -86,7 +87,13 @@ fun Throwable.toUiError(
 ): UiError {
     val apiEx = this as? PhotonneApiException
     val requestPath = apiEx?.url?.let { extractPath(it, serverBaseUrl) }
-    val userMessage = userMessageFor(apiEx, fallback)
+    val userMessage = if (this is SessionRefreshUnreachableConnectException) {
+        // Un 401 cuyo refresco no llegó al servidor: la sesión sigue viva, lo
+        // que falla es la conexión. Nunca "Sesión expirada".
+        CONNECTION_FAILED_MESSAGE
+    } else {
+        userMessageFor(apiEx, fallback)
+    }
     val details = ErrorDetails(
         timestamp = timestamp,
         serverBaseUrl = serverBaseUrl,
@@ -102,12 +109,22 @@ fun Throwable.toUiError(
     return UiError(userMessage = userMessage, technicalDetails = details)
 }
 
+private const val CONNECTION_FAILED_MESSAGE =
+    "No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo."
+
+/**
+ * En los errores de validación/estado (400, 404, 409, 422) el servidor suele
+ * explicar el motivo exacto ("La contraseña actual no es correcta"); ese texto
+ * gana al genérico de la pantalla. [PhotonneApiException.serverMessage] ya
+ * viene filtrado: si el cuerpo no traía un texto legible es `null` y se usa
+ * [fallback] como siempre.
+ */
 private fun userMessageFor(api: PhotonneApiException?, fallback: String): String =
     when (api?.status) {
         null -> fallback
         401 -> "Sesión expirada. Vuelve a iniciar sesión."
         403 -> "No tienes permiso para esta acción."
-        404 -> fallback
+        400, 404, 409, 422 -> api.serverMessage ?: fallback
         in 500..599 -> "El servidor no pudo procesar la petición."
         else -> fallback
     }

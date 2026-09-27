@@ -19,6 +19,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 private class FakeTokenStorage(
@@ -134,8 +136,36 @@ class AuthRefreshPluginTest {
 
         val response: HttpResponse = client.get("http://test.local/api/protected")
         assertEquals(HttpStatusCode.Unauthorized, response.status)
-        assertEquals(AuthState.Unauthenticated, authState.state.value)
+        assertIs<AuthState.SessionExpired>(authState.state.value)
         assertEquals(1, storage.clearedTimes)
+    }
+
+    @Test
+    fun late_401_after_voluntary_logout_does_not_flag_expiry() = runTest {
+        val storage = FakeTokenStorage()
+        val authState = AuthStateHolder()
+        authState.update(AuthState.Unauthenticated)
+        var expired = 0
+
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/protected" -> respond("", HttpStatusCode.Unauthorized)
+                "/api/auth/refresh" -> respond("", HttpStatusCode.Unauthorized)
+                else -> respond("nope", HttpStatusCode.NotFound)
+            }
+        }
+
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrlProvider = { "http://test.local" },
+            tokenStorage = storage,
+            authState = authState,
+            onSessionExpired = { expired++ }
+        )
+
+        client.get("http://test.local/api/protected")
+        assertEquals(AuthState.Unauthenticated, authState.state.value)
+        assertEquals(0, expired)
     }
 
     @Test
@@ -160,7 +190,7 @@ class AuthRefreshPluginTest {
 
         val response: HttpResponse = client.get("http://test.local/api/protected")
         assertEquals(HttpStatusCode.Unauthorized, response.status)
-        assertEquals(AuthState.Unauthenticated, authState.state.value)
+        assertIs<AuthState.SessionExpired>(authState.state.value)
         assertEquals(1, storage.clearedTimes)
     }
 
@@ -185,9 +215,11 @@ class AuthRefreshPluginTest {
             authState = authState
         )
 
-        val response: HttpResponse = client.get("http://test.local/api/protected")
-        // Original 401 surfaces, but the session is left intact for a retry.
-        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        // Not the original 401 (that reads as "session expired" everywhere)
+        // but a connection failure; the session is left intact for a retry.
+        assertFailsWith<SessionRefreshUnreachableConnectException> {
+            client.get("http://test.local/api/protected")
+        }
         assertEquals(AuthState.Unknown, authState.state.value)
         assertEquals(0, storage.clearedTimes)
     }
@@ -212,8 +244,9 @@ class AuthRefreshPluginTest {
             authState = authState
         )
 
-        val response: HttpResponse = client.get("http://test.local/api/protected")
-        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertFailsWith<SessionRefreshUnreachableConnectException> {
+            client.get("http://test.local/api/protected")
+        }
         assertEquals(AuthState.Unknown, authState.state.value)
         assertEquals(0, storage.clearedTimes)
     }

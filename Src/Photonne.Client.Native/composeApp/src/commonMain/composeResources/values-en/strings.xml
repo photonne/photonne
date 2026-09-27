@@ -1550,4 +1550,5 @@
     <string name="login_remember_me">Remember me on this device</string>
     <string name="login_sign_in">Sign in</string>
     <string name="login_change_server">Change server</string>
+    <string name="login_session_expired">Your session has expired. Please sign in again.</string>
 </resources>

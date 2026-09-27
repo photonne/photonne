@@ -29,6 +29,7 @@ import com.photonne.app.resources.backup_notification_verifying_title
 import com.photonne.app.resources.backup_status_stop
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
+import com.photonne.app.ui.main.ExternalDestination
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import org.koin.core.context.GlobalContext
@@ -341,9 +342,33 @@ class BackupWorker(
             .setContentText(text)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .apply { openAppIntent(ExternalDestination.Backup)?.let { setContentIntent(it) } }
             .addAction(cancelAction)
             .apply { if (total > 0) setProgress(total, done, false) }
             .build()
+    }
+
+    /**
+     * Lote M4: toque en una notificación del backup → la app en [destination].
+     * singleTop + clearTop reutiliza la Activity viva (llega por onNewIntent)
+     * en vez de apilar otra. Un requestCode por destino para que los dos
+     * PendingIntent no se pisen el extra.
+     */
+    private fun openAppIntent(destination: ExternalDestination): android.app.PendingIntent? {
+        val context = applicationContext
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            ?: return null
+        launchIntent.putExtra(ExternalDestination.EXTRA_KEY, destination.name)
+        launchIntent.addFlags(
+            android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+        )
+        return android.app.PendingIntent.getActivity(
+            context, destination.ordinal + 1, launchIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+                android.app.PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     private suspend fun notifyFailures(failed: Int) {
@@ -366,14 +391,7 @@ class BackupWorker(
             )
         )
 
-        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-        val contentIntent = launchIntent?.let {
-            android.app.PendingIntent.getActivity(
-                context, 0, it,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or
-                    android.app.PendingIntent.FLAG_IMMUTABLE
-            )
-        }
+        val contentIntent = openAppIntent(ExternalDestination.BackupPending)
 
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(context.applicationInfo.icon)

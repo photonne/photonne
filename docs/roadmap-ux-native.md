@@ -343,10 +343,10 @@ Cuatro revisores de solo lectura (timeline y navegación · visor, mapa, persona
 
 ## Lote M — Errores y sesión
 
-- [ ] **M1. Se pierde el mensaje concreto del servidor** · S · `data/error/UiError.kt:105-112`: en 400/404/409 sale el genérico ("No se pudo cambiar la contraseña") aunque el servidor diga "La contraseña actual no es correcta".
-- [ ] **M2. "Sesión expirada" cuando falla el refresco por red** · S · `data/api/AuthRefreshPlugin.kt:211-216`. Debería ser error de conexión.
-- [ ] **M3. Caducidad real: vuelve al login sin motivo** · S · `AuthRefreshPlugin.kt:206-209`, `App.kt:515-519`. Estado `SessionExpired` con aviso.
-- [ ] **M4. Notificaciones del backup sin destino** · S · `androidMain/.../BackupWorker.kt:329-373`: la de progreso no abre nada; la de fallos abre Fotos, no Pendientes.
+- [x] **M1. Se pierde el mensaje concreto del servidor** · S · `data/error/UiError.kt:105-112`: en 400/404/409 sale el genérico ("No se pudo cambiar la contraseña") aunque el servidor diga "La contraseña actual no es correcta".
+- [x] **M2. "Sesión expirada" cuando falla el refresco por red** · S · `data/api/AuthRefreshPlugin.kt:211-216`. Debería ser error de conexión.
+- [x] **M3. Caducidad real: vuelve al login sin motivo** · S · `AuthRefreshPlugin.kt:206-209`, `App.kt:515-519`. Estado `SessionExpired` con aviso.
+- [x] **M4. Notificaciones del backup sin destino** · S · `androidMain/.../BackupWorker.kt:329-373`: la de progreso no abre nada; la de fallos abre Fotos, no Pendientes. — parcial: en iOS no hay notificaciones locales del backup, así que no hay nada que abrir; queda Android.
 
 ## Lote N — Consistencia menor
 

@@ -53,16 +53,24 @@ class AuthRepository(
     }
 
     fun logout() {
-        // Signing out ends the backup too: nothing scheduled keeps uploading
-        // to an account nobody is signed into. The setup itself stays, so the
-        // same account signing back in picks up where it left off.
+        stopBackupForSignOut()
+        tokenStorage.clear()
+        authStateHolder.update(AuthState.Unauthenticated)
+    }
+
+    /**
+     * Signing out ends the backup too: nothing scheduled keeps uploading to an
+     * account nobody is signed into. The setup itself stays, so the same
+     * account signing back in picks up where it left off. Shared by the
+     * voluntary [logout] and the forced one of an expired session (the
+     * refresh plugin calls this after moving to [AuthState.SessionExpired]).
+     */
+    fun stopBackupForSignOut() {
         runCatching {
             backupScheduler.cancelForegroundBackup()
             backupScheduler.apply(
                 backupStateStore.backgroundSyncPreferences().copy(enabled = false)
             )
         }
-        tokenStorage.clear()
-        authStateHolder.update(AuthState.Unauthenticated)
     }
 }

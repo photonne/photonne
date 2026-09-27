@@ -85,6 +85,8 @@ import kotlinx.coroutines.launch
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 internal data class FavoriteResponse(val isFavorite: Boolean)
@@ -868,10 +870,7 @@ class PhotonneApiClient(
             setBody(LoginRequest(username = username, password = password, deviceId = deviceId))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Login failed (${response.status.value})"
-            )
+            throw response.apiException("Login failed (${response.status.value})")
         }
         return response.body()
     }
@@ -893,10 +892,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Timeline fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Timeline fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -904,10 +900,7 @@ class PhotonneApiClient(
     override suspend fun getTimelineBuckets(): List<TimelineBucket> {
         val response: HttpResponse = client.get("$baseUrl/api/assets/timeline/buckets")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Timeline buckets fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Timeline buckets fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -923,10 +916,7 @@ class PhotonneApiClient(
             }
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Timeline bucket fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Timeline bucket fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -943,10 +933,7 @@ class PhotonneApiClient(
             parameter("sample", sample)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Timeline years fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Timeline years fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -957,10 +944,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Unsupported files fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Unsupported files fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -971,10 +955,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Organize inbox fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Organize inbox fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -982,10 +963,7 @@ class PhotonneApiClient(
     override suspend fun getOrganizeSuggestions(): List<OrganizeSuggestion> {
         val response: HttpResponse = client.get("$baseUrl/api/organize/suggestions")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Organize suggestions fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Organize suggestions fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -996,10 +974,7 @@ class PhotonneApiClient(
             setBody(OrganizeExcludeRequest(assetIds = assetIds, excluded = excluded))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Organize exclude failed (${response.status.value})"
-            )
+            throw response.apiException("Organize exclude failed (${response.status.value})")
         }
     }
 
@@ -1009,10 +984,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Organize excluded fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Organize excluded fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1020,10 +992,7 @@ class PhotonneApiClient(
     override suspend fun getOrganizeSummary(): OrganizeSummary {
         val response: HttpResponse = client.get("$baseUrl/api/organize/inbox/count")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Organize count fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Organize count fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1034,10 +1003,7 @@ class PhotonneApiClient(
             setBody(OrganizeRulePreviewRequest(rule = rule, sampleSize = sampleSize))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Organize rule preview failed (${response.status.value})"
-            )
+            throw response.apiException("Organize rule preview failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1048,10 +1014,7 @@ class PhotonneApiClient(
             setBody(OrganizeRuleMoveRequest(rule = rule, targetFolderId = targetFolderId, organizeByCaptureYear = organizeByCaptureYear))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Organize rule move failed (${response.status.value})"
-            )
+            throw response.apiException("Organize rule move failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1062,10 +1025,7 @@ class PhotonneApiClient(
             setBody(OrganizeRuleReviewBody(rule = rule))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Organize rule review failed (${response.status.value})"
-            )
+            throw response.apiException("Organize rule review failed (${response.status.value})")
         }
         return response.body<OrganizeRuleReviewResponse>().groups
     }
@@ -1076,10 +1036,7 @@ class PhotonneApiClient(
             setBody(AssetYearBreakdownBody(assetIds = assetIds))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Asset year breakdown failed (${response.status.value})"
-            )
+            throw response.apiException("Asset year breakdown failed (${response.status.value})")
         }
         return response.body<AssetYearBreakdownResponse>().groups
     }
@@ -1088,10 +1045,7 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.get("$baseUrl/api/unsupported-files/$id/content")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Unsupported file content fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Unsupported file content fetch failed (${response.status.value})")
         }
         val contentType = response.headers[HttpHeaders.ContentType]
             ?: "application/octet-stream"
@@ -1110,10 +1064,7 @@ class PhotonneApiClient(
             parameter("limit", limit)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Recent assets fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Recent assets fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1121,10 +1072,7 @@ class PhotonneApiClient(
     override suspend fun getMemories(): List<TimelineItem> {
         val response: HttpResponse = client.get("$baseUrl/api/assets/memories")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Memories fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Memories fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1132,10 +1080,7 @@ class PhotonneApiClient(
     override suspend fun getAttributions(): List<Attribution> {
         val response: HttpResponse = client.get("$baseUrl/api/attributions")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Attributions fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Attributions fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1146,10 +1091,7 @@ class PhotonneApiClient(
             parameter("limit", limit)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Memory feed fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Memory feed fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1157,10 +1099,7 @@ class PhotonneApiClient(
     override suspend fun getMemory(id: String): MemoryDetail {
         val response: HttpResponse = client.get("$baseUrl/api/memories/$id")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Memory fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Memory fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1168,10 +1107,7 @@ class PhotonneApiClient(
     override suspend fun getAssetDetail(assetId: String): AssetDetail {
         val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Asset detail fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Asset detail fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1186,10 +1122,7 @@ class PhotonneApiClient(
             setBody(DownloadZipBody(assetIds = assetIds, fileName = fileName))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Download failed (${response.status.value})"
-            )
+            throw response.apiException("Download failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1200,10 +1133,7 @@ class PhotonneApiClient(
                 parameter("download", true)
             }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Asset content fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Asset content fetch failed (${response.status.value})")
         }
         val contentType = response.headers[HttpHeaders.ContentType]
             ?: "application/octet-stream"
@@ -1260,10 +1190,7 @@ class PhotonneApiClient(
     override suspend fun toggleFavorite(assetId: String): Boolean {
         val response: HttpResponse = client.post("$baseUrl/api/assets/$assetId/favorite")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Favorite toggle failed (${response.status.value})"
-            )
+            throw response.apiException("Favorite toggle failed (${response.status.value})")
         }
         val body: FavoriteResponse = response.body()
         return body.isFavorite
@@ -1272,10 +1199,7 @@ class PhotonneApiClient(
     override suspend fun getAlbums(): List<AlbumSummary> {
         val response: HttpResponse = client.get("$baseUrl/api/albums")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Albums fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Albums fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1283,10 +1207,7 @@ class PhotonneApiClient(
     override suspend fun getAlbum(albumId: String): AlbumSummary {
         val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Album fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Album fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1294,10 +1215,7 @@ class PhotonneApiClient(
     override suspend fun getAlbumAssets(albumId: String): List<TimelineItem> {
         val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId/assets")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Album assets fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Album assets fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1308,10 +1226,7 @@ class PhotonneApiClient(
             setBody(AlbumWriteRequest(name = name, description = description))
         }
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Album create failed (${response.status.value})"
-            )
+            throw response.apiException("Album create failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1322,10 +1237,7 @@ class PhotonneApiClient(
             setBody(SmartAlbumWriteRequest(name = name, description = description, smartRule = rule))
         }
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Smart album create failed (${response.status.value})"
-            )
+            throw response.apiException("Smart album create failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1336,10 +1248,7 @@ class PhotonneApiClient(
             setBody(SmartAlbumPreviewRequest(rule = rule, sampleSize = sampleSize))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Smart album preview failed (${response.status.value})"
-            )
+            throw response.apiException("Smart album preview failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1354,10 +1263,7 @@ class PhotonneApiClient(
             setBody(AlbumWriteRequest(name = name, description = description))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Album update failed (${response.status.value})"
-            )
+            throw response.apiException("Album update failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1367,10 +1273,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Album delete failed (${response.status.value})"
-            )
+            throw response.apiException("Album delete failed (${response.status.value})")
         }
     }
 
@@ -1383,10 +1286,7 @@ class PhotonneApiClient(
             response.status != HttpStatusCode.Created &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Add asset to album failed (${response.status.value})"
-            )
+            throw response.apiException("Add asset to album failed (${response.status.value})")
         }
     }
 
@@ -1398,10 +1298,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Update description failed (${response.status.value})"
-            )
+            throw response.apiException("Update description failed (${response.status.value})")
         }
     }
 
@@ -1411,10 +1308,7 @@ class PhotonneApiClient(
             setBody(AddTagsBody(tags = tags))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Add tags failed (${response.status.value})"
-            )
+            throw response.apiException("Add tags failed (${response.status.value})")
         }
         return response.body<AssetTagsResponse>().tags
     }
@@ -1423,10 +1317,7 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.delete("$baseUrl/api/assets/$assetId/tags/${tag.encodeURLPathPart()}")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Remove tag failed (${response.status.value})"
-            )
+            throw response.apiException("Remove tag failed (${response.status.value})")
         }
         return response.body<AssetTagsResponse>().tags
     }
@@ -1436,10 +1327,7 @@ class PhotonneApiClient(
             parameter("limit", limit)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Same-day assets fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Same-day assets fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1456,10 +1344,7 @@ class PhotonneApiClient(
             setBody(UpdateCaptureDateBody(dateTaken = dateTaken.toString(), writeToFile = writeToFile))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Update capture date failed (${response.status.value})"
-            )
+            throw response.apiException("Update capture date failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1469,10 +1354,7 @@ class PhotonneApiClient(
     ): com.photonne.app.data.models.CaptureDateSuggestion {
         val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/date/suggestion")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Capture date suggestion failed (${response.status.value})"
-            )
+            throw response.apiException("Capture date suggestion failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1487,10 +1369,7 @@ class PhotonneApiClient(
             response.status != HttpStatusCode.Created &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Add assets batch failed (${response.status.value})"
-            )
+            throw response.apiException("Add assets batch failed (${response.status.value})")
         }
     }
 
@@ -1503,10 +1382,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Archive failed (${response.status.value})"
-            )
+            throw response.apiException("Archive failed (${response.status.value})")
         }
     }
 
@@ -1519,10 +1395,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Trash failed (${response.status.value})"
-            )
+            throw response.apiException("Trash failed (${response.status.value})")
         }
     }
 
@@ -1574,10 +1447,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Archived list failed (${response.status.value})"
-            )
+            throw response.apiException("Archived list failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1588,10 +1458,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Trash list failed (${response.status.value})"
-            )
+            throw response.apiException("Trash list failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1602,10 +1469,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Shared trash list failed (${response.status.value})"
-            )
+            throw response.apiException("Shared trash list failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1634,10 +1498,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Favorites list failed (${response.status.value})"
-            )
+            throw response.apiException("Favorites list failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1795,10 +1656,7 @@ class PhotonneApiClient(
                 body.assetId.takeIf { it.isNotBlank() }
             }
             HttpStatusCode.NotFound -> null
-            else -> throw PhotonneApiException(
-                status = response.status.value,
-                message = "Hash lookup failed (${response.status.value})"
-            )
+            else -> throw response.apiException("Hash lookup failed (${response.status.value})")
         }
     }
 
@@ -1810,10 +1668,7 @@ class PhotonneApiClient(
             setBody(CheckChecksumsRequest(checksums))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Bulk hash lookup failed (${response.status.value})"
-            )
+            throw response.apiException("Bulk hash lookup failed (${response.status.value})")
         }
         val body: CheckChecksumsBody = response.body()
         return body.existing
@@ -1822,22 +1677,16 @@ class PhotonneApiClient(
     override suspend fun getMapPoints(): List<MapPoint> {
         val response: HttpResponse = client.get("$baseUrl/api/assets/map/points")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Map points fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Map points fetch failed (${response.status.value})")
         }
         return response.body()
     }
 
-    private fun ensureSuccess(response: HttpResponse, message: String) {
+    private suspend fun ensureSuccess(response: HttpResponse, message: String) {
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "$message (${response.status.value})"
-            )
+            throw response.apiException("$message (${response.status.value})")
         }
     }
 
@@ -1848,10 +1697,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Remove asset from album failed (${response.status.value})"
-            )
+            throw response.apiException("Remove asset from album failed (${response.status.value})")
         }
     }
 
@@ -1861,10 +1707,7 @@ class PhotonneApiClient(
             setBody(SetCoverRequest(assetId = assetId))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Set album cover failed (${response.status.value})"
-            )
+            throw response.apiException("Set album cover failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1874,10 +1717,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Leave album failed (${response.status.value})"
-            )
+            throw response.apiException("Leave album failed (${response.status.value})")
         }
     }
 
@@ -1886,10 +1726,7 @@ class PhotonneApiClient(
             parameter("albumId", albumId)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Listing share links failed (${response.status.value})"
-            )
+            throw response.apiException("Listing share links failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1897,10 +1734,7 @@ class PhotonneApiClient(
     override suspend fun getSentShares(): List<SentShareLink> {
         val response: HttpResponse = client.get("$baseUrl/api/share/sent")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Listing sent share links failed (${response.status.value})"
-            )
+            throw response.apiException("Listing sent share links failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1929,10 +1763,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.Created
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Creating share link failed (${response.status.value})"
-            )
+            throw response.apiException("Creating share link failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1958,10 +1789,7 @@ class PhotonneApiClient(
             )
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Update share link failed (${response.status.value})"
-            )
+            throw response.apiException("Update share link failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1971,20 +1799,14 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Revoke share link failed (${response.status.value})"
-            )
+            throw response.apiException("Revoke share link failed (${response.status.value})")
         }
     }
 
     override suspend fun getShareableUsers(): List<ShareableUser> {
         val response: HttpResponse = client.get("$baseUrl/api/users/shareable")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Listing users failed (${response.status.value})"
-            )
+            throw response.apiException("Listing users failed (${response.status.value})")
         }
         return response.body()
     }
@@ -1992,10 +1814,7 @@ class PhotonneApiClient(
     override suspend fun listAlbumPermissions(albumId: String): List<AlbumPermission> {
         val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId/permissions")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Listing album members failed (${response.status.value})"
-            )
+            throw response.apiException("Listing album members failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2023,10 +1842,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.Created
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Granting album permission failed (${response.status.value})"
-            )
+            throw response.apiException("Granting album permission failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2038,20 +1854,14 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Removing album member failed (${response.status.value})"
-            )
+            throw response.apiException("Removing album member failed (${response.status.value})")
         }
     }
 
     override suspend fun getFolders(): List<FolderSummary> {
         val response: HttpResponse = client.get("$baseUrl/api/folders")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Folders fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Folders fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2059,10 +1869,7 @@ class PhotonneApiClient(
     override suspend fun getFolder(folderId: String): FolderSummary {
         val response: HttpResponse = client.get("$baseUrl/api/folders/$folderId")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Folder fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Folder fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2070,10 +1877,7 @@ class PhotonneApiClient(
     override suspend fun getFolderAssets(folderId: String): List<TimelineItem> {
         val response: HttpResponse = client.get("$baseUrl/api/folders/$folderId/assets")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Folder assets fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Folder assets fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2088,10 +1892,7 @@ class PhotonneApiClient(
             setBody(CreateFolderBody(name = name, parentFolderId = parentFolderId, isSharedSpace = isSharedSpace))
         }
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Folder create failed (${response.status.value})"
-            )
+            throw response.apiException("Folder create failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2106,10 +1907,7 @@ class PhotonneApiClient(
             setBody(UpdateFolderBody(name = name, parentFolderId = parentFolderId))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Folder update failed (${response.status.value})"
-            )
+            throw response.apiException("Folder update failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2125,20 +1923,14 @@ class PhotonneApiClient(
             setBody(DiscoveryVisibilityBody(included = included))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Folder timeline visibility update failed (${response.status.value})"
-            )
+            throw response.apiException("Folder timeline visibility update failed (${response.status.value})")
         }
     }
 
     override suspend fun listFolderPermissions(folderId: String): List<AlbumPermission> {
         val response: HttpResponse = client.get("$baseUrl/api/folders/$folderId/permissions")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Listing folder members failed (${response.status.value})"
-            )
+            throw response.apiException("Listing folder members failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2164,10 +1956,7 @@ class PhotonneApiClient(
             )
         }
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Granting folder permission failed (${response.status.value})"
-            )
+            throw response.apiException("Granting folder permission failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2175,10 +1964,7 @@ class PhotonneApiClient(
     override suspend fun removeFolderPermission(folderId: String, userId: String) {
         val response: HttpResponse = client.delete("$baseUrl/api/folders/$folderId/permissions/$userId")
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Removing folder member failed (${response.status.value})"
-            )
+            throw response.apiException("Removing folder member failed (${response.status.value})")
         }
     }
 
@@ -2200,10 +1986,7 @@ class PhotonneApiClient(
             )
         }
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Moving folder assets failed (${response.status.value})"
-            )
+            throw response.apiException("Moving folder assets failed (${response.status.value})")
         }
         // Older servers replied 204 with no body; treat that as a bare success.
         return if (response.status == HttpStatusCode.NoContent) MoveOutcome() else response.body()
@@ -2234,10 +2017,7 @@ class PhotonneApiClient(
             if (!textQuery.isNullOrBlank()) parameter("textQuery", textQuery)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Search failed (${response.status.value})"
-            )
+            throw response.apiException("Search failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2248,10 +2028,7 @@ class PhotonneApiClient(
             if (limit != null) parameter("limit", limit)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Semantic search failed (${response.status.value})"
-            )
+            throw response.apiException("Semantic search failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2262,10 +2039,7 @@ class PhotonneApiClient(
             if (limit != null) parameter("limit", limit)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Object labels fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Object labels fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2276,10 +2050,7 @@ class PhotonneApiClient(
             if (limit != null) parameter("limit", limit)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Scene labels fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Scene labels fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2297,10 +2068,7 @@ class PhotonneApiClient(
             if (offset != null) parameter("offset", offset)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "People fetch failed (${response.status.value})"
-            )
+            throw response.apiException("People fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2308,10 +2076,7 @@ class PhotonneApiClient(
     override suspend fun getPerson(personId: String): Person {
         val response: HttpResponse = client.get("$baseUrl/api/people/$personId")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Person fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Person fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2344,10 +2109,7 @@ class PhotonneApiClient(
             if (offset != null) parameter("offset", offset)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Person assets fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Person assets fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2362,10 +2124,7 @@ class PhotonneApiClient(
             if (offset != null) parameter("offset", offset)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Suggestions fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Suggestions fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2374,10 +2133,7 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.post("$baseUrl/api/people/$personId/suggestions/accept-all")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Accept-all failed (${response.status.value})"
-            )
+            throw response.apiException("Accept-all failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2386,10 +2142,7 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.post("$baseUrl/api/people/$personId/suggestions/dismiss-all")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Dismiss-all failed (${response.status.value})"
-            )
+            throw response.apiException("Dismiss-all failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2398,10 +2151,7 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.post("$baseUrl/api/faces/$faceId/accept-suggestion")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Accept face suggestion failed (${response.status.value})"
-            )
+            throw response.apiException("Accept face suggestion failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2422,10 +2172,7 @@ class PhotonneApiClient(
             setBody(AssignFaceBody(personId = personId, newPersonName = newPersonName))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Assign face failed (${response.status.value})"
-            )
+            throw response.apiException("Assign face failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2449,10 +2196,7 @@ class PhotonneApiClient(
     override suspend fun reclusterPeople(): ReclusterResponse {
         val response: HttpResponse = client.post("$baseUrl/api/people/recluster")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Recluster failed (${response.status.value})"
-            )
+            throw response.apiException("Recluster failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2460,10 +2204,7 @@ class PhotonneApiClient(
     override suspend fun getAssetFaces(assetId: String): List<Face> {
         val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/faces")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Asset faces fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Asset faces fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2478,10 +2219,7 @@ class PhotonneApiClient(
             if (offset != null) parameter("offset", offset)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Person faces fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Person faces fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2499,32 +2237,23 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.post("$baseUrl/api/people/$personId/assets/$assetId/unlink")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Unlink failed (${response.status.value})"
-            )
+            throw response.apiException("Unlink failed (${response.status.value})")
         }
         return response.body()
     }
 
-    private fun ensurePersonSuccess(response: HttpResponse, message: String) {
+    private suspend fun ensurePersonSuccess(response: HttpResponse, message: String) {
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "$message (${response.status.value})"
-            )
+            throw response.apiException("$message (${response.status.value})")
         }
     }
 
     override suspend fun getCurrentUser(): UserDto {
         val response: HttpResponse = client.get("$baseUrl/api/users/me")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Fetching user failed (${response.status.value})"
-            )
+            throw response.apiException("Fetching user failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2538,10 +2267,7 @@ class PhotonneApiClient(
         }
         if (response.status != HttpStatusCode.OK) {
             // 400 carries `{ "error": "..." }` (UsersEndpoint.cs:381,388); surface that text
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Profile update failed"
-            )
+            throw response.apiException("Profile update failed")
         }
         return response.body()
     }
@@ -2554,10 +2280,7 @@ class PhotonneApiClient(
             setBody(request)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Password change failed"
-            )
+            throw response.apiException("Password change failed")
         }
         return response.body()
     }
@@ -2569,10 +2292,7 @@ class PhotonneApiClient(
             parameter("newUsername", newUsername)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Rename preview failed"
-            )
+            throw response.apiException("Rename preview failed")
         }
         return response.body()
     }
@@ -2580,10 +2300,7 @@ class PhotonneApiClient(
     override suspend fun getStorageInfo(): com.photonne.app.data.models.StorageInfoDto {
         val response: HttpResponse = client.get("$baseUrl/api/users/me/storage")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Storage info fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Storage info fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2591,10 +2308,7 @@ class PhotonneApiClient(
     override suspend fun adminListUsers(): List<UserDto> {
         val response: HttpResponse = client.get("$baseUrl/api/users")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Listing users failed"
-            )
+            throw response.apiException("Listing users failed")
         }
         return response.body()
     }
@@ -2602,10 +2316,7 @@ class PhotonneApiClient(
     override suspend fun adminGetUser(id: String): UserDto {
         val response: HttpResponse = client.get("$baseUrl/api/users/$id")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Fetching user failed"
-            )
+            throw response.apiException("Fetching user failed")
         }
         return response.body()
     }
@@ -2618,10 +2329,7 @@ class PhotonneApiClient(
             setBody(request)
         }
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Creating user failed"
-            )
+            throw response.apiException("Creating user failed")
         }
         return response.body()
     }
@@ -2635,10 +2343,7 @@ class PhotonneApiClient(
             setBody(request)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Updating user failed"
-            )
+            throw response.apiException("Updating user failed")
         }
         return response.body()
     }
@@ -2648,10 +2353,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Deleting user failed"
-            )
+            throw response.apiException("Deleting user failed")
         }
     }
 
@@ -2664,10 +2366,7 @@ class PhotonneApiClient(
             setBody(request)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Resetting password failed"
-            )
+            throw response.apiException("Resetting password failed")
         }
         return response.body()
     }
@@ -2675,20 +2374,14 @@ class PhotonneApiClient(
     override suspend fun adminPromoteToPrimary(id: String) {
         val response: HttpResponse = client.post("$baseUrl/api/users/$id/promote-to-primary")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Promoting user to primary admin failed"
-            )
+            throw response.apiException("Promoting user to primary admin failed")
         }
     }
 
     override suspend fun adminGetStats(): com.photonne.app.data.models.AdminStatsResponse {
         val response: HttpResponse = client.get("$baseUrl/api/admin/stats")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Fetching stats failed"
-            )
+            throw response.apiException("Fetching stats failed")
         }
         return response.body()
     }
@@ -2700,10 +2393,7 @@ class PhotonneApiClient(
             if (refresh) parameter("refresh", true)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Fetching version failed"
-            )
+            throw response.apiException("Fetching version failed")
         }
         return response.body()
     }
@@ -2711,10 +2401,7 @@ class PhotonneApiClient(
     override suspend fun adminGetTrashStats(): com.photonne.app.data.models.TrashStatsResponse {
         val response: HttpResponse = client.get("$baseUrl/api/admin/trash/stats")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Fetching trash stats failed"
-            )
+            throw response.apiException("Fetching trash stats failed")
         }
         return response.body()
     }
@@ -2723,10 +2410,7 @@ class PhotonneApiClient(
         com.photonne.app.data.models.TrashCleanupResult {
         val response: HttpResponse = client.post("$baseUrl/api/admin/trash/cleanup-expired")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Trash cleanup failed"
-            )
+            throw response.apiException("Trash cleanup failed")
         }
         return response.body()
     }
@@ -2736,10 +2420,7 @@ class PhotonneApiClient(
             parameter("key", key)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Fetching setting $key failed"
-            )
+            throw response.apiException("Fetching setting $key failed")
         }
         return response.body()
     }
@@ -2753,10 +2434,7 @@ class PhotonneApiClient(
             setBody(com.photonne.app.data.models.SaveSettingRequest(key = key, value = value))
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Saving setting $key failed"
-            )
+            throw response.apiException("Saving setting $key failed")
         }
         return response.body()
     }
@@ -2765,10 +2443,7 @@ class PhotonneApiClient(
         List<com.photonne.app.data.models.ExternalLibraryDto> {
         val response: HttpResponse = client.get("$baseUrl/api/libraries")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Listing libraries failed"
-            )
+            throw response.apiException("Listing libraries failed")
         }
         return response.body()
     }
@@ -2781,10 +2456,7 @@ class PhotonneApiClient(
             setBody(request)
         }
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Creating library failed"
-            )
+            throw response.apiException("Creating library failed")
         }
         return response.body()
     }
@@ -2801,17 +2473,11 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Updating library failed"
-            )
+            throw response.apiException("Updating library failed")
         }
         val refreshed: HttpResponse = client.get("$baseUrl/api/libraries/$id")
         if (refreshed.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = refreshed.status.value,
-                message = "Library fetch after update failed"
-            )
+            throw refreshed.apiException("Library fetch after update failed")
         }
         return refreshed.body()
     }
@@ -2821,10 +2487,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Deleting library failed"
-            )
+            throw response.apiException("Deleting library failed")
         }
     }
 
@@ -2838,10 +2501,7 @@ class PhotonneApiClient(
     ): List<com.photonne.app.data.models.LibraryPermissionDto> {
         val response: HttpResponse = client.get("$baseUrl/api/libraries/$id/permissions")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Listing permissions failed"
-            )
+            throw response.apiException("Listing permissions failed")
         }
         return response.body()
     }
@@ -2863,10 +2523,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.Created
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Granting permission failed"
-            )
+            throw response.apiException("Granting permission failed")
         }
         return response.body()
     }
@@ -2876,10 +2533,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK &&
             response.status != HttpStatusCode.NoContent
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Removing permission failed"
-            )
+            throw response.apiException("Removing permission failed")
         }
     }
 
@@ -2894,10 +2548,7 @@ class PhotonneApiClient(
             setBody(request)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Backfill $kind failed"
-            )
+            throw response.apiException("Backfill $kind failed")
         }
         return response.body()
     }
@@ -2909,10 +2560,7 @@ class PhotonneApiClient(
             "$baseUrl/api/admin/maintenance/$kind/pending-count"
         )
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Pending count $kind failed"
-            )
+            throw response.apiException("Pending count $kind failed")
         }
         return response.body()
     }
@@ -2923,10 +2571,7 @@ class PhotonneApiClient(
             "$baseUrl/api/admin/enrichment/queue-summary"
         )
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Enrichment queue summary failed"
-            )
+            throw response.apiException("Enrichment queue summary failed")
         }
         return response.body()
     }
@@ -2937,10 +2582,7 @@ class PhotonneApiClient(
             "$baseUrl/api/admin/maintenance/ml-pending-total"
         )
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "ML pending total failed"
-            )
+            throw response.apiException("ML pending total failed")
         }
         return response.body()
     }
@@ -2952,10 +2594,7 @@ class PhotonneApiClient(
             "$baseUrl/api/admin/maintenance/$kind/queue"
         )
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Cancel ML queue $kind failed"
-            )
+            throw response.apiException("Cancel ML queue $kind failed")
         }
         return response.body()
     }
@@ -2965,10 +2604,7 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.post("$baseUrl/api/admin/maintenance/face-clustering/run")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Face clustering failed"
-            )
+            throw response.apiException("Face clustering failed")
         }
         return response.body()
     }
@@ -2978,10 +2614,7 @@ class PhotonneApiClient(
     ): com.photonne.app.data.models.MaintenanceTaskResult {
         val response: HttpResponse = client.post("$baseUrl/api/admin/maintenance/$kind")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Maintenance task $kind failed"
-            )
+            throw response.apiException("Maintenance task $kind failed")
         }
         return response.body()
     }
@@ -3068,10 +2701,7 @@ class PhotonneApiClient(
         List<com.photonne.app.data.models.BackgroundTaskDto> {
         val response: HttpResponse = client.get("$baseUrl/api/tasks")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Background tasks fetch failed"
-            )
+            throw response.apiException("Background tasks fetch failed")
         }
         return response.body()
     }
@@ -3083,10 +2713,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.NoContent &&
             response.status != HttpStatusCode.NotFound
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Cancel task failed"
-            )
+            throw response.apiException("Cancel task failed")
         }
     }
 
@@ -3189,10 +2816,7 @@ class PhotonneApiClient(
             parameter("level", level)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Backup download failed"
-            )
+            throw response.apiException("Backup download failed")
         }
         val mime = response.headers[HttpHeaders.ContentType] ?: "application/json"
         val suggested = response.headers[HttpHeaders.ContentDisposition]
@@ -3229,10 +2853,7 @@ class PhotonneApiClient(
             )
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Backup restore failed"
-            )
+            throw response.apiException("Backup restore failed")
         }
         return response.body()
     }
@@ -3287,12 +2908,9 @@ class PhotonneApiClient(
         }
     }
 
-    private fun ensureStreamSuccess(response: HttpResponse, message: String) {
+    private suspend fun ensureStreamSuccess(response: HttpResponse, message: String) {
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "$message (${response.status.value})"
-            )
+            throw response.apiException("$message (${response.status.value})")
         }
     }
 
@@ -3300,10 +2918,7 @@ class PhotonneApiClient(
         List<com.photonne.app.data.models.UserDuplicateGroup> {
         val response: HttpResponse = client.get("$baseUrl/api/utilities/duplicates")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Duplicates fetch failed"
-            )
+            throw response.apiException("Duplicates fetch failed")
         }
         return response.body()
     }
@@ -3315,10 +2930,7 @@ class PhotonneApiClient(
             parameter("count", count)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Large files fetch failed"
-            )
+            throw response.apiException("Large files fetch failed")
         }
         return response.body()
     }
@@ -3327,10 +2939,7 @@ class PhotonneApiClient(
         List<com.photonne.app.data.models.FolderTreeNode> {
         val response: HttpResponse = client.get("$baseUrl/api/utilities/folders/tree")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response) ?: "Folder tree fetch failed"
-            )
+            throw response.apiException("Folder tree fetch failed")
         }
         return response.body()
     }
@@ -3346,10 +2955,7 @@ class PhotonneApiClient(
             parameter("unreadOnly", unreadOnly)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Notifications fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Notifications fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3357,10 +2963,7 @@ class PhotonneApiClient(
     override suspend fun getUnreadNotificationCount(): Int {
         val response: HttpResponse = client.get("$baseUrl/api/notifications/unread-count")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Unread count fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Unread count fetch failed (${response.status.value})")
         }
         return response.body<com.photonne.app.data.models.UnreadNotificationCount>().count
     }
@@ -3370,10 +2973,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.NoContent &&
             response.status != HttpStatusCode.OK
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Mark notification read failed (${response.status.value})"
-            )
+            throw response.apiException("Mark notification read failed (${response.status.value})")
         }
     }
 
@@ -3382,10 +2982,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.NoContent &&
             response.status != HttpStatusCode.OK
         ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Mark all read failed (${response.status.value})"
-            )
+            throw response.apiException("Mark all read failed (${response.status.value})")
         }
     }
 
@@ -3398,10 +2995,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor.toString())
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Pending enrichment fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Pending enrichment fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3409,10 +3003,7 @@ class PhotonneApiClient(
     override suspend fun getAssetEnrichment(assetId: String): AssetEnrichmentResponse {
         val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/enrichment")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Asset enrichment fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Asset enrichment fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3427,11 +3018,7 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK) {
             // The server refuses a disabled model with `{"error": "…"}`; its
             // words are the ones the sheet shows.
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response)
-                    ?: "Retry enrichment task failed (${response.status.value})"
-            )
+            throw response.apiException("Retry enrichment task failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3439,10 +3026,7 @@ class PhotonneApiClient(
     override suspend fun retryAllEnrichmentTasks(assetId: String): RetryAllTasksResponse {
         val response: HttpResponse = client.post("$baseUrl/api/assets/$assetId/enrichment/retry-all")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Retry all enrichment tasks failed (${response.status.value})"
-            )
+            throw response.apiException("Retry all enrichment tasks failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3460,10 +3044,7 @@ class PhotonneApiClient(
             if (cursor != null) parameter("cursor", cursor)
         }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Enrichment failures fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Enrichment failures fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3472,10 +3053,7 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.post("$baseUrl/api/admin/enrichment/failures/$taskId/retry")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Retry enrichment failure failed (${response.status.value})"
-            )
+            throw response.apiException("Retry enrichment failure failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3490,10 +3068,7 @@ class PhotonneApiClient(
                 if (kind != null) parameter("kind", kind)
             }
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Retry all enrichment failures failed (${response.status.value})"
-            )
+            throw response.apiException("Retry all enrichment failures failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3502,11 +3077,7 @@ class PhotonneApiClient(
         val response: HttpResponse =
             client.post("$baseUrl/api/admin/enrichment/failures/$taskId/suppress")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = parseErrorMessage(response)
-                    ?: "Suppress enrichment failure failed (${response.status.value})"
-            )
+            throw response.apiException("Suppress enrichment failure failed (${response.status.value})")
         }
         return response.body()
     }
@@ -3514,25 +3085,9 @@ class PhotonneApiClient(
     override suspend fun adminIndexingCoverage(): AdminIndexingCoverageResponse {
         val response: HttpResponse = client.get("$baseUrl/api/admin/indexing-coverage")
         if (response.status != HttpStatusCode.OK) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Indexing coverage fetch failed (${response.status.value})"
-            )
+            throw response.apiException("Indexing coverage fetch failed (${response.status.value})")
         }
         return response.body()
-    }
-
-    /**
-     * The users endpoints surface 400-level validation issues as
-     * `{ "error": "human readable text" }`. Try to lift that out so the
-     * settings screens can render a meaningful inline message; fall back
-     * to null when the body isn't shaped that way (and the caller will
-     * use the generic "X failed" copy instead).
-     */
-    private suspend fun parseErrorMessage(response: HttpResponse): String? {
-        return runCatching { response.body<com.photonne.app.data.models.ApiError>().error }
-            .getOrNull()
-            ?.takeIf { it.isNotBlank() }
     }
 
     private companion object {
@@ -3556,7 +3111,33 @@ class PhotonneApiException(
     val method: String? = null,
     val url: String? = null,
     val responseBody: String? = null,
+    /**
+     * Texto que el servidor puso en el cuerpo (`{ "error": … }` o el `detail`
+     * de un ProblemDetails), ya filtrado para que sea legible: nunca JSON
+     * crudo, trazas ni mensajes técnicos de Ktor. `null` si no vino ninguno;
+     * entonces la UI usa su texto genérico.
+     */
+    val serverMessage: String? = null,
 ) : RuntimeException(message)
+
+/**
+ * Construye un [PhotonneApiException] a partir de una respuesta no 2xx:
+ * guarda método, URL y cuerpo truncado para los detalles técnicos y extrae
+ * el mensaje del servidor. El `message` de la excepción es ese texto si lo
+ * hay (como hacían las llamadas que ya lo leían) o [fallback] si no.
+ */
+internal suspend fun HttpResponse.apiException(fallback: String): PhotonneApiException {
+    val body = runCatching { bodyAsText().take(2048) }.getOrNull()
+    val serverMessage = extractServerMessage(body)
+    return PhotonneApiException(
+        status = status.value,
+        message = serverMessage ?: fallback,
+        method = request.method.value,
+        url = request.url.toString(),
+        responseBody = body,
+        serverMessage = serverMessage,
+    )
+}
 
 /**
  * Lanza un [PhotonneApiException] enriquecido (method, url, body truncado)
@@ -3568,12 +3149,30 @@ internal suspend inline fun HttpResponse.ensureSuccess(
 ) {
     val code = status.value
     if (code in 200..299) return
-    val body = runCatching { bodyAsText().take(2048) }.getOrNull()
-    throw PhotonneApiException(
-        status = code,
-        message = messageBuilder(code),
-        method = request.method.value,
-        url = request.url.toString(),
-        responseBody = body,
-    )
+    throw apiException(messageBuilder(code))
+}
+
+/**
+ * Saca `error` (forma `{ "error": "…" }` de casi todos los endpoints) o
+ * `detail` (ProblemDetails) del cuerpo JSON. Solo acepta texto que se pueda
+ * enseñar tal cual: una línea corta, sin aspecto de JSON/HTML ni de traza.
+ */
+internal fun extractServerMessage(body: String?): String? {
+    if (body.isNullOrBlank()) return null
+    val obj = runCatching { photonneJson.parseToJsonElement(body) as? JsonObject }.getOrNull()
+        ?: return null
+    val raw = listOf("error", "detail")
+        .firstNotNullOfOrNull { key -> (obj[key] as? JsonPrimitive)?.takeIf { it.isString }?.content }
+        ?.trim()
+        ?: return null
+    return raw.takeIf { isReadableServerText(it) }
+}
+
+private fun isReadableServerText(text: String): Boolean {
+    if (text.isBlank() || text.length > 300) return false
+    if ('\n' in text) return false
+    val first = text.first()
+    if (first == '{' || first == '[' || first == '<') return false
+    val technical = listOf("Exception", "   at ", "Stack trace", "Npgsql", "System.")
+    return technical.none { it in text }
 }
