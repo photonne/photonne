@@ -347,6 +347,12 @@
     <string name="upload_empty_title">Add photos and videos</string>
     <string name="upload_empty_subtitle">Tap to pick files from your device</string>
     <string name="upload_summary">%1$d uploaded · %2$d already in library · %3$d failed · %4$d pending</string>
+    <plurals name="upload_batch_done">
+        <item quantity="one">1 upload</item>
+        <item quantity="other">%1$d uploads</item>
+    </plurals>
+    <string name="upload_batch_view">View</string>
+    <string name="upload_batch_add_to_album">Add to album</string>
     <string name="upload_status_queued">Queued</string>
     <string name="upload_status_uploading">Uploading</string>
     <string name="upload_status_done">Uploaded</string>
@@ -385,6 +391,11 @@
     <string name="people_action_show_hidden">Show hidden</string>
     <string name="people_action_hide_hidden">Hide hidden</string>
     <string name="people_action_recluster">Recluster faces</string>
+    <string name="people_action_search">Search people</string>
+    <string name="people_search_no_results">No one named "%1$s"</string>
+    <string name="people_sort_face_count">Most photos first</string>
+    <string name="people_sort_name">By name</string>
+    <string name="people_sort_unnamed_first">Unnamed first</string>
     <string name="people_action_merge">Merge with…</string>
     <string name="people_action_suggestions">Suggestions</string>
     <string name="people_action_unlink">Unlink</string>
@@ -447,6 +458,7 @@
     <string name="people_face_suggestion">Suggestion: %1$s</string>
     <string name="people_face_assign">Assign to a person</string>
     <string name="people_face_assign_new">Create a new person</string>
+    <string name="people_face_assign_to">Assign to %1$s</string>
     <string name="people_face_unassign">Remove assignment</string>
     <string name="people_face_reject">Mark as not a face</string>
     <string name="people_face_set_cover">Use as cover</string>
@@ -1335,6 +1347,16 @@
     <string name="organize_inbox_header">Move them into a folder to file them away.</string>
     <string name="organize_inbox_empty_title">All organized</string>
     <string name="organize_inbox_empty_subtitle">Nothing left in MobileBackup to file.</string>
+    <string name="organize_excluded_entry">Set aside (%1$d)</string>
+    <string name="organize_excluded_title">Set aside</string>
+    <string name="organize_excluded_header">These don't count as pending. Select the ones you want back in the inbox.</string>
+    <string name="organize_excluded_empty_title">Nothing set aside</string>
+    <string name="organize_excluded_empty_subtitle">What you set aside from "To organize" shows up here.</string>
+    <string name="organize_excluded_action_include">Return to inbox</string>
+    <plurals name="organize_excluded_included_done">
+        <item quantity="one">1 photo returned to the inbox</item>
+        <item quantity="other">%1$d photos returned to the inbox</item>
+    </plurals>
     <string name="organize_rule_intro">Move everything still in "To organize" that matches these conditions, all at once.</string>
     <string name="organize_rule_year_split_label">They will be split into:</string>
     <string name="organize_move_destination_label">Move to</string>
@@ -1481,6 +1503,7 @@
     <string name="explore_memories_group_count">%1$d photos</string>
     <string name="explore_places_coming_soon">Places will be available once reverse geocoding is added to the server.</string>
     <string name="explore_scenes_empty">No scenes detected yet. Scene classification runs in the background.</string>
+    <string name="explore_search_placeholder">Search labels</string>
     <string name="explore_objects_empty">No objects detected yet. Object detection runs in the background.</string>
     <string name="explore_label_count">%1$d photos</string>
     <string name="smart_album_editor_title">New smart album</string>
@@ -1533,6 +1556,11 @@
     <string name="asset_detail_focal_length">Focal length</string>
     <string name="asset_detail_camera">Camera</string>
     <string name="asset_detail_view_faces">View faces</string>
+    <string name="asset_detail_text_title">Detected text</string>
+    <string name="asset_detail_text_copy">Copy text</string>
+    <string name="asset_detail_text_copied">Text copied</string>
+    <string name="asset_detail_text_more">Show all</string>
+    <string name="asset_detail_text_less">Show less</string>
     <string name="asset_detail_folder">Folder</string>
     <string name="asset_detail_same_people">Same people</string>
     <string name="asset_detail_same_day">Same day</string>

@@ -413,6 +413,12 @@
     <string name="upload_empty_title">Añadir fotos y vídeos</string>
     <string name="upload_empty_subtitle">Toca para seleccionar archivos desde tu dispositivo</string>
     <string name="upload_summary">%1$d subidos · %2$d ya en la biblioteca · %3$d fallidos · %4$d pendientes</string>
+    <plurals name="upload_batch_done">
+        <item quantity="one">1 subida</item>
+        <item quantity="other">%1$d subidas</item>
+    </plurals>
+    <string name="upload_batch_view">Ver</string>
+    <string name="upload_batch_add_to_album">Añadir a álbum</string>
     <string name="upload_status_queued">En cola</string>
     <string name="upload_status_uploading">Subiendo</string>
     <string name="upload_status_done">Subido</string>
@@ -451,6 +457,11 @@
     <string name="people_action_show_hidden">Mostrar ocultas</string>
     <string name="people_action_hide_hidden">Ocultar ocultas</string>
     <string name="people_action_recluster">Reagrupar caras</string>
+    <string name="people_action_search">Buscar personas</string>
+    <string name="people_search_no_results">Nadie se llama "%1$s"</string>
+    <string name="people_sort_face_count">Más fotos primero</string>
+    <string name="people_sort_name">Por nombre</string>
+    <string name="people_sort_unnamed_first">Sin nombre primero</string>
     <string name="people_action_merge">Fusionar con…</string>
     <string name="people_action_suggestions">Sugerencias</string>
     <string name="people_action_unlink">Desvincular</string>
@@ -513,6 +524,7 @@
     <string name="people_face_suggestion">Sugerencia: %1$s</string>
     <string name="people_face_assign">Asignar a una persona</string>
     <string name="people_face_assign_new">Crear nueva persona</string>
+    <string name="people_face_assign_to">Asignar a %1$s</string>
     <string name="people_face_unassign">Quitar asignación</string>
     <string name="people_face_reject">Marcar como no es una cara</string>
     <string name="people_face_set_cover">Usar como portada</string>
@@ -1375,6 +1387,7 @@
     <string name="explore_memories_group_count">%1$d fotos</string>
     <string name="explore_places_coming_soon">Lugares estará disponible cuando se añada la geocodificación inversa al servidor.</string>
     <string name="explore_scenes_empty">Aún no hay escenas detectadas. La clasificación de escenas se ejecuta en segundo plano.</string>
+    <string name="explore_search_placeholder">Buscar etiqueta</string>
     <string name="explore_objects_empty">Aún no hay objetos detectados. La detección de objetos se ejecuta en segundo plano.</string>
     <string name="explore_label_count">%1$d fotos</string>
 
@@ -1405,6 +1418,16 @@
     <string name="organize_inbox_header">Muévelas a una carpeta para organizarlas.</string>
     <string name="organize_inbox_empty_title">Todo organizado</string>
     <string name="organize_inbox_empty_subtitle">No queda nada en MobileBackup por organizar.</string>
+    <string name="organize_excluded_entry">Apartadas (%1$d)</string>
+    <string name="organize_excluded_title">Apartadas</string>
+    <string name="organize_excluded_header">No cuentan como pendientes. Selecciona las que quieras devolver a la bandeja.</string>
+    <string name="organize_excluded_empty_title">Nada apartado</string>
+    <string name="organize_excluded_empty_subtitle">Lo que apartes de "Para organizar" aparecerá aquí.</string>
+    <string name="organize_excluded_action_include">Devolver a la bandeja</string>
+    <plurals name="organize_excluded_included_done">
+        <item quantity="one">1 foto devuelta a la bandeja</item>
+        <item quantity="other">%1$d fotos devueltas a la bandeja</item>
+    </plurals>
     <string name="organize_rule_intro">Mueve de golpe todo lo que sigue en "Para organizar" y cumpla estas condiciones.</string>
     <string name="organize_rule_year_split_label">Se repartirán en:</string>
     <string name="organize_move_destination_label">Mover a</string>
@@ -1543,6 +1566,11 @@
     <string name="asset_detail_focal_length">Distancia focal</string>
     <string name="asset_detail_camera">Cámara</string>
     <string name="asset_detail_view_faces">Ver caras</string>
+    <string name="asset_detail_text_title">Texto detectado</string>
+    <string name="asset_detail_text_copy">Copiar texto</string>
+    <string name="asset_detail_text_copied">Texto copiado</string>
+    <string name="asset_detail_text_more">Ver todo</string>
+    <string name="asset_detail_text_less">Ver menos</string>
     <string name="asset_detail_folder">Carpeta</string>
     <string name="asset_detail_same_people">Mismas personas</string>
     <string name="asset_detail_same_day">Mismo día</string>

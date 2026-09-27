@@ -19,6 +19,12 @@ class AssetDetailRepository(
 
     suspend fun getFaces(assetId: String): List<Face> = api.getAssetFaces(assetId)
 
+    suspend fun getText(assetId: String) = api.getAssetText(assetId)
+
+    suspend fun getObjects(assetId: String) = api.getAssetObjects(assetId)
+
+    suspend fun getScenes(assetId: String) = api.getAssetScenes(assetId)
+
     suspend fun getPersonAssets(personId: String, limit: Int = 12): PersonAssetsPage =
         api.getPersonAssets(personId, limit = limit, offset = 0)
 

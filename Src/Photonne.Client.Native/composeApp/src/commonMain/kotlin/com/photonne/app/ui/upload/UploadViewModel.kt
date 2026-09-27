@@ -2,7 +2,13 @@ package com.photonne.app.ui.upload
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.upload.UploadRepository
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +39,15 @@ data class UploadItem(
 data class UploadUiState(
     val items: List<UploadItem> = emptyList(),
     val isUploading: Boolean = false,
-    val pickerError: String? = null
+    val pickerError: String? = null,
+    /**
+     * Lo que ha entrado en el servidor en la última tanda, cuando la cola se
+     * ha vaciado sola: da el resumen "N subidas · Ver · Añadir a álbum". Null
+     * mientras sube, al descartarlo o al empezar otra tanda.
+     */
+    val lastBatch: List<TimelineItem>? = null,
+    val isBulkMutating: Boolean = false,
+    val error: UiError? = null,
 ) {
     val pendingCount: Int get() = items.count {
         it.status == UploadStatus.Queued || it.status == UploadStatus.Uploading
@@ -44,7 +58,9 @@ data class UploadUiState(
 }
 
 class UploadViewModel(
-    private val repository: UploadRepository
+    private val repository: UploadRepository,
+    private val albumsRepository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UploadUiState())
@@ -76,6 +92,7 @@ class UploadViewModel(
         _state.update {
             it.copy(
                 items = it.items + newItems,
+                lastBatch = null,
                 pickerError = if (tooBig > 0)
                     "$tooBig archivo(s) superan el límite de ${MAX_MB_PER_FILE} MB y se han omitido."
                 else it.pickerError
@@ -128,6 +145,7 @@ class UploadViewModel(
     fun clearFinished() {
         _state.update { previous ->
             previous.copy(
+                lastBatch = null,
                 items = previous.items.filter {
                     it.status == UploadStatus.Queued || it.status == UploadStatus.Uploading
                 }
@@ -150,18 +168,66 @@ class UploadViewModel(
         }
     }
 
+    fun dismissBatchSummary() {
+        _state.update { it.copy(lastBatch = null) }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(error = null) }
+    }
+
+    /** Añade la última tanda a [albumId]; [onAdded] recibe los elementos para
+     *  el recuento local del álbum. */
+    fun addBatchToAlbum(albumId: String, onAdded: (List<TimelineItem>) -> Unit = {}) {
+        val batch = _state.value.lastBatch.orEmpty()
+        if (batch.isEmpty() || _state.value.isBulkMutating) return
+        _state.update { it.copy(isBulkMutating = true, error = null) }
+        viewModelScope.launch {
+            runCatching { albumsRepository.addAssetsBatch(albumId, batch.map { it.id }) }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false) }
+                    onAdded(batch)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
+                        )
+                    }
+                }
+        }
+    }
+
     private fun ensureWorker(onQueueDrained: () -> Unit) {
         if (worker?.isActive == true) return
         worker = viewModelScope.launch {
             _state.update { it.copy(isUploading = true) }
             var uploadedAny = false
+            // Lo subido en ESTA tanda (los reintentos de otra tanda cuentan si
+            // entran ahora), para el resumen del final.
+            val landedIds = mutableListOf<Long>()
             try {
                 while (isActive) {
                     val pick = _state.value.items.firstOrNull { it.status == UploadStatus.Queued }
                         ?: break
-                    if (runOne(pick.id)) uploadedAny = true
+                    if (runOne(pick.id)) {
+                        uploadedAny = true
+                        landedIds += pick.id
+                    }
                 }
-                _state.update { it.copy(isUploading = false) }
+                // La cola se ha vaciado sola (no con "Cancelar todo", que corta
+                // antes de llegar aquí): resumen con lo que ha entrado.
+                _state.update { current ->
+                    val landed = landedIds.toHashSet()
+                    val batch = current.items
+                        .filter { it.id in landed && it.status == UploadStatus.Done }
+                        .mapNotNull { it.toTimelineItem() }
+                    current.copy(
+                        isUploading = false,
+                        lastBatch = batch.takeIf { it.isNotEmpty() }
+                    )
+                }
             } finally {
                 // También si "Cancelar todo" corta la cola: lo ya subido
                 // tiene que aparecer igualmente.
@@ -231,6 +297,28 @@ class UploadViewModel(
                 !response.message.contains("already exists", ignoreCase = true)
         } ?: false
         return landed
+    }
+
+    /**
+     * Elemento de rejilla/visor para lo recién subido. El visor vuelve a pedir
+     * el detalle por id, así que basta con lo que ya se sabe del archivo.
+     */
+    private fun UploadItem.toTimelineItem(): TimelineItem? {
+        val id = assetId ?: return null
+        val now = Clock.System.now()
+        val modified = lastModifiedMillis?.let { Instant.fromEpochMilliseconds(it) } ?: now
+        return TimelineItem(
+            id = id,
+            fileName = name,
+            fullPath = "",
+            fileSize = sizeBytes,
+            fileCreatedAt = modified,
+            fileModifiedAt = modified,
+            extension = name.substringAfterLast('.', "").lowercase(),
+            scannedAt = now,
+            type = if (mimeType.startsWith("video/", ignoreCase = true)) "VIDEO" else "IMAGE",
+            hasThumbnails = true
+        )
     }
 
     companion object {

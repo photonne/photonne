@@ -14,6 +14,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import com.photonne.app.resources.organize_excluded_entry
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -73,6 +75,7 @@ fun OrganizeInboxScreen(
     onSeeAllItems: () -> Unit = {},
     onBackToSuggestions: () -> Unit = {},
     onApplySelection: (SelectionPatch) -> Unit = {},
+    onOpenExcluded: () -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
@@ -130,14 +133,22 @@ fun OrganizeInboxScreen(
                         onSeeAll = onSeeAllItems,
                         listState = batchesState,
                         modifier = Modifier.hazeSource(hazeState),
-                        header = { InboxHeader(summary = state.summary) },
+                        header = { InboxHeader(summary = state.summary, onOpenExcluded = onOpenExcluded) },
                     )
-                state.isEmpty ->
+                state.isEmpty -> {
+                    // Bandeja a cero no quiere decir que no haya nada apartado:
+                    // sin esta salida, lo apartado quedaba fuera de alcance.
+                    val excluded = state.summary?.excludedCount ?: 0
                     EmptyState(
                         icon = Icons.Outlined.Inbox,
                         title = stringResource(Res.string.organize_inbox_empty_title),
-                        subtitle = stringResource(Res.string.organize_inbox_empty_subtitle)
+                        subtitle = stringResource(Res.string.organize_inbox_empty_subtitle),
+                        actionLabel = if (excluded > 0) {
+                            stringResource(Res.string.organize_excluded_entry, excluded)
+                        } else null,
+                        onAction = if (excluded > 0) onOpenExcluded else null
                     )
+                }
                 else ->
                     AssetGrid(
                         items = state.items,
@@ -156,7 +167,7 @@ fun OrganizeInboxScreen(
                             bottom = floatingNavBarReservedHeight()
                         ),
                         modifier = Modifier.fillMaxWidth().hazeSource(hazeState),
-                        header = { InboxHeader(summary = state.summary) }
+                        header = { InboxHeader(summary = state.summary, onOpenExcluded = onOpenExcluded) }
                     )
             }
 
@@ -246,7 +257,7 @@ private const val SCROLL_TO_TOP_SNAP_CELL = 48
  * semana pasada que cuatro años de atraso, y eso cambia por dónde empiezas.
  */
 @Composable
-private fun InboxHeader(summary: OrganizeSummary?) {
+private fun InboxHeader(summary: OrganizeSummary?, onOpenExcluded: () -> Unit) {
     val span = remember(summary) { summary?.let { formatCaptureSpan(it.oldest, it.newest) } }
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),
@@ -263,6 +274,17 @@ private fun InboxHeader(summary: OrganizeSummary?) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Lo apartado deja de contar, pero no desaparece: su entrada vive aquí,
+        // junto al total, que es donde se echa en falta.
+        val excluded = summary?.excludedCount ?: 0
+        if (excluded > 0) {
+            TextButton(
+                onClick = onOpenExcluded,
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text(stringResource(Res.string.organize_excluded_entry, excluded))
+            }
+        }
     }
 }
 

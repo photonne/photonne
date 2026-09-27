@@ -17,6 +17,17 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material3.HorizontalDivider
+import com.photonne.app.ui.main.SearchFieldPill
+import com.photonne.app.resources.people_picker_search_placeholder
+import com.photonne.app.resources.people_action_search
+import com.photonne.app.resources.people_search_no_results
+import com.photonne.app.resources.people_sort_face_count
+import com.photonne.app.resources.people_sort_name
+import com.photonne.app.resources.people_sort_unnamed_first
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -76,6 +87,9 @@ fun PeopleScreen(
     onBack: () -> Unit,
     onRecluster: () -> Unit,
     onToggleHidden: () -> Unit,
+    onToggleSearch: () -> Unit = {},
+    onSearchChange: (String) -> Unit = {},
+    onSortChange: (PeopleSort) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
@@ -103,6 +117,11 @@ fun PeopleScreen(
                         error = state.error,
                         onRetry = onRefresh,
                         modifier = Modifier.padding(top = reservedTop)
+                    )
+                state.isNoResults ->
+                    EmptyState(
+                        icon = Icons.Outlined.SearchOff,
+                        title = stringResource(Res.string.people_search_no_results, state.search.trim())
                     )
                 state.isEmpty ->
                     EmptyState(
@@ -158,9 +177,23 @@ fun PeopleScreen(
                 }
             }
 
+            val searching = state.isSearchActive
             SubscreenFloatingChrome(
-                title = stringResource(Res.string.people_title),
-                onBack = onBack,
+                title = if (searching) "" else stringResource(Res.string.people_title),
+                // Al buscar, atrás cierra la búsqueda (como en Álbumes).
+                onBack = if (searching) onToggleSearch else onBack,
+                titleContent = if (searching) {
+                    {
+                        SearchFieldPill(
+                            value = state.search,
+                            onValueChange = onSearchChange,
+                            onClear = { onSearchChange("") },
+                            placeholder = stringResource(Res.string.people_picker_search_placeholder),
+                            autofocus = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else null,
                 scroll = SubscreenScroll(
                     firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
                     firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
@@ -175,7 +208,23 @@ fun PeopleScreen(
                 ),
                 hazeState = hazeState,
                 onChromeVisibleChange = onChromeVisibleChange,
-                actions = { PeopleOverflowMenu(state.showHidden, onRecluster, onToggleHidden) }
+                actions = {
+                    if (!searching) {
+                        IconButton(onClick = onToggleSearch) {
+                            Icon(
+                                Icons.Outlined.Search,
+                                contentDescription = stringResource(Res.string.people_action_search)
+                            )
+                        }
+                    }
+                    PeopleOverflowMenu(
+                        showHidden = state.showHidden,
+                        sort = state.sort,
+                        onRecluster = onRecluster,
+                        onToggleHidden = onToggleHidden,
+                        onSortChange = onSortChange
+                    )
+                }
             )
         }
     }
@@ -186,8 +235,10 @@ fun PeopleScreen(
 @Composable
 private fun PeopleOverflowMenu(
     showHidden: Boolean,
+    sort: PeopleSort,
     onRecluster: () -> Unit,
-    onToggleHidden: () -> Unit
+    onToggleHidden: () -> Unit,
+    onSortChange: (PeopleSort) -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -198,6 +249,28 @@ private fun PeopleOverflowMenu(
             )
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            // Orden: tres opciones excluyentes, marcadas con un check como un
+            // grupo de radio (el menú no tiene otro afford para "elige una").
+            PeopleSort.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            stringResource(
+                                when (option) {
+                                    PeopleSort.FaceCount -> Res.string.people_sort_face_count
+                                    PeopleSort.Name -> Res.string.people_sort_name
+                                    PeopleSort.UnnamedFirst -> Res.string.people_sort_unnamed_first
+                                }
+                            )
+                        )
+                    },
+                    trailingIcon = if (option == sort) {
+                        { Icon(Icons.Filled.Check, contentDescription = null) }
+                    } else null,
+                    onClick = { menuOpen = false; onSortChange(option) }
+                )
+            }
+            HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.people_action_recluster)) },
                 onClick = { menuOpen = false; onRecluster() }

@@ -6,6 +6,9 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.Person
 import com.photonne.app.data.people.PeopleRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,9 +25,26 @@ data class PeopleUiState(
     val error: UiError? = null,
     val hasMore: Boolean = false,
     val loaded: Boolean = false,
-    val showHidden: Boolean = false
+    val showHidden: Boolean = false,
+    /** Texto del buscador; se filtra en el servidor (nombre sin mayúsculas ni acentos). */
+    val search: String = "",
+    val isSearchActive: Boolean = false,
+    val sort: PeopleSort = PeopleSort.FaceCount,
 ) {
     val isEmpty: Boolean get() = loaded && people.isEmpty() && !isInitialLoading
+    /** Vacío por culpa del filtro, no porque no haya personas. */
+    val isNoResults: Boolean get() = isEmpty && search.isNotBlank()
+}
+
+/**
+ * Orden de la lista, traducido a los parámetros de `GET /api/people`. "Sin
+ * nombre primero" es para ponerse al día etiquetando: dentro de cada bloque
+ * manda el nº de fotos, igual que el orden por defecto.
+ */
+enum class PeopleSort(val sortKey: String?, val sortDir: String?, val unnamedFirst: Boolean) {
+    FaceCount(sortKey = null, sortDir = null, unnamedFirst = false),
+    Name(sortKey = "name", sortDir = "asc", unnamedFirst = false),
+    UnnamedFirst(sortKey = null, sortDir = null, unnamedFirst = true),
 }
 
 class PeopleViewModel(
@@ -40,18 +60,35 @@ class PeopleViewModel(
         refresh()
     }
 
-    fun refresh() {
+    /** Pide la página [offset] con el filtro y el orden vigentes. */
+    private suspend fun fetch(snapshot: PeopleUiState, offset: Int) = repository.list(
+        includeHidden = snapshot.showHidden,
+        limit = PAGE_SIZE,
+        offset = offset,
+        search = snapshot.search.trim().takeIf { it.isNotEmpty() },
+        sort = snapshot.sort,
+    )
+
+    private var loadJob: Job? = null
+    private var searchJob: Job? = null
+
+    fun refresh() = reload(showRefreshIndicator = true)
+
+    /**
+     * Recarga desde la primera página. Cancela la carga anterior: con el
+     * buscador, una respuesta lenta de "An" no puede pisar la de "Ana".
+     */
+    private fun reload(showRefreshIndicator: Boolean) {
         _state.update {
             it.copy(
-                isRefreshing = it.loaded,
+                isRefreshing = it.loaded && showRefreshIndicator,
                 isInitialLoading = !it.loaded,
                 error = null
             )
         }
-        viewModelScope.launch {
-            runCatching {
-                repository.list(includeHidden = _state.value.showHidden, limit = PAGE_SIZE, offset = 0)
-            }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            runCatching { fetch(_state.value, offset = 0) }
                 .onSuccess { page ->
                     _state.update {
                         it.copy(
@@ -60,11 +97,13 @@ class PeopleViewModel(
                             hasMore = page.items.size < page.total,
                             isInitialLoading = false,
                             isRefreshing = false,
+                            isAppending = false,
                             loaded = true
                         )
                     }
                 }
                 .onFailure { error ->
+                    if (error is CancellationException) throw error
                     _state.update {
                         it.copy(
                             isInitialLoading = false,
@@ -80,14 +119,8 @@ class PeopleViewModel(
         val snapshot = _state.value
         if (snapshot.isAppending || !snapshot.hasMore || snapshot.isInitialLoading) return
         _state.update { it.copy(isAppending = true) }
-        viewModelScope.launch {
-            runCatching {
-                repository.list(
-                    includeHidden = snapshot.showHidden,
-                    limit = PAGE_SIZE,
-                    offset = snapshot.people.size
-                )
-            }
+        loadJob = viewModelScope.launch {
+            runCatching { fetch(snapshot, offset = snapshot.people.size) }
                 .onSuccess { page ->
                     _state.update { previous ->
                         val existing = previous.people.mapTo(HashSet()) { it.id }
@@ -102,6 +135,7 @@ class PeopleViewModel(
                     }
                 }
                 .onFailure { error ->
+                    if (error is CancellationException) throw error
                     _state.update {
                         it.copy(
                             isAppending = false,
@@ -118,19 +152,31 @@ class PeopleViewModel(
      * scrolleadas; con paginado perezoso las no cargadas eran infusionables.
      */
     fun loadAllPages() {
+        // Con un filtro puesto, "todas las páginas" serían solo las que casan:
+        // el selector de fusión dejaría fuera a media lista. Se quita el filtro
+        // y se empieza de cero.
+        if (_state.value.search.isNotBlank()) {
+            searchJob?.cancel()
+            loadJob?.cancel()
+            _state.update {
+                it.copy(
+                    search = "",
+                    isSearchActive = false,
+                    people = emptyList(),
+                    hasMore = true,
+                    isInitialLoading = false,
+                    isAppending = false
+                )
+            }
+        }
         val snapshot = _state.value
         if (snapshot.isAppending || !snapshot.hasMore || snapshot.isInitialLoading) return
         _state.update { it.copy(isAppending = true) }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             while (true) {
                 val current = _state.value
-                val page = runCatching {
-                    repository.list(
-                        includeHidden = current.showHidden,
-                        limit = PAGE_SIZE,
-                        offset = current.people.size
-                    )
-                }.getOrElse { error ->
+                val page = runCatching { fetch(current, offset = current.people.size) }.getOrElse { error ->
+                    if (error is CancellationException) throw error
                     _state.update {
                         it.copy(
                             isAppending = false,
@@ -154,6 +200,30 @@ class PeopleViewModel(
                 if (done) break
             }
         }
+    }
+
+    fun toggleSearch() {
+        val wasActive = _state.value.isSearchActive
+        _state.update { it.copy(isSearchActive = !wasActive) }
+        // Cerrar el buscador también quita el filtro.
+        if (wasActive && _state.value.search.isNotEmpty()) setSearch("")
+    }
+
+    /** Filtra en el servidor tras una pausa corta al teclear. */
+    fun setSearch(text: String) {
+        if (text == _state.value.search) return
+        _state.update { it.copy(search = text) }
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            reload(showRefreshIndicator = false)
+        }
+    }
+
+    fun setSort(sort: PeopleSort) {
+        if (sort == _state.value.sort) return
+        _state.update { it.copy(sort = sort) }
+        reload(showRefreshIndicator = false)
     }
 
     fun toggleShowHidden() {
@@ -283,5 +353,6 @@ class PeopleViewModel(
 
     companion object {
         private const val PAGE_SIZE = 80
+        private const val SEARCH_DEBOUNCE_MS = 300L
     }
 }

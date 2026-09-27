@@ -366,13 +366,13 @@ Cuatro revisores de solo lectura (timeline y navegación · visor, mapa, persona
 ## Funciones nuevas (no están en "Ideas mayores")
 
 Con el servidor ya preparado:
-- [ ] **Apartadas de "Para organizar"**: `OrganizeRepository.excluded()` e `includeAgain` existen y nadie los llama; hoy lo apartado solo vuelve con el Deshacer del snackbar.
-- [ ] **Personas con buscador y orden** (`GET /api/people` acepta `search`, `sort`, `unnamedFirst`); el filtro de búsqueda solo ve 80 personas (`data/search/SearchRepository.kt:45`).
-- [ ] **Asignar cara**: el campo no filtra (200 cargadas) y un nombre existente crea otra persona (`ui/people/AssetFacesSheet.kt:298-384`). Encaja con la idea mayor de fusionar.
-- [ ] **Tocar una cara abre la persona** (`AssetDetailScreen.kt:1929`); la hoja queda para editar.
-- [ ] **Texto detectado, objetos y escenas en el panel de info** (`/api/assets/{id}/text`, `/objects`, `/scenes` sin uso), tocables hacia la búsqueda.
-- [ ] **Explorar con buscador** (hoy se corta en 200 etiquetas, `ui/explore/ExploreFacetsViewModel.kt:44-45`).
-- [ ] **Resumen al terminar una subida**: "N subidas · Ver · Añadir a álbum" (los `assetId` ya se guardan).
+- [x] **Apartadas de "Para organizar"**: `OrganizeRepository.excluded()` e `includeAgain` existen y nadie los llama; hoy lo apartado solo vuelve con el Deshacer del snackbar. — hecho: "Apartadas (N)" en la cabecera de la bandeja y en su vacío (N llega como `excludedCount` en `/api/organize/inbox/count`), rejilla con selección y "Devolver a la bandeja".
+- [x] **Personas con buscador y orden** (`GET /api/people` acepta `search`, `sort`, `unnamedFirst`); el filtro de búsqueda solo ve 80 personas (`data/search/SearchRepository.kt:45`). — hecho: lupa en la cápsula (búsqueda en servidor con debounce) y orden en el menú ⋮; la hoja de filtros de búsqueda también busca personas en el servidor.
+- [x] **Asignar cara**: el campo no filtra (200 cargadas) y un nombre existente crea otra persona (`ui/people/AssetFacesSheet.kt:298-384`). Encaja con la idea mayor de fusionar. — hecho: el campo busca en el servidor y con coincidencia exacta (sin mayúsculas ni acentos) la acción es "Asignar a <nombre>".
+- [x] **Tocar una cara abre la persona** (`AssetDetailScreen.kt:1929`); la hoja queda para editar. — hecho: también el nombre en la hoja; Atrás desde la persona vuelve a la foto.
+- [x] **Texto detectado, objetos y escenas en el panel de info** (`/api/assets/{id}/text`, `/objects`, `/scenes` sin uso), tocables hacia la búsqueda. — hecho: carga al abrir el panel; solo el propietario los ve (el servidor da 404 a los demás y la sección no sale).
+- [x] **Explorar con buscador** (hoy se corta en 200 etiquetas, `ui/explore/ExploreFacetsViewModel.kt:44-45`). — hecho.
+- [x] **Resumen al terminar una subida**: "N subidas · Ver · Añadir a álbum" (los `assetId` ya se guardan). — hecho: "Ver" abre el visor con lo subido.
 
 Solo cliente:
 - [ ] **Favorito en bloque** en la barra de selección (bucle sobre las no favoritas, o endpoint `set` idempotente).

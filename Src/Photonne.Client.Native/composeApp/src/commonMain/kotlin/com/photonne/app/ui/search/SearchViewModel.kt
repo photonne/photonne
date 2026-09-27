@@ -53,6 +53,14 @@ data class SearchUiState(
     val objectLabels: List<ObjectLabel> = emptyList(),
     val sceneLabels: List<SceneLabel> = emptyList(),
     val people: List<Person> = emptyList(),
+    /** Buscador de la sección de personas de los filtros (en el servidor). */
+    val peopleQuery: String = "",
+    /** Resultado de [peopleQuery]; null sin búsqueda (se enseña [people]). */
+    val peopleSearchResults: List<Person>? = null,
+    val peopleSearching: Boolean = false,
+    /** Personas seleccionadas vistas alguna vez, para seguir pintando su chip
+     *  (y poder quitarlo) aunque la búsqueda actual no las incluya. */
+    val selectedPeopleCache: Map<String, Person> = emptyMap(),
     val selection: Set<String> = emptySet(),
     val isBulkMutating: Boolean = false
 ) {
@@ -77,6 +85,18 @@ data class SearchUiState(
         get() = if (mode == SearchMode.Semantic) query.isNotBlank() else hasAnyCriteria
 
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
+
+    /** Chips de personas de la hoja de filtros: primero las seleccionadas que
+     *  la lista actual no trae, luego la lista (búsqueda o las primeras). */
+    val visiblePeople: List<Person>
+        get() {
+            val list = peopleSearchResults ?: people
+            val listed = list.mapTo(HashSet()) { it.id }
+            val pinned = selectedPersonIds.mapNotNull { id ->
+                selectedPeopleCache[id]?.takeIf { id !in listed }
+            }
+            return pinned + list
+        }
 }
 
 class SearchViewModel(
@@ -162,7 +182,15 @@ class SearchViewModel(
         _state.update {
             val next = it.selectedPersonIds.toMutableSet()
             if (!next.add(personId)) next.remove(personId)
-            it.copy(selectedPersonIds = next, selection = emptySet())
+            val person = (it.peopleSearchResults.orEmpty() + it.people)
+                .firstOrNull { p -> p.id == personId }
+            it.copy(
+                selectedPersonIds = next,
+                selectedPeopleCache = if (person != null) {
+                    it.selectedPeopleCache + (personId to person)
+                } else it.selectedPeopleCache,
+                selection = emptySet()
+            )
         }
         scheduleSearch(immediate = true)
     }
@@ -392,6 +420,35 @@ class SearchViewModel(
                             error = errorFactory.from(error, "No se pudo buscar")
                         )
                     }
+                }
+        }
+    }
+
+    private var peopleSearchJob: Job? = null
+
+    /**
+     * Busca personas en el servidor para la hoja de filtros: la lista inicial
+     * solo trae las 80 con más fotos, y sin esto no se podía filtrar por nadie
+     * más. Espera una pausa al teclear.
+     */
+    fun setPeopleQuery(text: String) {
+        _state.update { it.copy(peopleQuery = text) }
+        peopleSearchJob?.cancel()
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) {
+            _state.update { it.copy(peopleSearchResults = null, peopleSearching = false) }
+            return
+        }
+        peopleSearchJob = viewModelScope.launch {
+            delay(300)
+            _state.update { it.copy(peopleSearching = true) }
+            runCatching { repository.people(search = trimmed) }
+                .onSuccess { found ->
+                    _state.update { it.copy(peopleSearchResults = found, peopleSearching = false) }
+                }
+                .onFailure { error ->
+                    if (error is kotlinx.coroutines.CancellationException) throw error
+                    _state.update { it.copy(peopleSearchResults = emptyList(), peopleSearching = false) }
                 }
         }
     }

@@ -19,12 +19,16 @@ class PeopleRepository(
         includeHidden: Boolean = false,
         limit: Int = 80,
         offset: Int = 0,
-        search: String? = null
+        search: String? = null,
+        sort: com.photonne.app.ui.people.PeopleSort = com.photonne.app.ui.people.PeopleSort.FaceCount
     ): PeoplePage = api.listPeople(
         search = search,
         includeHidden = includeHidden,
         limit = limit,
-        offset = offset
+        offset = offset,
+        sort = sort.sortKey,
+        sortDir = sort.sortDir,
+        unnamedFirst = sort.unnamedFirst
     )
 
     suspend fun get(personId: String): Person = api.getPerson(personId)

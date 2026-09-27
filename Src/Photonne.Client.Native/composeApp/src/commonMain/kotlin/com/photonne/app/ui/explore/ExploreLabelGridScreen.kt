@@ -17,6 +17,17 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.photonne.app.resources.explore_search_placeholder
+import com.photonne.app.resources.search_no_results
+import com.photonne.app.ui.main.SearchFieldPill
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -72,8 +83,14 @@ internal fun ExploreLabelGridScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onTileClick: (String) -> Unit,
+    /** Texto del buscador de la cápsula (filtra en el servidor). */
+    query: String = "",
+    onQueryChange: (String) -> Unit = {},
+    isSearching: Boolean = false,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
+    // Abierto si ya había texto (volver a la pantalla no esconde el filtro).
+    var searchOpen by rememberSaveable { mutableStateOf(query.isNotEmpty()) }
     // Fuente de blur del cromo: la rejilla que scrollea por detrás, de la que
     // las cápsulas son HERMANAS — la regla de Haze.
     val hazeState = remember { HazeState() }
@@ -88,7 +105,7 @@ internal fun ExploreLabelGridScreen(
         // también necesitan su barra (y su botón de volver).
         Box(modifier = Modifier.fillMaxSize()) {
             when {
-                isLoading && tiles.isEmpty() ->
+                isLoading && tiles.isEmpty() && query.isBlank() ->
                     AssetGridSkeleton(cellMinSize = 160.dp, contentPadding = PaddingValues(top = reservedTop))
                 error != null && tiles.isEmpty() ->
                     com.photonne.app.ui.error.FullScreenError(
@@ -96,6 +113,15 @@ internal fun ExploreLabelGridScreen(
                         onRetry = onRefresh,
                         modifier = Modifier.padding(top = reservedTop)
                     )
+                tiles.isEmpty() && query.isNotBlank() ->
+                    if (isSearching) {
+                        AssetGridSkeleton(cellMinSize = 160.dp, contentPadding = PaddingValues(top = reservedTop))
+                    } else {
+                        EmptyState(
+                            icon = Icons.Outlined.SearchOff,
+                            title = stringResource(Res.string.search_no_results)
+                        )
+                    }
                 tiles.isEmpty() ->
                     EmptyState(
                         icon = Icons.Outlined.Category,
@@ -129,10 +155,38 @@ internal fun ExploreLabelGridScreen(
                 }
             }
 
-            // Sin acciones: una sola cápsula (volver + título).
+            // Buscador en la cápsula, como Álbumes: atrás lo cierra (y quita el
+            // filtro); la lupa lo abre.
             SubscreenFloatingChrome(
-                title = title,
-                onBack = onBack,
+                title = if (searchOpen) "" else title,
+                onBack = if (searchOpen) {
+                    {
+                        searchOpen = false
+                        onQueryChange("")
+                    }
+                } else onBack,
+                titleContent = if (searchOpen) {
+                    {
+                        SearchFieldPill(
+                            value = query,
+                            onValueChange = onQueryChange,
+                            onClear = { onQueryChange("") },
+                            placeholder = stringResource(Res.string.explore_search_placeholder),
+                            autofocus = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else null,
+                actions = {
+                    if (!searchOpen) {
+                        IconButton(onClick = { searchOpen = true }) {
+                            Icon(
+                                Icons.Outlined.Search,
+                                contentDescription = stringResource(Res.string.explore_search_placeholder)
+                            )
+                        }
+                    }
+                },
                 scroll = SubscreenScroll(
                     firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
                     firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },

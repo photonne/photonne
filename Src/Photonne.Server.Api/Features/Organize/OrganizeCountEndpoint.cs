@@ -55,8 +55,20 @@ public class OrganizeCountEndpoint : IEndpoint
             })
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Lo apartado va aparte: no cuenta como pendiente, pero la bandeja
+        // necesita saber que existe para ofrecer "Apartadas (N)" — sin ese
+        // número, lo apartado solo volvía con el Deshacer del snackbar.
+        var excludedCount = await OrganizeQuery.Excluded(dbContext, username)
+            .CountAsync(cancellationToken);
+
         // An empty inbox groups to nothing, which is the good case — report a
         // zero count rather than letting the client read a missing body.
-        return Results.Ok(summary ?? new { count = 0, oldest = (DateTime?)null, newest = (DateTime?)null });
+        return Results.Ok(new
+        {
+            count = summary?.count ?? 0,
+            oldest = summary?.oldest,
+            newest = summary?.newest,
+            excludedCount,
+        });
     }
 }
