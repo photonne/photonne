@@ -374,13 +374,14 @@ public class ThumbnailGeneratorService
     }
 
     /// <summary>
-    /// RAW/HEIC via ImageMagick. Lets its exception out: the generic catch in
-    /// <see cref="GenerateThumbnailsAsync"/> records it as the failure reason.
+    /// RAW/HEIC via ImageMagick, with <see cref="RawImageLoader"/>'s fallbacks
+    /// for the files its decoder can't read. Lets its exception out: the generic
+    /// catch in <see cref="GenerateThumbnailsAsync"/> records it as the failure reason.
     /// </summary>
     private async Task GenerateHeicThumbnailsAsync(string sourceFilePath, Guid assetId, List<AssetThumbnail> thumbnails, ThumbnailOptions options, CancellationToken cancellationToken)
     {
         {
-            using var image = new MagickImage(sourceFilePath);
+            using var image = RawImageLoader.Load(sourceFilePath);
 
             var sizes = new[] { ThumbnailSize.Small, ThumbnailSize.Medium, ThumbnailSize.Large };
             foreach (var size in sizes)
@@ -664,9 +665,9 @@ public class ThumbnailGeneratorService
 
     private static bool IsRawOrHeicFile(string extension)
     {
-        var rawExtensions = new[] { ".heic", ".heif",
-                                    ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".pef", ".raf", ".srw" };
-        return rawExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+        var heicExtensions = new[] { ".heic", ".heif" };
+        return heicExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase)
+            || RawImageLoader.IsRawExtension(extension);
     }
     
     private bool IsVideoFile(string extension)

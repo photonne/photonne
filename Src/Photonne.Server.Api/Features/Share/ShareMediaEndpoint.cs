@@ -135,6 +135,21 @@ public class ShareMediaEndpoint : IEndpoint
         if (!File.Exists(physicalPath)) return Results.NotFound();
 
         var ext = Path.GetExtension(physicalPath).ToLowerInvariant();
+
+        // The public page is a browser: it can't paint a RAW. Same rule as
+        // /api/assets/{id}/content — JPEG to look at, original to download.
+        if (download != true && RawImageLoader.IsRawExtension(ext))
+        {
+            try
+            {
+                return Results.File(RawImageLoader.RenderJpeg(physicalPath), "image/jpeg");
+            }
+            catch (ImageMagick.MagickException ex)
+            {
+                Console.WriteLine($"[SHARE] RAW could not be rendered, serving the original: {ex.Message}");
+            }
+        }
+
         var contentType = ext switch
         {
             ".jpg" or ".jpeg" => "image/jpeg",

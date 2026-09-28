@@ -59,6 +59,21 @@ public class AssetContentEndpoint : IEndpoint
             return Results.File(jpegBytes, "image/jpeg");
         }
 
+        // No browser and no image view paints a RAW. To look at it, serve a
+        // developed JPEG; a download still gets the untouched original.
+        if (download != true && RawImageLoader.IsRawExtension(extension))
+        {
+            try
+            {
+                return Results.File(RawImageLoader.RenderJpeg(physicalPath), "image/jpeg");
+            }
+            catch (MagickException ex)
+            {
+                logger.LogWarning("Asset {AssetId}: RAW could not be rendered, serving the original ({Reason})",
+                    assetId, ex.Message);
+            }
+        }
+
         var contentType = GetContentType(extension, asset.Type);
 
         if (download == true)

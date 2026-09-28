@@ -151,6 +151,19 @@ public class AssetPendingEndpoint : IEndpoint
             return Results.File(jpegBytes, "image/jpeg");
         }
 
+        // Same for RAW: the browser needs something it can paint.
+        if (RawImageLoader.IsRawExtension(extension))
+        {
+            try
+            {
+                return Results.File(RawImageLoader.RenderJpeg(physicalPath), "image/jpeg");
+            }
+            catch (MagickException ex)
+            {
+                Console.WriteLine($"[WARNING] Pending RAW {path} could not be rendered, serving the original: {ex.Message}");
+            }
+        }
+
         var contentType = GetContentType(extension, type);
 
         return Results.File(physicalPath, contentType, enableRangeProcessing: true);
@@ -208,10 +221,10 @@ public class AssetPendingEndpoint : IEndpoint
                 };
 
                 var extension2 = Path.GetExtension(physicalPath).ToLowerInvariant();
-                if (extension2 is ".heic" or ".heif")
+                if (extension2 is ".heic" or ".heif" || RawImageLoader.IsRawExtension(extension2))
                 {
-                    // SixLabors.ImageSharp no soporta HEIC, usar Magick.NET
-                    using var magickImage = new MagickImage(physicalPath);
+                    // SixLabors.ImageSharp no soporta HEIC ni RAW, usar Magick.NET
+                    using var magickImage = RawImageLoader.Load(physicalPath);
                     magickImage.AutoOrient();
                     magickImage.Thumbnail((uint)targetSize, (uint)targetSize);
                     magickImage.Format = MagickFormat.Jpeg;
@@ -307,7 +320,9 @@ public class AssetPendingEndpoint : IEndpoint
     private AssetType GetAssetType(string extension)
     {
         var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif" };
-        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? AssetType.Image : AssetType.Video;
+        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) || RawImageLoader.IsRawExtension(extension)
+            ? AssetType.Image
+            : AssetType.Video;
     }
 
     private string GetContentType(string extension, AssetType type)
