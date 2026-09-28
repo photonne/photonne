@@ -4,7 +4,7 @@
 @inject ISnackbar Snackbar
 
 @* Crear álbum manual o smart. El smart lleva el editor de reglas con preview
-   en vivo; su regla queda fijada al crear (el API no permite editarla luego). *@
+   en vivo; la regla se puede cambiar después desde "Editar" en el álbum. *@
 
 <MudDialog>
     <TitleContent>
@@ -24,8 +24,8 @@
             </MudTabPanel>
             <MudTabPanel Text="Smart">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary pa-2">
-                    El contenido lo decide una regla, siempre al día. La regla se
-                    fija al crear el álbum.
+                    El contenido lo decide una regla, siempre al día. Podrás
+                    cambiarla después desde el propio álbum.
                 </MudText>
                 <SmartRuleEditor Preview="rule => AlbumsService.PreviewRuleAsync(rule)"
                                  RuleChanged="rule => _rule = rule" />

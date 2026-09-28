@@ -35,6 +35,10 @@ public class AlbumsEndpoint : IEndpoint
             .WithName("GetAlbumAssets")
             .WithDescription("Gets all assets in an album");
 
+        group.MapGet("{albumId:guid}/rule", GetAlbumRule)
+            .WithName("GetAlbumRule")
+            .WithDescription("Gets a smart album's rule plus display names for the ids it references");
+
         group.MapPost("", CreateAlbum)
             .WithName("CreateAlbum")
             .WithDescription("Creates a new album");
@@ -287,7 +291,8 @@ public class AlbumsEndpoint : IEndpoint
                 CanWrite = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanWrite),
                 CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
-                CoverThumbnailUrl = coverUrl
+                CoverThumbnailUrl = coverUrl,
+                Kind = album.Kind.ToString()
             };
 
             return Results.Ok(response);
@@ -302,6 +307,68 @@ public class AlbumsEndpoint : IEndpoint
                 statusCode: StatusCodes.Status500InternalServerError
             );
         }
+    }
+
+    /// <summary>
+    /// Returns a smart album's stored rule for the edit screen, plus names for
+    /// the person and folder ids it references so the editor can show chips
+    /// without paging the whole people/folder catalogs. Owner-only, like the
+    /// rule edit itself (the ids are the owner's own people).
+    /// </summary>
+    private async Task<IResult> GetAlbumRule(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromRoute] Guid albumId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Results.Unauthorized();
+
+        var album = await dbContext.Albums.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
+        if (album == null || album.Kind != AlbumKind.Smart || album.SmartRule == null)
+            return Results.NotFound(new { error = $"Smart album with ID {albumId} not found" });
+        if (album.OwnerId != userId)
+            return Results.Forbid();
+
+        var rule = JsonSerializer.Deserialize<SmartRuleNode>(album.SmartRule, SmartRuleJson);
+        if (rule == null)
+            return Results.NotFound(new { error = "Album rule is empty" });
+
+        var personIds = new HashSet<Guid>();
+        var folderIds = new HashSet<Guid>();
+        CollectRuleIds(rule, personIds, folderIds);
+
+        var people = await dbContext.People.AsNoTracking()
+            .Where(p => personIds.Contains(p.Id) && p.OwnerId == album.OwnerId)
+            .Select(p => new SmartRulePersonRef { Id = p.Id, Name = p.Name, CoverFaceId = p.CoverFaceId })
+            .ToListAsync(cancellationToken);
+
+        var folders = (await dbContext.Folders.AsNoTracking()
+                .Where(f => folderIds.Contains(f.Id))
+                .Select(f => new { f.Id, f.Name, f.Path })
+                .ToListAsync(cancellationToken))
+            .Select(f => new SmartRuleFolderRef
+            {
+                Id = f.Id,
+                Name = f.Name,
+                Path = f.Path,
+                IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase)
+            })
+            .ToList();
+
+        return Results.Ok(new SmartAlbumRuleResponse { Rule = rule, People = people, Folders = folders });
+    }
+
+    private static void CollectRuleIds(SmartRuleNode node, HashSet<Guid> personIds, HashSet<Guid> folderIds)
+    {
+        if (node.PersonIds != null) personIds.UnionWith(node.PersonIds);
+        if (node.FolderIds != null) folderIds.UnionWith(node.FolderIds);
+        if (node.Condition != null) CollectRuleIds(node.Condition, personIds, folderIds);
+        if (node.Conditions != null)
+            foreach (var child in node.Conditions)
+                CollectRuleIds(child, personIds, folderIds);
     }
 
     /// <summary>
@@ -541,6 +608,7 @@ public class AlbumsEndpoint : IEndpoint
     private async Task<IResult> UpdateAlbum(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
+        [FromServices] SmartAlbumResolver smartResolver,
         [FromRoute] Guid albumId,
         [FromBody] UpdateAlbumRequest? request,
         ClaimsPrincipal user,
@@ -575,12 +643,38 @@ public class AlbumsEndpoint : IEndpoint
                 return Results.BadRequest(new { error = "Album name is required" });
             }
 
+            // Rule edit (smart albums only). The rule is owner-anchored — person ids
+            // are the owner's own clusters — so only the owner may replace it; a
+            // collaborator with CanWrite can still rename. Null = keep the rule.
+            if (request.SmartRule != null)
+            {
+                if (album.Kind != AlbumKind.Smart)
+                    return Results.BadRequest(new { error = "Only smart albums have a rule" });
+                if (album.OwnerId != userId)
+                    return Results.Forbid();
+
+                try
+                {
+                    SmartRuleCompiler.Compile(request.SmartRule, dbContext, album.OwnerId);
+                }
+                catch (SmartRuleException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+
+                album.SmartRule = JsonSerializer.Serialize(request.SmartRule, SmartRuleJson);
+            }
+
             album.Name = request.Name.Trim();
             album.Description = request.Description?.Trim();
             album.UpdatedAt = DateTime.UtcNow;
 
             await dbContext.SaveChangesAsync(cancellationToken);
             cache.Remove($"albums:{userId}");
+
+            (int Count, List<Guid> SampleIds)? smartData = null;
+            if (album.Kind == AlbumKind.Smart && album.SmartRule != null)
+                smartData = await ResolveSmartSummaryAsync(smartResolver, album, userId, cancellationToken);
 
             var response = new AlbumResponse
             {
@@ -589,7 +683,9 @@ public class AlbumsEndpoint : IEndpoint
                 Description = album.Description,
                 CreatedAt = album.CreatedAt,
                 UpdatedAt = album.UpdatedAt,
-                AssetCount = await dbContext.AlbumAssets.CountAsync(aa => aa.AlbumId == albumId, cancellationToken),
+                AssetCount = smartData?.Count
+                    ?? await dbContext.AlbumAssets.CountAsync(aa => aa.AlbumId == albumId, cancellationToken),
+                Kind = album.Kind.ToString(),
                 IsOwner = album.OwnerId == userId,
                 CanRead = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanRead),
                 CanWrite = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanWrite),
@@ -1091,6 +1187,31 @@ public class UpdateAlbumRequest
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+    // Smart albums only: when present, replaces the rule (owner-only). Null
+    // keeps the stored rule, so a plain rename never touches it.
+    public Shared.Services.SmartAlbums.SmartRuleNode? SmartRule { get; set; }
+}
+
+public class SmartAlbumRuleResponse
+{
+    public Shared.Services.SmartAlbums.SmartRuleNode Rule { get; set; } = null!;
+    public List<SmartRulePersonRef> People { get; set; } = new();
+    public List<SmartRuleFolderRef> Folders { get; set; } = new();
+}
+
+public class SmartRulePersonRef
+{
+    public Guid Id { get; set; }
+    public string? Name { get; set; }
+    public Guid? CoverFaceId { get; set; }
+}
+
+public class SmartRuleFolderRef
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public bool IsShared { get; set; }
 }
 
 public class AddAssetRequest

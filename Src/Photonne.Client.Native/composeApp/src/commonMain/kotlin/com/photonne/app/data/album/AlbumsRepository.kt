@@ -6,6 +6,7 @@ import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.SmartRule
+import com.photonne.app.data.models.SmartAlbumRuleDetails
 import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SentShareLink
 import com.photonne.app.data.models.ShareUpdateResult
@@ -33,6 +34,11 @@ class AlbumsRepository(
 
     suspend fun update(albumId: String, name: String, description: String?): AlbumSummary =
         api.updateAlbum(albumId = albumId, name = name, description = description)
+
+    suspend fun updateSmart(albumId: String, name: String, description: String?, rule: SmartRule): AlbumSummary =
+        api.updateAlbum(albumId = albumId, name = name, description = description, smartRule = rule)
+
+    suspend fun smartRule(albumId: String): SmartAlbumRuleDetails = api.getSmartAlbumRule(albumId)
 
     suspend fun delete(albumId: String) {
         api.deleteAlbum(albumId)

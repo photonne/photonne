@@ -257,7 +257,12 @@ fun RuleConditionsEditor(
             existingLabels = conditions.filterIsInstance<SmartCondition.Scenes>().firstOrNull()?.labels ?: emptyList(),
             onQueryChange = onSceneQuery,
             onDismiss = { sheet = null },
-            onConfirm = { onUpsertCondition(SmartCondition.Scenes(it)); sheet = null },
+            onConfirm = { labels ->
+                // copy() keeps a "todas" match loaded from an existing rule.
+                val existing = conditions.filterIsInstance<SmartCondition.Scenes>().firstOrNull()
+                onUpsertCondition(existing?.copy(labels = labels) ?: SmartCondition.Scenes(labels))
+                sheet = null
+            },
         )
         EditorSheet.Objects -> LabelSelectSheet(
             title = stringResource(Res.string.smart_album_cond_objects),
@@ -267,7 +272,12 @@ fun RuleConditionsEditor(
             existingLabels = conditions.filterIsInstance<SmartCondition.Objects>().firstOrNull()?.labels ?: emptyList(),
             onQueryChange = onObjectQuery,
             onDismiss = { sheet = null },
-            onConfirm = { onUpsertCondition(SmartCondition.Objects(it)); sheet = null },
+            onConfirm = { labels ->
+                // copy() keeps a "todas" match loaded from an existing rule.
+                val existing = conditions.filterIsInstance<SmartCondition.Objects>().firstOrNull()
+                onUpsertCondition(existing?.copy(labels = labels) ?: SmartCondition.Objects(labels))
+                sheet = null
+            },
         )
         EditorSheet.Dates -> DateRangeSheet(
             existing = conditions.filterIsInstance<SmartCondition.DateRange>().firstOrNull(),
@@ -532,7 +542,11 @@ private fun FolderSelectSheet(
     SearchSelectScaffold(
         title = stringResource(Res.string.smart_album_cond_folders),
         onDismiss = onDismiss,
-        onConfirm = { onConfirm(SmartCondition.Folders(selected.mapNotNull { refById[it] })) },
+        onConfirm = {
+            // copy() keeps includeSubfolders from a rule made elsewhere (web).
+            val picked = selected.mapNotNull { refById[it] }
+            onConfirm(existing?.copy(folders = picked) ?: SmartCondition.Folders(picked))
+        },
         confirmEnabled = selected.isNotEmpty(),
         header = {
             PickerSearchField(query, { query = it }, stringResource(Res.string.smart_album_search_folder))

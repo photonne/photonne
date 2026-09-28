@@ -1523,6 +1523,9 @@
     <string name="explore_label_count">%1$d photos</string>
     <string name="smart_album_editor_title">New smart album</string>
     <string name="smart_album_name_label">Album name</string>
+    <string name="smart_album_edit_title">Edit smart album</string>
+    <string name="smart_album_description_label">Description (optional)</string>
+    <string name="smart_album_unknown_ref">(no longer exists)</string>
     <string name="smart_album_match_section">Match</string>
     <string name="smart_album_match_all">All</string>
     <string name="smart_album_match_any">Any</string>
@@ -1637,4 +1640,8 @@
     <string name="settings_activity_notifications">Activity alerts</string>
     <string name="settings_activity_notifications_subtitle">System notification when the server leaves you new notifications, with the app closed</string>
     <string name="settings_activity_notifications_denied">Without notification permission these alerts won't reach you.</string>
+    <plurals name="smart_album_preserved_note">
+        <item quantity="one">%1$d more condition set up on the web is kept; it can\'t be edited here.</item>
+        <item quantity="other">%1$d more conditions set up on the web are kept; they can\'t be edited here.</item>
+    </plurals>
 </resources>

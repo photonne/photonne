@@ -7,6 +7,7 @@ import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.SmartAlbumPreview
+import com.photonne.app.data.models.SmartAlbumRuleDetails
 import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.Attribution
@@ -92,7 +93,13 @@ import kotlinx.serialization.json.JsonPrimitive
 internal data class FavoriteResponse(val isFavorite: Boolean)
 
 @Serializable
-internal data class AlbumWriteRequest(val name: String, val description: String?)
+internal data class AlbumWriteRequest(
+    val name: String,
+    val description: String?,
+    // Smart albums only; null is omitted (explicitNulls = false) so a plain
+    // rename leaves the stored rule untouched.
+    val smartRule: SmartRule? = null,
+)
 
 @Serializable
 internal data class SmartAlbumWriteRequest(
@@ -453,7 +460,13 @@ interface PhotonneApi {
     suspend fun createAlbum(name: String, description: String?): AlbumSummary
     suspend fun createSmartAlbum(name: String, description: String?, rule: SmartRule): AlbumSummary
     suspend fun previewSmartAlbum(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview
-    suspend fun updateAlbum(albumId: String, name: String, description: String?): AlbumSummary
+    suspend fun updateAlbum(
+        albumId: String,
+        name: String,
+        description: String?,
+        smartRule: SmartRule? = null,
+    ): AlbumSummary
+    suspend fun getSmartAlbumRule(albumId: String): SmartAlbumRuleDetails
     suspend fun deleteAlbum(albumId: String)
     suspend fun addAssetToAlbum(albumId: String, assetId: String)
     suspend fun addAssetsToAlbumBatch(albumId: String, assetIds: List<String>)
@@ -1281,14 +1294,23 @@ class PhotonneApiClient(
     override suspend fun updateAlbum(
         albumId: String,
         name: String,
-        description: String?
+        description: String?,
+        smartRule: SmartRule?,
     ): AlbumSummary {
         val response: HttpResponse = client.put("$baseUrl/api/albums/$albumId") {
             contentType(ContentType.Application.Json)
-            setBody(AlbumWriteRequest(name = name, description = description))
+            setBody(AlbumWriteRequest(name = name, description = description, smartRule = smartRule))
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Album update failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getSmartAlbumRule(albumId: String): SmartAlbumRuleDetails {
+        val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId/rule")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Smart album rule load failed (${response.status.value})")
         }
         return response.body()
     }

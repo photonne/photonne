@@ -328,4 +328,96 @@ public sealed class SmartAlbumPreviewTests : IntegrationTestBase
         var bad = await w.Client.PutAsJsonAsync($"/api/albums/{album.Id}/cover", new { assetId = w.MountainTrip });
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
     }
+
+    // ── Editing the rule (PUT smartRule + GET rule) ─────────────────────────
+
+    private sealed record UpdatedAlbum(Guid Id, int AssetCount, string Kind);
+    private sealed record RulePerson(Guid Id, string? Name);
+    private sealed record RuleFolder(Guid Id, string Name, string Path);
+    private sealed record RuleBody(List<RulePerson> People, List<RuleFolder> Folders);
+
+    [Fact]
+    public async Task UpdateSmartAlbum_ReplacesRule_ContentFollows()
+    {
+        var w = await SeedAsync();
+        var album = await CreateSmartAlbumAsync(w.Client, "Playa", new
+        {
+            type = "scene", labels = new[] { "beach" }
+        });
+        Assert.Single(await AlbumAssetIdsAsync(w.Client, album.Id));
+
+        var resp = await w.Client.PutAsJsonAsync($"/api/albums/{album.Id}", new
+        {
+            name = "Familia",
+            smartRule = new { type = "person", match = "any", personIds = new[] { w.Abuela, w.Nieto } }
+        });
+        resp.EnsureSuccessStatusCode();
+        var updated = await resp.Content.ReadFromJsonAsync<UpdatedAlbum>();
+        Assert.Equal(3, updated!.AssetCount);
+        Assert.Equal("Smart", updated.Kind);
+
+        var ids = await AlbumAssetIdsAsync(w.Client, album.Id);
+        Assert.Equal(new[] { w.BeachDog, w.Both, w.NietoOnly }.OrderBy(x => x), ids.OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task UpdateSmartAlbum_RenameWithoutRule_KeepsRule()
+    {
+        var w = await SeedAsync();
+        var album = await CreateSmartAlbumAsync(w.Client, "Playa", new
+        {
+            type = "scene", labels = new[] { "beach" }
+        });
+
+        var resp = await w.Client.PutAsJsonAsync($"/api/albums/{album.Id}", new { name = "Verano" });
+        resp.EnsureSuccessStatusCode();
+
+        Assert.Single(await AlbumAssetIdsAsync(w.Client, album.Id)); // still beachDog
+    }
+
+    [Fact]
+    public async Task UpdateAlbum_InvalidRuleOrManualAlbum_Returns400()
+    {
+        var w = await SeedAsync();
+        var smart = await CreateSmartAlbumAsync(w.Client, "Playa", new
+        {
+            type = "scene", labels = new[] { "beach" }
+        });
+        var broken = await w.Client.PutAsJsonAsync($"/api/albums/{smart.Id}", new
+        {
+            name = "Playa", smartRule = new { type = "wormhole" }
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, broken.StatusCode);
+
+        var manualResp = await w.Client.PostAsJsonAsync("/api/albums", new { name = "Manual" });
+        var manual = await manualResp.Content.ReadFromJsonAsync<AlbumListItem>();
+        var onManual = await w.Client.PutAsJsonAsync($"/api/albums/{manual!.Id}", new
+        {
+            name = "Manual", smartRule = new { type = "scene", labels = new[] { "beach" } }
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, onManual.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAlbumRule_ReturnsRuleWithNames_OwnerOnly()
+    {
+        var w = await SeedAsync();
+        var album = await CreateSmartAlbumAsync(w.Client, "Mix", new
+        {
+            op = "AND",
+            conditions = new object[]
+            {
+                new { type = "person", match = "any", personIds = new[] { w.Abuela } },
+                new { type = "folder", folderIds = new[] { w.ViajesFolder }, includeSubfolders = true }
+            }
+        });
+
+        var body = await w.Client.GetFromJsonAsync<RuleBody>($"/api/albums/{album.Id}/rule");
+        Assert.Equal("Abuela", Assert.Single(body!.People).Name);
+        Assert.Equal("Viajes", Assert.Single(body.Folders).Name);
+
+        var (_, other) = await CreateAuthenticatedUserAsync();
+        var forbidden = await other.GetAsync($"/api/albums/{album.Id}/rule");
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
 }

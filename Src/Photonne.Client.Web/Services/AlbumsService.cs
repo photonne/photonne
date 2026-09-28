@@ -11,7 +11,9 @@ public interface IAlbumsService
     Task AddAssetsAsync(Guid albumId, IReadOnlyCollection<Guid> assetIds);
     Task RemoveAssetAsync(Guid albumId, Guid assetId);
     Task<AlbumSummary?> CreateAlbumAsync(string name, string? description = null, SmartRuleNode? smartRule = null);
-    Task UpdateAlbumAsync(Guid albumId, string name, string? description);
+    Task UpdateAlbumAsync(Guid albumId, string name, string? description, SmartRuleNode? smartRule = null);
+    /// <summary>Regla guardada de un álbum smart (solo el dueño); null si no se pudo leer.</summary>
+    Task<SmartRuleNode?> GetAlbumRuleAsync(Guid albumId);
     Task DeleteAlbumAsync(Guid albumId);
     Task LeaveAlbumAsync(Guid albumId);
     Task SetCoverAsync(Guid albumId, Guid assetId);
@@ -70,11 +72,27 @@ public class AlbumsService : IAlbumsService
         return await response.Content.ReadFromJsonAsync<AlbumSummary>();
     }
 
-    public async Task UpdateAlbumAsync(Guid albumId, string name, string? description)
+    public async Task UpdateAlbumAsync(Guid albumId, string name, string? description, SmartRuleNode? smartRule = null)
     {
+        // smartRule nulo se omite (JsonOptions): renombrar no toca la regla.
         var response = await _httpClient.PutAsJsonAsync(
-            $"/api/albums/{albumId}", new { name, description });
+            $"/api/albums/{albumId}", new { name, description, smartRule }, SmartRuleNode.JsonOptions);
         response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<SmartRuleNode?> GetAlbumRuleAsync(Guid albumId)
+    {
+        var response = await _httpClient.GetAsync($"/api/albums/{albumId}/rule");
+        if (!response.IsSuccessStatusCode) return null;
+        var body = await response.Content.ReadFromJsonAsync<AlbumRuleResponse>();
+        return body?.Rule;
+    }
+
+    // El endpoint trae además nombres de personas/carpetas; este cliente ya
+    // carga los catálogos completos en el editor, así que solo usa la regla.
+    private sealed class AlbumRuleResponse
+    {
+        public SmartRuleNode? Rule { get; set; }
     }
 
     public async Task DeleteAlbumAsync(Guid albumId)

@@ -267,7 +267,7 @@ private class MoveSelectionRequest(
 
 private enum class MoreSubscreen {
     Upload,
-    CreateSmartAlbum,
+    SmartAlbumEditor,
     DeviceBackup,
     DeviceBackupPending,
     EnrichmentStatus,
@@ -451,7 +451,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.DeviceFolderDetail -> MoreSubscreen.DeviceFolders
     MoreSubscreen.Upload,
     MoreSubscreen.DeviceFolders,
-    MoreSubscreen.CreateSmartAlbum,
+    MoreSubscreen.SmartAlbumEditor,
     MoreSubscreen.DeviceBackup,
     MoreSubscreen.Favorites,
     MoreSubscreen.People,
@@ -969,6 +969,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showCreateAlbum by remember { mutableStateOf(false) }
     var showAlbumTypeChooser by remember { mutableStateOf(false) }
     var showEditAlbum by remember { mutableStateOf(false) }
+    // Smart album opened in the rule editor (SmartAlbumEditor subscreen); null = new album.
+    var editingSmartAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var showDeleteAlbum by remember { mutableStateOf(false) }
     var showLeaveAlbum by remember { mutableStateOf(false) }
     var showShares by remember { mutableStateOf(false) }
@@ -2424,8 +2426,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             showMembers = true
                         },
                         onEdit = {
-                            pendingActionAlbum = target
-                            showEditAlbum = true
+                            // Un álbum inteligente propio se edita entero (condiciones
+                            // incluidas) en su editor; el resto, nombre y descripción.
+                            if (target.isSmart && target.isOwner) {
+                                albumsViewModel.clearSelection()
+                                editingSmartAlbum = target
+                                moreSubscreen = MoreSubscreen.SmartAlbumEditor
+                            } else {
+                                pendingActionAlbum = target
+                                showEditAlbum = true
+                            }
                         },
                         onLeave = {
                             pendingActionAlbum = target
@@ -2721,7 +2731,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 // propio Scaffold (con su barra), así que sigue con el hueco que le
                 // reserva este Scaffold para no solaparse con la nav.
                 (moreSubscreen != null &&
-                    moreSubscreen != MoreSubscreen.CreateSmartAlbum) ||
+                    moreSubscreen != MoreSubscreen.SmartAlbumEditor) ||
                 selectedTab == MainTab.Search ||
                 (selectedTab == MainTab.More && moreSubscreen == null)
         ) {
@@ -2985,7 +2995,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 albumSharesViewModel.open(openedAlbum.id)
                                 showShares = true
                             },
-                            onEdit = { showEditAlbum = true },
+                            onEdit = {
+                                if (openedAlbum.isSmart && openedAlbum.isOwner) {
+                                    editingSmartAlbum = openedAlbum.copy(
+                                        name = albumDetailState.albumName ?: openedAlbum.name,
+                                        description = albumDetailState.albumDescription ?: openedAlbum.description,
+                                    )
+                                    moreSubscreen = MoreSubscreen.SmartAlbumEditor
+                                } else {
+                                    showEditAlbum = true
+                                }
+                            },
                             onDelete = { showDeleteAlbum = true },
                             onManageMembers = {
                                 albumPermissionsViewModel.open(openedAlbum.id)
@@ -3127,14 +3147,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         // The More grid is shown by the pager base layer; a
                         // non-null subscreen renders its screen on top.
                     }
-                    MoreSubscreen.CreateSmartAlbum -> com.photonne.app.ui.album.smart.SmartAlbumEditorScreen(
-                        onBack = { moreSubscreen = null },
-                        onChromeVisibleChange = { subscreenChromeVisible = it },
-                        onCreated = { newAlbum ->
+                    MoreSubscreen.SmartAlbumEditor -> com.photonne.app.ui.album.smart.SmartAlbumEditorScreen(
+                        editAlbum = editingSmartAlbum,
+                        onBack = {
                             moreSubscreen = null
-                            albumsViewModel.refresh()
-                            selectedTab = MainTab.Albums
-                            selectedAlbum = newAlbum
+                            editingSmartAlbum = null
+                        },
+                        onChromeVisibleChange = { subscreenChromeVisible = it },
+                        onSaved = { saved ->
+                            val wasEditing = editingSmartAlbum != null
+                            moreSubscreen = null
+                            editingSmartAlbum = null
+                            if (wasEditing) {
+                                // La respuesta del PUT no trae portada ni miniaturas:
+                                // se recarga la lista en vez de pisar la tarjeta.
+                                albumsViewModel.refresh()
+                                // Nuevas condiciones = otro contenido: si el álbum está
+                                // abierto, se recarga al volver a él.
+                                selectedAlbum?.takeIf { it.id == saved.id }?.let { opened ->
+                                    selectedAlbum = opened.copy(
+                                        name = saved.name,
+                                        description = saved.description,
+                                        assetCount = saved.assetCount,
+                                    )
+                                    albumDetailViewModel.refresh()
+                                }
+                            } else {
+                                albumsViewModel.refresh()
+                                selectedTab = MainTab.Albums
+                                selectedAlbum = saved
+                            }
                         }
                     )
                     MoreSubscreen.Upload -> com.photonne.app.ui.upload.UploadScreen(
@@ -4666,7 +4708,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             },
             onSmart = {
                 showAlbumTypeChooser = false
-                moreSubscreen = MoreSubscreen.CreateSmartAlbum
+                moreSubscreen = MoreSubscreen.SmartAlbumEditor
             }
         )
     }

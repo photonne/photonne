@@ -24,7 +24,7 @@
                     <h1 class="mud-typography mud-typography-h5 ma-0" tabindex="-1">@_album.Name</h1>
                     @if (_album.IsSmart)
                     {
-                        <MudTooltip Text="Álbum smart: su contenido lo decide la regla definida al crearlo">
+                        <MudTooltip Text="Álbum smart: su contenido lo decide una regla (se cambia desde Editar)">
                             <MudChip T="string" Size="Size.Small" Color="Color.Tertiary">Smart</MudChip>
                         </MudTooltip>
                     }
@@ -45,7 +45,7 @@
                 }
                 @if (_album.IsOwner)
                 {
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="RenameAsync">Renombrar</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="RenameAsync">Editar…</MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="DeleteAsync">Eliminar álbum</MudMenuItem>
                 }
                 else
@@ -142,18 +142,35 @@
     private async Task RenameAsync()
     {
         if (_album == null) return;
+        SmartRuleNode? rule = null;
+        if (_album.IsSmart)
+        {
+            rule = await AlbumsService.GetAlbumRuleAsync(AlbumId);
+            if (rule == null)
+            {
+                Snackbar.Add("No se pudieron cargar las condiciones del álbum", Severity.Error);
+                return;
+            }
+        }
         var parameters = new DialogParameters<Components.RenameAlbumDialog>
         {
             { d => d.Name, _album.Name },
-            { d => d.Description, _album.Description }
+            { d => d.Description, _album.Description },
+            { d => d.SmartRule, rule }
         };
-        var dialog = await DialogService.ShowAsync<Components.RenameAlbumDialog>("Editar álbum", parameters);
+        var options = new DialogOptions { MaxWidth = rule != null ? MaxWidth.Medium : MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<Components.RenameAlbumDialog>("Editar álbum", parameters, options);
         var result = await dialog.Result;
-        if (result is { Canceled: false } && result.Data is ValueTuple<string, string?> updated)
+        if (result is { Canceled: false } && result.Data is Components.RenameAlbumDialog.AlbumEdit updated)
         {
-            await AlbumsService.UpdateAlbumAsync(AlbumId, updated.Item1, updated.Item2);
-            _album.Name = updated.Item1;
-            _album.Description = updated.Item2;
+            await AlbumsService.UpdateAlbumAsync(AlbumId, updated.Name, updated.Description, updated.SmartRule);
+            _album.Name = updated.Name;
+            _album.Description = updated.Description;
+            if (updated.SmartRule != null && _collection != null)
+            {
+                // Otra regla = otro contenido.
+                await _collection.ReloadAsync();
+            }
             Snackbar.Add("Álbum actualizado", Severity.Success);
         }
     }

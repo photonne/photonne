@@ -40,3 +40,18 @@ data class SmartAlbumPreview(
      *  smart-album preview, which doesn't return it. */
     val yearBreakdown: List<YearCount> = emptyList(),
 )
+
+/** A smart album's stored rule plus display data for the ids it references
+ *  (`GET /api/albums/{id}/rule`), so the editor can rebuild its chips. */
+@Serializable
+data class SmartAlbumRuleDetails(
+    val rule: SmartRule,
+    val people: List<SmartRulePersonRef> = emptyList(),
+    val folders: List<SmartRuleFolderRef> = emptyList(),
+)
+
+@Serializable
+data class SmartRulePersonRef(val id: String, val name: String? = null, val coverFaceId: String? = null)
+
+@Serializable
+data class SmartRuleFolderRef(val id: String, val name: String, val path: String, val isShared: Boolean = false)

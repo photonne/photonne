@@ -1466,6 +1466,9 @@
     <string name="organize_move_summary_body">Repartidas en estas carpetas de año:</string>
     <string name="smart_album_editor_title">Nuevo álbum inteligente</string>
     <string name="smart_album_name_label">Nombre del álbum</string>
+    <string name="smart_album_edit_title">Editar álbum inteligente</string>
+    <string name="smart_album_description_label">Descripción (opcional)</string>
+    <string name="smart_album_unknown_ref">(ya no existe)</string>
     <string name="smart_album_match_section">Coincidir con</string>
     <string name="smart_album_match_all">Todas</string>
     <string name="smart_album_match_any">Cualquiera</string>
@@ -1647,4 +1650,8 @@
     <string name="settings_activity_notifications">Avisos de actividad</string>
     <string name="settings_activity_notifications_subtitle">Notificación del sistema cuando el servidor te deja notificaciones nuevas, con la app cerrada</string>
     <string name="settings_activity_notifications_denied">Sin permiso de notificaciones no te llegarán estos avisos.</string>
+    <plurals name="smart_album_preserved_note">
+        <item quantity="one">Se conserva %1$d condición más creada en la web; aquí no se puede editar.</item>
+        <item quantity="other">Se conservan %1$d condiciones más creadas en la web; aquí no se pueden editar.</item>
+    </plurals>
 </resources>

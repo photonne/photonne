@@ -6,7 +6,8 @@
 @* Editor de SmartRuleNode compartido por álbumes smart y Organizar-por-reglas:
    un grupo raíz (Todas=AND / Cualquiera=OR) con hojas de condición tipadas y
    preview en vivo con contador + muestra (el host aporta el endpoint de
-   preview vía Preview). v1 plano a propósito: sin grupos anidados ni "not",
+   preview vía Preview). Con InitialRule arranca de una regla guardada (editar
+   álbum). v1 plano a propósito: sin grupos anidados ni "not",
    y la condición de tags de usuario queda fuera (el API no expone catálogo de
    ids de tag); las estructurales (LivePhoto, Portrait…) sí están. *@
 
@@ -34,6 +35,15 @@
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
             Añade al menos una condición.
         </MudText>
+    }
+
+    @if (_preserved.Count > 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+            @(_preserved.Count == 1
+                ? "La regla tiene 1 condición más que este editor no muestra; se conserva al guardar."
+                : $"La regla tiene {_preserved.Count} condiciones más que este editor no muestra; se conservan al guardar.")
+        </MudAlert>
     }
 
     @foreach (var leaf in _leaves)
@@ -147,6 +157,8 @@
     [Parameter] public Func<SmartRuleNode, Task<SmartRulePreview?>>? Preview { get; set; }
     /// <summary>Regla actual (null si no hay condiciones válidas).</summary>
     [Parameter] public EventCallback<SmartRuleNode?> RuleChanged { get; set; }
+    /// <summary>Regla guardada con la que arrancar (editar un álbum smart).</summary>
+    [Parameter] public SmartRuleNode? InitialRule { get; set; }
 
     private static readonly Dictionary<string, string> TypeLabels = new()
     {
@@ -179,6 +191,9 @@
     }
 
     private readonly List<Leaf> _leaves = new();
+    // Nodos que este editor no sabe pintar (not, grupos anidados, tags de
+    // usuario…): se reenvían tal cual para que editar no los pierda.
+    private readonly List<SmartRuleNode> _preserved = new();
     private string _rootOp = "AND";
     private List<PersonSummary> _people = new();
     private List<LabelSummary> _objectLabels = new();
@@ -195,6 +210,51 @@
         _objectLabels = await Catalog.GetObjectLabelsAsync();
         _sceneLabels = await Catalog.GetSceneLabelsAsync();
         _folders = await FolderService.GetFoldersAsync();
+
+        if (InitialRule != null)
+        {
+            LoadRule(InitialRule);
+            NotifyChanged();
+        }
+    }
+
+    /// <summary>Inverso de BuildRule: raíz lógica sobre hojas, o una hoja suelta.</summary>
+    private void LoadRule(SmartRuleNode rule)
+    {
+        var children = rule.IsLogical ? rule.Conditions ?? new List<SmartRuleNode>() : new List<SmartRuleNode> { rule };
+        _rootOp = rule.IsLogical && string.Equals(rule.Op, "OR", StringComparison.OrdinalIgnoreCase) ? "OR" : "AND";
+        foreach (var node in children)
+        {
+            var leaf = FromNode(node);
+            if (leaf != null) _leaves.Add(leaf);
+            else _preserved.Add(node);
+        }
+    }
+
+    private static Leaf? FromNode(SmartRuleNode node)
+    {
+        if (node.IsLogical) return null;
+        var match = string.Equals(node.Match, "all", StringComparison.OrdinalIgnoreCase) ? "all" : "any";
+        return node.Type?.ToLowerInvariant() switch
+        {
+            "daterange" => new Leaf { Type = "daterange", From = node.From, To = node.To },
+            "folder" => new Leaf
+            {
+                Type = "folder", Guids = node.FolderIds?.ToList() ?? new(),
+                IncludeSubfolders = node.IncludeSubfolders ?? true
+            },
+            "person" => new Leaf { Type = "person", Guids = node.PersonIds?.ToList() ?? new(), Match = match },
+            "object" => new Leaf { Type = "object", Labels = node.Labels?.ToList() ?? new(), Match = match },
+            "scene" => new Leaf { Type = "scene", Labels = node.Labels?.ToList() ?? new(), Match = match },
+            "mediatype" when node.MediaType != null => new Leaf { Type = "mediatype", Text = node.MediaType },
+            "favorite" => new Leaf { Type = "favorite", BoolValue = node.Value ?? true },
+            // Solo las estructurales: los tags de usuario (UserTagIds) no tienen UI aquí.
+            "tag" when node.TagType != null && node.UserTagIds is not { Count: > 0 } =>
+                new Leaf { Type = "tag", Text = node.TagType },
+            "ocr" when node.Query != null => new Leaf { Type = "ocr", Text = node.Query },
+            "text" when node.Query != null => new Leaf { Type = "text", Text = node.Query },
+            _ => null
+        };
     }
 
     private RenderFragment MatchSelector(Leaf leaf) => __builder =>
@@ -222,7 +282,8 @@
     /// <summary>Construye la regla actual, o null si no hay hojas útiles.</summary>
     public SmartRuleNode? BuildRule()
     {
-        var nodes = _leaves.Select(ToNode).Where(n => n != null).Cast<SmartRuleNode>().ToList();
+        var nodes = _leaves.Select(ToNode).Where(n => n != null).Cast<SmartRuleNode>()
+            .Concat(_preserved).ToList();
         if (nodes.Count == 0) return null;
         if (nodes.Count == 1) return nodes[0];
         return new SmartRuleNode { Op = _rootOp, Conditions = nodes };
