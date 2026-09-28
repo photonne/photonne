@@ -182,6 +182,7 @@ public class AlbumsEndpoint : IEndpoint
                 CanDelete = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
                 HasActiveShareLink = albumsWithActiveLinks.Contains(a.Id),
+                Kind = a.Kind.ToString(),
                 CoverThumbnailUrl = a.CoverAsset?.Thumbnails
                     .FirstOrDefault(t => t.Size == ThumbnailSize.Medium) != null
                     ? $"/api/assets/{a.CoverAssetId}/thumbnail?size=Medium"

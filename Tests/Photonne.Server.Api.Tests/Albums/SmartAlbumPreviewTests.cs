@@ -295,7 +295,7 @@ public sealed class SmartAlbumPreviewTests : IntegrationTestBase
 
     // ── List count + cover reflect the live rule (no AlbumAssets rows) ───────
 
-    private sealed record AlbumListItem(Guid Id, int AssetCount);
+    private sealed record AlbumListItem(Guid Id, int AssetCount, string Kind);
 
     [Fact]
     public async Task SmartAlbum_ListShowsResolvedCount_NotZero()
@@ -309,6 +309,7 @@ public sealed class SmartAlbumPreviewTests : IntegrationTestBase
         var list = await w.Client.GetFromJsonAsync<List<AlbumListItem>>("/api/albums");
         var listed = list!.Single(a => a.Id == album.Id);
         Assert.Equal(3, listed.AssetCount); // beachDog, both, nietoOnly — not 0
+        Assert.Equal("Smart", listed.Kind); // the clients pick the editor from the list
     }
 
     [Fact]
