@@ -32,3 +32,8 @@ Actualiza:
 
 No re-bumpea en `--amend` manual, merges, ni rebase/cherry-pick en curso, ni
 cuando el commit ya trae un cambio de versión hecho a mano.
+
+Los mínimos de compatibilidad `PhotonneMinClientVersion` y
+`PhotonneMinServerVersion` del mismo `Directory.Build.props` **no** los toca
+el hook: se suben a mano cuando un cambio rompe el contrato de la API o la app
+empieza a depender de algo nuevo del servidor (ver el comentario del fichero).

@@ -394,8 +394,8 @@ internal data class SetAlbumPermissionBody(
 )
 
 interface PhotonneApi {
-    /** Versión del servidor (GET /api/version, sin auth). */
-    suspend fun getServerVersion(): String
+    /** Versión del servidor y la app más antigua que atiende (GET /api/version, sin auth). */
+    suspend fun getServerVersion(): PublicVersionResponse
 
     /** Última release publicada (GET /api/version/latest-release). */
     suspend fun getLatestRelease(): LatestReleaseResponse
@@ -910,12 +910,12 @@ class PhotonneApiClient(
 
     private val baseUrl: String get() = baseUrlProvider()
 
-    override suspend fun getServerVersion(): String {
+    override suspend fun getServerVersion(): PublicVersionResponse {
         val response: HttpResponse = client.get("$baseUrl/api/version") {
             skipAuthRefresh()
         }
         response.ensureSuccess { "Server version fetch failed ($it)" }
-        return response.body<PublicVersionResponse>().version
+        return response.body<PublicVersionResponse>()
     }
 
     override suspend fun getLatestRelease(): LatestReleaseResponse {

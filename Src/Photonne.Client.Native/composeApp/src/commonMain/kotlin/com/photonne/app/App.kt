@@ -6107,6 +6107,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // Encima, la píldora "Sin conexión": el snackbar entra justo debajo de ella.
     val connectivityMonitor: com.photonne.app.data.api.ConnectivityMonitor = koinInject()
     val connectivity by connectivityMonitor.status.collectAsStateWithLifecycle()
+    // Y la de incompatibilidad app↔servidor, que explica fallos sueltos igual.
+    val compatibility by appVersionStore.compatibility.collectAsStateWithLifecycle()
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
             modifier = Modifier.padding(top = com.photonne.app.ui.main.subscreenChromeReservedTop()),
@@ -6116,6 +6118,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 status = connectivity,
                 onRetry = connectivityMonitor::retry
             )
+            com.photonne.app.ui.main.CompatibilityPill(compatibility = compatibility)
             com.photonne.app.ui.main.TopSnackbarHost(hostState = snackbarController.hostState)
         }
     }

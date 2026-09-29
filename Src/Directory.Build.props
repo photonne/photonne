@@ -3,6 +3,18 @@
     <!-- Versión única de la aplicación. Es la fuente de verdad y se inyecta
          en wwwroot/index.html (APP_VERSION) y wwwroot/service-worker.published.js
          (SW_VERSION) en build mediante el target StampAppVersion del cliente. -->
-    <Version>1.159.0</Version>
+    <Version>1.160.0</Version>
+
+    <!-- Compatibilidad entre el servidor y las apps nativas, que se actualizan
+         por separado. Se suben A MANO, nunca con el hook:
+         - PhotonneMinClientVersion: la app más antigua que este servidor
+           atiende bien. Súbelo a la versión del commit que rompe el contrato
+           de la API (quita o cambia un endpoint o un campo que las apps usan).
+         - PhotonneMinServerVersion: el servidor más antiguo que esta app
+           necesita. Súbelo cuando la app empiece a usar un endpoint o campo
+           nuevo del servidor.
+         Si alguno no se cumple, la app avisa de qué hay que actualizar. -->
+    <PhotonneMinClientVersion>1.159.0</PhotonneMinClientVersion>
+    <PhotonneMinServerVersion>1.159.0</PhotonneMinServerVersion>
   </PropertyGroup>
 </Project>

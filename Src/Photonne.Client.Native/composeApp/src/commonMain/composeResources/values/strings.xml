@@ -1650,6 +1650,12 @@
     <!-- Estado de conexión global -->
     <string name="connectivity_offline">Sin conexión</string>
     <string name="connectivity_server_unreachable">Sin conexión con %1$s</string>
+    <string name="compat_pill_client_too_old">Actualiza la app: el servidor necesita la v%1$s</string>
+    <string name="compat_pill_server_too_old">Actualiza el servidor: esta app necesita la v%1$s</string>
+    <string name="compat_card_title">La app y el servidor no son compatibles</string>
+    <string name="compat_card_client_too_old">El servidor necesita la app v%1$s o posterior y tienes la v%2$s. Actualiza la app: hasta entonces algunas funciones pueden fallar.</string>
+    <string name="compat_card_server_too_old">Esta app necesita el servidor v%1$s o posterior y el servidor tiene la v%2$s. Hay que actualizar el servidor (su imagen Docker): hasta entonces algunas funciones pueden fallar.</string>
+    <string name="compat_card_download">Descargar la app</string>
     <!-- Avisos de actividad del servidor fuera de la app -->
     <string name="activity_notification_channel">Actividad</string>
     <plurals name="activity_notification_title">

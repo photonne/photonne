@@ -1640,6 +1640,12 @@
     <!-- Global connection status -->
     <string name="connectivity_offline">Offline</string>
     <string name="connectivity_server_unreachable">Can't reach %1$s</string>
+    <string name="compat_pill_client_too_old">Update the app: the server needs v%1$s</string>
+    <string name="compat_pill_server_too_old">Update the server: this app needs v%1$s</string>
+    <string name="compat_card_title">The app and the server aren\'t compatible</string>
+    <string name="compat_card_client_too_old">The server needs app v%1$s or later and you have v%2$s. Update the app: until then some features may fail.</string>
+    <string name="compat_card_server_too_old">This app needs server v%1$s or later and the server runs v%2$s. The server (its Docker image) needs updating: until then some features may fail.</string>
+    <string name="compat_card_download">Download the app</string>
     <!-- Server activity alerts outside the app -->
     <string name="activity_notification_channel">Activity</string>
     <plurals name="activity_notification_title">

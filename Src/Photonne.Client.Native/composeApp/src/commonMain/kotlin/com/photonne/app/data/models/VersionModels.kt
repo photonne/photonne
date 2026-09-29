@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 /** Respuesta de `GET /api/version` (público, sin auth). */
 @Serializable
 data class PublicVersionResponse(
-    @SerialName("version") val version: String
+    @SerialName("version") val version: String,
+    /** La app más antigua que el servidor atiende; nulo en servidores anteriores a 1.160. */
+    @SerialName("minClientVersion") val minClientVersion: String? = null
 )
 
 /**

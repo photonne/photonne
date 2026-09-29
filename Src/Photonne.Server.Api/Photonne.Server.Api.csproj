@@ -12,6 +12,15 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- La app nativa más antigua que atiende este servidor (Directory.Build.props);
+             la publica GET /api/version. -->
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>PhotonneMinClientVersion</_Parameter1>
+            <_Parameter2>$(PhotonneMinClientVersion)</_Parameter2>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="ErrorOr" Version="2.1.1" />
         <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.17.1" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />

@@ -58,6 +58,10 @@ import com.photonne.app.PhotonneVersion
 import com.photonne.app.data.models.Attribution
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.compat_card_client_too_old
+import com.photonne.app.resources.compat_card_download
+import com.photonne.app.resources.compat_card_server_too_old
+import com.photonne.app.resources.compat_card_title
 import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
@@ -79,6 +83,7 @@ import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.data.version.ServerCompatibility
 import com.photonne.app.data.version.clientUpdateUrl
 import com.photonne.app.data.version.isNewerVersion
 import com.photonne.app.ui.util.openExternalUrl
@@ -200,6 +205,7 @@ fun MoreScreen(
     val updateAvailable = clientUpdateUrl != null &&
         isNewerVersion(latestRelease?.latestVersion, PhotonneVersion)
     val updateUrl = latestRelease?.releaseUrl?.takeIf { it.isNotBlank() } ?: clientUpdateUrl
+    val compatibility by versionStore.compatibility.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -321,6 +327,56 @@ fun MoreScreen(
                 label = stringResource(Res.string.action_logout),
                 onClick = onLogout
             )
+        }
+
+        // Detalle de la píldora global de incompatibilidad: qué versión tiene
+        // cada lado y cuál hay que actualizar.
+        val incompatible = compatibility
+        if (incompatible != ServerCompatibility.Compatible) {
+            item("compatibility") {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.lg),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.compat_card_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            text = when (incompatible) {
+                                is ServerCompatibility.ClientTooOld -> stringResource(
+                                    Res.string.compat_card_client_too_old,
+                                    incompatible.minClientVersion,
+                                    incompatible.clientVersion
+                                )
+                                is ServerCompatibility.ServerTooOld -> stringResource(
+                                    Res.string.compat_card_server_too_old,
+                                    incompatible.minServerVersion,
+                                    incompatible.serverVersion
+                                )
+                                ServerCompatibility.Compatible -> ""
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        if (incompatible is ServerCompatibility.ClientTooOld && updateUrl != null) {
+                            TextButton(onClick = { openExternalUrl(updateUrl) }) {
+                                Text(stringResource(Res.string.compat_card_download))
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if (updateAvailable) {

@@ -23,9 +23,9 @@ public class VersionEndpoint : IEndpoint
             .WithDescription("Gets the current application version and checks for updates on GitHub");
 
         // Endpoint público: solo devuelve la versión actual (sin info de
-        // updates, que sigue siendo admin). Lo usan los clientes para
-        // incluir la versión del servidor en los reportes de error
-        // que un usuario normal pueda compartir con su admin.
+        // updates, que sigue siendo admin) y la app más antigua que atiende.
+        // Lo usan los clientes para incluir la versión del servidor en los
+        // reportes de error y para avisar si servidor y app no son compatibles.
         app.MapGet("/api/version", GetPublicVersion)
             .WithTags("Version")
             .WithName("GetPublicVersion")
@@ -45,8 +45,18 @@ public class VersionEndpoint : IEndpoint
 
     private static IResult GetPublicVersion()
     {
-        return Results.Ok(new PublicVersionResponse { Version = ResolveCurrentVersion() });
+        return Results.Ok(new PublicVersionResponse
+        {
+            Version = ResolveCurrentVersion(),
+            MinClientVersion = ResolveMinClientVersion()
+        });
     }
+
+    private static string? ResolveMinClientVersion() =>
+        Assembly.GetExecutingAssembly()
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == "PhotonneMinClientVersion")
+            ?.Value is { Length: > 0 } min ? min : null;
 
     private static string ResolveCurrentVersion()
     {
@@ -169,6 +179,12 @@ public class VersionEndpoint : IEndpoint
 public sealed record PublicVersionResponse
 {
     public string Version { get; init; } = "";
+
+    /// <summary>
+    /// La app nativa más antigua que este servidor atiende bien; una más
+    /// antigua avisa de que hay que actualizarla. Nulo si no se fijó.
+    /// </summary>
+    public string? MinClientVersion { get; init; }
 }
 
 public sealed record LatestReleaseResponse
