@@ -140,7 +140,7 @@ public class UploadAssetsEndpoint : IEndpoint
             // background — failure there does NOT fail the upload.
             var fileInfo = new FileInfo(targetPath);
             var extension = Path.GetExtension(targetPath).ToLowerInvariant();
-            var assetType = GetAssetType(extension);
+            var assetType = MediaFileTypes.Classify(extension);
             var dbPath = await settingsService.VirtualizePathAsync(targetPath);
             var seedTz = await MetadataTimeZone.ResolveAsync(settingsService, cancellationToken);
 
@@ -244,12 +244,6 @@ public class UploadAssetsEndpoint : IEndpoint
 
         var sanitized = DeviceFolderSanitizer.Sanitize(deviceName);
         return sanitized == null ? basePath : $"{basePath}/{sanitized}";
-    }
-
-    internal static AssetType GetAssetType(string extension)
-    {
-        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif" };
-        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? AssetType.Image : AssetType.Video;
     }
 
     internal static async Task<Folder?> EnsureFolderRecordAsync(

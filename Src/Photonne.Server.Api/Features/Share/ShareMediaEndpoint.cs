@@ -167,8 +167,8 @@ public class ShareMediaEndpoint : IEndpoint
     internal static IResult? TryServeAsJpeg(string physicalPath, string fileName, bool? download)
     {
         var ext = Path.GetExtension(physicalPath).ToLowerInvariant();
-        var isHeic = ext is ".heic" or ".heif";
-        var isRawToLookAt = download != true && RawImageLoader.IsRawExtension(ext);
+        var isHeic = MediaFileTypes.IsHeic(ext);
+        var isRawToLookAt = download != true && MediaFileTypes.IsRaw(ext);
         if (!isHeic && !isRawToLookAt) return null;
 
         try

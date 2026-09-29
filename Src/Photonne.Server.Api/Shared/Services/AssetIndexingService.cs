@@ -63,6 +63,8 @@ public class AssetIndexingService
             if (existingByPath != null && existingByPath.Thumbnails.Any())
             {
                 Console.WriteLine($"[INDEX-FILE] Already indexed: {storedPath}");
+                // Before the enqueue: which ML tasks are missing depends on the type.
+                await CorrectTypeIfStaleAsync(existingByPath, physicalPath, ct);
                 await RefreshFileSnapshotIfChangedAsync(existingByPath, physicalPath, ct);
                 await EnqueueMissingEnrichmentAsync(existingByPath, ct);
                 return existingByPath;
@@ -96,7 +98,7 @@ public class AssetIndexingService
 
             var fileInfo = new FileInfo(physicalPath);
             var extension = fileInfo.Extension.TrimStart('.').ToLowerInvariant();
-            var assetType = DetermineAssetType(extension);
+            var assetType = MediaFileTypes.Classify(extension);
 
             // Linux hosts rewrite the birthtime when files are copied between
             // volumes (rsync preserves only mtime), so clamp the creation date
@@ -109,6 +111,8 @@ public class AssetIndexingService
             Asset asset;
             bool isNew;
 
+            // Both "already known" branches below re-derive the type too, for
+            // the same reason as CorrectTypeIfStaleAsync.
             if (existingByPath != null)
             {
                 // Update existing
@@ -116,6 +120,7 @@ public class AssetIndexingService
                 existingByPath.FileSize = fileInfo.Length;
                 existingByPath.FileModifiedAt = fileInfo.LastWriteTimeUtc;
                 existingByPath.IsFileMissing = false;
+                existingByPath.Type = assetType;
                 asset = existingByPath;
                 isNew = false;
             }
@@ -128,6 +133,7 @@ public class AssetIndexingService
                 existingByChecksum.FileModifiedAt = fileInfo.LastWriteTimeUtc;
                 existingByChecksum.FileSize = fileInfo.Length;
                 existingByChecksum.IsFileMissing = false;
+                existingByChecksum.Type = assetType;
                 asset = existingByChecksum;
                 isNew = false;
             }
@@ -220,6 +226,22 @@ public class AssetIndexingService
     }
 
     /// <summary>
+    /// Puts right the type of an already-indexed asset when it no longer
+    /// matches what its extension says. A row stored under an older rule (a
+    /// RAW the upload filed as a video) is corrected by the next scan, without
+    /// having to write a migration each time the classification changes.
+    /// </summary>
+    private async Task CorrectTypeIfStaleAsync(Asset asset, string physicalPath, CancellationToken ct)
+    {
+        var expected = MediaFileTypes.Classify(Path.GetExtension(physicalPath));
+        if (asset.Type == expected) return;
+
+        Console.WriteLine($"[INDEX-FILE] Type corrected {asset.Type} -> {expected}: {asset.FullPath}");
+        asset.Type = expected;
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
     /// Keeps the cheap filesystem facts (dates, size) of an already-indexed
     /// asset in sync with the disk — no re-hash, one UPDATE only when something
     /// actually changed. Without this, the early-return above left the date
@@ -298,14 +320,6 @@ public class AssetIndexingService
             await _enrichmentService.EnqueueAsync(asset.Id, taskType, ct);
         }
     }
-
-    private static AssetType DetermineAssetType(string extension) => extension switch
-    {
-        "jpg" or "jpeg" or "png" or "gif" or "bmp" or "webp" or "tiff" or "tif" or "heic" or "heif"
-            or "raw" or "cr2" or "cr3" or "nef" or "arw" or "dng" or "orf" or "rw2" or "pef" or "raf" or "srw" => AssetType.Image,
-        "mp4" or "mov" or "avi" or "mkv" or "wmv" or "flv" or "webm" or "m4v" or "3gp" => AssetType.Video,
-        _ => AssetType.Image
-    };
 
     /// <summary>
     /// Resolves the owner and folder for a file at <paramref name="physicalPath"/>

@@ -141,7 +141,7 @@ public class AssetPendingEndpoint : IEndpoint
         var type = GetAssetType(extension);
 
         // HEIC/HEIF images are not supported by most browsers, convert to JPEG on-the-fly
-        if (extension is ".heic" or ".heif")
+        if (MediaFileTypes.IsHeic(extension))
         {
             using var image = new MagickImage(physicalPath);
             image.AutoOrient();
@@ -152,7 +152,7 @@ public class AssetPendingEndpoint : IEndpoint
         }
 
         // Same for RAW: the browser needs something it can paint.
-        if (RawImageLoader.IsRawExtension(extension))
+        if (MediaFileTypes.IsRaw(extension))
         {
             try
             {
@@ -221,7 +221,7 @@ public class AssetPendingEndpoint : IEndpoint
                 };
 
                 var extension2 = Path.GetExtension(physicalPath).ToLowerInvariant();
-                if (extension2 is ".heic" or ".heif" || RawImageLoader.IsRawExtension(extension2))
+                if (MediaFileTypes.IsHeic(extension2) || MediaFileTypes.IsRaw(extension2))
                 {
                     // SixLabors.ImageSharp no soporta HEIC ni RAW, usar Magick.NET
                     using var magickImage = RawImageLoader.Load(physicalPath);
@@ -317,13 +317,7 @@ public class AssetPendingEndpoint : IEndpoint
         return fullPath.StartsWith(fullAssetsPath, StringComparison.OrdinalIgnoreCase);
     }
 
-    private AssetType GetAssetType(string extension)
-    {
-        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif" };
-        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) || RawImageLoader.IsRawExtension(extension)
-            ? AssetType.Image
-            : AssetType.Video;
-    }
+    private static AssetType GetAssetType(string extension) => MediaFileTypes.Classify(extension);
 
     private string GetContentType(string extension, AssetType type)
     {

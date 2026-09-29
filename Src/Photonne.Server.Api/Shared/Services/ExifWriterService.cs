@@ -165,13 +165,7 @@ public class ExifWriterService
         }
     }
 
-    private static bool IsVideoFile(string extension)
-    {
-        var exts = new[] { ".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".m4v",
-                           ".3gp", ".mpeg", ".mpg", ".3g2", ".3gpp", ".amv", ".asf",
-                           ".f4v", ".m2v", ".mp2", ".mpe", ".mpv", ".ogv", ".qt", ".vob" };
-        return exts.Contains(extension, StringComparer.OrdinalIgnoreCase);
-    }
+    private static bool IsVideoFile(string extension) => MediaFileTypes.IsVideo(extension);
 
     // Formats where Magick.NET can reliably round-trip an EXIF profile. RAW
     // formats (cr2, nef, arw, dng, …) are intentionally excluded — they're read

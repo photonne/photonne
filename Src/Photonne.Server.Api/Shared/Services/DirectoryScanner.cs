@@ -4,22 +4,6 @@ namespace Photonne.Server.Api.Shared.Services;
 
 public class DirectoryScanner
 {
-    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif",
-        // RAW formats
-        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".pef", ".raf", ".srw"
-    };
-    
-    private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".mpeg", ".mpg", ".3g2", ".3gpp", ".amv", ".asf", ".f4v", ".m2v", ".mp2", ".mpe", ".mpv", ".ogv", ".qt", ".vob"
-    };
-    
-    private static readonly HashSet<string> AllowedExtensions = new(
-        ImageExtensions.Concat(VideoExtensions), 
-        StringComparer.OrdinalIgnoreCase);
-
     /// <summary>
     /// Recursively scans a directory and returns all media files (images and videos).
     /// Ignores hidden files and unsupported formats. Kept for callers that only
@@ -95,7 +79,7 @@ public class DirectoryScanner
                     }
                     
                     // Verificar si está permitida (comparación case-insensitive)
-                    var isAllowed = AllowedExtensions.Contains(normalizedExtension);
+                    var isAllowed = MediaFileTypes.IsSupported(normalizedExtension);
                     
                     // Log detallado para archivos específicos
                     if (normalizedExtension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || 
@@ -120,7 +104,7 @@ public class DirectoryScanner
                                 continue;
                             }
                             
-                            var assetType = ImageExtensions.Contains(normalizedExtension) ? AssetType.Image : AssetType.Video;
+                            var assetType = MediaFileTypes.Classify(normalizedExtension);
                             
                             var createdUtc = fileInfo.CreationTimeUtc;
                             var modifiedUtc = fileInfo.LastWriteTimeUtc;

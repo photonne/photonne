@@ -656,25 +656,12 @@ public class ThumbnailGeneratorService
         return missing;
     }
     
-    private bool IsImageFile(string extension)
-    {
-        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif",
-                                      ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".pef", ".raf", ".srw" };
-        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
-    }
+    private static bool IsImageFile(string extension) => MediaFileTypes.IsImage(extension);
 
-    private static bool IsRawOrHeicFile(string extension)
-    {
-        var heicExtensions = new[] { ".heic", ".heif" };
-        return heicExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase)
-            || RawImageLoader.IsRawExtension(extension);
-    }
-    
-    private bool IsVideoFile(string extension)
-    {
-        var videoExtensions = new[] { ".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".mpeg", ".mpg", ".3g2", ".3gpp", ".amv", ".asf", ".f4v", ".m2v", ".mp2", ".mpe", ".mpv", ".ogv", ".qt", ".vob" };
-        return videoExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
-    }
+    private static bool IsRawOrHeicFile(string extension) =>
+        MediaFileTypes.IsHeic(extension) || MediaFileTypes.IsRaw(extension);
+
+    private static bool IsVideoFile(string extension) => MediaFileTypes.IsVideo(extension);
 }
 
 /// <summary>

@@ -541,19 +541,7 @@ public class ExifExtractorService
         }
     }
 
-    private static bool IsVideoFile(string extension)
-    {
-        var exts = new[] { ".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".m4v",
-                           ".3gp", ".mpeg", ".mpg", ".3g2", ".3gpp", ".amv", ".asf",
-                           ".f4v", ".m2v", ".mp2", ".mpe", ".mpv", ".ogv", ".qt", ".vob" };
-        return exts.Contains(extension, StringComparer.OrdinalIgnoreCase);
-    }
+    private static bool IsVideoFile(string extension) => MediaFileTypes.IsVideo(extension);
 
-    private static bool IsImageFile(string extension)
-    {
-        var exts = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif",
-                           ".gif", ".webp", ".heic", ".heif",
-                           ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".pef", ".raf", ".srw" };
-        return exts.Contains(extension, StringComparer.OrdinalIgnoreCase);
-    }
+    private static bool IsImageFile(string extension) => MediaFileTypes.IsImage(extension);
 }

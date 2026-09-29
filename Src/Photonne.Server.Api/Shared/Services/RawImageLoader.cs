@@ -27,9 +27,6 @@ namespace Photonne.Server.Api.Shared.Services;
 /// </summary>
 public static class RawImageLoader
 {
-    private static readonly string[] RawExtensions =
-        { ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".pef", ".raf", ".srw" };
-
     private const ushort TagNewSubFileType = 254;
     private const ushort TagImageWidth = 256;
     private const ushort TagImageLength = 257;
@@ -55,9 +52,6 @@ public static class RawImageLoader
     private const int MaxEntriesPerIfd = 512;
     private const long MinPreviewBytes = 1024;
     private const long MaxPreviewBytes = 64L * 1024 * 1024;
-
-    public static bool IsRawExtension(string extension) =>
-        RawExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Opens the file. Throws the decoder's own exception when neither the

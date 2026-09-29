@@ -156,7 +156,7 @@ public class ShareUploadEndpoint : IEndpoint
 
             var fileInfo = new FileInfo(targetPath);
             var extension = Path.GetExtension(targetPath).ToLowerInvariant();
-            var assetType = UploadAssetsEndpoint.GetAssetType(extension);
+            var assetType = MediaFileTypes.Classify(extension);
             var dbPath = await settingsService.VirtualizePathAsync(targetPath);
             var seedTz = await MetadataTimeZone.ResolveAsync(settingsService, cancellationToken);
 

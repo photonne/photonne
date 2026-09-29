@@ -37,13 +37,9 @@ public static class AssetDownloadFormats
         return false;
     }
 
-    public static bool IsHeic(string extension) =>
-        extension.Equals(".heic", StringComparison.OrdinalIgnoreCase)
-        || extension.Equals(".heif", StringComparison.OrdinalIgnoreCase);
-
     /// <summary>True for the formats that can leave as a JPEG: RAW and HEIC/HEIF.</summary>
     public static bool IsConvertible(string extension) =>
-        IsHeic(extension) || RawImageLoader.IsRawExtension(extension);
+        MediaFileTypes.IsHeic(extension) || MediaFileTypes.IsRaw(extension);
 
     /// <summary>
     /// Whether a single download converts the file. Without a format the
@@ -54,7 +50,7 @@ public static class AssetDownloadFormats
     {
         AssetDownloadFormat.Jpeg => IsConvertible(extension),
         AssetDownloadFormat.Original => false,
-        _ => IsHeic(extension),
+        _ => MediaFileTypes.IsHeic(extension),
     };
 
     /// <summary>
