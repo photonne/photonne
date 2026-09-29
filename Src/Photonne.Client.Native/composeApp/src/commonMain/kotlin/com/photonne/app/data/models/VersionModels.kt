@@ -10,6 +10,16 @@ data class PublicVersionResponse(
 )
 
 /**
+ * Respuesta de `GET /api/version/latest-release`: la última release de GitHub,
+ * que es la que trae instaladores. Nulos si no hay o no se pudo consultar.
+ */
+@Serializable
+data class LatestReleaseResponse(
+    val latestVersion: String? = null,
+    val releaseUrl: String? = null
+)
+
+/**
  * Un dataset de terceros que el servidor redistribuye, de `GET /api/attributions`.
  *
  * Se pregunta al servidor en vez de escribirlo en el cliente porque solo el

@@ -1,6 +1,7 @@
 package com.photonne.app.data.version
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.models.LatestReleaseResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +23,22 @@ class AppVersionStore(private val api: PhotonneApi) {
         // saldrá sin la versión del servidor; no es un dato bloqueante.
     }
 
+    private val _latestRelease = MutableStateFlow<LatestReleaseResponse?>(null)
+
+    /**
+     * Última release publicada, para avisar de instaladores nuevos. No se
+     * deduce de [serverVersion]: el servidor se despliega en cada push y va
+     * por delante de las releases, que son las que traen instaladores.
+     */
+    val latestRelease: StateFlow<LatestReleaseResponse?> = _latestRelease.asStateFlow()
+
+    suspend fun refreshLatestRelease() {
+        runCatching { api.getLatestRelease() }
+            .onSuccess { _latestRelease.value = it }
+    }
+
     fun clear() {
         _serverVersion.value = null
+        _latestRelease.value = null
     }
 }

@@ -26,6 +26,7 @@ import com.photonne.app.data.models.BulkSuggestionResult
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PeoplePage
 import com.photonne.app.data.models.Person
+import com.photonne.app.data.models.LatestReleaseResponse
 import com.photonne.app.data.models.PublicVersionResponse
 import com.photonne.app.data.models.PersonAssetsPage
 import com.photonne.app.data.models.PersonFacesPage
@@ -395,6 +396,9 @@ internal data class SetAlbumPermissionBody(
 interface PhotonneApi {
     /** Versión del servidor (GET /api/version, sin auth). */
     suspend fun getServerVersion(): String
+
+    /** Última release publicada (GET /api/version/latest-release). */
+    suspend fun getLatestRelease(): LatestReleaseResponse
 
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
@@ -912,6 +916,12 @@ class PhotonneApiClient(
         }
         response.ensureSuccess { "Server version fetch failed ($it)" }
         return response.body<PublicVersionResponse>().version
+    }
+
+    override suspend fun getLatestRelease(): LatestReleaseResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/version/latest-release")
+        response.ensureSuccess { "Latest release fetch failed ($it)" }
+        return response.body()
     }
 
     override suspend fun login(username: String, password: String, deviceId: String): LoginResponse {

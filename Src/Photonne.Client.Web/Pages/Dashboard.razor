@@ -70,6 +70,10 @@
                     {
                         @($"Disponible v{_version.LatestVersion}")
                     }
+                    else if (_version?.IsAhead == true)
+                    {
+                        @($"Por delante de la release v{_version.LatestVersion}")
+                    }
                     else if (_version is not null)
                     {
                         @("Estás al día")
@@ -264,6 +268,6 @@
         return value.ToString("N0");
     }
 
-    private sealed record VersionInfo(string CurrentVersion, string? LatestVersion, bool HasUpdate);
+    private sealed record VersionInfo(string CurrentVersion, string? LatestVersion, bool HasUpdate, bool IsAhead);
     private sealed record MlPendingTotal(int Count);
 }

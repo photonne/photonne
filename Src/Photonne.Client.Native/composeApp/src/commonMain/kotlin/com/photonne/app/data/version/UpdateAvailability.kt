@@ -1,21 +1,22 @@
 package com.photonne.app.data.version
 
 /**
- * URL donde esta plataforma puede descargar una versión nueva del cliente, o
- * null si la plataforma no se actualiza a mano (móvil va por tienda/sideload y
+ * URL de respaldo donde esta plataforma puede descargar una versión nueva del
+ * cliente (si el servidor no da la de la release concreta), o null si la plataforma no se actualiza a mano (móvil va por tienda/sideload y
  * de momento no avisamos). Gatea el aviso de actualización de MoreScreen.
  */
 expect val clientUpdateUrl: String?
 
 /**
- * True si [server] es estrictamente más nueva que [client]. Comparación
- * major.minor.patch numérica (los sufijos tras '-' se ignoran): servidor y
- * clientes versionan juntos desde Directory.Build.props, así que "el servidor
- * va por delante" significa "hay un cliente más nuevo publicado".
+ * True si [candidate] es estrictamente más nueva que [current]. Comparación
+ * major.minor.patch numérica (los sufijos tras '-' se ignoran). Servidor y
+ * clientes versionan juntos desde Directory.Build.props, pero solo las
+ * releases traen instaladores: compara contra la última release, no contra
+ * la versión del servidor.
  */
-fun isNewerVersion(server: String?, client: String): Boolean {
-    val s = parseVersion(server ?: return false) ?: return false
-    val c = parseVersion(client) ?: return false
+fun isNewerVersion(candidate: String?, current: String): Boolean {
+    val s = parseVersion(candidate ?: return false) ?: return false
+    val c = parseVersion(current) ?: return false
     return s > c
 }
 

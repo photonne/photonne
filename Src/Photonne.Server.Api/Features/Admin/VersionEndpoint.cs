@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -10,6 +9,9 @@ namespace Photonne.Server.Api.Features.Admin;
 
 public class VersionEndpoint : IEndpoint
 {
+    private const string LatestReleaseUrl = "https://api.github.com/repos/photonne/photonne/releases/latest";
+    private const string LatestReleaseCacheKey = "version:latest-release";
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/admin")
@@ -29,6 +31,16 @@ public class VersionEndpoint : IEndpoint
             .WithName("GetPublicVersion")
             .WithDescription("Returns the current server version. Public, no auth required.")
             .AllowAnonymous();
+
+        // Última release publicada, para que los clientes que se instalan a
+        // mano (escritorio) sepan si hay un instalador más nuevo. No va en
+        // /api/version porque ese lo usa la sonda del login y no debe esperar
+        // a GitHub; y pide sesión para que nadie use el servidor de proxy.
+        app.MapGet("/api/version/latest-release", GetLatestRelease)
+            .WithTags("Version")
+            .WithName("GetLatestRelease")
+            .WithDescription("Returns the latest published release of Photonne on GitHub.")
+            .RequireAuthorization();
     }
 
     private static IResult GetPublicVersion()
@@ -49,75 +61,103 @@ public class VersionEndpoint : IEndpoint
         return plusIdx >= 0 ? raw[..plusIdx] : raw;
     }
 
+    private static async Task<IResult> GetLatestRelease(
+        [FromServices] IMemoryCache cache,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        CancellationToken ct)
+    {
+        var check = await CheckLatestReleaseAsync(cache, httpClientFactory, refresh: false, ct);
+        return Results.Ok(new LatestReleaseResponse
+        {
+            LatestVersion = check.Release?.Version,
+            ReleaseUrl = check.Release?.HtmlUrl
+        });
+    }
+
     private static async Task<IResult> GetVersion(
         [FromServices] IMemoryCache cache,
         [FromServices] IHttpClientFactory httpClientFactory,
         [FromQuery] bool? refresh,
         CancellationToken ct)
     {
-        const string cacheKey = "admin:version";
-        if (refresh != true && cache.TryGetValue(cacheKey, out VersionInfoResponse? cached))
-            return Results.Ok(cached);
-
         var currentVersion = ResolveCurrentVersion();
+        var check = await CheckLatestReleaseAsync(cache, httpClientFactory, refresh == true, ct);
+        var release = check.Release;
 
-        string? latestVersion = null;
-        string? latestReleaseUrl = null;
-        string? releaseNotes = null;
-        DateTimeOffset? publishedAt = null;
-        string? checkError = null;
+        // Tres estados, no dos: un servidor desplegado desde main antes de
+        // que su release exista (o una imagen local) va POR DELANTE de la
+        // última release, y eso no es lo mismo que "al día".
+        bool hasUpdate = false, isAhead = false;
+        if (release is not null && Version.TryParse(currentVersion, out var cur) && Version.TryParse(release.Version, out var latest))
+        {
+            hasUpdate = latest > cur;
+            isAhead = latest < cur;
+        }
 
+        return Results.Ok(new VersionInfoResponse
+        {
+            CurrentVersion = currentVersion,
+            LatestVersion = release?.Version,
+            LatestReleaseUrl = release?.HtmlUrl,
+            ReleaseNotes = release?.Body,
+            PublishedAt = release?.PublishedAt,
+            HasUpdate = hasUpdate,
+            IsAhead = isAhead,
+            CheckError = check.Error,
+            CheckedAt = check.CheckedAt
+        });
+    }
+
+    /// <summary>
+    /// Consulta la última release de GitHub, cacheada una hora. Compartida por
+    /// el endpoint de admin y el de clientes para no gastar el límite de 60
+    /// peticiones/hora sin autenticar. Un repo sin releases no es un error.
+    /// </summary>
+    private static async Task<ReleaseCheck> CheckLatestReleaseAsync(
+        IMemoryCache cache, IHttpClientFactory httpClientFactory, bool refresh, CancellationToken ct)
+    {
+        if (!refresh && cache.TryGetValue(LatestReleaseCacheKey, out ReleaseCheck? cached) && cached is not null)
+            return cached;
+
+        ReleaseCheck check;
         try
         {
             var client = httpClientFactory.CreateClient("github");
-            using var response = await client.GetAsync(
-                "https://api.github.com/repos/photonne/photonne/releases/latest", ct);
+            using var response = await client.GetAsync(LatestReleaseUrl, ct);
 
             if (response.IsSuccessStatusCode)
             {
                 var json = await response.Content.ReadAsStringAsync(ct);
                 var release = JsonSerializer.Deserialize<GitHubRelease>(json);
-                if (release is not null)
-                {
-                    latestVersion = release.TagName?.TrimStart('v');
-                    latestReleaseUrl = release.HtmlUrl;
-                    releaseNotes = release.Body;
-                    publishedAt = release.PublishedAt;
-                }
+                check = new ReleaseCheck(
+                    release?.TagName is null
+                        ? null
+                        : new LatestRelease(release.TagName.TrimStart('v'), release.HtmlUrl, release.Body, release.PublishedAt),
+                    null, DateTimeOffset.UtcNow);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                checkError = "No se encontraron releases publicadas en GitHub.";
+                check = new ReleaseCheck(null, null, DateTimeOffset.UtcNow);
             }
             else
             {
-                checkError = $"Error al consultar GitHub: {(int)response.StatusCode} {response.ReasonPhrase}";
+                check = new ReleaseCheck(null,
+                    $"Error al consultar GitHub: {(int)response.StatusCode} {response.ReasonPhrase}",
+                    DateTimeOffset.UtcNow);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            checkError = $"No se pudo conectar con GitHub: {ex.Message}";
+            check = new ReleaseCheck(null, $"No se pudo conectar con GitHub: {ex.Message}", DateTimeOffset.UtcNow);
         }
 
-        bool hasUpdate = false;
-        if (latestVersion is not null && Version.TryParse(currentVersion, out var cur) && Version.TryParse(latestVersion, out var latest))
-            hasUpdate = latest > cur;
-
-        var result = new VersionInfoResponse
-        {
-            CurrentVersion = currentVersion,
-            LatestVersion = latestVersion,
-            LatestReleaseUrl = latestReleaseUrl,
-            ReleaseNotes = releaseNotes,
-            PublishedAt = publishedAt,
-            HasUpdate = hasUpdate,
-            CheckError = checkError,
-            CheckedAt = DateTimeOffset.UtcNow
-        };
-
-        cache.Set(cacheKey, result, TimeSpan.FromHours(1));
-        return Results.Ok(result);
+        cache.Set(LatestReleaseCacheKey, check, TimeSpan.FromHours(1));
+        return check;
     }
+
+    private sealed record LatestRelease(string Version, string? HtmlUrl, string? Body, DateTimeOffset? PublishedAt);
+
+    private sealed record ReleaseCheck(LatestRelease? Release, string? Error, DateTimeOffset CheckedAt);
 
     private sealed record GitHubRelease(
         [property: JsonPropertyName("tag_name")] string? TagName,
@@ -131,6 +171,12 @@ public sealed record PublicVersionResponse
     public string Version { get; init; } = "";
 }
 
+public sealed record LatestReleaseResponse
+{
+    public string? LatestVersion { get; init; }
+    public string? ReleaseUrl { get; init; }
+}
+
 public sealed record VersionInfoResponse
 {
     public string CurrentVersion { get; init; } = "";
@@ -139,6 +185,8 @@ public sealed record VersionInfoResponse
     public string? ReleaseNotes { get; init; }
     public DateTimeOffset? PublishedAt { get; init; }
     public bool HasUpdate { get; init; }
+    /// <summary>La versión instalada es más nueva que la última release publicada.</summary>
+    public bool IsAhead { get; init; }
     public string? CheckError { get; init; }
     public DateTimeOffset CheckedAt { get; init; }
 }

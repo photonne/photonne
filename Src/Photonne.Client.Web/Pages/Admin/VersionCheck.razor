@@ -52,6 +52,12 @@
                                     Hay una nueva versión disponible: <strong>v@(_info.LatestVersion)</strong>
                                 </MudAlert>
                             }
+                            else if (_info.IsAhead)
+                            {
+                                <MudAlert Severity="Severity.Info" Class="mb-0">
+                                    Tu servidor va por delante de la última release publicada (v@(_info.LatestVersion)).
+                                </MudAlert>
+                            }
                             else if (_info.LatestVersion is not null)
                             {
                                 <MudAlert Severity="Severity.Success" Class="mb-0">
@@ -62,6 +68,12 @@
                             {
                                 <MudAlert Severity="Severity.Warning" Class="mb-0">
                                     No se pudo verificar la última versión.
+                                </MudAlert>
+                            }
+                            else
+                            {
+                                <MudAlert Severity="Severity.Info" Class="mb-0">
+                                    Todavía no hay releases publicadas en GitHub.
                                 </MudAlert>
                             }
                         </MudCardContent>
@@ -204,6 +216,7 @@
         string? ReleaseNotes,
         DateTimeOffset? PublishedAt,
         bool HasUpdate,
+        bool IsAhead,
         string? CheckError,
         DateTimeOffset CheckedAt);
 }

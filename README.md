@@ -403,6 +403,14 @@ varios minutos en función de tu conexión (la imagen ML lleva los modelos YOLO,
 CLIP y Places365 baked-in para que el primer arranque no dependa de descargas
 externas).
 
+Cada push a `main` que termina de publicar sus imágenes crea también la
+[release de GitHub](https://github.com/photonne/photonne/releases) `v<versión>`
+(con sus notas y los instaladores de escritorio), que es la que consulta el
+aviso de actualización del panel de administración. Además de `:latest`, cada
+imagen lleva la etiqueta de su versión (`:1.158.1`) y la del menor (`:1.158`):
+fíjala en `docker-compose.yml` si quieres actualizar solo cuando tú decidas o
+volver a una versión anterior.
+
 ### Compilando localmente
 
 ```bash

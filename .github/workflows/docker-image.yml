@@ -10,9 +10,43 @@ on:
 # images are pushed by digest only (no tags), so the registry isn't polluted
 # with intermediate per-arch tags — only the final :latest / :sha-... manifest
 # lists carry tags.
+#
+# Versioning: every image carries the app version from Directory.Build.props
+# as a tag (:1.158.1, :1.158) besides :latest / :sha-..., and once ALL images
+# are pushed the `release` job tags the commit and publishes the GitHub
+# Release that the servers' update check and the desktop app read. So a
+# release existing always means its images exist.
+
+# One main build at a time, in push order: two overlapping runs could leave
+# :latest pointing at the older image and publish releases out of order. A
+# queued run is superseded by a newer push, which is fine: the newest wins.
+concurrency:
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      minor: ${{ steps.read.outputs.minor }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Read version from Directory.Build.props
+        id: read
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Src/Directory.Build.props | head -n1)
+          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Unexpected version '$version' in Src/Directory.Build.props"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "minor=${version%.*}" >> "$GITHUB_OUTPUT"
+
   build-api:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -52,6 +86,8 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/photonne
+          labels: |
+            org.opencontainers.image.version=${{ needs.version.outputs.version }}
 
       - name: Build and push by digest
         id: build
@@ -84,7 +120,7 @@ jobs:
           retention-days: 1
 
   merge-api:
-    needs: build-api
+    needs: [version, build-api]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -113,6 +149,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/photonne
           tags: |
+            type=raw,value=${{ needs.version.outputs.version }},priority=1000,enable={{is_default_branch}}
+            type=raw,value=${{ needs.version.outputs.minor }},enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
 
@@ -127,6 +165,7 @@ jobs:
           docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/photonne:${{ steps.meta.outputs.version }}
 
   build-ml:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -166,6 +205,8 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/photonne-ml
+          labels: |
+            org.opencontainers.image.version=${{ needs.version.outputs.version }}
 
       - name: Build and push by digest
         id: build
@@ -194,7 +235,7 @@ jobs:
           retention-days: 1
 
   merge-ml:
-    needs: build-ml
+    needs: [version, build-ml]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -223,6 +264,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/photonne-ml
           tags: |
+            type=raw,value=${{ needs.version.outputs.version }},priority=1000,enable={{is_default_branch}}
+            type=raw,value=${{ needs.version.outputs.minor }},enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
 
@@ -240,8 +283,9 @@ jobs:
   # base has no arm64 wheels for onnxruntime-gpu and Jetson is out of scope.
   # Single-arch, so we push the tag directly (no push-by-digest + manifest
   # merge dance the multi-arch jobs above need). Published as :latest-gpu /
-  # :sha-<sha>-gpu; opt in via docker-compose.gpu.yml.
+  # :<version>-gpu / :sha-<sha>-gpu; opt in via docker-compose.gpu.yml.
   build-ml-gpu:
+    needs: version
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -272,8 +316,12 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/photonne-ml
           tags: |
+            type=raw,value=${{ needs.version.outputs.version }}-gpu,priority=1000,enable={{is_default_branch}}
+            type=raw,value=${{ needs.version.outputs.minor }}-gpu,enable={{is_default_branch}}
             type=raw,value=latest-gpu,enable={{is_default_branch}}
             type=sha,prefix=sha-,suffix=-gpu
+          labels: |
+            org.opencontainers.image.version=${{ needs.version.outputs.version }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -286,3 +334,51 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=ml-gpu
           cache-to: type=gha,mode=max,scope=ml-gpu
+
+  # Publishes the GitHub Release v<version> once every image is in the
+  # registry. Idempotent: a re-run, or a push that didn't bump the version
+  # (e.g. a commit made on github.com, which skips the local hook), finds the
+  # tag and does nothing.
+  release:
+    needs: [version, merge-api, merge-ml, build-ml-gpu]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
+      created: ${{ steps.publish.outputs.created }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history + tags for the release notes
+
+      - name: Create tag and release
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          tag="v$VERSION"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" > /dev/null 2>&1 || git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            echo "::notice::$tag already exists; no new release (was the version bumped?)"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ./scripts/release-notes.sh "$tag" "$GITHUB_SHA" > "$RUNNER_TEMP/notes.md"
+          gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" \
+            --notes-file "$RUNNER_TEMP/notes.md" --latest
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+  # A release created with GITHUB_TOKEN doesn't fire `release: published` in
+  # other workflows, so the desktop installers are built from here.
+  desktop:
+    needs: release
+    if: needs.release.outputs.created == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/desktop-release.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}

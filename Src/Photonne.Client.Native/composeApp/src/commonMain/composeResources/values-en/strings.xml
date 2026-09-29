@@ -732,6 +732,8 @@
     <string name="admin_server_checked_at">Checked at</string>
     <string name="admin_server_up_to_date">Your installation is up to date.</string>
     <string name="admin_server_update_available">An update is available.</string>
+    <string name="admin_server_ahead">Your server is ahead of the latest released version.</string>
+    <string name="admin_server_no_releases">No versions have been released yet.</string>
     <string name="admin_server_check_error">Update check failed: %1$s</string>
     <string name="admin_server_release_notes">Release notes</string>
     <string name="admin_server_release_url">Release page</string>

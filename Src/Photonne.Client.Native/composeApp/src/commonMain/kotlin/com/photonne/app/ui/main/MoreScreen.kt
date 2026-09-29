@@ -46,6 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -187,13 +188,18 @@ fun MoreScreen(
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     val reservedTop = subscreenChromeReservedTop()
-    // Aviso de actualización: servidor y clientes versionan juntos, así que un
-    // servidor por delante implica un cliente publicado más nuevo. Solo en las
-    // plataformas con URL de descarga (escritorio).
+    // Aviso de actualización: hay una release publicada (con instaladores) más
+    // nueva que este cliente. No vale comparar con el servidor: se despliega en
+    // cada push y va por delante de las releases. Solo en las plataformas con
+    // URL de descarga (escritorio).
     val versionStore: AppVersionStore = koinInject()
-    val serverVersion by versionStore.serverVersion.collectAsStateWithLifecycle()
+    val latestRelease by versionStore.latestRelease.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        if (clientUpdateUrl != null) versionStore.refreshLatestRelease()
+    }
     val updateAvailable = clientUpdateUrl != null &&
-        isNewerVersion(serverVersion, PhotonneVersion)
+        isNewerVersion(latestRelease?.latestVersion, PhotonneVersion)
+    val updateUrl = latestRelease?.releaseUrl?.takeIf { it.isNotBlank() } ?: clientUpdateUrl
 
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -333,12 +339,12 @@ fun MoreScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Hay una versión nueva de Photonne (v${serverVersion.orEmpty()})",
+                            text = "Hay una versión nueva de Photonne (v${latestRelease?.latestVersion.orEmpty()})",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             textAlign = TextAlign.Center
                         )
-                        TextButton(onClick = { clientUpdateUrl?.let(::openExternalUrl) }) {
+                        TextButton(onClick = { updateUrl?.let(::openExternalUrl) }) {
                             Text("Descargar actualización")
                         }
                     }

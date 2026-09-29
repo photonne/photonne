@@ -739,6 +739,8 @@
     <string name="admin_server_checked_at">Comprobado el</string>
     <string name="admin_server_up_to_date">Tu instalación está al día.</string>
     <string name="admin_server_update_available">Hay una actualización disponible.</string>
+    <string name="admin_server_ahead">Tu servidor va por delante de la última versión publicada.</string>
+    <string name="admin_server_no_releases">Todavía no hay versiones publicadas.</string>
     <string name="admin_server_check_error">Error al comprobar actualizaciones: %1$s</string>
     <string name="admin_server_release_notes">Notas de la versión</string>
     <string name="admin_server_release_url">Página de la versión</string>

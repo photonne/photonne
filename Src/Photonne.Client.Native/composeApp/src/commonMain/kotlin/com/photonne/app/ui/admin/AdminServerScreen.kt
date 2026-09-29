@@ -31,6 +31,8 @@ import com.photonne.app.resources.admin_server_check_again
 import com.photonne.app.resources.admin_server_release_url
 import com.photonne.app.resources.admin_server_up_to_date
 import com.photonne.app.resources.admin_server_update_available
+import com.photonne.app.resources.admin_server_ahead
+import com.photonne.app.resources.admin_server_no_releases
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
 import com.photonne.app.ui.theme.EmptyState
@@ -93,19 +95,27 @@ fun AdminServerScreen(
                                 value = adminDateTime(checked) ?: checked
                             )
                         }
-                        Spacer(Modifier.height(Spacing.xs))
-                        Text(
-                            text = stringResource(
-                                if (info.hasUpdate) Res.string.admin_server_update_available
-                                else Res.string.admin_server_up_to_date
-                            ),
-                            color = if (info.hasUpdate) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            style = MaterialTheme.typography.titleSmall
-                        )
+                        // Sin release que comparar y con error, el error de
+                        // abajo ya lo dice todo: no se pinta estado.
+                        val status = when {
+                            info.hasUpdate -> Res.string.admin_server_update_available
+                            info.isAhead -> Res.string.admin_server_ahead
+                            info.latestVersion != null -> Res.string.admin_server_up_to_date
+                            info.checkError.isNullOrBlank() -> Res.string.admin_server_no_releases
+                            else -> null
+                        }
+                        status?.let {
+                            Spacer(Modifier.height(Spacing.xs))
+                            Text(
+                                text = stringResource(it),
+                                color = if (info.hasUpdate) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        }
                         info.checkError?.takeIf { it.isNotBlank() }?.let { err ->
                             Text(
                                 stringResource(Res.string.admin_server_check_error, err),

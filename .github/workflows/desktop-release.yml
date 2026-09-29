@@ -1,7 +1,10 @@
 # Empaqueta la app de escritorio (DMG / MSI / DEB) en los tres SO y adjunta los
-# instaladores a la release de GitHub que dispara el workflow. También se puede
-# lanzar a mano (workflow_dispatch): entonces los instaladores quedan como
-# artifacts del run, sin release a la que subirlos.
+# instaladores a la release de GitHub. Lo llama docker-image.yml (workflow_call)
+# tras crear la release automática de cada push a main: una release creada con
+# GITHUB_TOKEN no dispara `release: published`. Ese disparador queda para las
+# releases creadas a mano. También se puede lanzar a mano (workflow_dispatch):
+# entonces los instaladores quedan como artifacts del run, sin release a la que
+# subirlos.
 #
 # Sin firma ni notarización (documentado en docs/desktop-install.md): en macOS
 # la app se abre con clic derecho > Abrir la primera vez; en Windows,
@@ -11,10 +14,17 @@ name: Desktop release
 on:
   release:
     types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to attach the installers to
+        required: true
+        type: string
   workflow_dispatch:
 
+# Por etiqueta: dos releases seguidas no deben cancelarse los instaladores.
 concurrency:
-  group: desktop-release-${{ github.ref }}
+  group: desktop-release-${{ inputs.tag || github.event.release.tag_name || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -69,10 +79,10 @@ jobs:
           retention-days: 14
 
       - name: Attach installer to release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || inputs.tag != ''
         working-directory: Src/Photonne.Client.Native
         shell: bash
         run: gh release upload "$TAG" ${{ matrix.artifact-glob }} --clobber
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}

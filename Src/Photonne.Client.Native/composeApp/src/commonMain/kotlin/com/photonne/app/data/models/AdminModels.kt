@@ -58,6 +58,8 @@ data class VersionInfoResponse(
     val releaseNotes: String? = null,
     val publishedAt: String? = null,
     val hasUpdate: Boolean = false,
+    /** La versión instalada es más nueva que la última release publicada. */
+    val isAhead: Boolean = false,
     val checkError: String? = null,
     val checkedAt: String? = null
 )

@@ -4,7 +4,7 @@ La app de escritorio es el mismo cliente Compose Multiplatform del móvil
 (mismas pantallas, mismas funciones de gestión) empaquetado para
 macOS/Windows/Linux. Los instaladores se publican como assets de cada
 [release de GitHub](https://github.com/photonne/photonne/releases/latest);
-la propia app avisa en **Más** cuando el servidor va por delante de tu versión.
+la propia app avisa en **Más** cuando hay una release más nueva que tu versión.
 
 ## Instalación
 
