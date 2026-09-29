@@ -134,22 +134,10 @@ public class ShareMediaEndpoint : IEndpoint
         var physicalPath = await settings.ResolvePhysicalPathAsync(asset.FullPath);
         if (!File.Exists(physicalPath)) return Results.NotFound();
 
+        var converted = TryServeAsJpeg(physicalPath, asset.FileName, download);
+        if (converted != null) return converted;
+
         var ext = Path.GetExtension(physicalPath).ToLowerInvariant();
-
-        // The public page is a browser: it can't paint a RAW. Same rule as
-        // /api/assets/{id}/content — JPEG to look at, original to download.
-        if (download != true && RawImageLoader.IsRawExtension(ext))
-        {
-            try
-            {
-                return Results.File(RawImageLoader.RenderJpeg(physicalPath), "image/jpeg");
-            }
-            catch (ImageMagick.MagickException ex)
-            {
-                Console.WriteLine($"[SHARE] RAW could not be rendered, serving the original: {ex.Message}");
-            }
-        }
-
         var contentType = ext switch
         {
             ".jpg" or ".jpeg" => "image/jpeg",
@@ -167,5 +155,34 @@ public class ShareMediaEndpoint : IEndpoint
             return Results.File(physicalPath, contentType, fileDownloadName: asset.FileName);
 
         return Results.File(physicalPath, contentType, enableRangeProcessing: true);
+    }
+
+    /// <summary>
+    /// The public page is a browser: it can't paint a HEIC or a RAW. Same
+    /// rules as /api/assets/{id}/content — a HEIC always leaves as JPEG, also
+    /// when downloaded; a RAW is a JPEG to look at and the untouched original
+    /// to download. Null when the file is served as it is, which includes a
+    /// file that could not be converted.
+    /// </summary>
+    internal static IResult? TryServeAsJpeg(string physicalPath, string fileName, bool? download)
+    {
+        var ext = Path.GetExtension(physicalPath).ToLowerInvariant();
+        var isHeic = ext is ".heic" or ".heif";
+        var isRawToLookAt = download != true && RawImageLoader.IsRawExtension(ext);
+        if (!isHeic && !isRawToLookAt) return null;
+
+        try
+        {
+            var jpegBytes = RawImageLoader.RenderJpeg(physicalPath);
+            return download == true
+                ? Results.File(jpegBytes, "image/jpeg",
+                    fileDownloadName: Path.GetFileNameWithoutExtension(fileName) + ".jpg")
+                : Results.File(jpegBytes, "image/jpeg");
+        }
+        catch (ImageMagick.MagickException ex)
+        {
+            Console.WriteLine($"[SHARE] {fileName} could not be converted to JPEG, serving the original: {ex.Message}");
+            return null;
+        }
     }
 }

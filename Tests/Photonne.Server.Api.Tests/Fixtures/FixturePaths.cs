@@ -46,4 +46,10 @@ public static class FixturePaths
     /// manual udta scan fallback.
     /// </summary>
     public static string VideoWithXyzGps => Path.Combine(Root, "sample-video-gps-xyz.mp4");
+
+    /// <summary>
+    /// <see cref="WithExif"/> converted to HEIC (100×100), generated with
+    /// <c>sips -s format heic sample-with-exif.jpg --out sample.heic</c>.
+    /// </summary>
+    public static string Heic => Path.Combine(Root, "sample.heic");
 }
