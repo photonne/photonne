@@ -194,6 +194,7 @@ import com.photonne.app.ui.folder.ManageFolderPermissionsDialog
 import com.photonne.app.ui.image.buildPhotonneImageLoader
 import com.photonne.app.ui.login.LoginScreen
 import com.photonne.app.ui.actions.AssetActionWorking
+import com.photonne.app.ui.actions.DownloadFormatSheet
 import com.photonne.app.ui.actions.ShareAssetsDialog
 import com.photonne.app.ui.actions.ShareLinkResultDialog
 import com.photonne.app.ui.main.AlbumsListTopBar
@@ -6034,6 +6035,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onDismiss = actionsViewModel::cancelShare,
             onShareDirectly = { actionsViewModel.shareDirectly(shareIds) },
             onCreateLink = { name -> actionsViewModel.createPhotonneLink(shareIds, name) }
+        )
+    }
+
+    val formatChooser = actionsState.formatChooser
+    if (formatChooser != null) {
+        DownloadFormatSheet(
+            chooser = formatChooser,
+            onDismiss = actionsViewModel::cancelFormatChoice,
+            onChoose = actionsViewModel::chooseFormat
         )
     }
 

@@ -606,6 +606,13 @@
     <string name="folder_discovery_remove">Quitar de mis fotos</string>
     <string name="folder_discovery_add">Añadir a mis fotos</string>
     <string name="folder_discovery_excluded_badge">Solo administración</string>
+    <string name="download_format_original">Original</string>
+    <string name="download_format_original_extension">Original (.%1$s)</string>
+    <string name="download_format_original_subtitle">El fichero tal cual, con toda la información.</string>
+    <string name="download_format_jpeg">JPG</string>
+    <string name="download_format_jpeg_subtitle">Se abre en cualquier dispositivo y aplicación.</string>
+    <string name="download_format_scope_some">%1$d de las %2$d son RAW o HEIC. El resto va tal cual.</string>
+    <string name="download_format_scope_all">Las %1$d son RAW o HEIC.</string>
     <string name="share_choice_direct">Compartir directamente</string>
     <string name="share_choice_direct_subtitle">Abre el panel de compartir del dispositivo (otras apps, mensajería, etc.).</string>
     <string name="share_choice_link">Crear enlace de Photonne</string>

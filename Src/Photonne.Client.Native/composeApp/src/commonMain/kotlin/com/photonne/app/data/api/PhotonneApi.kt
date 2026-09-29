@@ -10,6 +10,8 @@ import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SmartAlbumRuleDetails
 import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.AssetDetail
+import com.photonne.app.data.models.DownloadFormat
+import com.photonne.app.data.models.DownloadOptions
 import com.photonne.app.data.models.Attribution
 import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.FolderSummary
@@ -196,8 +198,14 @@ internal data class RenamePersonBody(val name: String?)
 @Serializable
 internal data class DownloadZipBody(
     val assetIds: List<String>,
-    val fileName: String? = null
+    val fileName: String? = null,
+    // null is omitted (explicitNulls = false): a server from before the
+    // format choice sees the request it always saw.
+    val format: String? = null
 )
+
+@Serializable
+internal data class DownloadOptionsBody(val assetIds: List<String>)
 
 @Serializable
 internal data class AssignFaceBody(
@@ -496,8 +504,13 @@ interface PhotonneApi {
         cursor: Instant? = null,
         pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
     ): AssetPage
-    suspend fun downloadAssetsZip(assetIds: List<String>, fileName: String? = null): ByteArray
-    suspend fun getAssetContent(assetId: String): AssetContentBytes
+    suspend fun downloadAssetsZip(
+        assetIds: List<String>,
+        fileName: String? = null,
+        format: DownloadFormat? = null
+    ): ByteArray
+    suspend fun getAssetContent(assetId: String, format: DownloadFormat? = null): AssetContentBytes
+    suspend fun getDownloadOptions(assetIds: List<String>): DownloadOptions
     suspend fun uploadAsset(
         fileName: String,
         mimeType: String,
@@ -1152,12 +1165,19 @@ class PhotonneApiClient(
 
     override suspend fun downloadAssetsZip(
         assetIds: List<String>,
-        fileName: String?
+        fileName: String?,
+        format: DownloadFormat?
     ): ByteArray {
         if (assetIds.isEmpty()) return ByteArray(0)
         val response: HttpResponse = client.post("$baseUrl/api/assets/download-zip") {
             contentType(ContentType.Application.Json)
-            setBody(DownloadZipBody(assetIds = assetIds, fileName = fileName))
+            setBody(
+                DownloadZipBody(
+                    assetIds = assetIds,
+                    fileName = fileName,
+                    format = format?.apiValue
+                )
+            )
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Download failed (${response.status.value})")
@@ -1165,10 +1185,23 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun getAssetContent(assetId: String): AssetContentBytes {
+    override suspend fun getDownloadOptions(assetIds: List<String>): DownloadOptions {
+        if (assetIds.isEmpty()) return DownloadOptions()
+        val response: HttpResponse = client.post("$baseUrl/api/assets/download-options") {
+            contentType(ContentType.Application.Json)
+            setBody(DownloadOptionsBody(assetIds = assetIds))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Download options failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getAssetContent(assetId: String, format: DownloadFormat?): AssetContentBytes {
         val response: HttpResponse =
             client.get("$baseUrl/api/assets/$assetId/content") {
                 parameter("download", true)
+                format?.let { parameter("format", it.apiValue) }
             }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Asset content fetch failed (${response.status.value})")

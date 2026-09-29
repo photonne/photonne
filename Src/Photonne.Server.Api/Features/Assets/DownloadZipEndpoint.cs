@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Security.Claims;
+using ImageMagick;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -34,6 +35,9 @@ public class DownloadZipEndpoint : IEndpoint
         if (request.AssetIds == null || request.AssetIds.Count == 0)
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
 
+        if (!AssetDownloadFormats.TryParse(request.Format, out var format))
+            return Results.BadRequest(new { error = "format must be 'original' or 'jpeg'" });
+
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.DeletedAt == null)
             .ToListAsync(ct);
@@ -57,11 +61,22 @@ public class DownloadZipEndpoint : IEndpoint
                 if (!File.Exists(physicalPath))
                     continue;
 
-                var entryName = GetUniqueEntryName(asset.FileName, usedNames);
+                var jpegBytes = AssetDownloadFormats.ConvertsInZip(Path.GetExtension(physicalPath), format)
+                    ? TryRenderJpeg(physicalPath)
+                    : null;
+
+                var entryName = GetUniqueEntryName(
+                    jpegBytes != null ? AssetDownloadFormats.JpegFileName(asset.FileName) : asset.FileName,
+                    usedNames);
                 usedNames.Add(entryName);
 
                 var entry = archive.CreateEntry(entryName, CompressionLevel.NoCompression);
                 await using var entryStream = entry.Open();
+                if (jpegBytes != null)
+                {
+                    await entryStream.WriteAsync(jpegBytes, ct);
+                    continue;
+                }
                 await using var fileStream = File.OpenRead(physicalPath);
                 await fileStream.CopyToAsync(entryStream, ct);
             }
@@ -69,6 +84,23 @@ public class DownloadZipEndpoint : IEndpoint
 
         memoryStream.Position = 0;
         return Results.File(memoryStream, "application/zip", zipName);
+    }
+
+    /// <summary>
+    /// Null when the file can't be converted: the ZIP then carries the
+    /// original, which beats leaving the photo out.
+    /// </summary>
+    private static byte[]? TryRenderJpeg(string physicalPath)
+    {
+        try
+        {
+            return RawImageLoader.RenderJpeg(physicalPath);
+        }
+        catch (MagickException ex)
+        {
+            Console.WriteLine($"[ZIP] {Path.GetFileName(physicalPath)} could not be converted to JPEG, adding the original: {ex.Message}");
+            return null;
+        }
     }
 
     private static string GetUniqueEntryName(string fileName, HashSet<string> usedNames)
@@ -107,4 +139,10 @@ public class DownloadZipRequest
 {
     public List<Guid> AssetIds { get; set; } = new();
     public string? FileName { get; set; }
+
+    /// <summary>
+    /// "original" or "jpeg": what the RAW and HEIC/HEIF entries are stored as.
+    /// Left out, every entry is the original.
+    /// </summary>
+    public string? Format { get; set; }
 }

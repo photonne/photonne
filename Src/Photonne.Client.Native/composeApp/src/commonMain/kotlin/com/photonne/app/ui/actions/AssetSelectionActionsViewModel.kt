@@ -6,6 +6,7 @@ import com.photonne.app.data.actions.AssetActionsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.models.DownloadFormat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,9 +19,27 @@ import kotlinx.datetime.toLocalDateTime
 
 enum class AssetActionWorking { Idle, Downloading, Sharing, CreatingLink }
 
+/** What is waiting for the format to be chosen. */
+enum class FormatChooserAction { Download, Share }
+
+/**
+ * A download or a share parked until the user says what the RAW and HEIC/HEIF
+ * of the selection travel as.
+ */
+data class DownloadFormatChooser(
+    val action: FormatChooserAction,
+    val assetIds: List<String>,
+    /** How many of [assetIds] are RAW or HEIC/HEIF. */
+    val convertibleCount: Int,
+    /** Their extensions, lower case and without the dot. */
+    val extensions: List<String>,
+)
+
 data class AssetActionsUiState(
     /** Asset ids parked for the share chooser; non-null when the dialog should show. */
     val shareChooserIds: List<String>? = null,
+    /** Non-null when the "original or JPG?" sheet should show. */
+    val formatChooser: DownloadFormatChooser? = null,
     val working: AssetActionWorking = AssetActionWorking.Idle,
     /** Resulting public-share URL when "Create a Photonne link" succeeds. */
     val createdLink: String? = null,
@@ -151,60 +170,131 @@ class AssetSelectionActionsViewModel(
 
     /**
      * Download every selected asset:
-     * - 1 asset → single original via `/api/assets/{id}/content`, saved
+     * - 1 asset → single file via `/api/assets/{id}/content`, saved
      *   to the OS Downloads location.
      * - N assets → bulk ZIP via `/api/assets/download-zip`.
+     *
+     * A selection with RAW or HEIC/HEIF stops first at the format sheet.
      */
-    fun download(assetIds: List<String>) {
-        if (assetIds.isEmpty() || _state.value.working != AssetActionWorking.Idle) return
+    fun download(assetIds: List<String>) = startWithFormatChoice(FormatChooserAction.Download, assetIds)
+
+    /**
+     * Hands the selection to the OS share sheet, asking first for the format
+     * when it holds RAW or HEIC/HEIF: a chat app shows a DNG as a document.
+     */
+    fun shareDirectly(assetIds: List<String>) = startWithFormatChoice(FormatChooserAction.Share, assetIds)
+
+    /** The answer to the format sheet: carries on with what was parked. */
+    fun chooseFormat(format: DownloadFormat) {
+        val chooser = _state.value.formatChooser ?: return
+        if (_state.value.working != AssetActionWorking.Idle) return
         _state.update {
-            it.copy(working = AssetActionWorking.Downloading, error = null)
+            it.copy(formatChooser = null, working = chooser.action.working(), error = null)
         }
         workingJob = viewModelScope.launch {
-            runCatching {
-                if (assetIds.size == 1) {
-                    val content = repository.downloadOriginal(assetIds.first())
-                    sharing.saveAsset(
-                        bytes = content.bytes,
-                        fileName = content.suggestedFileName,
-                        mimeType = content.mimeType
-                    )
-                } else {
-                    val zip = repository.downloadZip(
-                        assetIds = assetIds,
-                        fileName = defaultZipName()
-                    )
-                    sharing.saveZip(bytes = zip, fileName = "${defaultZipName()}.zip")
-                }
-            }
-                .onSuccess { saved ->
-                    _state.update {
-                        it.copy(
-                            working = AssetActionWorking.Idle,
-                            statusMessage = "Descargado: ${saved.displayName}"
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    // runCatching atrapa también la cancelación: un Cancelar
-                    // del usuario no es un error que enseñar.
-                    if (error is kotlinx.coroutines.CancellationException) {
-                        _state.update { it.copy(working = AssetActionWorking.Idle) }
-                        return@onFailure
-                    }
-                    _state.update {
-                        it.copy(
-                            working = AssetActionWorking.Idle,
-                            error = errorFactory.from(error, "No se pudo descargar")
-                        )
-                    }
-                }
+            perform(chooser.action, chooser.assetIds, format)
         }
     }
 
+    fun cancelFormatChoice() {
+        _state.update { it.copy(formatChooser = null) }
+    }
+
     /**
-     * Hands the selection to the OS share sheet: every original, one file
-     * each, staged in the app's private share cache.
+     * The screens only hold ids, so whether there is anything to ask is the
+     * server's to say. If it can't (a server from before the choice existed,
+     * or no answer), nothing is asked and the action runs as it always did.
+     */
+    private fun startWithFormatChoice(action: FormatChooserAction, assetIds: List<String>) {
+        if (assetIds.isEmpty() || _state.value.working != AssetActionWorking.Idle) return
+        _state.update {
+            it.copy(working = action.working(), shareChooserIds = null, error = null)
+        }
+        workingJob = viewModelScope.launch {
+            val options = try {
+                repository.downloadOptions(assetIds)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Throwable) {
+                null
+            }
+            if (options != null && options.convertibleCount > 0) {
+                _state.update {
+                    it.copy(
+                        working = AssetActionWorking.Idle,
+                        formatChooser = DownloadFormatChooser(
+                            action = action,
+                            assetIds = assetIds,
+                            convertibleCount = options.convertibleCount,
+                            extensions = options.extensions
+                        )
+                    )
+                }
+            } else {
+                perform(action, assetIds, format = null)
+            }
+        }
+    }
+
+    private fun FormatChooserAction.working(): AssetActionWorking = when (this) {
+        FormatChooserAction.Download -> AssetActionWorking.Downloading
+        FormatChooserAction.Share -> AssetActionWorking.Sharing
+    }
+
+    private suspend fun perform(
+        action: FormatChooserAction,
+        assetIds: List<String>,
+        format: DownloadFormat?
+    ) = when (action) {
+        FormatChooserAction.Download -> performDownload(assetIds, format)
+        FormatChooserAction.Share -> performShare(assetIds, format)
+    }
+
+    private suspend fun performDownload(assetIds: List<String>, format: DownloadFormat?) {
+        runCatching {
+            if (assetIds.size == 1) {
+                val content = repository.downloadAsset(assetIds.first(), format)
+                sharing.saveAsset(
+                    bytes = content.bytes,
+                    fileName = content.suggestedFileName,
+                    mimeType = content.mimeType
+                )
+            } else {
+                val zip = repository.downloadZip(
+                    assetIds = assetIds,
+                    fileName = defaultZipName(),
+                    format = format
+                )
+                sharing.saveZip(bytes = zip, fileName = "${defaultZipName()}.zip")
+            }
+        }
+            .onSuccess { saved ->
+                _state.update {
+                    it.copy(
+                        working = AssetActionWorking.Idle,
+                        statusMessage = "Descargado: ${saved.displayName}"
+                    )
+                }
+            }
+            .onFailure { error ->
+                // runCatching atrapa también la cancelación: un Cancelar
+                // del usuario no es un error que enseñar.
+                if (error is kotlinx.coroutines.CancellationException) {
+                    _state.update { it.copy(working = AssetActionWorking.Idle) }
+                    return@onFailure
+                }
+                _state.update {
+                    it.copy(
+                        working = AssetActionWorking.Idle,
+                        error = errorFactory.from(error, "No se pudo descargar")
+                    )
+                }
+            }
+    }
+
+    /**
+     * Hands the selection to the OS share sheet: one file each, staged in the
+     * app's private share cache.
      *
      * It used to go through [download]'s path: the file landed in the
      * gallery's `Download/Photonne` (a duplicate on the phone that the backup
@@ -212,52 +302,42 @@ class AssetSelectionActionsViewModel(
      * show as a document. Now nothing touches the gallery and N photos are N
      * files (`ACTION_SEND_MULTIPLE` / several URLs on iOS).
      */
-    fun shareDirectly(assetIds: List<String>) {
-        if (assetIds.isEmpty() || _state.value.working != AssetActionWorking.Idle) return
-        _state.update {
-            it.copy(
-                working = AssetActionWorking.Sharing,
-                shareChooserIds = null,
-                error = null
-            )
+    private suspend fun performShare(assetIds: List<String>, format: DownloadFormat?) {
+        runCatching {
+            sharing.clearShareCache()
+            val usedNames = HashSet<String>()
+            // One at a time: only one original is held in memory at once.
+            val files = assetIds.map { id ->
+                val content = repository.downloadAsset(id, format)
+                sharing.stageForShare(
+                    bytes = content.bytes,
+                    fileName = uniqueShareName(content.suggestedFileName, usedNames),
+                    mimeType = content.mimeType
+                )
+            }
+            val mimeType = commonShareMimeType(files.map { it.mimeType })
+            sharing.shareFiles(files = files, mimeType = mimeType)
         }
-        workingJob = viewModelScope.launch {
-            runCatching {
-                sharing.clearShareCache()
-                val usedNames = HashSet<String>()
-                // One at a time: only one original is held in memory at once.
-                val files = assetIds.map { id ->
-                    val content = repository.downloadOriginal(id)
-                    sharing.stageForShare(
-                        bytes = content.bytes,
-                        fileName = uniqueShareName(content.suggestedFileName, usedNames),
-                        mimeType = content.mimeType
+            .onSuccess {
+                _state.update { it.copy(working = AssetActionWorking.Idle) }
+            }
+            .onFailure { error ->
+                if (error is kotlinx.coroutines.CancellationException) {
+                    _state.update { it.copy(working = AssetActionWorking.Idle) }
+                    return@onFailure
+                }
+                val uiError = when (error) {
+                    is AssetSharingUnavailable ->
+                        UiError(userMessage = error.message ?: "Compartir no es compatible")
+                    else -> errorFactory.from(error, "No se pudo compartir")
+                }
+                _state.update {
+                    it.copy(
+                        working = AssetActionWorking.Idle,
+                        error = uiError
                     )
                 }
-                val mimeType = commonShareMimeType(files.map { it.mimeType })
-                sharing.shareFiles(files = files, mimeType = mimeType)
             }
-                .onSuccess {
-                    _state.update { it.copy(working = AssetActionWorking.Idle) }
-                }
-                .onFailure { error ->
-                    if (error is kotlinx.coroutines.CancellationException) {
-                        _state.update { it.copy(working = AssetActionWorking.Idle) }
-                        return@onFailure
-                    }
-                    val uiError = when (error) {
-                        is AssetSharingUnavailable ->
-                            UiError(userMessage = error.message ?: "Compartir no es compatible")
-                        else -> errorFactory.from(error, "No se pudo compartir")
-                    }
-                    _state.update {
-                        it.copy(
-                            working = AssetActionWorking.Idle,
-                            error = uiError
-                        )
-                    }
-                }
-        }
     }
 
     /** Two originals called IMG_0001.jpg (different folders or cameras) would
