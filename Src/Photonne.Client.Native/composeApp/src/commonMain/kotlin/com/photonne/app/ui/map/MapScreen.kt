@@ -6,11 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.map_action_zoom_out
+import com.photonne.app.ui.main.ChromePill
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
@@ -48,6 +45,7 @@ import com.photonne.app.resources.map_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.theme.ChromeElevation
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
@@ -177,42 +175,38 @@ fun MapScreen(
                 .padding(start = Spacing.lg, bottom = floatingNavBarReservedHeight() + Spacing.lg)
         )
 
-        Column(
+        // Controles del mapa: una cápsula vertical de cristal, la misma pieza que
+        // el resto del cromo flotante (antes eran tres FAB opacos). El mapa es
+        // hazeSource, así que el cristal difumina las teselas de detrás.
+        ChromePill(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(Spacing.lg)
                 // La rejilla del mapa dibuja a sangre bajo la nav flotante; sube los
-                // controles de zoom por encima de la cápsula.
+                // controles por encima de la cápsula.
                 .padding(bottom = floatingNavBarReservedHeight()),
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-            horizontalAlignment = Alignment.End
+            hazeState = mapHazeState,
+            elevation = ChromeElevation.bar
         ) {
-            FloatingActionButton(
-                onClick = { viewModel.fitToData(mapSizePx.width, mapSizePx.height) },
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
-                Icon(
-                    Icons.Outlined.Home,
-                    contentDescription = stringResource(Res.string.map_action_fit_to_data)
-                )
-            }
-            FloatingActionButton(
-                onClick = { viewModel.zoomIn() },
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
-                Icon(
-                    PhotonneIcons.Add,
-                    contentDescription = stringResource(Res.string.map_action_zoom_in)
-                )
-            }
-            FloatingActionButton(
-                onClick = { viewModel.zoomOut() },
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
-                Icon(
-                    Icons.Outlined.Remove,
-                    contentDescription = stringResource(Res.string.map_action_zoom_out)
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(onClick = { viewModel.zoomIn() }) {
+                    Icon(
+                        PhotonneIcons.ZoomIn,
+                        contentDescription = stringResource(Res.string.map_action_zoom_in)
+                    )
+                }
+                IconButton(onClick = { viewModel.zoomOut() }) {
+                    Icon(
+                        PhotonneIcons.ZoomOut,
+                        contentDescription = stringResource(Res.string.map_action_zoom_out)
+                    )
+                }
+                IconButton(onClick = { viewModel.fitToData(mapSizePx.width, mapSizePx.height) }) {
+                    Icon(
+                        PhotonneIcons.FitToBounds,
+                        contentDescription = stringResource(Res.string.map_action_fit_to_data)
+                    )
+                }
             }
         }
 

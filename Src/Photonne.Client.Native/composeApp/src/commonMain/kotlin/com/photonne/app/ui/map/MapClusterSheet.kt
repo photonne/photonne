@@ -1,29 +1,23 @@
 package com.photonne.app.ui.map
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,11 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.photonne.app.ui.grid.AssetGridCell
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.resources.Res
@@ -56,19 +47,19 @@ import com.photonne.app.resources.selection_deleted_permanently_done
 import com.photonne.app.resources.trash_disabled_delete_confirm
 import com.photonne.app.resources.trash_disabled_delete_message
 import com.photonne.app.resources.trash_disabled_delete_title
-import com.photonne.app.resources.map_action_select_all
+import com.photonne.app.resources.selection_action_deselect_all
+import com.photonne.app.resources.selection_action_select_all
 import com.photonne.app.ui.main.LocalSnackbarController
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * Bottom sheet that drops in when the user taps a cluster marker. Mirrors
- * the PWA `Map.razor` drawer: dense thumbnail grid, long-press to enter
- * selection mode, header that swaps into a bulk-action toolbar.
+ * the PWA `Map.razor` drawer: the app's common thumbnail grid cell, long-press
+ * to enter selection mode, header that swaps into a bulk-action toolbar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +80,7 @@ fun MapClusterSheet(
     if (points.isEmpty()) return
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isSelectionActive = selectedIds.isNotEmpty()
+    val items = remember(points) { points.map { it.toSyntheticItem() } }
 
     // El mapa tiene su propio camino de selección (no pasa por AssetSelectionBottomBar),
     // así que la papelera en bloque confirma aquí igual que en el resto de pantallas.
@@ -167,6 +159,7 @@ fun MapClusterSheet(
             if (isSelectionActive) {
                 SelectionHeader(
                     selectedCount = selectedIds.size,
+                    totalCount = points.size,
                     isMutating = isMutating,
                     onExit = onExitSelection,
                     onSelectAll = onSelectAll,
@@ -181,25 +174,29 @@ fun MapClusterSheet(
                 )
             }
 
+            // La misma celda que el resto de rejillas (AssetGridCell): check de
+            // selección, halo y encogido animado, clic derecho y Ctrl/Cmd+clic en
+            // escritorio. No es `AssetGrid` entera porque esa ocupa todo el alto
+            // disponible y aquí la hoja se ciñe al número de fotos.
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 110.dp),
                 contentPadding = PaddingValues(horizontal = Spacing.sm, vertical = Spacing.sm),
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
                 modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
             ) {
-                itemsIndexed(points, key = { _, p -> p.id }) { index, point ->
-                    val selected = point.id in selectedIds
-                    ClusterCell(
-                        point = point,
+                itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+                    AssetGridCell(
+                        modifier = Modifier.animateItem(),
+                        asset = item,
                         baseUrl = baseUrl,
-                        selected = selected,
-                        selectionActive = isSelectionActive,
                         onClick = {
-                            if (isSelectionActive) onToggleSelection(point.id)
+                            if (isSelectionActive) onToggleSelection(item.id)
                             else onPhotoClick(index)
                         },
-                        onLongClick = { onToggleSelection(point.id) }
+                        onLongClick = { onToggleSelection(item.id) },
+                        onToggleClick = { onToggleSelection(item.id) },
+                        isSelected = item.id in selectedIds
                     )
                 }
             }
@@ -207,9 +204,16 @@ fun MapClusterSheet(
     }
 }
 
+/**
+ * Cabecera de selección dentro de la hoja. No puede ser la barra flotante de
+ * [com.photonne.app.ui.main.AssetSelectionTopBar] (la hoja tapa la pantalla),
+ * pero copia su forma: cerrar, recuento en `titleMedium` y el mismo botón de
+ * seleccionar/deseleccionar todo; las acciones van a continuación.
+ */
 @Composable
 private fun SelectionHeader(
     selectedCount: Int,
+    totalCount: Int,
     isMutating: Boolean,
     onExit: () -> Unit,
     onSelectAll: () -> Unit,
@@ -217,6 +221,7 @@ private fun SelectionHeader(
     onArchive: () -> Unit,
     onTrash: () -> Unit
 ) {
+    val allSelected = totalCount > 0 && selectedCount >= totalCount
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
@@ -232,9 +237,17 @@ private fun SelectionHeader(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(start = Spacing.xs)
         )
-        Box(modifier = Modifier.weight(1f))
-        TextButton(onClick = onSelectAll, enabled = !isMutating) {
-            Text(stringResource(Res.string.map_action_select_all))
+        Spacer(modifier = Modifier.weight(1f))
+        IconButton(onClick = onSelectAll, enabled = !isMutating) {
+            Icon(
+                PhotonneIcons.SelectAll,
+                contentDescription = stringResource(
+                    if (allSelected) Res.string.selection_action_deselect_all
+                    else Res.string.selection_action_select_all
+                ),
+                tint = if (allSelected) MaterialTheme.colorScheme.primary
+                else LocalContentColor.current
+            )
         }
         IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
             Icon(
@@ -254,62 +267,6 @@ private fun SelectionHeader(
                 contentDescription = stringResource(Res.string.selection_action_trash),
                 tint = MaterialTheme.colorScheme.error
             )
-        }
-    }
-}
-
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-private fun ClusterCell(
-    point: MapPoint,
-    baseUrl: String,
-    selected: Boolean,
-    selectionActive: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .clip(MaterialTheme.shapes.extraSmall)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            // Scale down when selected to mirror the PWA's .map-drawer-cell.selected
-            .scale(if (selected) 0.9f else 1f)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-    ) {
-        if (point.hasThumbnail) {
-            AsyncImage(
-                model = "$baseUrl/api/assets/${point.id}/thumbnail?size=Small",
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        if (selectionActive) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(Spacing.xs)
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (selected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (selected) {
-                    Icon(
-                        PhotonneIcons.Check,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(IconSize.badge)
-                    )
-                }
-            }
         }
     }
 }

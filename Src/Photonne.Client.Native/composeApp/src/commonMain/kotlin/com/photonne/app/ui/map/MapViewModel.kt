@@ -279,7 +279,7 @@ class MapViewModel(
         // which for someone with intercontinental travel history can
         // land in the middle of an ocean with everything visually
         // tiny. Zoom 12 (city + suburbs) gives a useful viewport on
-        // first open; "Home" FAB (fitToData) still pans+zooms to the
+        // first open; the "fit" control (fitToData) still pans+zooms to the
         // full extent when the user wants the global view.
         val anchor = points.maxByOrNull { it.date } ?: points.first()
         return Triple(anchor.latitude, anchor.longitude, 12)
@@ -289,7 +289,9 @@ class MapViewModel(
 /** Misma clave que edita Ajustes del servidor (AdminServerSettingsViewModel). */
 private const val MAP_TILE_API_KEY_SETTING = "ServerSettings.MapTileApiKey"
 
-private fun MapPoint.toSyntheticItem(): TimelineItem = TimelineItem(
+/** TimelineItem mínimo para una foto del mapa: sirve a la celda común de la
+ *  rejilla ([com.photonne.app.ui.grid.AssetGridCell]) y a "Añadir a álbum". */
+internal fun MapPoint.toSyntheticItem(): TimelineItem = TimelineItem(
     id = id,
     fileName = "",
     fullPath = "",

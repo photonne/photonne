@@ -52,12 +52,14 @@ import androidx.compose.material.icons.outlined.RestoreFromTrash
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.ZoomOutMap
 import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -187,4 +189,11 @@ object PhotonneIcons {
 
     /** Chincheta sobre un mapa: sólida por diseño, es un marcador y no una acción. */
     val MapPin: ImageVector = Icons.Filled.LocationOn
+
+    // ── Mapa ────────────────────────────────────────────────────────────
+    val ZoomIn: ImageVector = Icons.Outlined.Add
+    val ZoomOut: ImageVector = Icons.Outlined.Remove
+
+    /** Encuadrar todas las fotos del mapa (antes `Home`, que se leía como "Inicio"). */
+    val FitToBounds: ImageVector = Icons.Outlined.ZoomOutMap
 }

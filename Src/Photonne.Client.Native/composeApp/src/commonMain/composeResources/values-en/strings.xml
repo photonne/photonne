@@ -379,7 +379,6 @@
         <item quantity="one">%1$d photo at this spot</item>
         <item quantity="other">%1$d photos at this spot</item>
     </plurals>
-    <string name="map_action_select_all">Select all</string>
 
     <string name="people_title">People</string>
     <string name="people_empty_title">No people yet</string>

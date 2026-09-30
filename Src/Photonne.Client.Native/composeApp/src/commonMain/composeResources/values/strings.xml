@@ -459,7 +459,6 @@
         <item quantity="one">%1$d foto en este punto</item>
         <item quantity="other">%1$d fotos en este punto</item>
     </plurals>
-    <string name="map_action_select_all">Seleccionar todo</string>
 
     <string name="people_title">Personas</string>
     <string name="people_empty_title">Aún no hay personas</string>
