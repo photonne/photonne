@@ -52,6 +52,7 @@ import com.photonne.app.resources.error_details_copy
 import com.photonne.app.resources.error_details_share_hint
 import com.photonne.app.resources.error_details_title
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * Banner de error reusable. Muestra el [UiError.userMessage] y, si hay
@@ -169,13 +170,8 @@ private fun ErrorDetailsSheet(
     val copiedLabel = stringResource(Res.string.error_details_copied)
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(modifier = Modifier.padding(PaddingValues(horizontal = 20.dp, vertical = Spacing.sm))) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(Res.string.error_details_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
+        Column(modifier = Modifier.padding(PaddingValues(horizontal = Spacing.lg, vertical = Spacing.sm))) {
+            SheetHeader(stringResource(Res.string.error_details_title)) {
                 TextButton(onClick = {
                     clipboard.setText(AnnotatedString(error.toCopyableText()))
                     copiedAck = true

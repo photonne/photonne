@@ -29,8 +29,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -67,7 +65,6 @@ import com.photonne.app.resources.background_sync_auto_hint
 import com.photonne.app.resources.background_sync_auto_label
 import com.photonne.app.resources.background_sync_charging_hint
 import com.photonne.app.resources.background_sync_charging_label
-import com.photonne.app.resources.background_sync_section
 import com.photonne.app.resources.background_sync_wifi_hint
 import com.photonne.app.resources.background_sync_wifi_label
 import com.photonne.app.resources.backup_notifications_open_settings
@@ -103,7 +100,6 @@ import com.photonne.app.resources.device_backup_action_free_space_sized
 import com.photonne.app.resources.device_backup_free_space_blocked_unverified
 import com.photonne.app.resources.device_backup_free_space_blocked_uploading
 import com.photonne.app.resources.device_backup_free_space_blocked_verifying
-import com.photonne.app.resources.device_backup_free_space_cancel
 import com.photonne.app.resources.device_backup_free_space_confirm
 import com.photonne.app.resources.device_backup_free_space_dialog_message
 import com.photonne.app.resources.device_backup_free_space_dialog_title
@@ -151,6 +147,7 @@ import org.koin.compose.koinInject
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * The Backup tab's landing screen. Order matters here: the master switch, then
@@ -913,19 +910,11 @@ private fun DeviceBucketPickerSheet(
             contentPadding = PaddingValues(bottom = Spacing.xl)
         ) {
             item("header") {
-                Column(modifier = Modifier.padding(horizontal = Spacing.xl)) {
-                    Text(
-                        stringResource(Res.string.backup_bucket_picker_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(Modifier.height(Spacing.xs))
-                    Text(
-                        stringResource(Res.string.backup_bucket_picker_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(Spacing.sm))
-                }
+                SheetHeader(
+                    title = stringResource(Res.string.backup_bucket_picker_title),
+                    subtitle = stringResource(Res.string.backup_bucket_picker_hint),
+                    modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.sm)
+                )
             }
             items(buckets, key = { "bucket-${it.id}" }) { bucket ->
                 val added = bucket.toFolderRef().uri in addedUris
@@ -933,7 +922,7 @@ private fun DeviceBucketPickerSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !added) { onAdd(bucket) }
-                        .padding(horizontal = Spacing.xl, vertical = Spacing.md),
+                        .padding(horizontal = Spacing.lg, vertical = Spacing.md),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -975,7 +964,7 @@ private fun DeviceBucketPickerSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(onClick = onPickOther)
-                        .padding(horizontal = Spacing.xl, vertical = 14.dp),
+                        .padding(horizontal = Spacing.lg, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(

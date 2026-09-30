@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -24,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_delete
@@ -35,6 +33,7 @@ import com.photonne.app.resources.album_field_name
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * Form sheet used to both create a new album and edit an existing one.
@@ -72,7 +71,7 @@ fun AlbumFormDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
+            SheetHeader(title)
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },

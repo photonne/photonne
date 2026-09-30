@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_delete
@@ -44,6 +42,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +73,7 @@ fun FolderFormDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
+            SheetHeader(title)
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },

@@ -68,6 +68,7 @@ import com.photonne.app.ui.main.LocalSnackbarController
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * Bottom sheet that drops in when the user taps a cluster marker. Mirrors
@@ -179,10 +180,9 @@ fun MapClusterSheet(
                     onTrash = { showTrashConfirm = true }
                 )
             } else {
-                Text(
-                    text = pluralStringResource(Res.plurals.map_cluster_sheet_title, points.size, points.size),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)
+                SheetHeader(
+                    title = pluralStringResource(Res.plurals.map_cluster_sheet_title, points.size, points.size),
+                    modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.md)
                 )
             }
 

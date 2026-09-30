@@ -48,6 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * Bottom sheet that lists every other person the caller has and returns
@@ -88,10 +89,7 @@ fun PersonPickerDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.people_picker_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.people_picker_title))
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },

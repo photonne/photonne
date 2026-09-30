@@ -51,6 +51,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * Two-option chooser shown when the user taps "Share" on the selection
@@ -76,7 +77,7 @@ fun ShareAssetsDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(stringResource(Res.string.action_share), style = MaterialTheme.typography.titleLarge)
+            SheetHeader(stringResource(Res.string.action_share))
             ShareOptionRow(
                 title = stringResource(Res.string.share_choice_direct),
                 subtitle = stringResource(Res.string.share_choice_direct_subtitle),
@@ -161,7 +162,7 @@ fun ShareLinkResultDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(stringResource(Res.string.share_link_title), style = MaterialTheme.typography.titleLarge)
+            SheetHeader(stringResource(Res.string.share_link_title))
             Text(
                 stringResource(Res.string.share_link_field_label),
                 style = MaterialTheme.typography.labelMedium,

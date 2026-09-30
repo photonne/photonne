@@ -63,6 +63,7 @@ import com.photonne.app.resources.admin_libraries_permissions_add
 import com.photonne.app.resources.admin_libraries_scan_starting
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -247,10 +248,7 @@ private fun LibraryPermissionsDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.admin_libraries_permissions_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.admin_libraries_permissions_title))
             // The sheet's own errors: the list's banner is behind it.
             ErrorBanner(error = error)
             // Scrolls: capped at 420 dp without it, a long user list was cut off.

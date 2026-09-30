@@ -27,7 +27,6 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
@@ -90,6 +89,7 @@ import com.photonne.app.ui.util.onSecondaryClick
 import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import com.photonne.app.ui.theme.SelectionCheck
 
 private const val PREFETCH_THRESHOLD = 12
 
@@ -485,21 +485,7 @@ fun AssetGridCell(
             )
         }
         if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(Spacing.xs)
-                    .size(20.dp)
-                    .background(MaterialTheme.colorScheme.primary, shape = androidx.compose.foundation.shape.CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
+            SelectionCheck(modifier = Modifier.align(Alignment.TopStart).padding(Spacing.xs))
         }
         // Hover de ratón: scrim superior sutil + checkbox hueco para entrar en
         // selección con un clic, como en Google Photos web. El toggle reutiliza

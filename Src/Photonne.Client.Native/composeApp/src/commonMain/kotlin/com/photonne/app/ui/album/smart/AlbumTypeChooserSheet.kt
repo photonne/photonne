@@ -1,7 +1,6 @@
 package com.photonne.app.ui.album.smart
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +28,7 @@ import com.photonne.app.resources.album_type_smart_subtitle
 import com.photonne.app.resources.album_type_smart_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * Chooser behind the albums-list create action: pick a classic manual album or a
@@ -44,10 +44,9 @@ fun AlbumTypeChooserSheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(bottom = Spacing.xl)) {
-            Text(
+            SheetHeader(
                 stringResource(Res.string.album_action_new),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(Spacing.lg),
+                modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.md),
             )
             ChooserRow(
                 icon = Icons.Outlined.PhotoAlbum,

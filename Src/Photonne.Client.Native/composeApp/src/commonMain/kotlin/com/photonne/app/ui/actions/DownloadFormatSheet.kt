@@ -37,6 +37,7 @@ import com.photonne.app.resources.download_format_scope_all
 import com.photonne.app.resources.download_format_scope_some
 import com.photonne.app.ui.theme.Spacing
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * "Original or JPG?", asked every time a download or a share includes a RAW
@@ -62,33 +63,25 @@ fun DownloadFormatSheet(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                Text(
-                    text = stringResource(
-                        when (chooser.action) {
-                            FormatChooserAction.Download -> Res.string.asset_action_download
-                            FormatChooserAction.Share -> Res.string.action_share
-                        }
-                    ),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                val total = chooser.assetIds.size
-                if (total > 1) {
-                    Text(
-                        text = if (chooser.convertibleCount >= total) {
-                            stringResource(Res.string.download_format_scope_all, total)
-                        } else {
-                            stringResource(
-                                Res.string.download_format_scope_some,
-                                chooser.convertibleCount,
-                                total
-                            )
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            val total = chooser.assetIds.size
+            SheetHeader(
+                title = stringResource(
+                    when (chooser.action) {
+                        FormatChooserAction.Download -> Res.string.asset_action_download
+                        FormatChooserAction.Share -> Res.string.action_share
+                    }
+                ),
+                subtitle = when {
+                    total <= 1 -> null
+                    chooser.convertibleCount >= total ->
+                        stringResource(Res.string.download_format_scope_all, total)
+                    else -> stringResource(
+                        Res.string.download_format_scope_some,
+                        chooser.convertibleCount,
+                        total
                     )
                 }
-            }
+            )
             FormatOptionRow(
                 icon = Icons.Outlined.InsertDriveFile,
                 title = originalTitle(chooser.extensions),

@@ -1,6 +1,5 @@
 package com.photonne.app.ui.album
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +45,10 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
+import androidx.compose.foundation.layout.PaddingValues
+import com.photonne.app.ui.theme.CollectionRow
+import com.photonne.app.data.api.rememberApiBaseUrl
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +62,7 @@ fun AddToAlbumDialog(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val apiBaseUrl = rememberApiBaseUrl()
     // Un álbum inteligente calcula su contenido con reglas: añadirle fotos a
     // mano no tiene sentido y el servidor lo rechazaría. Fuera de la lista.
     // Tampoco los compartidos en los que solo puedo ver: el servidor exige
@@ -82,10 +86,7 @@ fun AddToAlbumDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.add_to_album_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.add_to_album_title))
             // Con más de un puñado de álbumes, buscar gana a scrollear.
             if (manualAlbums.size > 8) {
                 OutlinedTextField(
@@ -122,7 +123,7 @@ fun AddToAlbumDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(visibleAlbums, key = { it.id }) { album ->
-                            AlbumPickerRow(album = album, onClick = { onAlbumSelected(album) })
+                            AlbumPickerRow(album = album, baseUrl = apiBaseUrl, onClick = { onAlbumSelected(album) })
                         }
                     }
                 }
@@ -150,18 +151,13 @@ fun AddToAlbumDialog(
 }
 
 @Composable
-private fun AlbumPickerRow(album: AlbumSummary, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp)
-    ) {
-        Text(album.name, style = MaterialTheme.typography.titleSmall)
-        Text(
-            text = pluralStringResource(Res.plurals.albums_count_format, album.assetCount, album.assetCount),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+private fun AlbumPickerRow(album: AlbumSummary, baseUrl: String, onClick: () -> Unit) {
+    CollectionRow(
+        title = album.name,
+        subtitle = pluralStringResource(Res.plurals.albums_count_format, album.assetCount, album.assetCount),
+        thumbnail = { AlbumCover(album, baseUrl, large = false) },
+        onClick = onClick,
+        // La hoja ya pone el margen lateral.
+        contentPadding = PaddingValues(vertical = Spacing.sm)
+    )
 }

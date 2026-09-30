@@ -10,13 +10,10 @@ import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.filters_direction_label
 import com.photonne.app.resources.filters_scope_label
@@ -38,6 +35,7 @@ import com.photonne.app.ui.util.SegmentedChoiceRow
 import com.photonne.app.ui.util.SortDirection
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,10 +56,7 @@ fun FoldersFiltersSheet(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
-            Text(
-                stringResource(Res.string.filters_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.filters_title))
 
             FieldGroupLabel(stringResource(Res.string.filters_scope_label))
             SegmentedChoiceRow(

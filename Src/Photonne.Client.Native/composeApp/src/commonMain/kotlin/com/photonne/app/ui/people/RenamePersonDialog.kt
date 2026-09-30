@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.people_rename_field
@@ -32,6 +31,7 @@ import com.photonne.app.resources.people_rename_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,10 +57,7 @@ fun RenamePersonDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.people_rename_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.people_rename_title))
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },

@@ -19,7 +19,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_filters_group_by_year
 import com.photonne.app.resources.albums_scope_all
@@ -41,6 +40,7 @@ import com.photonne.app.ui.util.SegmentedChoiceRow
 import com.photonne.app.ui.util.SortDirection
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,10 +62,7 @@ fun AlbumsFiltersSheet(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
-            Text(
-                stringResource(Res.string.filters_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.filters_title))
 
             FieldGroupLabel(stringResource(Res.string.filters_scope_label))
             SegmentedChoiceRow(

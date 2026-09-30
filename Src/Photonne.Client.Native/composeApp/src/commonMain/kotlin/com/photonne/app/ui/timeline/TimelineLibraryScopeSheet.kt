@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -44,6 +43,7 @@ import com.photonne.app.resources.timeline_scope_synced_hint
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /**
  * Bottom sheet choosing which slice of the device library the timeline
@@ -70,19 +70,11 @@ fun TimelineLibraryScopeSheet(
             contentPadding = PaddingValues(bottom = Spacing.xl)
         ) {
             item("header") {
-                Column(modifier = Modifier.padding(horizontal = Spacing.xl)) {
-                    Text(
-                        stringResource(Res.string.timeline_scope_sheet_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(Modifier.height(Spacing.xs))
-                    Text(
-                        stringResource(Res.string.timeline_scope_sheet_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(Spacing.sm))
-                }
+                SheetHeader(
+                    title = stringResource(Res.string.timeline_scope_sheet_title),
+                    subtitle = stringResource(Res.string.timeline_scope_sheet_hint),
+                    modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.sm)
+                )
             }
             // Un dial de cuánto se ve del dispositivo, de más a menos: todo →
             // cámara → concretas → nada. "Carpetas concretas" despliega sus
@@ -128,7 +120,7 @@ fun TimelineLibraryScopeSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+                                .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
                             horizontalArrangement = Arrangement.Center
                         ) {
                             CircularProgressIndicator(
@@ -148,7 +140,7 @@ fun TimelineLibraryScopeSheet(
                                     else scope.bucketIds + bucket.id
                                     onSelect(DeviceLibraryScope.Buckets(ids))
                                 }
-                                .padding(start = Spacing.xxl, end = Spacing.xl, top = Spacing.xs, bottom = Spacing.xs),
+                                .padding(start = Spacing.xl, end = Spacing.lg, top = Spacing.xs, bottom = Spacing.xs),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(checked = checked, onCheckedChange = null)
@@ -206,7 +198,7 @@ private fun ScopeModeRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.xl, vertical = 10.dp),
+            .padding(horizontal = Spacing.lg, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         RadioButton(selected = selected, onClick = null)

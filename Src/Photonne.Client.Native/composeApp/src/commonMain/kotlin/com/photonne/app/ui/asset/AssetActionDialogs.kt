@@ -30,7 +30,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.CaptureDateSuggestion
 import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.ui.library.ConfirmActionDialog
@@ -67,6 +66,7 @@ import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,10 +85,7 @@ fun EditDescriptionDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.asset_description_dialog_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.asset_description_dialog_title))
             OutlinedTextField(
                 value = value,
                 onValueChange = { value = it },
@@ -159,10 +156,7 @@ fun EditCaptureDateDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.asset_date_dialog_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.asset_date_dialog_title))
 
             // Date + time on one row, each opening its picker in a dialog.
             val dateLabel = selectedDate.dayOfMonth.toString().padStart(2, '0') + "/" +

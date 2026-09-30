@@ -1,18 +1,10 @@
 package com.photonne.app.ui.folder
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,27 +19,20 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.outlined.Inbox
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,11 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.devicelibrary.DeviceBucket
@@ -91,7 +71,6 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.ListRowsSkeleton
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
-import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.MetaBadge
 import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.ui.main.SubscreenFloatingChrome
@@ -118,6 +97,10 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.FolderGlyph
+import com.photonne.app.ui.theme.EntryCard
+import com.photonne.app.ui.theme.CollectionRow
+import com.photonne.app.ui.theme.CollectionCard
 
 @Composable
 fun FoldersListScreen(
@@ -469,177 +452,86 @@ private fun FolderListContent(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * Fila de una carpeta: la de la lista de Carpetas y la de las subcarpetas
+ * dentro de otra carpeta, para que la misma carpeta se lea igual en las dos.
+ */
 @Composable
-private fun FolderRow(
+internal fun FolderRow(
     folder: FolderSummary,
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .then(
-                    if (isSelected) Modifier.border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = MaterialTheme.shapes.small
-                    ) else Modifier
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                // Carpeta, no lista: SubfolderRow ya usaba Folder y la misma
-                // cosa se dibujaba distinta en cada pantalla.
-                imageVector = if (isSelected) Icons.Filled.CheckCircle
-                else Icons.Filled.Folder,
-                contentDescription = null,
-                tint = if (isSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(Modifier.size(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
+    CollectionRow(
+        title = folder.name.ifBlank { "/" },
+        subtitle = folder.path,
+        // Carpeta, no lista: la subcarpeta ya usaba Folder y la misma cosa se
+        // dibujaba distinta en cada pantalla.
+        thumbnail = { FolderGlyph() },
+        onClick = onClick,
+        onLongClick = onLongPress,
+        selected = isSelected,
+        modifier = modifier,
+        badges = {
             Text(
-                text = folder.name.ifBlank { "/" },
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1
+                text = pluralStringResource(Res.plurals.albums_count_format, folder.assetCount, folder.assetCount),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                text = folder.path,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-            Row(
-                modifier = Modifier.padding(top = Spacing.xxs),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-            ) {
-                Text(
-                    text = pluralStringResource(Res.plurals.albums_count_format, folder.assetCount, folder.assetCount),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (folder.isShared) {
-                    MetaBadge(stringResource(Res.string.folder_shared_badge), Icons.Filled.Person)
-                }
-                if (folder.externalLibraryId != null) {
-                    MetaBadge(stringResource(Res.string.folder_external_badge), Icons.AutoMirrored.Filled.LibraryBooks)
-                }
-                if (folder.excludedFromDiscovery) {
-                    MetaBadge(stringResource(Res.string.folder_discovery_excluded_badge), Icons.Outlined.VisibilityOff)
-                }
+            if (folder.isShared) {
+                MetaBadge(stringResource(Res.string.folder_shared_badge), Icons.Filled.Person)
+            }
+            if (folder.externalLibraryId != null) {
+                MetaBadge(stringResource(Res.string.folder_external_badge), Icons.AutoMirrored.Filled.LibraryBooks)
+            }
+            if (folder.excludedFromDiscovery) {
+                MetaBadge(stringResource(Res.string.folder_discovery_excluded_badge), Icons.Outlined.VisibilityOff)
             }
         }
-    }
+    )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/** Tarjeta de una carpeta en rejilla; también la de las subcarpetas. */
 @Composable
-private fun FolderCard(
+internal fun FolderCard(
     folder: FolderSummary,
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .then(
-                    if (isSelected) Modifier.border(
-                        width = 3.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(12.dp)
-                    ) else Modifier
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Folder,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(56.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(6.dp)
-                    .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = Spacing.xxs)
-            ) {
-                Text(
-                    text = "${folder.assetCount}",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall
+    CollectionCard(
+        title = folder.name.ifBlank { folder.path },
+        thumbnail = { FolderGlyph(large = true) },
+        onClick = onClick,
+        onLongClick = onLongPress,
+        selected = isSelected,
+        count = folder.assetCount,
+        modifier = modifier,
+        badges = {
+            // Same order as FolderRow, so a folder reads the same in both view modes.
+            if (folder.isShared) {
+                OverlayIconBadge(
+                    icon = Icons.Filled.Person,
+                    contentDescription = stringResource(Res.string.folder_shared_badge)
                 )
             }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-            ) {
-                // Same order as FolderRow, so a folder reads the same in both view modes.
-                if (folder.isShared) {
-                    OverlayIconBadge(
-                        icon = Icons.Filled.Person,
-                        contentDescription = stringResource(Res.string.folder_shared_badge)
-                    )
-                }
-                if (folder.externalLibraryId != null) {
-                    OverlayIconBadge(
-                        icon = Icons.AutoMirrored.Filled.LibraryBooks,
-                        contentDescription = stringResource(Res.string.folder_external_badge)
-                    )
-                }
-                if (folder.excludedFromDiscovery) {
-                    OverlayIconBadge(
-                        icon = Icons.Outlined.VisibilityOff,
-                        contentDescription = stringResource(Res.string.folder_discovery_excluded_badge)
-                    )
-                }
+            if (folder.externalLibraryId != null) {
+                OverlayIconBadge(
+                    icon = Icons.AutoMirrored.Filled.LibraryBooks,
+                    contentDescription = stringResource(Res.string.folder_external_badge)
+                )
             }
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
-                        .background(Color.White, shape = RoundedCornerShape(50))
-                        .padding(Spacing.xxs)
-                        .size(20.dp)
+            if (folder.excludedFromDiscovery) {
+                OverlayIconBadge(
+                    icon = Icons.Outlined.VisibilityOff,
+                    contentDescription = stringResource(Res.string.folder_discovery_excluded_badge)
                 )
             }
         }
-        Text(
-            text = folder.name.ifBlank { folder.path },
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 1
-        )
-    }
+    )
 }
 
 @Composable
@@ -680,39 +572,14 @@ private fun OrganizeInboxCard(
     count: Int,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.lg, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    EntryCard(
+        icon = Icons.Outlined.Inbox,
+        title = stringResource(Res.string.organize_inbox_title),
+        subtitle = stringResource(Res.string.organize_inbox_card_subtitle),
+        onClick = onClick,
+        emphasized = true,
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm)
     ) {
-        Icon(
-            imageVector = Icons.Outlined.Inbox,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.size(28.dp)
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(Res.string.organize_inbox_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = stringResource(Res.string.organize_inbox_card_subtitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
         // The count sits between a weighted title and the chevron; without a
         // one-line cap it grabs intrinsic width on narrow screens and starves the
         // title column, which then wraps character-by-character (vertical text).
@@ -722,11 +589,6 @@ private fun OrganizeInboxCard(
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer
         )
     }
 }
@@ -742,45 +604,11 @@ private fun DeviceFoldersCard(
     itemCount: Int,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.lg, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Smartphone,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(28.dp)
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(Res.string.device_folders_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = stringResource(
-                    Res.string.device_folders_card_subtitle, folderCount, itemCount
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    EntryCard(
+        icon = Icons.Outlined.Smartphone,
+        title = stringResource(Res.string.device_folders_title),
+        subtitle = stringResource(Res.string.device_folders_card_subtitle, folderCount, itemCount),
+        onClick = onClick,
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm)
+    )
 }

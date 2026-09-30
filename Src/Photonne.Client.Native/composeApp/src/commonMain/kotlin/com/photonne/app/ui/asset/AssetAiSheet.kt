@@ -67,6 +67,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import kotlin.time.Clock
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 /** How often the sheet re-reads the asset while an analysis is queued or
  *  running. A single photo takes the workers seconds, not minutes. */
@@ -152,11 +153,9 @@ fun AssetAiSheet(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(stringResource(Res.string.asset_ai_title), style = MaterialTheme.typography.titleLarge)
-            Text(
-                stringResource(Res.string.asset_ai_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            SheetHeader(
+                title = stringResource(Res.string.asset_ai_title),
+                subtitle = stringResource(Res.string.asset_ai_subtitle)
             )
 
             val banner = actionError ?: if (loadFailed) stringResource(Res.string.asset_ai_load_error) else null

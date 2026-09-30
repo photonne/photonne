@@ -10,8 +10,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.album_action_sort
 import com.photonne.app.resources.album_sort_album_order
 import com.photonne.app.resources.albums_sort_date
 import com.photonne.app.resources.filters_direction_label
@@ -22,6 +22,7 @@ import com.photonne.app.ui.util.SegmentOption
 import com.photonne.app.ui.util.SegmentedChoiceRow
 import com.photonne.app.ui.util.SortDirection
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.SheetHeader
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -47,6 +48,7 @@ fun AlbumDetailSortSheet(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
+            SheetHeader(stringResource(Res.string.album_action_sort))
             FieldGroupLabel(stringResource(Res.string.filters_sort_label))
             SegmentedChoiceRow(
                 options = listOf(

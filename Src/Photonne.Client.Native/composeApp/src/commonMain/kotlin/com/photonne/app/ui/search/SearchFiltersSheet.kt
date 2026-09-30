@@ -61,6 +61,7 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -90,15 +91,7 @@ fun SearchFiltersSheet(
                 .padding(bottom = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                Text(
-                    stringResource(Res.string.search_filters),
-                    style = MaterialTheme.typography.titleLarge
-                )
+            SheetHeader(stringResource(Res.string.search_filters)) {
                 // Arriba y como acción de texto: al fondo, como chip, parecía
                 // un filtro más y con listas largas ni se veía.
                 TextButton(onClick = onClearAll) {

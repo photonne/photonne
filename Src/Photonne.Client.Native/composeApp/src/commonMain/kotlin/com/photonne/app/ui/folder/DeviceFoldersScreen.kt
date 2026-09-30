@@ -1,21 +1,15 @@
 package com.photonne.app.ui.folder
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -31,13 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.devicebackup.DeviceFolderRef
 import com.photonne.app.data.devicelibrary.DeviceBucket
@@ -68,6 +57,9 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.FolderGlyph
+import com.photonne.app.ui.theme.CollectionRow
+import com.photonne.app.ui.theme.CollectionCover
 
 /**
  * "Mi dispositivo": the device library browsed by system folder (bucket),
@@ -168,71 +160,37 @@ private fun DeviceBucketRow(
     onClick: () -> Unit,
     onAddToBackup: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.lg, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            if (bucket.latestUri != null) {
-                AsyncImage(
-                    model = bucket.latestUri,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+    CollectionRow(
+        title = bucket.displayName,
+        subtitle = pluralStringResource(Res.plurals.backup_bucket_item_count, bucket.itemCount, bucket.itemCount),
+        thumbnail = {
+            CollectionCover(model = bucket.latestUri, contentDescription = null) { FolderGlyph() }
+        },
+        onClick = onClick,
+        trailing = {
+            if (isBackedUp) {
+                Text(
+                    stringResource(Res.string.timeline_scope_backed_up),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.secondaryContainer,
+                            MaterialTheme.shapes.small
+                        )
+                        .padding(horizontal = Spacing.sm, vertical = Spacing.xxs)
                 )
             } else {
-                Icon(
-                    Icons.Filled.Folder,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Spacer(Modifier.size(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                bucket.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                pluralStringResource(Res.plurals.backup_bucket_item_count, bucket.itemCount, bucket.itemCount),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        if (isBackedUp) {
-            Text(
-                stringResource(Res.string.timeline_scope_backed_up),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier
-                    .background(
-                        MaterialTheme.colorScheme.secondaryContainer,
-                        MaterialTheme.shapes.small
+                IconButton(onClick = onAddToBackup) {
+                    Icon(
+                        Icons.Outlined.CloudUpload,
+                        contentDescription = stringResource(Res.string.device_folders_add_backup),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    .padding(horizontal = Spacing.sm, vertical = Spacing.xxs)
-            )
-        } else {
-            IconButton(onClick = onAddToBackup) {
-                Icon(
-                    Icons.Outlined.CloudUpload,
-                    contentDescription = stringResource(Res.string.device_folders_add_backup),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                }
             }
         }
-    }
+    )
 }
 
 /**

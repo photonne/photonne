@@ -48,6 +48,7 @@ import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,7 +125,7 @@ fun FolderPickerDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
+            SheetHeader(title)
 
             // Solo fuera de búsqueda: buscando, los atajos compiten con lo que
             // se está buscando en vez de ahorrar trabajo.

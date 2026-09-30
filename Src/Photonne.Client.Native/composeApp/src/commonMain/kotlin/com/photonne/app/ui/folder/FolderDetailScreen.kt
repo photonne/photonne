@@ -1,19 +1,10 @@
 package com.photonne.app.ui.folder
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -23,29 +14,19 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.folder_detail_empty_subtitle
 import com.photonne.app.resources.folder_detail_empty_title
 import com.photonne.app.ui.grid.AssetGridCell
@@ -67,9 +48,7 @@ import com.photonne.app.ui.haptics.rememberPhotonneHaptics
 import com.photonne.app.ui.theme.EmptyState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.Spacing
@@ -278,7 +257,10 @@ private fun FolderDetailGrid(
                     key = { "subfolder-${it.id}" },
                     contentType = { "subfolder-card" }
                 ) { folder ->
-                    SubfolderCard(
+                    FolderCard(
+                        // The grid arrangement is tight (matching the asset cells); this
+                        // per-cell padding gives the folder cards their own breathing room.
+                        modifier = Modifier.padding(Spacing.xs),
                         folder = folder,
                         isSelected = selectedSubfolderId == folder.id,
                         onClick = { onSubfolderClick(folder) },
@@ -292,7 +274,7 @@ private fun FolderDetailGrid(
                     span = { GridItemSpan(maxLineSpan) },
                     contentType = { "subfolder-row" }
                 ) { folder ->
-                    SubfolderRow(
+                    FolderRow(
                         folder = folder,
                         isSelected = selectedSubfolderId == folder.id,
                         onClick = { onSubfolderClick(folder) },
@@ -325,138 +307,6 @@ private fun FolderDetailGrid(
                 onLongClick = if (dragSelect != null) null else ({ onItemLongClick(index) }),
                 onSecondaryClick = { onItemLongClick(index) },
                 isSelected = asset.id in selection
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun SubfolderCard(
-    folder: FolderSummary,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    onLongPress: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            // The grid arrangement is tight (matching the asset cells); this
-            // per-cell padding gives the folder cards their own breathing room.
-            .padding(Spacing.xs)
-            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .then(
-                    if (isSelected) Modifier.border(
-                        width = 3.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(12.dp)
-                    ) else Modifier
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Folder,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(56.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(6.dp)
-                    .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = Spacing.xxs)
-            ) {
-                Text(
-                    text = "${folder.assetCount}",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
-                        .background(Color.White, shape = RoundedCornerShape(50))
-                        .padding(Spacing.xxs)
-                        .size(20.dp)
-                )
-            }
-        }
-        Text(
-            text = folder.name.ifBlank { folder.path },
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 1
-        )
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun SubfolderRow(
-    folder: FolderSummary,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    onLongPress: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .then(
-                    if (isSelected) Modifier.border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = MaterialTheme.shapes.small
-                    ) else Modifier
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Filled.Folder,
-                contentDescription = null,
-                tint = if (isSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(Modifier.size(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = folder.name.ifBlank { folder.path },
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1
-            )
-            Text(
-                text = pluralStringResource(Res.plurals.albums_count_format, folder.assetCount, folder.assetCount),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        if (!isSelected) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

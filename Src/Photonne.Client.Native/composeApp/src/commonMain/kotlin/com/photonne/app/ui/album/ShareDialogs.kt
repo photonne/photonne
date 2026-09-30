@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -79,7 +78,6 @@ import com.photonne.app.resources.share_option_allow_downloads
 import com.photonne.app.resources.share_option_allow_upload
 import com.photonne.app.resources.share_option_allow_upload_hint
 import com.photonne.app.resources.share_option_expiry
-import com.photonne.app.resources.share_option_expiry_change
 import com.photonne.app.resources.share_option_expiry_pick
 import com.photonne.app.resources.share_option_max_views
 import com.photonne.app.resources.share_option_max_views_field
@@ -105,6 +103,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,7 +132,7 @@ fun ManageSharesDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(stringResource(Res.string.share_title), style = MaterialTheme.typography.titleLarge)
+            SheetHeader(stringResource(Res.string.share_title))
             Column(
                 modifier = Modifier.heightIn(min = 120.dp, max = 420.dp).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.sm)
@@ -320,10 +319,7 @@ fun CreateShareDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.share_create_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.share_create_title))
             ToggleRow(
                 label = stringResource(Res.string.share_option_allow_downloads),
                 checked = allowDownload,
@@ -497,10 +493,7 @@ fun EditShareDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.share_edit_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.share_edit_title))
             ToggleRow(
                 label = stringResource(Res.string.share_option_allow_downloads),
                 checked = allowDownload,

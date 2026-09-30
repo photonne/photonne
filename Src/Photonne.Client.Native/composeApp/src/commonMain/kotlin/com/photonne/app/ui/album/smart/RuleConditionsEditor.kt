@@ -26,10 +26,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.DateRange
@@ -67,7 +65,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_accept
@@ -120,6 +117,7 @@ import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates }
 
@@ -409,10 +407,9 @@ private fun SmartPreviewSection(
 private fun AddConditionMenuSheet(onDismiss: () -> Unit, onPick: (EditorSheet) -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(bottom = Spacing.xl)) {
-            Text(
+            SheetHeader(
                 stringResource(Res.string.smart_album_add_condition),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(Spacing.lg),
+                modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.md),
             )
             MenuRow(Icons.Outlined.Person, stringResource(Res.string.smart_album_cond_people)) { onPick(EditorSheet.People) }
             MenuRow(Icons.Outlined.Folder, stringResource(Res.string.smart_album_cond_folders)) { onPick(EditorSheet.Folders) }
@@ -646,7 +643,7 @@ private fun SearchSelectScaffold(
                 .padding(bottom = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            SheetHeader(title)
             header()
             body()
             PrimaryActionButton(
@@ -860,7 +857,7 @@ private fun SelectSheetScaffold(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            SheetHeader(title)
             when {
                 isLoading -> Box(Modifier.fillMaxWidth().padding(Spacing.xl), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()

@@ -35,8 +35,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +63,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,10 +92,9 @@ fun AssetFacesSheet(
         Column(
             modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.lg)
         ) {
-            Text(
+            SheetHeader(
                 stringResource(Res.string.people_faces_title),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)
+                modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.md)
             )
 
             when {

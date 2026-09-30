@@ -40,6 +40,7 @@ import com.photonne.app.resources.admin_user_action_reset_password_message
 import com.photonne.app.resources.admin_user_action_reset_password_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
+import com.photonne.app.ui.theme.SheetHeader
 
 @Composable
 fun AdminDeleteUserDialog(
@@ -147,10 +148,7 @@ fun AdminResetPasswordDialog(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Text(
-                stringResource(Res.string.admin_user_action_reset_password_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            SheetHeader(stringResource(Res.string.admin_user_action_reset_password_title))
             Text(
                 stringResource(
                     Res.string.admin_user_action_reset_password_message,

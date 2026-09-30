@@ -1,24 +1,16 @@
 package com.photonne.app.ui.album
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -27,12 +19,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -45,7 +32,6 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,16 +39,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
@@ -102,7 +80,6 @@ import com.photonne.app.resources.folders_action_filters
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
-import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.MetaBadge
 import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -114,6 +91,10 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import com.photonne.app.ui.theme.ListRowsSkeleton
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.EntryTile
+import com.photonne.app.ui.theme.CollectionRow
+import com.photonne.app.ui.theme.CollectionCover
+import com.photonne.app.ui.theme.CollectionCard
 
 @Composable
 fun AlbumsListScreen(
@@ -522,37 +503,7 @@ private fun ExploreCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
-            .padding(vertical = Spacing.md, horizontal = Spacing.xs),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            textAlign = TextAlign.Center
-        )
-    }
+    EntryTile(icon = icon, label = label, onClick = onClick, modifier = modifier)
 }
 
 @Composable
@@ -576,7 +527,6 @@ private fun EmptyAlbumsState(scope: AlbumsScope, onCreateAlbum: (() -> Unit)?) {
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlbumCard(
     album: AlbumSummary,
@@ -586,106 +536,39 @@ private fun AlbumCard(
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .then(
-                    if (isSelected) Modifier.border(
-                        width = 3.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(12.dp)
-                    ) else Modifier
-                )
-        ) {
-            val cover = album.coverThumbnailUrl?.let { resolveCover(it, baseUrl) }
-            if (cover != null) {
-                AsyncImage(
-                    model = cover,
-                    contentDescription = album.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        album.name.firstOrNull()?.uppercase() ?: "·",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(6.dp)
-                    .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = Spacing.xxs)
-            ) {
-                Text(
-                    text = "${album.assetCount}",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall
+    CollectionCard(
+        title = album.name,
+        thumbnail = { AlbumCover(album, baseUrl, large = true) },
+        onClick = onClick,
+        onLongClick = onLongPress,
+        selected = isSelected,
+        count = album.assetCount,
+        modifier = modifier,
+        badges = {
+            if (album.isSmart) {
+                // Sin distintivo, un álbum de reglas parecía uno normal y
+                // sus acciones imposibles (añadir fotos) confundían.
+                OverlayIconBadge(
+                    icon = Icons.Outlined.AutoAwesome,
+                    contentDescription = stringResource(Res.string.albums_badge_smart)
                 )
             }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-            ) {
-                if (album.isSmart) {
-                    // Sin distintivo, un álbum de reglas parecía uno normal y
-                    // sus acciones imposibles (añadir fotos) confundían.
-                    OverlayIconBadge(
-                        icon = Icons.Outlined.AutoAwesome,
-                        contentDescription = stringResource(Res.string.albums_badge_smart)
-                    )
-                }
-                if (album.isShared || !album.isOwner) {
-                    OverlayIconBadge(
-                        icon = Icons.Filled.Person,
-                        contentDescription = stringResource(Res.string.albums_badge_shared)
-                    )
-                }
-                if (album.hasActiveShareLink) {
-                    OverlayIconBadge(
-                        icon = Icons.Outlined.Share,
-                        contentDescription = stringResource(Res.string.album_share_link_badge)
-                    )
-                }
+            if (album.isShared || !album.isOwner) {
+                OverlayIconBadge(
+                    icon = Icons.Filled.Person,
+                    contentDescription = stringResource(Res.string.albums_badge_shared)
+                )
             }
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
-                        .background(Color.White, shape = RoundedCornerShape(50))
-                        .padding(Spacing.xxs)
-                        .size(20.dp)
+            if (album.hasActiveShareLink) {
+                OverlayIconBadge(
+                    icon = Icons.Outlined.Share,
+                    contentDescription = stringResource(Res.string.album_share_link_badge)
                 )
             }
         }
-        Text(
-            text = album.name,
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 1
-        )
-    }
+    )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlbumRow(
     album: AlbumSummary,
@@ -695,93 +578,51 @@ private fun AlbumRow(
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .then(
-                    if (isSelected) Modifier.border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = MaterialTheme.shapes.small
-                    ) else Modifier
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            val cover = album.coverThumbnailUrl?.let { resolveCover(it, baseUrl) }
-            if (cover != null) {
-                AsyncImage(
-                    model = cover,
-                    contentDescription = album.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Text(
-                    album.name.firstOrNull()?.uppercase() ?: "·",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(Spacing.xxs)
-                        .background(Color.White, shape = RoundedCornerShape(50))
-                        .size(16.dp)
-                )
-            }
-        }
-        Spacer(Modifier.size(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
+    CollectionRow(
+        title = album.name,
+        subtitle = album.description?.takeIf { it.isNotBlank() },
+        thumbnail = { AlbumCover(album, baseUrl, large = false) },
+        onClick = onClick,
+        onLongClick = onLongPress,
+        selected = isSelected,
+        modifier = modifier,
+        badges = {
             Text(
-                text = album.name,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1
+                text = pluralStringResource(Res.plurals.albums_count_format, album.assetCount, album.assetCount),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (!album.description.isNullOrBlank()) {
-                Text(
-                    text = album.description!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
+            // List mode used to show no qualifiers at all, so switching to it
+            // silently dropped what the grid told you about an album.
+            if (album.isSmart) {
+                MetaBadge(stringResource(Res.string.albums_badge_smart), Icons.Outlined.AutoAwesome)
             }
-            Row(
-                modifier = Modifier.padding(top = Spacing.xxs),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = pluralStringResource(Res.plurals.albums_count_format, album.assetCount, album.assetCount),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                // List mode used to show no qualifiers at all, so switching to it
-                // silently dropped what the grid told you about an album.
-                if (album.isSmart) {
-                    MetaBadge(stringResource(Res.string.albums_badge_smart), Icons.Outlined.AutoAwesome)
-                }
-                if (album.isShared || !album.isOwner) {
-                    MetaBadge(stringResource(Res.string.albums_badge_shared), Icons.Filled.Person)
-                }
-                if (album.hasActiveShareLink) {
-                    MetaBadge(stringResource(Res.string.album_share_link_badge), Icons.Outlined.Share)
-                }
+            if (album.isShared || !album.isOwner) {
+                MetaBadge(stringResource(Res.string.albums_badge_shared), Icons.Filled.Person)
+            }
+            if (album.hasActiveShareLink) {
+                MetaBadge(stringResource(Res.string.album_share_link_badge), Icons.Outlined.Share)
             }
         }
+    )
+}
+
+/**
+ * Portada de un álbum para [CollectionRow]/[CollectionCard]; sin portada, la
+ * inicial del nombre. También la usa "Añadir a álbum".
+ */
+@Composable
+internal fun AlbumCover(album: AlbumSummary, baseUrl: String, large: Boolean) {
+    CollectionCover(
+        model = album.coverThumbnailUrl?.let { resolveCover(it, baseUrl) },
+        contentDescription = album.name
+    ) {
+        Text(
+            album.name.firstOrNull()?.uppercase() ?: "·",
+            style = if (large) MaterialTheme.typography.headlineMedium
+                    else MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
