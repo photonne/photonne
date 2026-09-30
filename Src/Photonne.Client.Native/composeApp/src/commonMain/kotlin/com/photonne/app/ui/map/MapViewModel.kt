@@ -15,9 +15,13 @@ import com.photonne.app.ui.selection.applying
 import com.photonne.app.ui.selection.toggled
 import com.photonne.app.ui.selection.toggledAll
 import com.photonne.app.ui.selection.withSelection
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -29,22 +33,46 @@ data class MapUiState(
     val isLoading: Boolean = false,
     val error: UiError? = null,
     val firstLoadComplete: Boolean = false,
-    // Cluster bottom-sheet state. `sheetPoints` is null when the sheet
-    // is closed; the view-model owns it so selection survives a
-    // configuration change and so the bulk actions can drop affected
-    // assets out of the point list when they succeed.
     /**
      * Clave de API de las teselas, leída del ajuste del servidor
      * (ServerSettings.MapTileApiKey). Null mientras no se ha cargado o si el
      * administrador no ha puesto ninguna.
      */
     val tileApiKey: String? = null,
-    val sheetPoints: List<MapPoint>? = null,
+    /** Tamaño medido del mapa: el viewport que filtra la hoja persistente. */
+    val viewportWidthPx: Int = 0,
+    val viewportHeightPx: Int = 0,
+    /**
+     * Fotos del viewport, de la más reciente a la más antigua. Se recalcula
+     * [VIEWPORT_DEBOUNCE_MS] después de que la cámara se pare (no en cada frame
+     * del arrastre) y se congela mientras hay selección, para que la rejilla no
+     * cambie bajo el dedo.
+     */
+    val viewportPoints: List<MapPoint> = emptyList(),
+    /** False hasta el primer cálculo del viewport: evita enseñar "no hay fotos"
+     *  antes de haber mirado. */
+    val viewportReady: Boolean = false,
+    /** Clúster tocado: la hoja enseña solo sus fotos hasta que se quita el filtro. */
+    val focusedPoints: List<MapPoint>? = null,
     val selection: Set<String> = emptySet(),
     val isBulkMutating: Boolean = false
 ) {
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
+
+    /** Lo que enseña la hoja: el clúster tocado o, sin él, el viewport. */
+    val sheetPoints: List<MapPoint> get() = focusedPoints ?: viewportPoints
 }
+
+/** Lo que decide el contenido del viewport; la hoja se recalcula cuando cambia. */
+private data class ViewportKey(
+    val centerLat: Double,
+    val centerLng: Double,
+    val zoom: Int,
+    val widthPx: Int,
+    val heightPx: Int,
+    val points: List<MapPoint>,
+    val frozen: Boolean
+)
 
 class MapViewModel(
     private val repository: MapRepository,
@@ -56,6 +84,54 @@ class MapViewModel(
 
     private val _state = MutableStateFlow(MapUiState())
     val state: StateFlow<MapUiState> = _state.asStateFlow()
+
+    init {
+        observeViewport()
+    }
+
+    /**
+     * La hoja persistente sigue al mapa: cada vez que el centro, el zoom, el
+     * tamaño o los puntos cambian se recalcula qué fotos caen dentro, con
+     * debounce para no filtrar en cada frame del arrastre. Todo en cliente: los
+     * puntos ya están cargados enteros, no hace falta pedir nada por bbox. El
+     * primer cálculo va sin espera para que la hoja no pase por "vacío".
+     */
+    @OptIn(FlowPreview::class)
+    private fun observeViewport() {
+        viewModelScope.launch {
+            _state
+                .map {
+                    ViewportKey(
+                        centerLat = it.centerLat,
+                        centerLng = it.centerLng,
+                        zoom = it.zoom,
+                        widthPx = it.viewportWidthPx,
+                        heightPx = it.viewportHeightPx,
+                        points = it.points,
+                        frozen = it.isSelectionActive || it.isBulkMutating
+                    )
+                }
+                .distinctUntilChanged()
+                .debounce { if (_state.value.viewportReady) VIEWPORT_DEBOUNCE_MS else 0L }
+                .collect { key ->
+                    if (key.frozen || !_state.value.firstLoadComplete) return@collect
+                    if (key.widthPx <= 0 || key.heightPx <= 0) return@collect
+                    val visible = pointsInViewport(
+                        points = key.points,
+                        centerLat = key.centerLat,
+                        centerLng = key.centerLng,
+                        zoom = key.zoom,
+                        widthPx = key.widthPx,
+                        heightPx = key.heightPx
+                    )
+                    _state.update { it.copy(viewportPoints = visible, viewportReady = true) }
+                }
+        }
+    }
+
+    fun onViewportSizeChanged(widthPx: Int, heightPx: Int) {
+        _state.update { it.copy(viewportWidthPx = widthPx, viewportHeightPx = heightPx) }
+    }
 
     fun ensureLoaded() {
         loadTileApiKey()
@@ -155,17 +231,16 @@ class MapViewModel(
         }
     }
 
-    fun openClusterSheet(points: List<MapPoint>) {
+    /** Clúster tocado: la hoja pasa a enseñar solo sus fotos. */
+    fun focusCluster(points: List<MapPoint>) {
         _state.update {
-            it.copy(
-                sheetPoints = points.sortedByDescending { p -> p.date },
-                selection = emptySet()
-            )
+            it.copy(focusedPoints = points.newestFirst(), selection = emptySet())
         }
     }
 
-    fun closeClusterSheet() {
-        _state.update { it.copy(sheetPoints = null, selection = emptySet()) }
+    /** Quita el filtro de clúster: la hoja vuelve a todo el viewport. */
+    fun clearFocus() {
+        _state.update { it.copy(focusedPoints = null, selection = emptySet()) }
     }
 
     fun toggleSelection(assetId: String) {
@@ -185,7 +260,8 @@ class MapViewModel(
 
     fun selectAllInSheet() {
         _state.update {
-            val ids = it.sheetPoints?.map { p -> p.id } ?: return@update it
+            val ids = it.sheetPoints.map { p -> p.id }
+            if (ids.isEmpty()) return@update it
             it.copy(selection = it.selection.toggledAll(ids))
         }
     }
@@ -221,8 +297,7 @@ class MapViewModel(
         viewModelScope.launch {
             runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
-                    val sheet = _state.value.sheetPoints.orEmpty()
-                    val asTimeline = sheet
+                    val asTimeline = _state.value.points
                         .filter { it.id in ids }
                         .map { it.toSyntheticItem() }
                     _state.update { it.copy(isBulkMutating = false, selection = emptySet()) }
@@ -252,12 +327,14 @@ class MapViewModel(
                     val idSet = ids.toHashSet()
                     _state.update { previous ->
                         val newPoints = previous.points.filterNot { p -> p.id in idSet }
-                        val newSheet = previous.sheetPoints?.filterNot { p -> p.id in idSet }
+                        val newFocus = previous.focusedPoints?.filterNot { p -> p.id in idSet }
                         previous.copy(
                             isBulkMutating = false,
                             selection = emptySet(),
                             points = newPoints,
-                            sheetPoints = newSheet?.takeIf { it.isNotEmpty() }
+                            viewportPoints = previous.viewportPoints.filterNot { p -> p.id in idSet },
+                            // Clúster vaciado: vuelve a todo el viewport.
+                            focusedPoints = newFocus?.takeIf { it.isNotEmpty() }
                         )
                     }
                 }
@@ -285,6 +362,9 @@ class MapViewModel(
         return Triple(anchor.latitude, anchor.longitude, 12)
     }
 }
+
+/** Espera tras parar la cámara antes de refiltrar la hoja. */
+private const val VIEWPORT_DEBOUNCE_MS = 300L
 
 /** Misma clave que edita Ajustes del servidor (AdminServerSettingsViewModel). */
 private const val MAP_TILE_API_KEY_SETTING = "ServerSettings.MapTileApiKey"

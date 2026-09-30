@@ -434,6 +434,14 @@
         <item quantity="one">%1$d photo at this spot</item>
         <item quantity="other">%1$d photos at this spot</item>
     </plurals>
+    <plurals name="map_sheet_viewport_title">
+        <item quantity="one">%1$d photo in this area</item>
+        <item quantity="other">%1$d photos in this area</item>
+    </plurals>
+    <string name="map_sheet_focus_chip">Selected spot</string>
+    <string name="map_sheet_focus_clear">Show the whole visible area</string>
+    <string name="map_sheet_empty_title">No photos in this area</string>
+    <string name="map_sheet_empty_subtitle">Move the map or zoom out to see more.</string>
 
     <string name="people_title">People</string>
     <string name="people_empty_title">No people yet</string>

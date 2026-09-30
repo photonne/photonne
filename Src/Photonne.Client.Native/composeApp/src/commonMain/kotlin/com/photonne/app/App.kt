@@ -3650,10 +3650,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             )
                         },
-                        onClusterPhotoOpen = { sheetPoints, index ->
-                            // Bottom-sheet thumbnail tap → open the
-                            // viewer seeded with the whole cluster so
-                            // the user can swipe through it.
+                        onSheetPhotoOpen = { sheetPoints, index ->
+                            // Thumbnail tap in the persistent sheet → open
+                            // the viewer seeded with the sheet's whole list
+                            // (viewport or tapped cluster) so it swipes.
                             val items = sheetPoints.map { it.toSyntheticTimelineItem() }
                             assetDetail = AssetDetailContext(
                                 items = items,
@@ -3665,7 +3665,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     timelineViewModel.setFavorite(id, isFav)
                                 }
                             )
-                            mapViewModel.closeClusterSheet()
                         },
                         onBulkAddToAlbum = { bulkAddSource = BulkAddSource.Map },
                         onBack = { moreSubscreen = null }
