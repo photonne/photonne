@@ -1,5 +1,6 @@
 package com.photonne.app.ui.folder
 
+import com.photonne.app.ui.theme.FieldGroupLabel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -62,7 +63,7 @@ fun FoldersFiltersSheet(
                 style = MaterialTheme.typography.titleLarge
             )
 
-            SectionLabel(stringResource(Res.string.filters_scope_label))
+            FieldGroupLabel(stringResource(Res.string.filters_scope_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(FoldersScope.All, stringResource(Res.string.folders_scope_all)),
@@ -88,7 +89,7 @@ fun FoldersFiltersSheet(
 
             HorizontalDivider()
 
-            SectionLabel(stringResource(Res.string.filters_sort_label))
+            FieldGroupLabel(stringResource(Res.string.filters_sort_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(FolderSort.Name, stringResource(Res.string.folders_sort_name)),
@@ -101,7 +102,7 @@ fun FoldersFiltersSheet(
                 onSelect = onSortChange
             )
 
-            SectionLabel(stringResource(Res.string.filters_direction_label))
+            FieldGroupLabel(stringResource(Res.string.filters_direction_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(
@@ -119,7 +120,7 @@ fun FoldersFiltersSheet(
 
             HorizontalDivider()
 
-            SectionLabel(stringResource(Res.string.filters_view_label))
+            FieldGroupLabel(stringResource(Res.string.filters_view_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(
@@ -138,13 +139,4 @@ fun FoldersFiltersSheet(
             )
         }
     }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
 }

@@ -1,7 +1,6 @@
 package com.photonne.app.ui.main
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,9 +21,7 @@ import androidx.compose.material3.IconButton
 import com.photonne.app.ui.theme.PhotonneColors
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Build
@@ -39,7 +36,6 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -90,6 +86,11 @@ import com.photonne.app.ui.util.openExternalUrl
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.contentWidth
+import com.photonne.app.ui.theme.IconCircle
+import com.photonne.app.ui.theme.SectionHeader
+import com.photonne.app.ui.theme.SettingsGroup
+import com.photonne.app.ui.theme.SettingsItem
+import com.photonne.app.ui.theme.SettingsTrailing
 
 /**
  * A destination on the More tab. Each entry resolves to a subscreen in [App]
@@ -288,13 +289,11 @@ fun MoreScreen(
 
         sections.forEach { section ->
             item("section-${section.key}") {
-                Text(
+                SectionHeader(
                     text = stringResource(section.titleRes),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .contentWidth()
-                        .padding(start = Spacing.xl, end = Spacing.xl, top = Spacing.md, bottom = Spacing.xs)
+                        .padding(horizontal = Spacing.lg)
                 )
             }
             item("group-${section.key}") {
@@ -502,7 +501,7 @@ private fun MoreLibraryTile(
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconPill(icon = icon, compact = true)
+            IconCircle(icon = icon, compact = true)
             Spacer(Modifier.size(10.dp))
             Text(
                 text = label,
@@ -519,84 +518,31 @@ private fun MoreLibraryTile(
 /** One card holding a section's rows, split by inset dividers. */
 @Composable
 private fun MoreRowGroup(shortcuts: List<MoreShortcut>) {
-    Card(
+    SettingsGroup(
         modifier = Modifier
             .contentWidth()
-            .padding(horizontal = Spacing.lg),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            .padding(horizontal = Spacing.lg)
     ) {
         shortcuts.forEachIndexed { index, shortcut ->
-            if (index > 0) {
-                HorizontalDivider(
-                    // Arranca donde el texto, bajo la píldora no hay línea.
-                    modifier = Modifier.padding(start = Spacing.lg + 40.dp + Spacing.lg),
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-            }
-            MoreRow(shortcut)
+            SettingsItem(
+                headline = stringResource(shortcut.labelRes),
+                leadingIcon = shortcut.icon,
+                onClick = shortcut.onClick,
+                headlineMaxLines = 1,
+                showDivider = index > 0,
+                trailing = if (shortcut.badgeCount > 0) {
+                    val countLabelRes = shortcut.countLabelRes
+                    if (countLabelRes != null) {
+                        SettingsTrailing.Value(stringResource(countLabelRes, shortcut.badgeCount))
+                    } else {
+                        SettingsTrailing.Custom {
+                            Badge {
+                                Text(if (shortcut.badgeCount > 99) "99+" else shortcut.badgeCount.toString())
+                            }
+                        }
+                    }
+                } else null
+            )
         }
-    }
-}
-
-@Composable
-private fun MoreRow(shortcut: MoreShortcut) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = shortcut.onClick)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconPill(icon = shortcut.icon)
-        Spacer(Modifier.size(Spacing.lg))
-        Text(
-            text = stringResource(shortcut.labelRes),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        if (shortcut.badgeCount > 0) {
-            val countLabelRes = shortcut.countLabelRes
-            if (countLabelRes != null) {
-                Text(
-                    text = stringResource(countLabelRes, shortcut.badgeCount),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Badge {
-                    Text(if (shortcut.badgeCount > 99) "99+" else shortcut.badgeCount.toString())
-                }
-            }
-            Spacer(Modifier.size(Spacing.sm))
-        }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-/** Circular tinted badge for shortcut and settings icons — mirrors the PWA's brand-accented icons. */
-@Composable
-private fun IconPill(icon: ImageVector, modifier: Modifier = Modifier, compact: Boolean = false) {
-    Box(
-        modifier = modifier
-            .size(if (compact) 34.dp else 40.dp)
-            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.size(if (compact) 18.dp else 22.dp)
-        )
     }
 }

@@ -1,5 +1,6 @@
 package com.photonne.app.ui.settings
 
+import com.photonne.app.ui.theme.SectionHeader
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,8 +60,6 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
@@ -128,17 +127,6 @@ fun AccountStorageScreen(
             onChromeVisibleChange = onChromeVisibleChange
         )
     }
-}
-
-@Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier
-            .semantics { heading() }
-            .padding(horizontal = Spacing.xs, vertical = Spacing.xs)
-    )
 }
 
 @Composable

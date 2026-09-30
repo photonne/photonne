@@ -1,7 +1,10 @@
 package com.photonne.app.ui.admin
 
 import com.photonne.app.ui.theme.PrimaryActionButton
+import com.photonne.app.ui.main.FormPageScaffold
 import com.photonne.app.ui.main.ResultSnackbar
+import com.photonne.app.ui.theme.SectionHeader
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -71,23 +74,16 @@ import com.photonne.app.resources.admin_settings_device_gpu
 import com.photonne.app.resources.admin_settings_device_hint
 import com.photonne.app.resources.admin_settings_device_label
 import com.photonne.app.resources.admin_settings_device_ocr_warning
-import com.photonne.app.resources.admin_settings_discard_confirm
-import com.photonne.app.resources.admin_settings_discard_message
-import com.photonne.app.resources.admin_settings_discard_title
 import com.photonne.app.resources.admin_settings_increase
 import com.photonne.app.resources.admin_settings_load_failed
 import com.photonne.app.resources.admin_settings_range_format
 import com.photonne.app.resources.admin_settings_saved
 import com.photonne.app.resources.error_banner_retry
 import com.photonne.app.ui.error.ErrorBanner
-import com.photonne.app.ui.library.ConfirmActionDialog
-import com.photonne.app.ui.navigation.PlatformBackHandler
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.Spacing
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 
 /**
  * Vertically scrolling form shell shared by every Ajustes subpage. Draws its
@@ -121,11 +117,12 @@ fun AdminSettingsForm(
         onShown = onSavedShown
     )
 
-    var confirmDiscard by remember { mutableStateOf(false) }
-    val guardedBack = { if (state.isDirty) confirmDiscard = true else onBack() }
-    PlatformBackHandler(enabled = state.isDirty) { confirmDiscard = true }
-
-    AdminPageScaffold(title = title, onBack = guardedBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
+    FormPageScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        hasUnsavedChanges = state.isDirty
+    ) { page ->
         when {
             state.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -154,28 +151,18 @@ fun AdminSettingsForm(
             }
         }
     }
-
-    if (confirmDiscard) {
-        ConfirmActionDialog(
-            title = stringResource(Res.string.admin_settings_discard_title),
-            message = stringResource(Res.string.admin_settings_discard_message),
-            confirmLabel = stringResource(Res.string.admin_settings_discard_confirm),
-            isDestructive = true,
-            isSubmitting = false,
-            onDismiss = { confirmDiscard = false },
-            onConfirm = {
-                confirmDiscard = false
-                onBack()
-            }
-        )
-    }
 }
 
-/** Title of a group of settings, under a divider unless it opens the form. */
+/** Title of a group of settings, under a divider unless it opens the form.
+ *  Same look as every other page's [SectionHeader]; the form's column already
+ *  spaces it, so it only keeps the side inset. */
 @Composable
 fun SettingSectionHeader(title: String, divider: Boolean = true) {
     if (divider) HorizontalDivider()
-    Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+    SectionHeader(
+        text = title,
+        contentPadding = PaddingValues(horizontal = Spacing.sm)
+    )
 }
 
 /**

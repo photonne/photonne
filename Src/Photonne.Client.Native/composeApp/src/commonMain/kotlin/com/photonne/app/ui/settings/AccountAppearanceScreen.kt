@@ -1,41 +1,20 @@
 package com.photonne.app.ui.settings
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.settings.ThemePreference
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.appearance_dark
 import com.photonne.app.resources.appearance_light
 import com.photonne.app.resources.appearance_system
 import com.photonne.app.resources.appearance_title
-import org.jetbrains.compose.resources.StringResource
+import com.photonne.app.ui.main.FormPageScaffold
+import com.photonne.app.ui.theme.SectionHeader
+import com.photonne.app.ui.theme.SettingsGroup
+import com.photonne.app.ui.theme.SettingsItem
+import com.photonne.app.ui.theme.SettingsTrailing
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.contentWidth
-import com.photonne.app.ui.theme.Spacing
 
 private val OPTIONS = listOf(
     ThemePreference.System to Res.string.appearance_system,
@@ -50,64 +29,22 @@ fun AccountAppearanceScreen(
     viewModel: AppearanceViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
     val current by viewModel.preference.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .hazeSource(hazeState)
-                .contentWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-        ) {
-            Text(
-                stringResource(Res.string.appearance_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-            OPTIONS.forEach { (preference, label) ->
-                AppearanceRow(
-                    label = label,
-                    isSelected = current == preference,
-                    onSelect = { viewModel.choose(preference) }
-                )
+    FormPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
+        page {
+            SectionHeader(stringResource(Res.string.appearance_title))
+            // Las opciones como filas de ajustes: toda la fila selecciona.
+            SettingsGroup {
+                OPTIONS.forEachIndexed { index, (preference, label) ->
+                    SettingsItem(
+                        headline = stringResource(label),
+                        onClick = { viewModel.choose(preference) },
+                        trailing = SettingsTrailing.Radio(selected = current == preference),
+                        showDivider = index > 0
+                    )
+                }
             }
         }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
-    }
-}
-
-@Composable
-private fun AppearanceRow(
-    label: StringResource,
-    isSelected: Boolean,
-    onSelect: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectable(selected = isSelected, onClick = onSelect)
-            .padding(vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-    ) {
-        RadioButton(selected = isSelected, onClick = onSelect)
-        Text(stringResource(label), style = MaterialTheme.typography.bodyLarge)
     }
 }

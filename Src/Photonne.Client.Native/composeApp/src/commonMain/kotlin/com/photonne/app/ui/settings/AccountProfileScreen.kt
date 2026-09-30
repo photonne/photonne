@@ -4,20 +4,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.main.ResultSnackbar
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.CalendarToday
@@ -33,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -42,12 +37,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import com.photonne.app.data.models.UserDto
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
+import com.photonne.app.ui.main.FormPageScaffold
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_profile_email
 import com.photonne.app.resources.account_profile_first_name
@@ -64,7 +54,6 @@ import com.photonne.app.resources.admin_user_role_admin
 import com.photonne.app.resources.admin_user_role_user
 import kotlin.time.Instant
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.contentWidth
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
@@ -74,9 +63,6 @@ fun AccountProfileScreen(
     viewModel: AccountProfileViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsStateWithLifecycle()
     // The result goes where every other one in the app goes: the snackbar.
     ResultSnackbar(
@@ -105,86 +91,70 @@ fun AccountProfileScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .hazeSource(hazeState)
-            .contentWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(Spacing.md)
-    ) {
-        state.baseline?.let { user ->
-            ProfileSummaryCard(user)
+    FormPageScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        hasUnsavedChanges = state.hasUnsavedChanges
+    ) { page ->
+        page {
+            state.baseline?.let { user ->
+                ProfileSummaryCard(user)
+            }
+
+            OutlinedTextField(
+                value = state.firstName,
+                onValueChange = viewModel::onFirstNameChange,
+                label = { Text(stringResource(Res.string.account_profile_first_name)) },
+                singleLine = true,
+                enabled = !state.isSubmitting,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = state.lastName,
+                onValueChange = viewModel::onLastNameChange,
+                label = { Text(stringResource(Res.string.account_profile_last_name)) },
+                singleLine = true,
+                enabled = !state.isSubmitting,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = state.email,
+                onValueChange = viewModel::onEmailChange,
+                label = { Text(stringResource(Res.string.account_profile_email)) },
+                singleLine = true,
+                enabled = !state.isSubmitting,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = state.username,
+                onValueChange = viewModel::onUsernameChange,
+                label = { Text(stringResource(Res.string.account_profile_username)) },
+                singleLine = true,
+                enabled = !state.isSubmitting,
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            state.error?.userMessage?.let { msg ->
+                Text(msg, color = MaterialTheme.colorScheme.error)
+            }
+
+            Spacer(Modifier.height(Spacing.xs))
+            PrimaryActionButton(
+                label = stringResource(Res.string.account_profile_save),
+                enabled = state.canSave,
+                isLoading = state.isSubmitting,
+                onClick = viewModel::save
+            )
         }
-
-        OutlinedTextField(
-            value = state.firstName,
-            onValueChange = viewModel::onFirstNameChange,
-            label = { Text(stringResource(Res.string.account_profile_first_name)) },
-            singleLine = true,
-            enabled = !state.isSubmitting,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Words
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = state.lastName,
-            onValueChange = viewModel::onLastNameChange,
-            label = { Text(stringResource(Res.string.account_profile_last_name)) },
-            singleLine = true,
-            enabled = !state.isSubmitting,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Words
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = state.email,
-            onValueChange = viewModel::onEmailChange,
-            label = { Text(stringResource(Res.string.account_profile_email)) },
-            singleLine = true,
-            enabled = !state.isSubmitting,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = state.username,
-            onValueChange = viewModel::onUsernameChange,
-            label = { Text(stringResource(Res.string.account_profile_username)) },
-            singleLine = true,
-            enabled = !state.isSubmitting,
-            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        state.error?.userMessage?.let { msg ->
-            Text(msg, color = MaterialTheme.colorScheme.error)
-        }
-
-        Spacer(Modifier.height(Spacing.xs))
-        PrimaryActionButton(
-            label = stringResource(Res.string.account_profile_save),
-            enabled = state.canSave,
-            isLoading = state.isSubmitting,
-            onClick = viewModel::save
-        )
-    }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
     }
 }
 

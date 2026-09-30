@@ -1,5 +1,6 @@
 package com.photonne.app.ui.album.smart
 
+import com.photonne.app.ui.theme.FieldGroupLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -116,8 +117,6 @@ import coil3.compose.AsyncImage
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PrimaryActionButton
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
@@ -157,7 +156,7 @@ fun RuleConditionsEditor(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         // Coincidir con: Todas (AND) / Cualquiera (OR)
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            SectionLabel(stringResource(Res.string.smart_album_match_section))
+            FieldGroupLabel(stringResource(Res.string.smart_album_match_section))
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 FilterChip(
                     selected = matchAll,
@@ -174,7 +173,7 @@ fun RuleConditionsEditor(
 
         // Condiciones
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            SectionLabel(stringResource(Res.string.smart_album_conditions_section))
+            FieldGroupLabel(stringResource(Res.string.smart_album_conditions_section))
             if (conditions.isEmpty()) {
                 Text(
                     stringResource(Res.string.smart_album_conditions_empty),
@@ -288,15 +287,6 @@ fun RuleConditionsEditor(
     }
 }
 
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.semantics { heading() },
-    )
-}
 
 @Composable
 private fun ConditionRow(

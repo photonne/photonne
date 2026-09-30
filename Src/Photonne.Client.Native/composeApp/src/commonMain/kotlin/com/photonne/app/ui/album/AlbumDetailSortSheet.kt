@@ -1,13 +1,12 @@
 package com.photonne.app.ui.album
 
+import com.photonne.app.ui.theme.FieldGroupLabel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,8 +22,6 @@ import com.photonne.app.ui.util.SegmentOption
 import com.photonne.app.ui.util.SegmentedChoiceRow
 import com.photonne.app.ui.util.SortDirection
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -50,7 +47,7 @@ fun AlbumDetailSortSheet(
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
-            SectionLabel(stringResource(Res.string.filters_sort_label))
+            FieldGroupLabel(stringResource(Res.string.filters_sort_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(
@@ -66,7 +63,7 @@ fun AlbumDetailSortSheet(
                 onSelect = onSortChange
             )
 
-            SectionLabel(stringResource(Res.string.filters_direction_label))
+            FieldGroupLabel(stringResource(Res.string.filters_direction_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(
@@ -83,14 +80,4 @@ fun AlbumDetailSortSheet(
             )
         }
     }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.semantics { heading() }
-    )
 }

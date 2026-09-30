@@ -30,15 +30,21 @@ data class AccountProfileUiState(
      *  confirmed with the numbers first — as the web does. */
     val renamePreview: RenamePreviewDto? = null,
 ) {
-    val canSave: Boolean
+    /** Algún campo difiere de lo guardado: salir pide confirmación. */
+    val hasUnsavedChanges: Boolean
         get() {
             val current = baseline ?: return false
-            if (isSubmitting) return false
-            if (email.isBlank() || username.isBlank()) return false
             return firstName.trim() != current.firstName.orEmpty().trim() ||
                 lastName.trim() != current.lastName.orEmpty().trim() ||
                 email.trim() != current.email.trim() ||
                 username.trim() != current.username.trim()
+        }
+
+    val canSave: Boolean
+        get() {
+            if (isSubmitting) return false
+            if (email.isBlank() || username.isBlank()) return false
+            return hasUnsavedChanges
         }
 }
 

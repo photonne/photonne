@@ -1,5 +1,6 @@
 package com.photonne.app.ui.album
 
+import com.photonne.app.ui.theme.FieldGroupLabel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,8 +40,6 @@ import com.photonne.app.ui.util.SegmentOption
 import com.photonne.app.ui.util.SegmentedChoiceRow
 import com.photonne.app.ui.util.SortDirection
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import com.photonne.app.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +67,7 @@ fun AlbumsFiltersSheet(
                 style = MaterialTheme.typography.titleLarge
             )
 
-            SectionLabel(stringResource(Res.string.filters_scope_label))
+            FieldGroupLabel(stringResource(Res.string.filters_scope_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(AlbumsScope.All, stringResource(Res.string.albums_scope_all)),
@@ -84,7 +83,7 @@ fun AlbumsFiltersSheet(
 
             HorizontalDivider()
 
-            SectionLabel(stringResource(Res.string.filters_sort_label))
+            FieldGroupLabel(stringResource(Res.string.filters_sort_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(AlbumSort.Date, stringResource(Res.string.albums_sort_date)),
@@ -94,7 +93,7 @@ fun AlbumsFiltersSheet(
                 onSelect = onSortChange
             )
 
-            SectionLabel(stringResource(Res.string.filters_direction_label))
+            FieldGroupLabel(stringResource(Res.string.filters_direction_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(
@@ -129,7 +128,7 @@ fun AlbumsFiltersSheet(
 
             HorizontalDivider()
 
-            SectionLabel(stringResource(Res.string.filters_view_label))
+            FieldGroupLabel(stringResource(Res.string.filters_view_label))
             SegmentedChoiceRow(
                 options = listOf(
                     SegmentOption(
@@ -148,14 +147,4 @@ fun AlbumsFiltersSheet(
             )
         }
     }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.semantics { heading() }
-    )
 }

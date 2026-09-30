@@ -1,14 +1,10 @@
 package com.photonne.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Wifi
@@ -20,10 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_connection_server
@@ -48,17 +42,11 @@ import com.photonne.app.ui.admin.DeviceConnectionViewModel
 import com.photonne.app.ui.admin.SettingSectionHeader
 import com.photonne.app.ui.admin.SettingTextField
 import com.photonne.app.ui.admin.URL_PLACEHOLDER
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.main.FormPageScaffold
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.SecondaryActionButton
 import com.photonne.app.ui.theme.Spacing
-import com.photonne.app.ui.theme.contentWidth
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -75,36 +63,18 @@ fun AccountConnectionScreen(
     viewModel: DeviceConnectionViewModel,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
     LaunchedEffect(Unit) { viewModel.reload() }
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .hazeSource(hazeState)
-                .contentWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-            verticalArrangement = Arrangement.spacedBy(Spacing.md)
-        ) {
+    FormPageScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        hasUnsavedChanges = state.hasUnsavedChanges
+    ) { page ->
+        page {
             DeviceConnectionSection(viewModel)
         }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
     }
 }
 

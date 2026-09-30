@@ -10,18 +10,13 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -31,6 +26,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.error_banner_retry
 import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.main.FormPageScaffold
 import com.photonne.app.ui.main.ResultSnackbar
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -43,7 +39,6 @@ import com.photonne.app.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.contentWidth
 
 /**
  * Shell of every admin list: floating chrome, content padded clear of it and
@@ -183,14 +178,7 @@ fun AdminEditorScaffold(
 /**
  * Shell of every admin page that is a scrolling column rather than a list:
  * the hubs, the server version, the duplicates and backup tasks, the editors.
- * Each of them used to paste the same forty lines — Box, haze, scroll state,
- * the padding that clears the floating chrome and the floating nav, and the
- * chrome wired to that scroll — with the margins drifting between 8, 12 and
- * 16 dp from one copy to the next.
- *
- * [body] gets a `page` function that draws the padded scrolling column, so a
- * caller can show something else instead of it (a spinner, an empty state)
- * and still keep the chrome.
+ * Now a thin alias of [FormPageScaffold], which the account forms share too.
  */
 @Composable
 fun AdminPageScaffold(
@@ -199,40 +187,12 @@ fun AdminPageScaffold(
     onChromeVisibleChange: (Boolean) -> Unit = {},
     body: @Composable (page: @Composable (@Composable ColumnScope.() -> Unit) -> Unit) -> Unit
 ) {
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
-    Box(modifier = Modifier.fillMaxSize()) {
-        body { content ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .hazeSource(hazeState)
-                    .contentWidth()
-                    .padding(
-                        start = Spacing.screenHorizontal,
-                        end = Spacing.screenHorizontal,
-                        top = Spacing.lg + subscreenChromeReservedTop(),
-                        bottom = Spacing.lg + floatingNavBarReservedHeight()
-                    ),
-                verticalArrangement = Arrangement.spacedBy(Spacing.md),
-                content = content
-            )
-        }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
-    }
+    FormPageScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        body = body
+    )
 }
 
 /** Label on the left, value on the right: a row of a stats or info card. It

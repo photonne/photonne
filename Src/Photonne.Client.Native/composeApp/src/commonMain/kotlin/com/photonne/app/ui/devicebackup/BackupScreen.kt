@@ -1,5 +1,11 @@
 package com.photonne.app.ui.devicebackup
 
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.SectionHeader
+import com.photonne.app.ui.theme.SettingsGroup
+import com.photonne.app.ui.theme.SettingsItem
+import com.photonne.app.ui.theme.SettingsTrailing
+import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,7 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
@@ -33,7 +38,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,7 +48,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.filled.HourglassEmpty
@@ -94,7 +97,6 @@ import com.photonne.app.resources.backup_enabled_on
 import com.photonne.app.resources.backup_pending_unknown
 import com.photonne.app.resources.backup_pending_view
 import com.photonne.app.resources.backup_section_origin
-import com.photonne.app.resources.backup_source_label
 import com.photonne.app.resources.backup_source_none
 import com.photonne.app.resources.backup_source_pick
 import com.photonne.app.resources.device_backup_action_free_space_sized
@@ -237,13 +239,23 @@ fun BackupScreen(
         verticalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         item("enable") {
-            BackupToggleCard(
-                enabled = state.isBackupEnabled,
-                onChange = { enabled ->
-                    viewModel.setBackupEnabled(enabled)
-                    if (enabled) notifications.request()
-                }
-            )
+            SettingsGroup(modifier = Modifier.padding(horizontal = Spacing.lg)) {
+                SettingsItem(
+                    headline = stringResource(Res.string.backup_enabled_label),
+                    supporting = stringResource(
+                        if (state.isBackupEnabled) Res.string.backup_enabled_on
+                        else Res.string.backup_enabled_off
+                    ),
+                    leadingIcon = Icons.Filled.CloudUpload,
+                    trailing = SettingsTrailing.Toggle(
+                        checked = state.isBackupEnabled,
+                        onCheckedChange = { enabled ->
+                            viewModel.setBackupEnabled(enabled)
+                            if (enabled) notifications.request()
+                        }
+                    )
+                )
+            }
         }
 
         if (!state.isBackupEnabled) {
@@ -297,60 +309,67 @@ fun BackupScreen(
             }
         }
 
-        item("origin-header") { SectionHeader(stringResource(Res.string.backup_section_origin)) }
-        // One row per folder: a phone's photos live in Camera, WhatsApp,
-        // Screenshots and Downloads at once, and picking a new one used to
-        // replace the previous.
-        items(state.folders, key = { "folder-${it.uri}" }) { folder ->
-            val removedMessage = stringResource(
-                Res.string.backup_source_removed, folder.displayName
-            )
-            val undoLabel = stringResource(Res.string.action_undo)
-            SettingsRow(
-                icon = Icons.Filled.Folder,
-                label = stringResource(Res.string.backup_source_label),
-                value = folder.displayName,
-                actionLabel = null,
-                onClick = null,
-                trailing = {
-                    IconButton(onClick = {
-                        // Reversible: quitarlo no borra nada del servidor, así
-                        // que snackbar con Deshacer en lugar de confirmación.
-                        // El registro de la carpeta (veredictos, "Omitidos")
-                        // solo se borra cuando caduca el Deshacer.
-                        viewModel.removeFolder(folder.uri)
-                        if (snackbar == null) {
-                            viewModel.commitFolderRemoval(folder.uri)
-                        } else {
-                            snackbar.show(
-                                message = removedMessage,
-                                actionLabel = undoLabel,
-                                onAction = { viewModel.onFolderPicked(folder) },
-                                onDismissed = { viewModel.commitFolderRemoval(folder.uri) }
-                            )
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = stringResource(Res.string.backup_source_remove),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+        item("origin-header") {
+            SectionHeader(
+                text = stringResource(Res.string.backup_section_origin),
+                modifier = Modifier.padding(horizontal = Spacing.lg)
             )
         }
-        item("origin-add") {
-            SettingsRow(
-                icon = Icons.Filled.Folder,
-                label = stringResource(Res.string.backup_section_origin),
-                value = stringResource(
-                    if (state.folders.isEmpty()) Res.string.backup_source_none
-                    else Res.string.backup_source_add
-                ),
-                actionLabel = if (state.folders.isEmpty())
-                    stringResource(Res.string.backup_source_pick) else null,
-                onClick = addBackupSource
-            )
+        // One row per folder: a phone's photos live in Camera, WhatsApp,
+        // Screenshots and Downloads at once, and picking a new one used to
+        // replace the previous. All of them, plus "add", in one group: the
+        // folder name is the row's title (it used to sit under a small
+        // "Carpeta del dispositivo" caption, the hierarchy upside down).
+        item("origin") {
+            val removedTemplate = Res.string.backup_source_removed
+            val undoLabel = stringResource(Res.string.action_undo)
+            SettingsGroup(modifier = Modifier.padding(horizontal = Spacing.lg)) {
+                state.folders.forEachIndexed { index, folder ->
+                    val removedMessage = stringResource(removedTemplate, folder.displayName)
+                    SettingsItem(
+                        headline = folder.displayName,
+                        leadingIcon = Icons.Filled.Folder,
+                        headlineMaxLines = 1,
+                        showDivider = index > 0,
+                        trailing = SettingsTrailing.Custom {
+                            IconButton(onClick = {
+                                // Reversible: quitarlo no borra nada del servidor, así
+                                // que snackbar con Deshacer en lugar de confirmación.
+                                // El registro de la carpeta (veredictos, "Omitidos")
+                                // solo se borra cuando caduca el Deshacer.
+                                viewModel.removeFolder(folder.uri)
+                                if (snackbar == null) {
+                                    viewModel.commitFolderRemoval(folder.uri)
+                                } else {
+                                    snackbar.show(
+                                        message = removedMessage,
+                                        actionLabel = undoLabel,
+                                        onAction = { viewModel.onFolderPicked(folder) },
+                                        onDismissed = { viewModel.commitFolderRemoval(folder.uri) }
+                                    )
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Delete,
+                                    contentDescription = stringResource(Res.string.backup_source_remove),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    )
+                }
+                SettingsItem(
+                    headline = stringResource(
+                        if (state.folders.isEmpty()) Res.string.backup_source_pick
+                        else Res.string.backup_source_add
+                    ),
+                    supporting = if (state.folders.isEmpty())
+                        stringResource(Res.string.backup_source_none) else null,
+                    leadingIcon = Icons.Outlined.CreateNewFolder,
+                    onClick = addBackupSource,
+                    showDivider = state.folders.isNotEmpty()
+                )
+            }
         }
 
         if (state.isBackupEnabled) {
@@ -365,42 +384,46 @@ fun BackupScreen(
                 )
             }
             if (settingsExpanded) {
-                // Turbo comes first because it tunes BOTH manual and background
-                // passes (it widens the upload fan-out), not just scheduled ones.
-                item("turbo") {
-                    ToggleRow(
-                        label = stringResource(Res.string.backup_turbo_label),
-                        hint = stringResource(Res.string.backup_turbo_hint),
-                        checked = state.backgroundSync.turbo,
-                        onChange = viewModel::setTurbo
-                    )
-                }
-                item("bg-auto") {
-                    ToggleRow(
-                        label = stringResource(Res.string.background_sync_auto_label),
-                        hint = stringResource(Res.string.background_sync_auto_hint),
-                        checked = state.backgroundSync.enabled,
-                        onChange = viewModel::setAutoBackupEnabled
-                    )
-                }
-                // Constraints only matter when auto-sync is on — hide them to
-                // avoid implying they affect manual syncs.
-                if (state.backgroundSync.enabled) {
-                    item("bg-wifi") {
-                        ToggleRow(
-                            label = stringResource(Res.string.background_sync_wifi_label),
-                            hint = stringResource(Res.string.background_sync_wifi_hint),
-                            checked = state.backgroundSync.requireWifi,
-                            onChange = viewModel::setRequireWifi
+                item("settings") {
+                    SettingsGroup(modifier = Modifier.padding(horizontal = Spacing.lg)) {
+                        // Turbo comes first because it tunes BOTH manual and background
+                        // passes (it widens the upload fan-out), not just scheduled ones.
+                        SettingsItem(
+                            headline = stringResource(Res.string.backup_turbo_label),
+                            supporting = stringResource(Res.string.backup_turbo_hint),
+                            trailing = SettingsTrailing.Toggle(state.backgroundSync.turbo, viewModel::setTurbo)
                         )
-                    }
-                    item("bg-charging") {
-                        ToggleRow(
-                            label = stringResource(Res.string.background_sync_charging_label),
-                            hint = stringResource(Res.string.background_sync_charging_hint),
-                            checked = state.backgroundSync.requireCharging,
-                            onChange = viewModel::setRequireCharging
+                        SettingsItem(
+                            headline = stringResource(Res.string.background_sync_auto_label),
+                            supporting = stringResource(Res.string.background_sync_auto_hint),
+                            trailing = SettingsTrailing.Toggle(
+                                state.backgroundSync.enabled,
+                                viewModel::setAutoBackupEnabled
+                            ),
+                            showDivider = true
                         )
+                        // Constraints only matter when auto-sync is on — hide them to
+                        // avoid implying they affect manual syncs.
+                        if (state.backgroundSync.enabled) {
+                            SettingsItem(
+                                headline = stringResource(Res.string.background_sync_wifi_label),
+                                supporting = stringResource(Res.string.background_sync_wifi_hint),
+                                trailing = SettingsTrailing.Toggle(
+                                    state.backgroundSync.requireWifi,
+                                    viewModel::setRequireWifi
+                                ),
+                                showDivider = true
+                            )
+                            SettingsItem(
+                                headline = stringResource(Res.string.background_sync_charging_label),
+                                supporting = stringResource(Res.string.background_sync_charging_hint),
+                                trailing = SettingsTrailing.Toggle(
+                                    state.backgroundSync.requireCharging,
+                                    viewModel::setRequireCharging
+                                ),
+                                showDivider = true
+                            )
+                        }
                     }
                 }
             }
@@ -785,12 +808,15 @@ private fun CollapsibleHeader(title: String, expanded: Boolean, onToggle: () -> 
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(start = Spacing.xl, end = Spacing.xl, top = Spacing.sm, bottom = Spacing.xs),
+            .semantics { heading() }
+            .padding(start = Spacing.xl, end = Spacing.xl, top = Spacing.md, bottom = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Misma tipografía que [SectionHeader]: es la cabecera de sección
+        // de "Ajustes de la copia", solo que se pliega.
         Text(
             text = title,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)
         )
@@ -798,7 +824,7 @@ private fun CollapsibleHeader(title: String, expanded: Boolean, onToggle: () -> 
             imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(IconSize.md)
         )
     }
 }
@@ -813,168 +839,6 @@ private fun relativeTimeLabel(epochMillis: Long): String {
         minutes < 60 -> stringResource(Res.string.backup_time_minutes, minutes.toInt())
         minutes < 60 * 24 -> stringResource(Res.string.backup_time_hours, (minutes / 60).toInt())
         else -> pluralStringResource(Res.plurals.backup_time_days, (minutes / (60 * 24)).toInt(), (minutes / (60 * 24)).toInt())
-    }
-}
-
-@Composable
-private fun BackupToggleCard(enabled: Boolean, onChange: (Boolean) -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.lg),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onChange(!enabled) }
-                .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconPill(icon = Icons.Filled.CloudUpload)
-            Spacer(Modifier.size(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(Res.string.backup_enabled_label),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = stringResource(
-                        if (enabled) Res.string.backup_enabled_on
-                        else Res.string.backup_enabled_off
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(checked = enabled, onCheckedChange = onChange)
-        }
-    }
-}
-
-@Composable
-private fun ToggleRow(
-    label: String,
-    hint: String,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.lg)
-            .clickable { onChange(!checked) },
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = hint,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(checked = checked, onCheckedChange = onChange)
-        }
-    }
-}
-
-@Composable
-private fun SettingsRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    actionLabel: String?,
-    onClick: (() -> Unit)?,
-    trailing: @Composable (() -> Unit)? = null
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.lg)
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconPill(icon = icon)
-            Spacer(Modifier.size(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = actionLabel ?: value,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            when {
-                trailing != null -> trailing()
-                onClick != null -> Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .semantics { heading() }
-            .padding(start = Spacing.xl, end = Spacing.xl, top = Spacing.sm)
-    )
-}
-
-@Composable
-private fun IconPill(icon: ImageVector) {
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.size(22.dp)
-        )
     }
 }
 

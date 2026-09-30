@@ -1,35 +1,12 @@
 package com.photonne.app.ui.utilities
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.unsupported_files_subtitle
 import com.photonne.app.resources.unsupported_files_title
@@ -39,16 +16,11 @@ import com.photonne.app.resources.utilities_section_large_files
 import com.photonne.app.resources.utilities_section_large_files_subtitle
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_section_locations_subtitle
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
+import com.photonne.app.ui.main.FormPageScaffold
+import com.photonne.app.ui.theme.SettingsGroup
+import com.photonne.app.ui.theme.SettingsItem
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.contentWidth
-import com.photonne.app.ui.theme.Spacing
 
 enum class UtilitiesEntry { Duplicates, LargeFiles, Locations, UnsupportedFiles }
 
@@ -66,9 +38,6 @@ fun UtilitiesHubScreen(
     onOpen: (UtilitiesEntry) -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val reservedTop = subscreenChromeReservedTop()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
     val entries = listOf(
         UtilitiesEntryDef(
             UtilitiesEntry.Duplicates,
@@ -96,76 +65,18 @@ fun UtilitiesHubScreen(
         )
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .hazeSource(hazeState)
-                .contentWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
-            verticalArrangement = Arrangement.spacedBy(Spacing.md)
-        ) {
-            entries.forEach { entry ->
-                UtilitiesEntryRow(entry = entry, onClick = { onOpen(entry.entry) })
-            }
-            Spacer(Modifier.height(Spacing.sm))
-        }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
-    }
-}
-
-@Composable
-private fun UtilitiesEntryRow(entry: UtilitiesEntryDef, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.lg)
-        ) {
-            Icon(
-                imageVector = entry.icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    stringResource(entry.title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    stringResource(entry.subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Box(contentAlignment = Alignment.CenterEnd) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+    FormPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
+        page {
+            SettingsGroup {
+                entries.forEachIndexed { index, entry ->
+                    SettingsItem(
+                        headline = stringResource(entry.title),
+                        supporting = stringResource(entry.subtitle),
+                        leadingIcon = entry.icon,
+                        onClick = { onOpen(entry.entry) },
+                        showDivider = index > 0
+                    )
+                }
             }
         }
     }

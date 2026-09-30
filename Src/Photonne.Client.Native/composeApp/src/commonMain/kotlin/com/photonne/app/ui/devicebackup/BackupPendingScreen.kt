@@ -1,5 +1,6 @@
 package com.photonne.app.ui.devicebackup
 
+import com.photonne.app.ui.theme.FieldGroupLabel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -507,7 +508,12 @@ private fun MediaGrid(
         if (pending.isNotEmpty()) {
             item(key = "hdr-pending", span = { GridItemSpan(maxLineSpan) }) {
                 Column {
-                    SectionLabel(stringResource(Res.string.backup_section_pending, pending.size))
+                    FieldGroupLabel(
+                        text = stringResource(Res.string.backup_section_pending, pending.size),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = Spacing.sm, end = Spacing.sm, top = Spacing.md, bottom = Spacing.xs)
+                    )
                     // One-tap escape hatch for a folder full of stuck failures:
                     // skip them all so they stop counting as pending.
                     if (failedCount > 0) {
@@ -583,20 +589,6 @@ private fun MediaGrid(
             }
         }
     }
-}
-
-/** Full-span section header for the pending/backed-up blocks. */
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { heading() }
-            .padding(start = Spacing.sm, end = Spacing.sm, top = Spacing.md, bottom = Spacing.xs)
-    )
 }
 
 /** Section header that toggles the visibility of its block on tap. */

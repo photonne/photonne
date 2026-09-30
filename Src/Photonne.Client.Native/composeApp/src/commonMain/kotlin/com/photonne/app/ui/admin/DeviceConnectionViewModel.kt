@@ -25,8 +25,14 @@ data class DeviceConnectionUiState(
     val isSaving: Boolean = false,
     // validación local, no errores HTTP — no migrado a UiError
     val errorMessage: String? = null,
-    val infoMessage: String? = null
-)
+    val infoMessage: String? = null,
+    /** Lo guardado en [ServerUrlStore], para saber si hay cambios sin guardar. */
+    val savedPublicUrl: String = "",
+    val savedLocalUrl: String = ""
+) {
+    val hasUnsavedChanges: Boolean
+        get() = publicUrl.trim() != savedPublicUrl.trim() || localUrl.trim() != savedLocalUrl.trim()
+}
 
 /**
  * Per-device editor for the public/local server URLs shown in
@@ -46,6 +52,8 @@ class DeviceConnectionViewModel(
     private fun loadInitial(): DeviceConnectionUiState = DeviceConnectionUiState(
         publicUrl = store.getPublic().orEmpty(),
         localUrl = store.getLocal().orEmpty(),
+        savedPublicUrl = store.getPublic().orEmpty(),
+        savedLocalUrl = store.getLocal().orEmpty(),
         localReachable = store.isLocalReachable(),
         effectiveUrl = store.effectiveBaseUrl.value.orEmpty()
     )
@@ -134,6 +142,8 @@ class DeviceConnectionViewModel(
                 isSaving = false,
                 publicUrl = normalizedPublic,
                 localUrl = normalizedLocal.orEmpty(),
+                savedPublicUrl = normalizedPublic,
+                savedLocalUrl = normalizedLocal.orEmpty(),
                 localReachable = reachable,
                 effectiveUrl = store.effectiveBaseUrl.value.orEmpty(),
                 infoMessage = SAVED
