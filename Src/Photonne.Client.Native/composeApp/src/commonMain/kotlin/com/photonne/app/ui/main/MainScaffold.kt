@@ -35,8 +35,6 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.NotInterested
 import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.HeartBroken
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
@@ -132,6 +130,7 @@ import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.action_edit
+import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_jump_to_date
 import com.photonne.app.resources.action_more
 import com.photonne.app.resources.album_action_members
@@ -151,8 +150,6 @@ import com.photonne.app.resources.selection_count
 import com.photonne.app.resources.selection_label_add_to_album
 import com.photonne.app.resources.selection_label_deselect_all
 import com.photonne.app.resources.selection_label_download
-import com.photonne.app.resources.selection_label_leave
-import com.photonne.app.resources.selection_label_members
 import com.photonne.app.resources.selection_label_more
 import com.photonne.app.resources.selection_label_move
 import com.photonne.app.resources.folder_move_assets_title
@@ -1332,8 +1329,9 @@ fun AlbumCardSelectionTopBar(
 }
 
 /**
- * Bottom bar for the single-album-card selection. Mirrors the PWA's Albums
- * selection toolbar (Members, Edit, Leave, Delete) gated by permissions.
+ * Bottom bar for the single-album-card selection, gated by permissions. Same
+ * order, labels and icons as the album detail's overflow menu
+ * (Edit · Members · Leave · Delete).
  * Delete carries the error tint since it's destructive.
  */
 @Composable
@@ -1349,19 +1347,6 @@ fun AlbumCardSelectionBottomBar(
     onDelete: () -> Unit
 ) {
     FloatingSelectionBar {
-        if (canManageMembers) {
-            FloatingSelectionBarItem(
-                onClick = onManageMembers,
-                enabled = !isMutating,
-                label = stringResource(Res.string.selection_label_members),
-                icon = {
-                    Icon(
-                        PhotonneIcons.Members,
-                        contentDescription = null
-                    )
-                }
-            )
-        }
         if (canEdit) {
             FloatingSelectionBarItem(
                 onClick = onEdit,
@@ -1375,11 +1360,24 @@ fun AlbumCardSelectionBottomBar(
                 }
             )
         }
+        if (canManageMembers) {
+            FloatingSelectionBarItem(
+                onClick = onManageMembers,
+                enabled = !isMutating,
+                label = stringResource(Res.string.album_action_members),
+                icon = {
+                    Icon(
+                        PhotonneIcons.Members,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
         if (canLeave) {
             FloatingSelectionBarItem(
                 onClick = onLeave,
                 enabled = !isMutating,
-                label = stringResource(Res.string.selection_label_leave),
+                label = stringResource(Res.string.action_leave),
                 icon = {
                     Icon(
                         PhotonneIcons.Logout,
@@ -1473,8 +1471,10 @@ fun FolderCardSelectionTopBar(
 }
 
 /**
- * Bottom bar for the single-folder-card selection. Mirrors the PWA's Folders
- * selection toolbar (Members, Rename, Delete) gated by permissions.
+ * Bottom bar for the single-folder-card selection, gated by permissions. Same
+ * order, labels and icons as the folder detail's overflow menu
+ * (Rename · Members · Delete). Move stays in the detail: it needs the opened
+ * folder's view model.
  */
 @Composable
 fun FolderCardSelectionBottomBar(
@@ -1502,22 +1502,9 @@ fun FolderCardSelectionBottomBar(
                 label = label,
                 icon = {
                     Icon(
-                        if (excludedFromDiscovery) Icons.Outlined.Visibility
-                        else Icons.Outlined.VisibilityOff,
+                        if (excludedFromDiscovery) PhotonneIcons.Show
+                        else PhotonneIcons.Hide,
                         contentDescription = label
-                    )
-                }
-            )
-        }
-        if (canManageMembers) {
-            FloatingSelectionBarItem(
-                onClick = onManageMembers,
-                enabled = !isMutating,
-                label = stringResource(Res.string.selection_label_members),
-                icon = {
-                    Icon(
-                        PhotonneIcons.Members,
-                        contentDescription = null
                     )
                 }
             )
@@ -1530,6 +1517,19 @@ fun FolderCardSelectionBottomBar(
                 icon = {
                     Icon(
                         PhotonneIcons.Rename,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
+        if (canManageMembers) {
+            FloatingSelectionBarItem(
+                onClick = onManageMembers,
+                enabled = !isMutating,
+                label = stringResource(Res.string.album_action_members),
+                icon = {
+                    Icon(
+                        PhotonneIcons.Members,
                         contentDescription = null
                     )
                 }
@@ -1603,8 +1603,8 @@ fun RowScope.FolderDetailChromeActions(
                         },
                         leadingIcon = {
                             Icon(
-                                if (excludedFromDiscovery) Icons.Outlined.Visibility
-                                else Icons.Outlined.VisibilityOff,
+                                if (excludedFromDiscovery) PhotonneIcons.Show
+                                else PhotonneIcons.Hide,
                                 contentDescription = null
                             )
                         },
@@ -1613,8 +1613,10 @@ fun RowScope.FolderDetailChromeActions(
                 }
                 if (canEdit) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(Res.string.action_edit)) },
-                        leadingIcon = { Icon(PhotonneIcons.Edit, contentDescription = null) },
+                        // "Renombrar" como en la cápsula de selección: el
+                        // diálogo solo cambia el nombre.
+                        text = { Text(stringResource(Res.string.action_rename)) },
+                        leadingIcon = { Icon(PhotonneIcons.Rename, contentDescription = null) },
                         onClick = { menuOpen = false; onEdit() }
                     )
                 }

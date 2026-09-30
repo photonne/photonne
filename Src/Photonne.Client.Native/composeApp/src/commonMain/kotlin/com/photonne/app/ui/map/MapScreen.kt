@@ -4,7 +4,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -17,7 +16,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,13 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.api.rememberApiBaseUrl
-import com.photonne.app.resources.action_retry
 import com.photonne.app.resources.map_action_zoom_out
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -49,6 +47,7 @@ import com.photonne.app.resources.map_empty_title
 import com.photonne.app.resources.map_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PhotonneIcons
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
@@ -155,35 +154,18 @@ fun MapScreen(
                 }
         }
 
-        state.error?.userMessage?.let { message ->
-            Surface(
+        // El banner de error estándar de la app (el mismo que en el resto de
+        // pantallas, con "Ver detalles" y "Reintentar"), flotando sobre el mapa.
+        if (state.error?.userMessage != null) {
+            ErrorBanner(
+                error = state.error,
+                onRetry = viewModel::refresh,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(horizontal = Spacing.lg)
-                    .padding(top = reservedTop + Spacing.sm),
-                color = MaterialTheme.colorScheme.errorContainer,
-                shape = MaterialTheme.shapes.small
-            ) {
-                Row(
-                    modifier = Modifier.padding(start = Spacing.md, end = Spacing.xs),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        message,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .padding(vertical = Spacing.sm),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    TextButton(onClick = viewModel::refresh) {
-                        Text(
-                            stringResource(Res.string.action_retry),
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-            }
+                    .padding(top = reservedTop + Spacing.sm)
+                    .clip(MaterialTheme.shapes.small)
+            )
         }
 
         // Condición de uso de las teselas de OSM y CARTO: la atribución debe

@@ -88,10 +88,11 @@ fun SkeletonBlock(
 fun SkeletonChip(
     width: Dp,
     height: Dp,
-    cornerRadius: Dp = 8.dp
+    cornerRadius: Dp = 8.dp,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(width = width, height = height)
             .clip(RoundedCornerShape(cornerRadius))
             .background(

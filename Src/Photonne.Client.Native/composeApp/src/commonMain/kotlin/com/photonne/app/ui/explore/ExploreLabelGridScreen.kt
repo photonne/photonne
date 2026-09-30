@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.getValue
@@ -117,7 +116,7 @@ internal fun ExploreLabelGridScreen(
                         AssetGridSkeleton(cellMinSize = 160.dp, contentPadding = PaddingValues(top = reservedTop))
                     } else {
                         EmptyState(
-                            icon = Icons.Outlined.SearchOff,
+                            icon = PhotonneIcons.NoResults,
                             title = stringResource(Res.string.search_no_results)
                         )
                     }

@@ -18,8 +18,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.Inbox
@@ -60,7 +58,7 @@ import com.photonne.app.resources.folders_search_empty_subtitle
 import com.photonne.app.resources.folders_search_empty_title
 import com.photonne.app.resources.folders_search_placeholder
 import com.photonne.app.resources.folders_shared_empty
-import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.error.FullScreenError
 import com.photonne.app.ui.main.CreateAction
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
@@ -363,15 +361,11 @@ private fun FolderListContent(
                             modifier = Modifier.weight(1f)
                         )
                     state.error != null ->
-                        // Con scroll para que el pull-to-refresh reciba el gesto.
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .verticalScroll(rememberScrollState())
-                                .padding(Spacing.lg)
-                        ) {
-                            ErrorBanner(error = state.error, onRetry = onRetry)
-                        }
+                        FullScreenError(
+                            error = state.error,
+                            onRetry = onRetry,
+                            modifier = Modifier.weight(1f)
+                        )
                     else ->
                         EmptyState(
                             title = emptyTitle,
@@ -548,7 +542,7 @@ private fun EmptyState(
 @Composable
 private fun EmptySearchState(query: String, modifier: Modifier = Modifier) {
     SharedEmptyState(
-        icon = PhotonneIcons.Search,
+        icon = PhotonneIcons.NoResults,
         title = stringResource(Res.string.folders_search_empty_title),
         subtitle = stringResource(Res.string.folders_search_empty_subtitle, query),
         modifier = modifier

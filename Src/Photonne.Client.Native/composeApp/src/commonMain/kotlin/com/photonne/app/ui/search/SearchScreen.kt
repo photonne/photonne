@@ -74,6 +74,7 @@ import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.MenuCheckSlot
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
@@ -118,11 +119,11 @@ fun SearchScreen(
                             )
                         )
                     state.error?.userMessage != null && state.results.isEmpty() ->
-                        Box(
-                            modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(Spacing.xl)
-                        ) {
-                            com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                        }
+                        com.photonne.app.ui.error.FullScreenError(
+                            error = state.error,
+                            onRetry = viewModel::refresh,
+                            modifier = Modifier.padding(top = reservedTop)
+                        )
                     !state.hasCriteriaForMode ->
                         EmptyState(
                             icon = PhotonneIcons.Search,
@@ -137,7 +138,7 @@ fun SearchScreen(
                             ActiveFiltersRow(state = state, onClick = onOpenFilters)
                             Box(modifier = Modifier.weight(1f)) {
                                 EmptyState(
-                                    icon = PhotonneIcons.Search,
+                                    icon = PhotonneIcons.NoResults,
                                     title = stringResource(Res.string.search_empty_results)
                                 )
                             }
@@ -273,24 +274,17 @@ private fun SearchModeMenu(
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.search_mode_text)) },
                 onClick = { onModeChange(SearchMode.Text); expanded = false },
-                trailingIcon = {
-                    if (mode == SearchMode.Text) {
-                        Icon(PhotonneIcons.Check, contentDescription = null)
-                    }
-                }
+                leadingIcon = { MenuCheckSlot(checked = mode == SearchMode.Text) }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.search_mode_semantic)) },
                 onClick = { onModeChange(SearchMode.Semantic); expanded = false },
-                trailingIcon = {
-                    if (mode == SearchMode.Semantic) {
-                        Icon(PhotonneIcons.Check, contentDescription = null)
-                    }
-                }
+                leadingIcon = { MenuCheckSlot(checked = mode == SearchMode.Semantic) }
             )
             if (canClear) {
                 DropdownMenuItem(
                     text = { Text(stringResource(Res.string.search_clear_all)) },
+                    leadingIcon = { Icon(PhotonneIcons.ClearAll, contentDescription = null) },
                     onClick = { onClearAll(); expanded = false }
                 )
             }

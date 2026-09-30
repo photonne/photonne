@@ -15,8 +15,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.HorizontalDivider
 import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.resources.people_picker_search_placeholder
@@ -63,8 +61,9 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
-import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.GridCirclesSkeleton
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.MenuCheckSlot
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
@@ -108,7 +107,16 @@ fun PeopleScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isInitialLoading ->
-                    ListRowsSkeleton()
+                    // Misma rejilla de caras que el contenido (columnas,
+                    // separación y reserva del cromo).
+                    GridCirclesSkeleton(
+                        contentPadding = PaddingValues(
+                            start = 12.dp,
+                            top = 12.dp + reservedTop,
+                            end = 12.dp,
+                            bottom = 12.dp + floatingNavBarReservedHeight()
+                        )
+                    )
                 state.error != null && state.people.isEmpty() ->
                     com.photonne.app.ui.error.FullScreenError(
                         error = state.error,
@@ -117,7 +125,7 @@ fun PeopleScreen(
                     )
                 state.isNoResults ->
                     EmptyState(
-                        icon = Icons.Outlined.SearchOff,
+                        icon = PhotonneIcons.NoResults,
                         title = stringResource(Res.string.people_search_no_results, state.search.trim())
                     )
                 state.isEmpty ->
@@ -261,15 +269,14 @@ private fun PeopleOverflowMenu(
                             )
                         )
                     },
-                    trailingIcon = if (option == sort) {
-                        { Icon(PhotonneIcons.Check, contentDescription = null) }
-                    } else null,
+                    leadingIcon = { MenuCheckSlot(checked = option == sort) },
                     onClick = { menuOpen = false; onSortChange(option) }
                 )
             }
             HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.people_action_recluster)) },
+                leadingIcon = { Icon(PhotonneIcons.Refresh, contentDescription = null) },
                 onClick = { menuOpen = false; onRecluster() }
             )
             DropdownMenuItem(
@@ -277,6 +284,12 @@ private fun PeopleOverflowMenu(
                     Text(
                         if (showHidden) stringResource(Res.string.people_action_hide_hidden)
                         else stringResource(Res.string.people_action_show_hidden)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        if (showHidden) PhotonneIcons.Hide else PhotonneIcons.Show,
+                        contentDescription = null
                     )
                 },
                 onClick = { menuOpen = false; onToggleHidden() }

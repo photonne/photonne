@@ -90,6 +90,7 @@ import com.photonne.app.resources.account_section_storage
 import com.photonne.app.resources.account_section_connection
 import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.admin_section_libraries
+import com.photonne.app.resources.admin_shared_trash
 import com.photonne.app.resources.admin_section_settings
 import com.photonne.app.resources.admin_section_stats
 import com.photonne.app.resources.admin_section_system
@@ -131,7 +132,6 @@ import com.photonne.app.resources.folder_move_title
 import com.photonne.app.resources.trash_action_delete_forever
 import com.photonne.app.resources.trash_action_empty
 import com.photonne.app.resources.trash_action_restore_all
-import com.photonne.app.resources.action_more
 import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
@@ -144,6 +144,7 @@ import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
 import com.photonne.app.resources.upload_title
 import com.photonne.app.resources.utilities_section_duplicates
+import com.photonne.app.resources.utilities_duplicates_action_delete
 import com.photonne.app.resources.utilities_section_large_files
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_title
@@ -203,7 +204,6 @@ import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
@@ -211,6 +211,7 @@ import com.photonne.app.ui.main.rememberSnackbarController
 import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.AssetSelectionTopBar
 import com.photonne.app.ui.main.FolderDetailChromeActions
+import com.photonne.app.ui.library.TrashChromeActions
 import com.photonne.app.ui.main.FoldersListTopBar
 import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
@@ -751,6 +752,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val enrichmentStatusViewModel: com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel = koinViewModel()
     val utilitiesDuplicatesViewModel:
         com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel = koinViewModel()
+    val utilitiesDuplicatesState by utilitiesDuplicatesViewModel.state.collectAsStateWithLifecycle()
+    var showDuplicatesConfirm by remember { mutableStateOf(false) }
     val utilitiesLargeFilesViewModel:
         com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel = koinViewModel()
     val utilitiesLocationsViewModel:
@@ -1252,6 +1255,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showUnarchiveAll by remember { mutableStateOf(false) }
     var showRestoreAllTrash by remember { mutableStateOf(false) }
     var showEmptyTrash by remember { mutableStateOf(false) }
+    var showTrashScope by remember { mutableStateOf(false) }
     var showPurgeSelected by remember { mutableStateOf(false) }
     // Active tab of the unified Trash screen (Personal / Compartida).
     var trashTab by remember { mutableStateOf(com.photonne.app.ui.library.TrashTab.Personal) }
@@ -2367,6 +2371,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
+        // Duplicados: con algo marcado, la cápsula de confirmar borrar sustituye
+        // a la nav, como la de "Mover" en Para organizar (antes era un FAB).
+        moreSubscreen == MoreSubscreen.UtilitiesDuplicates &&
+            utilitiesDuplicatesState.totalSelectedCount > 0 -> {
+            {
+                com.photonne.app.ui.main.ConfirmCapsule(
+                    label = stringResource(
+                        Res.string.utilities_duplicates_action_delete,
+                        utilitiesDuplicatesState.totalSelectedCount,
+                        com.photonne.app.ui.format.humanBytes(utilitiesDuplicatesState.totalSelectedBytes)
+                    ),
+                    enabled = !utilitiesDuplicatesState.isDeleting,
+                    isWorking = utilitiesDuplicatesState.isDeleting,
+                    icon = com.photonne.app.ui.theme.PhotonneIcons.Delete,
+                    destructive = true,
+                    onClick = { showDuplicatesConfirm = true }
+                )
+            }
+        }
         moreSubscreen == MoreSubscreen.Archived &&
             archivedState.isSelectionActive -> {
             {
@@ -3412,6 +3435,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = utilitiesDuplicatesViewModel,
                             baseUrl = apiBaseUrl,
+                            confirmOpen = showDuplicatesConfirm,
+                            onConfirmOpenChange = { showDuplicatesConfirm = it },
                             onUndoTrash = { ids ->
                                 actionsViewModel.undoBulk(
                                     com.photonne.app.ui.actions.BulkUndoKind.Trash,
@@ -3815,17 +3840,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     else subscreenChromeReservedTop()
                                 )
                         ) {
-                        com.photonne.app.ui.library.TrashTabBar(
-                            selected = trashTab,
-                            onSelect = { tab ->
-                                if (tab != trashTab) {
-                                    // Leaving the personal tab drops its selection
-                                    // so the top bar/back don't act on a hidden tab.
-                                    trashViewModel.clearSelection()
-                                    trashTab = tab
-                                }
-                            }
-                        )
                         when (trashTab) {
                             com.photonne.app.ui.library.TrashTab.Personal ->
                                 com.photonne.app.ui.library.TrashScreen(
@@ -3877,7 +3891,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         if (!trashSelecting) {
                             val count = trashState.items.size
                             SubscreenFloatingChrome(
-                                title = stringResource(Res.string.trash_title),
+                                // Con el ámbito escondido en la hoja, el título
+                                // dice cuál de las dos papeleras se ve.
+                                title = stringResource(
+                                    if (trashTab == com.photonne.app.ui.library.TrashTab.Shared) {
+                                        Res.string.admin_shared_trash
+                                    } else Res.string.trash_title
+                                ),
                                 onBack = { moreSubscreen = null },
                                 // La rejilla personal manda el acople/ocultar; en
                                 // Compartida no está compuesta, así que queda en
@@ -3893,51 +3913,33 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onChromeVisibleChange = { subscreenChromeVisible = it },
                                 // Restaurar todo / vaciar solo aplican a la papelera
                                 // personal; en la compartida la propia pantalla pinta
-                                // sus acciones, así que la cápsula va sin ellas.
-                                actions = if (
-                                    trashTab == com.photonne.app.ui.library.TrashTab.Personal &&
-                                    count > 0
-                                ) {
-                                    {
-                                        var trashMenuOpen by remember { mutableStateOf(false) }
-                                        androidx.compose.material3.IconButton(
-                                            onClick = { trashMenuOpen = true }
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.MoreVert,
-                                                contentDescription = stringResource(Res.string.action_more)
-                                            )
-                                        }
-                                        androidx.compose.material3.DropdownMenu(
-                                            expanded = trashMenuOpen,
-                                            onDismissRequest = { trashMenuOpen = false }
-                                        ) {
-                                            androidx.compose.material3.DropdownMenuItem(
-                                                text = {
-                                                    androidx.compose.material3.Text(
-                                                        stringResource(Res.string.trash_action_restore_all)
-                                                    )
-                                                },
-                                                onClick = {
-                                                    trashMenuOpen = false
-                                                    showRestoreAllTrash = true
-                                                }
-                                            )
-                                            androidx.compose.material3.DropdownMenuItem(
-                                                text = {
-                                                    androidx.compose.material3.Text(
-                                                        stringResource(Res.string.trash_action_empty),
-                                                        color = MaterialTheme.colorScheme.error
-                                                    )
-                                                },
-                                                onClick = {
-                                                    trashMenuOpen = false
-                                                    showEmptyTrash = true
-                                                }
-                                            )
-                                        }
+                                // sus acciones, así que el ⋮ no sale. El filtro de
+                                // ámbito sí, en las dos.
+                                actions = {
+                                    TrashChromeActions(
+                                        tab = trashTab,
+                                        showBulkActions = trashTab ==
+                                            com.photonne.app.ui.library.TrashTab.Personal && count > 0,
+                                        onOpenScope = { showTrashScope = true },
+                                        onRestoreAll = { showRestoreAllTrash = true },
+                                        onEmptyTrash = { showEmptyTrash = true }
+                                    )
+                                }
+                            )
+                        }
+                        if (showTrashScope) {
+                            com.photonne.app.ui.library.TrashScopeSheet(
+                                selected = trashTab,
+                                onSelect = { tab ->
+                                    if (tab != trashTab) {
+                                        // Leaving the personal tab drops its selection
+                                        // so the top bar/back don't act on a hidden tab.
+                                        trashViewModel.clearSelection()
+                                        trashTab = tab
                                     }
-                                } else null
+                                    showTrashScope = false
+                                },
+                                onDismiss = { showTrashScope = false }
                             )
                         }
                     }

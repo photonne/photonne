@@ -71,6 +71,8 @@
     <string name="device_folders_card_subtitle">%1$d carpetas · %2$d elementos</string>
     <string name="device_folders_empty_title">Sin carpetas con fotos</string>
     <string name="device_folders_empty_subtitle">No se han encontrado imágenes ni vídeos en este dispositivo.</string>
+    <string name="device_folder_detail_empty_title">Carpeta sin fotos</string>
+    <string name="device_folder_detail_empty_subtitle">Esta carpeta del dispositivo no tiene imágenes ni vídeos.</string>
     <string name="device_folders_add_backup">Añadir a la copia de seguridad</string>
 
     <plurals name="selection_count">
@@ -347,7 +349,7 @@
     <string name="folders_sort_asset_count">Cantidad de archivos</string>
 
     <string name="folder_action_new">Nueva carpeta</string>
-    <string name="folder_action_edit">Editar carpeta</string>
+    <string name="folder_action_edit">Renombrar carpeta</string>
     <string name="folder_action_actions">Acciones de la carpeta</string>
     <string name="folder_field_name">Nombre</string>
     <string name="folder_create_shared_label">Crear en el espacio compartido</string>
@@ -462,6 +464,8 @@
     <string name="people_title">Personas</string>
     <string name="people_empty_title">Aún no hay personas</string>
     <string name="people_empty_subtitle">Cuando el servidor termine de reconocer caras aparecerán aquí.</string>
+    <string name="people_detail_empty_title">Sin fotos de esta persona</string>
+    <string name="people_detail_empty_subtitle">Las fotos en las que el servidor reconozca su cara aparecerán aquí.</string>
     <string name="people_unnamed">Sin nombre</string>
     <string name="people_rename_title">Renombrar persona</string>
     <string name="people_rename_field">Nombre</string>

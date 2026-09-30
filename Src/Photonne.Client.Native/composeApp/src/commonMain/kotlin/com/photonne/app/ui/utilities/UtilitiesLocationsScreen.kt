@@ -39,7 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderTreeNode
-import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.error.FullScreenError
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.utilities_locations_empty
 import com.photonne.app.resources.utilities_locations_external_badge
@@ -82,14 +82,11 @@ fun UtilitiesLocationsScreen(
             state.error?.userMessage != null && state.roots.isEmpty() ->
                 // El error también reserva el alto del cromo flotante: sin esto
                 // el banner quedaba tapado por la cápsula del título.
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = reservedTop)
-                        .padding(Spacing.lg)
-                ) {
-                    ErrorBanner(error = state.error, onRetry = viewModel::refresh)
-                }
+                FullScreenError(
+                    error = state.error,
+                    onRetry = viewModel::refresh,
+                    modifier = Modifier.padding(top = reservedTop)
+                )
             state.roots.isEmpty() ->
                 EmptyState(
                     icon = PhotonneIcons.Location,

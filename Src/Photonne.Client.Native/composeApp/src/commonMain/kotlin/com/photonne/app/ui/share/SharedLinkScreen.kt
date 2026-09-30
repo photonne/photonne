@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LinkOff
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +60,8 @@ import com.photonne.app.resources.shared_link_password_title
 import com.photonne.app.resources.shared_link_password_wrong
 import com.photonne.app.resources.shared_link_server
 import com.photonne.app.resources.shared_link_title
-import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.error.FullScreenError
+import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
@@ -129,17 +129,21 @@ fun SharedLinkScreen(
                 onSubmit = onSubmitPassword,
                 modifier = Modifier.padding(top = reservedTop)
             )
-            content == null && state.error != null -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = reservedTop + Spacing.lg, start = Spacing.lg, end = Spacing.lg)
-            ) {
-                ErrorBanner(error = state.error, onRetry = onRetry)
-            }
-            content == null -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
+            content == null && state.error != null -> FullScreenError(
+                error = state.error,
+                onRetry = onRetry,
+                modifier = Modifier.padding(top = reservedTop)
+            )
+            // Misma rejilla que la del enlace (celda de 112, separación de 2).
+            content == null -> AssetGridSkeleton(
+                cellMinSize = 112.dp,
+                contentPadding = PaddingValues(
+                    top = reservedTop + Spacing.sm,
+                    bottom = Spacing.xl,
+                    start = 2.dp,
+                    end = 2.dp
+                )
+            )
             else -> {
                 val assets = content.assets.orEmpty()
                 LazyVerticalGrid(

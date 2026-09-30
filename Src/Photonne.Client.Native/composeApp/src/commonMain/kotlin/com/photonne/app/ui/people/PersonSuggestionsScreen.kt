@@ -54,13 +54,14 @@ import com.photonne.app.resources.people_suggestions_empty
 import com.photonne.app.resources.people_suggestions_title
 import com.photonne.app.resources.people_unnamed
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneIcons
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.AssetGridSkeleton
+import com.photonne.app.ui.theme.GridCirclesSkeleton
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
@@ -93,7 +94,18 @@ fun PersonSuggestionsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             state.isInitialLoading ->
-                AssetGridSkeleton(contentPadding = PaddingValues(top = reservedTop))
+                // Caras redondas como las sugerencias, no una rejilla de fotos.
+                GridCirclesSkeleton(
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        top = 12.dp + reservedTop,
+                        end = 12.dp,
+                        bottom = 12.dp + floatingNavBarReservedHeight()
+                    ),
+                    cellMinSize = 130.dp,
+                    horizontalSpacing = Spacing.sm,
+                    verticalSpacing = Spacing.md
+                )
             state.error != null && state.items.isEmpty() ->
                 com.photonne.app.ui.error.FullScreenError(
                     error = state.error,
@@ -101,16 +113,11 @@ fun PersonSuggestionsScreen(
                     modifier = Modifier.padding(top = reservedTop)
                 )
             state.isEmpty ->
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(Spacing.xl),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        stringResource(Res.string.people_suggestions_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                EmptyState(
+                    icon = PhotonneIcons.FaceSuggestions,
+                    title = stringResource(Res.string.people_suggestions_empty),
+                    modifier = Modifier.padding(top = reservedTop)
+                )
             else -> {
                 val shouldLoadMore by remember(state.hasMore, state.isAppending) {
                     derivedStateOf {
@@ -197,10 +204,12 @@ private fun SuggestionsOverflowMenu(
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.people_action_suggestions_accept_all)) },
+                leadingIcon = { Icon(PhotonneIcons.AcceptAll, contentDescription = null) },
                 onClick = { menuOpen = false; onAcceptAll() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.people_action_suggestions_dismiss_all)) },
+                leadingIcon = { Icon(PhotonneIcons.ClearAll, contentDescription = null) },
                 onClick = { menuOpen = false; onDismissAll() }
             )
         }

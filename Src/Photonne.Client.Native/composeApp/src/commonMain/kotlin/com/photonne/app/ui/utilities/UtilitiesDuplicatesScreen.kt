@@ -27,16 +27,13 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -65,14 +62,13 @@ import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.utilities_duplicates_action_auto_select
 import com.photonne.app.resources.utilities_duplicates_action_clear
-import com.photonne.app.resources.utilities_duplicates_action_delete
 import com.photonne.app.resources.utilities_duplicates_confirm_message
 import com.photonne.app.resources.utilities_duplicates_confirm_title
 import com.photonne.app.resources.utilities_duplicates_empty
 import com.photonne.app.resources.utilities_duplicates_group_assets
 import com.photonne.app.resources.utilities_duplicates_open_detail
 import com.photonne.app.resources.utilities_duplicates_summary
-import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.error.FullScreenError
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.theme.EmptyState
@@ -93,6 +89,13 @@ fun UtilitiesDuplicatesScreen(
     onOpenAsset: (index: Int, items: List<TimelineItem>) -> Unit,
     /** Restaura de la papelera los ids que acaba de borrar el Deshacer. */
     onUndoTrash: (List<String>) -> Unit = {},
+    /**
+     * Confirmación de borrado abierta. Vive en el host porque el botón que la
+     * abre es la cápsula de confirmar, que sustituye a la nav (como las barras
+     * de selección) y la pinta el host en su hueco.
+     */
+    confirmOpen: Boolean = false,
+    onConfirmOpenChange: (Boolean) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val reservedTop = subscreenChromeReservedTop()
@@ -100,7 +103,6 @@ fun UtilitiesDuplicatesScreen(
     val listState = rememberLazyListState()
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
-    var confirmOpen by remember { mutableStateOf(false) }
     var confirmError by remember { mutableStateOf<String?>(null) }
     val snackbar = LocalSnackbarController.current
     val undoLabel = stringResource(Res.string.action_undo)
@@ -121,20 +123,13 @@ fun UtilitiesDuplicatesScreen(
                 state.isLoading && state.groups.isEmpty() ->
                     ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop), thumbnailSize = 72.dp)
                 state.error != null && state.groups.isEmpty() ->
-                    // Con scroll para que PullToRefreshBox reciba el gesto, y
-                    // bajo el cromo flotante — antes un fallo de carga caía en
+                    // Bajo el cromo flotante — antes un fallo de carga caía en
                     // la rama vacía y decía "no hay duplicados".
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(top = reservedTop)
-                    ) {
-                        ErrorBanner(
-                            error = state.error,
-                            onRetry = viewModel::refresh
-                        )
-                    }
+                    FullScreenError(
+                        error = state.error,
+                        onRetry = viewModel::refresh,
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
                 state.groups.isEmpty() ->
                     EmptyState(
                         icon = PhotonneIcons.Copy,
@@ -147,7 +142,7 @@ fun UtilitiesDuplicatesScreen(
                             start = 16.dp,
                             end = 16.dp,
                             top = 8.dp + reservedTop,
-                            bottom = 96.dp + floatingNavBarReservedHeight()
+                            bottom = floatingNavBarReservedHeight()
                         ),
                         verticalArrangement = Arrangement.spacedBy(Spacing.md),
                         modifier = Modifier.fillMaxSize().hazeSource(hazeState)
@@ -210,27 +205,6 @@ fun UtilitiesDuplicatesScreen(
         }
         }
 
-        if (state.totalSelectedCount > 0) {
-            ExtendedFloatingActionButton(
-                onClick = { confirmOpen = true },
-                icon = { Icon(PhotonneIcons.Delete, contentDescription = null) },
-                text = {
-                    Text(
-                        stringResource(
-                            Res.string.utilities_duplicates_action_delete,
-                            state.totalSelectedCount,
-                            humanBytes(state.totalSelectedBytes)
-                        )
-                    )
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    // Por encima de la nav flotante, que dibuja a sangre.
-                    .padding(bottom = floatingNavBarReservedHeight())
-                    .padding(Spacing.lg)
-            )
-        }
-
         SubscreenFloatingChrome(
             title = title,
             onBack = onBack,
@@ -273,7 +247,7 @@ fun UtilitiesDuplicatesScreen(
             isSubmitting = state.isDeleting,
             errorMessage = confirmError,
             onDismiss = {
-                confirmOpen = false
+                onConfirmOpenChange(false)
                 confirmError = null
             },
             onConfirm = {
@@ -284,7 +258,7 @@ fun UtilitiesDuplicatesScreen(
                         // reintentar sin volver a montar la selección.
                         confirmError = error.userMessage
                     } else {
-                        confirmOpen = false
+                        onConfirmOpenChange(false)
                         if (trashEnabled) {
                             snackbar?.show(trashDoneMessage, undoLabel) {
                                 onUndoTrash(deleted)

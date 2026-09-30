@@ -1,7 +1,6 @@
 package com.photonne.app.ui.organize
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,11 +9,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -38,9 +35,7 @@ import com.photonne.app.resources.organize_review_exclude
 import com.photonne.app.resources.organize_review_include
 import com.photonne.app.ui.selection.GroupSelectionState
 import com.photonne.app.ui.selection.selectionStateOf
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,12 +54,8 @@ import com.photonne.app.resources.organize_move_review_subtitle_by_year
 import com.photonne.app.resources.organize_move_review_subtitle_default
 import com.photonne.app.resources.organize_move_review_title
 import com.photonne.app.resources.organize_year_photo_count
-import com.photonne.app.ui.main.CompactNavBarContentHeight
-import com.photonne.app.ui.main.FloatingNavBarBottomMargin
-import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
-import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.main.ConfirmCapsule
 import com.photonne.app.ui.theme.IconSize
-import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -200,10 +191,10 @@ fun MoveReviewScreen(
                 statusBarScrim = true,
             )
 
-            ConfirmMoveCapsule(
+            ConfirmCapsule(
                 label = pluralStringResource(Res.plurals.organize_move_action_count, keptTotal, keptTotal),
                 enabled = !isMoving && keptTotal > 0,
-                isMoving = isMoving,
+                isWorking = isMoving,
                 onClick = {
                     onConfirm(
                         if (excluded.isEmpty()) null
@@ -212,62 +203,6 @@ fun MoveReviewScreen(
                 },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
-        }
-    }
-}
-
-/**
- * La acción de confirmar, como cápsula flotante: comparte forma, altura y
- * márgenes con la nav y con las barras de selección (misma familia), pero va
- * rellena de `primary` porque es LA acción de la pantalla, no un contenedor de
- * iconos. No lleva cristal — encima de una rejilla de fotos, un botón primario
- * translúcido deja de leerse como botón.
- */
-@Composable
-private fun ConfirmMoveCapsule(
-    label: String,
-    enabled: Boolean,
-    isMoving: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(NavigationBarDefaults.windowInsets)
-            .padding(
-                start = FloatingNavBarHorizontalMargin,
-                end = FloatingNavBarHorizontalMargin,
-                bottom = FloatingNavBarBottomMargin,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Surface(
-            shape = PillShape,
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shadowElevation = ChromeElevation.nav,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(CompactNavBarContentHeight)
-                    .clickable(enabled = enabled, onClick = onClick)
-                    .padding(horizontal = Spacing.xl),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (isMoving) {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(18.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                    Spacer(Modifier.width(Spacing.md))
-                }
-                Text(label, style = MaterialTheme.typography.titleSmall)
-            }
         }
     }
 }

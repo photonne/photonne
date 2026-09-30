@@ -115,14 +115,13 @@ fun FolderDetailScreen(
                 state.isLoading && state.items.isEmpty() && state.subFolders.isEmpty() ->
                     AssetGridSkeleton(contentPadding = PaddingValues(top = reservedTop))
                 state.error != null && state.items.isEmpty() && state.subFolders.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(Spacing.xl)) {
-                        com.photonne.app.ui.error.ErrorBanner(
-                            error = state.error,
-                            onRetry = { state.folderId?.let { id ->
-                                viewModel.open(id, state.folderName.orEmpty(), state.parentFolderId)
-                            } },
-                        )
-                    }
+                    com.photonne.app.ui.error.FullScreenError(
+                        error = state.error,
+                        onRetry = { state.folderId?.let { id ->
+                            viewModel.open(id, state.folderName.orEmpty(), state.parentFolderId)
+                        } },
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
                 state.items.isEmpty() && state.subFolders.isEmpty() ->
                     // No reutilizar el vacío de la LISTA de carpetas: aquí
                     // "Indexa una carpeta desde la app web" no aplica.

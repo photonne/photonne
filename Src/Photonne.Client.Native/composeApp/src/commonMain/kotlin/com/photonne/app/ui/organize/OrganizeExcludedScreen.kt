@@ -21,7 +21,7 @@ import com.photonne.app.resources.organize_excluded_empty_subtitle
 import com.photonne.app.resources.organize_excluded_empty_title
 import com.photonne.app.resources.organize_excluded_header
 import com.photonne.app.resources.organize_excluded_title
-import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.error.FullScreenError
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
@@ -88,13 +88,11 @@ fun OrganizeExcludedScreen(
                         )
                     )
                 state.error != null && state.items.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize()
-                            .padding(top = reservedTop)
-                            .padding(Spacing.lg)
-                    ) {
-                        ErrorBanner(error = state.error, onRetry = onRefresh)
-                    }
+                    FullScreenError(
+                        error = state.error,
+                        onRetry = onRefresh,
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
                 state.isEmpty ->
                     EmptyState(
                         icon = Icons.Outlined.Inbox,

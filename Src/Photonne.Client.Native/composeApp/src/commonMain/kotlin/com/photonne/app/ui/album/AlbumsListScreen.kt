@@ -82,6 +82,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
+import com.photonne.app.ui.theme.GridTilesSkeleton
 import com.photonne.app.ui.theme.ListRowsSkeleton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.EntryTile
@@ -153,7 +154,8 @@ fun AlbumsListScreen(
                         state.isLoading && state.albums.isEmpty() ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
                                 exploreRow()
-                                ListRowsSkeleton()
+                                // El esqueleto con la forma de la vista elegida.
+                                if (isGrid) GridTilesSkeleton() else ListRowsSkeleton()
                             }
                         state.error != null && state.albums.isEmpty() ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
@@ -272,7 +274,7 @@ fun AlbumsListScreen(
 @Composable
 private fun EmptySearchState(query: String) {
     SharedEmptyState(
-        icon = PhotonneIcons.Search,
+        icon = PhotonneIcons.NoResults,
         title = stringResource(Res.string.albums_search_empty_title),
         subtitle = stringResource(Res.string.albums_search_empty_subtitle, query)
     )

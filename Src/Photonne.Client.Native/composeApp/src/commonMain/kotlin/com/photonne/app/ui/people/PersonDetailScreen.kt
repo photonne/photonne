@@ -25,6 +25,8 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_more
 import com.photonne.app.resources.people_action_hide
+import com.photonne.app.resources.people_detail_empty_subtitle
+import com.photonne.app.resources.people_detail_empty_title
 import com.photonne.app.resources.people_action_merge
 import com.photonne.app.resources.people_action_rename
 import com.photonne.app.resources.people_action_suggestions
@@ -43,6 +45,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.AssetGridSkeleton
+import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneIcons
 
 @Composable
@@ -88,6 +91,13 @@ fun PersonDetailScreen(
                 com.photonne.app.ui.error.FullScreenError(
                     error = state.error,
                     onRetry = onRetry,
+                    modifier = Modifier.padding(top = reservedTop)
+                )
+            state.items.isEmpty() && state.personId != null ->
+                EmptyState(
+                    icon = PhotonneIcons.Person,
+                    title = stringResource(Res.string.people_detail_empty_title),
+                    subtitle = stringResource(Res.string.people_detail_empty_subtitle),
                     modifier = Modifier.padding(top = reservedTop)
                 )
             else -> AssetGrid(
@@ -170,15 +180,17 @@ private fun PersonDetailOverflowMenu(
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.people_action_rename)) },
-                leadingIcon = { Icon(PhotonneIcons.Edit, contentDescription = null) },
+                leadingIcon = { Icon(PhotonneIcons.Rename, contentDescription = null) },
                 onClick = { menuOpen = false; onRename() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.people_action_suggestions)) },
+                leadingIcon = { Icon(PhotonneIcons.FaceSuggestions, contentDescription = null) },
                 onClick = { menuOpen = false; onSuggestions() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.people_action_merge)) },
+                leadingIcon = { Icon(PhotonneIcons.Merge, contentDescription = null) },
                 onClick = { menuOpen = false; onMerge() }
             )
             DropdownMenuItem(
@@ -186,6 +198,12 @@ private fun PersonDetailOverflowMenu(
                     Text(
                         if (isHidden) stringResource(Res.string.people_action_unhide)
                         else stringResource(Res.string.people_action_hide)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        if (isHidden) PhotonneIcons.Show else PhotonneIcons.Hide,
+                        contentDescription = null
                     )
                 },
                 onClick = { menuOpen = false; onToggleHidden() }

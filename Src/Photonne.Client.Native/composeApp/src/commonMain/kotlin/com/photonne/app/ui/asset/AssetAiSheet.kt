@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.EnrichmentTaskDto
@@ -66,6 +67,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import kotlin.time.Clock
 import com.photonne.app.ui.theme.PhotonneIcons
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
@@ -96,7 +98,7 @@ fun AssetAiSheet(
     val scope = rememberCoroutineScope()
     var tasks by remember(assetId) { mutableStateOf<List<EnrichmentTaskDto>?>(null) }
     var loadFailed by remember(assetId) { mutableStateOf(false) }
-    var actionError by remember(assetId) { mutableStateOf<String?>(null) }
+    var actionError by remember(assetId) { mutableStateOf<com.photonne.app.data.error.UiError?>(null) }
     var launching by remember(assetId) { mutableStateOf(setOf<AiAnalysis>()) }
     var nowMs by remember(assetId) { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
     // Bumped after every launch so the polling loop restarts at once instead
@@ -133,7 +135,6 @@ fun AssetAiSheet(
                         // Mensaje legible en vez del it.message técnico en crudo.
                         actionError = errorFactory
                             .from(error, "No se pudo lanzar el análisis")
-                            .userMessage
                     }
             }
             launching = launching - analyses.toSet()
@@ -158,9 +159,24 @@ fun AssetAiSheet(
                 subtitle = stringResource(Res.string.asset_ai_subtitle)
             )
 
-            val banner = actionError ?: if (loadFailed) stringResource(Res.string.asset_ai_load_error) else null
-            if (banner != null) {
-                Text(banner, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            // El banner de error estándar: el fallo al lanzar se puede cerrar
+            // (y conserva los detalles técnicos); el de carga, reintentar.
+            val loadError = if (loadFailed) {
+                com.photonne.app.data.error.UiError(stringResource(Res.string.asset_ai_load_error))
+            } else null
+            val actionErrorShown = actionError
+            if (actionErrorShown != null) {
+                ErrorBanner(
+                    error = actionErrorShown,
+                    onDismiss = { actionError = null },
+                    modifier = Modifier.clip(MaterialTheme.shapes.small)
+                )
+            } else if (loadError != null) {
+                ErrorBanner(
+                    error = loadError,
+                    onRetry = { loadFailed = false; refreshTick++ },
+                    modifier = Modifier.clip(MaterialTheme.shapes.small)
+                )
             }
 
             if (rows == null && !loadFailed) {

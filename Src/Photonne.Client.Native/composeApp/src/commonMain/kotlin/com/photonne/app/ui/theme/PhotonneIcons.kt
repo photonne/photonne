@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.MergeType
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Folder
@@ -19,12 +20,14 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.Edit
@@ -41,15 +44,20 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RestoreFromTrash
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Unarchive
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -106,6 +114,19 @@ object PhotonneIcons {
     val Archive: ImageVector = Icons.Outlined.Archive
     val Unarchive: ImageVector = Icons.Outlined.Unarchive
 
+    /** Sacar de la papelera (una foto o toda la papelera). */
+    val Restore: ImageVector = Icons.Outlined.RestoreFromTrash
+
+    /** Mostrar / ocultar algo (persona, carpeta en el timeline). */
+    val Show: ImageVector = Icons.Outlined.Visibility
+    val Hide: ImageVector = Icons.Outlined.VisibilityOff
+
+    /** Aceptar en bloque una lista de propuestas. */
+    val AcceptAll: ImageVector = Icons.Outlined.DoneAll
+
+    /** Descartar o limpiar en bloque (sugerencias, criterios de búsqueda). */
+    val ClearAll: ImageVector = Icons.Outlined.ClearAll
+
     /** Mover a la papelera / quitar. */
     val Delete: ImageVector = Icons.Outlined.Delete
 
@@ -127,12 +148,21 @@ object PhotonneIcons {
     /** Personas reconocidas por caras (sección Personas). */
     val People: ImageVector = Icons.Outlined.People
 
+    /** Sugerencias de caras para una persona. */
+    val FaceSuggestions: ImageVector = Icons.Outlined.PersonSearch
+
+    /** Fusionar una persona con otra. */
+    val Merge: ImageVector = Icons.AutoMirrored.Outlined.MergeType
+
     // ── Búsqueda, orden y filtros ───────────────────────────────────────
     val Search: ImageVector = Icons.Outlined.Search
     val SearchActive: ImageVector = Icons.Filled.Search
     val Filter: ImageVector = Icons.Outlined.Tune
     val FilterActive: ImageVector = Icons.Filled.Tune
     val Sort: ImageVector = Icons.AutoMirrored.Outlined.Sort
+
+    /** Búsqueda o filtro sin resultados (estados vacíos). */
+    val NoResults: ImageVector = Icons.Outlined.SearchOff
 
     // ── Navegación ──────────────────────────────────────────────────────
     val Back: ImageVector = Icons.AutoMirrored.Outlined.ArrowBack

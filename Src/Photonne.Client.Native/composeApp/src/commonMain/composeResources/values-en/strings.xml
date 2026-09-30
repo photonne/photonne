@@ -67,6 +67,8 @@
     <string name="device_folders_card_subtitle">%1$d folders · %2$d items</string>
     <string name="device_folders_empty_title">No folders with photos</string>
     <string name="device_folders_empty_subtitle">No images or videos were found on this device.</string>
+    <string name="device_folder_detail_empty_title">No photos in this folder</string>
+    <string name="device_folder_detail_empty_subtitle">This device folder has no images or videos.</string>
     <string name="device_folders_add_backup">Add to backup</string>
 
     <plurals name="selection_count">
@@ -268,7 +270,7 @@
     <string name="folders_sort_asset_count">File count</string>
 
     <string name="folder_action_new">New folder</string>
-    <string name="folder_action_edit">Edit folder</string>
+    <string name="folder_action_edit">Rename folder</string>
     <string name="folder_action_actions">Folder actions</string>
     <string name="folder_field_name">Name</string>
     <string name="folder_create_shared_label">Create in shared space</string>
@@ -382,6 +384,8 @@
     <string name="people_title">People</string>
     <string name="people_empty_title">No people yet</string>
     <string name="people_empty_subtitle">Once the server has finished clustering faces they'll show up here.</string>
+    <string name="people_detail_empty_title">No photos of this person</string>
+    <string name="people_detail_empty_subtitle">Photos where the server recognises their face will show up here.</string>
     <string name="people_unnamed">Unnamed</string>
     <string name="people_rename_title">Rename person</string>
     <string name="people_rename_field">Name</string>

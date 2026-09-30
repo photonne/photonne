@@ -30,7 +30,7 @@ import kotlinx.datetime.LocalDate
 import androidx.compose.material.icons.outlined.AutoAwesomeMosaic
 import com.photonne.app.resources.organize_suggestions_back
 import com.photonne.app.data.api.rememberApiBaseUrl
-import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.error.FullScreenError
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.organize_inbox_empty_subtitle
@@ -112,13 +112,11 @@ fun OrganizeInboxScreen(
                         )
                     )
                 state.error != null && state.items.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize()
-                            .padding(top = reservedTop)
-                            .padding(Spacing.lg)
-                    ) {
-                        ErrorBanner(error = state.error, onRetry = onRefresh)
-                    }
+                    FullScreenError(
+                        error = state.error,
+                        onRetry = onRefresh,
+                        modifier = Modifier.padding(top = reservedTop)
+                    )
                 // Los lotes son la puerta de entrada; la rejilla plana queda
                 // como salida para lo que no cubran.
                 !state.showAllItems && state.suggestions.isNotEmpty() ->

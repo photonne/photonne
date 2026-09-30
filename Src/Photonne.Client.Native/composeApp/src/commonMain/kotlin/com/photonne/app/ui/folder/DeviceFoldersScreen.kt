@@ -32,6 +32,8 @@ import com.photonne.app.data.devicelibrary.DeviceLibraryStore
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.backup_bucket_item_count
+import com.photonne.app.resources.device_folder_detail_empty_subtitle
+import com.photonne.app.resources.device_folder_detail_empty_title
 import com.photonne.app.resources.device_folders_add_backup
 import com.photonne.app.resources.device_folders_empty_subtitle
 import com.photonne.app.resources.device_folders_empty_title
@@ -224,10 +226,12 @@ fun DeviceFolderDetailScreen(
             loaded == null -> AssetGridSkeleton(
                 contentPadding = PaddingValues(top = reservedTop, bottom = reservedBottom)
             )
+            // Vacío propio: el de la lista ("no hay imágenes en este
+            // dispositivo") no describe una carpeta concreta sin fotos.
             loaded.isEmpty() -> EmptyState(
-                icon = Icons.Outlined.Smartphone,
-                title = stringResource(Res.string.device_folders_empty_title),
-                subtitle = stringResource(Res.string.device_folders_empty_subtitle)
+                icon = PhotonneIcons.Folder,
+                title = stringResource(Res.string.device_folder_detail_empty_title),
+                subtitle = stringResource(Res.string.device_folder_detail_empty_subtitle)
             )
             else -> {
                 AssetGrid(
