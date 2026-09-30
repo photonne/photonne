@@ -136,6 +136,8 @@ import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_jump_to_date
 import com.photonne.app.resources.action_more
+import com.photonne.app.resources.album_action_pin
+import com.photonne.app.resources.album_action_unpin
 import com.photonne.app.resources.album_action_members
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.app_name
@@ -1407,11 +1409,14 @@ private fun CardSelectionTopChrome(
 /**
  * Bottom bar for the single-album-card selection, gated by permissions. Same
  * order, labels and icons as the album detail's overflow menu
- * (Edit · Members · Leave · Delete).
+ * (Pin · Edit · Members · Leave · Delete). Pin only with a single card.
  * Delete carries the error tint since it's destructive.
  */
 @Composable
 fun AlbumCardSelectionBottomBar(
+    canPin: Boolean = false,
+    isPinned: Boolean = false,
+    onTogglePin: () -> Unit = {},
     canManageMembers: Boolean,
     canEdit: Boolean,
     canLeave: Boolean,
@@ -1423,6 +1428,21 @@ fun AlbumCardSelectionBottomBar(
     onDelete: () -> Unit
 ) {
     FloatingSelectionBar {
+        if (canPin) {
+            FloatingSelectionBarItem(
+                onClick = onTogglePin,
+                enabled = !isMutating,
+                label = stringResource(
+                    if (isPinned) Res.string.album_action_unpin else Res.string.album_action_pin
+                ),
+                icon = {
+                    Icon(
+                        if (isPinned) PhotonneIcons.PinActive else PhotonneIcons.Pin,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
         if (canEdit) {
             FloatingSelectionBarItem(
                 onClick = onEdit,

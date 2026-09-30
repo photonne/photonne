@@ -63,6 +63,10 @@ class AlbumsRepository(
         api.leaveAlbum(albumId)
     }
 
+    suspend fun setPinned(albumId: String, pinned: Boolean) {
+        api.setAlbumPinned(albumId = albumId, pinned = pinned)
+    }
+
     suspend fun listShares(albumId: String): List<AlbumShareLink> =
         api.listAlbumShares(albumId)
 

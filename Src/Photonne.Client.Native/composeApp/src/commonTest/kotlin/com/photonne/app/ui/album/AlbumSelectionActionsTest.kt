@@ -32,7 +32,9 @@ class AlbumSelectionActionsTest {
     fun singleOwnedAlbumKeepsTheUsualActions() {
         val actions = albumSelectionActions(listOf(album("a")))
         assertEquals(
-            AlbumSelectionActions(canEdit = true, canManageMembers = true, canLeave = false, canDelete = true),
+            AlbumSelectionActions(
+                canEdit = true, canManageMembers = true, canLeave = false, canDelete = true, canPin = true
+            ),
             actions
         )
     }

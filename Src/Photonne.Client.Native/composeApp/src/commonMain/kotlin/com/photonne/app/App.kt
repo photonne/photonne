@@ -2494,7 +2494,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         }
                     )
+                    val togglePin = com.photonne.app.ui.album.rememberAlbumPinToggle(albumsViewModel)
                     com.photonne.app.ui.main.AlbumCardSelectionBottomBar(
+                        canPin = allowed.canPin,
+                        isPinned = target?.isPinned == true,
+                        onTogglePin = {
+                            target?.let { togglePin(it.id); albumsViewModel.clearSelection() }
+                        },
                         canManageMembers = allowed.canManageMembers,
                         canEdit = allowed.canEdit,
                         canLeave = allowed.canLeave,

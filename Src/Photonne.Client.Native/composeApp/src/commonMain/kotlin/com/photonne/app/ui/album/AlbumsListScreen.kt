@@ -50,6 +50,10 @@ import com.photonne.app.resources.albums_search_empty_title
 import com.photonne.app.resources.albums_search_placeholder
 import com.photonne.app.resources.albums_shared_empty
 import com.photonne.app.resources.albums_badge_shared
+import com.photonne.app.resources.albums_badge_pinned
+import com.photonne.app.resources.albums_section_others
+import com.photonne.app.resources.albums_section_pinned
+import com.photonne.app.ui.theme.SectionHeader
 import com.photonne.app.resources.album_share_link_badge
 import com.photonne.app.resources.explore_section_objects
 import com.photonne.app.resources.explore_section_scenes
@@ -134,8 +138,13 @@ fun AlbumsListScreen(
 
     // Automatic asset groupings (People / Map / Scenes / Objects) that sit atop
     // the album list — a scroll header so they pass under the floating chrome.
+    val previewsViewModel: ExplorePreviewsViewModel = koinViewModel()
+    val previews by previewsViewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { previewsViewModel.loadIfNeeded() }
     val exploreRow: @Composable () -> Unit = {
         ExploreRow(
+            peopleFaceIds = previews.peopleFaceIds,
+            apiBaseUrl = apiBaseUrl,
             onOpenPeople = onOpenPeople,
             onOpenMap = onOpenMap,
             onOpenScenes = onOpenScenes,
@@ -179,7 +188,8 @@ fun AlbumsListScreen(
                                 EmptyAlbumsState(scope = state.scope, onCreateAlbum = onCreateAlbum)
                             }
                         else -> AlbumsContent(
-                            albums = visible,
+                            albums = state.unpinnedAlbums,
+                            pinned = state.pinnedAlbums,
                             state = state,
                             apiBaseUrl = apiBaseUrl,
                             onClick = onAlbumClick,
@@ -285,6 +295,8 @@ private fun EmptySearchState(query: String) {
 @Composable
 private fun AlbumsContent(
     albums: List<AlbumSummary>,
+    /** Sección "Fijados" encima del resto; vacía = sin sección. */
+    pinned: List<AlbumSummary>,
     state: AlbumsUiState,
     apiBaseUrl: String,
     onClick: (AlbumSummary) -> Unit,
@@ -347,6 +359,27 @@ private fun AlbumsContent(
             if (exploreHeader != null) {
                 item(key = "explore-row", span = { GridItemSpan(maxLineSpan) }) { exploreHeader() }
             }
+            if (pinned.isNotEmpty()) {
+                item(key = "pinned-header", span = { GridItemSpan(maxLineSpan) }) {
+                    PinnedSectionHeader(pinned = true, modifier = Modifier.animateItem())
+                }
+                items(pinned, key = { it.id }) { album ->
+                    AlbumCard(
+                        modifier = Modifier.animateItem(),
+                        album = album,
+                        baseUrl = apiBaseUrl,
+                        isSelected = album.id in state.selectedAlbumIds,
+                        onClick = { onClick(album) },
+                        onLongPress = { onLongPress(album) }
+                    )
+                }
+                // Con años, los propios años ya separan; sin ellos, un título.
+                if (albums.isNotEmpty() && !state.groupByYear) {
+                    item(key = "others-header", span = { GridItemSpan(maxLineSpan) }) {
+                        PinnedSectionHeader(pinned = false, modifier = Modifier.animateItem())
+                    }
+                }
+            }
             if (state.groupByYear) {
                 groups.forEach { (year, items) ->
                     item(
@@ -392,6 +425,32 @@ private fun AlbumsContent(
             if (exploreHeader != null) {
                 item(key = "explore-row") { exploreHeader() }
             }
+            if (pinned.isNotEmpty()) {
+                item(key = "pinned-header") {
+                    PinnedSectionHeader(
+                        pinned = true,
+                        modifier = Modifier.animateItem().padding(horizontal = Spacing.sm)
+                    )
+                }
+                items(pinned, key = { it.id }) { album ->
+                    AlbumRow(
+                        modifier = Modifier.animateItem(),
+                        album = album,
+                        baseUrl = apiBaseUrl,
+                        isSelected = album.id in state.selectedAlbumIds,
+                        onClick = { onClick(album) },
+                        onLongPress = { onLongPress(album) }
+                    )
+                }
+                if (albums.isNotEmpty() && !state.groupByYear) {
+                    item(key = "others-header") {
+                        PinnedSectionHeader(
+                            pinned = false,
+                            modifier = Modifier.animateItem().padding(horizontal = Spacing.sm)
+                        )
+                    }
+                }
+            }
             if (state.groupByYear) {
                 groups.forEach { (year, items) ->
                     item(key = "year-$year") { YearHeader(year, modifier = Modifier.padding(horizontal = Spacing.lg)) }
@@ -427,6 +486,17 @@ private fun AlbumsContent(
     }
 }
 
+/** "Fijados" o, debajo, "Otros álbumes". */
+@Composable
+private fun PinnedSectionHeader(pinned: Boolean, modifier: Modifier = Modifier) {
+    SectionHeader(
+        text = stringResource(
+            if (pinned) Res.string.albums_section_pinned else Res.string.albums_section_others
+        ),
+        modifier = modifier
+    )
+}
+
 private fun groupByYear(albums: List<AlbumSummary>): List<Pair<Int, List<AlbumSummary>>> {
     val tz = TimeZone.currentSystemDefault()
     return albums
@@ -447,6 +517,8 @@ private fun YearHeader(year: Int, modifier: Modifier = Modifier) {
 
 @Composable
 private fun ExploreRow(
+    peopleFaceIds: List<String>,
+    apiBaseUrl: String,
     onOpenPeople: () -> Unit,
     onOpenMap: () -> Unit,
     onOpenScenes: () -> Unit,
@@ -469,7 +541,11 @@ private fun ExploreRow(
                 label = stringResource(Res.string.people_title),
                 icon = PhotonneIcons.People,
                 onClick = onOpenPeople,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                // Las caras de quien más sale; el icono mientras no llegan.
+                preview = if (peopleFaceIds.isNotEmpty()) {
+                    { OverlappingFaces(peopleFaceIds, apiBaseUrl) }
+                } else null
             )
             ExploreCard(
                 label = stringResource(Res.string.map_title),
@@ -498,9 +574,10 @@ private fun ExploreCard(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    preview: (@Composable () -> Unit)? = null
 ) {
-    EntryTile(icon = icon, label = label, onClick = onClick, modifier = modifier)
+    EntryTile(icon = icon, label = label, onClick = onClick, modifier = modifier, preview = preview)
 }
 
 @Composable
@@ -542,6 +619,12 @@ private fun AlbumCard(
         count = album.assetCount,
         modifier = modifier,
         badges = {
+            if (album.isPinned) {
+                OverlayIconBadge(
+                    icon = PhotonneIcons.PinActive,
+                    contentDescription = stringResource(Res.string.albums_badge_pinned)
+                )
+            }
             if (album.isSmart) {
                 // Sin distintivo, un álbum de reglas parecía uno normal y
                 // sus acciones imposibles (añadir fotos) confundían.
@@ -591,6 +674,9 @@ private fun AlbumRow(
             )
             // List mode used to show no qualifiers at all, so switching to it
             // silently dropped what the grid told you about an album.
+            if (album.isPinned) {
+                MetaBadge(stringResource(Res.string.albums_badge_pinned), PhotonneIcons.PinActive)
+            }
             if (album.isSmart) {
                 MetaBadge(stringResource(Res.string.albums_badge_smart), Icons.Outlined.AutoAwesome)
             }

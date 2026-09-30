@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /** Which slice of the album list the user is looking at. */
 enum class AlbumsScope { All, Mine, Shared }
@@ -80,6 +82,30 @@ data class AlbumsUiState(
         }
         return ascending.applyDirection(direction)
     }
+
+    /**
+     * La sección "Fijados" solo sale sin búsqueda: al buscar, la lista es de
+     * resultados y los fijados van en su sitio como los demás.
+     */
+    val showsPinnedSection: Boolean
+        get() = !hasActiveQuery && albums.any { it.isPinned }
+
+    /**
+     * Fijados visibles (el ámbito se respeta), del último fijado al primero.
+     * Vacía si [showsPinnedSection] es false.
+     */
+    val pinnedAlbums: List<AlbumSummary>
+        get() = if (!showsPinnedSection) emptyList()
+        else visibleAlbums.filter { it.isPinned }.sortedByDescending { it.pinnedAt }
+
+    /**
+     * Lo que va debajo de los fijados, en el orden elegido. Sin sección, es
+     * [visibleAlbums] tal cual. Los fijados NO se repiten aquí: la misma
+     * clave dos veces en una LazyColumn/LazyGrid la hace fallar.
+     */
+    val unpinnedAlbums: List<AlbumSummary>
+        get() = if (!showsPinnedSection) visibleAlbums
+        else visibleAlbums.filterNot { it.isPinned }
 }
 
 class AlbumsViewModel(
@@ -138,6 +164,44 @@ class AlbumsViewModel(
     }
 
     private var refreshJob: Job? = null
+
+    // Álbumes con un fijar/desfijar en vuelo: un doble toque no lanza dos.
+    private val pinsInFlight = mutableSetOf<String>()
+
+    /**
+     * Fija o desfija [albumId] para mí (optimista): la tarjeta cambia al
+     * instante y, si el servidor falla, vuelve a como estaba y [onFailure]
+     * recibe si se intentaba fijar (true) o desfijar (false).
+     */
+    fun togglePin(albumId: String, onFailure: (pinning: Boolean) -> Unit = {}) {
+        val current = _state.value.albums.firstOrNull { it.id == albumId } ?: return
+        if (!pinsInFlight.add(albumId)) return
+        val pin = !current.isPinned
+        val previousPinnedAt = current.pinnedAt
+        setPinned(albumId, pin, if (pin) Clock.System.now() else null)
+        viewModelScope.launch {
+            try {
+                repository.setPinned(albumId, pin)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                setPinned(albumId, current.isPinned, previousPinnedAt)
+                onFailure(pin)
+            } finally {
+                pinsInFlight.remove(albumId)
+            }
+        }
+    }
+
+    private fun setPinned(albumId: String, pinned: Boolean, pinnedAt: Instant?) {
+        _state.update { previous ->
+            previous.copy(
+                albums = previous.albums.map {
+                    if (it.id == albumId) it.copy(isPinned = pinned, pinnedAt = pinnedAt) else it
+                }
+            )
+        }
+    }
 
     init { refresh() }
 
@@ -316,7 +380,9 @@ class AlbumsViewModel(
                 .onSuccess { updated ->
                     _state.update { previous ->
                         previous.copy(
-                            albums = previous.albums.map { if (it.id == updated.id) updated else it },
+                            albums = previous.albums.map {
+                                if (it.id == updated.id) updated.keepingPinOf(it) else it
+                            },
                             isMutating = false,
                             selectedAlbumIds = emptySet()
                         )
@@ -421,7 +487,11 @@ class AlbumsViewModel(
 
     fun applyUpdate(updated: AlbumSummary) {
         _state.update { previous ->
-            previous.copy(albums = previous.albums.map { if (it.id == updated.id) updated else it })
+            previous.copy(
+                albums = previous.albums.map {
+                    if (it.id == updated.id) updated.keepingPinOf(it) else it
+                }
+            )
         }
     }
 
@@ -498,3 +568,11 @@ class AlbumsViewModel(
         private const val KEY_GROUP_BY_YEAR = "photonne.albums.groupByYear"
     }
 }
+
+/**
+ * Renombrar, cambiar portada o editar devuelven el álbum entero, pero ninguna
+ * de esas acciones toca el fijado (y un servidor antiguo no lo manda): se
+ * conserva el que ya teníamos.
+ */
+private fun AlbumSummary.keepingPinOf(previous: AlbumSummary): AlbumSummary =
+    copy(isPinned = previous.isPinned, pinnedAt = previous.pinnedAt)

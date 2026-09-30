@@ -362,14 +362,17 @@ fun EntryCard(
 /**
  * Variante en mosaico de [EntryCard] para filas de varias entradas (Explorar
  * en Álbumes): misma forma, fondo e [IconCircle], con el icono encima de la
- * etiqueta porque caben cuatro por fila.
+ * etiqueta porque caben cuatro por fila. Con [preview], una muestra real de
+ * lo que hay dentro (caras…) ocupa el sitio del icono; debe tener su alto
+ * (34 dp) para que la tarjeta no salte al llegar.
  */
 @Composable
 fun EntryTile(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    preview: (@Composable () -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -380,7 +383,7 @@ fun EntryTile(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
-        IconCircle(icon = icon, compact = true)
+        if (preview != null) preview() else IconCircle(icon = icon, compact = true)
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,

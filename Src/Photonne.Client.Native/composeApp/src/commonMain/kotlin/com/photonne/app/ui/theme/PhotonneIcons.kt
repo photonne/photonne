@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Add
@@ -47,6 +48,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RestoreFromTrash
 import androidx.compose.material.icons.outlined.Search
@@ -95,6 +97,10 @@ object PhotonneIcons {
     val Folder: ImageVector = Icons.Outlined.Folder
     val FolderActive: ImageVector = Icons.Filled.Folder
     val NewFolder: ImageVector = Icons.Outlined.CreateNewFolder
+
+    /** Fijar un álbum arriba (acción); `PinActive` marca uno ya fijado. */
+    val Pin: ImageVector = Icons.Outlined.PushPin
+    val PinActive: ImageVector = Icons.Filled.PushPin
 
     /** Pestaña «Más» de la nav flotante. */
     val MoreTab: ImageVector = Icons.Outlined.GridView

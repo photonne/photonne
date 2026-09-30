@@ -89,6 +89,13 @@
     <string name="album_type_smart_title">Smart album</string>
     <string name="album_type_smart_subtitle">Fills itself from a condition (people, folders, dates…).</string>
     <string name="album_action_edit">Edit album</string>
+    <string name="album_action_pin">Pin</string>
+    <string name="album_action_unpin">Unpin</string>
+    <string name="albums_badge_pinned">Pinned</string>
+    <string name="albums_section_pinned">Pinned</string>
+    <string name="albums_section_others">Other albums</string>
+    <string name="album_pin_failed">Couldn't pin the album</string>
+    <string name="album_unpin_failed">Couldn't unpin the album</string>
     <string name="album_action_members">Members</string>
     <string name="album_action_album_actions">Album actions</string>
     <string name="album_delete_title">Delete album</string>

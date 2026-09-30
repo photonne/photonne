@@ -70,6 +70,14 @@ public class AlbumsEndpoint : IEndpoint
         group.MapPut("{albumId:guid}/cover", SetAlbumCover)
             .WithName("SetAlbumCover")
             .WithDescription("Sets the cover image for an album");
+
+        group.MapPut("{albumId:guid}/pin", PinAlbum)
+            .WithName("PinAlbum")
+            .WithDescription("Pins an album for the current user only (idempotent)");
+
+        group.MapDelete("{albumId:guid}/pin", UnpinAlbum)
+            .WithName("UnpinAlbum")
+            .WithDescription("Unpins an album for the current user only (idempotent)");
     }
 
     private static async Task<(bool hasAccess, bool canEdit, bool canDelete, bool canManagePermissions)> CheckAlbumPermissionsAsync(
@@ -102,6 +110,14 @@ public class AlbumsEndpoint : IEndpoint
 
         return (permission.CanRead, permission.CanWrite, permission.CanDelete, permission.CanManagePermissions);
     }
+
+    /// <summary>The viewer's own pin on an album, or null. Pins are per user.</summary>
+    private static Task<DateTime?> GetPinnedAtAsync(
+        ApplicationDbContext dbContext, Guid albumId, Guid userId, CancellationToken cancellationToken) =>
+        dbContext.AlbumPins
+            .Where(p => p.UserId == userId && p.AlbumId == albumId)
+            .Select(p => (DateTime?)p.PinnedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
     private async Task<IResult> GetAllAlbums(
         [FromServices] ApplicationDbContext dbContext,
@@ -160,6 +176,12 @@ public class AlbumsEndpoint : IEndpoint
                 .Distinct()
                 .ToHashSetAsync(cancellationToken);
 
+            // Pins are personal: only the viewer's own rows. The list order is
+            // left alone — clients sort and group pinned albums themselves.
+            var pins = await dbContext.AlbumPins
+                .Where(p => p.UserId == userId && albumIds.Contains(p.AlbumId))
+                .ToDictionaryAsync(p => p.AlbumId, p => p.PinnedAt, cancellationToken);
+
             // Smart albums keep no AlbumAssets rows: resolve membership live so
             // count, cover and preview reflect the rule (owner-anchored, viewer-gated).
             var smartData = new Dictionary<Guid, (int Count, List<Guid> SampleIds)>();
@@ -182,6 +204,8 @@ public class AlbumsEndpoint : IEndpoint
                 CanDelete = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
                 HasActiveShareLink = albumsWithActiveLinks.Contains(a.Id),
+                IsPinned = pins.ContainsKey(a.Id),
+                PinnedAt = pins.TryGetValue(a.Id, out var pinnedAt) ? pinnedAt : null,
                 Kind = a.Kind.ToString(),
                 CoverThumbnailUrl = a.CoverAsset?.Thumbnails
                     .FirstOrDefault(t => t.Size == ThumbnailSize.Medium) != null
@@ -259,6 +283,8 @@ public class AlbumsEndpoint : IEndpoint
             if (album.Kind == AlbumKind.Smart && album.SmartRule != null)
                 smartData = await ResolveSmartSummaryAsync(smartResolver, album, userId, cancellationToken);
 
+            var pinnedAt = await GetPinnedAtAsync(dbContext, albumId, userId, cancellationToken);
+
             string? coverUrl = null;
             if (album.CoverAssetId.HasValue && album.CoverAsset?.Thumbnails.Any(t => t.Size == ThumbnailSize.Medium) == true)
             {
@@ -293,6 +319,8 @@ public class AlbumsEndpoint : IEndpoint
                 CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
                 CoverThumbnailUrl = coverUrl,
+                IsPinned = pinnedAt.HasValue,
+                PinnedAt = pinnedAt,
                 Kind = album.Kind.ToString()
             };
 
@@ -691,8 +719,10 @@ public class AlbumsEndpoint : IEndpoint
                 CanRead = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanRead),
                 CanWrite = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanWrite),
                 CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
-                CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions)
+                CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
+                PinnedAt = await GetPinnedAtAsync(dbContext, albumId, userId, cancellationToken)
             };
+            response.IsPinned = response.PinnedAt.HasValue;
 
             return Results.Ok(response);
         }
@@ -793,6 +823,10 @@ public class AlbumsEndpoint : IEndpoint
             }
 
             dbContext.AlbumPermissions.Remove(permission);
+            // A pin on an album you left would resurface if it's shared again.
+            await dbContext.AlbumPins
+                .Where(p => p.AlbumId == albumId && p.UserId == userId)
+                .ExecuteDeleteAsync(cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             cache.Remove($"albums:{userId}");
 
@@ -1023,6 +1057,70 @@ public class AlbumsEndpoint : IEndpoint
         }
     }
 
+    private async Task<IResult> PinAlbum(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
+        [FromRoute] Guid albumId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Results.Unauthorized();
+
+        // Anyone who can see the album may pin it; an album they can't see is
+        // a 404, not a 403, so pinning doesn't leak which ids exist.
+        var (hasAccess, _, _, _) = await CheckAlbumPermissionsAsync(dbContext, albumId, userId, cancellationToken);
+        if (!hasAccess)
+            return Results.NotFound(new { error = $"Album with ID {albumId} not found" });
+
+        var existing = await dbContext.AlbumPins
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.AlbumId == albumId, cancellationToken);
+        if (existing == null)
+        {
+            existing = new AlbumPin { UserId = userId, AlbumId = albumId, PinnedAt = DateTime.UtcNow };
+            dbContext.AlbumPins.Add(existing);
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent PUT won the insert: same end state, still idempotent.
+                dbContext.ChangeTracker.Clear();
+                existing = await dbContext.AlbumPins.AsNoTracking()
+                    .FirstAsync(p => p.UserId == userId && p.AlbumId == albumId, cancellationToken);
+            }
+            cache.Remove($"albums:{userId}");
+        }
+
+        return Results.Ok(new AlbumPinResponse { AlbumId = albumId, IsPinned = true, PinnedAt = existing.PinnedAt });
+    }
+
+    private async Task<IResult> UnpinAlbum(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
+        [FromRoute] Guid albumId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Results.Unauthorized();
+
+        var (hasAccess, _, _, _) = await CheckAlbumPermissionsAsync(dbContext, albumId, userId, cancellationToken);
+        if (!hasAccess)
+            return Results.NotFound(new { error = $"Album with ID {albumId} not found" });
+
+        var removed = await dbContext.AlbumPins
+            .Where(p => p.UserId == userId && p.AlbumId == albumId)
+            .ExecuteDeleteAsync(cancellationToken);
+        if (removed > 0)
+            cache.Remove($"albums:{userId}");
+
+        return Results.Ok(new AlbumPinResponse { AlbumId = albumId, IsPinned = false, PinnedAt = null });
+    }
+
     private async Task<IResult> SetAlbumCover(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
@@ -1126,6 +1224,7 @@ public class AlbumsEndpoint : IEndpoint
                 CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
                 HasActiveShareLink = hasActiveShareLink,
+                PinnedAt = await GetPinnedAtAsync(dbContext, album.Id, userId, cancellationToken),
                 CoverThumbnailUrl = coverHasMediumThumbnail
                     ? $"/api/assets/{request.AssetId}/thumbnail?size=Medium"
                     : null,
@@ -1137,6 +1236,7 @@ public class AlbumsEndpoint : IEndpoint
                         .Select(aa => $"/api/assets/{aa.AssetId}/thumbnail?size=Small")
                         .ToList()
             };
+            response.IsPinned = response.PinnedAt.HasValue;
 
             return Results.Ok(response);
         }
@@ -1171,8 +1271,18 @@ public class AlbumResponse
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
     public bool HasActiveShareLink { get; set; }
+    // Personal to the viewer: pinning never shows up for other members.
+    public bool IsPinned { get; set; }
+    public DateTime? PinnedAt { get; set; }
     // "Manual" or "Smart" (docs/smart-albums/).
     public string Kind { get; set; } = nameof(AlbumKind.Manual);
+}
+
+public class AlbumPinResponse
+{
+    public Guid AlbumId { get; set; }
+    public bool IsPinned { get; set; }
+    public DateTime? PinnedAt { get; set; }
 }
 
 public class CreateAlbumRequest

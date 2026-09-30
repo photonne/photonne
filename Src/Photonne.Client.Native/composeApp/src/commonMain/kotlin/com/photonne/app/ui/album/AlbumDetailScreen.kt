@@ -61,6 +61,8 @@ import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_action_album_actions
 import com.photonne.app.resources.album_action_members
+import com.photonne.app.resources.album_action_pin
+import com.photonne.app.resources.album_action_unpin
 import com.photonne.app.resources.album_action_sort
 import com.photonne.app.resources.album_empty_subtitle
 import com.photonne.app.resources.album_empty_title
@@ -120,6 +122,10 @@ fun AlbumDetailScreen(
     // HERMANAS de ella y no descendientes — la regla de Haze.
     val albumHazeState = remember { HazeState() }
     val gestures = rememberAssetGridSelectionGestures(viewModel::applySelection)
+    // Fijar es personal y vale para cualquier álbum que veo; el estado vive en
+    // la lista de álbumes, que es la que reordena.
+    val isPinned = rememberAlbumPinned(album.id, fallback = album.isPinned)
+    val togglePin = rememberAlbumPinToggle()
     var showSortSheet by rememberSaveable { mutableStateOf(false) }
     var isScrubbing by remember { mutableStateOf(false) }
     // La misma barra se acopla arriba (sobre la portada del hero) y flota como
@@ -349,6 +355,8 @@ fun AlbumDetailScreen(
                     canShare = album.canWrite || album.isOwner,
                     canManageMembers = album.isOwner || album.canManagePermissions,
                     canLeave = !album.isOwner,
+                    isPinned = isPinned,
+                    onTogglePin = { togglePin(album.id) },
                     onBack = onBack,
                     onSort = { showSortSheet = true },
                     onShare = onShare,
@@ -397,6 +405,8 @@ private fun AlbumDetailTopBar(
     canShare: Boolean,
     canManageMembers: Boolean,
     canLeave: Boolean,
+    isPinned: Boolean,
+    onTogglePin: () -> Unit,
     onBack: () -> Unit,
     onSort: () -> Unit,
     onShare: () -> Unit,
@@ -455,19 +465,20 @@ private fun AlbumDetailTopBar(
                         )
                     }
                 }
-                if (canEdit || canDelete || canManageMembers || canLeave) {
-                    AlbumActionsOverflowMenu(
-                        canEdit = canEdit,
-                        canDelete = canDelete,
-                        canManageMembers = canManageMembers,
-                        canLeave = canLeave,
-                        tint = iconTint,
-                        onEdit = onEdit,
-                        onDelete = onDelete,
-                        onManageMembers = onManageMembers,
-                        onLeave = onLeave
-                    )
-                }
+                // Siempre hay menú: Fijar vale para cualquier álbum que veo.
+                AlbumActionsOverflowMenu(
+                    isPinned = isPinned,
+                    onTogglePin = onTogglePin,
+                    canEdit = canEdit,
+                    canDelete = canDelete,
+                    canManageMembers = canManageMembers,
+                    canLeave = canLeave,
+                    tint = iconTint,
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                    onManageMembers = onManageMembers,
+                    onLeave = onLeave
+                )
             }
         }
     }
@@ -610,6 +621,8 @@ private fun HeroMetaItem(icon: @Composable () -> Unit, text: String) {
 
 @Composable
 private fun AlbumActionsOverflowMenu(
+    isPinned: Boolean,
+    onTogglePin: () -> Unit,
     canEdit: Boolean,
     canDelete: Boolean,
     canManageMembers: Boolean,
@@ -633,6 +646,23 @@ private fun AlbumActionsOverflowMenu(
             expanded = menuOpen,
             onDismissRequest = { menuOpen = false }
         ) {
+            // Primero, como en la cápsula de selección: es la acción más ligera.
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        stringResource(
+                            if (isPinned) Res.string.album_action_unpin else Res.string.album_action_pin
+                        )
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        if (isPinned) PhotonneIcons.PinActive else PhotonneIcons.Pin,
+                        contentDescription = null
+                    )
+                },
+                onClick = { menuOpen = false; onTogglePin() }
+            )
             if (canEdit) {
                 DropdownMenuItem(
                     text = { Text(stringResource(Res.string.action_edit)) },

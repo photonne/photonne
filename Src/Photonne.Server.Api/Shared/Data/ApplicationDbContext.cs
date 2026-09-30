@@ -35,6 +35,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Album> Albums { get; set; }
     public DbSet<AlbumAsset> AlbumAssets { get; set; }
     public DbSet<AlbumPermission> AlbumPermissions { get; set; }
+    public DbSet<AlbumPin> AlbumPins { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<SharedLink> SharedLinks { get; set; }
     public DbSet<Notification> Notifications { get; set; }
@@ -497,6 +498,25 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.AlbumId, e.UserId }).IsUnique();
             entity.Property(e => e.GrantedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure AlbumPin entity — per-user pin, composite PK (UserId, AlbumId)
+        modelBuilder.Entity<AlbumPin>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.AlbumId });
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Album)
+                .WithMany()
+                .HasForeignKey(e => e.AlbumId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.AlbumId);
+            entity.Property(e => e.PinnedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure SharedLink entity

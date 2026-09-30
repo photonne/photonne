@@ -93,6 +93,13 @@
     <string name="album_type_smart_title">Álbum inteligente</string>
     <string name="album_type_smart_subtitle">Se rellena solo con una condición (personas, carpetas, fechas…).</string>
     <string name="album_action_edit">Editar álbum</string>
+    <string name="album_action_pin">Fijar</string>
+    <string name="album_action_unpin">Desfijar</string>
+    <string name="albums_badge_pinned">Fijado</string>
+    <string name="albums_section_pinned">Fijados</string>
+    <string name="albums_section_others">Otros álbumes</string>
+    <string name="album_pin_failed">No se pudo fijar el álbum</string>
+    <string name="album_unpin_failed">No se pudo desfijar el álbum</string>
     <string name="album_action_members">Miembros</string>
     <string name="album_action_album_actions">Acciones del álbum</string>
     <string name="album_delete_title">Eliminar álbum</string>

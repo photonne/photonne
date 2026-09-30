@@ -608,6 +608,8 @@ interface PhotonneApi {
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
+    /** Fija o desfija un álbum solo para el usuario actual (idempotente). */
+    suspend fun setAlbumPinned(albumId: String, pinned: Boolean)
     suspend fun listAlbumShares(albumId: String): List<AlbumShareLink>
     suspend fun getSentShares(): List<SentShareLink>
     suspend fun createAlbumShare(
@@ -1830,6 +1832,16 @@ class PhotonneApiClient(
             response.status != HttpStatusCode.NoContent
         ) {
             throw response.apiException("Leave album failed (${response.status.value})")
+        }
+    }
+
+    override suspend fun setAlbumPinned(albumId: String, pinned: Boolean) {
+        val url = "$baseUrl/api/albums/$albumId/pin"
+        val response: HttpResponse = if (pinned) client.put(url) else client.delete(url)
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw response.apiException("Pin album failed (${response.status.value})")
         }
     }
 

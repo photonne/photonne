@@ -21,6 +21,10 @@ data class AlbumSummary(
     val canDelete: Boolean = false,
     val canManagePermissions: Boolean = false,
     val hasActiveShareLink: Boolean = false,
+    // Fijado por MÍ (personal: no afecta a los demás miembros). Servidores
+    // antiguos no lo envían → false.
+    val isPinned: Boolean = false,
+    @Serializable(with = FlexibleInstantSerializer::class) val pinnedAt: Instant? = null,
     // "Manual" or "Smart" (docs/smart-albums/). Defaults keep decode safe
     // against older servers that don't emit the field.
     val kind: String = "Manual"

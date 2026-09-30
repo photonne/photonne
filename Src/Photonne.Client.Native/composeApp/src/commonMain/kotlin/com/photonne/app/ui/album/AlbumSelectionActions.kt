@@ -16,6 +16,9 @@ data class AlbumSelectionActions(
     val canManageMembers: Boolean,
     val canLeave: Boolean,
     val canDelete: Boolean,
+    // Fijar es personal y vale con cualquier álbum que veo, pero solo con uno:
+    // en bloque no está claro si fijar o desfijar cuando se mezclan.
+    val canPin: Boolean = false,
 )
 
 fun albumSelectionActions(selected: List<AlbumSummary>): AlbumSelectionActions {
@@ -33,6 +36,7 @@ fun albumSelectionActions(selected: List<AlbumSummary>): AlbumSelectionActions {
         canManageMembers = single != null && (single.isOwner || single.canManagePermissions),
         // Salir es de álbumes que me han compartido: ninguno puede ser mío.
         canLeave = selected.all { !it.isOwner },
-        canDelete = selected.all { it.isOwner || it.canDelete }
+        canDelete = selected.all { it.isOwner || it.canDelete },
+        canPin = single != null
     )
 }
