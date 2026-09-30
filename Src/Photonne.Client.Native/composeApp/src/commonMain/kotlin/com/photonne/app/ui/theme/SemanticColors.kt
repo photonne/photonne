@@ -23,6 +23,18 @@ data class PhotonneSemanticColors(
     val success: Color,
     /** Contenido sobre [success]. */
     val onSuccess: Color,
+    /**
+     * Naranja de aviso: algo pide atención sin ser un error (pendiente de
+     * subir, servidor inalcanzable, versión incompatible). Antes no existía y
+     * esos estados salían en `tertiary`, que es el mismo oro que `primary`.
+     */
+    val warning: Color,
+    /** Contenido sobre [warning]. */
+    val onWarning: Color,
+    /** Fondo suave de aviso (tarjetas y píldoras). */
+    val warningContainer: Color,
+    /** Contenido sobre [warningContainer]. */
+    val onWarningContainer: Color,
     /** Velo negro suave sobre imagen (degradados de legibilidad ligeros). */
     val scrimLight: Color,
     /** Velo negro medio: badges de contador, chips sobre miniatura. */
@@ -35,6 +47,10 @@ private val LightSemanticColors = PhotonneSemanticColors(
     favorite = Color(0xFFFF5252),
     success = Color(0xFF2E7D32),
     onSuccess = Color(0xFFFFFFFF),
+    warning = Color(0xFFC2410C),
+    onWarning = Color(0xFFFFFFFF),
+    warningContainer = Color(0xFFFFEDD5),
+    onWarningContainer = Color(0xFF7C2D12),
     scrimLight = Color.Black.copy(alpha = 0.35f),
     scrimMedium = Color.Black.copy(alpha = 0.55f),
     scrimHeavy = Color.Black.copy(alpha = 0.70f)
@@ -44,7 +60,11 @@ private val DarkSemanticColors = LightSemanticColors.copy(
     // El corazón mantiene el rojo vivo en ambos temas; el verde se aclara para
     // leerse sobre superficies casi-negras.
     success = Color(0xFF66BB6A),
-    onSuccess = Color(0xFF10240F)
+    onSuccess = Color(0xFF10240F),
+    warning = Color(0xFFFB923C),
+    onWarning = Color(0xFF3B1405),
+    warningContainer = Color(0xFF5A2A0C),
+    onWarningContainer = Color(0xFFFFDDBF)
 )
 
 val LocalPhotonneColors = staticCompositionLocalOf { LightSemanticColors }
@@ -64,6 +84,14 @@ object PhotonneColors {
         @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.success
     val onSuccess: Color
         @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.onSuccess
+    val warning: Color
+        @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.warning
+    val onWarning: Color
+        @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.onWarning
+    val warningContainer: Color
+        @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.warningContainer
+    val onWarningContainer: Color
+        @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.onWarningContainer
     val scrimLight: Color
         @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.scrimLight
     val scrimMedium: Color

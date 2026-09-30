@@ -112,6 +112,7 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.PhotonneColors
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlin.time.Clock
@@ -491,11 +492,11 @@ private fun BackupStatusCard(
                     state.failedCount > 0 -> Icons.Filled.CloudUpload to
                         MaterialTheme.colorScheme.error
                     pendingCount > 0 -> Icons.Filled.CloudUpload to
-                        MaterialTheme.colorScheme.tertiary
+                        PhotonneColors.warning
                     hasChecked && state.ignoredCount == 0 -> Icons.Filled.CheckCircle to
-                        MaterialTheme.colorScheme.primary
+                        PhotonneColors.success
                     hasChecked -> Icons.Filled.CloudUpload to
-                        MaterialTheme.colorScheme.tertiary
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     else -> Icons.Outlined.CloudUpload to
                         MaterialTheme.colorScheme.onSurfaceVariant
                 }
@@ -649,7 +650,7 @@ private fun BackupStatusCard(
                     Icon(
                         Icons.Filled.HourglassEmpty,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.size(8.dp))

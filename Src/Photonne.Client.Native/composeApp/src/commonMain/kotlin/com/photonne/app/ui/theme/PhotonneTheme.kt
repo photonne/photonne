@@ -36,6 +36,21 @@ private val OnSurfaceLight = Color(0xFF1E1E2E)
 private val OnSurfaceVariantLight = Color(0xFF64748B)
 private val SurfaceVariantLight = Color(0xFFF1F5F9)
 
+// Neutral slate ladder for the light surfaceContainer* tokens. Material3's
+// defaults are lavender-tinted (~0xFFF3EDF7), which is what bottom sheets,
+// menus, dialogs, date pickers and switch tracks picked up in light mode.
+private val SurfaceContainerLowestLight = Color(0xFFFFFFFF)
+private val SurfaceContainerLowLight = Color(0xFFF8F9FA)
+private val SurfaceContainerLight = Color(0xFFF3F4F6)
+private val SurfaceContainerHighLight = Color(0xFFEEF0F3)
+private val SurfaceContainerHighestLight = Color(0xFFE7EAEE)
+private val SurfaceDimLight = Color(0xFFDDE1E6)
+private val SurfaceBrightLight = Color(0xFFFFFFFF)
+private val OutlineLight = Color(0xFF94A3B8)
+private val OutlineVariantLight = Color(0xFFE2E8F0)
+private val InverseSurfaceLight = Color(0xFF1E1E2E)
+private val InverseOnSurfaceLight = Color(0xFFF1F5F9)
+
 // Near-black neutral dark theme — drops the old blue-grey tint so surfaces
 // read as truly dark instead of dark grey.
 private val SurfaceDark = Color(0xFF121214)
@@ -55,19 +70,46 @@ private val SurfaceContainerHighDark = Color(0xFF1A1A1D)
 private val SurfaceContainerHighestDark = Color(0xFF222226)
 private val SurfaceDimDark = Color(0xFF0A0A0C)
 private val SurfaceBrightDark = Color(0xFF29292E)
+private val OutlineDark = Color(0xFF64748B)
+private val OutlineVariantDark = Color(0xFF2A2A30)
+private val InverseSurfaceDark = Color(0xFFE2E8F0)
+private val InverseOnSurfaceDark = Color(0xFF1A1A1D)
 
+// secondary/tertiary are the brand gold, so their containers are the gold
+// container too. Left unset, Material3 fills them with its lavender/mauve
+// baseline — FilterChip selection, MetaBadge and the tonal cards showed it.
 private val LightColors = lightColorScheme(
     primary = GoldPrimaryLight,
     onPrimary = GoldOnPrimaryLight,
     primaryContainer = GoldContainerLight,
     onPrimaryContainer = GoldOnContainerLight,
+    inversePrimary = GoldPrimaryDark,
     secondary = GoldPrimaryLight,
+    onSecondary = GoldOnPrimaryLight,
+    secondaryContainer = GoldContainerLight,
+    onSecondaryContainer = GoldOnContainerLight,
     tertiary = GoldPrimaryLight,
+    onTertiary = GoldOnPrimaryLight,
+    tertiaryContainer = GoldContainerLight,
+    onTertiaryContainer = GoldOnContainerLight,
     background = BackgroundLight,
     surface = SurfaceLight,
     surfaceVariant = SurfaceVariantLight,
+    surfaceContainerLowest = SurfaceContainerLowestLight,
+    surfaceContainerLow = SurfaceContainerLowLight,
+    surfaceContainer = SurfaceContainerLight,
+    surfaceContainerHigh = SurfaceContainerHighLight,
+    surfaceContainerHighest = SurfaceContainerHighestLight,
+    surfaceDim = SurfaceDimLight,
+    surfaceBright = SurfaceBrightLight,
+    // Same as dark: no gold tint on tonally-elevated surfaces.
+    surfaceTint = SurfaceLight,
     onSurface = OnSurfaceLight,
-    onSurfaceVariant = OnSurfaceVariantLight
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = OutlineLight,
+    outlineVariant = OutlineVariantLight,
+    inverseSurface = InverseSurfaceLight,
+    inverseOnSurface = InverseOnSurfaceLight
 )
 
 private val DarkColors = darkColorScheme(
@@ -75,8 +117,15 @@ private val DarkColors = darkColorScheme(
     onPrimary = GoldOnPrimaryDark,
     primaryContainer = GoldContainerDark,
     onPrimaryContainer = GoldOnContainerDark,
+    inversePrimary = GoldPrimaryLight,
     secondary = GoldPrimaryDark,
+    onSecondary = GoldOnPrimaryDark,
+    secondaryContainer = GoldContainerDark,
+    onSecondaryContainer = GoldOnContainerDark,
     tertiary = GoldPrimaryDark,
+    onTertiary = GoldOnPrimaryDark,
+    tertiaryContainer = GoldContainerDark,
+    onTertiaryContainer = GoldOnContainerDark,
     background = BackgroundDark,
     surface = SurfaceDark,
     surfaceVariant = SurfaceVariantDark,
@@ -91,7 +140,11 @@ private val DarkColors = darkColorScheme(
     // don't get lightened/tinted back toward grey.
     surfaceTint = SurfaceDark,
     onSurface = OnSurfaceDark,
-    onSurfaceVariant = OnSurfaceVariantDark
+    onSurfaceVariant = OnSurfaceVariantDark,
+    outline = OutlineDark,
+    outlineVariant = OutlineVariantDark,
+    inverseSurface = InverseSurfaceDark,
+    inverseOnSurface = InverseOnSurfaceDark
 )
 
 private val PhotonneShapes = Shapes(

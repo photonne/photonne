@@ -25,6 +25,7 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.remember
+import com.photonne.app.ui.theme.PhotonneColors
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
@@ -375,13 +376,13 @@ private fun NotificationRow(
 @Composable
 private fun iconFor(type: Int): Pair<ImageVector, Color> = when (type) {
     NotificationKind.JobCompleted ->
-        Icons.Filled.CheckCircle to MaterialTheme.colorScheme.primary
+        Icons.Filled.CheckCircle to PhotonneColors.success
     NotificationKind.JobFailed ->
         Icons.Filled.Error to MaterialTheme.colorScheme.error
     NotificationKind.ShareViewed ->
-        Icons.Filled.Visibility to MaterialTheme.colorScheme.tertiary
+        Icons.Filled.Visibility to MaterialTheme.colorScheme.primary
     NotificationKind.SharedAssetsDeleted ->
-        Icons.Filled.DeleteSweep to MaterialTheme.colorScheme.secondary
+        Icons.Filled.DeleteSweep to PhotonneColors.warning
     else ->
         Icons.Filled.Notifications to MaterialTheme.colorScheme.onSurfaceVariant
 }

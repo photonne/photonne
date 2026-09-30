@@ -1,6 +1,7 @@
 package com.photonne.app.ui.admin
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.SecondaryActionButton
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.resources.admin_duplicates_error_run
@@ -233,12 +234,12 @@ fun AdminDuplicatesScreen(
                 StatGridItem(
                     label = stringResource(Res.string.admin_duplicates_stats_groups),
                     value = formatCount(stats.duplicateGroups ?: 0),
-                    valueColor = MaterialTheme.colorScheme.secondary
+                    valueColor = MaterialTheme.colorScheme.primary
                 ),
                 StatGridItem(
                     label = stringResource(Res.string.admin_duplicates_stats_assets),
                     value = formatCount(stats.duplicateAssets ?: 0),
-                    valueColor = MaterialTheme.colorScheme.tertiary
+                    valueColor = PhotonneColors.warning
                 ),
                 StatGridItem(
                     label = stringResource(Res.string.admin_duplicates_stats_removed),

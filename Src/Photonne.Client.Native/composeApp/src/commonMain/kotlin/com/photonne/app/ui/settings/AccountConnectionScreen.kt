@@ -52,6 +52,7 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.SecondaryActionButton
 import com.photonne.app.ui.theme.Spacing
@@ -155,7 +156,7 @@ private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
                 Text(
                     statusText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (state.localReachable) MaterialTheme.colorScheme.primary
+                    color = if (state.localReachable) PhotonneColors.success
                             else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -205,7 +206,11 @@ private fun DeviceConnectionSection(viewModel: DeviceConnectionViewModel) {
             stringResource(Res.string.admin_settings_device_saved)
         else -> null
     }
-    infoText?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+    val infoColor = when (state.infoMessage) {
+        DeviceConnectionViewModel.PROBE_UNREACHABLE -> PhotonneColors.warning
+        else -> PhotonneColors.success
+    }
+    infoText?.let { Text(it, color = infoColor) }
 
     SecondaryActionButton(
         label = stringResource(Res.string.admin_settings_device_probe_button),

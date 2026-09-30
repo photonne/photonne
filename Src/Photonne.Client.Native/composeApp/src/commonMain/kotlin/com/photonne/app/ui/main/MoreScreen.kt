@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material3.IconButton
+import com.photonne.app.ui.theme.PhotonneColors
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
@@ -312,7 +313,7 @@ fun MoreScreen(
                         .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm),
                     shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                        containerColor = PhotonneColors.warningContainer
                     )
                 ) {
                     Column(
@@ -322,7 +323,7 @@ fun MoreScreen(
                         Text(
                             text = stringResource(Res.string.compat_card_title),
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                            color = PhotonneColors.onWarningContainer
                         )
                         Text(
                             text = when (incompatible) {
@@ -339,10 +340,15 @@ fun MoreScreen(
                                 ServerCompatibility.Compatible -> ""
                             },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                            color = PhotonneColors.onWarningContainer
                         )
                         if (incompatible is ServerCompatibility.ClientTooOld && updateUrl != null) {
-                            TextButton(onClick = { openExternalUrl(updateUrl) }) {
+                            TextButton(
+                                onClick = { openExternalUrl(updateUrl) },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = PhotonneColors.onWarningContainer
+                                )
+                            ) {
                                 Text(stringResource(Res.string.compat_card_download))
                             }
                         }

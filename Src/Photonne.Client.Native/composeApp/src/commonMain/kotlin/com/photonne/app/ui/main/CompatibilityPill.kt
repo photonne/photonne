@@ -36,6 +36,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.compat_pill_client_too_old
 import com.photonne.app.resources.compat_pill_server_too_old
+import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.Spacing
 import org.jetbrains.compose.resources.stringResource
 
@@ -71,8 +72,8 @@ fun CompatibilityPill(
         }
         Surface(
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.tertiaryContainer,
-            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            color = PhotonneColors.warningContainer,
+            contentColor = PhotonneColors.onWarningContainer,
             shadowElevation = 2.dp,
             modifier = Modifier
                 .padding(horizontal = Spacing.md, vertical = Spacing.xs)
