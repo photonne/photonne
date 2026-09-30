@@ -132,8 +132,9 @@ fun AlbumDetailScreen(
             onChromeVisibleChange = onChromeVisibleChange
         )
     } else {
-        // Con una selección activa manda la AssetSelectionTopBar del Scaffold y
-        // esta barra no se dibuja; fuera de inmersivo no hay nada que ocultar.
+        // Con una selección activa manda la cápsula AssetSelectionTopBar del
+        // Scaffold y esta barra no se dibuja; fuera de inmersivo no hay nada que
+        // ocultar.
         true
     }
     val chromeAlpha by animateFloatAsState(
@@ -320,7 +321,7 @@ fun AlbumDetailScreen(
         }
 
         // Cromo superior (se salta entero durante la selección, donde manda la
-        // AssetSelectionTopBar sólida vía el slot del Scaffold).
+        // cápsula AssetSelectionTopBar vía el slot del Scaffold, en su sitio).
         if (!state.isSelectionActive) {
             // Scrim permanente de la status bar, para que el reloj y los
             // indicadores del móvil sigan legibles sobre las fotos una vez la

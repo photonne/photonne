@@ -129,9 +129,10 @@ fun FoldersListScreen(
         }
     }
     // La búsqueda también va en la cápsula flotante (campo dentro), como el
-    // buscador global: solo una selección activa la sustituye por la barra sólida.
+    // buscador global: solo una selección activa la sustituye por la cápsula de
+    // selección, en el mismo hueco (la lista lo reserva siempre).
     val floatingChrome = !state.isSelectionActive
-    val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
+    val reservedTop = subscreenChromeReservedTop()
     // The inbox holds personal assets, so it makes no sense framed by
     // Compartidas/Externas — but it has to survive "Todas", the default.
     val showInbox = state.organizePendingCount > 0 &&

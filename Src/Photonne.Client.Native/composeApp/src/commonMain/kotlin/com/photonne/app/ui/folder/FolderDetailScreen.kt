@@ -36,7 +36,6 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.grid.AssetGridDragSelect
-import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.grid.dragselect.AssetCellContentType
 import com.photonne.app.ui.grid.dragselect.dragSelectable
@@ -78,10 +77,10 @@ fun FolderDetailScreen(
     val hazeState = remember { HazeState() }
     val gestures = rememberAssetGridSelectionGestures(viewModel::applySelection)
     // Cromo flotante salvo con una selección (de assets o de subcarpetas) activa,
-    // que muestra su barra acoplada.
-    val floatingChrome = !gestures.chromeSelectionActive(state.isSelectionActive) &&
-        !state.isSubfolderSelectionActive
-    val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
+    // que muestra su cápsula de selección en el mismo hueco: la rejilla lo
+    // reserva siempre, así que la selección no la mueve.
+    val floatingChrome = !state.isSelectionActive && !state.isSubfolderSelectionActive
+    val reservedTop = subscreenChromeReservedTop()
     // Only drive the immersive chrome when the photo grid is what's on screen —
     // a subfolders-only view keeps the nav docked.
     val gridActive = immersive && state.items.isNotEmpty()

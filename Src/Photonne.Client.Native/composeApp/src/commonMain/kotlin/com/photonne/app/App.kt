@@ -198,7 +198,6 @@ import com.photonne.app.ui.actions.AssetActionWorking
 import com.photonne.app.ui.actions.DownloadFormatSheet
 import com.photonne.app.ui.actions.ShareAssetsDialog
 import com.photonne.app.ui.actions.ShareLinkResultDialog
-import com.photonne.app.ui.main.AlbumsListTopBar
 import com.photonne.app.ui.main.ArchiveMode
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.SubscreenFloatingChrome
@@ -212,7 +211,6 @@ import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.AssetSelectionTopBar
 import com.photonne.app.ui.main.FolderDetailChromeActions
 import com.photonne.app.ui.library.TrashChromeActions
-import com.photonne.app.ui.main.FoldersListTopBar
 import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.main.MoreScreen
@@ -1497,8 +1495,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // Subpantallas que pintan su PROPIO cromo flotante sobre el contenido
     // (cápsulas de cristal que se acoplan arriba y se esconden al bajar, como
     // Fotos) en vez de la barra acoplada de este Scaffold. Con una selección
-    // activa vuelven a la barra sólida: una acción no puede escaparse scroll
-    // abajo. Sólo hay una a la vez, así que comparten el estado de visibilidad.
+    // activa ceden el sitio a la cápsula de selección, que no se esconde: una
+    // acción no puede escaparse scroll abajo. Sólo hay una a la vez, así que
+    // comparten el estado de visibilidad.
     val floatingChromeSubscreen = when (moreSubscreen) {
         MoreSubscreen.People ->
             selectedPerson == null || !personDetailState.isSelectionActive
@@ -1515,8 +1514,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.UnsupportedFiles -> true
         MoreSubscreen.PeopleSuggestions -> true
         // Formularios: cromo flotante estático dibujado dentro de cada pantalla.
-        // Los que tienen selección (DeviceBackupPending / Trash) vuelven a la
-        // barra acoplada de selección mientras haya algo seleccionado.
+        // Los que tienen selección (DeviceBackupPending / Trash) ceden el sitio
+        // a la cápsula de selección mientras haya algo seleccionado.
         MoreSubscreen.DeviceBackupPending -> deviceBackupState.selectedCount == 0
         MoreSubscreen.Trash -> !trashState.isSelectionActive
         MoreSubscreen.DeviceBackup,
@@ -1611,115 +1610,231 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         return selected.isNotEmpty() && selected.all { it.isFavorite }
     }
 
+    // Cápsula superior de selección de la pantalla visible; null sin selección.
+    // Es una cápsula de cristal flotante, no una barra acoplada: se superpone al
+    // contenido en el mismo hueco que el cromo flotante al que sustituye, y el
+    // contenido sigue reservándolo, así que entrar en selección no mueve nada.
+    // Por eso el Scaffold dibuja a sangre por arriba mientras haya una (ver
+    // edgeToEdgeTop). Sin hazeState propio: difumina con la fuente del Scaffold.
+    fun selectionChrome(content: @Composable () -> Unit) = content
+    val selectionTopChrome: (@Composable () -> Unit)? = when {
+        selectedTab == MainTab.Timeline &&
+            timelineState.isSelectionActive -> selectionChrome {
+            AssetSelectionTopBar(
+                selectedCount = timelineState.selection.size,
+                isMutating = timelineState.isBulkMutating ||
+                    actionsState.working != AssetActionWorking.Idle,
+                onClose = timelineViewModel::clearSelection
+                // Sin "Seleccionar todo": el timeline se pagina sobre toda
+                // la biblioteca y el botón solo cogía lo cargado, que no es
+                // lo que promete. La casilla de mes cubre el caso real.
+            )
+        }
+        selectedTab == MainTab.Albums && selectedAlbum != null &&
+            albumDetailState.isSelectionActive -> selectionChrome {
+            AssetSelectionTopBar(
+                selectedCount = albumDetailState.selection.size,
+                totalCount = albumDetailState.items.size,
+                isMutating = albumDetailState.isBulkMutating ||
+                    actionsState.working != AssetActionWorking.Idle,
+                onClose = albumDetailViewModel::clearSelection,
+                onSelectAll = albumDetailViewModel::toggleSelectAll
+            )
+        }
+        selectedTab == MainTab.Albums && selectedAlbum != null -> null
+        selectedTab == MainTab.Albums && albumsState.isSelectionActive -> selectionChrome {
+            // Si la tarjeta ya no está en la lista (filtrada, borrada) queda
+            // solo el cerrar: antes caía a la barra acoplada de Álbumes.
+            val target = albumsState.albums.firstOrNull {
+                it.id == albumsState.selectedAlbumId
+            }
+            com.photonne.app.ui.main.AlbumCardSelectionTopBar(
+                albumName = target?.name ?: "",
+                isMutating = albumsState.isMutating,
+                onClose = albumsViewModel::clearSelection
+            )
+        }
+        selectedTab == MainTab.Folders && selectedFolder != null &&
+            folderDetailState.isSelectionActive -> selectionChrome {
+            AssetSelectionTopBar(
+                selectedCount = folderDetailState.selection.size,
+                totalCount = folderDetailState.items.size,
+                isMutating = folderDetailState.isBulkMutating ||
+                    actionsState.working != AssetActionWorking.Idle,
+                onClose = folderDetailViewModel::clearSelection,
+                onSelectAll = folderDetailViewModel::toggleSelectAll
+            )
+        }
+        selectedTab == MainTab.Folders && selectedFolder != null &&
+            folderDetailState.isSubfolderSelectionActive -> selectionChrome {
+            val subfolder = folderDetailState.selectedSubfolder
+            com.photonne.app.ui.main.FolderCardSelectionTopBar(
+                folderName = (subfolder?.name ?: "").ifBlank { subfolder?.path ?: "" },
+                isMutating = folderDetailState.isMutating,
+                onClose = folderDetailViewModel::clearSubfolderSelection,
+                // La rejilla del detalle va a sangre bajo la status bar.
+                statusBarScrim = true
+            )
+        }
+        selectedTab == MainTab.Folders && selectedFolder != null -> null
+        selectedTab == MainTab.Folders && foldersState.isSelectionActive -> selectionChrome {
+            val target = foldersState.findFolder(foldersState.selectedFolderId)
+            com.photonne.app.ui.main.FolderCardSelectionTopBar(
+                folderName = target?.let { it.name.ifBlank { it.path } } ?: "",
+                isMutating = foldersState.isMutating,
+                onClose = foldersViewModel::clearSelection
+            )
+        }
+        selectedTab == MainTab.Search && searchState.isSelectionActive -> selectionChrome {
+            AssetSelectionTopBar(
+                selectedCount = searchState.selection.size,
+                totalCount = searchState.results.size,
+                isMutating = searchState.isBulkMutating ||
+                    actionsState.working != AssetActionWorking.Idle,
+                onClose = searchViewModel::clearSelection,
+                onSelectAll = searchViewModel::toggleSelectAll,
+                statusBarScrim = false
+            )
+        }
+        selectedTab == MainTab.Search -> null
+        moreSubscreen == MoreSubscreen.DeviceBackupPending &&
+            deviceBackupState.selectedCount > 0 -> selectionChrome {
+            // Same contextual selection capsule as Timeline/Albums, with a
+            // select-all action for queueing every pending file at once.
+            AssetSelectionTopBar(
+                selectedCount = deviceBackupState.selectedCount,
+                isMutating = deviceBackupState.isSyncing,
+                onClose = deviceBackupViewModel::clearSelection,
+                statusBarScrim = false,
+                actions = {
+                    androidx.compose.material3.IconButton(
+                        onClick = deviceBackupViewModel::selectAllNotSynced,
+                        enabled = !deviceBackupState.isSyncing
+                    ) {
+                        androidx.compose.material3.Icon(
+                            Icons.Filled.SelectAll,
+                            contentDescription = stringResource(
+                                Res.string.device_backup_action_select_all
+                            )
+                        )
+                    }
+                }
+            )
+        }
+        moreSubscreen == MoreSubscreen.OrganizeInbox &&
+            organizeInboxState.isSelectionActive -> selectionChrome {
+            AssetSelectionTopBar(
+                selectedCount = organizeInboxState.selection.size,
+                totalCount = organizeInboxState.items.size,
+                isMutating = organizeInboxState.isBulkMutating,
+                onClose = organizeInboxViewModel::clearSelection,
+                onSelectAll = organizeInboxViewModel::toggleSelectAll,
+                // El servidor no da los ids de toda la lista: solo se
+                // puede seleccionar lo cargado, y así se rotula.
+                selectAllLoadedOnly = organizeInboxState.hasMore
+            )
+        }
+        // Apartadas: con selección, la cápsula lleva "Devolver a la bandeja"
+        // (una sola acción, como Restaurar en la papelera).
+        moreSubscreen == MoreSubscreen.OrganizeExcluded &&
+            organizeExcludedState.isSelectionActive -> selectionChrome {
+            val snackbar = LocalSnackbarController.current
+            val includedCount = organizeExcludedState.selection.size
+            val includedMessage = pluralStringResource(
+                Res.plurals.organize_excluded_included_done, includedCount, includedCount
+            )
+            AssetSelectionTopBar(
+                selectedCount = organizeExcludedState.selection.size,
+                totalCount = organizeExcludedState.items.size,
+                isMutating = organizeExcludedState.isBulkMutating,
+                onClose = organizeExcludedViewModel::clearSelection,
+                onSelectAll = organizeExcludedViewModel::toggleSelectAll,
+                selectAllLoadedOnly = organizeExcludedState.hasMore
+            ) {
+                TextButton(
+                    onClick = {
+                        organizeExcludedViewModel.includeSelected {
+                            snackbar?.show(includedMessage)
+                            organizeInboxViewModel.refresh()
+                            foldersViewModel.refreshOrganizeCount()
+                        }
+                    },
+                    enabled = !organizeExcludedState.isBulkMutating
+                ) {
+                    Text(
+                        stringResource(Res.string.organize_excluded_action_include),
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+        moreSubscreen == MoreSubscreen.People &&
+            selectedPerson != null && personDetailState.isSelectionActive -> selectionChrome {
+            AssetSelectionTopBar(
+                selectedCount = personDetailState.selection.size,
+                totalCount = personDetailState.items.size,
+                isMutating = personDetailState.isBulkMutating ||
+                    actionsState.working != AssetActionWorking.Idle,
+                onClose = personDetailViewModel::clearSelection,
+                onSelectAll = personDetailViewModel::toggleSelectAll
+            )
+        }
+        moreSubscreen == MoreSubscreen.Favorites &&
+            favoritesState.isSelectionActive -> selectionChrome {
+            AssetSelectionTopBar(
+                selectedCount = favoritesState.selection.size,
+                totalCount = favoritesState.items.size,
+                isMutating = favoritesState.isBulkMutating ||
+                    actionsState.working != AssetActionWorking.Idle,
+                onClose = favoritesViewModel::clearSelection,
+                onSelectAll = favoritesViewModel::toggleSelectAll,
+                // El servidor no da los ids de toda la lista: solo se
+                // puede seleccionar lo cargado, y así se rotula.
+                selectAllLoadedOnly = favoritesState.hasMore
+            )
+        }
+        moreSubscreen == MoreSubscreen.Archived &&
+            archivedState.isSelectionActive -> selectionChrome {
+            AssetSelectionTopBar(
+                selectedCount = archivedState.selection.size,
+                totalCount = archivedState.items.size,
+                isMutating = archivedState.isBulkMutating ||
+                    actionsState.working != AssetActionWorking.Idle,
+                onClose = archivedViewModel::clearSelection,
+                onSelectAll = archivedViewModel::toggleSelectAll,
+                // El servidor no da los ids de toda la lista: solo se
+                // puede seleccionar lo cargado, y así se rotula.
+                selectAllLoadedOnly = archivedState.hasMore
+            )
+        }
+        // Personal tab in selection mode: restore/purge selected.
+        moreSubscreen == MoreSubscreen.Trash &&
+            trashTab == com.photonne.app.ui.library.TrashTab.Personal &&
+            trashState.isSelectionActive -> selectionChrome {
+            com.photonne.app.ui.main.TrashSelectionTopBar(
+                selectedCount = trashState.selection.size,
+                isMutating = trashState.isBulkMutating,
+                onClose = trashViewModel::clearSelection,
+                onRestore = { trashViewModel.bulkRestore() },
+                onPurge = { showPurgeSelected = true }
+            )
+        }
+        else -> null
+    }
+
     val topBar: @Composable () -> Unit = {
-        when {
-            selectedTab == MainTab.Timeline &&
-                timelineState.isSelectionActive ->
-                AssetSelectionTopBar(
-                    selectedCount = timelineState.selection.size,
-                    isMutating = timelineState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onClose = timelineViewModel::clearSelection
-                    // Sin "Seleccionar todo": el timeline se pagina sobre toda
-                    // la biblioteca y el botón solo cogía lo cargado, que no es
-                    // lo que promete. La casilla de mes cubre el caso real.
-                )
-            selectedTab == MainTab.Albums && selectedAlbum != null &&
-                albumDetailState.isSelectionActive ->
-                AssetSelectionTopBar(
-                    selectedCount = albumDetailState.selection.size,
-                    totalCount = albumDetailState.items.size,
-                    isMutating = albumDetailState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onClose = albumDetailViewModel::clearSelection,
-                    onSelectAll = albumDetailViewModel::toggleSelectAll
-                )
+        val selectionBar = selectionTopChrome
+        if (selectionBar != null) selectionBar() else when {
+            // AlbumDetailScreen paints its own floating top chrome over the
+            // grid (docked on the hero's cover, frosted capsules once
+            // scrolled), like Fotos, so no separate top bar here.
             selectedTab == MainTab.Albums && selectedAlbum != null -> {
-                // AlbumDetailScreen paints its own floating top chrome over the
-                // grid (docked on the hero's cover, frosted capsules once
-                // scrolled), like Fotos, so no separate top bar here.
-            }
-            selectedTab == MainTab.Albums && albumsState.isSelectionActive -> {
-                val target = albumsState.albums.firstOrNull {
-                    it.id == albumsState.selectedAlbumId
-                }
-                if (target != null) {
-                    com.photonne.app.ui.main.AlbumCardSelectionTopBar(
-                        albumName = target.name,
-                        isMutating = albumsState.isMutating,
-                        onClose = albumsViewModel::clearSelection
-                    )
-                } else {
-                    AlbumsListTopBar(
-                        onOpenFilters = { showAlbumsFilters = true },
-                        isFilterActive = albumsState.isFilterActive,
-                        isSearchActive = albumsState.isSearchActive,
-                        onToggleSearch = albumsViewModel::toggleSearch,
-                        onCreateAlbum = { showAlbumTypeChooser = true }
-                    )
-                }
-            }
-            // (Bare Álbumes list bar now lives inside the pager page so it slides
-            // with the content — see the pager's MainTab.Albums branch.)
-            selectedTab == MainTab.Folders && selectedFolder != null &&
-                folderDetailState.isSelectionActive ->
-                AssetSelectionTopBar(
-                    selectedCount = folderDetailState.selection.size,
-                    totalCount = folderDetailState.items.size,
-                    isMutating = folderDetailState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onClose = folderDetailViewModel::clearSelection,
-                    onSelectAll = folderDetailViewModel::toggleSelectAll
-                )
-            selectedTab == MainTab.Folders && selectedFolder != null &&
-                folderDetailState.isSubfolderSelectionActive -> {
-                val subfolder = folderDetailState.selectedSubfolder
-                com.photonne.app.ui.main.FolderCardSelectionTopBar(
-                    folderName = (subfolder?.name ?: "").ifBlank { subfolder?.path ?: "" },
-                    isMutating = folderDetailState.isMutating,
-                    onClose = folderDetailViewModel::clearSubfolderSelection
-                )
             }
             // El detalle de carpeta pinta su propio cromo flotante dentro de la
-            // pantalla (título de la carpeta + acciones en la cápsula); aquí no va
-            // barra acoplada.
+            // pantalla (título de la carpeta + acciones en la cápsula).
             selectedTab == MainTab.Folders && selectedFolder != null -> {
             }
-            selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
-                val target = foldersState.findFolder(foldersState.selectedFolderId)
-                if (target != null) {
-                    com.photonne.app.ui.main.FolderCardSelectionTopBar(
-                        folderName = target.name.ifBlank { target.path },
-                        isMutating = foldersState.isMutating,
-                        onClose = foldersViewModel::clearSelection
-                    )
-                } else {
-                    FoldersListTopBar(
-                        onOpenFilters = { showFoldersFilters = true },
-                        isFilterActive = foldersState.isFilterActive,
-                        isSearchActive = foldersState.isSearchActive,
-                        onToggleSearch = foldersViewModel::toggleSearch,
-                        onCreateFolder = if (
-                            foldersState.scope !=
-                                com.photonne.app.ui.folder.FoldersScope.External
-                        ) {
-                            { showCreateFolder = true }
-                        } else null
-                    )
-                }
-            }
-            // (Bare Carpetas list bar now lives inside the pager page.)
-            selectedTab == MainTab.Search && searchState.isSelectionActive ->
-                AssetSelectionTopBar(
-                    selectedCount = searchState.selection.size,
-                    totalCount = searchState.results.size,
-                    isMutating = searchState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onClose = searchViewModel::clearSelection,
-                    onSelectAll = searchViewModel::toggleSelectAll
-                )
-            // Buscar pinta su propio cromo flotante (campo + modo + filtros); aquí
-            // no va barra acoplada salvo la de selección (rama de arriba).
+            // Buscar pinta su propio cromo flotante (campo + modo + filtros).
             selectedTab == MainTab.Search -> {
             }
             moreSubscreen == MoreSubscreen.Upload ->
@@ -1735,30 +1850,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             // Cromo flotante dibujado dentro de la pantalla.
             moreSubscreen == MoreSubscreen.DeviceBackup -> { }
-            moreSubscreen == MoreSubscreen.DeviceBackupPending &&
-                deviceBackupState.selectedCount > 0 ->
-                // Same contextual selection bar as Timeline/Albums, with a
-                // select-all action for queueing every pending file at once.
-                AssetSelectionTopBar(
-                    selectedCount = deviceBackupState.selectedCount,
-                    isMutating = deviceBackupState.isSyncing,
-                    onClose = deviceBackupViewModel::clearSelection,
-                    actions = {
-                        androidx.compose.material3.IconButton(
-                            onClick = deviceBackupViewModel::selectAllNotSynced,
-                            enabled = !deviceBackupState.isSyncing
-                        ) {
-                            androidx.compose.material3.Icon(
-                                Icons.Filled.SelectAll,
-                                contentDescription = stringResource(
-                                    Res.string.device_backup_action_select_all
-                                )
-                            )
-                        }
-                    }
-                )
-            // Cromo flotante dibujado dentro de la pantalla (con selección vuelve
-            // a la barra acoplada, rama de arriba).
+            // Cromo flotante dibujado dentro de la pantalla (con selección manda
+            // la cápsula de selección, arriba).
             moreSubscreen == MoreSubscreen.DeviceBackupPending -> { }
             moreSubscreen == MoreSubscreen.EnrichmentStatus -> { }
             moreSubscreen == MoreSubscreen.Utilities -> { }
@@ -1766,55 +1859,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // "Archivos no compatibles" pinta su propio cromo flotante dentro de la pantalla.
             moreSubscreen == MoreSubscreen.UnsupportedFiles -> {
             }
-            moreSubscreen == MoreSubscreen.OrganizeInbox &&
-                organizeInboxState.isSelectionActive ->
-                AssetSelectionTopBar(
-                    selectedCount = organizeInboxState.selection.size,
-                    totalCount = organizeInboxState.items.size,
-                    isMutating = organizeInboxState.isBulkMutating,
-                    onClose = organizeInboxViewModel::clearSelection,
-                    onSelectAll = organizeInboxViewModel::toggleSelectAll,
-                    // El servidor no da los ids de toda la lista: solo se
-                    // puede seleccionar lo cargado, y así se rotula.
-                    selectAllLoadedOnly = organizeInboxState.hasMore
-                )
             // Para organizar pinta su propio cromo flotante (con "Mover por
             // condiciones" en su cápsula de acciones); con una selección activa
-            // manda la rama de arriba.
+            // manda la cápsula de selección, arriba.
             moreSubscreen == MoreSubscreen.OrganizeInbox -> {
             }
             moreSubscreen == MoreSubscreen.OrganizeRule -> { }
-            // Apartadas: con selección, la barra acoplada lleva "Devolver a la
-            // bandeja" (una sola acción, como Restaurar en la papelera).
-            moreSubscreen == MoreSubscreen.OrganizeExcluded &&
-                organizeExcludedState.isSelectionActive -> {
-                val snackbar = LocalSnackbarController.current
-                val includedCount = organizeExcludedState.selection.size
-                val includedMessage = pluralStringResource(
-                    Res.plurals.organize_excluded_included_done, includedCount, includedCount
-                )
-                AssetSelectionTopBar(
-                    selectedCount = organizeExcludedState.selection.size,
-                    totalCount = organizeExcludedState.items.size,
-                    isMutating = organizeExcludedState.isBulkMutating,
-                    onClose = organizeExcludedViewModel::clearSelection,
-                    onSelectAll = organizeExcludedViewModel::toggleSelectAll,
-                    selectAllLoadedOnly = organizeExcludedState.hasMore
-                ) {
-                    TextButton(
-                        onClick = {
-                            organizeExcludedViewModel.includeSelected {
-                                snackbar?.show(includedMessage)
-                                organizeInboxViewModel.refresh()
-                                foldersViewModel.refreshOrganizeCount()
-                            }
-                        },
-                        enabled = !organizeExcludedState.isBulkMutating
-                    ) {
-                        Text(stringResource(Res.string.organize_excluded_action_include))
-                    }
-                }
-            }
             moreSubscreen == MoreSubscreen.OrganizeExcluded -> { }
             moreSubscreen == MoreSubscreen.UtilitiesDuplicates -> { }
             moreSubscreen == MoreSubscreen.UtilitiesLargeFiles -> { }
@@ -1830,65 +1880,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // Sugerencias de una persona pinta su propio cromo flotante.
             moreSubscreen == MoreSubscreen.PeopleSuggestions -> {
             }
-            moreSubscreen == MoreSubscreen.People &&
-                selectedPerson != null && personDetailState.isSelectionActive ->
-                AssetSelectionTopBar(
-                    selectedCount = personDetailState.selection.size,
-                    totalCount = personDetailState.items.size,
-                    isMutating = personDetailState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onClose = personDetailViewModel::clearSelection,
-                    onSelectAll = personDetailViewModel::toggleSelectAll
-                )
             // La lista de Personas Y el detalle pintan su propio cromo flotante
             // (menú de recluster / ocultas o de renombrar / fusionar en su cápsula
             // de acciones); aquí no va barra acoplada.
             moreSubscreen == MoreSubscreen.People -> {
             }
-            moreSubscreen == MoreSubscreen.Favorites &&
-                favoritesState.isSelectionActive ->
-                AssetSelectionTopBar(
-                    selectedCount = favoritesState.selection.size,
-                    totalCount = favoritesState.items.size,
-                    isMutating = favoritesState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onClose = favoritesViewModel::clearSelection,
-                    onSelectAll = favoritesViewModel::toggleSelectAll,
-                    // El servidor no da los ids de toda la lista: solo se
-                    // puede seleccionar lo cargado, y así se rotula.
-                    selectAllLoadedOnly = favoritesState.hasMore
-                )
             // Favoritos pinta su propio cromo flotante dentro de la pantalla
             // (ver floatingChromeSubscreen); aquí no va barra acoplada.
             moreSubscreen == MoreSubscreen.Favorites -> {
             }
-            moreSubscreen == MoreSubscreen.Archived &&
-                archivedState.isSelectionActive ->
-                AssetSelectionTopBar(
-                    selectedCount = archivedState.selection.size,
-                    totalCount = archivedState.items.size,
-                    isMutating = archivedState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onClose = archivedViewModel::clearSelection,
-                    onSelectAll = archivedViewModel::toggleSelectAll,
-                    // El servidor no da los ids de toda la lista: solo se
-                    // puede seleccionar lo cargado, y así se rotula.
-                    selectAllLoadedOnly = archivedState.hasMore
-                )
             // Archivados pinta su propio cromo flotante dentro de la pantalla.
             moreSubscreen == MoreSubscreen.Archived -> {
             }
-            // Personal tab in selection mode: restore/purge selected.
-            moreSubscreen == MoreSubscreen.Trash &&
-                trashTab == com.photonne.app.ui.library.TrashTab.Personal &&
-                trashState.isSelectionActive ->
-                com.photonne.app.ui.main.TrashSelectionTopBar(
-                    selectedCount = trashState.selection.size,
-                    isMutating = trashState.isBulkMutating,
-                    onClose = trashViewModel::clearSelection,
-                    onRestore = { trashViewModel.bulkRestore() },
-                    onPurge = { showPurgeSelected = true }
-                )
             // Papelera (sin selección): cromo flotante dibujado en el contenido,
             // con las acciones restaurar-todo / vaciar en su cápsula (solo en la
             // pestaña Personal).
@@ -2735,15 +2738,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // Every bare pager tab draws to the top of the screen and paints its
             // own top bar inside its page (Fotos' floating bar; Álbumes/Carpetas/
             // Más a docked bar) so the bar travels with the swipe. The Scaffold
-            // only reserves top space again for a selection/overlay bar.
+            // only reserves top space again for a docked overlay bar (Subir).
             //
             // Lo mismo para todo lo que pinte su PROPIO cromo flotante: si no,
             // el inset de la status bar se cuenta DOS veces. Este Scaffold, con
             // un slot `topBar` que no emite nada (justo lo que hacen esas ramas),
             // no deja el hueco a cero: lo rellena con el inset del sistema. Y el
             // cromo de cada pantalla vuelve a aplicárselo por su cuenta.
+            //
+            // Y con una selección: su cápsula flota sobre el contenido en el hueco
+            // que este ya reserva para su cromo, no aparta nada.
             edgeToEdgeTop = pagerBareTop || floatingChromeSubscreen ||
-                albumDetailImmersive || folderDetailImmersive || searchImmersive,
+                albumDetailImmersive || folderDetailImmersive || searchImmersive ||
+                selectionTopChrome != null,
             // On the immersive tabs the bottom nav hides while scrolling down
             // (driven by each screen's chrome), and always shows elsewhere.
             bottomBarVisible = when {
@@ -3824,9 +3831,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onChromeVisibleChange = { subscreenChromeVisible = it }
                     )
                     MoreSubscreen.Trash -> Box(modifier = Modifier.fillMaxSize()) {
-                        // Con una selección activa manda la barra acoplada de
-                        // selección (rama del topBar); si no, la pantalla reserva
-                        // el hueco del cromo flotante y lo dibuja ella misma.
+                        // La pantalla reserva siempre el hueco del cromo flotante:
+                        // sin selección lo dibuja ella misma y, con selección, lo
+                        // ocupa la cápsula de selección (rama del topBar).
                         val trashSelecting = trashState.isSelectionActive
                         // La rejilla de la papelera personal (hermana Haze +
                         // fuente de scroll) para que el cromo se acople en reposo.
@@ -3835,10 +3842,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(
-                                    top = if (trashSelecting) 0.dp
-                                    else subscreenChromeReservedTop()
-                                )
+                                .padding(top = subscreenChromeReservedTop())
                         ) {
                         when (trashTab) {
                             com.photonne.app.ui.library.TrashTab.Personal ->
@@ -4444,7 +4448,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onClose = memorySelectionViewModel::clearSelection,
                         onSelectAll = {
                             memorySelectionViewModel.toggleSelectAll(memory.items.map { it.id })
-                        }
+                        },
+                        statusBarScrim = false
                     )
                 },
                 selectionBottomBar = {

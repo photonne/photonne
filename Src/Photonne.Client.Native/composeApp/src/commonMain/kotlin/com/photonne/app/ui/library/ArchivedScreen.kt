@@ -29,7 +29,6 @@ import com.photonne.app.resources.archived_empty_subtitle
 import com.photonne.app.resources.archived_empty_title
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
-import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.SubscreenFloatingChrome
@@ -61,8 +60,11 @@ fun ArchivedScreen(
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
     val gestures = rememberAssetGridSelectionGestures(onApplySelection)
-    val chromeFloating = !gestures.chromeSelectionActive(state.isSelectionActive)
-    val reservedTop = if (chromeFloating) subscreenChromeReservedTop() else 0.dp
+    // Con una selección activa el cromo flotante cede el sitio a la cápsula de
+    // selección, que ocupa el mismo hueco: la rejilla lo reserva siempre, así
+    // que entrar o salir de la selección no la mueve (ni a mitad de arrastre).
+    val chromeFloating = !state.isSelectionActive
+    val reservedTop = subscreenChromeReservedTop()
 
     LaunchedEffect(Unit) { onLoad() }
 

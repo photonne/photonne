@@ -260,9 +260,9 @@ fun TimelineScreen(
     val reservedBottom = floatingNavBarReservedHeight()
 
     val dragSelectState = rememberDragSelectState()
-    // Entrar en selección cambia el cromo flotante por barras sólidas y mueve
-    // el contentPadding de la rejilla ~100 px, además de colapsar la tira de
-    // Recuerdos con una animación de 300 ms. A mitad de arrastre eso desliza
+    // Entrar en selección quita la reserva inferior de la rejilla y colapsa la
+    // tira de Recuerdos con una animación de 300 ms (la reserva superior se
+    // queda: la cápsula de selección flota en el mismo hueco). A mitad de arrastre eso desliza
     // el contenido bajo el dedo, así que se congela hasta soltar.
     val selectionChrome = rememberLatchedDuringDrag(dragSelectState, state.isSelectionActive)
 
@@ -1084,10 +1084,10 @@ fun TimelineScreen(
                             // memories strip clears it; the padding scrolls away
                             // so photos still bleed under the bar. Also reserve
                             // the bottom nav's height at the scroll end (the grid
-                            // bleeds behind it otherwise). Selection mode uses the
-                            // solid Scaffold bars, so no reserve.
+                            // bleeds behind it otherwise). Selection keeps the top
+                            // reserve: its capsule floats in the same slot.
                             contentPadding = if (selectionChrome) {
-                                PaddingValues(0.dp)
+                                PaddingValues(top = reservedTop)
                             } else {
                                 PaddingValues(top = reservedTop, bottom = reservedBottom)
                             },
@@ -1249,7 +1249,7 @@ fun TimelineScreen(
                 }
             }
             // Immersive top chrome (skipped entirely during selection, where the
-            // solid AssetSelectionTopBar takes over via the Scaffold slot).
+            // AssetSelectionTopBar capsule takes its slot via the Scaffold).
             if (!state.isSelectionActive) {
                 // Persistent status-bar scrim so the phone's clock/indicators
                 // stay legible over photos once the docked bar has scrolled off.

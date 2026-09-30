@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -67,6 +68,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -178,6 +180,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
@@ -780,11 +783,15 @@ fun TimelineTopBar(
 enum class ArchiveMode { Archive, Unarchive }
 
 /**
- * Slim selection top bar: only the close (X) navigation icon and the
- * selection counter. All action buttons live in [AssetSelectionBottomBar]
- * so they stay within easy thumb reach on mobile.
+ * Selection top chrome: only the close (X) button and the selection counter
+ * (plus select-all and any per-screen action). All bulk actions live in
+ * [AssetSelectionBottomBar] so they stay within easy thumb reach on mobile.
+ *
+ * Es una cápsula de cristal ([SelectionTopChrome]) en el mismo hueco que el
+ * cromo flotante al que sustituye, no un `TopAppBar` acoplado: el contenido
+ * sigue reservando ese hueco y pasa por debajo, así que entrar en selección no
+ * mueve la rejilla.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssetSelectionTopBar(
     selectedCount: Int,
@@ -795,52 +802,122 @@ fun AssetSelectionTopBar(
     /** La lista pagina y quedan elementos sin cargar: "Seleccionar todo"
      *  mentiría, así que se rotula "Seleccionar lo cargado (N)". */
     selectAllLoadedOnly: Boolean = false,
+    /** Fuente del blur; null → la del Scaffold ([LocalChromeHazeState]). */
+    hazeState: HazeState? = null,
+    /** Velo de la status bar, como el cromo flotante de la pantalla. */
+    statusBarScrim: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     // "Select all" lives here, next to the count, because it controls the
     // *scope* of the selection rather than acting on it — keeping the bottom
     // bar for actual actions (share / album / download / trash).
     val allSelected = totalCount > 0 && selectedCount >= totalCount
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    PhotonneIcons.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
+    SelectionTopChrome(
+        title = pluralStringResource(
+            Res.plurals.selection_count,
+            selectedCount,
+            selectedCount
+        ),
+        isMutating = isMutating,
+        onClose = onClose,
+        hazeState = hazeState,
+        statusBarScrim = statusBarScrim
+    ) {
+        if (onSelectAll != null && selectAllLoadedOnly && !allSelected) {
+            TextButton(onClick = onSelectAll, enabled = !isMutating) {
+                Text(
+                    stringResource(Res.string.selection_action_select_loaded, totalCount),
+                    maxLines = 1
                 )
             }
-        },
-        title = {
-            Text(
-                text = pluralStringResource(
-                    Res.plurals.selection_count,
-                    selectedCount,
-                    selectedCount
-                ),
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        actions = {
-            if (onSelectAll != null && selectAllLoadedOnly && !allSelected) {
-                TextButton(onClick = onSelectAll, enabled = !isMutating) {
-                    Text(stringResource(Res.string.selection_action_select_loaded, totalCount))
-                }
-            } else if (onSelectAll != null) {
-                IconButton(onClick = onSelectAll, enabled = !isMutating) {
-                    Icon(
-                        PhotonneIcons.SelectAll,
-                        contentDescription = stringResource(
-                            if (allSelected) Res.string.selection_action_deselect_all
-                            else Res.string.selection_action_select_all
-                        ),
-                        tint = if (allSelected) MaterialTheme.colorScheme.primary
-                        else LocalContentColor.current
+        } else if (onSelectAll != null) {
+            IconButton(onClick = onSelectAll, enabled = !isMutating) {
+                Icon(
+                    PhotonneIcons.SelectAll,
+                    contentDescription = stringResource(
+                        if (allSelected) Res.string.selection_action_deselect_all
+                        else Res.string.selection_action_select_all
+                    ),
+                    tint = if (allSelected) MaterialTheme.colorScheme.primary
+                    else LocalContentColor.current
+                )
+            }
+        }
+        actions()
+    }
+}
+
+/**
+ * La cápsula superior de TODA selección (fotos, tarjeta de álbum o carpeta,
+ * papelera): cerrar · título · acciones, en una [ChromePill] a lo ancho con el
+ * mismo sitio y alto que las cápsulas de [SubscreenFloatingChrome] (debajo de
+ * la status bar, [Spacing.sm] de margen, 48dp de alto). Así ocupa el hueco que
+ * el contenido ya reserva ([subscreenChromeReservedTop]) y el blur recoge lo que
+ * pasa por debajo.
+ *
+ * El host tiene que dibujar el contenido hasta arriba (sin reservar la status
+ * bar ni la altura de una barra acoplada): esta cápsula solo se superpone.
+ */
+@Composable
+internal fun SelectionTopChrome(
+    title: String,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    hazeState: HazeState? = null,
+    statusBarScrim: Boolean = true,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    Box(modifier = Modifier.fillMaxWidth()) {
+        if (statusBarScrim) {
+            // Mantiene legible el reloj cuando las fotos pasan por debajo.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(statusBarTop + 16.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(PhotonneColors.scrimStatusBar, Color.Transparent)
+                        )
                     )
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = Spacing.sm, start = Spacing.sm, end = Spacing.sm)
+        ) {
+            ChromePill(
+                modifier = Modifier.fillMaxWidth(),
+                hazeState = hazeState,
+                elevation = ChromeElevation.bar
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = Spacing.xxs),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onClose, enabled = !isMutating) {
+                        Icon(
+                            PhotonneIcons.Close,
+                            contentDescription = stringResource(Res.string.selection_action_close)
+                        )
+                    }
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(end = Spacing.xs)
+                    )
+                    actions()
                 }
             }
-            actions()
         }
-    )
+    }
 }
 
 /**
@@ -1256,75 +1333,24 @@ private fun SelectionLabel(text: String) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AlbumsListTopBar(
-    onOpenFilters: () -> Unit,
-    isFilterActive: Boolean = false,
-    isSearchActive: Boolean = false,
-    onToggleSearch: () -> Unit = {},
-    /** Opens the album-type chooser. Null hides the action. */
-    onCreateAlbum: (() -> Unit)? = null
-) {
-    TopAppBar(
-        title = {
-            Text(
-                stringResource(Res.string.albums_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        actions = {
-            if (onCreateAlbum != null) {
-                CreateAction(
-                    icon = Icons.Outlined.AddBox,
-                    contentDescription = stringResource(Res.string.album_action_new),
-                    onClick = onCreateAlbum
-                )
-            }
-            IconButton(onClick = onToggleSearch) {
-                Icon(
-                    imageVector = if (isSearchActive) PhotonneIcons.SearchActive else PhotonneIcons.Search,
-                    contentDescription = stringResource(Res.string.albums_action_search)
-                )
-            }
-            IconButton(onClick = onOpenFilters) {
-                Icon(
-                    imageVector = if (isFilterActive) PhotonneIcons.FilterActive else PhotonneIcons.Filter,
-                    contentDescription = stringResource(
-                        if (isFilterActive) Res.string.filters_action_active
-                        else Res.string.albums_action_filters
-                    ),
-                    tint = if (isFilterActive) MaterialTheme.colorScheme.primary
-                    else LocalContentColor.current
-                )
-            }
-        }
-    )
-}
-
 /**
- * Slim top bar shown when a single album card is selected from the list:
+ * Selection capsule shown when a single album card is selected from the list:
  * just Close (X) and the album name. Actions live in [AlbumCardSelectionBottomBar].
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumCardSelectionTopBar(
     albumName: String,
     isMutating: Boolean,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    hazeState: HazeState? = null,
+    statusBarScrim: Boolean = false
 ) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    PhotonneIcons.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
-                )
-            }
-        },
-        title = {
-            Text(albumName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-        }
+    SelectionTopChrome(
+        title = albumName,
+        isMutating = isMutating,
+        onClose = onClose,
+        hazeState = hazeState,
+        statusBarScrim = statusBarScrim
     )
 }
 
@@ -1403,70 +1429,24 @@ fun AlbumCardSelectionBottomBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FoldersListTopBar(
-    onOpenFilters: () -> Unit,
-    isFilterActive: Boolean = false,
-    isSearchActive: Boolean = false,
-    onToggleSearch: () -> Unit = {},
-    /** Create a root folder. Null hides the action (e.g. while showing Externas). */
-    onCreateFolder: (() -> Unit)? = null
-) {
-    TopAppBar(
-        title = { Text(stringResource(Res.string.folders_title), style = MaterialTheme.typography.titleMedium) },
-        actions = {
-            if (onCreateFolder != null) {
-                CreateAction(
-                    icon = PhotonneIcons.NewFolder,
-                    contentDescription = stringResource(Res.string.folder_action_new),
-                    onClick = onCreateFolder
-                )
-            }
-            IconButton(onClick = onToggleSearch) {
-                Icon(
-                    imageVector = if (isSearchActive) PhotonneIcons.SearchActive else PhotonneIcons.Search,
-                    contentDescription = stringResource(Res.string.folders_action_search)
-                )
-            }
-            IconButton(onClick = onOpenFilters) {
-                Icon(
-                    imageVector = if (isFilterActive) PhotonneIcons.FilterActive else PhotonneIcons.Filter,
-                    contentDescription = stringResource(
-                        if (isFilterActive) Res.string.filters_action_active
-                        else Res.string.folders_action_filters
-                    ),
-                    tint = if (isFilterActive) MaterialTheme.colorScheme.primary
-                    else LocalContentColor.current
-                )
-            }
-        }
-    )
-}
-
 /**
- * Slim top bar for folder card selection: Close (X) + folder name only.
+ * Selection capsule for folder card selection: Close (X) + folder name only.
  * Actions live in [FolderCardSelectionBottomBar].
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderCardSelectionTopBar(
     folderName: String,
     isMutating: Boolean,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    hazeState: HazeState? = null,
+    statusBarScrim: Boolean = false
 ) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    PhotonneIcons.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
-                )
-            }
-        },
-        title = {
-            Text(folderName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-        }
+    SelectionTopChrome(
+        title = folderName,
+        isMutating = isMutating,
+        onClose = onClose,
+        hazeState = hazeState,
+        statusBarScrim = statusBarScrim
     )
 }
 
@@ -1690,8 +1670,7 @@ fun UploadTopBar(
     )
 }
 
-/** Selection top bar tailored to the Trash screen — Restore + Delete forever. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** Selection capsule tailored to the Trash screen — Restore + Delete forever. */
 @Composable
 fun TrashSelectionTopBar(
     selectedCount: Int,
@@ -1700,9 +1679,16 @@ fun TrashSelectionTopBar(
     onRestore: () -> Unit,
     onPurge: () -> Unit
 ) {
-    AssetSelectionTopBar(selectedCount = selectedCount, isMutating = isMutating, onClose = onClose) {
+    // La papelera va en una columna ya apartada del cromo: sin fotos bajo la
+    // status bar, sin velo (como su cromo flotante).
+    AssetSelectionTopBar(
+        selectedCount = selectedCount,
+        isMutating = isMutating,
+        onClose = onClose,
+        statusBarScrim = false
+    ) {
         TextButton(onClick = onRestore, enabled = !isMutating) {
-            Text(stringResource(Res.string.trash_action_restore))
+            Text(stringResource(Res.string.trash_action_restore), maxLines = 1)
         }
         IconButton(onClick = onPurge, enabled = !isMutating) {
             Icon(

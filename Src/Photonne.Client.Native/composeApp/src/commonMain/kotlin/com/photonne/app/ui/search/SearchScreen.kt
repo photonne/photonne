@@ -69,7 +69,6 @@ import com.photonne.app.resources.search_mode_text
 import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
-import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.AssetGridSkeleton
@@ -96,11 +95,12 @@ fun SearchScreen(
 
     val gridState = rememberLazyGridState()
     val hazeState = remember { HazeState() }
-    // Con una selección activa manda la cápsula de selección acoplada del Scaffold:
-    // el buscador no dibuja su cromo flotante ni reserva su hueco (como el resto).
+    // Con una selección activa manda la cápsula de selección, en el mismo hueco
+    // que el cromo flotante: el buscador no dibuja el suyo pero sigue reservando
+    // su hueco, así que la selección no mueve la rejilla.
     val gestures = rememberAssetGridSelectionGestures(viewModel::applySelection)
-    val selecting = gestures.chromeSelectionActive(state.isSelectionActive)
-    val reservedTop = if (selecting) 0.dp else subscreenChromeReservedTop()
+    val selecting = state.isSelectionActive
+    val reservedTop = subscreenChromeReservedTop()
 
     Box(modifier = Modifier.fillMaxSize()) {
         PhotonneRefreshableScreen(

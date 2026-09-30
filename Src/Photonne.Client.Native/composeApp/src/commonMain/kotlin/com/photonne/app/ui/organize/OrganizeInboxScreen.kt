@@ -41,7 +41,6 @@ import com.photonne.app.resources.organize_rule_title
 import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
-import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -86,12 +85,12 @@ fun OrganizeInboxScreen(
     // La vista de lotes es otra lista: sin su estado aquí, el cromo flotante
     // no se ocultaba al bajar ni tenía de dónde sacar el blur.
     val batchesState = androidx.compose.foundation.lazy.rememberLazyListState()
-    // Con una selección activa manda la cápsula sólida del Scaffold, que YA
-    // empuja la rejilla hacia abajo: reservar además el hueco del cromo
-    // flotante dejaría una banda muerta del doble de alta.
+    // Con una selección activa el cromo flotante cede el sitio a la cápsula de
+    // selección, que ocupa el mismo hueco: la rejilla lo reserva siempre, así
+    // que entrar o salir de la selección no la mueve (ni a mitad de arrastre).
     val gestures = rememberAssetGridSelectionGestures(onApplySelection)
-    val chromeFloating = !gestures.chromeSelectionActive(state.isSelectionActive)
-    val reservedTop = if (chromeFloating) subscreenChromeReservedTop() else 0.dp
+    val chromeFloating = !state.isSelectionActive
+    val reservedTop = subscreenChromeReservedTop()
 
     LaunchedEffect(Unit) { onLoad() }
 

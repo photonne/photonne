@@ -32,6 +32,8 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
+import androidx.compose.runtime.CompositionLocalProvider
+import com.photonne.app.ui.main.LocalChromeHazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.pluralStringResource
 import com.photonne.app.ui.theme.Spacing
@@ -136,11 +138,16 @@ fun MemoryDetailScreen(
         )
 
         if (selectionActive) {
-            Box(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
-                selectionTopBar()
-            }
-            Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                selectionBottomBar()
+            // El recuerdo se pinta fuera del Scaffold principal, así que sus
+            // cápsulas de selección no tienen fuente de blur heredada: se les
+            // publica la rejilla (hermana suya) para que no caigan al gris sólido.
+            CompositionLocalProvider(LocalChromeHazeState provides hazeState) {
+                Box(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
+                    selectionTopBar()
+                }
+                Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                    selectionBottomBar()
+                }
             }
         } else {
             // Cromo flotante fijo: el botón de volver vivía dentro de la portada y

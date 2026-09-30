@@ -135,8 +135,8 @@ fun BackupPendingScreen(
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
-    // During multi-select the docked selection bar owns the top, so the screen
-    // neither reserves top space nor draws its own chrome (mirrors Trash).
+    // During multi-select the selection capsule takes the chrome's slot, so the
+    // screen skips its own chrome but keeps reserving that space (mirrors Trash).
     val selecting = state.selectedCount > 0
     val hasFolders = state.folders.isNotEmpty()
     Box(modifier = Modifier.fillMaxSize()) {
@@ -155,7 +155,7 @@ fun BackupPendingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = if (selecting) 0.dp else reservedTop)
+                .padding(top = reservedTop)
         ) {
             // One block instead of the four that used to stack here (folder
             // header, status line, summary card, progress card): whatever is

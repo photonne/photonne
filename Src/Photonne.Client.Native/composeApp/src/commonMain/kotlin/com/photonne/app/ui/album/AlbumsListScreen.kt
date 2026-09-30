@@ -126,9 +126,11 @@ fun AlbumsListScreen(
         }
     }
     // La búsqueda también va en la cápsula flotante (campo dentro), como el
-    // buscador global: solo una selección activa la sustituye por la barra sólida.
+    // buscador global: solo una selección activa la sustituye por la cápsula de
+    // selección.
     val floatingChrome = !state.isSelectionActive
-    val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
+    // Con selección, la cápsula de selección ocupa el mismo hueco: se reserva siempre.
+    val reservedTop = subscreenChromeReservedTop()
 
     // Automatic asset groupings (People / Map / Scenes / Objects) that sit atop
     // the album list — a scroll header so they pass under the floating chrome.
