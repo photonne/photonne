@@ -1,6 +1,7 @@
 package com.photonne.app.ui.asset
 
 import androidx.compose.animation.AnimatedVisibility
+import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -102,12 +103,12 @@ actual fun VideoPlayer(
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.45f))
+                        .background(PhotonneColors.scrimMedium)
                 ) {
                     Icon(
                         imageVector = if (playback.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = if (playback.isPlaying) "Pausar" else "Reproducir",
-                        tint = Color.White,
+                        tint = PhotonneColors.onScrim,
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -123,7 +124,7 @@ actual fun VideoPlayer(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.45f))
+                        .background(PhotonneColors.scrimMedium)
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(

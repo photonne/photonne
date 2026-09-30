@@ -1,6 +1,7 @@
 package com.photonne.app.ui.devicebackup
 
 import androidx.compose.animation.core.animateFloatAsState
+import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -156,10 +157,10 @@ fun DeviceAssetPreviewScreen(
                 ) {
                     TopAppBar(
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Black.copy(alpha = 0.6f),
-                            titleContentColor = Color.White,
-                            actionIconContentColor = Color.White,
-                            navigationIconContentColor = Color.White
+                            containerColor = PhotonneColors.scrimMedium,
+                            titleContentColor = PhotonneColors.onScrim,
+                            actionIconContentColor = PhotonneColors.onScrim,
+                            navigationIconContentColor = PhotonneColors.onScrim
                         ),
                         navigationIcon = {
                             IconButton(onClick = onBack) {

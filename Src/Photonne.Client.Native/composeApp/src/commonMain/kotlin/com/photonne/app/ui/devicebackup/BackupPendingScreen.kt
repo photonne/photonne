@@ -1,6 +1,7 @@
 package com.photonne.app.ui.devicebackup
 
 import com.photonne.app.ui.theme.FieldGroupLabel
+import com.photonne.app.ui.theme.ProgressHeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -391,11 +391,11 @@ private fun PendingActivityCard(state: DeviceBackupUiState, onStop: () -> Unit) 
                     if (hash != null && hash.hashTotal > 0) {
                         LinearProgressIndicator(
                             progress = { hash.hashedCount.toFloat() / hash.hashTotal },
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                            modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                         )
                     } else {
                         LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                            modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                         )
                     }
                 }
@@ -416,7 +416,7 @@ private fun PendingActivityCard(state: DeviceBackupUiState, onStop: () -> Unit) 
                     LinearProgressIndicator(
                         // Byte-weighted, so one big video doesn't freeze the bar.
                         progress = { progress.fraction },
-                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                        modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                     )
                 }
                 summary != null -> {
@@ -655,7 +655,7 @@ private fun PendingRow(
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             AsyncImage(
@@ -707,11 +707,11 @@ private fun PendingRow(
                     if (p != null) {
                         LinearProgressIndicator(
                             progress = { p },
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                            modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                         )
                     } else {
                         LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                            modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                         )
                     }
                 }
@@ -765,7 +765,7 @@ private fun MediaCell(
             .aspectRatio(1f)
             .background(
                 MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(6.dp)
+                shape = MaterialTheme.shapes.extraSmall
             )
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
@@ -804,7 +804,7 @@ private fun MediaCell(
                     .fillMaxSize()
                     .background(
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.30f),
-                        shape = RoundedCornerShape(6.dp)
+                        shape = MaterialTheme.shapes.extraSmall
                     )
             )
             Icon(
@@ -836,9 +836,9 @@ private fun IgnoredCell(
             .aspectRatio(1f)
             .background(
                 MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(6.dp)
+                shape = MaterialTheme.shapes.extraSmall
             )
-            .clip(RoundedCornerShape(6.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .clickable(onClick = onUnignore)
     ) {
         AsyncImage(
@@ -851,12 +851,12 @@ private fun IgnoredCell(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.45f))
+                .background(PhotonneColors.scrimMedium)
         )
         Text(
             text = stringResource(Res.string.backup_action_unignore),
             style = MaterialTheme.typography.labelMedium,
-            color = Color.White,
+            color = PhotonneColors.onScrim,
             modifier = Modifier.align(Alignment.Center)
         )
     }

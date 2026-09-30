@@ -16,13 +16,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -44,6 +42,8 @@ import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -177,7 +177,7 @@ internal fun BoxScope.SubscreenFloatingChrome(
                 .height(statusBarTop + 16.dp)
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)
+                        listOf(PhotonneColors.scrimStatusBar, Color.Transparent)
                     )
                 )
         )
@@ -220,7 +220,7 @@ internal fun BoxScope.SubscreenFloatingChrome(
                     else Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SubscreenChromeCapsule(dockedFraction, hazeState) {
+                    HeaderChromePill(dockedFraction, hazeState) {
                         // Altura mínima = la del IconButton (48dp) para que la
                         // cápsula del título mida lo mismo con o sin botón de atrás
                         // (los tabs de primer nivel no lo tienen) y case con la
@@ -261,7 +261,7 @@ internal fun BoxScope.SubscreenFloatingChrome(
                     }
                 }
                 if (actions != null) {
-                    SubscreenChromeCapsule(dockedFraction, hazeState) {
+                    HeaderChromePill(dockedFraction, hazeState) {
                         Row(verticalAlignment = Alignment.CenterVertically) { actions() }
                     }
                 }
@@ -285,29 +285,22 @@ internal fun BoxScope.SubscreenFloatingChrome(
     }
 }
 
-/** Una cápsula del cromo: forma + sombra + cristal que se desvanece a medida
- * que la barra se acopla (acoplada, el fondo lo pone el backdrop de detrás). */
+/** Una cápsula del cromo ([ChromePill]) con el aire lateral de las cápsulas
+ * de cabecera; cristal y sombra se desvanecen a medida que la barra se acopla
+ * (acoplada, el fondo lo pone el backdrop de detrás). */
 @Composable
-private fun SubscreenChromeCapsule(
+internal fun HeaderChromePill(
     dockedFraction: Float,
     hazeState: HazeState?,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(percent = 50),
-        // Transparente: la Surface aporta forma + sombra y recorta el cristal.
-        color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shadowElevation = 4.dp * (1f - dockedFraction)
+    ChromePill(
+        modifier = modifier,
+        hazeState = hazeState,
+        elevation = ChromeElevation.bar,
+        dockedFraction = dockedFraction
     ) {
-        Box {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .graphicsLayer { alpha = 1f - dockedFraction }
-                    .chromeCapsuleBackdrop(hazeState = hazeState)
-            )
-            Box(modifier = Modifier.padding(horizontal = Spacing.xxs)) { content() }
-        }
+        Box(modifier = Modifier.padding(horizontal = Spacing.xxs)) { content() }
     }
 }

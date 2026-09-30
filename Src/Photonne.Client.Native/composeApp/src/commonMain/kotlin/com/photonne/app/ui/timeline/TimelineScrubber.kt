@@ -2,26 +2,15 @@ package com.photonne.app.ui.timeline
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -34,7 +23,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -45,8 +33,9 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.grid.ScrubberMouseRail
 import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.main.ScrubberYearMarker
+import com.photonne.app.ui.main.ScrubberDateBubble
+import com.photonne.app.ui.main.ScrubberHandle
 import com.photonne.app.ui.main.ScrubberYearMarkers
-import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import dev.chrisbanes.haze.HazeState
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import kotlin.math.roundToInt
@@ -59,7 +48,6 @@ import androidx.compose.ui.semantics.stateDescription
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_scrubber_description
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.Spacing
 
 /** Don't bother with a scrubber for content that barely scrolls. */
 private const val MIN_ROWS_FOR_SCRUBBER = 40
@@ -293,41 +281,13 @@ internal fun TimelineScrubber(
                 ),
             contentAlignment = Alignment.CenterEnd
         ) {
-            Surface(
-                shape = RoundedCornerShape(50),
-                // Cristal esmerilado como el resto del cromo. El mango pierde el
-                // realce primaryContainer que tenía al arrastrar: ahora va siempre
-                // cristal, a juego con la píldora de fecha y el botón de subir.
-                color = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                shadowElevation = 2.dp,
+            ScrubberHandle(
+                hazeState = hazeState,
                 modifier = Modifier
                     .padding(end = 6.dp)
                     .width(HandleWidth)
                     .height(HandleHeight)
-            ) {
-              Box {
-                Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.KeyboardArrowUp,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-              }
-            }
+            )
         }
 
         // Date pill next to the handle — ONLY while dragging. During ordinary
@@ -356,12 +316,9 @@ internal fun TimelineScrubber(
         )
 
         if (isDragging && handleLabel.isNotEmpty()) {
-            Surface(
-                shape = RoundedCornerShape(50),
-                // Cristal esmerilado, a juego con el mango y el botón de subir.
-                color = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                shadowElevation = 2.dp,
+            ScrubberDateBubble(
+                label = handleLabel,
+                hazeState = hazeState,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset(handleOffset)
@@ -369,17 +326,7 @@ internal fun TimelineScrubber(
                     // than at its top edge (handle touch area is 64dp tall).
                     .offset(y = 18.dp)
                     .padding(end = HandleTouchWidth + 6.dp)
-            ) {
-              Box {
-                Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
-                Text(
-                    text = handleLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = Spacing.md, vertical = 5.dp)
-                )
-              }
-            }
+            )
         }
     }
 }

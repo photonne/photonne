@@ -7,7 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -87,7 +86,6 @@ import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -215,6 +213,8 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
 
 enum class MainTab {
@@ -338,8 +338,6 @@ internal val FloatingNavBarBottomMargin = 8.dp
 // translúcida y su sombra se derrama hacia arriba, eso se lee como "tapado"
 // aunque técnicamente quede libre.
 private val FloatingNavBarContentGap = 12.dp
-// Cápsula completa, a juego con la píldora flotante del timeline.
-internal val FloatingNavBarShape = RoundedCornerShape(percent = 50)
 // Aire entre el borde de la cápsula y el velo del elemento activo. Simétrico con
 // [FloatingNavBarItemsPadding] (el margen horizontal exterior) para que el pill
 // concéntrico deje el mismo hueco por los cuatro lados.
@@ -392,17 +390,9 @@ private fun MainNavigationBar(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Surface(
-            shape = FloatingNavBarShape,
-            // Transparente: aporta forma + sombra y RECORTA el cristal a la
-            // cápsula. El esmerilado lo pinta el Box de fondo; el contenido va en
-            // `onSurface` (blanco en oscuro). `tonalElevation` sería un no-op aquí.
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 6.dp
-        ) {
-          Box {
-            Box(Modifier.matchParentSize().chromeCapsuleBackdrop())
+        // Cápsula de cristal ([ChromePill]); el contenido va en `onSurface`
+        // (blanco en oscuro). La nav es lo más elevado del cromo.
+        ChromePill(elevation = ChromeElevation.nav) {
             EqualWidthRow(
                 modifier = Modifier
                     .height(CompactNavBarContentHeight)
@@ -474,7 +464,6 @@ private fun MainNavigationBar(
                     }
                 )
             }
-          }
         }
     }
 }
@@ -553,7 +542,7 @@ private fun FloatingNavBarItem(
         modifier = Modifier
             .fillMaxHeight()
             .padding(vertical = FloatingNavItemMargin)
-            .clip(FloatingNavBarShape)
+            .clip(PillShape)
             .background(if (selected) chromeActivePillColor() else Color.Transparent)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             // Misma pareja min-width + padding que el ítem de selección, así los
@@ -605,15 +594,8 @@ private fun FloatingSelectionBar(content: @Composable () -> Unit) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        Surface(
-            shape = FloatingNavBarShape,
-            // Mismo patrón de cápsula que la nav: transparente + cristal de fondo.
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 6.dp
-        ) {
-          Box {
-            Box(Modifier.matchParentSize().chromeCapsuleBackdrop())
+        // Mismo patrón de cápsula que la nav.
+        ChromePill(elevation = ChromeElevation.nav) {
             EqualWidthRow(
                 modifier = Modifier
                     .height(CompactNavBarContentHeight)
@@ -621,7 +603,6 @@ private fun FloatingSelectionBar(content: @Composable () -> Unit) {
                 horizontalGap = FloatingNavItemGap,
                 content = content
             )
-          }
         }
     }
 }
@@ -652,7 +633,7 @@ private fun FloatingSelectionBarItem(
         modifier = Modifier
             .fillMaxHeight()
             .padding(vertical = FloatingNavItemMargin)
-            .clip(FloatingNavBarShape)
+            .clip(PillShape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             // Misma pareja min-width + padding que el ítem de la nav: antes solo
             // tenía el mínimo y se ceñía al contenido, por eso se veía estrecho.
@@ -756,31 +737,18 @@ fun TimelineTopBar(
         // The one and only actions row. `top = 8.dp` lands its centre exactly on
         // the docked bar's own action centre ((64.dp bar - 48.dp icons) / 2), so
         // nothing shifts vertically either when the backdrop swaps.
-        Surface(
+        // El cristal se desvanece a medida que la barra se acopla (arriba del
+        // todo el fondo lo pone el TopAppBar acoplado que hay detrás); los
+        // iconos de la fila comparten posición pero siguen opacos.
+        HeaderChromePill(
+            dockedFraction = dockedFraction,
+            hazeState = hazeState,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = Spacing.sm, end = Spacing.sm),
-            shape = RoundedCornerShape(percent = 50),
-            // Transparente: la Surface aporta forma + sombra y recorta el cristal.
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 4.dp * (1f - dockedFraction)
+                .padding(top = Spacing.sm, end = Spacing.sm)
         ) {
-          Box {
-            // El cristal se desvanece a medida que la barra se acopla (arriba del
-            // todo el fondo lo pone el TopAppBar acoplado que hay detrás); los
-            // iconos de la fila comparten posición pero siguen opacos.
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .graphicsLayer { alpha = 1f - dockedFraction }
-                    .chromeCapsuleBackdrop(hazeState = hazeState)
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = Spacing.xxs)
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 // Discreet spinner while the first device-gallery scan runs. Sits
                 // among the actions so it never overlaps the wordmark, and reads
                 // the same whether or not the Recuerdos strip is present.
@@ -839,7 +807,6 @@ fun TimelineTopBar(
                     }
                 }
             }
-          }
         }
     }
 }

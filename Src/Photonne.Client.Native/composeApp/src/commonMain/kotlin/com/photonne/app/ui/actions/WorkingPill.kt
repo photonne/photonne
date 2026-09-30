@@ -3,7 +3,6 @@ package com.photonne.app.ui.actions
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,6 +18,8 @@ import com.photonne.app.resources.actions_working_download
 import com.photonne.app.resources.actions_working_link
 import com.photonne.app.resources.actions_working_share
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -42,10 +43,10 @@ fun WorkingPill(
     )
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = PillShape,
         color = MaterialTheme.colorScheme.surfaceVariant,
         tonalElevation = 3.dp,
-        shadowElevation = 4.dp
+        shadowElevation = ChromeElevation.bar
     ) {
         Row(
             modifier = Modifier.padding(start = Spacing.lg, end = Spacing.xs, top = Spacing.xs, bottom = Spacing.xs),

@@ -234,7 +234,7 @@ fun OrganizeRuleScreen(
 private fun DestinationRow(path: String?, onClick: () -> Unit) {
     Surface(
         tonalElevation = 2.dp,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(

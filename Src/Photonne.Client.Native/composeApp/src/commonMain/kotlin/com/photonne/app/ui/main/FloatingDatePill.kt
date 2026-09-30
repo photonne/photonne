@@ -1,17 +1,23 @@
 package com.photonne.app.ui.main
 
 import androidx.compose.animation.AnimatedVisibility
+import com.photonne.app.ui.theme.PillShape
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -31,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import com.photonne.app.ui.theme.ChromeElevation
 import com.photonne.app.ui.theme.Spacing
 
 /** Un año y su posición (0..1) a lo largo de la pista del scrubber. */
@@ -68,21 +74,68 @@ internal fun FloatingDatePill(
         exit = fadeOut() + scaleOut(targetScale = 0.8f),
         modifier = modifier,
     ) {
-        Surface(
-            shape = RoundedCornerShape(50),
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 2.dp,
+        ChromePill(hazeState = hazeState, elevation = ChromeElevation.pill) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            )
+        }
+    }
+}
+
+/**
+ * Burbuja de fecha pegada al mango de un scrubber, visible solo mientras se
+ * arrastra (sigue la fila o celda de destino del dedo). Misma tipografía que
+ * [FloatingDatePill]; el oro de `primary` se reserva a esta burbuja para que la
+ * fecha "agarrada" se distinga de la que solo informa. La comparten el scrubber
+ * del timeline y el de las rejillas de álbum.
+ */
+@Composable
+internal fun ScrubberDateBubble(
+    label: String,
+    hazeState: HazeState?,
+    modifier: Modifier = Modifier,
+) {
+    ChromePill(modifier = modifier, hazeState = hazeState, elevation = ChromeElevation.pill) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
+    }
+}
+
+/**
+ * Mango de un scrubber: cápsula de cristal con flechas arriba y abajo. Siempre
+ * cristal (sin el realce `primaryContainer` que tuvo al arrastrar), a juego con
+ * la burbuja de fecha y el botón de subir. El tamaño lo pone quien lo llama.
+ */
+@Composable
+internal fun ScrubberHandle(
+    hazeState: HazeState?,
+    modifier: Modifier = Modifier,
+) {
+    ChromePill(modifier = modifier, hazeState = hazeState, elevation = ChromeElevation.pill) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Box {
-                Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.sm),
-                )
-            }
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowUp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(18.dp),
+            )
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }
@@ -91,8 +144,9 @@ internal fun FloatingDatePill(
  * Marcas de año a lo largo de la pista del scrubber (borde derecho, a la
  * izquierda del mango), visibles solo mientras se arrastra. Se dibujan dentro
  * del [BoxWithConstraints] del scrubber, así que reciben el alto útil de la
- * pista en píxeles y colocan cada año en su fracción real. Fondo gris sólido (no
- * blur) porque pueden ser varias y el cristal por marca saldría caro.
+ * pista en píxeles y colocan cada año en su fracción real. Fondo sólido del
+ * cromo ([chromeSolidColor], no blur) porque pueden ser varias y el cristal por
+ * marca saldría caro.
  *
  * @param usableTrackPx alto de la pista descontando la altura del mango, igual
  *   que usa el offset del propio mango, para que un año caiga donde caería el
@@ -123,11 +177,11 @@ internal fun BoxScope.ScrubberYearMarkers(
             }
         }
     }
-    val markerGray = chromeBaseGray()
+    val markerColor = chromeSolidColor()
     shown.forEach { (m, yPx) ->
         Surface(
-            shape = RoundedCornerShape(50),
-            color = Color.Transparent,
+            shape = PillShape,
+            color = markerColor,
             contentColor = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -138,14 +192,12 @@ internal fun BoxScope.ScrubberYearMarkers(
                 .offset(y = 18.dp)
                 .padding(end = handleEndPadding),
         ) {
-            Box(Modifier.background(markerGray.copy(alpha = 0.92f))) {
-                Text(
-                    text = m.year,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 3.dp),
-                )
-            }
+            Text(
+                text = m.year,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xxs),
+            )
         }
     }
 }

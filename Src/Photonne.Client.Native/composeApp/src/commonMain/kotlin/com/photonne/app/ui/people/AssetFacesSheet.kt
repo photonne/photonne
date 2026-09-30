@@ -1,6 +1,7 @@
 package com.photonne.app.ui.people
 
 import androidx.compose.foundation.background
+import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.foundation.clickable
 import com.photonne.app.resources.people_face_assign_to
 import androidx.compose.foundation.layout.Arrangement
@@ -197,7 +198,7 @@ private fun FaceRow(
             if (isPending) {
                 Box(
                     modifier = Modifier.fillMaxWidth()
-                        .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f))
+                        .background(PhotonneColors.scrimLight)
                         .height(56.dp),
                     contentAlignment = Alignment.Center
                 ) {

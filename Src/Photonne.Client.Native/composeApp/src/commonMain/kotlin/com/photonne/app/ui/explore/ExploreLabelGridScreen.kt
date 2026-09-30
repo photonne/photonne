@@ -1,6 +1,7 @@
 package com.photonne.app.ui.explore
 
 import androidx.compose.foundation.background
+import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +15,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Search
@@ -37,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -222,7 +221,7 @@ private fun LabelTileCard(tile: ExploreLabelTile, baseUrl: String, onClick: () -
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = MaterialTheme.shapes.medium
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
@@ -242,21 +241,21 @@ private fun LabelTileCard(tile: ExploreLabelTile, baseUrl: String, onClick: () -
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.45f))
+                    .background(PhotonneColors.scrimMedium)
                     .padding(horizontal = 10.dp, vertical = Spacing.sm),
                 verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
             ) {
                 Text(
                     text = tile.name.replaceFirstChar { it.titlecase() },
                     style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
+                    color = PhotonneColors.onScrim,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = stringResource(Res.string.explore_label_count, tile.assetCount),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = PhotonneColors.onScrimMuted,
                     maxLines = 1
                 )
             }

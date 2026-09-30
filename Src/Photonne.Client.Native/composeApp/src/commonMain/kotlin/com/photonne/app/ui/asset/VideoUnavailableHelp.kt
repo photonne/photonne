@@ -1,6 +1,7 @@
 package com.photonne.app.ui.asset
 
 import androidx.compose.foundation.layout.Column
+import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -8,7 +9,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.util.openExternalUrl
@@ -41,7 +41,7 @@ fun VideoUnavailableHelpAction(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = help.message,
-            color = Color.White.copy(alpha = 0.7f),
+            color = PhotonneColors.onScrimMuted,
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center
         )

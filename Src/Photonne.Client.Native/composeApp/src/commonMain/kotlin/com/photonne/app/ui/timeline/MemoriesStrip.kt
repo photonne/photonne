@@ -1,6 +1,7 @@
 package com.photonne.app.ui.timeline
 
 import androidx.compose.animation.core.Animatable
+import com.photonne.app.ui.theme.PillShape
 import androidx.compose.animation.core.AnimationEndReason
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
@@ -310,7 +310,7 @@ private fun StorySegment(fill: () -> Float, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .height(3.dp)
-            .clip(RoundedCornerShape(50))
+            .clip(PillShape)
             .background(Color.White.copy(alpha = 0.30f))
     ) {
         Box(

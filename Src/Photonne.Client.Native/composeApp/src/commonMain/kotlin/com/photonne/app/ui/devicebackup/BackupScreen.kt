@@ -1,6 +1,7 @@
 package com.photonne.app.ui.devicebackup
 
 import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.ProgressHeight
 import com.photonne.app.ui.theme.SectionHeader
 import com.photonne.app.ui.theme.SettingsGroup
 import com.photonne.app.ui.theme.SettingsItem
@@ -610,11 +611,11 @@ private fun BackupStatusCard(
                 if (progress != null) {
                     LinearProgressIndicator(
                         progress = { progress },
-                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                        modifier = Modifier.fillMaxWidth().height(ProgressHeight.hero)
                     )
                 } else {
                     LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                        modifier = Modifier.fillMaxWidth().height(ProgressHeight.hero)
                     )
                 }
             }
@@ -768,7 +769,7 @@ private fun BackupStatusCard(
                     }
                     if (state.isFreeingSpace) {
                         LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth().height(2.dp)
+                            modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                         )
                     }
                 }
@@ -1003,7 +1004,7 @@ private fun BackupBlockedCard(block: com.photonne.app.data.devicebackup.BackupPa
     androidx.compose.material3.Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Spacing.lg, vertical = Spacing.xs)
@@ -1034,7 +1035,7 @@ private fun NotificationsDeniedCard(
     androidx.compose.material3.Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Spacing.lg, vertical = Spacing.xs)

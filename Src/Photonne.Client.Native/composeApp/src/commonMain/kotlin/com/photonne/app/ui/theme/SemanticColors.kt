@@ -40,7 +40,17 @@ data class PhotonneSemanticColors(
     /** Velo negro medio: badges de contador, chips sobre miniatura. */
     val scrimMedium: Color,
     /** Velo negro fuerte: cabeceras/pies sobre foto que deben leerse siempre. */
-    val scrimHeavy: Color
+    val scrimHeavy: Color,
+    /**
+     * Velo de la barra de estado sobre foto: arranque del degradado que deja
+     * leer los iconos del sistema encima de una portada o del timeline. Entre
+     * [scrimLight] y [scrimMedium] a propósito; estaba copiado a 0.45 en cinco sitios.
+     */
+    val scrimStatusBar: Color,
+    /** Texto e iconos sobre foto o sobre un velo: blanco pleno. */
+    val onScrim: Color,
+    /** Texto secundario sobre foto o velo (fechas, recuentos, iconos de meta). */
+    val onScrimMuted: Color
 )
 
 private val LightSemanticColors = PhotonneSemanticColors(
@@ -53,7 +63,10 @@ private val LightSemanticColors = PhotonneSemanticColors(
     onWarningContainer = Color(0xFF7C2D12),
     scrimLight = Color.Black.copy(alpha = 0.35f),
     scrimMedium = Color.Black.copy(alpha = 0.55f),
-    scrimHeavy = Color.Black.copy(alpha = 0.70f)
+    scrimHeavy = Color.Black.copy(alpha = 0.70f),
+    scrimStatusBar = Color.Black.copy(alpha = 0.45f),
+    onScrim = Color.White,
+    onScrimMuted = Color.White.copy(alpha = 0.85f)
 )
 
 private val DarkSemanticColors = LightSemanticColors.copy(
@@ -98,6 +111,12 @@ object PhotonneColors {
         @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.scrimMedium
     val scrimHeavy: Color
         @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.scrimHeavy
+    val scrimStatusBar: Color
+        @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.scrimStatusBar
+    val onScrim: Color
+        @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.onScrim
+    val onScrimMuted: Color
+        @Composable @ReadOnlyComposable get() = LocalPhotonneColors.current.onScrimMuted
 }
 
 /** Suprime el "unused" del receptor mientras da acceso vía MaterialTheme si se prefiere. */

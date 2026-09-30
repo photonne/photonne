@@ -1,6 +1,7 @@
 package com.photonne.app.ui.upload
 
 import androidx.compose.foundation.background
+import com.photonne.app.ui.theme.ProgressHeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -318,7 +319,7 @@ private fun UploadRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = Spacing.xs)
-                        .height(2.dp)
+                        .height(ProgressHeight.inline)
                 )
             }
             item.errorMessage?.takeIf { item.status == UploadStatus.Failed }?.let { message ->
@@ -368,7 +369,7 @@ private fun Thumbnail(item: UploadItem) {
             )
             UploadStatus.Skipped -> ThumbStatusOverlay(
                 Icons.Filled.CheckCircle,
-                Color.White.copy(alpha = 0.9f)
+                PhotonneColors.onScrimMuted
             )
             UploadStatus.Failed -> ThumbStatusOverlay(
                 Icons.Filled.ErrorOutline,
@@ -376,7 +377,7 @@ private fun Thumbnail(item: UploadItem) {
             )
             UploadStatus.Cancelled -> ThumbStatusOverlay(
                 Icons.Filled.ErrorOutline,
-                Color.White.copy(alpha = 0.9f)
+                PhotonneColors.onScrimMuted
             )
             else -> Unit
         }
@@ -388,7 +389,7 @@ private fun BoxScope.ThumbStatusOverlay(icon: ImageVector, tint: Color) {
     Box(
         modifier = Modifier
             .matchParentSize()
-            .background(Color.Black.copy(alpha = 0.35f)),
+            .background(PhotonneColors.scrimLight),
         contentAlignment = Alignment.Center
     ) {
         Icon(

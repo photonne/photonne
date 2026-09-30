@@ -82,6 +82,7 @@ import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.selection.rangeSelectionIds
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
+import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
@@ -439,39 +440,19 @@ fun AssetGridCell(
             )
         }
         if (asset.isVideo) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(Spacing.xs)
-                    .size(20.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), shape = androidx.compose.foundation.shape.CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
+            OverlayIconBadge(
+                icon = Icons.Filled.PlayArrow,
+                contentDescription = null,
+                modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs)
+            )
         } else if (asset.isLivePhoto) {
             // Same TopEnd slot as the video glyph (they're mutually exclusive):
             // a Live Photo badge mirroring the iOS Photos affordance.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(Spacing.xs)
-                    .size(20.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), shape = androidx.compose.foundation.shape.CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.MotionPhotosOn,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
+            OverlayIconBadge(
+                icon = Icons.Outlined.MotionPhotosOn,
+                contentDescription = null,
+                modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs)
+            )
         }
         if (asset.isFavorite) {
             Icon(
@@ -499,7 +480,7 @@ fun AssetGridCell(
                     .height(40.dp)
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent)
+                            listOf(PhotonneColors.scrimLight, Color.Transparent)
                         )
                     )
             )

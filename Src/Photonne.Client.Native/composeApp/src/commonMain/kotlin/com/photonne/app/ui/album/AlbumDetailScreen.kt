@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -41,7 +40,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,7 +81,6 @@ import com.photonne.app.ui.grid.AlbumGridScrubber
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.grid.formatLocalizedMonth
-import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.FloatingDatePill
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.grid.buildAssetYearMarkers
@@ -101,6 +98,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.main.HeaderChromePill
+import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
@@ -347,7 +346,7 @@ fun AlbumDetailScreen(
                     .height(statusBarTop + 16.dp)
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)
+                            listOf(PhotonneColors.scrimStatusBar, Color.Transparent)
                         )
                     )
             )
@@ -433,7 +432,7 @@ private fun AlbumDetailTopBar(
     // Acoplados sobre la portada oscurecida los iconos van en blanco; con el
     // cristal esmerilado detrás toman el color de contenido del cromo (casi
     // blanco en oscuro, casi negro en claro, que es lo legible sobre el gris).
-    val iconTint = lerp(MaterialTheme.colorScheme.onSurface, Color.White, dockedFraction)
+    val iconTint = lerp(MaterialTheme.colorScheme.onSurface, PhotonneColors.onScrim, dockedFraction)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -442,7 +441,7 @@ private fun AlbumDetailTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
-        AlbumChromeCapsule(dockedFraction = dockedFraction, hazeState = hazeState) {
+        HeaderChromePill(dockedFraction = dockedFraction, hazeState = hazeState) {
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -451,7 +450,7 @@ private fun AlbumDetailTopBar(
                 )
             }
         }
-        AlbumChromeCapsule(dockedFraction = dockedFraction, hazeState = hazeState) {
+        HeaderChromePill(dockedFraction = dockedFraction, hazeState = hazeState) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onSort) {
                     Icon(
@@ -483,33 +482,6 @@ private fun AlbumDetailTopBar(
                     )
                 }
             }
-        }
-    }
-}
-
-/** Una cápsula del cromo del álbum: forma + sombra + cristal que se desvanece
- * a medida que la barra se acopla (arriba del todo el fondo lo pone la portada). */
-@Composable
-private fun AlbumChromeCapsule(
-    dockedFraction: Float,
-    hazeState: HazeState?,
-    content: @Composable () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(percent = 50),
-        // Transparente: la Surface aporta forma + sombra y recorta el cristal.
-        color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shadowElevation = 4.dp * (1f - dockedFraction)
-    ) {
-        Box {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .graphicsLayer { alpha = 1f - dockedFraction }
-                    .chromeCapsuleBackdrop(hazeState = hazeState)
-            )
-            Box(modifier = Modifier.padding(horizontal = Spacing.xxs)) { content() }
         }
     }
 }
@@ -555,8 +527,8 @@ private fun AlbumHero(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.30f),
-                            Color.Black.copy(alpha = 0.70f)
+                            PhotonneColors.scrimLight,
+                            PhotonneColors.scrimHeavy
                         )
                     )
                 )
@@ -572,7 +544,7 @@ private fun AlbumHero(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White,
+                    color = PhotonneColors.onScrim,
                     fontWeight = FontWeight.Bold
                 )
                 if (isShared) {
@@ -580,7 +552,7 @@ private fun AlbumHero(
                     Icon(
                         imageVector = Icons.Filled.Group,
                         contentDescription = stringResource(Res.string.album_hero_shared),
-                        tint = Color.White.copy(alpha = 0.85f),
+                        tint = PhotonneColors.onScrimMuted,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -597,7 +569,7 @@ private fun AlbumHero(
                         Icon(
                             imageVector = Icons.Filled.PhotoLibrary,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.85f),
+                            tint = PhotonneColors.onScrimMuted,
                             modifier = Modifier.size(16.dp)
                         )
                     },
@@ -612,7 +584,7 @@ private fun AlbumHero(
                         Icon(
                             imageVector = Icons.Filled.CalendarMonth,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.85f),
+                            tint = PhotonneColors.onScrimMuted,
                             modifier = Modifier.size(16.dp)
                         )
                     },
@@ -627,7 +599,7 @@ private fun AlbumHero(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.92f)
+                    color = PhotonneColors.onScrimMuted
                 )
             }
         }
@@ -644,7 +616,7 @@ private fun HeroMetaItem(icon: @Composable () -> Unit, text: String) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.85f)
+            color = PhotonneColors.onScrimMuted
         )
     }
 }

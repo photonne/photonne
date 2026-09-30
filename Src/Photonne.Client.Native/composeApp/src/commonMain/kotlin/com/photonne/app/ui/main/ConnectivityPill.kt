@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.Icon
@@ -34,6 +33,8 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_retry
 import com.photonne.app.resources.connectivity_offline
 import com.photonne.app.resources.connectivity_server_unreachable
+import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
 import org.jetbrains.compose.resources.stringResource
 
@@ -65,10 +66,10 @@ fun ConnectivityPill(
             else -> stringResource(Res.string.connectivity_offline)
         }
         Surface(
-            shape = CircleShape,
+            shape = PillShape,
             color = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            shadowElevation = 2.dp,
+            shadowElevation = ChromeElevation.pill,
             modifier = Modifier
                 .padding(horizontal = Spacing.md, vertical = Spacing.xs)
                 .semantics { liveRegion = LiveRegionMode.Polite }

@@ -62,7 +62,8 @@ import com.photonne.app.resources.organize_year_photo_count
 import com.photonne.app.ui.main.CompactNavBarContentHeight
 import com.photonne.app.ui.main.FloatingNavBarBottomMargin
 import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
-import com.photonne.app.ui.main.FloatingNavBarShape
+import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -241,10 +242,10 @@ private fun ConfirmMoveCapsule(
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            shape = FloatingNavBarShape,
+            shape = PillShape,
             color = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
-            shadowElevation = 6.dp,
+            shadowElevation = ChromeElevation.nav,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Row(

@@ -67,6 +67,14 @@ fun chromeBaseGray(): Color =
     if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) ChromeBaseGrayDark
     else ChromeBaseGrayLight
 
+/**
+ * Fondo sólido de reserva del cromo (el mismo que pinta [chromeCapsuleBackdrop]
+ * sin fuente de blur). Para piezas que se dibujan en serie y no deben pagar un
+ * cristal cada una, como las marcas de año del scrubber.
+ */
+@Composable
+fun chromeSolidColor(): Color = chromeBaseGray().copy(alpha = ChromeFallbackAlpha)
+
 /** Velo del ítem activo de la nav, concéntrico dentro de la cápsula. */
 @Composable
 fun chromeActivePillColor(): Color =

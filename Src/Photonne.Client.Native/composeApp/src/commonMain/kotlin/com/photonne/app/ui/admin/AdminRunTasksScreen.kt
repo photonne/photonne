@@ -1,6 +1,7 @@
 package com.photonne.app.ui.admin
 
 import androidx.lifecycle.compose.LifecycleStartEffect
+import com.photonne.app.ui.theme.ProgressHeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.background
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -1539,7 +1539,7 @@ private fun SectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onToggle)
             .semantics { heading() }
             .padding(horizontal = Spacing.xs)
@@ -1716,7 +1716,7 @@ private fun TaskRow(
                         val pct = (running.percentage / 100.0).toFloat().coerceIn(0f, 1f)
                         LinearProgressIndicator(
                             progress = { pct },
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                            modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                         )
                     }
                     aiInProgress && pending != null -> {
@@ -1738,19 +1738,19 @@ private fun TaskRow(
                             LinearProgressIndicator(
                                 progress = { fraction.coerceIn(0f, 1f) },
                                 color = barColor,
-                                modifier = Modifier.fillMaxWidth().height(4.dp)
+                                modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                             )
                         } else {
                             LinearProgressIndicator(
                                 color = barColor,
-                                modifier = Modifier.fillMaxWidth().height(4.dp)
+                                modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                             )
                         }
                     }
                     aiInProgress -> {
                         Spacer(Modifier.size(Spacing.sm))
                         LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                            modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                         )
                     }
                 }

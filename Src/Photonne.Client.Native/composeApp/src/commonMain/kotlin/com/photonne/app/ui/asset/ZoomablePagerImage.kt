@@ -1,6 +1,7 @@
 package com.photonne.app.ui.asset
 
 import androidx.compose.animation.core.Animatable
+import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -231,7 +232,7 @@ fun ZoomablePagerImage(
             is AsyncImagePainter.State.Loading ->
                 CircularProgressIndicator(
                     strokeWidth = 2.dp,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = PhotonneColors.onScrimMuted,
                     modifier = Modifier
                         .align(Alignment.Center)
                         .size(32.dp)
@@ -244,7 +245,7 @@ fun ZoomablePagerImage(
                     Icon(
                         Icons.Outlined.BrokenImage,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.7f),
+                        tint = PhotonneColors.onScrimMuted,
                         modifier = Modifier.size(48.dp).padding(bottom = Spacing.xs)
                     )
                     TextButton(onClick = { retryKey++ }) {

@@ -1,6 +1,7 @@
 package com.photonne.app.ui.memories
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -228,7 +229,7 @@ private fun MemoryRowCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.35f)),
+                    .background(PhotonneColors.scrimLight),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator(color = Color.White)

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.SystemUpdate
@@ -37,6 +36,8 @@ import com.photonne.app.resources.action_close
 import com.photonne.app.resources.compat_pill_client_too_old
 import com.photonne.app.resources.compat_pill_server_too_old
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
 import org.jetbrains.compose.resources.stringResource
 
@@ -71,10 +72,10 @@ fun CompatibilityPill(
             else -> ""
         }
         Surface(
-            shape = CircleShape,
+            shape = PillShape,
             color = PhotonneColors.warningContainer,
             contentColor = PhotonneColors.onWarningContainer,
-            shadowElevation = 2.dp,
+            shadowElevation = ChromeElevation.pill,
             modifier = Modifier
                 .padding(horizontal = Spacing.md, vertical = Spacing.xs)
                 .semantics { liveRegion = LiveRegionMode.Polite }

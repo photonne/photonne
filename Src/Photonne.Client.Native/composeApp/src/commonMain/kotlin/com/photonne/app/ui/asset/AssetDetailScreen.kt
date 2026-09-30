@@ -51,7 +51,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -163,8 +162,7 @@ import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.CompactNavBarContentHeight
 import com.photonne.app.ui.main.FloatingNavBarBottomMargin
 import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
-import com.photonne.app.ui.main.FloatingNavBarShape
-import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import com.photonne.app.ui.main.ChromePill
 import com.photonne.app.ui.map.MapAttribution
 import com.photonne.app.ui.map.MapPinColor
 import dev.chrisbanes.haze.HazeState
@@ -233,7 +231,9 @@ import com.photonne.app.resources.slideshow_play
 import com.photonne.app.resources.slideshow_previous
 import com.photonne.app.resources.slideshow_start
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
+import com.photonne.app.ui.theme.ChromeElevation
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.util.openExternalUrl
 import kotlin.math.PI
 import kotlin.math.abs
@@ -657,7 +657,7 @@ fun AssetDetailScreen(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .background(Color.Black.copy(alpha = backgroundAlpha))
+                    .background(PhotonneColors.scrimHeavy.copy(alpha = backgroundAlpha))
             )
 
             // Swipe-to-dismiss transform (offset + scale) applied to the WHOLE
@@ -1372,7 +1372,7 @@ private fun VideoPage(
         if (!playback.isReady) {
             CircularProgressIndicator(
                 strokeWidth = 2.dp,
-                color = Color.White.copy(alpha = 0.7f),
+                color = PhotonneColors.onScrimMuted,
                 modifier = Modifier.align(Alignment.Center).size(32.dp)
             )
         }
@@ -1707,21 +1707,15 @@ private fun LivePhotoBadge(
     label: String,
     onClick: (() -> Unit)? = null
 ) {
-    Surface(
+    // Vive DENTRO del pager (descendiente de la fuente de blur) → no puede
+    // difuminar de verdad; cae al gris sólido de reserva. Es un badge, no un
+    // menú, así que basta con unificar el color y va sin sombra.
+    ChromePill(
         modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
-        shape = CircleShape,
-        color = Color.Transparent,
-        contentColor = Color.White
+        elevation = 0.dp,
+        baseColor = ViewerChromeColor,
+        contentColor = PhotonneColors.onScrim
     ) {
-      Box {
-        // Vive DENTRO del pager (descendiente de la fuente de blur) → no puede
-        // difuminar de verdad; cae al gris sólido de reserva. Es un badge, no un
-        // menú, así que basta con unificar el color.
-        Box(
-            Modifier
-                .matchParentSize()
-                .chromeCapsuleBackdrop(baseColor = ViewerChromeColor)
-        )
         Row(
             modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
@@ -1730,16 +1724,15 @@ private fun LivePhotoBadge(
             Icon(
                 imageVector = Icons.Outlined.MotionPhotosOn,
                 contentDescription = null,
-                tint = Color.White,
+                tint = PhotonneColors.onScrim,
                 modifier = Modifier.size(16.dp)
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White
+                color = PhotonneColors.onScrim
             )
         }
-      }
     }
 }
 
@@ -2182,7 +2175,7 @@ private fun AiLabelsSection(title: String, labels: List<String>, onClick: (Strin
             labels.forEach { label ->
                 Surface(
                     onClick = { onClick(label) },
-                    shape = RoundedCornerShape(50),
+                    shape = PillShape,
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Text(
@@ -2200,7 +2193,7 @@ private fun AiLabelsSection(title: String, labels: List<String>, onClick: (Strin
 @Composable
 private fun TagChip(label: String, onRemove: (() -> Unit)?) {
     Surface(
-        shape = RoundedCornerShape(50),
+        shape = PillShape,
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
@@ -2234,7 +2227,7 @@ private fun TagChip(label: String, onRemove: (() -> Unit)?) {
 private fun AddTagChip(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(50),
+        shape = PillShape,
         color = MaterialTheme.colorScheme.primaryContainer
     ) {
         Row(
@@ -2367,7 +2360,7 @@ private fun RelatedAssetsRow(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(84.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { onOpenAsset(item) }
                 )
@@ -2519,7 +2512,7 @@ private fun LocationMap(latitude: Double, longitude: Double) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(MAP_HEIGHT_DP)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(MaterialTheme.shapes.large)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable { openExternalUrl(mapsUrl) }
         ) {
@@ -2583,12 +2576,12 @@ private fun LocationMap(latitude: Double, longitude: Double) {
             ) {
                 Box(
                     modifier = Modifier
-                        .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
+                        .background(PhotonneColors.scrimMedium, shape = MaterialTheme.shapes.extraSmall)
                         .padding(horizontal = 6.dp, vertical = Spacing.xxs)
                 ) {
                     Text(
                         text = formatGps(latitude, longitude),
-                        color = Color.White,
+                        color = PhotonneColors.onScrim,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -2596,7 +2589,7 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                     modifier = Modifier
                         // Altura táctil mínima razonable para un chip de acción.
                         .heightIn(min = 36.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(PhotonneColors.scrimMedium)
                         .clickable { openExternalUrl(mapsUrl) }
                         .padding(horizontal = 10.dp, vertical = Spacing.xs),
@@ -2606,12 +2599,12 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = PhotonneColors.onScrim,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = stringResource(Res.string.asset_action_open_in_maps),
-                        color = Color.White,
+                        color = PhotonneColors.onScrim,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -2687,21 +2680,15 @@ private fun SlideshowControls(
     onExit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    // Misma cápsula de cristal que el resto del cromo del visor; es hermana
+    // del pager, así que difumina la foto de verdad.
+    ChromePill(
         modifier = modifier,
-        shape = FloatingNavBarShape,
-        // Misma cápsula de cristal que el resto del cromo del visor; es hermana
-        // del pager, así que difumina la foto de verdad.
-        color = Color.Transparent,
-        contentColor = Color.White,
-        shadowElevation = 6.dp
+        hazeState = hazeState,
+        elevation = ChromeElevation.nav,
+        baseColor = ViewerChromeColor,
+        contentColor = PhotonneColors.onScrim
     ) {
-      Box {
-        Box(
-            Modifier
-                .matchParentSize()
-                .chromeCapsuleBackdrop(baseColor = ViewerChromeColor, hazeState = hazeState)
-        )
         Row(
             // Misma altura vertical que el resto de cápsulas flotantes.
             modifier = Modifier
@@ -2748,7 +2735,6 @@ private fun SlideshowControls(
                 )
             }
         }
-      }
     }
 }
 
@@ -2878,8 +2864,8 @@ private fun AssetThumbnailStrip(
                             // tapers smoothly mid-scrub.
                             translationX = signed.coerceIn(-1f, 1f) * centerBulgePx
                         }
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(Color.Black.copy(alpha = 0.35f))
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .background(PhotonneColors.scrimLight)
                         .clickable { onThumbnailClick(index) }
                 ) {
                     AssetThumbnailImage(
@@ -2916,23 +2902,13 @@ private fun ViewerChromeCapsule(
     hazeState: HazeState?,
     content: @Composable () -> Unit
 ) {
-    Surface(
-        shape = FloatingNavBarShape,
-        color = Color.Transparent,
-        contentColor = Color.White,
-        shadowElevation = 6.dp
+    ChromePill(
+        hazeState = hazeState,
+        elevation = ChromeElevation.nav,
+        baseColor = ViewerChromeColor,
+        contentColor = PhotonneColors.onScrim
     ) {
-        Box {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .chromeCapsuleBackdrop(
-                        baseColor = ViewerChromeColor,
-                        hazeState = hazeState
-                    )
-            )
-            content()
-        }
+        content()
     }
 }
 
@@ -2968,18 +2944,12 @@ private fun AssetActionsBottomBar(
         // que la barra abarque la pantalla.
         contentAlignment = Alignment.Center
     ) {
-        Surface(
-            shape = FloatingNavBarShape,
-            color = Color.Transparent,
-            contentColor = Color.White,
-            shadowElevation = 6.dp
+        ChromePill(
+            hazeState = hazeState,
+            elevation = ChromeElevation.nav,
+            baseColor = ViewerChromeColor,
+            contentColor = PhotonneColors.onScrim
         ) {
-          Box {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .chromeCapsuleBackdrop(baseColor = ViewerChromeColor, hazeState = hazeState)
-            )
         Row(
             // Misma altura vertical que la nav / barra de selección: todas las
             // cápsulas flotantes miden igual en vertical y solo cambian de ancho
@@ -2996,7 +2966,6 @@ private fun AssetActionsBottomBar(
                 onShowOverflowChange = onShowOverflowChange
             )
         }
-          }
         }
     }
 }

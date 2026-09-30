@@ -6,16 +6,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,7 +24,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_scroll_to_top
@@ -35,6 +31,7 @@ import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.ChromeElevation
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -88,19 +85,14 @@ internal fun ScrollToTopPill(
         exit = fadeOut() + scaleOut(targetScale = 0.8f),
         modifier = modifier
     ) {
-        Surface(
-            onClick = { scope.launch { runCatching { onScrollToTop() } } },
-            shape = RoundedCornerShape(50),
-            // Cristal esmerilado como el resto del cromo: transparente + fondo de
-            // blur, contenido en onSurface (blanco en oscuro).
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 2.dp
+        // Cristal esmerilado como el resto del cromo, contenido en onSurface.
+        ChromePill(
+            hazeState = hazeState,
+            elevation = ChromeElevation.pill,
+            onClick = { scope.launch { runCatching { onScrollToTop() } } }
         ) {
-          Box {
-            Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.sm),
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -116,7 +108,6 @@ internal fun ScrollToTopPill(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-          }
         }
     }
 }

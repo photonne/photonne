@@ -1,6 +1,7 @@
 package com.photonne.app.ui.memories
 
 import androidx.compose.foundation.background
+import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -69,8 +70,8 @@ fun MemoryCardFace(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.0f),
-                            Color.Black.copy(alpha = 0.55f)
+                            Color.Transparent,
+                            PhotonneColors.scrimMedium
                         ),
                         startY = 0f,
                         endY = Float.POSITIVE_INFINITY
@@ -93,7 +94,7 @@ fun MemoryCardFace(
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = PhotonneColors.onScrimMuted,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

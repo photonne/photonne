@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
@@ -114,7 +113,7 @@ fun MapScreen(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = reservedTop + Spacing.sm),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.large,
                     color = Color.Transparent
                 ) {
                   Box {
@@ -132,7 +131,7 @@ fun MapScreen(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .padding(Spacing.xl),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.large,
                     color = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {

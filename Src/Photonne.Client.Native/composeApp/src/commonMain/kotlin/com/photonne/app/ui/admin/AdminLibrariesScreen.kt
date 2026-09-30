@@ -1,6 +1,7 @@
 package com.photonne.app.ui.admin
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.photonne.app.ui.theme.ProgressHeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -160,7 +161,7 @@ private fun ScanProgressCard(progress: LibraryScanProgress, onCancel: () -> Unit
             Spacer(Modifier.height(Spacing.xs))
             LinearProgressIndicator(
                 progress = { (progress.percentage / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(6.dp)
+                modifier = Modifier.fillMaxWidth().height(ProgressHeight.hero)
             )
         }
     }
