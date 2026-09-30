@@ -1300,8 +1300,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         sharedLinkOpen ||
         memoryDetail != null ||
         isAnySelectionActive ||
-        selectedAlbum != null ||
-        selectedFolder != null ||
+        // Un álbum o una carpeta abiertos cuentan solo en SU pestaña: si se
+        // quedaron abiertos por debajo y estamos en Fotos, ninguna rama de abajo
+        // los cierra y el Atrás se tragaba sin hacer nada (ni salir de la app).
+        (selectedTab == MainTab.Albums && selectedAlbum != null) ||
+        (selectedTab == MainTab.Folders && selectedFolder != null) ||
         selectedPerson != null ||
         moreSubscreen != null ||
         selectedTab != MainTab.Timeline
@@ -1425,14 +1428,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         initialPage = navTabs.indexOf(selectedTab).coerceAtLeast(0),
         pageCount = { navTabs.size }
     )
+    // Whether an opaque overlay (drill-down / Buscar / More subscreen) is covering
+    // the pager base layer. When true the overlay must paint its own solid
+    // background, otherwise the tab body underneath shows through — the pager
+    // keeps all top-level bodies composed behind it.
+    val overlayVisible = moreSubscreen != null ||
+        (selectedTab == MainTab.Albums && selectedAlbum != null) ||
+        (selectedTab == MainTab.Folders && selectedFolder != null) ||
+        selectedTab == MainTab.Search
     // Only allow the horizontal tab-swipe on a bare top-level tab: never while a
     // detail, Buscar, a subscreen or a multi-select session owns the screen —
     // those render as an opaque overlay and take the horizontal gesture (paging
     // through photos, panning a map, selecting items) for themselves.
-    val canSwipeTabs = moreSubscreen == null &&
-        selectedTab != MainTab.Search &&
-        selectedAlbum == null &&
-        selectedFolder == null &&
+    //
+    // Se mira el overlay A LA VISTA, no `selectedAlbum`/`selectedFolder` a secas:
+    // un álbum o una carpeta siguen abiertos en su pestaña al saltar a otra (al
+    // volver se retoman), y contarlos aquí dejaba el gesto muerto en las cuatro
+    // pestañas hasta volver a cerrarlos.
+    val canSwipeTabs = !overlayVisible &&
         !timelineState.isSelectionActive &&
         !albumsState.isSelectionActive &&
         !foldersState.isSelectionActive
@@ -1448,14 +1461,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     } else {
         selectedTab
     }
-    // Whether an opaque overlay (drill-down / Buscar / More subscreen) is covering
-    // the pager base layer. When true the overlay must paint its own solid
-    // background, otherwise the tab body underneath shows through — the pager
-    // keeps all top-level bodies composed behind it.
-    val overlayVisible = moreSubscreen != null ||
-        (selectedTab == MainTab.Albums && selectedAlbum != null) ||
-        (selectedTab == MainTab.Folders && selectedFolder != null) ||
-        selectedTab == MainTab.Search
     // Identidad del destino que ocupa el overlay. Cambiarla es lo que dispara la
     // transición de entrada; navegar dentro del MISMO destino (abrir el visor,
     // seleccionar fotos) la deja quieta.
@@ -2518,16 +2523,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // open detail, no selection, no overriding subscreen). Each drives the
     // shared bottom nav's hide-on-scroll + edge-to-edge behaviour. Keyed off
     // [chromeTab] so the padding tracks the swipe instead of snapping on settle.
+    //
+    // "Detalle abierto" es el detalle A LA VISTA (selectedTab), no el álbum o la
+    // carpeta que se quedaron abiertos en su pestaña: al deslizar hacia ella lo
+    // que asoma bajo el dedo es la lista, y debe ir a sangre como siempre; el
+    // detalle solo vuelve a tapar al asentar el gesto.
     val timelineImmersive = chromeTab == MainTab.Timeline &&
         moreSubscreen == null &&
         !timelineState.isSelectionActive
     val albumsImmersive = chromeTab == MainTab.Albums &&
         moreSubscreen == null &&
-        selectedAlbum == null &&
+        !(selectedTab == MainTab.Albums && selectedAlbum != null) &&
         !albumsState.isSelectionActive
     val foldersImmersive = chromeTab == MainTab.Folders &&
         moreSubscreen == null &&
-        selectedFolder == null &&
+        !(selectedTab == MainTab.Folders && selectedFolder != null) &&
         !foldersState.isSelectionActive
     val moreImmersive = chromeTab == MainTab.More && moreSubscreen == null
     // Buscar dibuja su propio cromo flotante (campo + modo + filtros) que se acopla
