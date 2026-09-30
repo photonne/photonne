@@ -1594,6 +1594,7 @@
     <string name="asset_detail_description">Descripción</string>
     <string name="asset_detail_description_placeholder">Añadir descripción</string>
     <string name="asset_detail_capture_date">Fecha de captura</string>
+    <string name="asset_detail_open_info">Ver información</string>
     <string name="asset_detail_created">Creado</string>
     <string name="asset_detail_size">Tamaño</string>
     <string name="asset_detail_iso">Sensibilidad</string>

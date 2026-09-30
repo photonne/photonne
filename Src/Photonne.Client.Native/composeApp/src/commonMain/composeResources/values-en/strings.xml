@@ -1584,6 +1584,7 @@
     <string name="asset_detail_description">Description</string>
     <string name="asset_detail_description_placeholder">Add a description</string>
     <string name="asset_detail_capture_date">Capture date</string>
+    <string name="asset_detail_open_info">View info</string>
     <string name="asset_detail_created">Created</string>
     <string name="asset_detail_size">Size</string>
     <string name="asset_detail_iso">Sensitivity</string>

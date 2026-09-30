@@ -60,6 +60,12 @@ public class ExifDataResponse
     public string? Description { get; set; }
     public string? Keywords { get; set; }
     public string? Software { get; set; }
+    /// <summary>Nearest GeoNames city, resolved at index time (AssetExif.PlaceId).
+    /// Null without GPS, before the geocode backfill ran, or with no dataset.</summary>
+    public string? PlaceName { get; set; }
+    /// <summary>ISO 3166-1 alpha-2 of <see cref="PlaceName"/>. The country NAME is
+    /// left to the client: .NET can't localise it (see Place.CountryCode).</summary>
+    public string? PlaceCountryCode { get; set; }
 }
 
 public class ThumbnailInfoResponse

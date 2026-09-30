@@ -60,7 +60,12 @@ data class ExifData(
     val focalLength: Double? = null,
     val description: String? = null,
     val keywords: String? = null,
-    val software: String? = null
+    val software: String? = null,
+    /** Ciudad más cercana (GeoNames), resuelta por el servidor al indexar. Null
+     *  sin GPS, antes del backfill o con servidores que aún no la mandan. */
+    val placeName: String? = null,
+    /** ISO 3166-1 alfa-2 de [placeName]; el nombre del país lo pone el cliente. */
+    val placeCountryCode: String? = null,
 ) {
     val cameraDisplay: String?
         get() = listOfNotNull(cameraMake, cameraModel)

@@ -38,6 +38,7 @@ public class AssetDetailEndpoint : IEndpoint
             var userId = user.GetUserId();
             var asset = await dbContext.Assets
                 .Include(a => a.Exif)
+                    .ThenInclude(e => e!.Place)
                 .Include(a => a.Thumbnails)
                 .Include(a => a.Tags)
                 .Include(a => a.UserTags)
@@ -84,7 +85,11 @@ public class AssetDetailEndpoint : IEndpoint
                     FocalLength = asset.Exif.FocalLength,
                     Description = asset.Exif.Description,
                     Keywords = asset.Exif.Keywords,
-                    Software = null // Not available in AssetExif model
+                    Software = null, // Not available in AssetExif model
+                    // Lugar ya resuelto al indexar (PlaceId): un JOIN por clave
+                    // primaria, sin geocodificar en cada petición.
+                    PlaceName = asset.Exif.Place?.Name,
+                    PlaceCountryCode = asset.Exif.Place?.CountryCode
                 } : null,
                 Thumbnails = asset.Thumbnails.Select(t => new ThumbnailInfoResponse
                 {

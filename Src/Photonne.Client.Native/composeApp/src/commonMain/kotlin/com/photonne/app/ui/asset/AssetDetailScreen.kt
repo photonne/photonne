@@ -108,6 +108,7 @@ import com.photonne.app.resources.asset_detail_video_unsupported
 import com.photonne.app.resources.asset_detail_description
 import com.photonne.app.resources.asset_detail_description_placeholder
 import com.photonne.app.resources.asset_detail_capture_date
+import com.photonne.app.resources.asset_detail_open_info
 import com.photonne.app.resources.asset_detail_created
 import com.photonne.app.resources.asset_detail_size
 import com.photonne.app.resources.asset_detail_iso
@@ -217,6 +218,12 @@ import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.util.openExternalUrl
+import com.photonne.app.ui.util.formatPlaceName
+import com.photonne.app.ui.timeline.captureLocalDateTime
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.widthIn
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -816,6 +823,28 @@ fun AssetDetailScreen(
                 }
             }
 
+            // Abrir el panel de info: el botón Detalles y la cápsula de fecha y
+            // lugar hacen lo mismo.
+            val openInfo: () -> Unit = {
+                coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
+            }
+
+            // Fecha y lugar de la cápsula superior. Misma fuente que el panel de
+            // info (fecha EXIF, si no la de captura), y la del TimelineItem
+            // mientras el detalle no ha llegado o para un asset solo del
+            // dispositivo, que siempre trae la suya.
+            val currentDetail = currentItem?.let { item ->
+                state.detail?.takeIf { it.id == item.id } ?: details[item.id]
+            }
+            val capsuleDate = currentItem?.let { item ->
+                formatCaptureDateTime(
+                    currentDetail?.exif?.dateTaken ?: currentDetail?.fileCreatedAt ?: item.fileCreatedAt
+                )
+            }
+            val capsulePlace = currentDetail?.exif?.let {
+                formatPlaceName(it.placeName, it.placeCountryCode)
+            }
+
             // Un solo modelo de acciones para las dos disposiciones (Lote N1).
             val currentViewerActions = currentItem?.let { item ->
                 viewerActions(
@@ -829,9 +858,7 @@ fun AssetDetailScreen(
                     },
                     onShare = { onShare(item) },
                     onTrashRequest = { showTrashConfirm = true },
-                    onShowInfo = {
-                        coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
-                    },
+                    onShowInfo = openInfo,
                     onAddToAlbum = { onAddToAlbum(item) },
                     onDownload = { onDownload(item) },
                     onEditDescription = if (currentCanEdit) {
@@ -884,14 +911,33 @@ fun AssetDetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ViewerChromeCapsule(hazeState = viewerHazeState) {
+                    // Atrás + fecha y lugar en la misma cápsula. Cede ancho a las
+                    // acciones (weight sin fill): con poco sitio el texto se corta
+                    // con elipsis en vez de empujar la cápsula de la derecha.
+                    ViewerChromeCapsule(
+                        hazeState = viewerHazeState,
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onBack) {
                             Icon(
                                 PhotonneIcons.Back,
                                 contentDescription = stringResource(Res.string.action_back)
                             )
                         }
+                        if (capsuleDate != null) {
+                            ViewerDatePlaceLabel(
+                                date = capsuleDate,
+                                place = capsulePlace,
+                                onClick = openInfo,
+                                modifier = Modifier.widthIn(
+                                    max = if (landscapeMode) 200.dp else 240.dp
+                                )
+                            )
+                        }
+                      }
                     }
+                    Spacer(Modifier.width(Spacing.sm))
                     ViewerChromeCapsule(hazeState = viewerHazeState) {
                       Row(verticalAlignment = Alignment.CenterVertically) {
                         val isLocalOnly = currentItem?.isLocalOnly == true
@@ -1822,6 +1868,25 @@ private fun AssetMetadataPanel(
         val lat = exif?.latitude
         val lon = exif?.longitude
         if (lat != null && lon != null) {
+            formatPlaceName(exif.placeName, exif.placeCountryCode)?.let { place ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    Icon(
+                        imageVector = PhotonneIcons.Location,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(IconSize.md)
+                    )
+                    Text(
+                        text = place,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
             LocationMap(latitude = lat, longitude = lon)
         }
 
@@ -2639,10 +2704,21 @@ private fun MetadataRow(label: String, value: String) {
  */
 private fun formatInstant(iso: String): String =
     runCatching {
-        com.photonne.app.ui.settings.formatProfileDateTime(kotlin.time.Instant.parse(iso))
+        formatCaptureDateTime(kotlin.time.Instant.parse(iso))
     }.getOrElse {
         iso.substringBefore('.').removeSuffix("Z").replace('T', ' ')
     }
+
+/**
+ * Fecha de captura localizada ("12 jun 2024 18:42"). Las fechas de captura son
+ * hora de pared naíf etiquetada como UTC (ver captureLocalDateTime): se leen en
+ * UTC y se re-anclan a la zona del sistema solo para que el formateador de la
+ * plataforma, que pinta en zona local, devuelva esa misma hora sin desplazarla.
+ */
+private fun formatCaptureDateTime(instant: kotlin.time.Instant): String =
+    com.photonne.app.ui.settings.formatProfileDateTime(
+        instant.captureLocalDateTime().toInstant(TimeZone.currentSystemDefault())
+    )
 
 private fun authHeadersFor(tokenStorage: TokenStorage): Map<String, String> {
     val token = tokenStorage.getAccessToken().orEmpty()
@@ -2882,15 +2958,57 @@ private val ChromeGap = 12.dp
 @Composable
 private fun ViewerChromeCapsule(
     hazeState: HazeState?,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     ChromePill(
+        modifier = modifier,
         hazeState = hazeState,
         elevation = ChromeElevation.nav,
         baseColor = ViewerChromeColor,
         contentColor = PhotonneColors.onScrim
     ) {
         content()
+    }
+}
+
+/**
+ * Fecha y lugar junto a Atrás en la cápsula superior del visor: dos líneas
+ * cortas, con elipsis. Todo el bloque es un botón que abre el panel de info.
+ */
+@Composable
+private fun ViewerDatePlaceLabel(
+    date: String,
+    place: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(Res.string.asset_detail_open_info),
+                onClick = onClick
+            )
+            .padding(start = Spacing.xs, end = Spacing.lg, top = Spacing.xs, bottom = Spacing.xs),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = date,
+            style = MaterialTheme.typography.titleSmall,
+            color = PhotonneColors.onScrim,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (place != null) {
+            Text(
+                text = place,
+                style = MaterialTheme.typography.bodySmall,
+                color = PhotonneColors.onScrimMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
