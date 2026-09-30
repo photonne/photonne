@@ -49,5 +49,7 @@ de las tiendas, y lo que queda fuera del código.
   datos recogidos por el desarrollador).
 - Versión y build: `MARKETING_VERSION` y `CURRENT_PROJECT_VERSION` están fijos
   en `project.pbxproj`; súbelos a mano en cada envío (el build debe crecer).
-- El identificador actual es `com.photonne.app.iosApp`; debe coincidir con el
-  App ID registrado.
+- El identificador es `com.photonne.app` (igual que el `applicationId` de
+  Android y `Config.xcconfig`); debe coincidir con el App ID explícito
+  registrado y con el Bundle ID de la ficha de App Store Connect, que queda
+  fijo al subir el primer build.
