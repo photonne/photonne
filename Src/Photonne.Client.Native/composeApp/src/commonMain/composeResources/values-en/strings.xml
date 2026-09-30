@@ -281,6 +281,61 @@
         <item quantity="one">“%1$s” and %2$d item will be moved to the trash. You can restore them from the trash.</item>
         <item quantity="other">“%1$s” and %2$d items will be moved to the trash. You can restore them from the trash.</item>
     </plurals>
+    <!-- Multi-select of albums and folders in their lists -->
+    <plurals name="album_bulk_delete_title">
+        <item quantity="one">Delete %1$d album</item>
+        <item quantity="other">Delete %1$d albums</item>
+    </plurals>
+    <plurals name="album_bulk_delete_message">
+        <item quantity="one">%1$d album will be deleted. Its photos are kept in your library.</item>
+        <item quantity="other">%1$d albums will be deleted. Their photos are kept in your library.</item>
+    </plurals>
+    <plurals name="album_bulk_leave_title">
+        <item quantity="one">Leave %1$d album</item>
+        <item quantity="other">Leave %1$d albums</item>
+    </plurals>
+    <plurals name="album_bulk_leave_message">
+        <item quantity="one">You will lose access to %1$d album. Its owner can invite you back.</item>
+        <item quantity="other">You will lose access to %1$d albums. Their owners can invite you back.</item>
+    </plurals>
+    <plurals name="album_bulk_deleted_done">
+        <item quantity="one">%1$d album deleted</item>
+        <item quantity="other">%1$d albums deleted</item>
+    </plurals>
+    <plurals name="album_bulk_left_done">
+        <item quantity="one">Left %1$d album</item>
+        <item quantity="other">Left %1$d albums</item>
+    </plurals>
+    <string name="album_bulk_deleted_partial">%1$d of %2$d deleted</string>
+    <string name="album_bulk_left_partial">Left %1$d of %2$d</string>
+    <string name="album_bulk_delete_not_allowed">You can\'t delete all the selected albums</string>
+    <plurals name="folder_bulk_delete_title">
+        <item quantity="one">Delete %1$d folder</item>
+        <item quantity="other">Delete %1$d folders</item>
+    </plurals>
+    <plurals name="folder_bulk_delete_message">
+        <item quantity="one">%1$d folder and its contents will be moved to the trash. You can restore them from the trash.</item>
+        <item quantity="other">%1$d folders and their contents will be moved to the trash. You can restore them from the trash.</item>
+    </plurals>
+    <plurals name="folder_bulk_move_title">
+        <item quantity="one">Move %1$d folder</item>
+        <item quantity="other">Move %1$d folders</item>
+    </plurals>
+    <plurals name="folder_bulk_deleted_done">
+        <item quantity="one">%1$d folder moved to the trash</item>
+        <item quantity="other">%1$d folders moved to the trash</item>
+    </plurals>
+    <plurals name="folder_bulk_moved_done">
+        <item quantity="one">%1$d folder moved</item>
+        <item quantity="other">%1$d folders moved</item>
+    </plurals>
+    <string name="folder_bulk_deleted_partial">%1$d of %2$d moved to the trash</string>
+    <string name="folder_bulk_moved_partial">%1$d of %2$d moved</string>
+    <string name="folder_bulk_delete_not_allowed">You can\'t delete all the selected folders</string>
+    <plurals name="bulk_failed">
+        <item quantity="one">%1$d failed</item>
+        <item quantity="other">%1$d failed</item>
+    </plurals>
     <string name="folder_permissions_title">Folder members</string>
     <string name="folder_permissions_empty">Only you have access. Invite people to grant them read or write access.</string>
     <string name="folder_action_move">Move folder</string>

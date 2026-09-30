@@ -83,6 +83,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.photonne.app.resources.Res
 import androidx.compose.material3.TextButton
 import com.photonne.app.resources.action_back
+import com.photonne.app.resources.action_move
 import com.photonne.app.resources.selection_action_skip_organize
 import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.selection_deleted_permanently_done
@@ -1334,24 +1335,73 @@ private fun SelectionLabel(text: String) {
 }
 
 /**
- * Selection capsule shown when a single album card is selected from the list:
- * just Close (X) and the album name. Actions live in [AlbumCardSelectionBottomBar].
+ * Selection capsule for album cards in the list: Close (X), the album name
+ * while a single card is selected or the count once there are more, and
+ * select-all over the visible cards. Actions live in
+ * [AlbumCardSelectionBottomBar].
  */
 @Composable
 fun AlbumCardSelectionTopBar(
     albumName: String,
     isMutating: Boolean,
     onClose: () -> Unit,
+    selectedCount: Int = 1,
+    totalCount: Int = 0,
+    onSelectAll: (() -> Unit)? = null,
     hazeState: HazeState? = null,
     statusBarScrim: Boolean = false
 ) {
-    SelectionTopChrome(
-        title = albumName,
+    CardSelectionTopChrome(
+        singleName = albumName,
+        selectedCount = selectedCount,
+        totalCount = totalCount,
+        onSelectAll = onSelectAll,
         isMutating = isMutating,
         onClose = onClose,
         hazeState = hazeState,
         statusBarScrim = statusBarScrim
     )
+}
+
+/**
+ * Cápsula común de la selección de tarjetas (álbumes, carpetas): con una sola
+ * tarjeta, su nombre; con más, el recuento. "Seleccionar todo" junto al
+ * título, como en la selección de fotos.
+ */
+@Composable
+private fun CardSelectionTopChrome(
+    singleName: String,
+    selectedCount: Int,
+    totalCount: Int,
+    onSelectAll: (() -> Unit)?,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    hazeState: HazeState?,
+    statusBarScrim: Boolean
+) {
+    val allSelected = totalCount > 0 && selectedCount >= totalCount
+    SelectionTopChrome(
+        title = if (selectedCount <= 1) singleName
+        else pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
+        isMutating = isMutating,
+        onClose = onClose,
+        hazeState = hazeState,
+        statusBarScrim = statusBarScrim
+    ) {
+        if (onSelectAll != null && totalCount > 1) {
+            IconButton(onClick = onSelectAll, enabled = !isMutating) {
+                Icon(
+                    PhotonneIcons.SelectAll,
+                    contentDescription = stringResource(
+                        if (allSelected) Res.string.selection_action_deselect_all
+                        else Res.string.selection_action_select_all
+                    ),
+                    tint = if (allSelected) MaterialTheme.colorScheme.primary
+                    else LocalContentColor.current
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -1430,19 +1480,27 @@ fun AlbumCardSelectionBottomBar(
 }
 
 /**
- * Selection capsule for folder card selection: Close (X) + folder name only.
- * Actions live in [FolderCardSelectionBottomBar].
+ * Selection capsule for folder cards: Close (X), the folder name while a
+ * single card is selected or the count once there are more, and select-all
+ * over the visible cards when [onSelectAll] is given. Actions live in
+ * [FolderCardSelectionBottomBar].
  */
 @Composable
 fun FolderCardSelectionTopBar(
     folderName: String,
     isMutating: Boolean,
     onClose: () -> Unit,
+    selectedCount: Int = 1,
+    totalCount: Int = 0,
+    onSelectAll: (() -> Unit)? = null,
     hazeState: HazeState? = null,
     statusBarScrim: Boolean = false
 ) {
-    SelectionTopChrome(
-        title = folderName,
+    CardSelectionTopChrome(
+        singleName = folderName,
+        selectedCount = selectedCount,
+        totalCount = totalCount,
+        onSelectAll = onSelectAll,
         isMutating = isMutating,
         onClose = onClose,
         hazeState = hazeState,
@@ -1451,10 +1509,10 @@ fun FolderCardSelectionTopBar(
 }
 
 /**
- * Bottom bar for the single-folder-card selection, gated by permissions. Same
+ * Bottom bar for the folder-card selection, gated by permissions. Same
  * order, labels and icons as the folder detail's overflow menu
- * (Rename · Members · Delete). Move stays in the detail: it needs the opened
- * folder's view model.
+ * (Rename · Move · Members · Delete). With several cards selected the host
+ * only enables the actions valid for all of them (see folderSelectionActions).
  */
 @Composable
 fun FolderCardSelectionBottomBar(
@@ -1468,7 +1526,9 @@ fun FolderCardSelectionBottomBar(
     // Per-user timeline opt-out. Only meaningful for shared folders.
     canToggleTimeline: Boolean = false,
     excludedFromDiscovery: Boolean = false,
-    onToggleTimeline: () -> Unit = {}
+    onToggleTimeline: () -> Unit = {},
+    canMove: Boolean = false,
+    onMove: () -> Unit = {}
 ) {
     FloatingSelectionBar {
         if (canToggleTimeline) {
@@ -1497,6 +1557,19 @@ fun FolderCardSelectionBottomBar(
                 icon = {
                     Icon(
                         PhotonneIcons.Rename,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
+        if (canMove) {
+            FloatingSelectionBarItem(
+                onClick = onMove,
+                enabled = !isMutating,
+                label = stringResource(Res.string.action_move),
+                icon = {
+                    Icon(
+                        PhotonneIcons.Move,
                         contentDescription = null
                     )
                 }

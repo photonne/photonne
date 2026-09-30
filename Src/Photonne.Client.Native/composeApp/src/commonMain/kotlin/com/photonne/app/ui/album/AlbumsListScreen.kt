@@ -360,7 +360,7 @@ private fun AlbumsContent(
                             modifier = Modifier.animateItem(),
                             album = album,
                             baseUrl = apiBaseUrl,
-                            isSelected = state.selectedAlbumId == album.id,
+                            isSelected = album.id in state.selectedAlbumIds,
                             onClick = { onClick(album) },
                             onLongPress = { onLongPress(album) }
                         )
@@ -372,7 +372,7 @@ private fun AlbumsContent(
                         modifier = Modifier.animateItem(),
                         album = album,
                         baseUrl = apiBaseUrl,
-                        isSelected = state.selectedAlbumId == album.id,
+                        isSelected = album.id in state.selectedAlbumIds,
                         onClick = { onClick(album) },
                         onLongPress = { onLongPress(album) }
                     )
@@ -400,7 +400,7 @@ private fun AlbumsContent(
                             modifier = Modifier.animateItem(),
                             album = album,
                             baseUrl = apiBaseUrl,
-                            isSelected = state.selectedAlbumId == album.id,
+                            isSelected = album.id in state.selectedAlbumIds,
                             onClick = { onClick(album) },
                             onLongPress = { onLongPress(album) }
                         )
@@ -412,7 +412,7 @@ private fun AlbumsContent(
                         modifier = Modifier.animateItem(),
                         album = album,
                         baseUrl = apiBaseUrl,
-                        isSelected = state.selectedAlbumId == album.id,
+                        isSelected = album.id in state.selectedAlbumIds,
                         onClick = { onClick(album) },
                         onLongPress = { onLongPress(album) }
                     )

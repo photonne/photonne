@@ -397,7 +397,7 @@ private fun FolderListContent(
                     FolderRow(
                         modifier = Modifier.animateItem(),
                         folder = folder,
-                        isSelected = state.selectedFolderId == folder.id,
+                        isSelected = folder.id in state.selectedFolderIds,
                         onClick = { onFolderClick(folder) },
                         onLongPress = { onFolderLongPress(folder) }
                     )
@@ -430,7 +430,7 @@ private fun FolderListContent(
                     FolderCard(
                         modifier = Modifier.animateItem(),
                         folder = folder,
-                        isSelected = state.selectedFolderId == folder.id,
+                        isSelected = folder.id in state.selectedFolderIds,
                         onClick = { onFolderClick(folder) },
                         onLongPress = { onFolderLongPress(folder) }
                     )

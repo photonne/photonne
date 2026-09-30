@@ -56,6 +56,8 @@ fun FolderPickerDialog(
     isSubmitting: Boolean,
     errorMessage: String? = null,
     excludeFolderId: String? = null,
+    /** Como [excludeFolderId], para mover varias carpetas a la vez. */
+    excludeFolderIds: Set<String> = emptySet(),
     includeRoot: Boolean = false,
     initialSelectionId: String? = null,
     showOrganizeByDate: Boolean = false,
@@ -76,9 +78,9 @@ fun FolderPickerDialog(
     onConfirm: (targetFolderId: String?, organizeByYear: Boolean) -> Unit
 ) {
     // Prune the moved folder's own subtree so it can't be dropped into a descendant.
-    val excluded = remember(folders, excludeFolderId) {
-        if (excludeFolderId == null) emptySet()
-        else computeExclusionSet(folders, excludeFolderId)
+    val excluded = remember(folders, excludeFolderId, excludeFolderIds) {
+        (excludeFolderIds + listOfNotNull(excludeFolderId))
+            .flatMapTo(mutableSetOf()) { computeExclusionSet(folders, it) }
     }
     val candidates = remember(folders, excluded) { folders.filterNot { it.id in excluded } }
     val roots = remember(candidates) { buildFolderForest(candidates) }

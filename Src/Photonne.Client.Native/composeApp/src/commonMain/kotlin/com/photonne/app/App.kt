@@ -129,6 +129,8 @@ import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folder_move_assets_title
 import com.photonne.app.resources.organize_rule_title
 import com.photonne.app.resources.folder_move_title
+import com.photonne.app.resources.album_bulk_delete_not_allowed
+import com.photonne.app.resources.folder_bulk_delete_not_allowed
 import com.photonne.app.resources.trash_action_delete_forever
 import com.photonne.app.resources.trash_action_empty
 import com.photonne.app.resources.trash_action_restore_all
@@ -976,6 +978,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var editingSmartAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var showDeleteAlbum by remember { mutableStateOf(false) }
     var showLeaveAlbum by remember { mutableStateOf(false) }
+    // Acciones en bloque sobre varias tarjetas seleccionadas en la lista.
+    var showBulkDeleteAlbums by remember { mutableStateOf(false) }
+    var showBulkLeaveAlbums by remember { mutableStateOf(false) }
     var showShares by remember { mutableStateOf(false) }
     var showCreateShare by remember { mutableStateOf(false) }
     var editingShareLink by remember { mutableStateOf<AlbumShareLink?>(null) }
@@ -1060,6 +1065,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showFolderMembers by remember { mutableStateOf(false) }
     var showInviteFolderMember by remember { mutableStateOf(false) }
     var showMoveFolder by remember { mutableStateOf(false) }
+    var showBulkDeleteFolders by remember { mutableStateOf(false) }
+    var showBulkMoveFolders by remember { mutableStateOf(false) }
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
     var showMoveSelectedAssetsTimeline by remember { mutableStateOf(false) }
     var showMoveSelectedAssetsInbox by remember { mutableStateOf(false) }
@@ -1422,6 +1429,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         moreSubscreen == MoreSubscreen.OrganizeInbox ->
             selectAllOf(organizeInboxState.selection.size, organizeInboxState.items.size,
                 organizeInboxViewModel::toggleSelectAll)
+        // Listas de álbumes y carpetas: todas las tarjetas visibles.
+        moreSubscreen == null && selectedTab == MainTab.Albums && selectedAlbum == null ->
+            selectAllOf(albumsState.selectedAlbums.size, albumsState.visibleAlbums.size,
+                albumsViewModel::toggleSelectAllVisible)
+        moreSubscreen == null && selectedTab == MainTab.Folders && selectedFolder == null ->
+            selectAllOf(foldersState.selectedFolders.size, foldersState.visibleFolders.size,
+                foldersViewModel::toggleSelectAllVisible)
         else -> null
     }
     com.photonne.app.ui.selection.SelectionShortcutsHandler(onSelectAll = selectAllShortcut)
@@ -1646,13 +1660,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         selectedTab == MainTab.Albums && albumsState.isSelectionActive -> selectionChrome {
             // Si la tarjeta ya no está en la lista (filtrada, borrada) queda
             // solo el cerrar: antes caía a la barra acoplada de Álbumes.
-            val target = albumsState.albums.firstOrNull {
-                it.id == albumsState.selectedAlbumId
-            }
+            val selected = albumsState.selectedAlbums
             com.photonne.app.ui.main.AlbumCardSelectionTopBar(
-                albumName = target?.name ?: "",
+                albumName = selected.singleOrNull()?.name ?: "",
                 isMutating = albumsState.isMutating,
-                onClose = albumsViewModel::clearSelection
+                onClose = albumsViewModel::clearSelection,
+                selectedCount = selected.size,
+                totalCount = albumsState.visibleAlbums.size,
+                onSelectAll = albumsViewModel::toggleSelectAllVisible
             )
         }
         selectedTab == MainTab.Folders && selectedFolder != null &&
@@ -1679,11 +1694,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
         selectedTab == MainTab.Folders && selectedFolder != null -> null
         selectedTab == MainTab.Folders && foldersState.isSelectionActive -> selectionChrome {
-            val target = foldersState.findFolder(foldersState.selectedFolderId)
+            val selected = foldersState.selectedFolders
             com.photonne.app.ui.main.FolderCardSelectionTopBar(
-                folderName = target?.let { it.name.ifBlank { it.path } } ?: "",
+                folderName = selected.singleOrNull()?.let { it.name.ifBlank { it.path } } ?: "",
                 isMutating = foldersState.isMutating,
-                onClose = foldersViewModel::clearSelection
+                onClose = foldersViewModel::clearSelection,
+                selectedCount = selected.size,
+                totalCount = foldersState.visibleFolders.size,
+                onSelectAll = foldersViewModel::toggleSelectAllVisible
             )
         }
         selectedTab == MainTab.Search && searchState.isSelectionActive -> selectionChrome {
@@ -2449,26 +2467,52 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
         }
         selectedTab == MainTab.Albums && albumsState.isSelectionActive -> {
-            val target = albumsState.albums.firstOrNull {
-                it.id == albumsState.selectedAlbumId
-            }
-            if (target != null) {
+            val selected = albumsState.selectedAlbums
+            // Una sola tarjeta: sus acciones de siempre. Varias: solo las que
+            // valen para todas (albumSelectionActions), en bloque.
+            val target = selected.singleOrNull()
+            val allowed = com.photonne.app.ui.album.albumSelectionActions(selected)
+            if (selected.isNotEmpty()) {
                 {
+                    val deleteBlocked = stringResource(Res.string.album_bulk_delete_not_allowed)
+                    val shortcutSnackbar = LocalSnackbarController.current
+                    fun requestDelete() {
+                        if (target != null) {
+                            pendingActionAlbum = target
+                            showDeleteAlbum = true
+                        } else {
+                            showBulkDeleteAlbums = true
+                        }
+                    }
+                    // Escritorio: Supr con tarjetas seleccionadas = Eliminar.
+                    com.photonne.app.ui.selection.SelectionShortcutsHandler(
+                        onDelete = {
+                            when {
+                                albumsState.isMutating -> Unit
+                                !allowed.canDelete -> shortcutSnackbar?.show(deleteBlocked)
+                                else -> requestDelete()
+                            }
+                        }
+                    )
                     com.photonne.app.ui.main.AlbumCardSelectionBottomBar(
-                        canManageMembers = target.isOwner || target.canManagePermissions,
-                        canEdit = target.canWrite || target.isOwner,
-                        canLeave = !target.isOwner,
-                        canDelete = target.isOwner || target.canDelete,
+                        canManageMembers = allowed.canManageMembers,
+                        canEdit = allowed.canEdit,
+                        canLeave = allowed.canLeave,
+                        canDelete = allowed.canDelete,
                         isMutating = albumsState.isMutating,
                         onManageMembers = {
-                            pendingActionAlbum = target
-                            albumPermissionsViewModel.open(target.id)
-                            showMembers = true
+                            if (target != null) {
+                                pendingActionAlbum = target
+                                albumPermissionsViewModel.open(target.id)
+                                showMembers = true
+                            }
                         },
                         onEdit = {
                             // Un álbum inteligente propio se edita entero (condiciones
                             // incluidas) en su editor; el resto, nombre y descripción.
-                            if (target.isSmart && target.isOwner) {
+                            if (target == null) {
+                                Unit
+                            } else if (target.isSmart && target.isOwner) {
                                 albumsViewModel.clearSelection()
                                 editingSmartAlbum = target
                                 moreSubscreen = MoreSubscreen.SmartAlbumEditor
@@ -2478,52 +2522,76 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         onLeave = {
-                            pendingActionAlbum = target
-                            showLeaveAlbum = true
+                            if (target != null) {
+                                pendingActionAlbum = target
+                                showLeaveAlbum = true
+                            } else {
+                                showBulkLeaveAlbums = true
+                            }
                         },
-                        onDelete = {
-                            pendingActionAlbum = target
-                            showDeleteAlbum = true
-                        }
+                        onDelete = ::requestDelete
                     )
                 }
             } else null
         }
         selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
-            val target = foldersState.findFolder(foldersState.selectedFolderId)
-            if (target != null) {
-                // An external library is a read-only mirror of a host path, but
-                // the server still reports IsOwner for an admin on any shared
-                // path — so gate the destructive actions on the library id too,
-                // the way canToggleTimeline already does.
-                val isExternal = target.externalLibraryId != null
+            val selected = foldersState.selectedFolders
+            val target = selected.singleOrNull()
+            // Permisos por tarjeta y sin tocar bibliotecas externas: ver
+            // folderSelectionActions. Con varias, solo lo que vale para todas.
+            val allowed = com.photonne.app.ui.folder.folderSelectionActions(selected)
+            if (selected.isNotEmpty()) {
                 {
-                    com.photonne.app.ui.main.FolderCardSelectionBottomBar(
-                        canManageMembers = target.isOwner && target.isShared,
-                        canRename = target.canWrite && !isExternal,
-                        canDelete = target.canDelete && !isExternal,
-                        isMutating = foldersState.isMutating,
-                        onManageMembers = {
-                            pendingActionFolder = target
-                            folderPermissionsViewModel.open(target.id)
-                            showFolderMembers = true
-                        },
-                        onRename = {
-                            pendingActionFolder = target
-                            showEditFolder = true
-                        },
-                        onDelete = {
+                    val deleteBlocked = stringResource(Res.string.folder_bulk_delete_not_allowed)
+                    val shortcutSnackbar = LocalSnackbarController.current
+                    fun requestDelete() {
+                        if (target != null) {
                             pendingActionFolder = target
                             showDeleteFolder = true
-                        },
-                        canToggleTimeline = target.isShared && target.externalLibraryId == null,
-                        excludedFromDiscovery = target.excludedFromDiscovery,
-                        onToggleTimeline = {
-                            foldersViewModel.setTimelineIncluded(
-                                folderId = target.id,
-                                included = target.excludedFromDiscovery
-                            )
+                        } else {
+                            showBulkDeleteFolders = true
                         }
+                    }
+                    com.photonne.app.ui.selection.SelectionShortcutsHandler(
+                        onDelete = {
+                            when {
+                                foldersState.isMutating -> Unit
+                                !allowed.canDelete -> shortcutSnackbar?.show(deleteBlocked)
+                                else -> requestDelete()
+                            }
+                        }
+                    )
+                    com.photonne.app.ui.main.FolderCardSelectionBottomBar(
+                        canManageMembers = allowed.canManageMembers,
+                        canRename = allowed.canRename,
+                        canDelete = allowed.canDelete,
+                        isMutating = foldersState.isMutating,
+                        onManageMembers = {
+                            if (target != null) {
+                                pendingActionFolder = target
+                                folderPermissionsViewModel.open(target.id)
+                                showFolderMembers = true
+                            }
+                        },
+                        onRename = {
+                            if (target != null) {
+                                pendingActionFolder = target
+                                showEditFolder = true
+                            }
+                        },
+                        onDelete = ::requestDelete,
+                        canToggleTimeline = allowed.canToggleTimeline,
+                        excludedFromDiscovery = target?.excludedFromDiscovery ?: false,
+                        onToggleTimeline = {
+                            if (target != null) {
+                                foldersViewModel.setTimelineIncluded(
+                                    folderId = target.id,
+                                    included = target.excludedFromDiscovery
+                                )
+                            }
+                        },
+                        canMove = allowed.canMove,
+                        onMove = { showBulkMoveFolders = true }
                     )
                 }
             } else null
@@ -2862,11 +2930,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             AlbumsListScreen(
                                 onAlbumClick = { album ->
                                     if (albumsState.isSelectionActive) {
-                                        if (albumsState.selectedAlbumId == album.id) {
-                                            albumsViewModel.clearSelection()
-                                        } else {
-                                            albumsViewModel.selectAlbum(album.id)
-                                        }
+                                        // Con la selección abierta, tocar suma o
+                                        // quita; al quitar la última se cierra.
+                                        albumsViewModel.toggleAlbumSelection(album.id)
                                     } else {
                                         selectedAlbum = album
                                     }
@@ -2906,11 +2972,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             com.photonne.app.ui.folder.FoldersListScreen(
                                 onFolderClick = { folder ->
                                     if (foldersState.isSelectionActive) {
-                                        if (foldersState.selectedFolderId == folder.id) {
-                                            foldersViewModel.clearSelection()
-                                        } else {
-                                            foldersViewModel.selectFolder(folder.id)
-                                        }
+                                        foldersViewModel.toggleFolderSelection(folder.id)
                                     } else {
                                         selectedFolder = folder
                                     }
@@ -5005,6 +5067,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
+    // Borrar / salir de varios álbumes seleccionados en la lista.
+    if (showBulkDeleteAlbums || showBulkLeaveAlbums) {
+        com.photonne.app.ui.album.AlbumsBulkConfirmDialog(
+            leaving = showBulkLeaveAlbums,
+            state = albumsState,
+            viewModel = albumsViewModel,
+            snackbar = snackbarController,
+            scope = coroutineScope,
+            onClose = {
+                showBulkDeleteAlbums = false
+                showBulkLeaveAlbums = false
+            }
+        )
+    }
+
     if (showShares && openedAlbum != null) {
         ManageSharesDialog(
             state = albumSharesState,
@@ -5340,6 +5417,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
+    // Varias carpetas seleccionadas en la lista a la papelera.
+    if (showBulkDeleteFolders) {
+        com.photonne.app.ui.folder.FoldersBulkDeleteDialog(
+            state = foldersState,
+            viewModel = foldersViewModel,
+            snackbar = snackbarController,
+            scope = coroutineScope,
+            onClose = { showBulkDeleteFolders = false }
+        )
+    }
+
     // Rename/delete for a selected subfolder inside the open folder. These mirror
     // the top-level folder selection actions but target a child of the open
     // folder via FolderDetailViewModel, which patches its subfolder list in place.
@@ -5466,6 +5554,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     foldersViewModel.applyUpdate(updated)
                 }
             }
+        )
+    }
+
+    // Mover las carpetas seleccionadas en la lista (una o varias).
+    if (showBulkMoveFolders) {
+        com.photonne.app.ui.folder.FoldersBulkMoveDialog(
+            state = foldersState,
+            viewModel = foldersViewModel,
+            snackbar = snackbarController,
+            scope = coroutineScope,
+            onClose = { showBulkMoveFolders = false }
         )
     }
 

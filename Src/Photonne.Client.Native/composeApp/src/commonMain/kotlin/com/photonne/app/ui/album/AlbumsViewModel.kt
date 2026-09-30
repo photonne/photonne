@@ -39,14 +39,20 @@ data class AlbumsUiState(
     val direction: SortDirection = SortDirection.Descending,
     val viewMode: AlbumViewMode = AlbumViewMode.Grid,
     val groupByYear: Boolean = false,
-    val selectedAlbumId: String? = null,
+    // Tarjetas seleccionadas en la lista. Una sola es el caso de siempre
+    // (acciones de ese álbum); varias habilitan las acciones en bloque.
+    val selectedAlbumIds: Set<String> = emptySet(),
     val isSearchActive: Boolean = false,
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val error: UiError? = null,
 ) {
-    val isSelectionActive: Boolean get() = selectedAlbumId != null
+    val isSelectionActive: Boolean get() = selectedAlbumIds.isNotEmpty()
+
+    /** Los álbumes seleccionados que siguen en la lista, en su orden. */
+    val selectedAlbums: List<AlbumSummary>
+        get() = albums.filter { it.id in selectedAlbumIds }
 
     val hasActiveQuery: Boolean get() = searchQuery.isNotBlank()
 
@@ -119,7 +125,7 @@ class AlbumsViewModel(
                         it.copy(
                             albums = albums,
                             isLoading = false,
-                            selectedAlbumId = it.selectedAlbumId?.takeIf { id ->
+                            selectedAlbumIds = it.selectedAlbumIds.filterTo(mutableSetOf()) { id ->
                                 albums.any { a -> a.id == id }
                             }
                         )
@@ -168,7 +174,7 @@ class AlbumsViewModel(
      * missing data.
      */
     fun setScope(scope: AlbumsScope) {
-        _state.update { it.copy(scope = scope, selectedAlbumId = null) }
+        _state.update { it.copy(scope = scope, selectedAlbumIds = emptySet()) }
     }
 
     fun toggleSearch() {
@@ -206,12 +212,34 @@ class AlbumsViewModel(
         _state.update { it.copy(groupByYear = enabled) }
     }
 
+    /** Pulsación larga: entra en selección (o añade la tarjeta a la que hay). */
     fun selectAlbum(id: String) {
-        _state.update { it.copy(selectedAlbumId = id) }
+        _state.update { it.copy(selectedAlbumIds = it.selectedAlbumIds + id) }
+    }
+
+    /** Toque con la selección abierta: añade o quita la tarjeta. */
+    fun toggleAlbumSelection(id: String) {
+        _state.update {
+            val next = if (id in it.selectedAlbumIds) it.selectedAlbumIds - id
+            else it.selectedAlbumIds + id
+            it.copy(selectedAlbumIds = next)
+        }
+    }
+
+    /**
+     * Seleccionar todo lo VISIBLE (ámbito y búsqueda aplicados); si ya lo
+     * está, deselecciona.
+     */
+    fun toggleSelectAllVisible() {
+        _state.update {
+            val visible = it.visibleAlbums.mapTo(mutableSetOf()) { a -> a.id }
+            val allSelected = visible.isNotEmpty() && it.selectedAlbumIds.containsAll(visible)
+            it.copy(selectedAlbumIds = if (allSelected) emptySet() else visible)
+        }
     }
 
     fun clearSelection() {
-        _state.update { it.copy(selectedAlbumId = null) }
+        _state.update { it.copy(selectedAlbumIds = emptySet()) }
     }
 
     fun refresh() {
@@ -225,7 +253,7 @@ class AlbumsViewModel(
                             albums = albums,
                             isLoading = false,
                             error = null,
-                            selectedAlbumId = it.selectedAlbumId?.takeIf { id ->
+                            selectedAlbumIds = it.selectedAlbumIds.filterTo(mutableSetOf()) { id ->
                                 albums.any { a -> a.id == id }
                             }
                         )
@@ -290,7 +318,7 @@ class AlbumsViewModel(
                         previous.copy(
                             albums = previous.albums.map { if (it.id == updated.id) updated else it },
                             isMutating = false,
-                            selectedAlbumId = null
+                            selectedAlbumIds = emptySet()
                         )
                     }
                     onSuccess(updated)
@@ -316,7 +344,7 @@ class AlbumsViewModel(
                         previous.copy(
                             albums = previous.albums.filterNot { it.id == albumId },
                             isMutating = false,
-                            selectedAlbumId = null
+                            selectedAlbumIds = emptySet()
                         )
                     }
                     onSuccess()
@@ -342,7 +370,7 @@ class AlbumsViewModel(
                         previous.copy(
                             albums = previous.albums.filterNot { it.id == albumId },
                             isMutating = false,
-                            selectedAlbumId = null
+                            selectedAlbumIds = emptySet()
                         )
                     }
                     onSuccess()
@@ -355,6 +383,39 @@ class AlbumsViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    /**
+     * Borra los álbumes seleccionados repitiendo la llamada de uno solo. Los
+     * que fallan siguen seleccionados para reintentar; los borrados salen de
+     * la lista. [onResult] recibe el recuento para el snackbar.
+     */
+    fun deleteSelected(onResult: (com.photonne.app.ui.selection.BulkOutcome) -> Unit) =
+        runOnSelection(onResult) { id -> repository.delete(id) }
+
+    /** Como [deleteSelected], pero saliendo de álbumes que me han compartido. */
+    fun leaveSelected(onResult: (com.photonne.app.ui.selection.BulkOutcome) -> Unit) =
+        runOnSelection(onResult) { id -> repository.leave(id) }
+
+    private fun runOnSelection(
+        onResult: (com.photonne.app.ui.selection.BulkOutcome) -> Unit,
+        action: suspend (String) -> Unit,
+    ) {
+        val ids = _state.value.selectedAlbums.map { it.id }
+        if (ids.isEmpty() || _state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, error = null) }
+        viewModelScope.launch {
+            val outcome = com.photonne.app.ui.selection.runBulk(ids, action = action)
+            val removed = outcome.succeeded.toSet()
+            _state.update { previous ->
+                previous.copy(
+                    albums = previous.albums.filterNot { it.id in removed },
+                    isMutating = false,
+                    selectedAlbumIds = outcome.failed.toSet()
+                )
+            }
+            onResult(outcome)
         }
     }
 

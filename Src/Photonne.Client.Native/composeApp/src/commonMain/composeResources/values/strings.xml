@@ -360,6 +360,61 @@
         <item quantity="one">«%1$s» y %2$d elemento se moverán a la papelera. Podrás restaurarlos desde la papelera.</item>
         <item quantity="other">«%1$s» y %2$d elementos se moverán a la papelera. Podrás restaurarlos desde la papelera.</item>
     </plurals>
+    <!-- Selección múltiple de álbumes y carpetas en sus listas -->
+    <plurals name="album_bulk_delete_title">
+        <item quantity="one">Eliminar %1$d álbum</item>
+        <item quantity="other">Eliminar %1$d álbumes</item>
+    </plurals>
+    <plurals name="album_bulk_delete_message">
+        <item quantity="one">Se eliminará %1$d álbum. Sus fotos permanecen en tu biblioteca.</item>
+        <item quantity="other">Se eliminarán %1$d álbumes. Sus fotos permanecen en tu biblioteca.</item>
+    </plurals>
+    <plurals name="album_bulk_leave_title">
+        <item quantity="one">Salir de %1$d álbum</item>
+        <item quantity="other">Salir de %1$d álbumes</item>
+    </plurals>
+    <plurals name="album_bulk_leave_message">
+        <item quantity="one">Perderás acceso a %1$d álbum. Su propietario podrá invitarte de nuevo.</item>
+        <item quantity="other">Perderás acceso a %1$d álbumes. Sus propietarios podrán invitarte de nuevo.</item>
+    </plurals>
+    <plurals name="album_bulk_deleted_done">
+        <item quantity="one">%1$d álbum eliminado</item>
+        <item quantity="other">%1$d álbumes eliminados</item>
+    </plurals>
+    <plurals name="album_bulk_left_done">
+        <item quantity="one">Has salido de %1$d álbum</item>
+        <item quantity="other">Has salido de %1$d álbumes</item>
+    </plurals>
+    <string name="album_bulk_deleted_partial">%1$d de %2$d eliminados</string>
+    <string name="album_bulk_left_partial">Has salido de %1$d de %2$d</string>
+    <string name="album_bulk_delete_not_allowed">No puedes eliminar todos los álbumes seleccionados</string>
+    <plurals name="folder_bulk_delete_title">
+        <item quantity="one">Eliminar %1$d carpeta</item>
+        <item quantity="other">Eliminar %1$d carpetas</item>
+    </plurals>
+    <plurals name="folder_bulk_delete_message">
+        <item quantity="one">%1$d carpeta y su contenido se moverán a la papelera. Podrás restaurarlos desde la papelera.</item>
+        <item quantity="other">%1$d carpetas y su contenido se moverán a la papelera. Podrás restaurarlos desde la papelera.</item>
+    </plurals>
+    <plurals name="folder_bulk_move_title">
+        <item quantity="one">Mover %1$d carpeta</item>
+        <item quantity="other">Mover %1$d carpetas</item>
+    </plurals>
+    <plurals name="folder_bulk_deleted_done">
+        <item quantity="one">%1$d carpeta movida a la papelera</item>
+        <item quantity="other">%1$d carpetas movidas a la papelera</item>
+    </plurals>
+    <plurals name="folder_bulk_moved_done">
+        <item quantity="one">%1$d carpeta movida</item>
+        <item quantity="other">%1$d carpetas movidas</item>
+    </plurals>
+    <string name="folder_bulk_deleted_partial">%1$d de %2$d a la papelera</string>
+    <string name="folder_bulk_moved_partial">%1$d de %2$d movidas</string>
+    <string name="folder_bulk_delete_not_allowed">No puedes eliminar todas las carpetas seleccionadas</string>
+    <plurals name="bulk_failed">
+        <item quantity="one">%1$d falló</item>
+        <item quantity="other">%1$d fallaron</item>
+    </plurals>
     <string name="folder_permissions_title">Miembros de la carpeta</string>
     <string name="folder_permissions_empty">Solo tú tienes acceso. Invita a alguien para darle permiso de lectura o escritura.</string>
     <string name="folder_action_move">Mover carpeta</string>

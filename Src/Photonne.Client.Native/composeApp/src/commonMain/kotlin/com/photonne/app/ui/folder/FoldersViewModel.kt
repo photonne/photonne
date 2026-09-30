@@ -45,14 +45,20 @@ data class FoldersUiState(
     val sort: FolderSort = FolderSort.Name,
     val direction: SortDirection = SortDirection.Ascending,
     val viewMode: FolderViewMode = FolderViewMode.List,
-    val selectedFolderId: String? = null,
+    // Tarjetas seleccionadas en la lista. Una sola es el caso de siempre
+    // (acciones de esa carpeta); varias habilitan las acciones en bloque.
+    val selectedFolderIds: Set<String> = emptySet(),
     val isSearchActive: Boolean = false,
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val error: UiError? = null,
 ) {
-    val isSelectionActive: Boolean get() = selectedFolderId != null
+    val isSelectionActive: Boolean get() = selectedFolderIds.isNotEmpty()
+
+    /** Las carpetas seleccionadas que siguen existiendo (ver [findFolder]). */
+    val selectedFolders: List<FolderSummary>
+        get() = selectedFolderIds.mapNotNull { findFolder(it) }
 
     val hasActiveQuery: Boolean get() = searchQuery.isNotBlank()
 
@@ -78,7 +84,7 @@ data class FoldersUiState(
         }
 
     /**
-     * The folder behind [selectedFolderId], looked up across every bucket at
+     * A selected folder, looked up across every bucket at
      * full depth — a long-press can land on an external root or, while
      * searching, on a folder nested well below any root.
      */
@@ -151,7 +157,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            selectedFolderId = it.selectedFolderId?.takeIf { id ->
+                            selectedFolderIds = it.selectedFolderIds.filterTo(mutableSetOf()) { id ->
                                 folders.any { f -> f.id == id }
                             }
                         )
@@ -197,7 +203,7 @@ class FoldersViewModel(
      * missing data.
      */
     fun setScope(scope: FoldersScope) {
-        _state.update { it.copy(scope = scope, selectedFolderId = null) }
+        _state.update { it.copy(scope = scope, selectedFolderIds = emptySet()) }
     }
 
     fun toggleSearch() {
@@ -232,12 +238,34 @@ class FoldersViewModel(
         _state.update { it.copy(viewMode = mode) }
     }
 
+    /** Pulsación larga: entra en selección (o añade la tarjeta a la que hay). */
     fun selectFolder(id: String) {
-        _state.update { it.copy(selectedFolderId = id) }
+        _state.update { it.copy(selectedFolderIds = it.selectedFolderIds + id) }
+    }
+
+    /** Toque con la selección abierta: añade o quita la tarjeta. */
+    fun toggleFolderSelection(id: String) {
+        _state.update {
+            val next = if (id in it.selectedFolderIds) it.selectedFolderIds - id
+            else it.selectedFolderIds + id
+            it.copy(selectedFolderIds = next)
+        }
+    }
+
+    /**
+     * Seleccionar todo lo VISIBLE (ámbito y búsqueda aplicados); si ya lo
+     * está, deselecciona.
+     */
+    fun toggleSelectAllVisible() {
+        _state.update {
+            val visible = it.visibleFolders.mapTo(mutableSetOf()) { f -> f.id }
+            val allSelected = visible.isNotEmpty() && it.selectedFolderIds.containsAll(visible)
+            it.copy(selectedFolderIds = if (allSelected) emptySet() else visible)
+        }
     }
 
     fun clearSelection() {
-        _state.update { it.copy(selectedFolderId = null) }
+        _state.update { it.copy(selectedFolderIds = emptySet()) }
     }
 
     fun refresh() {
@@ -251,7 +279,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            selectedFolderId = it.selectedFolderId?.takeIf { id ->
+                            selectedFolderIds = it.selectedFolderIds.filterTo(mutableSetOf()) { id ->
                                 folders.any { f -> f.id == id }
                             }
                         )
@@ -326,7 +354,7 @@ class FoldersViewModel(
                 .onSuccess { updated ->
                     allFolders = allFolders.map { if (it.id == updated.id) updated else it }
                     repartition()
-                    _state.update { it.copy(isMutating = false, selectedFolderId = null) }
+                    _state.update { it.copy(isMutating = false, selectedFolderIds = emptySet()) }
                     onSuccess(updated)
                 }
                 .onFailure { error ->
@@ -348,7 +376,7 @@ class FoldersViewModel(
                 .onSuccess {
                     allFolders = allFolders.filterNot { it.id == folderId }
                     repartition()
-                    _state.update { it.copy(isMutating = false, selectedFolderId = null) }
+                    _state.update { it.copy(isMutating = false, selectedFolderIds = emptySet()) }
                     onSuccess()
                 }
                 .onFailure { error ->
@@ -377,7 +405,7 @@ class FoldersViewModel(
                         if (it.id == folderId) it.copy(excludedFromDiscovery = !included) else it
                     }
                     repartition()
-                    _state.update { it.copy(isMutating = false, selectedFolderId = null) }
+                    _state.update { it.copy(isMutating = false, selectedFolderIds = emptySet()) }
                     onSuccess()
                 }
                 .onFailure { error ->
@@ -388,6 +416,72 @@ class FoldersViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    /**
+     * Manda a la papelera las carpetas seleccionadas con la misma llamada que
+     * el borrado de una (su subárbol va con ella). Solo las de más arriba: las
+     * anidadas en otra seleccionada ya caen con su padre. Una a una, porque
+     * cada borrado mueve ficheros en disco. Las que fallan siguen
+     * seleccionadas; [onResult] recibe el recuento para el snackbar.
+     */
+    fun deleteSelected(onResult: (com.photonne.app.ui.selection.BulkOutcome) -> Unit) {
+        val targets = topmostFolders(_state.value.selectedFolders)
+        runOnSelection(targets, onResult, onDone = { outcome ->
+            val removed = outcome.succeeded.toSet()
+            allFolders = allFolders.filterNot { it.id in removed }
+        }) { folder -> repository.delete(folder.id) }
+    }
+
+    /**
+     * Mueve las carpetas seleccionadas bajo [targetParentId] (null = raíz
+     * personal), repitiendo el PUT de una sola carpeta — el servidor no tiene
+     * movimiento masivo. Mismas reglas que [deleteSelected].
+     */
+    fun moveSelected(
+        targetParentId: String?,
+        onResult: (com.photonne.app.ui.selection.BulkOutcome) -> Unit
+    ) {
+        val targets = topmostFolders(_state.value.selectedFolders)
+        val moved = mutableMapOf<String, FolderSummary>()
+        runOnSelection(targets, onResult, onDone = {
+            allFolders = allFolders.map { moved[it.id] ?: it }
+        }) { folder ->
+            moved[folder.id] = repository.update(
+                folderId = folder.id,
+                name = folder.name,
+                parentFolderId = targetParentId
+            )
+        }
+    }
+
+    private fun runOnSelection(
+        targets: List<FolderSummary>,
+        onResult: (com.photonne.app.ui.selection.BulkOutcome) -> Unit,
+        onDone: (com.photonne.app.ui.selection.BulkOutcome) -> Unit,
+        action: suspend (FolderSummary) -> Unit,
+    ) {
+        if (targets.isEmpty() || _state.value.isMutating) return
+        val byId = targets.associateBy { it.id }
+        _state.update { it.copy(isMutating = true, error = null) }
+        viewModelScope.launch {
+            val outcome = com.photonne.app.ui.selection.runBulk(
+                ids = targets.map { it.id },
+                concurrency = 1
+            ) { id -> action(byId.getValue(id)) }
+            onDone(outcome)
+            repartition()
+            _state.update {
+                it.copy(isMutating = false, selectedFolderIds = outcome.failed.toSet())
+            }
+            onResult(outcome)
+            // Los subárboles cambian de ruta o desaparecen con su padre, y
+            // "Para organizar" puede haber perdido fotos: recarga silenciosa.
+            if (outcome.succeeded.isNotEmpty()) {
+                refreshQuietly()
+                refreshOrganizeCount()
+            }
         }
     }
 
