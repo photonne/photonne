@@ -386,3 +386,62 @@ Plataforma:
 - [x] **Abrir `/share/{token}` en la app** (App Links / Universal Links). — hecho con esquema propio `photonne://share/{token}?server=<origen>` (cada instalación tiene su dominio: no hay App Links/Universal Links verificables): intent-filter en Android, `CFBundleURLTypes` + `onOpenURL` en iOS, y botón "Abrir en la app" (solo móvil) en la página pública `Share.razor`. La app pinta el enlace (portada, rejilla, visor, contraseña) con `GET /api/share/{token}` contra el servidor que lo emitió, sin mandarle el token de sesión si es otro.
 - [x] **Estado "Sin conexión con <host>"** global en vez del error genérico de cada pantalla (`data/api/NetworkMonitor.kt`). — hecho: `ConnectivityMonitor` (red del `NetworkMonitor` + HEAD al servidor por la URL efectiva, disparado por cambios de red/URL, fallos de conexión y cada 15 s mientras dura el corte en primer plano) y píldora con "Reintentar" bajo el cromo, encima del snackbar. Las pantallas conservan su error propio (no se ocultan: sus mensajes no distinguen un fallo de red de otro).
 - [x] **Notificaciones del servidor fuera de la app**: consultar `unread-count` desde el worker periódico y publicarlo como notificación local. — parcial: Android hecho (worker propio de 15 min, no el del backup, que solo existe con el backup activo; canal "Actividad"; abre Notificaciones; interruptor "Avisos de actividad" en Ajustes, activado por defecto; se cancela al cerrar sesión). iOS pendiente: solo hay la BGProcessingTask del backup; haría falta una BGAppRefreshTask propia (Info.plist + AppDelegate) y notificaciones locales con `UNUserNotificationCenter`.
+
+---
+
+# Tercera auditoría (2026-09-30) — coherencia visual
+
+Cuatro revisores de solo lectura (shell, timeline, visor, mapa y recuerdos · álbumes, carpetas, biblioteca, personas y búsqueda · ajustes, backup, admin y login · primitivas y tokens transversales). Esta vez no se buscaban fallos funcionales sino si la app se ve y se comporta como una sola. Comprobados a mano: O1, O3, P1, P2, P3 y P4, y la cabecera de selección de R5. Descartados por falsos: "el cromo flotante solo se usa en un fichero" (son 43) y "no hay pull-to-refresh común" (existe `PhotonneRefreshableScreen`). Nada visto en dispositivo.
+
+Diagnóstico: las superficies de fotos (timeline, rejilla, visor, cromo, snackbars) son coherentes. Lo que falla es el sistema: el tema deja huecos que Material 3 rellena en lavanda, y faltan primitivas compartidas, así que cada pantalla fabrica sus filas, cabeceras y píldoras. Más, Ajustes, Admin y Backup parecen tres apps distintas.
+
+## Lote O — Tema
+
+- [ ] **O1. Contenedores secundario y terciario sin fijar** · S · `ui/theme/PhotonneTheme.kt:59-97`. `secondary = tertiary = primary`, pero `secondaryContainer`/`tertiaryContainer` quedan con los de Material (lavanda y malva). Los usan `MetaBadge`, las tarjetas de actualización e incompatibilidad de Más, el aviso de sesión caducada del login, el resumen de subida, el `FilterChip` seleccionado (11 sin colores propios), el ámbito del timeline y varias pantallas de admin.
+- [ ] **O2. Escalera `surfaceContainer*` sin fijar en claro** · S · el oscuro ya la tiene. En claro, las 34 hojas, los menús, los diálogos, los `DatePicker` y las pistas de `Switch` salen en gris lavanda.
+- [ ] **O3. Sin tono de aviso; éxito unas veces verde y otras oro** · S · `PhotonneColors` solo tiene `success`. "Pendiente" y "todo copiado" en Backup salen ambos en oro (`devicebackup/BackupScreen.kt:490-500`), lo mismo en Notificaciones (`notifications/NotificationsScreen.kt:378-384`) y Conexión (`settings/AccountConnectionScreen.kt:161,208`). Añadir `warning`/`onWarning` y usar `success` para todo estado correcto.
+
+## Lote P — Arreglos visuales sueltos
+
+- [ ] **P1. Miniaturas sin recortar** · S · `utilities/UtilitiesLargeFilesScreen.kt:226-240`, `UtilitiesDuplicatesScreen.kt:365-386`: fondo redondeado sin `.clip`, la foto sale con esquinas rectas; 64 frente a 72 dp.
+- [ ] **P2. El "libre" del donut de Almacenamiento no se ve** · S · `charts/ChartPalette.kt:31` pinta `surfaceVariant` sobre una tarjeta `surfaceVariant` (`settings/AccountStorageScreen.kt:151`). De paso, el azul/violeta Tailwind de la paleta a tokens y fuera `accent` (sin uso).
+- [ ] **P3. El detalle de recuerdo pierde el cristal** · S · `memories/MemoryDetailScreen.kt:128,151` pasan `hazeState = null`: cápsula gris sólida, la variante "tinte sin blur" ya rechazada.
+- [ ] **P4. Iconos y confirmaciones propios en la hoja de clúster del mapa** · S · `map/MapClusterSheet.kt:246,252`: candado para Archivar y `Add` para Añadir a álbum (el resto usa `Archive` y `AddToPhotos`); confirma Archivar cuando la barra común archiva con Deshacer; papelera confirma con "Eliminar" (también el visor, `AssetActionDialogs.kt:385`) y la barra con "Mover a la papelera". Desarchivar en la barra común lleva el icono de Archivar (`main/MainScaffold.kt:1234`).
+- [ ] **P5. Caras cuadradas en Sugerencias** · S · `people/PersonSuggestionsScreen.kt:230` (radio 12); círculo en el resto.
+- [ ] **P6. Colores fijos con token disponible** · S · pin del minimapa `0xFFE53935` (`asset/AssetDetailScreen.kt:2565`), insignia pendiente `0xFF424242` (`grid/AssetGrid.kt:542`), atribución OSM con dos estilos (`AssetDetailScreen.kt:2553` vs `map/MapScreen.kt:198`), marcador y clúster del mapa (`map/OsmMap.kt:87-90`).
+- [ ] **P7. Tres formateadores de bytes** · S · `format/ByteFormat.kt:7`, copia en `AccountStorageScreen.kt:364`, `formatBytes` en `upload/UploadScreen.kt:431` y `library/UnsupportedFilesScreen.kt:248`. "2.0 GB" frente a "2 GB", siempre con punto.
+- [ ] **P8. Literales en el visor y selectores** · S · "LIVE" (`AssetDetailScreen.kt:1695`), "HD"/"ORIG" (`:921`), `"max $it"` (`album/ShareDialogs.kt:228`), fechas ISO en filas de enlace y chips de búsqueda (`MyLinksScreen.kt:351`, `ShareDialogs.kt:268`, `search/SearchScreen.kt:313`).
+
+## Lote Q — Primitivas compartidas
+
+- [ ] **Q1. Filas de ajustes** · M · seis implementaciones con cuatro tratamientos de icono: `MoreRow` agrupada con círculo de 40 dp (`main/MoreScreen.kt:539`), tarjeta por fila con icono de 28 (`settings/AccountSettingsScreen.kt:161`, `utilities/UtilitiesHubScreen.kt:131`) o 24 (`admin/AdminHubScaffold.kt:55`), `SettingTile` cuadrado de 36 (`admin/AdminSettingsWidgets.kt:188`), Backup con la jerarquía invertida (`BackupScreen.kt:899`); cinco filas con interruptor; `IconPill` copiado (`BackupScreen.kt:964`, `MoreScreen.kt:582`); Apariencia con radios sueltos. Crear `SettingsGroup` + `SettingsItem(leading, headline, supporting, trailing)` con el estilo de Más como canon.
+- [ ] **Q2. Cabeceras de sección** · S-M · nueve variantes (`SectionLabel` ×5, `SectionHeader` ×3, más las de Más, Recuerdos, panel de info), de `labelLarge` a `titleMedium`. Una sola `SectionHeader`.
+- [ ] **Q3. Cabeceras de hoja** · S · 24 hojas con `titleLarge` y 9 con `titleMedium`, márgenes `lg` o `xl`, una sin título (`album/AlbumDetailSortSheet.kt`). `SheetHeader(title, subtitle)`.
+- [ ] **Q4. Filas y tarjetas de colección** · M · álbum (56 dp), carpeta (40), subcarpeta (40 con chevron y sin badges), bucket del dispositivo (56, radio 12, `bodyLarge`); tarjetas de entrada con tres estilos (Explorar, Para organizar/Mi dispositivo, hub de Utilidades); "Añadir a álbum" sin miniaturas. `CollectionRow` y `CollectionCard`.
+- [ ] **Q5. Cromo y píldoras** · S-M · cápsula copiada literal en `SubscreenChrome.kt:291`, `album/AlbumDetailScreen.kt:493`, `asset/AssetDetailScreen.kt:2913` y la del timeline (`MainScaffold.kt:758`); sombras 2/4/6 dp sin token; forma de cápsula escrita de cuatro maneras; fecha flotante con tres estilos (`FloatingDatePill.kt:81`, `TimelineScrubber.kt:377`, marcas de año). `ChromePill` + `ChromeElevation` + `PillShape`.
+- [ ] **Q6. Iconos** · S-M · Filled y Outlined mezclados para el mismo concepto (Carpeta 12/8, Editar 3/6, Buscar 7/12, CloudUpload dentro de `BackupScreen.kt:487-499`), Álbum como `Collections` o `PhotoAlbum`, Miembros como `Group` o `People`. `IconSize` con 3 usos; 18 dp ×20, 28 dp ×8, 14 dp ×6 fuera de escala. Objeto `PhotonneIcons` (Outlined por defecto, Filled para estado activo) y escalones `IconSize` que cubran 14/18/28 o normalizar.
+- [ ] **Q7. Velos** · S · 13 alfas de negro a mano frente a 9 usos de `PhotonneColors.scrim*`; blancos al 0.85/0.7/0.9. Mapear a los tres scrims y añadir `onScrim`/`onScrimMuted`. Insignias de la rejilla a `OverlayIconBadge` (`grid/AssetGrid.kt:441-474`).
+- [ ] **Q8. Diálogos de permisos clonados** · S · `folder/FolderPermissionDialogs.kt` y `album/PermissionDialogs.kt` solo difieren en textos y tipos. Un `PermissionsDialog` genérico.
+- [ ] **Q9. Radios literales** · S · 67 `RoundedCornerShape(N.dp)` frente a 38 `MaterialTheme.shapes`: 12 → `medium` (×20), 6 → `extraSmall` (×15), 16 → `large` (×7); fuera de escala 4, 5 y 20 dp. Miniaturas pequeñas `extraSmall`, tarjetas `medium`.
+- [ ] **Q10. Andamio de formulario copiado** · S · Perfil, Seguridad, Conexión, Apariencia y Ajustes repiten caja, haze, scroll y padding (`AccountSecurityScreen.kt:77`, etc.) mientras existe `AdminPageScaffold`. Generalizarlo como `FormPageScaffold`, con la guarda de cambios sin guardar de admin.
+- [ ] **Q11. Barras de progreso** · S · 2, 4 y 6 dp. Un token.
+
+## Lote R — Coherencia de interacción
+
+- [ ] **R1. Menús de colección con orden, texto e icono canónicos** · S · álbum: cápsula (Miembros, Editar, Salir, Borrar; `Group`) frente a ⋮ (Editar, Miembros…; `People`) (`MainScaffold.kt:1409-1460`, `AlbumDetailScreen.kt:677-701`); carpeta: "Renombrar" sin Mover frente a "Editar" con Mover (`MainScaffold.kt:1584-1688`). Iconos al principio de los ítems del ⋮ en unos menús sí y en otros no. Canon: Editar · Mover · Miembros · Salir · Borrar.
+- [ ] **R2. La hoja de clúster del mapa con rejilla y selección propias** · M · `map/MapClusterSheet.kt:231-306`: radio 4, separación 3, celda que se encoge, sin insignias. Reutilizar `AssetGrid` y las barras de selección comunes.
+- [ ] **R3. Error, carga y vacío** · S-M · error sin datos con `FullScreenError` en Álbumes, Personas, Archivados, Archivos grandes y con `ErrorBanner` suelto en Carpetas, detalles, Duplicados, Ubicaciones, Para organizar, Apartadas y enlace compartido; mapa y hoja de IA con error propio. Esqueletos que no se parecen al contenido: Personas (rejilla con filas), Álbumes en rejilla, Recuerdos (carruseles con filas). Vacíos sin `EmptyState` en Sugerencias y detalle de persona; icono de "sin resultados" de cuatro tipos.
+- [ ] **R4. Acciones "todo" en sitios distintos** · S · Archivados pone "Desarchivar todo" en la cápsula, la Papelera "Restaurar todo" en el ⋮; la Papelera usa `PrimaryTabRow` para Personal/Compartida y el resto `SegmentedChoiceRow`; Duplicados borra con un FAB.
+- [ ] **R5. Cabecera de selección acoplada** · M · *pide opciones*. Al entrar en selección la cápsula flotante pasa a un `TopAppBar` acoplado (`MainScaffold.kt:871`). Propuesta: cápsula esmerilada de selección (quita un cromo acoplado, no lo reintroduce).
+- [ ] **R6. Controles del mapa** · S · tres FAB opacos Filled, con `Home` para encuadrar (`map/MapScreen.kt:218-243`). Cápsula vertical de cristal.
+
+## Ideas de UX (nuevas)
+
+- [ ] Cabecera de Más con avatar y estado del backup tocable ("Todo copiado · hace 5 min" / "12 pendientes"); cuota como mini barra en la fila de Almacenamiento, en `warning` desde el 90 %.
+- [ ] Hub de Utilidades con cifras vivas ("3,2 GB recuperables", "14 no compatibles", "N duplicados").
+- [ ] Cápsula del visor con fecha y lugar junto a Atrás; tocarla abre el panel de info.
+- [ ] Selección múltiple de álbumes y carpetas (borrar, salir, mover en bloque).
+- [ ] Mapa con hoja persistente a media altura que se actualiza al paner.
+- [ ] Selector de tema con tres miniaturas en vez de radios.
+- [ ] Aviso de cambios sin guardar en Perfil y Conexión (sale con Q10).
+- [ ] Álbumes fijados arriba; tarjetas de Explorar con contenido real (caras, minimapa) en vez de iconos.
