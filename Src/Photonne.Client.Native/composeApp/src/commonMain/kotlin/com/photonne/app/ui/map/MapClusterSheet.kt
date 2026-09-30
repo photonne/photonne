@@ -19,11 +19,11 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.AddToPhotos
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,7 +47,6 @@ import coil3.compose.AsyncImage
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.asset_trash_title
 import com.photonne.app.resources.map_cluster_sheet_title
 import com.photonne.app.resources.selection_action_add_to_album
@@ -131,7 +130,7 @@ fun MapClusterSheet(
                 selectedIds.size
             ),
             confirmLabel = stringResource(
-                if (trashEnabled) Res.string.action_delete
+                if (trashEnabled) Res.string.selection_action_trash
                 else Res.string.trash_disabled_delete_confirm
             ),
             isDestructive = true,
@@ -244,13 +243,13 @@ private fun SelectionHeader(
         }
         IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
             Icon(
-                Icons.Filled.Add,
+                Icons.Outlined.AddToPhotos,
                 contentDescription = stringResource(Res.string.selection_action_add_to_album)
             )
         }
         IconButton(onClick = onArchive, enabled = !isMutating) {
             Icon(
-                Icons.Filled.Lock,
+                Icons.Outlined.Archive,
                 contentDescription = stringResource(Res.string.selection_action_archive)
             )
         }

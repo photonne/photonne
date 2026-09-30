@@ -1671,4 +1671,8 @@
         <item quantity="one">Se conserva %1$d condición más creada en la web; aquí no se puede editar.</item>
         <item quantity="other">Se conservan %1$d condiciones más creadas en la web; aquí no se pueden editar.</item>
     </plurals>
+    <string name="asset_live_badge">LIVE</string>
+    <string name="asset_live_play">Ver foto en movimiento</string>
+    <string name="asset_quality_preview">HD</string>
+    <string name="asset_quality_original">ORIG</string>
 </resources>

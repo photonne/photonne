@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -39,7 +39,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -58,6 +57,7 @@ import com.photonne.app.resources.people_suggestions_dismiss
 import com.photonne.app.resources.people_suggestions_empty
 import com.photonne.app.resources.people_suggestions_title
 import com.photonne.app.resources.people_unnamed
+import com.photonne.app.ui.theme.PhotonneColors
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -227,7 +227,7 @@ private fun SuggestionCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             AsyncImage(
@@ -239,7 +239,7 @@ private fun SuggestionCard(
             if (isPending) {
                 Box(
                     modifier = Modifier.fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
+                        .background(PhotonneColors.scrimLight),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(

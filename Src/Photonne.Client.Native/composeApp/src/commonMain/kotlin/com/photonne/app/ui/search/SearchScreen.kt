@@ -310,7 +310,10 @@ private fun ActiveFiltersRow(state: SearchUiState, onClick: () -> Unit = {}) {
     val chips = remember(state) {
         buildList {
             if (state.from != null || state.to != null) {
-                add(state.from?.toString().orEmpty() + " — " + state.to?.toString().orEmpty())
+                add(
+                    state.from?.let(::formatFilterDate).orEmpty() + " — " +
+                        state.to?.let(::formatFilterDate).orEmpty()
+                )
             }
             if (state.ocrText.isNotBlank()) add("OCR: ${state.ocrText}")
             if (state.selectedPersonIds.isNotEmpty()) {

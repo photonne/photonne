@@ -1,5 +1,6 @@
 package com.photonne.app.ui.utilities
 
+import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,11 +21,11 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.IconSize
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Storage
@@ -226,10 +227,8 @@ private fun LargeFileRow(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surface,
-                        shape = RoundedCornerShape(6.dp)
-                    )
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 if (item.hasThumbnails) {
                     AsyncImage(
@@ -247,7 +246,7 @@ private fun LargeFileRow(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .padding(Spacing.xxs)
-                            .size(14.dp)
+                            .size(IconSize.sm)
                     )
                 }
             }

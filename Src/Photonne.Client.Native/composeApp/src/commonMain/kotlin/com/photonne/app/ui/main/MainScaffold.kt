@@ -65,6 +65,7 @@ import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.filled.Tune
@@ -1231,7 +1232,13 @@ fun AssetSelectionBottomBar(
                                     )
                                 )
                             },
-                            leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
+                            leadingIcon = {
+                                Icon(
+                                    if (archiveMode == ArchiveMode.Unarchive) Icons.Outlined.Unarchive
+                                    else Icons.Outlined.Archive,
+                                    contentDescription = null
+                                )
+                            },
                             onClick = {
                                 menuOpen = false
                                 runUndoable(

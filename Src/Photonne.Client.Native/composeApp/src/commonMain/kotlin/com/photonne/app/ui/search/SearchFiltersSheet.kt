@@ -326,7 +326,7 @@ private fun DateFieldPicker(
 }
 
 /** Fecha corta legible ("12 mar 2024" según la plataforma), no ISO crudo. */
-private fun formatFilterDate(date: LocalDate): String =
+internal fun formatFilterDate(date: LocalDate): String =
     com.photonne.app.ui.settings.formatProfileDate(
         date.atStartOfDayIn(TimeZone.UTC)
     )

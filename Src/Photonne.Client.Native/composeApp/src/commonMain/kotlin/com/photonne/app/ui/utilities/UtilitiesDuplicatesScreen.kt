@@ -1,5 +1,6 @@
 package com.photonne.app.ui.utilities
 
+import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,17 +17,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.IconSize
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -62,7 +64,6 @@ import com.photonne.app.resources.selection_deleted_permanently_done
 import com.photonne.app.resources.trash_disabled_delete_confirm
 import com.photonne.app.resources.trash_disabled_delete_message
 import com.photonne.app.resources.trash_disabled_delete_title
-import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.utilities_duplicates_action_auto_select
@@ -267,7 +268,7 @@ fun UtilitiesDuplicatesScreen(
                 state.totalSelectedCount
             ),
             confirmLabel = stringResource(
-                if (trashEnabled) Res.string.action_delete
+                if (trashEnabled) Res.string.selection_action_trash
                 else Res.string.trash_disabled_delete_confirm
             ),
             isDestructive = true,
@@ -365,16 +366,14 @@ private fun DuplicateAssetRow(
         Box(
             modifier = Modifier
                 .size(72.dp)
-                .background(
-                    MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(6.dp)
-                )
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(MaterialTheme.colorScheme.surface)
                 .border(
                     width = if (isSelected) 2.dp else 0.dp,
                     color = if (isSelected) {
                         MaterialTheme.colorScheme.primary
                     } else Color.Transparent,
-                    shape = RoundedCornerShape(6.dp)
+                    shape = MaterialTheme.shapes.extraSmall
                 )
         ) {
             if (asset.hasThumbnails) {

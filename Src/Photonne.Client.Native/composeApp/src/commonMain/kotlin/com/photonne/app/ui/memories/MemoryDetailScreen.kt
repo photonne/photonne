@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,8 @@ import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.pluralStringResource
 import com.photonne.app.ui.theme.Spacing
 
@@ -89,6 +92,9 @@ fun MemoryDetailScreen(
         enabled = onItemLongClick != null
     )
     val selectionActive = gestures.chromeSelectionActive(selection.isNotEmpty())
+    // La rejilla es la fuente del blur: sin ella la cápsula caía al gris
+    // sólido, justo el "tinte sin blur" que se descartó para el cromo.
+    val hazeState = remember { HazeState() }
     // Opaque: this draws over the tab that opened it, and a transparent
     // background would let the timeline show through the grid's gaps.
     Box(
@@ -101,6 +107,7 @@ fun MemoryDetailScreen(
             // shows it as-is — grouping by date would throw that away.
             items = memory.items,
             baseUrl = baseUrl,
+            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
             gridState = gridState,
             onItemClick = onItemClick,
             onItemLongClick = onItemLongClick,
@@ -125,7 +132,7 @@ fun MemoryDetailScreen(
             reservedTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
             reservedBottom = 24.dp,
             selectionActive = selectionActive,
-            hazeState = null,
+            hazeState = hazeState,
         )
 
         if (selectionActive) {
@@ -148,7 +155,7 @@ fun MemoryDetailScreen(
                     scrollToTopMinIndex = 12,
                     onScrollToTop = { gridState.animateScrollToItem(0) }
                 ),
-                hazeState = null
+                hazeState = hazeState
             )
         }
     }

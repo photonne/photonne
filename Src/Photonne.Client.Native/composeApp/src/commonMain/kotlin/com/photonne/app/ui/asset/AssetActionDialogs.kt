@@ -32,10 +32,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.CaptureDateSuggestion
+import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
-import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.asset_date_dialog_title
 import com.photonne.app.resources.asset_date_readonly_note
@@ -383,7 +383,7 @@ fun TrashAssetDialog(
             stringResource(Res.string.asset_trash_message, fileName)
         },
         confirmLabel = stringResource(
-            if (permanent) Res.string.trash_disabled_delete_confirm else Res.string.action_delete
+            if (permanent) Res.string.trash_disabled_delete_confirm else Res.string.selection_action_trash
         ),
         isDestructive = true,
         isSubmitting = false,

@@ -1661,4 +1661,8 @@
         <item quantity="one">%1$d more condition set up on the web is kept; it can\'t be edited here.</item>
         <item quantity="other">%1$d more conditions set up on the web are kept; they can\'t be edited here.</item>
     </plurals>
+    <string name="asset_live_badge">LIVE</string>
+    <string name="asset_live_play">Play Live Photo</string>
+    <string name="asset_quality_preview">HD</string>
+    <string name="asset_quality_original">ORIG</string>
 </resources>

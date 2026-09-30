@@ -1,5 +1,6 @@
 package com.photonne.app.ui.asset
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -152,6 +153,10 @@ import com.photonne.app.resources.asset_auto_tag_portrait
 import com.photonne.app.resources.asset_auto_tag_motion_part
 import com.photonne.app.resources.asset_detail_faces_count
 import com.photonne.app.resources.action_cancel
+import com.photonne.app.resources.asset_live_badge
+import com.photonne.app.resources.asset_live_play
+import com.photonne.app.resources.asset_quality_original
+import com.photonne.app.resources.asset_quality_preview
 import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.ChromeBaseGrayDark
 import com.photonne.app.ui.main.LocalSnackbarController
@@ -160,6 +165,8 @@ import com.photonne.app.ui.main.FloatingNavBarBottomMargin
 import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
 import com.photonne.app.ui.main.FloatingNavBarShape
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import com.photonne.app.ui.map.MapAttribution
+import com.photonne.app.ui.map.MapPinColor
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.draw.alpha
@@ -920,7 +927,10 @@ fun AssetDetailScreen(
                                 }
                             ) {
                                 Text(
-                                    text = if (currentShowingOriginal) "ORIG" else "HD",
+                                    text = stringResource(
+                                        if (currentShowingOriginal) Res.string.asset_quality_original
+                                        else Res.string.asset_quality_preview
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (currentShowingOriginal) {
                                         MaterialTheme.colorScheme.primary
@@ -1552,7 +1562,9 @@ private fun LivePhotoPage(
             active = playing,
             // Idle: a tappable pill that plays the clip once. While playing it
             // just confirms "LIVE" (hold releases on lift; tap-once auto-reverts).
-            label = if (playing) "LIVE" else "Ver foto en movimiento",
+            label = stringResource(
+                if (playing) Res.string.asset_live_badge else Res.string.asset_live_play
+            ),
             onClick = if (enabled && !playing) {
                 { motionPlay = MotionPlay.TapOnce }
             } else null,
@@ -1692,12 +1704,12 @@ private suspend fun PointerInputScope.detectLivePhotoHold(
 private fun LivePhotoBadge(
     active: Boolean,
     modifier: Modifier = Modifier,
-    label: String = "LIVE",
+    label: String,
     onClick: (() -> Unit)? = null
 ) {
     Surface(
         modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
-        shape = RoundedCornerShape(20.dp),
+        shape = CircleShape,
         color = Color.Transparent,
         contentColor = Color.White
     ) {
@@ -1819,7 +1831,7 @@ private fun AssetMetadataPanel(
                 val megapixels = width.toLong() * height.toLong() / 1_000_000.0
                 add(StatCell(icon = Icons.Outlined.AspectRatio, value = "${formatOneDecimal(megapixels)} MP", label = "$width × $height"))
             }
-            add(StatCell(icon = Icons.Outlined.Storage, value = formatBytes(detail?.fileSize ?: fallback.fileSize), label = stringResource(Res.string.asset_detail_size)))
+            add(StatCell(icon = Icons.Outlined.Storage, value = humanBytes(detail?.fileSize ?: fallback.fileSize), label = stringResource(Res.string.asset_detail_size)))
             exif?.iso?.let { add(StatCell(icon = Icons.Outlined.Iso, value = "ISO $it", label = stringResource(Res.string.asset_detail_iso))) }
             exif?.aperture?.let { add(StatCell(icon = Icons.Outlined.Camera, value = "f/$it", label = stringResource(Res.string.asset_detail_aperture))) }
             exif?.shutterSpeed?.let { add(StatCell(icon = Icons.Outlined.ShutterSpeed, value = formatShutter(it), label = stringResource(Res.string.asset_detail_shutter))) }
@@ -2546,23 +2558,14 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                 }
             }
             // Condición de uso de las teselas de OSM: atribución sobre el mapa.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(Spacing.sm)
-                    .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = Spacing.xxs)
-            ) {
-                Text(
-                    text = stringResource(Res.string.map_attribution_osm),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
+            MapAttribution(
+                text = stringResource(Res.string.map_attribution_osm),
+                modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.sm)
+            )
             Icon(
                 imageVector = Icons.Filled.LocationOn,
                 contentDescription = stringResource(Res.string.asset_metadata_open_map),
-                tint = Color(0xFFE53935),
+                tint = MapPinColor,
                 modifier = Modifier
                     .align(Alignment.Center)
                     .offset(y = (-15).dp)
@@ -2653,7 +2656,6 @@ private fun MetadataRow(label: String, value: String) {
 
 // Reutiliza el formateador compartido (separador según configuración regional)
 // en lugar del "." a fuego que llevaba la copia local.
-private fun formatBytes(bytes: Long): String = humanBytes(bytes)
 
 /**
  * Fecha localizada ("17 sept 2026 12:33") en vez del ISO crudo

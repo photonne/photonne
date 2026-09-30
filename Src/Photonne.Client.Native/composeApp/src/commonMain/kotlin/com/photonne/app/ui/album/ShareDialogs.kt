@@ -66,6 +66,7 @@ import com.photonne.app.resources.share_action_revoke
 import com.photonne.app.resources.share_action_share_failed
 import com.photonne.app.resources.share_action_share_link
 import com.photonne.app.resources.share_attribute_expiry_format
+import com.photonne.app.resources.share_attribute_max_views_format
 import com.photonne.app.resources.share_attribute_no_downloads
 import com.photonne.app.resources.share_attribute_password
 import com.photonne.app.resources.share_attribute_upload
@@ -90,6 +91,7 @@ import com.photonne.app.resources.share_password_keep
 import com.photonne.app.resources.share_password_remove
 import com.photonne.app.resources.share_title
 import com.photonne.app.ui.main.LocalSnackbarController
+import com.photonne.app.ui.settings.formatProfileDate
 import kotlin.time.Instant
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -218,12 +220,16 @@ private fun ShareLinkRow(
             val noDownloadsAttr = stringResource(Res.string.share_attribute_no_downloads)
             val viewsAttr = pluralStringResource(Res.plurals.share_attribute_views_format, link.viewCount, link.viewCount)
             val expiryFormat = stringResource(Res.string.share_attribute_expiry_format, "")
+            val maxViewsAttr = stringResource(
+                Res.string.share_attribute_max_views_format,
+                link.maxViews ?: 0
+            )
             val uploadAttr = stringResource(Res.string.share_attribute_upload)
             val uploadsAttr = stringResource(Res.string.share_attribute_uploads_format, link.uploadCount)
             val attrs = buildList {
                 if (link.hasPassword) add(passwordAttr)
                 link.expiresAt?.let { add(expiryFormat.trim() + " " + formatExpiry(it)) }
-                link.maxViews?.let { add("max $it") }
+                link.maxViews?.let { add(maxViewsAttr) }
                 add(viewsAttr)
                 if (!link.allowDownload) add(noDownloadsAttr)
                 if (link.allowUpload) {
@@ -267,10 +273,8 @@ private fun ShareLinkRow(
     }
 }
 
-private fun formatExpiry(instant: Instant): String {
-    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-    return date.toString()
-}
+/** Fecha corta legible ("12 mar 2024" según la plataforma), no ISO crudo. */
+private fun formatExpiry(instant: Instant): String = formatProfileDate(instant)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -539,7 +539,7 @@ private fun LocalSyncBadge(badge: LocalSyncBadge, modifier: Modifier = Modifier)
     // colours because they signal active work or an error.
     val (bg, icon) = when (badge) {
         LocalSyncBadge.Pending ->
-            Color(0xFF424242).copy(alpha = 0.7f) to Icons.Filled.CloudUpload
+            PhotonneColors.scrimMedium to Icons.Filled.CloudUpload
         LocalSyncBadge.Uploading ->
             MaterialTheme.colorScheme.tertiary to Icons.Filled.CloudUpload
         LocalSyncBadge.Failed ->

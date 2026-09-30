@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -221,7 +222,7 @@ private fun UnsupportedFileRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "${file.extension} · ${formatBytes(file.fileSize)}",
+                text = "${file.extension} · ${humanBytes(file.fileSize)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -245,15 +246,3 @@ private fun UnsupportedFileRow(
     }
 }
 
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = listOf("KB", "MB", "GB", "TB")
-    var value = bytes.toDouble()
-    var unit = ""
-    for (u in units) {
-        value /= 1024.0
-        unit = u
-        if (value < 1024) break
-    }
-    return "${(value * 10).toLong() / 10.0} $unit"
-}

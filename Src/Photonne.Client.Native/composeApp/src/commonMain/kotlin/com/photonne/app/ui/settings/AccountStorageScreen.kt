@@ -50,6 +50,7 @@ import com.photonne.app.ui.charts.LegendItem
 import com.photonne.app.ui.charts.StackedBar
 import com.photonne.app.ui.charts.StackedSegment
 import com.photonne.app.ui.charts.rememberChartPalette
+import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -143,7 +144,7 @@ private fun SectionHeader(text: String) {
 @Composable
 private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentInt: Int?) {
     val palette = rememberChartPalette()
-    val usedHuman = humanReadableBytes(info.usedBytes)
+    val usedHuman = humanBytes(info.usedBytes)
     val quota = info.quotaBytes
 
     Card(
@@ -167,13 +168,13 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
             if (quota != null && percentInt != null) {
                 val remaining = (quota - info.usedBytes).coerceAtLeast(0L)
                 chartDescription = stringResource(Res.string.storage_legend_used) + " " + usedHuman +
-                    ", " + stringResource(Res.string.storage_legend_free) + " " + humanReadableBytes(remaining)
+                    ", " + stringResource(Res.string.storage_legend_free) + " " + humanBytes(remaining)
                 slices = listOf(
                     DonutSlice(info.usedBytes.toFloat().coerceAtLeast(0f), palette.photos),
                     DonutSlice(remaining.toFloat().coerceAtLeast(0f), palette.free)
                 )
                 centerPrimary = "$percentInt%"
-                centerSecondary = humanReadableBytes(quota)
+                centerSecondary = humanBytes(quota)
             } else {
                 slices = listOf(
                     DonutSlice(info.photoBytes.toFloat().coerceAtLeast(0f), palette.photos),
@@ -182,8 +183,8 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
                 centerPrimary = usedHuman
                 centerSecondary = null
                 chartDescription = stringResource(Res.string.storage_label_photos) + " " +
-                    humanReadableBytes(info.photoBytes) + ", " +
-                    stringResource(Res.string.storage_label_videos) + " " + humanReadableBytes(info.videoBytes)
+                    humanBytes(info.photoBytes) + ", " +
+                    stringResource(Res.string.storage_label_videos) + " " + humanBytes(info.videoBytes)
             }
             DonutChart(
                 slices = slices,
@@ -215,7 +216,7 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
                         text = stringResource(
                             Res.string.storage_used_percent_format,
                             usedHuman,
-                            humanReadableBytes(quota),
+                            humanBytes(quota),
                             percentInt
                         ),
                         style = MaterialTheme.typography.titleMedium
@@ -224,7 +225,7 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
                     Text(
                         stringResource(
                             Res.string.storage_remaining_format,
-                            humanReadableBytes(remaining)
+                            humanBytes(remaining)
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -319,8 +320,8 @@ private fun BreakdownChart(photoBytes: Long, videoBytes: Long) {
         ),
         trackColor = MaterialTheme.colorScheme.surface,
         barHeight = 10.dp,
-        description = stringResource(Res.string.storage_label_photos) + " " + humanReadableBytes(photoBytes) +
-            ", " + stringResource(Res.string.storage_label_videos) + " " + humanReadableBytes(videoBytes)
+        description = stringResource(Res.string.storage_label_photos) + " " + humanBytes(photoBytes) +
+            ", " + stringResource(Res.string.storage_label_videos) + " " + humanBytes(videoBytes)
     )
 }
 
@@ -331,7 +332,7 @@ private fun BreakdownRows(photos: Int, videos: Int, photoBytes: Long, videoBytes
         value = stringResource(
             Res.string.storage_count_size_format,
             photos,
-            humanReadableBytes(photoBytes)
+            humanBytes(photoBytes)
         )
     )
     StorageRow(
@@ -339,13 +340,13 @@ private fun BreakdownRows(photos: Int, videos: Int, photoBytes: Long, videoBytes
         value = stringResource(
             Res.string.storage_count_size_format,
             videos,
-            humanReadableBytes(videoBytes)
+            humanBytes(videoBytes)
         )
     )
     HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
     StorageRow(
         label = stringResource(Res.string.storage_label_total),
-        value = humanReadableBytes(photoBytes + videoBytes)
+        value = humanBytes(photoBytes + videoBytes)
     )
 }
 
@@ -360,16 +361,3 @@ private fun StorageRow(label: String, value: String) {
     }
 }
 
-/** 1024-based with two decimals up to TB; mirrors what the web client renders. */
-private fun humanReadableBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = arrayOf("KB", "MB", "GB", "TB")
-    var value = bytes.toDouble() / 1024.0
-    var unitIndex = 0
-    while (value >= 1024.0 && unitIndex < units.lastIndex) {
-        value /= 1024.0
-        unitIndex++
-    }
-    val formatted = ((value * 100).toLong()).toDouble() / 100.0
-    return "$formatted ${units[unitIndex]}"
-}

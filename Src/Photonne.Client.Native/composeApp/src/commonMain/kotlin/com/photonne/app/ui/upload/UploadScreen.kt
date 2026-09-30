@@ -36,6 +36,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
+import com.photonne.app.ui.format.humanBytes
 import org.jetbrains.compose.resources.pluralStringResource
 import com.photonne.app.resources.upload_batch_done
 import com.photonne.app.resources.upload_batch_view
@@ -308,7 +309,7 @@ private fun UploadRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                formatBytes(item.sizeBytes),
+                humanBytes(item.sizeBytes),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -428,18 +429,3 @@ private fun RowAction(
     }
 }
 
-private fun formatBytes(size: Long): String {
-    if (size < 1024) return "$size B"
-    val kb = size / 1024.0
-    if (kb < 1024) return "${kb.format1()} KB"
-    val mb = kb / 1024.0
-    if (mb < 1024) return "${mb.format1()} MB"
-    val gb = mb / 1024.0
-    return "${gb.format1()} GB"
-}
-
-private fun Double.format1(): String {
-    val rounded = ((this * 10).toLong().toDouble()) / 10.0
-    val s = rounded.toString()
-    return if (s.endsWith(".0")) s.dropLast(2) else s
-}

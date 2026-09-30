@@ -24,6 +24,7 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.settings.formatProfileDate
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
@@ -77,8 +78,6 @@ import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlin.time.Instant
 import kotlinx.coroutines.launch
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -349,8 +348,8 @@ private fun MyLinkRow(
     }
 }
 
-private fun formatDate(instant: Instant): String =
-    instant.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+/** Fecha corta legible ("12 mar 2024" según la plataforma), no ISO crudo. */
+private fun formatDate(instant: Instant): String = formatProfileDate(instant)
 
 private fun resolveUrl(url: String, baseUrl: String): String {
     if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {

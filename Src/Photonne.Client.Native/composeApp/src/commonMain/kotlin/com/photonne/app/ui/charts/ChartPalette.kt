@@ -10,13 +10,17 @@ import com.photonne.app.ui.theme.LocalIsDarkTheme
  * Shared chart colors used across the storage donut, stacked bars and
  * top-N bars. Photos lean on the brand gold (primary), videos on a
  * complementary cool tone so the two are easy to tell apart even on a
- * grayscale donut; "free" / inactive segments fall back to surfaceVariant.
+ * grayscale donut. This file is the single home for chart colours: the
+ * blue is the only hue in the app outside the theme, on purpose.
+ *
+ * "Free" / inactive segments are a translucent onSurfaceVariant rather than
+ * surfaceVariant: the storage donut sits on a surfaceVariant card, so that
+ * slice (and its legend dot) used to vanish.
  */
 data class ChartPalette(
     val photos: Color,
     val videos: Color,
-    val free: Color,
-    val accent: Color
+    val free: Color
 )
 
 @Composable
@@ -24,11 +28,10 @@ data class ChartPalette(
 fun rememberChartPalette(): ChartPalette {
     val isDark = LocalIsDarkTheme.current
     val primary = MaterialTheme.colorScheme.primary
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     return ChartPalette(
         photos = primary,
         videos = if (isDark) Color(0xFF93C5FD) else Color(0xFF3B82F6),
-        free = surfaceVariant,
-        accent = if (isDark) Color(0xFFA78BFA) else Color(0xFF7C3AED)
+        free = muted.copy(alpha = 0.25f)
     )
 }

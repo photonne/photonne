@@ -190,20 +190,12 @@ fun MapScreen(
 
         // Condición de uso de las teselas de OSM y CARTO: la atribución debe
         // estar visible sobre el propio mapa.
-        Surface(
+        MapAttribution(
+            text = stringResource(Res.string.map_attribution),
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 16.dp, bottom = floatingNavBarReservedHeight() + 16.dp),
-            shape = RoundedCornerShape(6.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-        ) {
-            Text(
-                stringResource(Res.string.map_attribution),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = Spacing.xxs),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+                .padding(start = Spacing.lg, bottom = floatingNavBarReservedHeight() + Spacing.lg)
+        )
 
         Column(
             modifier = Modifier
