@@ -5,16 +5,10 @@ package com.photonne.app
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -36,26 +30,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
-import com.photonne.app.resources.notifications_no_screen
-import com.photonne.app.resources.organize_skipped_done
-import com.photonne.app.resources.organize_excluded_included_done
-import com.photonne.app.resources.organize_excluded_action_include
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Text
 import com.photonne.app.resources.action_undo
-import com.photonne.app.resources.album_trash_warning
-import com.photonne.app.resources.album_trash_warning_shared
 import com.photonne.app.resources.selection_trash_blocked_foreign
 import com.photonne.app.resources.selection_move_blocked_read_only
-import com.photonne.app.resources.selection_trash_blocked_folder
 import com.photonne.app.resources.selection_restore_done
-import com.photonne.app.resources.people_recluster_done
-import com.photonne.app.resources.people_recluster_done_none
 import com.photonne.app.resources.selection_added_to_album_done
 import com.photonne.app.resources.selection_archive_done
 import com.photonne.app.resources.selection_unarchive_done
 import com.photonne.app.resources.selection_moved_to_folder_done
-import com.photonne.app.resources.selection_removed_from_album_done
 import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.selection_favorite_added_done
 import com.photonne.app.resources.selection_favorite_removed_done
@@ -63,22 +45,8 @@ import com.photonne.app.resources.selection_favorite_failed
 import com.photonne.app.resources.selection_deleted_permanently_done
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_system_enrichment_failures
-import com.photonne.app.resources.account_section_appearance
-import com.photonne.app.resources.account_section_profile
-import com.photonne.app.resources.account_section_security
-import com.photonne.app.resources.account_section_storage
-import com.photonne.app.resources.account_section_connection
-import com.photonne.app.resources.account_settings_title
-import com.photonne.app.resources.admin_section_libraries
-import com.photonne.app.resources.admin_shared_trash
 import com.photonne.app.resources.admin_section_settings
-import com.photonne.app.resources.admin_section_stats
 import com.photonne.app.resources.admin_section_system
-import com.photonne.app.resources.admin_section_users
-import com.photonne.app.resources.admin_libraries_action_new
-import com.photonne.app.resources.admin_libraries_edit_title
-import com.photonne.app.resources.admin_user_action_new
-import com.photonne.app.resources.admin_user_edit_title
 import com.photonne.app.resources.admin_settings_face_recognition
 import com.photonne.app.resources.admin_settings_image
 import com.photonne.app.resources.admin_settings_image_embedding
@@ -95,38 +63,15 @@ import com.photonne.app.resources.admin_settings_version
 import com.photonne.app.resources.admin_system_backup
 import com.photonne.app.resources.admin_system_duplicates
 import com.photonne.app.resources.admin_system_run_tasks
-import com.photonne.app.resources.administration_title
-import com.photonne.app.resources.organize_rule_title
-import com.photonne.app.resources.album_bulk_delete_not_allowed
-import com.photonne.app.resources.folder_bulk_delete_not_allowed
-import com.photonne.app.resources.notifications_title
-import com.photonne.app.resources.backup_pending_screen_title
-import com.photonne.app.resources.device_backup_action_select_all
-import com.photonne.app.resources.enrichment_screen_title
-import com.photonne.app.resources.device_backup_title
-import com.photonne.app.resources.trash_title
-import com.photonne.app.resources.upload_subtitle_pending
-import com.photonne.app.resources.upload_title
-import com.photonne.app.resources.utilities_section_duplicates
-import com.photonne.app.resources.utilities_duplicates_action_delete
-import com.photonne.app.resources.utilities_section_large_files
-import com.photonne.app.resources.utilities_section_locations
-import com.photonne.app.resources.utilities_title
-import com.photonne.app.resources.my_links_title
 import org.jetbrains.compose.resources.pluralStringResource
-import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
-import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.ui.navigation.PlatformBackHandler
-import com.photonne.app.ui.album.AlbumDetailScreen
 import com.photonne.app.ui.album.AlbumDetailViewModel
 import com.photonne.app.ui.album.AlbumPermissionsViewModel
 import com.photonne.app.ui.album.AlbumSharesViewModel
-import com.photonne.app.ui.album.AlbumsListScreen
 import com.photonne.app.ui.album.AlbumsViewModel
-import com.photonne.app.data.models.AlbumShareLink
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -146,25 +91,14 @@ import com.photonne.app.ui.folder.FoldersViewModel
 import com.photonne.app.ui.image.buildPhotonneImageLoader
 import com.photonne.app.ui.login.LoginScreen
 import com.photonne.app.ui.actions.AssetActionWorking
-import com.photonne.app.ui.main.ArchiveMode
 import com.photonne.app.ui.main.LocalSnackbarController
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeState
 import com.photonne.app.ui.main.rememberSnackbarController
 import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.AssetSelectionTopBar
-import com.photonne.app.ui.main.FolderDetailChromeActions
-import com.photonne.app.ui.library.TrashChromeActions
 import com.photonne.app.ui.main.MainScaffold
-import com.photonne.app.ui.main.toMoreBackupStatus
 import com.photonne.app.ui.main.MainTab
-import com.photonne.app.ui.main.MoreScreen
 import com.photonne.app.ui.theme.PhotonneTheme
-import com.photonne.app.ui.timeline.TimelineScreen
 import com.photonne.app.ui.timeline.TimelineViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.launch
@@ -276,7 +210,7 @@ internal enum class MoreSubscreen {
 
 /** True when the given subscreen is one of the 14 Ajustes leaves so the
  *  top bar / back button can be configured generically. */
-private fun isAdminSettingsSubpage(subscreen: MoreSubscreen?): Boolean = when (subscreen) {
+internal fun isAdminSettingsSubpage(subscreen: MoreSubscreen?): Boolean = when (subscreen) {
     MoreSubscreen.AdminSettingsFaceRecognition,
     MoreSubscreen.AdminSettingsObjectDetection,
     MoreSubscreen.AdminSettingsSceneClassification,
@@ -302,7 +236,7 @@ private fun isAdminRunTasksDetail(subscreen: MoreSubscreen?): Boolean = when (su
     else -> false
 }
 
-private fun isAdminSystemSubpage(subscreen: MoreSubscreen?): Boolean = when (subscreen) {
+internal fun isAdminSystemSubpage(subscreen: MoreSubscreen?): Boolean = when (subscreen) {
     MoreSubscreen.AdminSystemRunTasks,
     MoreSubscreen.AdminSystemDuplicates,
     MoreSubscreen.AdminSystemEnrichmentFailures,
@@ -419,7 +353,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
 /** Build a thin TimelineItem out of a map point so the asset viewer
  * can be seeded without an extra fetch — it re-queries AssetDetail
  * on display, so most fields can stay blank. */
-private fun com.photonne.app.data.models.MapPoint.toSyntheticTimelineItem():
+internal fun com.photonne.app.data.models.MapPoint.toSyntheticTimelineItem():
     com.photonne.app.data.models.TimelineItem =
     com.photonne.app.data.models.TimelineItem(
         id = id,
@@ -436,7 +370,7 @@ private fun com.photonne.app.data.models.MapPoint.toSyntheticTimelineItem():
 
 /** Same trick for a failures-registry row: the viewer re-queries the
  * asset detail by id, so the registry's id + capture date are enough. */
-private fun com.photonne.app.data.api.AdminEnrichmentFailureDto.toSyntheticTimelineItem():
+internal fun com.photonne.app.data.api.AdminEnrichmentFailureDto.toSyntheticTimelineItem():
     com.photonne.app.data.models.TimelineItem {
     val date = fileCreatedAt ?: kotlin.time.Instant.DISTANT_PAST
     return com.photonne.app.data.models.TimelineItem(
@@ -640,9 +574,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // silent — an unreachable server has bigger problems than a missing credit,
     // and the README carries the attribution regardless.
     val photonneApi: com.photonne.app.data.api.PhotonneApi = koinInject()
-    var attributions by remember {
+    val attributionsState = remember {
         mutableStateOf<List<com.photonne.app.data.models.Attribution>>(emptyList())
     }
+    var attributions by attributionsState
     LaunchedEffect(apiBaseUrl) {
         runCatching { photonneApi.getAttributions() }
             .onSuccess { attributions = it }
@@ -686,14 +621,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val enrichmentStatusViewModel: com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel = koinViewModel()
     val utilitiesDuplicatesViewModel:
         com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel = koinViewModel()
-    val utilitiesDuplicatesState by utilitiesDuplicatesViewModel.state.collectAsStateWithLifecycle()
+    val utilitiesDuplicatesStateRef = utilitiesDuplicatesViewModel.state.collectAsStateWithLifecycle()
     val utilitiesLargeFilesViewModel:
         com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel = koinViewModel()
     val utilitiesLocationsViewModel:
         com.photonne.app.ui.utilities.UtilitiesLocationsViewModel = koinViewModel()
     val exploreFacetsViewModel:
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
-    val memoriesState by memoriesViewModel.state.collectAsStateWithLifecycle()
+    val memoriesStateRef = memoriesViewModel.state.collectAsStateWithLifecycle()
     // Lote L9: "en este día" caduca a medianoche; al volver a primer plano en
     // otro día la tira se recarga.
     val memoriesLifecycleOwner = LocalLifecycleOwner.current
@@ -706,10 +641,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     val activityNotifications: com.photonne.app.data.notifications.ActivityNotifications =
         koinInject()
-    val activityNotificationsEnabled by activityNotifications.enabled.collectAsStateWithLifecycle()
+    val activityNotificationsEnabledRef = activityNotifications.enabled.collectAsStateWithLifecycle()
     val notificationsViewModel:
         com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
-    val notificationsState by notificationsViewModel.state.collectAsStateWithLifecycle()
+    val notificationsStateRef = notificationsViewModel.state.collectAsStateWithLifecycle()
+    val notificationsState by notificationsStateRef
     val deviceGallery: com.photonne.app.data.devicebackup.DeviceGallery =
         org.koin.compose.koinInject()
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel =
@@ -778,10 +714,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashState by trashStateRef
     val favoritesStateRef = favoritesViewModel.state.collectAsStateWithLifecycle()
     val favoritesState by favoritesStateRef
-    val unsupportedFilesState by unsupportedFilesViewModel.state.collectAsStateWithLifecycle()
+    val unsupportedFilesStateRef = unsupportedFilesViewModel.state.collectAsStateWithLifecycle()
     val organizeInboxStateRef = organizeInboxViewModel.state.collectAsStateWithLifecycle()
     val organizeInboxState by organizeInboxStateRef
-    val organizeExcludedState by organizeExcludedViewModel.state.collectAsStateWithLifecycle()
+    val organizeExcludedStateRef = organizeExcludedViewModel.state.collectAsStateWithLifecycle()
+    val organizeExcludedState by organizeExcludedStateRef
     val organizeRuleStateRef = organizeRuleViewModel.state.collectAsStateWithLifecycle()
     val organizeRuleState by organizeRuleStateRef
     val peopleStateRef = peopleViewModel.state.collectAsStateWithLifecycle()
@@ -1303,986 +1240,54 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         val selected = items.filter { it.id in selection && !it.isLocalOnly }
         return selected.isNotEmpty() && selected.all { it.isFavorite }
     }
-
-    // Cápsula superior de selección de la pantalla visible; null sin selección.
-    // Es una cápsula de cristal flotante, no una barra acoplada: se superpone al
-    // contenido en el mismo hueco que el cromo flotante al que sustituye, y el
-    // contenido sigue reservándolo, así que entrar en selección no mueve nada.
-    // Por eso el Scaffold dibuja a sangre por arriba mientras haya una (ver
-    // edgeToEdgeTop). Sin hazeState propio: difumina con la fuente del Scaffold.
-    fun selectionChrome(content: @Composable () -> Unit) = content
-    val selectionTopChrome: (@Composable () -> Unit)? = when {
-        appState.selectedTab == MainTab.Timeline &&
-            timelineState.isSelectionActive -> selectionChrome {
-            AssetSelectionTopBar(
-                selectedCount = timelineState.selection.size,
-                isMutating = timelineState.isBulkMutating ||
-                    actionsState.working != AssetActionWorking.Idle,
-                onClose = timelineViewModel::clearSelection
-                // Sin "Seleccionar todo": el timeline se pagina sobre toda
-                // la biblioteca y el botón solo cogía lo cargado, que no es
-                // lo que promete. La casilla de mes cubre el caso real.
-            )
-        }
-        appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null &&
-            albumDetailState.isSelectionActive -> selectionChrome {
-            AssetSelectionTopBar(
-                selectedCount = albumDetailState.selection.size,
-                totalCount = albumDetailState.items.size,
-                isMutating = albumDetailState.isBulkMutating ||
-                    actionsState.working != AssetActionWorking.Idle,
-                onClose = albumDetailViewModel::clearSelection,
-                onSelectAll = albumDetailViewModel::toggleSelectAll
-            )
-        }
-        appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null -> null
-        appState.selectedTab == MainTab.Albums && albumsState.isSelectionActive -> selectionChrome {
-            // Si la tarjeta ya no está en la lista (filtrada, borrada) queda
-            // solo el cerrar: antes caía a la barra acoplada de Álbumes.
-            val selected = albumsState.selectedAlbums
-            com.photonne.app.ui.main.AlbumCardSelectionTopBar(
-                albumName = selected.singleOrNull()?.name ?: "",
-                isMutating = albumsState.isMutating,
-                onClose = albumsViewModel::clearSelection,
-                selectedCount = selected.size,
-                totalCount = albumsState.visibleAlbums.size,
-                onSelectAll = albumsViewModel::toggleSelectAllVisible
-            )
-        }
-        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
-            folderDetailState.isSelectionActive -> selectionChrome {
-            AssetSelectionTopBar(
-                selectedCount = folderDetailState.selection.size,
-                totalCount = folderDetailState.items.size,
-                isMutating = folderDetailState.isBulkMutating ||
-                    actionsState.working != AssetActionWorking.Idle,
-                onClose = folderDetailViewModel::clearSelection,
-                onSelectAll = folderDetailViewModel::toggleSelectAll
-            )
-        }
-        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
-            folderDetailState.isSubfolderSelectionActive -> selectionChrome {
-            val subfolder = folderDetailState.selectedSubfolder
-            com.photonne.app.ui.main.FolderCardSelectionTopBar(
-                folderName = (subfolder?.name ?: "").ifBlank { subfolder?.path ?: "" },
-                isMutating = folderDetailState.isMutating,
-                onClose = folderDetailViewModel::clearSubfolderSelection,
-                // La rejilla del detalle va a sangre bajo la status bar.
-                statusBarScrim = true
-            )
-        }
-        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null -> null
-        appState.selectedTab == MainTab.Folders && foldersState.isSelectionActive -> selectionChrome {
-            val selected = foldersState.selectedFolders
-            com.photonne.app.ui.main.FolderCardSelectionTopBar(
-                folderName = selected.singleOrNull()?.let { it.name.ifBlank { it.path } } ?: "",
-                isMutating = foldersState.isMutating,
-                onClose = foldersViewModel::clearSelection,
-                selectedCount = selected.size,
-                totalCount = foldersState.visibleFolders.size,
-                onSelectAll = foldersViewModel::toggleSelectAllVisible
-            )
-        }
-        appState.selectedTab == MainTab.Search && searchState.isSelectionActive -> selectionChrome {
-            AssetSelectionTopBar(
-                selectedCount = searchState.selection.size,
-                totalCount = searchState.results.size,
-                isMutating = searchState.isBulkMutating ||
-                    actionsState.working != AssetActionWorking.Idle,
-                onClose = searchViewModel::clearSelection,
-                onSelectAll = searchViewModel::toggleSelectAll,
-                statusBarScrim = false
-            )
-        }
-        appState.selectedTab == MainTab.Search -> null
-        appState.moreSubscreen == MoreSubscreen.DeviceBackupPending &&
-            deviceBackupState.selectedCount > 0 -> selectionChrome {
-            // Same contextual selection capsule as Timeline/Albums, with a
-            // select-all action for queueing every pending file at once.
-            AssetSelectionTopBar(
-                selectedCount = deviceBackupState.selectedCount,
-                isMutating = deviceBackupState.isSyncing,
-                onClose = deviceBackupViewModel::clearSelection,
-                statusBarScrim = false,
-                actions = {
-                    androidx.compose.material3.IconButton(
-                        onClick = deviceBackupViewModel::selectAllNotSynced,
-                        enabled = !deviceBackupState.isSyncing
-                    ) {
-                        androidx.compose.material3.Icon(
-                            Icons.Filled.SelectAll,
-                            contentDescription = stringResource(
-                                Res.string.device_backup_action_select_all
-                            )
-                        )
-                    }
-                }
-            )
-        }
-        appState.moreSubscreen == MoreSubscreen.OrganizeInbox &&
-            organizeInboxState.isSelectionActive -> selectionChrome {
-            AssetSelectionTopBar(
-                selectedCount = organizeInboxState.selection.size,
-                totalCount = organizeInboxState.items.size,
-                isMutating = organizeInboxState.isBulkMutating,
-                onClose = organizeInboxViewModel::clearSelection,
-                onSelectAll = organizeInboxViewModel::toggleSelectAll,
-                // El servidor no da los ids de toda la lista: solo se
-                // puede seleccionar lo cargado, y así se rotula.
-                selectAllLoadedOnly = organizeInboxState.hasMore
-            )
-        }
-        // Apartadas: con selección, la cápsula lleva "Devolver a la bandeja"
-        // (una sola acción, como Restaurar en la papelera).
-        appState.moreSubscreen == MoreSubscreen.OrganizeExcluded &&
-            organizeExcludedState.isSelectionActive -> selectionChrome {
-            val snackbar = LocalSnackbarController.current
-            val includedCount = organizeExcludedState.selection.size
-            val includedMessage = pluralStringResource(
-                Res.plurals.organize_excluded_included_done, includedCount, includedCount
-            )
-            AssetSelectionTopBar(
-                selectedCount = organizeExcludedState.selection.size,
-                totalCount = organizeExcludedState.items.size,
-                isMutating = organizeExcludedState.isBulkMutating,
-                onClose = organizeExcludedViewModel::clearSelection,
-                onSelectAll = organizeExcludedViewModel::toggleSelectAll,
-                selectAllLoadedOnly = organizeExcludedState.hasMore
-            ) {
-                TextButton(
-                    onClick = {
-                        organizeExcludedViewModel.includeSelected {
-                            snackbar?.show(includedMessage)
-                            organizeInboxViewModel.refresh()
-                            foldersViewModel.refreshOrganizeCount()
-                        }
-                    },
-                    enabled = !organizeExcludedState.isBulkMutating
-                ) {
-                    Text(
-                        stringResource(Res.string.organize_excluded_action_include),
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-        appState.moreSubscreen == MoreSubscreen.People &&
-            appState.selectedPerson != null && personDetailState.isSelectionActive -> selectionChrome {
-            AssetSelectionTopBar(
-                selectedCount = personDetailState.selection.size,
-                totalCount = personDetailState.items.size,
-                isMutating = personDetailState.isBulkMutating ||
-                    actionsState.working != AssetActionWorking.Idle,
-                onClose = personDetailViewModel::clearSelection,
-                onSelectAll = personDetailViewModel::toggleSelectAll
-            )
-        }
-        appState.moreSubscreen == MoreSubscreen.Favorites &&
-            favoritesState.isSelectionActive -> selectionChrome {
-            AssetSelectionTopBar(
-                selectedCount = favoritesState.selection.size,
-                totalCount = favoritesState.items.size,
-                isMutating = favoritesState.isBulkMutating ||
-                    actionsState.working != AssetActionWorking.Idle,
-                onClose = favoritesViewModel::clearSelection,
-                onSelectAll = favoritesViewModel::toggleSelectAll,
-                // El servidor no da los ids de toda la lista: solo se
-                // puede seleccionar lo cargado, y así se rotula.
-                selectAllLoadedOnly = favoritesState.hasMore
-            )
-        }
-        appState.moreSubscreen == MoreSubscreen.Archived &&
-            archivedState.isSelectionActive -> selectionChrome {
-            AssetSelectionTopBar(
-                selectedCount = archivedState.selection.size,
-                totalCount = archivedState.items.size,
-                isMutating = archivedState.isBulkMutating ||
-                    actionsState.working != AssetActionWorking.Idle,
-                onClose = archivedViewModel::clearSelection,
-                onSelectAll = archivedViewModel::toggleSelectAll,
-                // El servidor no da los ids de toda la lista: solo se
-                // puede seleccionar lo cargado, y así se rotula.
-                selectAllLoadedOnly = archivedState.hasMore
-            )
-        }
-        // Personal tab in selection mode: restore/purge selected.
-        appState.moreSubscreen == MoreSubscreen.Trash &&
-            appState.trashTab == com.photonne.app.ui.library.TrashTab.Personal &&
-            trashState.isSelectionActive -> selectionChrome {
-            com.photonne.app.ui.main.TrashSelectionTopBar(
-                selectedCount = trashState.selection.size,
-                isMutating = trashState.isBulkMutating,
-                onClose = trashViewModel::clearSelection,
-                onRestore = { trashViewModel.bulkRestore() },
-                onPurge = { appState.showPurgeSelected = true }
-            )
-        }
-        else -> null
-    }
-
-    val topBar: @Composable () -> Unit = {
-        val selectionBar = selectionTopChrome
-        if (selectionBar != null) selectionBar() else when {
-            // AlbumDetailScreen paints its own floating top chrome over the
-            // grid (docked on the hero's cover, frosted capsules once
-            // scrolled), like Fotos, so no separate top bar here.
-            appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null -> {
-            }
-            // El detalle de carpeta pinta su propio cromo flotante dentro de la
-            // pantalla (título de la carpeta + acciones en la cápsula).
-            appState.selectedTab == MainTab.Folders && appState.selectedFolder != null -> {
-            }
-            // Buscar pinta su propio cromo flotante (campo + modo + filtros).
-            appState.selectedTab == MainTab.Search -> {
-            }
-            appState.moreSubscreen == MoreSubscreen.Upload ->
-                com.photonne.app.ui.main.UploadTopBar(
-                    title = stringResource(Res.string.upload_title),
-                    subtitle = if (uploadState.pendingCount > 0)
-                        stringResource(
-                            Res.string.upload_subtitle_pending,
-                            uploadState.pendingCount
-                        )
-                    else null,
-                    onBack = { appState.moreSubscreen = null }
-                )
-            // Cromo flotante dibujado dentro de la pantalla.
-            appState.moreSubscreen == MoreSubscreen.DeviceBackup -> { }
-            // Cromo flotante dibujado dentro de la pantalla (con selección manda
-            // la cápsula de selección, arriba).
-            appState.moreSubscreen == MoreSubscreen.DeviceBackupPending -> { }
-            appState.moreSubscreen == MoreSubscreen.EnrichmentStatus -> { }
-            appState.moreSubscreen == MoreSubscreen.Utilities -> { }
-            appState.moreSubscreen == MoreSubscreen.MyLinks -> { }
-            // "Archivos no compatibles" pinta su propio cromo flotante dentro de la pantalla.
-            appState.moreSubscreen == MoreSubscreen.UnsupportedFiles -> {
-            }
-            // Para organizar pinta su propio cromo flotante (con "Mover por
-            // condiciones" en su cápsula de acciones); con una selección activa
-            // manda la cápsula de selección, arriba.
-            appState.moreSubscreen == MoreSubscreen.OrganizeInbox -> {
-            }
-            appState.moreSubscreen == MoreSubscreen.OrganizeRule -> { }
-            appState.moreSubscreen == MoreSubscreen.OrganizeExcluded -> { }
-            appState.moreSubscreen == MoreSubscreen.UtilitiesDuplicates -> { }
-            appState.moreSubscreen == MoreSubscreen.UtilitiesLargeFiles -> { }
-            appState.moreSubscreen == MoreSubscreen.UtilitiesLocations -> { }
-            // Recuerdos / Escenas / Objetos / Mapa pintan su propio cromo
-            // flotante dentro de la pantalla (ver floatingChromeSubscreen), así
-            // que aquí no va ninguna barra.
-            appState.moreSubscreen == MoreSubscreen.Memories ||
-                appState.moreSubscreen == MoreSubscreen.ExploreScenes ||
-                appState.moreSubscreen == MoreSubscreen.ExploreObjects ||
-                appState.moreSubscreen == MoreSubscreen.Map -> {
-            }
-            // Sugerencias de una persona pinta su propio cromo flotante.
-            appState.moreSubscreen == MoreSubscreen.PeopleSuggestions -> {
-            }
-            // La lista de Personas Y el detalle pintan su propio cromo flotante
-            // (menú de recluster / ocultas o de renombrar / fusionar en su cápsula
-            // de acciones); aquí no va barra acoplada.
-            appState.moreSubscreen == MoreSubscreen.People -> {
-            }
-            // Favoritos pinta su propio cromo flotante dentro de la pantalla
-            // (ver floatingChromeSubscreen); aquí no va barra acoplada.
-            appState.moreSubscreen == MoreSubscreen.Favorites -> {
-            }
-            // Archivados pinta su propio cromo flotante dentro de la pantalla.
-            appState.moreSubscreen == MoreSubscreen.Archived -> {
-            }
-            // Papelera (sin selección): cromo flotante dibujado en el contenido,
-            // con las acciones restaurar-todo / vaciar en su cápsula (solo en la
-            // pestaña Personal).
-            appState.moreSubscreen == MoreSubscreen.Trash -> { }
-            // Todas estas subpantallas pintan su propio cromo flotante estático
-            // dentro de la pantalla (título + atrás, y acciones en su cápsula
-            // cuando las tienen); aquí no va barra acoplada.
-            appState.moreSubscreen == MoreSubscreen.Notifications -> { }
-            appState.moreSubscreen == MoreSubscreen.AccountSettings -> { }
-            appState.moreSubscreen == MoreSubscreen.AccountProfile -> { }
-            appState.moreSubscreen == MoreSubscreen.AccountSecurity -> { }
-            appState.moreSubscreen == MoreSubscreen.AccountAppearance -> { }
-            appState.moreSubscreen == MoreSubscreen.AccountStorage -> { }
-            appState.moreSubscreen == MoreSubscreen.AccountConnection -> { }
-            appState.moreSubscreen == MoreSubscreen.Administration -> { }
-            appState.moreSubscreen == MoreSubscreen.AdminUsers -> { }
-            appState.moreSubscreen == MoreSubscreen.AdminUserEditor -> { }
-            appState.moreSubscreen == MoreSubscreen.AdminLibraries -> { }
-            appState.moreSubscreen == MoreSubscreen.AdminLibraryEditor -> { }
-            appState.moreSubscreen == MoreSubscreen.AdminStats -> { }
-            appState.moreSubscreen == MoreSubscreen.AdminSettingsHub -> { }
-            appState.moreSubscreen == MoreSubscreen.AdminSystemHub -> { }
-            isAdminSettingsSubpage(appState.moreSubscreen) -> { }
-            isAdminSystemSubpage(appState.moreSubscreen) -> { }
-            else -> {
-                // Every bare top-level tab now renders its own top bar *inside*
-                // its pager page (Fotos its floating bar; Álbumes/Carpetas/Más a
-                // docked bar in a Column) so the bar slides with the content and
-                // the Scaffold reserves no shared top space — no top bar here.
-            }
-        }
-    }
-
-    // While any multi-asset selection is active, the bottom navigation is
-    // replaced by an action bar so the primary actions sit within thumb
-    // reach on mobile. The slim selection top bar above keeps just Close + count.
-    val bottomBar: (@Composable () -> Unit)? = when {
-        appState.selectedTab == MainTab.Timeline &&
-            timelineState.isSelectionActive -> {
-            {
-                AssetSelectionBottomBar(
-                    selectedCount = timelineState.selection.size,
-                    isMutating = timelineState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onShare = {
-                        actionsViewModel.beginShare(timelineState.selection.toList())
-                    },
-                    onAddToAlbum = { appState.bulkAddToAlbum = true },
-                    onMove = { appState.showMoveSelectedAssetsTimeline = true },
-                    onDownload = {
-                        actionsViewModel.download(timelineState.selection.toList())
-                    },
-                    onArchive = timelineViewModel::bulkArchive,
-                    onTrash = timelineViewModel::bulkTrash,
-                    selectedIds = { timelineState.selection.toList() },
-                    allFavorite = selectionAllFavorite(timelineState.loadedItems, timelineState.selection),
-                    onToggleFavorite = run {
-                        val favoriteSnackbar = LocalSnackbarController.current
-                        {
-                            runBulkFavorite(
-                                timelineState.loadedItems, timelineState.selection, favoriteSnackbar,
-                                timelineViewModel::clearSelection
-                            )
-                        }
-                    },
-                    onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids)
-                    },
-                )
-            }
-        }
-        appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null &&
-            albumDetailState.isSelectionActive -> {
-            {
-                // Textos del snackbar de "Quitar del álbum", resueltos en
-                // composición (en el callback ya no hay recursos).
-                val removeCount = albumDetailState.selection.size
-                val removedFromAlbumMessage = pluralStringResource(
-                    Res.plurals.selection_removed_from_album_done, removeCount, removeCount
-                )
-                val removeUndoLabel = stringResource(Res.string.action_undo)
-                val removeSnackbar = LocalSnackbarController.current
-                // Un álbum compartido mezcla fotos de varios miembros: una ajena
-                // hacía fallar la papelera de todo el lote. Se desactiva y se
-                // explica. Y como mandar a la papelera saca la foto de TODOS los
-                // álbumes (y restaurarla no la devuelve), se avisa antes.
-                val untrashable = com.photonne.app.ui.actions.countUntrashable(
-                    albumDetailState.items, albumDetailState.selection, user.user.username
-                )
-                val albumTrashBlocked = if (untrashable > 0) pluralStringResource(
-                    Res.plurals.selection_trash_blocked_foreign, untrashable, untrashable
-                ) else null
-                val albumTrashWarning = pluralStringResource(
-                    if (appState.selectedAlbum?.isShared == true) Res.plurals.album_trash_warning_shared
-                    else Res.plurals.album_trash_warning,
-                    removeCount,
-                    removeCount
-                )
-                AssetSelectionBottomBar(
-                    selectedCount = albumDetailState.selection.size,
-                    trashDisabledReason = albumTrashBlocked,
-                    trashConfirmMessage = albumTrashWarning,
-                    isMutating = albumDetailState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onShare = {
-                        actionsViewModel.beginShare(albumDetailState.selection.toList())
-                    },
-                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Album },
-                    onDownload = {
-                        actionsViewModel.download(albumDetailState.selection.toList())
-                    },
-                    onArchive = albumDetailViewModel::bulkArchive,
-                    onTrash = albumDetailViewModel::bulkTrash,
-                    selectedIds = { albumDetailState.selection.toList() },
-                    allFavorite = selectionAllFavorite(albumDetailState.items, albumDetailState.selection),
-                    onToggleFavorite = run {
-                        val favoriteSnackbar = LocalSnackbarController.current
-                        {
-                            runBulkFavorite(
-                                albumDetailState.items, albumDetailState.selection, favoriteSnackbar,
-                                albumDetailViewModel::clearSelection
-                            )
-                        }
-                    },
-                    onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids)
-                    },
-                    onMove = run {
-                        val unmovable = com.photonne.app.ui.actions.countUnmovable(
-                            albumDetailState.items, albumDetailState.selection
-                        )
-                        val moveBlocked = if (unmovable > 0) pluralStringResource(
-                            Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
-                        ) else null
-                        val moveSnackbar = LocalSnackbarController.current
-                        {
-                            if (moveBlocked != null) {
-                                moveSnackbar?.show(moveBlocked)
-                            } else {
-                                appState.moveSelectionError = null
-                                appState.moveSelectionRequest = MoveSelectionRequest(
-                                    assetIds = albumDetailState.selection.toList(),
-                                    onMoved = albumDetailViewModel::clearSelection
-                                )
-                            }
-                        }
-                    },
-                    // En un álbum inteligente el contenido lo deciden las
-                    // reglas: ni quitar fotos ni fijar portada aplican.
-                    onRemoveFromAlbum = if (appState.selectedAlbum?.isSmart != true &&
-                        (appState.selectedAlbum?.canWrite == true ||
-                            appState.selectedAlbum?.isOwner == true)
-                    ) {
-                        {
-                            val albumId = appState.selectedAlbum?.id
-                            albumDetailViewModel.bulkRemoveFromAlbum(
-                                onSuccess = { removed ->
-                                    appState.selectedAlbum?.let {
-                                        albumsViewModel.applyAssetsRemoved(it.id, removed)
-                                    }
-                                },
-                                onResult = { removedIds, error ->
-                                    if (error != null) {
-                                        removeSnackbar?.show(error.userMessage)
-                                    } else {
-                                        removeSnackbar?.show(
-                                            removedFromAlbumMessage,
-                                            removeUndoLabel
-                                        ) {
-                                            if (albumId != null) {
-                                                coroutineScope.launch {
-                                                    runCatching {
-                                                        albumsRepository.addAssetsBatch(
-                                                            albumId, removedIds
-                                                        )
-                                                    }.onSuccess {
-                                                        albumDetailViewModel.refresh()
-                                                        albumsViewModel.applyAssetsAdded(
-                                                            albumId, removedIds.size
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            )
-                        }
-                    } else null,
-                    onSetAsCover = if (albumDetailState.selection.size == 1 &&
-                        appState.selectedAlbum?.isSmart != true &&
-                        (appState.selectedAlbum?.canWrite == true || appState.selectedAlbum?.isOwner == true)
-                    ) {
-                        {
-                            val assetId = albumDetailState.selection.first()
-                            albumDetailViewModel.setCover(assetId) { updated ->
-                                albumsViewModel.applyUpdate(updated)
-                                appState.selectedAlbum = appState.selectedAlbum?.copy(
-                                    coverThumbnailUrl = updated.coverThumbnailUrl
-                                )
-                                albumDetailViewModel.clearSelection()
-                            }
-                        }
-                    } else null
-                )
-            }
-        }
-        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
-            folderDetailState.isSubfolderSelectionActive -> {
-            val subfolder = folderDetailState.selectedSubfolder
-            if (subfolder != null) {
-                {
-                    // Members management for a subfolder is reached by opening it
-                    // and using the detail top bar; the selection bar stays focused
-                    // on the rename/delete the user asked for.
-                    // Mismos flags que el servidor (CanWrite/CanDelete) y nada
-                    // de mutar una biblioteca externa, como en la lista.
-                    val subfolderIsExternal = subfolder.externalLibraryId != null
-                    com.photonne.app.ui.main.FolderCardSelectionBottomBar(
-                        canManageMembers = false,
-                        canRename = subfolder.canWrite && !subfolderIsExternal,
-                        canDelete = subfolder.canDelete && !subfolderIsExternal,
-                        isMutating = folderDetailState.isMutating,
-                        onManageMembers = {},
-                        onRename = { appState.showEditSubfolder = true },
-                        onDelete = { appState.showDeleteSubfolder = true }
-                    )
-                }
-            } else null
-        }
-        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
-            folderDetailState.isSelectionActive -> {
-            {
-                // Sin CanDelete en la carpeta (o en una biblioteca externa) el
-                // servidor rechaza la papelera: se desactiva con el motivo.
-                val folderTrashBlocked = if (appState.selectedFolder?.canDelete == false ||
-                    appState.selectedFolder?.externalLibraryId != null
-                ) stringResource(Res.string.selection_trash_blocked_folder) else null
-                AssetSelectionBottomBar(
-                    selectedCount = folderDetailState.selection.size,
-                    trashDisabledReason = folderTrashBlocked,
-                    isMutating = folderDetailState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onShare = {
-                        actionsViewModel.beginShare(folderDetailState.selection.toList())
-                    },
-                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Folder },
-                    onDownload = {
-                        actionsViewModel.download(folderDetailState.selection.toList())
-                    },
-                    onArchive = folderDetailViewModel::bulkArchive,
-                    onTrash = folderDetailViewModel::bulkTrash,
-                    selectedIds = { folderDetailState.selection.toList() },
-                    allFavorite = selectionAllFavorite(folderDetailState.items, folderDetailState.selection),
-                    onToggleFavorite = run {
-                        val favoriteSnackbar = LocalSnackbarController.current
-                        {
-                            runBulkFavorite(
-                                folderDetailState.items, folderDetailState.selection, favoriteSnackbar,
-                                folderDetailViewModel::clearSelection
-                            )
-                        }
-                    },
-                    onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids)
-                    },
-                    // El servidor pide escritura en la carpeta de origen, no
-                    // ser su dueño.
-                    onMove = if (appState.selectedFolder?.canWrite == true &&
-                        appState.selectedFolder?.externalLibraryId == null
-                    ) {
-                        { appState.showMoveSelectedAssets = true }
-                    } else null
-                )
-            }
-        }
-        appState.selectedTab == MainTab.Search && searchState.isSelectionActive -> {
-            {
-                AssetSelectionBottomBar(
-                    selectedCount = searchState.selection.size,
-                    isMutating = searchState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onShare = {
-                        actionsViewModel.beginShare(searchState.selection.toList())
-                    },
-                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Search },
-                    onDownload = {
-                        actionsViewModel.download(searchState.selection.toList())
-                    },
-                    onArchive = searchViewModel::bulkArchive,
-                    onTrash = searchViewModel::bulkTrash,
-                    selectedIds = { searchState.selection.toList() },
-                    allFavorite = selectionAllFavorite(searchState.results, searchState.selection),
-                    onToggleFavorite = run {
-                        val favoriteSnackbar = LocalSnackbarController.current
-                        {
-                            runBulkFavorite(
-                                searchState.results, searchState.selection, favoriteSnackbar,
-                                searchViewModel::clearSelection
-                            )
-                        }
-                    },
-                    onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids)
-                    },
-                    onMove = run {
-                        val unmovable = com.photonne.app.ui.actions.countUnmovable(
-                            searchState.results, searchState.selection
-                        )
-                        val moveBlocked = if (unmovable > 0) pluralStringResource(
-                            Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
-                        ) else null
-                        val moveSnackbar = LocalSnackbarController.current
-                        {
-                            if (moveBlocked != null) {
-                                moveSnackbar?.show(moveBlocked)
-                            } else {
-                                appState.moveSelectionError = null
-                                appState.moveSelectionRequest = MoveSelectionRequest(
-                                    assetIds = searchState.selection.toList(),
-                                    onMoved = searchViewModel::clearSelection
-                                )
-                            }
-                        }
-                    },
-                )
-            }
-        }
-        appState.moreSubscreen == MoreSubscreen.People &&
-            appState.selectedPerson != null && personDetailState.isSelectionActive -> {
-            {
-                AssetSelectionBottomBar(
-                    selectedCount = personDetailState.selection.size,
-                    isMutating = personDetailState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onShare = {
-                        actionsViewModel.beginShare(personDetailState.selection.toList())
-                    },
-                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.People },
-                    onDownload = {
-                        actionsViewModel.download(personDetailState.selection.toList())
-                    },
-                    onArchive = personDetailViewModel::bulkArchive,
-                    onTrash = personDetailViewModel::bulkTrash,
-                    selectedIds = { personDetailState.selection.toList() },
-                    allFavorite = selectionAllFavorite(personDetailState.items, personDetailState.selection),
-                    onToggleFavorite = run {
-                        val favoriteSnackbar = LocalSnackbarController.current
-                        {
-                            runBulkFavorite(
-                                personDetailState.items, personDetailState.selection, favoriteSnackbar,
-                                personDetailViewModel::clearSelection
-                            )
-                        }
-                    },
-                    onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids)
-                    },
-                    onUnlink = {
-                        personDetailViewModel.bulkUnlinkFromPerson { detached ->
-                            // Local fan-out: faces removed from a person also
-                            // shrink that person's face count in the list.
-                            appState.selectedPerson?.let { p ->
-                                val newCount = (p.faceCount - detached).coerceAtLeast(0)
-                                appState.selectedPerson = p.copy(faceCount = newCount)
-                            }
-                        }
-                    }
-                )
-            }
-        }
-        appState.moreSubscreen == MoreSubscreen.OrganizeInbox &&
-            organizeInboxState.isSelectionActive -> {
-            {
-                // Los textos se resuelven aquí, en composición: la acción de
-                // apartar corre en un callback y allí ya no hay recursos.
-                val skippedCount = organizeInboxState.selection.size
-                val skippedMessage = pluralStringResource(
-                    Res.plurals.organize_skipped_done, skippedCount, skippedCount
-                )
-                val undoLabel = stringResource(Res.string.action_undo)
-                val snackbar = LocalSnackbarController.current
-                AssetSelectionBottomBar(
-                    selectedCount = organizeInboxState.selection.size,
-                    isMutating = organizeInboxState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onShare = {
-                        actionsViewModel.beginShare(organizeInboxState.selection.toList())
-                    },
-                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Inbox },
-                    onDownload = {
-                        actionsViewModel.download(organizeInboxState.selection.toList())
-                    },
-                    onArchive = organizeInboxViewModel::bulkArchive,
-                    onTrash = organizeInboxViewModel::bulkTrash,
-                    selectedIds = { organizeInboxState.selection.toList() },
-                    allFavorite = selectionAllFavorite(organizeInboxState.items, organizeInboxState.selection),
-                    onToggleFavorite = run {
-                        val favoriteSnackbar = LocalSnackbarController.current
-                        {
-                            runBulkFavorite(
-                                organizeInboxState.items, organizeInboxState.selection, favoriteSnackbar,
-                                organizeInboxViewModel::clearSelection
-                            )
-                        }
-                    },
-                    onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids) { organizeInboxViewModel.refresh() }
-                    },
-                    onMove = {
-                        appState.showMoveSelectedAssetsInbox = true
-                        organizeInboxViewModel.loadMoveYearBreakdown()
-                    },
-                    onExcludeFromOrganize = {
-                        organizeInboxViewModel.excludeSelected { ids ->
-                            foldersViewModel.refreshOrganizeCount()
-                            snackbar?.show(
-                                message = skippedMessage,
-                                actionLabel = undoLabel
-                            ) {
-                                organizeInboxViewModel.includeAgain(ids) {
-                                    foldersViewModel.refreshOrganizeCount()
-                                }
-                            }
-                        }
-                    }
-                )
-            }
-        }
-        appState.moreSubscreen == MoreSubscreen.Favorites &&
-            favoritesState.isSelectionActive -> {
-            {
-                AssetSelectionBottomBar(
-                    selectedCount = favoritesState.selection.size,
-                    isMutating = favoritesState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    onShare = {
-                        actionsViewModel.beginShare(favoritesState.selection.toList())
-                    },
-                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Favorites },
-                    onDownload = {
-                        actionsViewModel.download(favoritesState.selection.toList())
-                    },
-                    onArchive = favoritesViewModel::bulkArchive,
-                    onTrash = favoritesViewModel::bulkTrash,
-                    selectedIds = { favoritesState.selection.toList() },
-                    allFavorite = selectionAllFavorite(favoritesState.items, favoritesState.selection),
-                    onToggleFavorite = run {
-                        val favoriteSnackbar = LocalSnackbarController.current
-                        {
-                            runBulkFavorite(
-                                favoritesState.items, favoritesState.selection, favoriteSnackbar,
-                                favoritesViewModel::clearSelection
-                            )
-                        }
-                    },
-                    onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids)
-                    },
-                    onMove = run {
-                        val unmovable = com.photonne.app.ui.actions.countUnmovable(
-                            favoritesState.items, favoritesState.selection
-                        )
-                        val moveBlocked = if (unmovable > 0) pluralStringResource(
-                            Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
-                        ) else null
-                        val moveSnackbar = LocalSnackbarController.current
-                        {
-                            if (moveBlocked != null) {
-                                moveSnackbar?.show(moveBlocked)
-                            } else {
-                                appState.moveSelectionError = null
-                                appState.moveSelectionRequest = MoveSelectionRequest(
-                                    assetIds = favoritesState.selection.toList(),
-                                    onMoved = favoritesViewModel::clearSelection
-                                )
-                            }
-                        }
-                    },
-                )
-            }
-        }
-        // Duplicados: con algo marcado, la cápsula de confirmar borrar sustituye
-        // a la nav, como la de "Mover" en Para organizar (antes era un FAB).
-        appState.moreSubscreen == MoreSubscreen.UtilitiesDuplicates &&
-            utilitiesDuplicatesState.totalSelectedCount > 0 -> {
-            {
-                com.photonne.app.ui.main.ConfirmCapsule(
-                    label = stringResource(
-                        Res.string.utilities_duplicates_action_delete,
-                        utilitiesDuplicatesState.totalSelectedCount,
-                        com.photonne.app.ui.format.humanBytes(utilitiesDuplicatesState.totalSelectedBytes)
-                    ),
-                    enabled = !utilitiesDuplicatesState.isDeleting,
-                    isWorking = utilitiesDuplicatesState.isDeleting,
-                    icon = com.photonne.app.ui.theme.PhotonneIcons.Delete,
-                    destructive = true,
-                    onClick = { appState.showDuplicatesConfirm = true }
-                )
-            }
-        }
-        appState.moreSubscreen == MoreSubscreen.Archived &&
-            archivedState.isSelectionActive -> {
-            {
-                AssetSelectionBottomBar(
-                    selectedCount = archivedState.selection.size,
-                    isMutating = archivedState.isBulkMutating ||
-                        actionsState.working != AssetActionWorking.Idle,
-                    archiveMode = ArchiveMode.Unarchive,
-                    onShare = {
-                        actionsViewModel.beginShare(archivedState.selection.toList())
-                    },
-                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Archive },
-                    onDownload = {
-                        actionsViewModel.download(archivedState.selection.toList())
-                    },
-                    onArchive = { done -> archivedViewModel.bulkUnarchive(onResult = done) },
-                    onTrash = archivedViewModel::bulkTrash,
-                    selectedIds = { archivedState.selection.toList() },
-                    allFavorite = selectionAllFavorite(archivedState.items, archivedState.selection),
-                    onToggleFavorite = run {
-                        val favoriteSnackbar = LocalSnackbarController.current
-                        {
-                            runBulkFavorite(
-                                archivedState.items, archivedState.selection, favoriteSnackbar,
-                                archivedViewModel::clearSelection
-                            )
-                        }
-                    },
-                    onUndo = { kind, ids ->
-                        actionsViewModel.undoBulk(kind, ids)
-                    },
-                    onMove = run {
-                        val unmovable = com.photonne.app.ui.actions.countUnmovable(
-                            archivedState.items, archivedState.selection
-                        )
-                        val moveBlocked = if (unmovable > 0) pluralStringResource(
-                            Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
-                        ) else null
-                        val moveSnackbar = LocalSnackbarController.current
-                        {
-                            if (moveBlocked != null) {
-                                moveSnackbar?.show(moveBlocked)
-                            } else {
-                                appState.moveSelectionError = null
-                                appState.moveSelectionRequest = MoveSelectionRequest(
-                                    assetIds = archivedState.selection.toList(),
-                                    onMoved = archivedViewModel::clearSelection
-                                )
-                            }
-                        }
-                    },
-                )
-            }
-        }
-        appState.selectedTab == MainTab.Albums && albumsState.isSelectionActive -> {
-            val selected = albumsState.selectedAlbums
-            // Una sola tarjeta: sus acciones de siempre. Varias: solo las que
-            // valen para todas (albumSelectionActions), en bloque.
-            val target = selected.singleOrNull()
-            val allowed = com.photonne.app.ui.album.albumSelectionActions(selected)
-            if (selected.isNotEmpty()) {
-                {
-                    val deleteBlocked = stringResource(Res.string.album_bulk_delete_not_allowed)
-                    val shortcutSnackbar = LocalSnackbarController.current
-                    fun requestDelete() {
-                        if (target != null) {
-                            appState.pendingActionAlbum = target
-                            appState.showDeleteAlbum = true
-                        } else {
-                            appState.showBulkDeleteAlbums = true
-                        }
-                    }
-                    // Escritorio: Supr con tarjetas seleccionadas = Eliminar.
-                    com.photonne.app.ui.selection.SelectionShortcutsHandler(
-                        onDelete = {
-                            when {
-                                albumsState.isMutating -> Unit
-                                !allowed.canDelete -> shortcutSnackbar?.show(deleteBlocked)
-                                else -> requestDelete()
-                            }
-                        }
-                    )
-                    val togglePin = com.photonne.app.ui.album.rememberAlbumPinToggle(albumsViewModel)
-                    com.photonne.app.ui.main.AlbumCardSelectionBottomBar(
-                        canPin = allowed.canPin,
-                        isPinned = target?.isPinned == true,
-                        onTogglePin = {
-                            target?.let { togglePin(it.id); albumsViewModel.clearSelection() }
-                        },
-                        canManageMembers = allowed.canManageMembers,
-                        canEdit = allowed.canEdit,
-                        canLeave = allowed.canLeave,
-                        canDelete = allowed.canDelete,
-                        isMutating = albumsState.isMutating,
-                        onManageMembers = {
-                            if (target != null) {
-                                appState.pendingActionAlbum = target
-                                albumPermissionsViewModel.open(target.id)
-                                appState.showMembers = true
-                            }
-                        },
-                        onEdit = {
-                            // Un álbum inteligente propio se edita entero (condiciones
-                            // incluidas) en su editor; el resto, nombre y descripción.
-                            if (target == null) {
-                                Unit
-                            } else if (target.isSmart && target.isOwner) {
-                                albumsViewModel.clearSelection()
-                                appState.editingSmartAlbum = target
-                                appState.moreSubscreen = MoreSubscreen.SmartAlbumEditor
-                            } else {
-                                appState.pendingActionAlbum = target
-                                appState.showEditAlbum = true
-                            }
-                        },
-                        onLeave = {
-                            if (target != null) {
-                                appState.pendingActionAlbum = target
-                                appState.showLeaveAlbum = true
-                            } else {
-                                appState.showBulkLeaveAlbums = true
-                            }
-                        },
-                        onDelete = ::requestDelete
-                    )
-                }
-            } else null
-        }
-        appState.selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
-            val selected = foldersState.selectedFolders
-            val target = selected.singleOrNull()
-            // Permisos por tarjeta y sin tocar bibliotecas externas: ver
-            // folderSelectionActions. Con varias, solo lo que vale para todas.
-            val allowed = com.photonne.app.ui.folder.folderSelectionActions(selected)
-            if (selected.isNotEmpty()) {
-                {
-                    val deleteBlocked = stringResource(Res.string.folder_bulk_delete_not_allowed)
-                    val shortcutSnackbar = LocalSnackbarController.current
-                    fun requestDelete() {
-                        if (target != null) {
-                            appState.pendingActionFolder = target
-                            appState.showDeleteFolder = true
-                        } else {
-                            appState.showBulkDeleteFolders = true
-                        }
-                    }
-                    com.photonne.app.ui.selection.SelectionShortcutsHandler(
-                        onDelete = {
-                            when {
-                                foldersState.isMutating -> Unit
-                                !allowed.canDelete -> shortcutSnackbar?.show(deleteBlocked)
-                                else -> requestDelete()
-                            }
-                        }
-                    )
-                    com.photonne.app.ui.main.FolderCardSelectionBottomBar(
-                        canManageMembers = allowed.canManageMembers,
-                        canRename = allowed.canRename,
-                        canDelete = allowed.canDelete,
-                        isMutating = foldersState.isMutating,
-                        onManageMembers = {
-                            if (target != null) {
-                                appState.pendingActionFolder = target
-                                folderPermissionsViewModel.open(target.id)
-                                appState.showFolderMembers = true
-                            }
-                        },
-                        onRename = {
-                            if (target != null) {
-                                appState.pendingActionFolder = target
-                                appState.showEditFolder = true
-                            }
-                        },
-                        onDelete = ::requestDelete,
-                        canToggleTimeline = allowed.canToggleTimeline,
-                        excludedFromDiscovery = target?.excludedFromDiscovery ?: false,
-                        onToggleTimeline = {
-                            if (target != null) {
-                                foldersViewModel.setTimelineIncluded(
-                                    folderId = target.id,
-                                    included = target.excludedFromDiscovery
-                                )
-                            }
-                        },
-                        canMove = allowed.canMove,
-                        onMove = { appState.showBulkMoveFolders = true }
-                    )
-                }
-            } else null
-        }
-        else -> null
-    }
+    // Cromo del Scaffold (cápsula de selección, barra superior y barra inferior):
+    // ver AuthenticatedTopChrome.kt y AuthenticatedBottomChrome.kt. Se construye
+    // aquí, en el mismo orden, y null sigue significando "sin barra".
+    val chromeHost = AuthenticatedChromeHost(
+        appState = appState,
+        user = user,
+        timelineState = timelineStateRef,
+        albumsState = albumsStateRef,
+        albumDetailState = albumDetailStateRef,
+        searchState = searchStateRef,
+        foldersState = foldersStateRef,
+        folderDetailState = folderDetailStateRef,
+        archivedState = archivedStateRef,
+        trashState = trashStateRef,
+        favoritesState = favoritesStateRef,
+        organizeInboxState = organizeInboxStateRef,
+        organizeExcludedState = organizeExcludedStateRef,
+        personDetailState = personDetailStateRef,
+        deviceBackupState = deviceBackupStateRef,
+        uploadState = uploadStateRef,
+        actionsState = actionsStateRef,
+        utilitiesDuplicatesState = utilitiesDuplicatesStateRef,
+        timelineViewModel = timelineViewModel,
+        albumsViewModel = albumsViewModel,
+        albumDetailViewModel = albumDetailViewModel,
+        searchViewModel = searchViewModel,
+        foldersViewModel = foldersViewModel,
+        folderDetailViewModel = folderDetailViewModel,
+        folderPermissionsViewModel = folderPermissionsViewModel,
+        albumPermissionsViewModel = albumPermissionsViewModel,
+        archivedViewModel = archivedViewModel,
+        trashViewModel = trashViewModel,
+        favoritesViewModel = favoritesViewModel,
+        organizeInboxViewModel = organizeInboxViewModel,
+        organizeExcludedViewModel = organizeExcludedViewModel,
+        personDetailViewModel = personDetailViewModel,
+        deviceBackupViewModel = deviceBackupViewModel,
+        actionsViewModel = actionsViewModel,
+        albumsRepository = albumsRepository,
+        coroutineScope = coroutineScope,
+        runBulkFavorite = { items, selection, snackbar, clearSelection ->
+            runBulkFavorite(items, selection, snackbar, clearSelection)
+        },
+        selectionAllFavorite = { items, selection -> selectionAllFavorite(items, selection) },
+    )
+    val selectionTopChrome: (@Composable () -> Unit)? = buildSelectionTopChrome(chromeHost)
+    val topBar: @Composable () -> Unit = buildTopBar(chromeHost, selectionTopChrome)
+    val bottomBar: (@Composable () -> Unit)? = buildBottomBar(chromeHost)
 
     // Every "add something here" entry point now lives as the first action of its
     // own top bar (see CreateAction), so there is no FAB anywhere in the shell —
@@ -2436,6 +1441,98 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
     }
 
+    val contentHost = AuthenticatedContentHost(
+        appState = appState,
+        user = user,
+        timelineState = timelineStateRef,
+        albumsState = albumsStateRef,
+        albumDetailState = albumDetailStateRef,
+        searchState = searchStateRef,
+        foldersState = foldersStateRef,
+        folderDetailState = folderDetailStateRef,
+        archivedState = archivedStateRef,
+        trashState = trashStateRef,
+        favoritesState = favoritesStateRef,
+        organizeInboxState = organizeInboxStateRef,
+        organizeExcludedState = organizeExcludedStateRef,
+        organizeRuleState = organizeRuleStateRef,
+        peopleState = peopleStateRef,
+        personDetailState = personDetailStateRef,
+        suggestionsState = suggestionsStateRef,
+        deviceBackupState = deviceBackupStateRef,
+        uploadState = uploadStateRef,
+        unsupportedFilesState = unsupportedFilesStateRef,
+        memoriesState = memoriesStateRef,
+        notificationsState = notificationsStateRef,
+        attributions = attributionsState,
+        activityNotificationsEnabled = activityNotificationsEnabledRef,
+        timelineViewModel = timelineViewModel,
+        albumsViewModel = albumsViewModel,
+        albumDetailViewModel = albumDetailViewModel,
+        searchViewModel = searchViewModel,
+        foldersViewModel = foldersViewModel,
+        folderDetailViewModel = folderDetailViewModel,
+        folderPermissionsViewModel = folderPermissionsViewModel,
+        albumSharesViewModel = albumSharesViewModel,
+        albumPermissionsViewModel = albumPermissionsViewModel,
+        archivedViewModel = archivedViewModel,
+        trashViewModel = trashViewModel,
+        favoritesViewModel = favoritesViewModel,
+        unsupportedFilesViewModel = unsupportedFilesViewModel,
+        organizeInboxViewModel = organizeInboxViewModel,
+        organizeExcludedViewModel = organizeExcludedViewModel,
+        organizeRuleViewModel = organizeRuleViewModel,
+        uploadViewModel = uploadViewModel,
+        deviceBackupViewModel = deviceBackupViewModel,
+        enrichmentStatusViewModel = enrichmentStatusViewModel,
+        utilitiesDuplicatesViewModel = utilitiesDuplicatesViewModel,
+        utilitiesLargeFilesViewModel = utilitiesLargeFilesViewModel,
+        utilitiesLocationsViewModel = utilitiesLocationsViewModel,
+        exploreFacetsViewModel = exploreFacetsViewModel,
+        memoriesViewModel = memoriesViewModel,
+        memoryFeedViewModel = memoryFeedViewModel,
+        notificationsViewModel = notificationsViewModel,
+        actionsViewModel = actionsViewModel,
+        mapViewModel = mapViewModel,
+        peopleViewModel = peopleViewModel,
+        personDetailViewModel = personDetailViewModel,
+        personSuggestionsViewModel = personSuggestionsViewModel,
+        accountProfileViewModel = accountProfileViewModel,
+        accountSecurityViewModel = accountSecurityViewModel,
+        accountStorageViewModel = accountStorageViewModel,
+        appearanceViewModel = appearanceViewModel,
+        adminUsersViewModel = adminUsersViewModel,
+        adminLibrariesViewModel = adminLibrariesViewModel,
+        adminStatsViewModel = adminStatsViewModel,
+        adminVersionViewModel = adminVersionViewModel,
+        adminImageSettingsViewModel = adminImageSettingsViewModel,
+        adminMetadataSettingsViewModel = adminMetadataSettingsViewModel,
+        adminNightlySettingsViewModel = adminNightlySettingsViewModel,
+        adminNotificationSettingsViewModel = adminNotificationSettingsViewModel,
+        adminServerSettingsViewModel = adminServerSettingsViewModel,
+        deviceConnectionViewModel = deviceConnectionViewModel,
+        adminTrashSettingsViewModel = adminTrashSettingsViewModel,
+        adminSharedTrashViewModel = adminSharedTrashViewModel,
+        adminUserDefaultsViewModel = adminUserDefaultsViewModel,
+        adminDuplicatesViewModel = adminDuplicatesViewModel,
+        adminBackupViewModel = adminBackupViewModel,
+        activityNotifications = activityNotifications,
+        deviceGallery = deviceGallery,
+        foldersRepository = foldersRepository,
+        snackbarController = snackbarController,
+        coroutineScope = coroutineScope,
+        apiBaseUrl = apiBaseUrl,
+        navTabs = navTabs,
+        mainPagerState = mainPagerState,
+        canSwipeTabs = canSwipeTabs,
+        albumsImmersive = albumsImmersive,
+        foldersImmersive = foldersImmersive,
+        albumDetailImmersive = albumDetailImmersive,
+        folderDetailImmersive = folderDetailImmersive,
+        onLogout = onLogout,
+        albumBack = albumBack,
+    )
+
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     CompositionLocalProvider(
         LocalSharedTransitionScope provides this,
@@ -2502,193 +1599,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 (appState.selectedTab == MainTab.More && appState.moreSubscreen == null)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-            // Base layer: the four primary tabs live in a HorizontalPager so a
-            // left/right swipe glides between Fotos · Álbumes · Carpetas · Más
-            // (continuous drag; the neighbour page peeks in under the finger).
-            HorizontalPager(
-                state = mainPagerState,
-                userScrollEnabled = canSwipeTabs,
-                // Keep the immediate-neighbour pages composed so a swipe (or a
-                // return to a tab) doesn't dispose + rebuild the heavy Timeline
-                // grid — that rebuild is what reset the chrome and re-fetched
-                // buckets, reading as a jump + flash.
-                beyondViewportPageCount = 1,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                when (navTabs.getOrNull(page)) {
-                    MainTab.Timeline -> TimelineScreen(
-                        state = timelineState,
-                        scrollToTopTick = appState.timelineScrollToTopTick,
-                        // El pager principal compone esta página también como
-                        // vecina: la tira de Recuerdos solo anima cuando Fotos
-                        // es de verdad la pestaña visible.
-                        memoriesAutoPlay = appState.selectedTab == MainTab.Timeline &&
-                            appState.assetDetail == null,
-                        onOpenAsset = { mergedItems, mergedIndex, feed ->
-                            appState.assetDetail = AssetDetailContext(
-                                items = mergedItems,
-                                // The pager starts on the contiguous loaded
-                                // bucket run TimelineScreen handed us; the feed
-                                // appends older months as the viewer reaches
-                                // the end of it.
-                                startIndex = mergedIndex,
-                                source = AssetDetailContext.Source.Timeline,
-                                hasMore = false,
-                                onLoadMore = {},
-                                onFavoriteChanged = timelineViewModel::setFavorite,
-                                feed = feed
-                            )
-                        },
-                        onBucketsVisible = timelineViewModel::ensureVisible,
-                        onEnsureYearSummaries = timelineViewModel::ensureYearSummaries,
-                        // El pull-to-refresh de Fotos también trae la tira
-                        // de Recuerdos (lote L9).
-                        onRefresh = {
-                            timelineViewModel.refresh()
-                            memoriesViewModel.refresh()
-                        },
-                        onDismissError = timelineViewModel::clearError,
-                        onToggleSelection = timelineViewModel::toggleSelection,
-                        onSetSelected = timelineViewModel::setSelected,
-                        onApplySelection = timelineViewModel::applySelection,
-                        onOpenUpload = {
-                            appState.selectedTab = MainTab.More
-                            appState.moreSubscreen = MoreSubscreen.Upload
-                        },
-                        backupPendingCount = if (deviceBackupState.isBackupEnabled) {
-                            deviceBackupState.pendingEntries.size
-                        } else 0,
-                        onOpenBackup = {
-                            appState.selectedTab = MainTab.More
-                            appState.moreSubscreen = MoreSubscreen.DeviceBackup
-                        },
-                        onJumpToDate = { appState.showJumpToDate = true },
-                        onOpenSearch = { appState.selectedTab = MainTab.Search },
-                        onChromeVisibleChange = { appState.timelineChromeVisible = it },
-                        pendingJumpDate = appState.pendingJumpDate,
-                        onJumpHandled = { appState.pendingJumpDate = null },
-                        memories = memoriesState.items,
-                        onOpenMemory = { memory -> appState.memoryDetail = memory },
-                        onSeeAllMemories = { appState.moreSubscreen = MoreSubscreen.Memories }
-                    )
-                    MainTab.Albums -> Column(modifier = Modifier.fillMaxSize()) {
-                        // La búsqueda va DENTRO de la cápsula flotante que dibuja
-                        // AlbumsListScreen (campo en titleContent), como el buscador;
-                        // ya no hay barra acoplada aquí.
-                        Box(modifier = Modifier.weight(1f)) {
-                            AlbumsListScreen(
-                                onAlbumClick = { album ->
-                                    if (albumsState.isSelectionActive) {
-                                        // Con la selección abierta, tocar suma o
-                                        // quita; al quitar la última se cierra.
-                                        albumsViewModel.toggleAlbumSelection(album.id)
-                                    } else {
-                                        appState.selectedAlbum = album
-                                    }
-                                },
-                                onAlbumLongPress = { album ->
-                                    albumsViewModel.selectAlbum(album.id)
-                                },
-                                onCreateAlbum = { appState.showAlbumTypeChooser = true },
-                                // Explorar cards open their screen as a modal layer
-                                // over the Albums tab (no tab switch) so back
-                                // returns here and the bottom nav stays on Álbumes.
-                                onOpenPeople = {
-                                    appState.selectedPerson = null
-                                    appState.moreSubscreen = MoreSubscreen.People
-                                },
-                                onOpenMap = { appState.moreSubscreen = MoreSubscreen.Map },
-                                onOpenScenes = { appState.moreSubscreen = MoreSubscreen.ExploreScenes },
-                                onOpenObjects = { appState.moreSubscreen = MoreSubscreen.ExploreObjects },
-                                onOpenFilters = { appState.showAlbumsFilters = true },
-                                immersive = albumsImmersive,
-                                onChromeVisibleChange = { appState.albumsChromeVisible = it },
-                                scrollToTopTick = appState.albumsScrollToTopTick
-                            )
-                        }
-                    }
-                    MainTab.Folders -> Column(modifier = Modifier.fillMaxSize()) {
-                        // La búsqueda va DENTRO de la cápsula flotante que dibuja
-                        // FoldersListScreen (campo en titleContent), como el buscador;
-                        // ya no hay barra acoplada aquí.
-                        val foldersCreate = if (
-                            foldersState.scope !=
-                                com.photonne.app.ui.folder.FoldersScope.External
-                        ) {
-                            { appState.showCreateFolder = true }
-                        } else null
-                        Box(modifier = Modifier.weight(1f)) {
-                            com.photonne.app.ui.folder.FoldersListScreen(
-                                onFolderClick = { folder ->
-                                    if (foldersState.isSelectionActive) {
-                                        foldersViewModel.toggleFolderSelection(folder.id)
-                                    } else {
-                                        appState.selectedFolder = folder
-                                    }
-                                },
-                                onFolderLongPress = { folder ->
-                                    foldersViewModel.selectFolder(folder.id)
-                                },
-                                onOpenOrganize = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
-                                // Como People/Map desde Álbumes: capa modal sobre la
-                                // pestaña, sin cambiar de tab. La tarjeta solo se
-                                // muestra donde hay buckets, así que el callback
-                                // puede ser incondicional.
-                                onOpenDeviceFolders = {
-                                    appState.moreSubscreen = MoreSubscreen.DeviceFolders
-                                },
-                                onOpenFilters = { appState.showFoldersFilters = true },
-                                onCreateFolder = foldersCreate,
-                                immersive = foldersImmersive,
-                                onChromeVisibleChange = { appState.foldersChromeVisible = it },
-                                scrollToTopTick = appState.foldersScrollToTopTick
-                            )
-                        }
-                    }
-                    // Más pinta su propio cromo flotante dentro de la pantalla
-                    // (título + acción Subir), como Fotos: nada de barra acoplada.
-                    else -> MoreScreen(
-                        user = user.user,
-                        onLogout = onLogout,
-                        onOpenFavorites = { appState.moreSubscreen = MoreSubscreen.Favorites },
-                        onOpenArchived = { appState.moreSubscreen = MoreSubscreen.Archived },
-                        onOpenTrash = {
-                            appState.trashTab = com.photonne.app.ui.library.TrashTab.Personal
-                            appState.moreSubscreen = MoreSubscreen.Trash
-                        },
-                        onOpenUtilities = { appState.moreSubscreen = MoreSubscreen.Utilities },
-                        onOpenMyLinks = { appState.moreSubscreen = MoreSubscreen.MyLinks },
-                        onOpenProfile = {
-                            appState.profileOpenedFromMore = true
-                            appState.moreSubscreen = MoreSubscreen.AccountProfile
-                        },
-                        onOpenDeviceBackup = { appState.moreSubscreen = MoreSubscreen.DeviceBackup },
-                        backupPendingCount = if (deviceBackupState.isBackupEnabled) {
-                            deviceBackupState.pendingEntries.size
-                        } else 0,
-                        backupStatus = remember(deviceBackupState) {
-                            deviceBackupState.toMoreBackupStatus()
-                        },
-                        onOpenNotifications = {
-                            appState.moreSubscreen = MoreSubscreen.Notifications
-                        },
-                        notificationsUnreadCount = notificationsState.unreadCount,
-                        onOpenAccountSettings = {
-                            appState.moreSubscreen = MoreSubscreen.AccountSettings
-                        },
-                        onOpenAdministration = if (
-                            user.user.role.equals("Admin", ignoreCase = true)
-                        ) {
-                            { appState.moreSubscreen = MoreSubscreen.Administration }
-                        } else {
-                            null
-                        },
-                        onOpenUpload = { appState.moreSubscreen = MoreSubscreen.Upload },
-                        onChromeVisibleChange = { appState.moreChromeVisible = it },
-                        attributions = attributions
-                    )
-                }
-            }
+            AuthenticatedTabsPager(contentHost)
             // Overlay layer, drawn over the pager: drill-downs (album/folder
             // detail), Buscar and every More subscreen. Rendered inside an opaque
             // full-bleed Box only while one is active, so it fully hides the
@@ -2731,1398 +1642,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             alpha = enterProgress
                         }
                 ) {
-            when {
-                appState.selectedTab == MainTab.Timeline && appState.moreSubscreen == null -> {
-                    // shown by the pager base layer
-                }
-                appState.selectedTab == MainTab.Albums && appState.moreSubscreen == null -> {
-                    val openedAlbum = appState.selectedAlbum
-                    if (openedAlbum != null) {
-                        AlbumDetailScreen(
-                            album = openedAlbum,
-                            onItemClick = { index ->
-                                appState.assetDetail = AssetDetailContext(
-                                    // Grid renders the re-sorted displayItems, so
-                                    // the tapped index is into that list — not the
-                                    // raw server-order items.
-                                    items = albumDetailState.displayItems,
-                                    startIndex = index,
-                                    source = AssetDetailContext.Source.Album,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        albumDetailViewModel.setFavorite(id, isFav)
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            },
-                            onBack = albumBack,
-                            onShare = {
-                                albumSharesViewModel.open(openedAlbum.id)
-                                appState.showShares = true
-                            },
-                            onEdit = {
-                                if (openedAlbum.isSmart && openedAlbum.isOwner) {
-                                    appState.editingSmartAlbum = openedAlbum.copy(
-                                        name = albumDetailState.albumName ?: openedAlbum.name,
-                                        description = albumDetailState.albumDescription ?: openedAlbum.description,
-                                    )
-                                    appState.moreSubscreen = MoreSubscreen.SmartAlbumEditor
-                                } else {
-                                    appState.showEditAlbum = true
-                                }
-                            },
-                            onDelete = { appState.showDeleteAlbum = true },
-                            onManageMembers = {
-                                albumPermissionsViewModel.open(openedAlbum.id)
-                                appState.showMembers = true
-                            },
-                            onLeave = { appState.showLeaveAlbum = true },
-                            viewModel = albumDetailViewModel,
-                            immersive = albumDetailImmersive,
-                            onChromeVisibleChange = { appState.albumDetailChromeVisible = it }
-                        )
-                    }
-                }
-                appState.selectedTab == MainTab.Folders && appState.moreSubscreen == null -> {
-                    val openedFolder = appState.selectedFolder
-                    if (openedFolder != null) {
-                        com.photonne.app.ui.folder.FolderDetailScreen(
-                            folderId = openedFolder.id,
-                            folderName = openedFolder.name.ifBlank { openedFolder.path },
-                            parentFolderId = openedFolder.parentFolderId,
-                            title = (folderDetailState.folderName ?: openedFolder.name)
-                                .ifBlank { openedFolder.path },
-                            onBack = { appState.folderBack() },
-                            onItemClick = { index ->
-                                if (folderDetailState.isSelectionActive) {
-                                    folderDetailState.items.getOrNull(index)?.let {
-                                        folderDetailViewModel.toggleSelection(it.id)
-                                    }
-                                } else {
-                                    val folderState = folderDetailViewModel.state.value
-                                    appState.assetDetail = AssetDetailContext(
-                                        items = folderState.items,
-                                        startIndex = index,
-                                        source = AssetDetailContext.Source.Timeline,
-                                        hasMore = false,
-                                        onLoadMore = {},
-                                        onFavoriteChanged = { id, isFav ->
-                                            folderDetailViewModel.setFavorite(id, isFav)
-                                            timelineViewModel.setFavorite(id, isFav)
-                                        }
-                                    )
-                                }
-                            },
-                            onItemLongClick = { index ->
-                                folderDetailState.items.getOrNull(index)?.let {
-                                    folderDetailViewModel.toggleSelection(it.id)
-                                }
-                            },
-                            onSubfolderClick = { subfolder ->
-                                if (folderDetailState.isSubfolderSelectionActive) {
-                                    folderDetailViewModel.toggleSubfolderSelection(subfolder.id)
-                                } else {
-                                    appState.folderBackStack.add(openedFolder)
-                                    appState.selectedFolder = subfolder
-                                }
-                            },
-                            onSubfolderLongPress = { subfolder ->
-                                folderDetailViewModel.selectSubfolder(subfolder.id)
-                            },
-                            viewModel = folderDetailViewModel,
-                            actions = {
-                                // Cada acción con el flag que comprueba el
-                                // servidor (antes todo colgaba de isOwner) y sin
-                                // tocar bibliotecas externas, como en la lista.
-                                val openedIsExternal = openedFolder.externalLibraryId != null
-                                FolderDetailChromeActions(
-                                    canEdit = openedFolder.canWrite && !openedIsExternal,
-                                    canDelete = openedFolder.canDelete && !openedIsExternal,
-                                    canManageMembers = openedFolder.isOwner && !openedIsExternal,
-                                    canMove = openedFolder.canWrite && !openedIsExternal,
-                                    onEdit = { appState.showEditFolder = true },
-                                    onMove = { appState.showMoveFolder = true },
-                                    onDelete = { appState.showDeleteFolder = true },
-                                    onManageMembers = {
-                                        folderPermissionsViewModel.open(openedFolder.id)
-                                        appState.showFolderMembers = true
-                                    },
-                                    canToggleTimeline = openedFolder.isShared &&
-                                        openedFolder.externalLibraryId == null,
-                                    excludedFromDiscovery = openedFolder.excludedFromDiscovery,
-                                    onToggleTimeline = {
-                                        val nextIncluded = openedFolder.excludedFromDiscovery
-                                        foldersViewModel.setTimelineIncluded(
-                                            openedFolder.id, included = nextIncluded
-                                        )
-                                        appState.selectedFolder = openedFolder.copy(
-                                            excludedFromDiscovery = !nextIncluded
-                                        )
-                                    },
-                                    onCreateSubfolder = if (!openedIsExternal && openedFolder.canWrite) {
-                                        { appState.showCreateFolder = true }
-                                    } else null
-                                )
-                            },
-                            immersive = folderDetailImmersive,
-                            onChromeVisibleChange = { appState.folderDetailChromeVisible = it }
-                        )
-                    }
-                }
-                appState.selectedTab == MainTab.Search && appState.moreSubscreen == null ->
-                    com.photonne.app.ui.search.SearchScreen(
-                    viewModel = searchViewModel,
-                    onOpenFilters = { appState.showSearchFilters = true },
-                    onBack = { appState.searchBack() },
-                    onChromeVisibleChange = { appState.searchChromeVisible = it },
-                    onItemClick = { index ->
-                        if (searchState.isSelectionActive) {
-                            searchState.results.getOrNull(index)?.let {
-                                searchViewModel.toggleSelection(it.id)
-                            }
-                        } else {
-                            appState.assetDetail = AssetDetailContext(
-                                items = searchState.results,
-                                startIndex = index,
-                                source = AssetDetailContext.Source.Timeline,
-                                hasMore = searchState.hasMore,
-                                onLoadMore = searchViewModel::loadMore,
-                                // La búsqueda pagina: el visor sigue a la lista
-                                // viva en vez de pararse en la primera página.
-                                feed = com.photonne.app.ui.asset.AssetViewerFeed(
-                                    items = { searchState.results },
-                                    hasMore = { searchState.hasMore },
-                                    loadMore = searchViewModel::loadMore
-                                ),
-                                onFavoriteChanged = { id, isFav ->
-                                    searchViewModel.setFavorite(id, isFav)
-                                    timelineViewModel.setFavorite(id, isFav)
-                                }
-                            )
-                        }
-                    },
-                    onItemLongClick = { index ->
-                        searchState.results.getOrNull(index)?.let {
-                            searchViewModel.toggleSelection(it.id)
-                        }
-                    }
-                )
-                else -> when (appState.moreSubscreen) {
-                    null -> {
-                        // The More grid is shown by the pager base layer; a
-                        // non-null subscreen renders its screen on top.
-                    }
-                    MoreSubscreen.SmartAlbumEditor -> com.photonne.app.ui.album.smart.SmartAlbumEditorScreen(
-                        editAlbum = appState.editingSmartAlbum,
-                        onBack = {
-                            appState.moreSubscreen = null
-                            appState.editingSmartAlbum = null
-                        },
-                        onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                        onSaved = { saved ->
-                            val wasEditing = appState.editingSmartAlbum != null
-                            appState.moreSubscreen = null
-                            appState.editingSmartAlbum = null
-                            if (wasEditing) {
-                                // La respuesta del PUT no trae portada ni miniaturas:
-                                // se recarga la lista en vez de pisar la tarjeta.
-                                albumsViewModel.refresh()
-                                // Nuevas condiciones = otro contenido: si el álbum está
-                                // abierto, se recarga al volver a él.
-                                appState.selectedAlbum?.takeIf { it.id == saved.id }?.let { opened ->
-                                    appState.selectedAlbum = opened.copy(
-                                        name = saved.name,
-                                        description = saved.description,
-                                        assetCount = saved.assetCount,
-                                    )
-                                    albumDetailViewModel.refresh()
-                                }
-                            } else {
-                                albumsViewModel.refresh()
-                                appState.selectedTab = MainTab.Albums
-                                appState.selectedAlbum = saved
-                            }
-                        }
-                    )
-                    MoreSubscreen.Upload -> com.photonne.app.ui.upload.UploadScreen(
-                        state = uploadState,
-                        onPicked = { files ->
-                            uploadViewModel.enqueue(files) { timelineViewModel.refresh() }
-                        },
-                        onPickerError = uploadViewModel::pickerErrorRaised,
-                        onRetry = { id ->
-                            uploadViewModel.retry(id) { timelineViewModel.refresh() }
-                        },
-                        onRemove = uploadViewModel::remove,
-                        onCancelAll = uploadViewModel::cancelAll,
-                        onClearFinished = uploadViewModel::clearFinished,
-                        onDismissPickerError = uploadViewModel::clearPickerError,
-                        onViewBatch = {
-                            uploadState.lastBatch?.takeIf { it.isNotEmpty() }?.let { batch ->
-                                appState.assetDetail = AssetDetailContext(
-                                    items = batch,
-                                    startIndex = 0,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            }
-                        },
-                        onAddBatchToAlbum = { appState.bulkAddSource = BulkAddSource.Upload },
-                        onDismissBatch = uploadViewModel::dismissBatchSummary
-                    )
-                    MoreSubscreen.DeviceBackup ->
-                        com.photonne.app.ui.devicebackup.BackupScreen(
-                            title = stringResource(Res.string.device_backup_title),
-                            onBack = { appState.moreSubscreen = null },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = deviceBackupViewModel,
-                            enrichmentViewModel = enrichmentStatusViewModel,
-                            gallery = deviceGallery,
-                            onOpenPending = {
-                                appState.moreSubscreen = MoreSubscreen.DeviceBackupPending
-                            },
-                            onOpenEnrichment = {
-                                appState.moreSubscreen = MoreSubscreen.EnrichmentStatus
-                            }
-                        )
-                    MoreSubscreen.DeviceBackupPending ->
-                        com.photonne.app.ui.devicebackup.BackupPendingScreen(
-                            title = stringResource(Res.string.backup_pending_screen_title),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.DeviceBackup },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = deviceBackupViewModel,
-                            gallery = deviceGallery,
-                            onOpenAsset = { item ->
-                                appState.assetDetail = AssetDetailContext(
-                                    items = listOf(item),
-                                    startIndex = 0,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            }
-                        )
-                    MoreSubscreen.EnrichmentStatus ->
-                        com.photonne.app.ui.devicebackup.EnrichmentStatusScreen(
-                            title = stringResource(Res.string.enrichment_screen_title),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.DeviceBackup },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = enrichmentStatusViewModel
-                        )
-                    MoreSubscreen.MyLinks ->
-                        com.photonne.app.ui.album.MyLinksScreen(
-                            title = stringResource(Res.string.my_links_title),
-                            onBack = { appState.moreSubscreen = null },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.UnsupportedFiles ->
-                        com.photonne.app.ui.library.UnsupportedFilesScreen(
-                            state = unsupportedFilesState,
-                            onLoad = unsupportedFilesViewModel::ensureLoaded,
-                            onRefresh = unsupportedFilesViewModel::refresh,
-                            onLoadMore = unsupportedFilesViewModel::loadMore,
-                            onDownload = unsupportedFilesViewModel::download,
-                            onDelete = unsupportedFilesViewModel::delete,
-                            onClearDeleteError = unsupportedFilesViewModel::clearDeleteError,
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Utilities },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.OrganizeInbox ->
-                        com.photonne.app.ui.organize.OrganizeInboxScreen(
-                            state = organizeInboxState,
-                            onLoad = organizeInboxViewModel::ensureLoaded,
-                            onRefresh = organizeInboxViewModel::refresh,
-                            onLoadMore = organizeInboxViewModel::loadMore,
-                            onItemClick = { index ->
-                                if (organizeInboxState.isSelectionActive) {
-                                    organizeInboxState.items.getOrNull(index)?.let {
-                                        organizeInboxViewModel.toggleSelection(it.id)
-                                    }
-                                } else {
-                                    appState.assetDetail = AssetDetailContext(
-                                        items = organizeInboxViewModel.state.value.items,
-                                        startIndex = index,
-                                        source = AssetDetailContext.Source.Timeline,
-                                        hasMore = organizeInboxState.hasMore,
-                                        onLoadMore = organizeInboxViewModel::loadMore,
-                                        feed = com.photonne.app.ui.asset.AssetViewerFeed(
-                                            items = { organizeInboxState.items },
-                                            hasMore = { organizeInboxState.hasMore },
-                                            loadMore = organizeInboxViewModel::loadMore
-                                        ),
-                                        onFavoriteChanged = { id, isFav ->
-                                            timelineViewModel.setFavorite(id, isFav)
-                                        }
-                                    )
-                                }
-                            },
-                            onItemLongClick = { index ->
-                                organizeInboxState.items.getOrNull(index)?.let {
-                                    organizeInboxViewModel.toggleSelection(it.id)
-                                }
-                            },
-                            onBack = {
-                                appState.moreSubscreen = null
-                                foldersViewModel.refreshOrganizeCount()
-                            },
-                            onOpenRules = { appState.moreSubscreen = MoreSubscreen.OrganizeRule },
-                            onPickSuggestion = organizeInboxViewModel::selectSuggestion,
-                            onSeeAllItems = organizeInboxViewModel::showAllItems,
-                            onBackToSuggestions = organizeInboxViewModel::showSuggestions,
-                            onApplySelection = organizeInboxViewModel::applySelection,
-                            onOpenExcluded = {
-                                organizeExcludedViewModel.refresh()
-                                appState.moreSubscreen = MoreSubscreen.OrganizeExcluded
-                            },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.OrganizeExcluded ->
-                        com.photonne.app.ui.organize.OrganizeExcludedScreen(
-                            state = organizeExcludedState,
-                            onLoad = organizeExcludedViewModel::ensureLoaded,
-                            onRefresh = organizeExcludedViewModel::refresh,
-                            onLoadMore = organizeExcludedViewModel::loadMore,
-                            onItemClick = { index ->
-                                if (organizeExcludedState.isSelectionActive) {
-                                    organizeExcludedState.items.getOrNull(index)?.let {
-                                        organizeExcludedViewModel.toggleSelection(it.id)
-                                    }
-                                } else {
-                                    appState.assetDetail = AssetDetailContext(
-                                        items = organizeExcludedViewModel.state.value.items,
-                                        startIndex = index,
-                                        source = AssetDetailContext.Source.Timeline,
-                                        hasMore = organizeExcludedState.hasMore,
-                                        onLoadMore = organizeExcludedViewModel::loadMore,
-                                        feed = com.photonne.app.ui.asset.AssetViewerFeed(
-                                            items = { organizeExcludedState.items },
-                                            hasMore = { organizeExcludedState.hasMore },
-                                            loadMore = organizeExcludedViewModel::loadMore
-                                        ),
-                                        onFavoriteChanged = { id, isFav ->
-                                            timelineViewModel.setFavorite(id, isFav)
-                                        }
-                                    )
-                                }
-                            },
-                            onItemLongClick = { index ->
-                                organizeExcludedState.items.getOrNull(index)?.let {
-                                    organizeExcludedViewModel.toggleSelection(it.id)
-                                }
-                            },
-                            onBack = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
-                            onApplySelection = organizeExcludedViewModel::applySelection,
-                            onErrorShown = organizeExcludedViewModel::clearError,
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.OrganizeRule ->
-                        com.photonne.app.ui.organize.OrganizeRuleScreen(
-                            title = stringResource(Res.string.organize_rule_title),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            destinations = foldersState.moveDestinations,
-                            viewModel = organizeRuleViewModel,
-                            reviewOpen = organizeRuleState.reviewGroups != null
-                        )
-                    MoreSubscreen.Utilities ->
-                        com.photonne.app.ui.utilities.UtilitiesHubScreen(
-                            title = stringResource(Res.string.utilities_title),
-                            onBack = { appState.moreSubscreen = null },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            onOpen = { entry ->
-                                appState.moreSubscreen = when (entry) {
-                                    com.photonne.app.ui.utilities.UtilitiesEntry.Duplicates ->
-                                        MoreSubscreen.UtilitiesDuplicates
-                                    com.photonne.app.ui.utilities.UtilitiesEntry.LargeFiles ->
-                                        MoreSubscreen.UtilitiesLargeFiles
-                                    com.photonne.app.ui.utilities.UtilitiesEntry.Locations ->
-                                        MoreSubscreen.UtilitiesLocations
-                                    com.photonne.app.ui.utilities.UtilitiesEntry.UnsupportedFiles ->
-                                        MoreSubscreen.UnsupportedFiles
-                                }
-                            }
-                        )
-                    MoreSubscreen.UtilitiesDuplicates ->
-                        com.photonne.app.ui.utilities.UtilitiesDuplicatesScreen(
-                            title = stringResource(Res.string.utilities_section_duplicates),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Utilities },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = utilitiesDuplicatesViewModel,
-                            baseUrl = apiBaseUrl,
-                            confirmOpen = appState.showDuplicatesConfirm,
-                            onConfirmOpenChange = { appState.showDuplicatesConfirm = it },
-                            onUndoTrash = { ids ->
-                                actionsViewModel.undoBulk(
-                                    com.photonne.app.ui.actions.BulkUndoKind.Trash,
-                                    ids
-                                ) {
-                                    utilitiesDuplicatesViewModel.refresh()
-                                    timelineViewModel.refresh()
-                                }
-                            },
-                            onOpenAsset = { index, items ->
-                                appState.assetDetail = AssetDetailContext(
-                                    items = items,
-                                    startIndex = index,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            }
-                        )
-                    MoreSubscreen.UtilitiesLargeFiles ->
-                        com.photonne.app.ui.utilities.UtilitiesLargeFilesScreen(
-                            title = stringResource(Res.string.utilities_section_large_files),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Utilities },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = utilitiesLargeFilesViewModel,
-                            baseUrl = apiBaseUrl,
-                            onAssetClick = { index, items ->
-                                appState.assetDetail = AssetDetailContext(
-                                    items = items,
-                                    startIndex = index,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            }
-                        )
-                    MoreSubscreen.UtilitiesLocations ->
-                        com.photonne.app.ui.utilities.UtilitiesLocationsScreen(
-                            title = stringResource(Res.string.utilities_section_locations),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Utilities },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = utilitiesLocationsViewModel,
-                            onFolderClick = { node ->
-                                coroutineScope.launch {
-                                    // El resumen real trae los permisos (escribir,
-                                    // borrar); sin red se abre con lo que da el
-                                    // árbol, en solo lectura, y el detalle pinta
-                                    // su propio error con Reintentar.
-                                    val folder = runCatching { foldersRepository.get(node.id) }
-                                        .getOrElse {
-                                            com.photonne.app.data.models.FolderSummary(
-                                                id = node.id,
-                                                path = node.path,
-                                                name = node.name,
-                                                parentFolderId = node.parentFolderId,
-                                                createdAt = kotlin.time.Clock.System.now(),
-                                                assetCount = node.assetCount,
-                                                isShared = node.isShared,
-                                                isOwner = node.isOwner,
-                                                canWrite = false,
-                                                canDelete = false,
-                                                externalLibraryId = node.externalLibraryId
-                                            )
-                                        }
-                                    appState.folderReturnTo = appState.selectedTab to MoreSubscreen.UtilitiesLocations
-                                    appState.folderBackStack.clear()
-                                    appState.selectedFolder = folder
-                                    appState.moreSubscreen = null
-                                    appState.selectedTab = MainTab.Folders
-                                }
-                            }
-                        )
-                    MoreSubscreen.Memories ->
-                        com.photonne.app.ui.memories.MemoriesScreen(
-                            viewModel = memoryFeedViewModel,
-                            baseUrl = apiBaseUrl,
-                            onOpenMemory = { detail ->
-                                appState.memoryDetail = com.photonne.app.ui.memories.MemoryDetailContext(
-                                    title = detail.title,
-                                    subtitle = detail.subtitle,
-                                    coverAssetId = detail.coverAssetId,
-                                    items = detail.assets
-                                )
-                            },
-                            onBack = { appState.moreSubscreen = null },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.ExploreScenes ->
-                        com.photonne.app.ui.explore.ExploreScenesScreen(
-                            viewModel = exploreFacetsViewModel,
-                            // Tapping a scene jumps to the Search tab pre-filtered
-                            // by that label — same flow as the PWA, where Explorar
-                            // is just a deep-linking surface for the search engine.
-                            onSceneClick = { label ->
-                                searchViewModel.showResultsForSceneLabel(label)
-                                appState.searchReturnTo = appState.selectedTab to MoreSubscreen.ExploreScenes
-                                appState.moreSubscreen = null
-                                appState.selectedTab = MainTab.Search
-                            },
-                            onBack = { appState.moreSubscreen = null },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.ExploreObjects ->
-                        com.photonne.app.ui.explore.ExploreObjectsScreen(
-                            viewModel = exploreFacetsViewModel,
-                            onObjectClick = { label ->
-                                searchViewModel.showResultsForObjectLabel(label)
-                                appState.searchReturnTo = appState.selectedTab to MoreSubscreen.ExploreObjects
-                                appState.moreSubscreen = null
-                                appState.selectedTab = MainTab.Search
-                            },
-                            onBack = { appState.moreSubscreen = null },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
-                        viewModel = mapViewModel,
-                        onPointOpen = { visiblePoints, index ->
-                            // Single-marker tap → open the asset viewer
-                            // seeded with every point visible in the
-                            // viewport (by date), starting at the tapped
-                            // one, so it swipes like a cluster does. The
-                            // viewer re-fetches asset detail on display, so
-                            // synthetic TimelineItems are enough.
-                            appState.assetDetail = AssetDetailContext(
-                                items = visiblePoints.map { it.toSyntheticTimelineItem() },
-                                startIndex = index,
-                                source = AssetDetailContext.Source.Timeline,
-                                hasMore = false,
-                                onLoadMore = {},
-                                onFavoriteChanged = { id, isFav ->
-                                    timelineViewModel.setFavorite(id, isFav)
-                                }
-                            )
-                        },
-                        onSheetPhotoOpen = { sheetPoints, index ->
-                            // Thumbnail tap in the persistent sheet → open
-                            // the viewer seeded with the sheet's whole list
-                            // (viewport or tapped cluster) so it swipes.
-                            val items = sheetPoints.map { it.toSyntheticTimelineItem() }
-                            appState.assetDetail = AssetDetailContext(
-                                items = items,
-                                startIndex = index,
-                                source = AssetDetailContext.Source.Timeline,
-                                hasMore = false,
-                                onLoadMore = {},
-                                onFavoriteChanged = { id, isFav ->
-                                    timelineViewModel.setFavorite(id, isFav)
-                                }
-                            )
-                        },
-                        onBulkAddToAlbum = { appState.bulkAddSource = BulkAddSource.Map },
-                        onBack = { appState.moreSubscreen = null }
-                    )
-                    MoreSubscreen.PeopleSuggestions ->
-                        com.photonne.app.ui.people.PersonSuggestionsScreen(
-                            state = suggestionsState,
-                            title = (suggestionsState.personName ?: appState.selectedPerson?.name).orEmpty(),
-                            isBulkMutating = suggestionsState.isBulkMutating,
-                            onAccept = personSuggestionsViewModel::acceptFace,
-                            onDismissFace = personSuggestionsViewModel::dismissFace,
-                            onLoadMore = personSuggestionsViewModel::loadMore,
-                            onOpen = {
-                                appState.selectedPerson?.let {
-                                    personSuggestionsViewModel.open(it.id, it.name)
-                                }
-                            },
-                            onBack = { appState.moreSubscreen = MoreSubscreen.People },
-                            // Actúan también sobre las páginas no cargadas, así
-                            // que primero confirman con el recuento del servidor.
-                            onAcceptAll = { appState.showAcceptAllSuggestions = true },
-                            onDismissAll = { appState.showDismissAllSuggestions = true },
-                            onRefresh = personSuggestionsViewModel::refresh,
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.People -> {
-                        val person = appState.selectedPerson
-                        if (person == null) {
-                            com.photonne.app.ui.people.PeopleScreen(
-                                state = peopleState,
-                                onPersonClick = { picked ->
-                                    appState.selectedPerson = picked
-                                    personDetailViewModel.open(picked.id, picked.name)
-                                },
-                                onLoadMore = peopleViewModel::loadMore,
-                                onLoad = peopleViewModel::ensureLoaded,
-                                onRefresh = peopleViewModel::refresh,
-                                onBack = { appState.moreSubscreen = null },
-                                onToggleSearch = peopleViewModel::toggleSearch,
-                                onSearchChange = peopleViewModel::setSearch,
-                                onSortChange = peopleViewModel::setSort,
-                                onRecluster = {
-                                    // El servidor devuelve cuántas personas nuevas
-                                    // salieron del reagrupado; antes se descartaba.
-                                    peopleViewModel.recluster { created ->
-                                        coroutineScope.launch {
-                                            snackbarController.show(
-                                                if (created > 0) {
-                                                    org.jetbrains.compose.resources.getPluralString(
-                                                        Res.plurals.people_recluster_done,
-                                                        created, created
-                                                    )
-                                                } else {
-                                                    org.jetbrains.compose.resources.getString(
-                                                        Res.string.people_recluster_done_none
-                                                    )
-                                                }
-                                            )
-                                        }
-                                    }
-                                },
-                                onToggleHidden = peopleViewModel::toggleShowHidden,
-                                onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                            )
-                        } else {
-                            com.photonne.app.ui.people.PersonDetailScreen(
-                                state = personDetailState,
-                                title = personDetailState.personName ?: person.name.orEmpty(),
-                                isHidden = person.isHidden,
-                                onRetry = { personDetailViewModel.open(person.id, person.name) },
-                                onRefresh = personDetailViewModel::refresh,
-                                onItemClick = { index ->
-                                    if (personDetailState.isSelectionActive) {
-                                        personDetailState.items.getOrNull(index)?.let {
-                                            personDetailViewModel.toggleSelection(it.id)
-                                        }
-                                    } else {
-                                        appState.assetDetail = AssetDetailContext(
-                                            items = personDetailState.items,
-                                            startIndex = index,
-                                            source = AssetDetailContext.Source.Timeline,
-                                            hasMore = personDetailState.hasMore,
-                                            onLoadMore = personDetailViewModel::loadMore,
-                                            feed = com.photonne.app.ui.asset.AssetViewerFeed(
-                                                items = { personDetailState.items },
-                                                hasMore = { personDetailState.hasMore },
-                                                loadMore = personDetailViewModel::loadMore
-                                            ),
-                                            onFavoriteChanged = { id, isFav ->
-                                                personDetailViewModel.setFavorite(id, isFav)
-                                                timelineViewModel.setFavorite(id, isFav)
-                                            }
-                                        )
-                                    }
-                                },
-                                onItemLongClick = { index ->
-                                    personDetailState.items.getOrNull(index)?.let {
-                                        personDetailViewModel.toggleSelection(it.id)
-                                    }
-                                },
-                                onLoadMore = personDetailViewModel::loadMore,
-                                onApplySelection = personDetailViewModel::applySelection,
-                                onBack = appState::personBack,
-                                onRename = { appState.showRenamePerson = true },
-                                onSuggestions = {
-                                    personSuggestionsViewModel.open(person.id, person.name)
-                                    appState.moreSubscreen = MoreSubscreen.PeopleSuggestions
-                                },
-                                onMerge = { appState.showMergePicker = true },
-                                onToggleHidden = {
-                                    if (person.isHidden) {
-                                        peopleViewModel.unhide(person.id) {
-                                            appState.selectedPerson = person.copy(isHidden = false)
-                                        }
-                                    } else {
-                                        peopleViewModel.hide(person.id) {
-                                            appState.selectedPerson = null
-                                        }
-                                    }
-                                },
-                                onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                            )
-                        }
-                    }
-                    MoreSubscreen.DeviceFolders -> com.photonne.app.ui.folder.DeviceFoldersScreen(
-                        backedUpUris = remember(deviceBackupState.folders) {
-                            deviceBackupState.folders.map { it.uri }.toSet()
-                        },
-                        onAddToBackup = deviceBackupViewModel::onFolderPicked,
-                        onOpenBucket = { bucket ->
-                            appState.deviceFolderBucket = bucket
-                            appState.moreSubscreen = MoreSubscreen.DeviceFolderDetail
-                        },
-                        onBack = { appState.moreSubscreen = null },
-                        onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                    )
-                    MoreSubscreen.DeviceFolderDetail -> appState.deviceFolderBucket?.let { bucket ->
-                        com.photonne.app.ui.folder.DeviceFolderDetailScreen(
-                            bucket = bucket,
-                            onOpenAsset = { items, index ->
-                                appState.assetDetail = AssetDetailContext(
-                                    items = items,
-                                    startIndex = index,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { _, _ -> }
-                                )
-                            },
-                            onBack = { appState.moreSubscreen = MoreSubscreen.DeviceFolders },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    }
-                    MoreSubscreen.Favorites -> com.photonne.app.ui.library.FavoritesScreen(
-                        state = favoritesState,
-                        onItemClick = { index ->
-                            if (favoritesState.isSelectionActive) {
-                                favoritesState.items.getOrNull(index)?.let {
-                                    favoritesViewModel.toggleSelection(it.id)
-                                }
-                            } else {
-                                appState.assetDetail = AssetDetailContext(
-                                    items = favoritesState.items,
-                                    startIndex = index,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = favoritesState.hasMore,
-                                    onLoadMore = favoritesViewModel::loadMore,
-                                    feed = com.photonne.app.ui.asset.AssetViewerFeed(
-                                        items = { favoritesState.items },
-                                        hasMore = { favoritesState.hasMore },
-                                        loadMore = favoritesViewModel::loadMore
-                                    ),
-                                    onFavoriteChanged = { id, isFav ->
-                                        favoritesViewModel.setFavorite(id, isFav)
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            }
-                        },
-                        onItemLongClick = { index ->
-                            favoritesState.items.getOrNull(index)?.let {
-                                favoritesViewModel.toggleSelection(it.id)
-                            }
-                        },
-                        onLoadMore = favoritesViewModel::loadMore,
-                        onLoad = favoritesViewModel::ensureLoaded,
-                        onRefresh = favoritesViewModel::refresh,
-                        onApplySelection = favoritesViewModel::applySelection,
-                        onBack = { appState.moreSubscreen = null },
-                        onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                    )
-                    MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
-                        state = archivedState,
-                        onItemClick = { index ->
-                            if (archivedState.isSelectionActive) {
-                                archivedState.items.getOrNull(index)?.let {
-                                    archivedViewModel.toggleSelection(it.id)
-                                }
-                            } else {
-                                appState.assetDetail = AssetDetailContext(
-                                    items = archivedState.items,
-                                    startIndex = index,
-                                    source = AssetDetailContext.Source.Archive,
-                                    hasMore = archivedState.hasMore,
-                                    onLoadMore = archivedViewModel::loadMore,
-                                    feed = com.photonne.app.ui.asset.AssetViewerFeed(
-                                        items = { archivedState.items },
-                                        hasMore = { archivedState.hasMore },
-                                        loadMore = archivedViewModel::loadMore
-                                    ),
-                                    onFavoriteChanged = { id, isFav ->
-                                        archivedViewModel.setFavorite(id, isFav)
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            }
-                        },
-                        onItemLongClick = { index ->
-                            archivedState.items.getOrNull(index)?.let {
-                                archivedViewModel.toggleSelection(it.id)
-                            }
-                        },
-                        onLoadMore = archivedViewModel::loadMore,
-                        onApplySelection = archivedViewModel::applySelection,
-                        onLoad = archivedViewModel::ensureLoaded,
-                        onRefresh = archivedViewModel::refresh,
-                        onBack = { appState.moreSubscreen = null },
-                        onUnarchiveAll = { appState.showUnarchiveAll = true },
-                        onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                    )
-                    MoreSubscreen.Trash -> Box(modifier = Modifier.fillMaxSize()) {
-                        // La pantalla reserva siempre el hueco del cromo flotante:
-                        // sin selección lo dibuja ella misma y, con selección, lo
-                        // ocupa la cápsula de selección (rama del topBar).
-                        val trashSelecting = trashState.isSelectionActive
-                        // La rejilla de la papelera personal (hermana Haze +
-                        // fuente de scroll) para que el cromo se acople en reposo.
-                        val trashHazeState = remember { HazeState() }
-                        val trashGridState = rememberLazyGridState()
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = subscreenChromeReservedTop())
-                        ) {
-                        when (appState.trashTab) {
-                            com.photonne.app.ui.library.TrashTab.Personal ->
-                                com.photonne.app.ui.library.TrashScreen(
-                                    state = trashState,
-                                    onItemClick = { index ->
-                                        if (trashState.isSelectionActive) {
-                                            trashState.items.getOrNull(index)?.let {
-                                                trashViewModel.toggleSelection(it.id)
-                                            }
-                                        } else {
-                                            appState.assetDetail = AssetDetailContext(
-                                                items = trashState.items,
-                                                startIndex = index,
-                                                source = AssetDetailContext.Source.Trash,
-                                                hasMore = trashState.hasMore,
-                                                onLoadMore = trashViewModel::loadMore,
-                                                feed = com.photonne.app.ui.asset.AssetViewerFeed(
-                                                    items = { trashState.items },
-                                                    hasMore = { trashState.hasMore },
-                                                    loadMore = trashViewModel::loadMore
-                                                ),
-                                                onFavoriteChanged = { id, isFav ->
-                                                    // Trashed assets ignore favorite changes
-                                                    // server-side, but keep the local copy
-                                                    // consistent if the viewer toggles.
-                                                    timelineViewModel.setFavorite(id, isFav)
-                                                }
-                                            )
-                                        }
-                                    },
-                                    onItemLongClick = { index ->
-                                        trashState.items.getOrNull(index)?.let {
-                                            trashViewModel.toggleSelection(it.id)
-                                        }
-                                    },
-                                    onLoadMore = trashViewModel::loadMore,
-                                    onLoad = trashViewModel::ensureLoaded,
-                                    onRefresh = trashViewModel::refresh,
-                                    onApplySelection = trashViewModel::applySelection,
-                                    gridState = trashGridState,
-                                    hazeState = trashHazeState
-                                )
-                            com.photonne.app.ui.library.TrashTab.Shared ->
-                                com.photonne.app.ui.admin.AdminSharedTrashScreen(
-                                    viewModel = adminSharedTrashViewModel
-                                )
-                        }
-                        }
-                        if (!trashSelecting) {
-                            val count = trashState.items.size
-                            SubscreenFloatingChrome(
-                                // Con el ámbito escondido en la hoja, el título
-                                // dice cuál de las dos papeleras se ve.
-                                title = stringResource(
-                                    if (appState.trashTab == com.photonne.app.ui.library.TrashTab.Shared) {
-                                        Res.string.admin_shared_trash
-                                    } else Res.string.trash_title
-                                ),
-                                onBack = { appState.moreSubscreen = null },
-                                // La rejilla personal manda el acople/ocultar; en
-                                // Compartida no está compuesta, así que queda en
-                                // reposo (acoplada), que es lo correcto.
-                                scroll = SubscreenScroll(
-                                    firstVisibleItemIndex = { trashGridState.firstVisibleItemIndex },
-                                    firstVisibleItemScrollOffset = { trashGridState.firstVisibleItemScrollOffset },
-                                    isScrollInProgress = { trashGridState.isScrollInProgress },
-                                    scrollToTopMinIndex = 4,
-                                    onScrollToTop = { trashGridState.animateScrollToItem(0) }
-                                ),
-                                hazeState = trashHazeState,
-                                onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                                // Restaurar todo / vaciar solo aplican a la papelera
-                                // personal; en la compartida la propia pantalla pinta
-                                // sus acciones, así que el ⋮ no sale. El filtro de
-                                // ámbito sí, en las dos.
-                                actions = {
-                                    TrashChromeActions(
-                                        tab = appState.trashTab,
-                                        showBulkActions = appState.trashTab ==
-                                            com.photonne.app.ui.library.TrashTab.Personal && count > 0,
-                                        onOpenScope = { appState.showTrashScope = true },
-                                        onRestoreAll = { appState.showRestoreAllTrash = true },
-                                        onEmptyTrash = { appState.showEmptyTrash = true }
-                                    )
-                                }
-                            )
-                        }
-                        if (appState.showTrashScope) {
-                            com.photonne.app.ui.library.TrashScopeSheet(
-                                selected = appState.trashTab,
-                                onSelect = { tab ->
-                                    if (tab != appState.trashTab) {
-                                        // Leaving the personal tab drops its selection
-                                        // so the top bar/back don't act on a hidden tab.
-                                        trashViewModel.clearSelection()
-                                        appState.trashTab = tab
-                                    }
-                                    appState.showTrashScope = false
-                                },
-                                onDismiss = { appState.showTrashScope = false }
-                            )
-                        }
-                    }
-                    MoreSubscreen.Notifications -> {
-                        val noScreenMessage =
-                            stringResource(Res.string.notifications_no_screen)
-                        com.photonne.app.ui.notifications.NotificationsScreen(
-                            title = stringResource(Res.string.notifications_title),
-                            onBack = { appState.moreSubscreen = null },
-                            canMarkAllRead = notificationsState.unreadCount > 0 &&
-                                !notificationsState.isMarkingAllRead,
-                            onMarkAllRead = notificationsViewModel::markAllRead,
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = notificationsViewModel,
-                            onNavigate = { url ->
-                                // Map known server actionUrls to in-app
-                                // subscreens; unknown routes are a no-op.
-                                val path = url.substringBefore('?').trimEnd('/')
-                                when {
-                                    path == "/shared-trash" ||
-                                        path.endsWith("/shared-trash") -> {
-                                        appState.trashTab = com.photonne.app.ui.library.TrashTab.Shared
-                                        appState.moreSubscreen = MoreSubscreen.Trash
-                                    }
-                                    path == "/admin/enrichment-failures" ||
-                                        path.endsWith("/admin/enrichment-failures") -> {
-                                        appState.adminEnrichmentInitialType = url
-                                            .substringAfter('?', "")
-                                            .split('&')
-                                            .firstOrNull { it.startsWith("type=") }
-                                            ?.substringAfter('=')
-                                            ?.takeIf { it.isNotBlank() }
-                                        appState.adminEnrichmentReturnTo = MoreSubscreen.AdminSystemHub
-                                        appState.moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
-                                    }
-                                    path == "/admin/stats" ||
-                                        path.endsWith("/admin/stats") -> {
-                                        appState.moreSubscreen = MoreSubscreen.AdminStats
-                                    }
-                                    path == "/people" || path.endsWith("/people") -> {
-                                        appState.moreSubscreen = MoreSubscreen.People
-                                    }
-                                    // Ruta sin pantalla nativa: decirlo vale
-                                    // más que un toque que no hace nada.
-                                    else -> snackbarController.show(noScreenMessage)
-                                }
-                            }
-                        )
-                    }
-                    MoreSubscreen.AccountSettings -> {
-                        // Resumen de cuota en la fila de Almacenamiento: se pide
-                        // una vez y se reutiliza (el viewmodel vive con la app).
-                        LaunchedEffect(Unit) { accountStorageViewModel.loadIfNeeded() }
-                        val accountStorageState by accountStorageViewModel.state
-                            .collectAsStateWithLifecycle()
-                        com.photonne.app.ui.settings.AccountSettingsScreen(
-                            title = stringResource(Res.string.account_settings_title),
-                            storage = accountStorageState.info,
-                            onBack = { appState.moreSubscreen = null },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            activityNotificationsEnabled = activityNotificationsEnabled
-                                .takeIf { activityNotifications.isSupported },
-                            onActivityNotificationsChange = activityNotifications::setEnabled,
-                            onOpen = { section ->
-                                appState.profileOpenedFromMore = false
-                                appState.moreSubscreen = when (section) {
-                                    com.photonne.app.ui.settings.AccountSettingsSection.Profile ->
-                                        MoreSubscreen.AccountProfile
-                                    com.photonne.app.ui.settings.AccountSettingsSection.Security ->
-                                        MoreSubscreen.AccountSecurity
-                                    com.photonne.app.ui.settings.AccountSettingsSection.Appearance ->
-                                        MoreSubscreen.AccountAppearance
-                                    com.photonne.app.ui.settings.AccountSettingsSection.Storage ->
-                                        MoreSubscreen.AccountStorage
-                                    com.photonne.app.ui.settings.AccountSettingsSection.Connection ->
-                                        MoreSubscreen.AccountConnection
-                                }
-                            }
-                        )
-                    }
-                    MoreSubscreen.AccountProfile ->
-                        com.photonne.app.ui.settings.AccountProfileScreen(
-                            title = stringResource(Res.string.account_section_profile),
-                            onBack = {
-                                appState.moreSubscreen = if (appState.profileOpenedFromMore) null
-                                else MoreSubscreen.AccountSettings
-                            },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = accountProfileViewModel
-                        )
-                    MoreSubscreen.AccountSecurity ->
-                        com.photonne.app.ui.settings.AccountSecurityScreen(
-                            title = stringResource(Res.string.account_section_security),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AccountSettings },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = accountSecurityViewModel
-                        )
-                    MoreSubscreen.AccountAppearance ->
-                        com.photonne.app.ui.settings.AccountAppearanceScreen(
-                            title = stringResource(Res.string.account_section_appearance),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AccountSettings },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = appearanceViewModel
-                        )
-                    MoreSubscreen.AccountStorage ->
-                        com.photonne.app.ui.settings.AccountStorageScreen(
-                            title = stringResource(Res.string.account_section_storage),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AccountSettings },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = accountStorageViewModel
-                        )
-                    MoreSubscreen.AccountConnection ->
-                        com.photonne.app.ui.settings.AccountConnectionScreen(
-                            title = stringResource(Res.string.account_section_connection),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AccountSettings },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = deviceConnectionViewModel
-                        )
-                    MoreSubscreen.Administration ->
-                        com.photonne.app.ui.admin.AdministrationScreen(
-                            title = stringResource(Res.string.administration_title),
-                            onBack = { appState.moreSubscreen = null },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            onOpen = { section ->
-                                appState.moreSubscreen = when (section) {
-                                    com.photonne.app.ui.admin.AdministrationSection.Users ->
-                                        MoreSubscreen.AdminUsers
-                                    com.photonne.app.ui.admin.AdministrationSection.Libraries ->
-                                        MoreSubscreen.AdminLibraries
-                                    com.photonne.app.ui.admin.AdministrationSection.Stats ->
-                                        MoreSubscreen.AdminStats
-                                    com.photonne.app.ui.admin.AdministrationSection.Settings ->
-                                        MoreSubscreen.AdminSettingsHub
-                                    com.photonne.app.ui.admin.AdministrationSection.System ->
-                                        MoreSubscreen.AdminSystemHub
-                                }
-                            }
-                        )
-                    MoreSubscreen.AdminUsers ->
-                        com.photonne.app.ui.admin.AdminUsersScreen(
-                            title = stringResource(Res.string.admin_section_users),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
-                            onCreateNew = {
-                                appState.adminUserEditorId = null
-                                adminUsersViewModel.clearMessages()
-                                appState.moreSubscreen = MoreSubscreen.AdminUserEditor
-                            },
-                            viewModel = adminUsersViewModel,
-                            onEdit = { user ->
-                                appState.adminUserEditorId = user.id
-                                adminUsersViewModel.clearMessages()
-                                appState.moreSubscreen = MoreSubscreen.AdminUserEditor
-                            },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.AdminUserEditor ->
-                        com.photonne.app.ui.admin.AdminUserEditorScreen(
-                            title = stringResource(
-                                if (appState.adminUserEditorId == null) Res.string.admin_user_action_new
-                                else Res.string.admin_user_edit_title
-                            ),
-                            onBack = {
-                                appState.adminUserEditorId = null
-                                adminUsersViewModel.clearMessages()
-                                appState.moreSubscreen = MoreSubscreen.AdminUsers
-                            },
-                            viewModel = adminUsersViewModel,
-                            userId = appState.adminUserEditorId,
-                            onDone = {
-                                appState.adminUserEditorId = null
-                                appState.moreSubscreen = MoreSubscreen.AdminUsers
-                            },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.AdminLibraries -> {
-                        val usersState by adminUsersViewModel.state.collectAsStateWithLifecycle()
-                        LaunchedEffect(Unit) { adminUsersViewModel.ensureLoaded() }
-                        com.photonne.app.ui.admin.AdminLibrariesScreen(
-                            title = stringResource(Res.string.admin_section_libraries),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
-                            onCreateNew = {
-                                appState.adminLibraryEditorId = null
-                                adminLibrariesViewModel.clearMessages()
-                                appState.moreSubscreen = MoreSubscreen.AdminLibraryEditor
-                            },
-                            viewModel = adminLibrariesViewModel,
-                            knownUsers = usersState.users,
-                            onEdit = { library ->
-                                appState.adminLibraryEditorId = library.id
-                                adminLibrariesViewModel.clearMessages()
-                                appState.moreSubscreen = MoreSubscreen.AdminLibraryEditor
-                            },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    }
-                    MoreSubscreen.AdminLibraryEditor ->
-                        com.photonne.app.ui.admin.AdminLibraryEditorScreen(
-                            title = stringResource(
-                                if (appState.adminLibraryEditorId == null) Res.string.admin_libraries_action_new
-                                else Res.string.admin_libraries_edit_title
-                            ),
-                            onBack = {
-                                appState.adminLibraryEditorId = null
-                                adminLibrariesViewModel.clearMessages()
-                                appState.moreSubscreen = MoreSubscreen.AdminLibraries
-                            },
-                            viewModel = adminLibrariesViewModel,
-                            libraryId = appState.adminLibraryEditorId,
-                            onDone = {
-                                appState.adminLibraryEditorId = null
-                                appState.moreSubscreen = MoreSubscreen.AdminLibraries
-                            },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
-                        )
-                    MoreSubscreen.AdminStats ->
-                        com.photonne.app.ui.admin.AdminStatsScreen(
-                            title = stringResource(Res.string.admin_section_stats),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminStatsViewModel
-                        )
-                    MoreSubscreen.AdminSettingsHub ->
-                        com.photonne.app.ui.admin.AdminSettingsHubScreen(
-                            title = stringResource(Res.string.admin_section_settings),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            onOpen = { entry ->
-                                appState.moreSubscreen = when (entry) {
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.FaceRecognition ->
-                                        MoreSubscreen.AdminSettingsFaceRecognition
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.ObjectDetection ->
-                                        MoreSubscreen.AdminSettingsObjectDetection
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.SceneClassification ->
-                                        MoreSubscreen.AdminSettingsSceneClassification
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.TextRecognition ->
-                                        MoreSubscreen.AdminSettingsTextRecognition
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.ImageEmbedding ->
-                                        MoreSubscreen.AdminSettingsImageEmbedding
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.ImageSettings ->
-                                        MoreSubscreen.AdminSettingsImage
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.Metadata ->
-                                        MoreSubscreen.AdminSettingsMetadata
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.NightlyTasks ->
-                                        MoreSubscreen.AdminSettingsNightly
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.Notifications ->
-                                        MoreSubscreen.AdminSettingsNotifications
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.Server ->
-                                        MoreSubscreen.AdminSettingsServer
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.Trash ->
-                                        MoreSubscreen.AdminSettingsTrash
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.UserDefaults ->
-                                        MoreSubscreen.AdminSettingsUserDefaults
-                                    com.photonne.app.ui.admin.AdminSettingsEntry.VersionCheck ->
-                                        MoreSubscreen.AdminSettingsVersion
-                                }
-                            }
-                        )
-                    MoreSubscreen.AdminSettingsFaceRecognition -> {
-                        val vm: com.photonne.app.ui.admin.AdminFaceRecognitionSettingsViewModel =
-                            koinViewModel()
-                        com.photonne.app.ui.admin.AdminFaceRecognitionSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_face_recognition),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = vm,
-                            onOpenNightly = {
-                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
-                            },
-                        )
-                    }
-                    MoreSubscreen.AdminSettingsObjectDetection -> {
-                        val vm: com.photonne.app.ui.admin.AdminObjectDetectionSettingsViewModel =
-                            koinViewModel()
-                        com.photonne.app.ui.admin.AdminObjectDetectionSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_object_detection),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = vm,
-                            onOpenNightly = {
-                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
-                            },
-                        )
-                    }
-                    MoreSubscreen.AdminSettingsSceneClassification -> {
-                        val vm: com.photonne.app.ui.admin.AdminSceneClassificationSettingsViewModel =
-                            koinViewModel()
-                        com.photonne.app.ui.admin.AdminSceneClassificationSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_scene_classification),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = vm,
-                            onOpenNightly = {
-                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
-                            },
-                        )
-                    }
-                    MoreSubscreen.AdminSettingsTextRecognition -> {
-                        val vm: com.photonne.app.ui.admin.AdminTextRecognitionSettingsViewModel =
-                            koinViewModel()
-                        com.photonne.app.ui.admin.AdminTextRecognitionSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_text_recognition),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = vm,
-                            onOpenNightly = {
-                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
-                            },
-                        )
-                    }
-                    MoreSubscreen.AdminSettingsImageEmbedding -> {
-                        val vm: com.photonne.app.ui.admin.AdminImageEmbeddingSettingsViewModel =
-                            koinViewModel()
-                        com.photonne.app.ui.admin.AdminImageEmbeddingSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_image_embedding),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = vm,
-                            onOpenNightly = {
-                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
-                            },
-                        )
-                    }
-                    MoreSubscreen.AdminSettingsImage ->
-                        com.photonne.app.ui.admin.AdminImageSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_image),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminImageSettingsViewModel
-                        )
-                    MoreSubscreen.AdminSettingsMetadata ->
-                        com.photonne.app.ui.admin.AdminMetadataSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_metadata),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminMetadataSettingsViewModel
-                        )
-                    MoreSubscreen.AdminSettingsNightly ->
-                        com.photonne.app.ui.admin.AdminNightlySettingsScreen(
-                            title = stringResource(Res.string.admin_settings_nightly),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminNightlySettingsViewModel
-                        )
-                    MoreSubscreen.AdminSettingsNotifications ->
-                        com.photonne.app.ui.admin.AdminNotificationSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_notifications),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminNotificationSettingsViewModel
-                        )
-                    MoreSubscreen.AdminSettingsServer ->
-                        com.photonne.app.ui.admin.AdminServerSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_server),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminServerSettingsViewModel
-                        )
-                    MoreSubscreen.AdminSettingsTrash ->
-                        com.photonne.app.ui.admin.AdminTrashSettingsScreen(
-                            title = stringResource(Res.string.admin_settings_trash),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminTrashSettingsViewModel
-                        )
-                    MoreSubscreen.AdminSettingsUserDefaults ->
-                        com.photonne.app.ui.admin.AdminUserDefaultsScreen(
-                            title = stringResource(Res.string.admin_settings_user_defaults),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminUserDefaultsViewModel
-                        )
-                    MoreSubscreen.AdminSettingsVersion ->
-                        com.photonne.app.ui.admin.AdminServerScreen(
-                            title = stringResource(Res.string.admin_settings_version),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminVersionViewModel
-                        )
-                    MoreSubscreen.AdminSystemHub ->
-                        com.photonne.app.ui.admin.AdminSystemHubScreen(
-                            title = stringResource(Res.string.admin_section_system),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            onOpen = { entry ->
-                                appState.moreSubscreen = when (entry) {
-                                    com.photonne.app.ui.admin.AdminSystemEntry.RunTasks ->
-                                        MoreSubscreen.AdminSystemRunTasks
-                                    com.photonne.app.ui.admin.AdminSystemEntry.EnrichmentFailures -> {
-                                        appState.adminEnrichmentInitialType = null
-                                        appState.adminEnrichmentReturnTo = MoreSubscreen.AdminSystemHub
-                                        MoreSubscreen.AdminSystemEnrichmentFailures
-                                    }
-                                    com.photonne.app.ui.admin.AdminSystemEntry.Backup ->
-                                        MoreSubscreen.AdminSystemBackup
-                                }
-                            }
-                        )
-                    MoreSubscreen.AdminSystemRunTasks -> {
-                        val vm: com.photonne.app.ui.admin.AdminRunTasksViewModel =
-                            koinViewModel()
-                        com.photonne.app.ui.admin.AdminRunTasksScreen(
-                            title = stringResource(Res.string.admin_system_run_tasks),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSystemHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = vm,
-                            // Only Duplicates still drills into its own
-                            // screen; pipeline + AI rows handle their
-                            // entire UX inline on the hub. Other taps are
-                            // silently ignored because the hub doesn't
-                            // currently expose any `onOpen` for them.
-                            onOpenTask = { task ->
-                                if (task == com.photonne.app.ui.admin.AdminRunTask.DetectDuplicates) {
-                                    appState.moreSubscreen = MoreSubscreen.AdminSystemDuplicates
-                                }
-                            },
-                            // A backfill skips assets that used up their
-                            // retries, so a row whose queue is full of them has
-                            // no button left to press. The registry is the only
-                            // place they can be retried or suppressed.
-                            onOpenFailures = { type ->
-                                appState.adminEnrichmentInitialType = type
-                                appState.adminEnrichmentReturnTo = MoreSubscreen.AdminSystemRunTasks
-                                appState.moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
-                            },
-                        )
-                    }
-                    MoreSubscreen.AdminSystemDuplicates ->
-                        com.photonne.app.ui.admin.AdminDuplicatesScreen(
-                            title = stringResource(Res.string.admin_system_duplicates),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSystemRunTasks },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminDuplicatesViewModel
-                        )
-                    MoreSubscreen.AdminSystemEnrichmentFailures -> {
-                        val vm: com.photonne.app.ui.admin.AdminEnrichmentFailuresViewModel =
-                            koinViewModel()
-                        com.photonne.app.ui.admin.AdminEnrichmentFailuresScreen(
-                            title = stringResource(Res.string.admin_system_enrichment_failures),
-                            initialType = appState.adminEnrichmentInitialType,
-                            onBack = { appState.moreSubscreen = appState.adminEnrichmentReturnTo },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = vm,
-                            onOpenAsset = { failure ->
-                                appState.assetDetail = AssetDetailContext(
-                                    items = listOf(failure.toSyntheticTimelineItem()),
-                                    startIndex = 0,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            }
-                        )
-                    }
-                    MoreSubscreen.AdminSystemBackup ->
-                        com.photonne.app.ui.admin.AdminBackupScreen(
-                            title = stringResource(Res.string.admin_system_backup),
-                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSystemHub },
-                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
-                            viewModel = adminBackupViewModel
-                        )
-                }
-            }
+            AuthenticatedOverlayDestination(contentHost)
             }
                 }
             }
