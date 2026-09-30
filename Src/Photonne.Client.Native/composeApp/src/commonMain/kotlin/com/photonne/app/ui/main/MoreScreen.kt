@@ -9,11 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +21,6 @@ import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material3.IconButton
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -33,15 +31,14 @@ import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,10 +60,12 @@ import com.photonne.app.resources.compat_card_client_too_old
 import com.photonne.app.resources.compat_card_download
 import com.photonne.app.resources.compat_card_server_too_old
 import com.photonne.app.resources.compat_card_title
+import com.photonne.app.resources.account_section_profile
 import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
+import com.photonne.app.resources.backup_pending_count
 import com.photonne.app.resources.device_backup_title
 import com.photonne.app.resources.more_section_actions
 import com.photonne.app.resources.more_section_manage
@@ -75,7 +75,6 @@ import com.photonne.app.resources.upload_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.my_links_title
-import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.utilities_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -89,27 +88,27 @@ import com.photonne.app.data.version.isNewerVersion
 import com.photonne.app.ui.util.openExternalUrl
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.contentWidth
 
 /**
- * Library shortcut shown on the More tab. Each entry resolves to a
- * subscreen in [App] (Upload, Favorites, Archive, Trash, …).
- * `badgeCount` renders a Material badge on the tile when > 0 — currently
- * only used by the Notifications tile to mirror the bottom-nav badge.
+ * A destination on the More tab. Each entry resolves to a subscreen in [App]
+ * (Favorites, Archive, Trash, …). `badgeCount` > 0 renders a Material badge
+ * before the chevron — or, when [countLabelRes] is set, that text with the
+ * count ("12 pendientes").
  */
 private data class MoreShortcut(
     val key: String,
     val labelRes: StringResource,
     val icon: ImageVector,
     val onClick: () -> Unit,
-    val badgeCount: Int = 0
+    val badgeCount: Int = 0,
+    val countLabelRes: StringResource? = null
 )
 
-/** A titled group of [MoreShortcut]s rendered as its own card grid with a
- *  fixed number of [columns] (so each section can balance its own row). */
+/** A titled group of [MoreShortcut]s rendered as rows inside one card. */
 private data class MoreSection(
     val key: String,
     val titleRes: StringResource,
-    val columns: Int,
     val shortcuts: List<MoreShortcut>
 )
 
@@ -122,9 +121,9 @@ fun MoreScreen(
     onOpenTrash: () -> Unit,
     onOpenUtilities: () -> Unit,
     onOpenMyLinks: () -> Unit,
-    onOpenUnsupportedFiles: () -> Unit,
+    onOpenProfile: () -> Unit,
     onOpenDeviceBackup: () -> Unit,
-    /** Files still to back up, badged on the shortcut so a stalled backup is
+    /** Files still to back up, shown on the row so a stalled backup is
      *  visible without opening the screen. */
     backupPendingCount: Int = 0,
     onOpenNotifications: () -> Unit,
@@ -137,45 +136,40 @@ fun MoreScreen(
      *  when the server bundles none — see [com.photonne.app.data.models.Attribution]. */
     attributions: List<Attribution> = emptyList()
 ) {
-    // Shortcuts grouped into titled sections (Gestión / Acciones) so the grid
-    // reads cleanly instead of one ragged block; each section lays its own
-    // cards 3-per-row. Upload lives in the top bar (it's an action, not a
-    // destination), and "Otros archivos" is a link under the Gestión grid.
+    // Library destinations as a 2×2 grid of wide tiles — always full, so no
+    // entry has to fall out of the grid. Browsing by grouping (People / Map /
+    // Scenes / Objects) lives in the Albums tab's "Explorar" row.
+    val library = remember(onOpenFavorites, onOpenMyLinks, onOpenArchived, onOpenTrash) {
+        listOf(
+            MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
+            MoreShortcut("my-links", Res.string.my_links_title, Icons.Outlined.Share, onOpenMyLinks),
+            MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
+            MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash)
+        )
+    }
+    // Everything else is a row inside a titled card. Upload lives in the top
+    // bar (it's an action, not a destination).
     val sections = remember(
-        onOpenFavorites,
-        onOpenArchived,
-        onOpenTrash,
         onOpenUtilities,
         onOpenDeviceBackup,
         backupPendingCount,
         onOpenNotifications,
-        notificationsUnreadCount
+        notificationsUnreadCount,
+        onOpenAccountSettings,
+        onOpenAdministration
     ) {
         listOf(
-            // Browsing by grouping (People / Map / Scenes / Objects) now lives
-            // in the Albums tab's "Explorar" row, so the More menu is just
-            // management + actions + settings.
-            MoreSection(
-                key = "manage",
-                titleRes = Res.string.more_section_manage,
-                columns = 3,
-                shortcuts = listOf(
-                    MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
-                    MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
-                    MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash)
-                )
-            ),
             MoreSection(
                 key = "actions",
                 titleRes = Res.string.more_section_actions,
-                columns = 3,
                 shortcuts = listOf(
                     MoreShortcut(
                         "device-backup",
                         Res.string.device_backup_title,
                         Icons.Outlined.CloudUpload,
                         onOpenDeviceBackup,
-                        badgeCount = backupPendingCount
+                        badgeCount = backupPendingCount,
+                        countLabelRes = Res.string.backup_pending_count
                     ),
                     MoreShortcut(
                         "notifications",
@@ -185,6 +179,26 @@ fun MoreScreen(
                         badgeCount = notificationsUnreadCount
                     ),
                     MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities)
+                )
+            ),
+            MoreSection(
+                key = "manage",
+                titleRes = Res.string.more_section_manage,
+                shortcuts = listOfNotNull(
+                    MoreShortcut(
+                        "account-settings",
+                        Res.string.account_settings_title,
+                        Icons.Outlined.Settings,
+                        onOpenAccountSettings
+                    ),
+                    onOpenAdministration?.let { handler ->
+                        MoreShortcut(
+                            "administration",
+                            Res.string.administration_title,
+                            Icons.Outlined.AdminPanelSettings,
+                            handler
+                        )
+                    }
                 )
             )
         )
@@ -220,23 +234,55 @@ fun MoreScreen(
         verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         item("header") {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Spacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(start = Spacing.xl, end = Spacing.xl, bottom = Spacing.sm),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = user.firstName?.takeIf { it.isNotBlank() } ?: user.username,
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    text = user.email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Toda la cabecera abre el perfil: antes era texto inerte y el
+                // perfil quedaba dos pantallas más allá.
+                Column(
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable(
+                            onClickLabel = stringResource(Res.string.account_section_profile),
+                            onClick = onOpenProfile
+                        )
+                        .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = user.firstName?.takeIf { it.isNotBlank() } ?: user.username,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        text = user.email,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            Spacer(Modifier.height(Spacing.sm))
+        }
+
+        library.chunked(2).forEach { row ->
+            item("library-${row.joinToString { it.key }}") {
+                Row(
+                    modifier = Modifier
+                        .contentWidth()
+                        .padding(horizontal = Spacing.lg),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    row.forEach { shortcut ->
+                        MoreLibraryTile(
+                            label = stringResource(shortcut.labelRes),
+                            icon = shortcut.icon,
+                            onClick = shortcut.onClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
         }
 
         sections.forEach { section ->
@@ -246,87 +292,13 @@ fun MoreScreen(
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = Spacing.xl, top = Spacing.sm, bottom = Spacing.xs)
+                        .contentWidth()
+                        .padding(start = Spacing.xl, end = Spacing.xl, top = Spacing.md, bottom = Spacing.xs)
                 )
             }
-            val columns = section.columns
-            val rows = section.shortcuts.chunked(columns)
-            items(rows, key = { row -> row.joinToString { it.key } }) { row ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Spacing.lg),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-                ) {
-                    row.forEach { shortcut ->
-                        MoreShortcutCard(
-                            label = stringResource(shortcut.labelRes),
-                            icon = shortcut.icon,
-                            onClick = shortcut.onClick,
-                            badgeCount = shortcut.badgeCount,
-                            // 4+ columns make the cards narrow, so shrink the label
-                            // typography/padding to keep words from being clipped.
-                            compact = columns >= 4,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    // Balance the last row when it doesn't fill all columns.
-                    repeat(columns - row.size) {
-                        Spacer(Modifier.weight(1f))
-                    }
-                }
+            item("group-${section.key}") {
+                MoreRowGroup(shortcuts = section.shortcuts)
             }
-            // Lightweight horizontal rows under the Gestión grid — their labels
-            // are too long for a narrow square tile. "Mis enlaces" first: it's
-            // where you manage links you created, while "Otros archivos" is a
-            // read-only dead end.
-            if (section.key == "manage") {
-                item("my-links-link") {
-                    ManageLinkRow(
-                        icon = Icons.Outlined.Share,
-                        label = stringResource(Res.string.my_links_title),
-                        onClick = onOpenMyLinks
-                    )
-                }
-                item("unsupported-files-link") {
-                    ManageLinkRow(
-                        icon = Icons.Outlined.FolderOff,
-                        label = stringResource(Res.string.unsupported_files_title),
-                        onClick = onOpenUnsupportedFiles
-                    )
-                }
-            }
-        }
-
-        item("account-settings") {
-            Spacer(Modifier.height(Spacing.xs))
-            SettingsLikeRow(
-                icon = Icons.Outlined.Settings,
-                label = stringResource(Res.string.account_settings_title),
-                onClick = onOpenAccountSettings
-            )
-        }
-
-        onOpenAdministration?.let { handler ->
-            item("administration") {
-                SettingsLikeRow(
-                    icon = Icons.Outlined.AdminPanelSettings,
-                    label = stringResource(Res.string.administration_title),
-                    onClick = handler
-                )
-            }
-        }
-
-        item("logout") {
-            // Misma fila que el resto de destinos de la pantalla: el botón
-            // pequeño y centrado rompía el patrón de filas.
-            Spacer(Modifier.height(Spacing.lg))
-            SettingsLikeRow(
-                icon = Icons.AutoMirrored.Outlined.Logout,
-                label = stringResource(Res.string.action_logout),
-                onClick = onLogout
-            )
         }
 
         // Detalle de la píldora global de incompatibilidad: qué versión tiene
@@ -336,8 +308,8 @@ fun MoreScreen(
             item("compatibility") {
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Spacing.lg),
+                        .contentWidth()
+                        .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm),
                     shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer
@@ -383,8 +355,8 @@ fun MoreScreen(
             item("update") {
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Spacing.lg),
+                        .contentWidth()
+                        .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm),
                     shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -404,6 +376,32 @@ fun MoreScreen(
                             Text("Descargar actualización")
                         }
                     }
+                }
+            }
+        }
+
+        item("logout") {
+            // Enlace discreto en rojo, separado de los destinos de arriba y de
+            // la versión de abajo: salir no es un destino más.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Spacing.lg, bottom = Spacing.xl),
+                contentAlignment = Alignment.Center
+            ) {
+                TextButton(
+                    onClick = onLogout,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Logout,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.size(Spacing.sm))
+                    Text(stringResource(Res.string.action_logout))
                 }
             }
         }
@@ -476,121 +474,106 @@ fun MoreScreen(
     }
 }
 
-/** Full-width horizontal row under the Gestión grid (icon + label + chevron).
- *  Used for entries whose labels don't fit a narrow square tile. */
+/** Wide library tile (icon pill + label on one line) for the 2×2 grid. */
 @Composable
-private fun ManageLinkRow(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.xl, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(Modifier.size(10.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f)
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun SettingsLikeRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun MoreLibraryTile(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.lg)
-            .clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.lg),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconPill(icon = icon)
-            Spacer(Modifier.size(16.dp))
+            IconPill(icon = icon, compact = true)
+            Spacer(Modifier.size(10.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** One card holding a section's rows, split by inset dividers. */
 @Composable
-private fun MoreShortcutCard(
-    label: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    badgeCount: Int = 0,
-    compact: Boolean = false
-) {
+private fun MoreRowGroup(shortcuts: List<MoreShortcut>) {
     Card(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clickable(onClick = onClick),
+        modifier = Modifier
+            .contentWidth()
+            .padding(horizontal = Spacing.lg),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = if (compact) 4.dp else 8.dp, vertical = if (compact) 8.dp else 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            if (badgeCount > 0) {
-                BadgedBox(
-                    badge = {
-                        Badge {
-                            Text(if (badgeCount > 99) "99+" else badgeCount.toString())
-                        }
-                    }
-                ) {
-                    IconPill(icon = icon, compact = compact)
-                }
-            } else {
-                IconPill(icon = icon, compact = compact)
+        shortcuts.forEachIndexed { index, shortcut ->
+            if (index > 0) {
+                HorizontalDivider(
+                    // Arranca donde el texto, bajo la píldora no hay línea.
+                    modifier = Modifier.padding(start = Spacing.lg + 40.dp + Spacing.lg),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
             }
-            Spacer(Modifier.height(if (compact) 4.dp else 8.dp))
-            Text(
-                text = label,
-                style = if (compact) MaterialTheme.typography.labelSmall
-                        else MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            MoreRow(shortcut)
         }
+    }
+}
+
+@Composable
+private fun MoreRow(shortcut: MoreShortcut) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = shortcut.onClick)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconPill(icon = shortcut.icon)
+        Spacer(Modifier.size(Spacing.lg))
+        Text(
+            text = stringResource(shortcut.labelRes),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        if (shortcut.badgeCount > 0) {
+            val countLabelRes = shortcut.countLabelRes
+            if (countLabelRes != null) {
+                Text(
+                    text = stringResource(countLabelRes, shortcut.badgeCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Badge {
+                    Text(if (shortcut.badgeCount > 99) "99+" else shortcut.badgeCount.toString())
+                }
+            }
+            Spacer(Modifier.size(Spacing.sm))
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

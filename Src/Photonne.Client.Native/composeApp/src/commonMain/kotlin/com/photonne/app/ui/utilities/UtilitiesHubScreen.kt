@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.unsupported_files_subtitle
+import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.utilities_section_duplicates
 import com.photonne.app.resources.utilities_section_duplicates_subtitle
 import com.photonne.app.resources.utilities_section_large_files
@@ -47,7 +50,7 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.contentWidth
 import com.photonne.app.ui.theme.Spacing
 
-enum class UtilitiesEntry { Duplicates, LargeFiles, Locations }
+enum class UtilitiesEntry { Duplicates, LargeFiles, Locations, UnsupportedFiles }
 
 private data class UtilitiesEntryDef(
     val entry: UtilitiesEntry,
@@ -84,6 +87,12 @@ fun UtilitiesHubScreen(
             Res.string.utilities_section_locations,
             Res.string.utilities_section_locations_subtitle,
             Icons.Outlined.FolderOpen
+        ),
+        UtilitiesEntryDef(
+            UtilitiesEntry.UnsupportedFiles,
+            Res.string.unsupported_files_title,
+            Res.string.unsupported_files_subtitle,
+            Icons.Outlined.InsertDriveFile
         )
     )
 

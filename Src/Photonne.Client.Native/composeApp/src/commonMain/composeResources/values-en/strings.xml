@@ -620,7 +620,7 @@
     <string name="selection_action_remove_from_album">Remove from album</string>
 
     <!-- Account settings -->
-    <string name="account_settings_title">Account settings</string>
+    <string name="account_settings_title">Settings</string>
     <string name="account_settings_hint">Edit your profile, password, appearance and review storage usage.</string>
     <string name="account_section_profile">Profile</string>
     <string name="account_section_profile_subtitle">Name, email and username</string>
@@ -1352,7 +1352,8 @@
     <string name="error_details_copy">Copy all</string>
     <string name="error_details_copied">Details copied to clipboard</string>
     <string name="error_details_share_hint">Paste it into a message and send it to your admin.</string>
-    <string name="unsupported_files_title">Other files</string>
+    <string name="unsupported_files_title">Unsupported files</string>
+    <string name="unsupported_files_subtitle">Files in your folders that aren\'t photos or videos.</string>
     <string name="unsupported_files_empty_title">No unsupported files</string>
     <string name="unsupported_files_empty_subtitle">Every file found in your storage has a supported type.</string>
     <string name="unsupported_files_unsupported_label">File type not supported by the app.</string>

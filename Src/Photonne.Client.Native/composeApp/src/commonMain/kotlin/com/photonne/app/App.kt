@@ -413,7 +413,8 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.EnrichmentStatus -> MoreSubscreen.DeviceBackup
     MoreSubscreen.UtilitiesDuplicates,
     MoreSubscreen.UtilitiesLargeFiles,
-    MoreSubscreen.UtilitiesLocations -> MoreSubscreen.Utilities
+    MoreSubscreen.UtilitiesLocations,
+    MoreSubscreen.UnsupportedFiles -> MoreSubscreen.Utilities
     MoreSubscreen.Memories,
     MoreSubscreen.ExploreScenes,
     MoreSubscreen.ExploreObjects -> null
@@ -461,7 +462,6 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.Trash,
     MoreSubscreen.Utilities,
     MoreSubscreen.MyLinks,
-    MoreSubscreen.UnsupportedFiles,
     MoreSubscreen.OrganizeInbox,
     MoreSubscreen.AccountSettings,
     MoreSubscreen.Notifications,
@@ -1081,6 +1081,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var moreSubscreen by androidx.compose.runtime.saveable.rememberSaveable {
         mutableStateOf<MoreSubscreen?>(null)
     }
+    // Perfil abierto desde la cabecera de Más: Atrás vuelve a Más, no a Ajustes.
+    var profileOpenedFromMore by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf(false)
+    }
     // Buscar abierto desde una etiqueta de Explorar: Atrás vuelve a esa
     // subpantalla (y a la pestaña que había debajo), no a Fotos.
     var searchReturnTo by remember { mutableStateOf<Pair<MainTab, MoreSubscreen>?>(null) }
@@ -1371,6 +1375,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 adminLibraryEditorId = null
                 adminLibrariesViewModel.clearMessages()
                 moreSubscreen = MoreSubscreen.AdminLibraries
+            }
+            moreSubscreen == MoreSubscreen.AccountProfile && profileOpenedFromMore -> {
+                moreSubscreen = null
             }
             moreSubscreen != null -> { moreSubscreen = parentMoreSubscreen(moreSubscreen!!) }
             selectedTab == MainTab.Search -> searchBack()
@@ -1752,7 +1759,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreSubscreen == MoreSubscreen.EnrichmentStatus -> { }
             moreSubscreen == MoreSubscreen.Utilities -> { }
             moreSubscreen == MoreSubscreen.MyLinks -> { }
-            // "Otros archivos" pinta su propio cromo flotante dentro de la pantalla.
+            // "Archivos no compatibles" pinta su propio cromo flotante dentro de la pantalla.
             moreSubscreen == MoreSubscreen.UnsupportedFiles -> {
             }
             moreSubscreen == MoreSubscreen.OrganizeInbox &&
@@ -2909,7 +2916,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
                         onOpenMyLinks = { moreSubscreen = MoreSubscreen.MyLinks },
-                        onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
+                        onOpenProfile = {
+                            profileOpenedFromMore = true
+                            moreSubscreen = MoreSubscreen.AccountProfile
+                        },
                         onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
                         backupPendingCount = if (deviceBackupState.isBackupEnabled) {
                             deviceBackupState.pendingEntries.size
@@ -3275,7 +3285,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onRefresh = unsupportedFilesViewModel::refresh,
                             onLoadMore = unsupportedFilesViewModel::loadMore,
                             onDownload = unsupportedFilesViewModel::download,
-                            onBack = { moreSubscreen = null },
+                            onBack = { moreSubscreen = MoreSubscreen.Utilities },
                             onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.OrganizeInbox ->
@@ -3388,6 +3398,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         MoreSubscreen.UtilitiesLargeFiles
                                     com.photonne.app.ui.utilities.UtilitiesEntry.Locations ->
                                         MoreSubscreen.UtilitiesLocations
+                                    com.photonne.app.ui.utilities.UtilitiesEntry.UnsupportedFiles ->
+                                        MoreSubscreen.UnsupportedFiles
                                 }
                             }
                         )
@@ -3982,6 +3994,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 .takeIf { activityNotifications.isSupported },
                             onActivityNotificationsChange = activityNotifications::setEnabled,
                             onOpen = { section ->
+                                profileOpenedFromMore = false
                                 moreSubscreen = when (section) {
                                     com.photonne.app.ui.settings.AccountSettingsSection.Profile ->
                                         MoreSubscreen.AccountProfile
@@ -3999,7 +4012,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.AccountProfile ->
                         com.photonne.app.ui.settings.AccountProfileScreen(
                             title = stringResource(Res.string.account_section_profile),
-                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                            onBack = {
+                                moreSubscreen = if (profileOpenedFromMore) null
+                                else MoreSubscreen.AccountSettings
+                            },
                             onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = accountProfileViewModel
                         )

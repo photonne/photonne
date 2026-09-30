@@ -627,7 +627,7 @@
     <string name="selection_action_remove_from_album">Quitar del álbum</string>
 
     <!-- Account settings -->
-    <string name="account_settings_title">Configuración de cuenta</string>
+    <string name="account_settings_title">Ajustes</string>
     <string name="account_settings_hint">Edita tu perfil, contraseña, apariencia y consulta el almacenamiento.</string>
     <string name="account_section_profile">Perfil</string>
     <string name="account_section_profile_subtitle">Nombre, correo y nombre de usuario</string>
@@ -1423,8 +1423,9 @@
     <string name="error_details_copy">Copiar todo</string>
     <string name="error_details_copied">Detalles copiados al portapapeles</string>
     <string name="error_details_share_hint">Pégalo en un mensaje y mándaselo a tu admin.</string>
-    <string name="unsupported_files_title">Otros archivos</string>
-    <string name="unsupported_files_empty_title">No hay archivos sin soporte</string>
+    <string name="unsupported_files_title">Archivos no compatibles</string>
+    <string name="unsupported_files_subtitle">Archivos de tus carpetas que no son fotos ni vídeos.</string>
+    <string name="unsupported_files_empty_title">No hay archivos no compatibles</string>
     <string name="unsupported_files_empty_subtitle">Todos los archivos detectados en tu almacenamiento tienen un tipo compatible.</string>
     <string name="unsupported_files_unsupported_label">Tipo de archivo no soportado por la aplicación.</string>
     <string name="unsupported_files_supported_types">Tipos compatibles: .jpg, .png, .heic, .gif, .webp, .mp4, .mov, .mkv, etc.</string>
