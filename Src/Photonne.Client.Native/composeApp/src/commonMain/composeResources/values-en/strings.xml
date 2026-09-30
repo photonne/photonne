@@ -658,8 +658,10 @@
     <string name="appearance_system">Follow system</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
+    <string name="appearance_system_short">System</string>
     <string name="storage_used_format">%1$s used of %2$s</string>
     <string name="storage_used_unbounded_format">%1$s used</string>
+    <string name="storage_quota_summary">%1$d%% of %2$s</string>
     <string name="storage_no_quota">No quota limit</string>
     <string name="storage_used_percent_format">%1$s used of %2$s (%3$d%%)</string>
     <string name="storage_remaining_format">%1$s remaining</string>
@@ -1158,6 +1160,8 @@
     <string name="backup_destination_default">MobileBackup</string>
     <string name="backup_pending_title">Backup status</string>
     <string name="backup_pending_count">%1$d pending</string>
+    <string name="more_backup_all_synced">All backed up</string>
+    <string name="more_backup_disabled">Backup off</string>
     <string name="backup_pending_none">All caught up</string>
     <string name="backup_pending_unknown">Run a state check to see how many are missing</string>
     <string name="backup_pending_view">View pending</string>

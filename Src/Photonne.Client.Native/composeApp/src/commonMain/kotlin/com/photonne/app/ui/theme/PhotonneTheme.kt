@@ -2,6 +2,7 @@ package com.photonne.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -146,6 +147,13 @@ private val DarkColors = darkColorScheme(
     inverseSurface = InverseSurfaceDark,
     inverseOnSurface = InverseOnSurfaceDark
 )
+
+/**
+ * Los dos esquemas, fuera del tema activo: las miniaturas del selector de tema
+ * (Apariencia) pintan el claro y el oscuro a la vez, sea cual sea el actual.
+ */
+internal val PhotonneLightColorScheme: ColorScheme get() = LightColors
+internal val PhotonneDarkColorScheme: ColorScheme get() = DarkColors
 
 private val PhotonneShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),

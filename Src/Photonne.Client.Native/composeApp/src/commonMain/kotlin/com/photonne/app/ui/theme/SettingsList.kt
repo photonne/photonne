@@ -158,7 +158,8 @@ sealed interface SettingsTrailing {
  * [trailing]. Si la fila tiene [onClick] y el trailing no es un control de
  * selección, lleva chevron. Con [SettingsTrailing.Toggle] toda la fila conmuta
  * el interruptor; con [SettingsTrailing.Radio] toda la fila selecciona.
- * [destructive] la pinta en rojo (cerrar sesión, borrar).
+ * [destructive] la pinta en rojo (cerrar sesión, borrar). [supportingContent]
+ * va bajo la línea secundaria (la barra de cuota de Almacenamiento).
  */
 @Composable
 fun SettingsItem(
@@ -171,7 +172,8 @@ fun SettingsItem(
     enabled: Boolean = true,
     destructive: Boolean = false,
     showDivider: Boolean = false,
-    headlineMaxLines: Int = 2
+    headlineMaxLines: Int = 2,
+    supportingContent: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     if (showDivider) {
         HorizontalDivider(
@@ -236,6 +238,7 @@ fun SettingsItem(
                     color = secondaryColor.copy(alpha = secondaryColor.alpha * disabledAlpha)
                 )
             }
+            supportingContent?.invoke(this)
         }
         when (trailing) {
             is SettingsTrailing.Toggle -> {

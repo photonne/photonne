@@ -33,6 +33,15 @@ class AccountStorageViewModel(
     private val _state = MutableStateFlow(AccountStorageUiState())
     val state: StateFlow<AccountStorageUiState> = _state.asStateFlow()
 
+    /**
+     * Carga solo si aún no hay datos: la fila de Almacenamiento de Ajustes
+     * resume la cuota sin volver a pedirla cada vez que se entra. La pantalla
+     * de Almacenamiento sigue refrescando con [load].
+     */
+    fun loadIfNeeded() {
+        if (_state.value.info == null) load()
+    }
+
     fun load() {
         if (_state.value.isLoading) return
         _state.update { it.copy(isLoading = true, error = null) }

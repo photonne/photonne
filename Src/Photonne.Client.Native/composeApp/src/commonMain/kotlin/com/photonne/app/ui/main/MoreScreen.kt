@@ -86,6 +86,18 @@ import com.photonne.app.ui.theme.SectionHeader
 import com.photonne.app.ui.theme.SettingsGroup
 import com.photonne.app.ui.theme.SettingsItem
 import com.photonne.app.ui.theme.SettingsTrailing
+import com.photonne.app.ui.theme.UserAvatar
+import com.photonne.app.data.devicebackup.DeviceMediaSyncState
+import com.photonne.app.ui.devicebackup.DeviceBackupUiState
+import com.photonne.app.ui.devicebackup.relativeTimeLabel
+import com.photonne.app.resources.backup_source_none
+import com.photonne.app.resources.backup_status_failures
+import com.photonne.app.resources.backup_status_ignored_row
+import com.photonne.app.resources.backup_status_syncing
+import com.photonne.app.resources.backup_status_verifying
+import com.photonne.app.resources.more_backup_all_synced
+import com.photonne.app.resources.more_backup_disabled
+import org.jetbrains.compose.resources.pluralStringResource
 
 /**
  * A destination on the More tab. Each entry resolves to a subscreen in [App]
@@ -123,6 +135,8 @@ fun MoreScreen(
     /** Files still to back up, shown on the row so a stalled backup is
      *  visible without opening the screen. */
     backupPendingCount: Int = 0,
+    /** Resumen de la copia bajo el nombre en la cabecera; null lo oculta. */
+    backupStatus: MoreBackupStatus? = null,
     onOpenNotifications: () -> Unit,
     notificationsUnreadCount: Int = 0,
     onOpenAccountSettings: () -> Unit,
@@ -231,35 +245,12 @@ fun MoreScreen(
         verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         item("header") {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = Spacing.xl, end = Spacing.xl, bottom = Spacing.sm),
-                contentAlignment = Alignment.Center
-            ) {
-                // Toda la cabecera abre el perfil: antes era texto inerte y el
-                // perfil quedaba dos pantallas más allá.
-                Column(
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.medium)
-                        .clickable(
-                            onClickLabel = stringResource(Res.string.account_section_profile),
-                            onClick = onOpenProfile
-                        )
-                        .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = user.firstName?.takeIf { it.isNotBlank() } ?: user.username,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        text = user.email,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            MoreHeaderCard(
+                user = user,
+                backupStatus = backupStatus,
+                onOpenProfile = onOpenProfile,
+                onOpenBackup = onOpenDeviceBackup
+            )
         }
 
         library.chunked(2).forEach { row ->
@@ -472,6 +463,162 @@ fun MoreScreen(
             }
         )
     }
+}
+
+/**
+ * Estado de la copia de seguridad en una línea, para la cabecera de Más. Sale
+ * del mismo estado que pinta la pantalla de Copia de seguridad: aquí no se
+ * pide nada nuevo.
+ */
+sealed interface MoreBackupStatus {
+    data object Disabled : MoreBackupStatus
+    data object NoSource : MoreBackupStatus
+    data object Verifying : MoreBackupStatus
+    data class Uploading(val done: Int, val total: Int) : MoreBackupStatus
+    data class Failed(val count: Int) : MoreBackupStatus
+    data class Pending(val count: Int) : MoreBackupStatus
+    data class Ignored(val count: Int) : MoreBackupStatus
+    data class AllSynced(val lastRunMillis: Long?) : MoreBackupStatus
+}
+
+/**
+ * Traduce el estado de la copia a la línea de la cabecera, con el mismo orden
+ * de veredictos que la tarjeta de estado de Copia de seguridad. Null donde la
+ * plataforma no tiene copia del dispositivo o aún no se ha comprobado nada
+ * (decir "todo copiado" sin haber mirado sería mentir).
+ */
+fun DeviceBackupUiState.toMoreBackupStatus(): MoreBackupStatus? {
+    if (!isSupported) return null
+    if (!isBackupEnabled) return MoreBackupStatus.Disabled
+    if (folders.isEmpty()) return MoreBackupStatus.NoSource
+    syncProgress?.takeIf { isSyncing }?.let { progress ->
+        return MoreBackupStatus.Uploading(
+            done = progress.completed + progress.skipped + progress.failed,
+            total = progress.total
+        )
+    }
+    if (isCheckingHashes) return MoreBackupStatus.Verifying
+    val failed = failedCount
+    if (failed > 0) return MoreBackupStatus.Failed(failed)
+    val pending = pendingEntries.size
+    if (pending > 0) return MoreBackupStatus.Pending(pending)
+    if (entries.none { it.syncState !is DeviceMediaSyncState.Unknown }) return null
+    val ignored = ignoredCount
+    if (ignored > 0) return MoreBackupStatus.Ignored(ignored)
+    return MoreBackupStatus.AllSynced(lastRun?.finishedAtMillis)
+}
+
+/**
+ * Cabecera de Más: avatar de iniciales, nombre y, debajo, el estado de la
+ * copia. Toda la tarjeta abre el perfil; la línea de la copia abre Copia de
+ * seguridad.
+ */
+@Composable
+private fun MoreHeaderCard(
+    user: UserDto,
+    backupStatus: MoreBackupStatus?,
+    onOpenProfile: () -> Unit,
+    onOpenBackup: () -> Unit
+) {
+    val displayName = listOfNotNull(
+        user.firstName?.takeIf { it.isNotBlank() },
+        user.lastName?.takeIf { it.isNotBlank() }
+    ).joinToString(" ").ifBlank { user.username }
+    Card(
+        modifier = Modifier
+            .contentWidth()
+            .padding(start = Spacing.lg, end = Spacing.lg, bottom = Spacing.sm),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClickLabel = stringResource(Res.string.account_section_profile),
+                    onClick = onOpenProfile
+                )
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            UserAvatar(name = displayName, size = 48.dp)
+            Spacer(Modifier.size(Spacing.lg))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (backupStatus != null) {
+                    MoreBackupStatusLine(status = backupStatus, onClick = onOpenBackup)
+                } else {
+                    Text(
+                        text = user.email.ifBlank { user.username },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(Modifier.size(Spacing.sm))
+            Icon(
+                imageVector = PhotonneIcons.Chevron,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** La línea tocable del estado de la copia, con el color de su veredicto. */
+@Composable
+private fun MoreBackupStatusLine(status: MoreBackupStatus, onClick: () -> Unit) {
+    val (text, color) = when (status) {
+        MoreBackupStatus.Disabled -> stringResource(Res.string.more_backup_disabled) to
+            MaterialTheme.colorScheme.onSurfaceVariant
+        MoreBackupStatus.NoSource -> stringResource(Res.string.backup_source_none) to
+            MaterialTheme.colorScheme.onSurfaceVariant
+        MoreBackupStatus.Verifying -> stringResource(Res.string.backup_status_verifying) to
+            MaterialTheme.colorScheme.primary
+        is MoreBackupStatus.Uploading -> stringResource(
+            Res.string.backup_status_syncing, status.done, status.total
+        ) to MaterialTheme.colorScheme.primary
+        is MoreBackupStatus.Failed -> pluralStringResource(
+            Res.plurals.backup_status_failures, status.count, status.count
+        ) to MaterialTheme.colorScheme.error
+        is MoreBackupStatus.Pending -> stringResource(
+            Res.string.backup_pending_count, status.count
+        ) to PhotonneColors.warning
+        is MoreBackupStatus.Ignored -> stringResource(
+            Res.string.backup_status_ignored_row, status.count
+        ) to MaterialTheme.colorScheme.onSurfaceVariant
+        is MoreBackupStatus.AllSynced -> {
+            val base = stringResource(Res.string.more_backup_all_synced)
+            val text = status.lastRunMillis
+                ?.let { "$base · ${relativeTimeLabel(it)}" }
+                ?: base
+            text to PhotonneColors.success
+        }
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.extraSmall)
+            .clickable(
+                onClickLabel = stringResource(Res.string.device_backup_title),
+                onClick = onClick
+            )
+            .padding(vertical = Spacing.xs)
+    )
 }
 
 /** Wide library tile (icon pill + label on one line) for the 2×2 grid. */

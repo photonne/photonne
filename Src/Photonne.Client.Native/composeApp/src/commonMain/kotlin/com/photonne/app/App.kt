@@ -212,6 +212,7 @@ import com.photonne.app.ui.main.AssetSelectionTopBar
 import com.photonne.app.ui.main.FolderDetailChromeActions
 import com.photonne.app.ui.library.TrashChromeActions
 import com.photonne.app.ui.main.MainScaffold
+import com.photonne.app.ui.main.toMoreBackupStatus
 import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.main.MoreScreen
 import com.photonne.app.ui.theme.PhotonneTheme
@@ -2954,6 +2955,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         backupPendingCount = if (deviceBackupState.isBackupEnabled) {
                             deviceBackupState.pendingEntries.size
                         } else 0,
+                        backupStatus = remember(deviceBackupState) {
+                            deviceBackupState.toMoreBackupStatus()
+                        },
                         onOpenNotifications = {
                             moreSubscreen = MoreSubscreen.Notifications
                         },
@@ -3993,9 +3997,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         )
                     }
-                    MoreSubscreen.AccountSettings ->
+                    MoreSubscreen.AccountSettings -> {
+                        // Resumen de cuota en la fila de Almacenamiento: se pide
+                        // una vez y se reutiliza (el viewmodel vive con la app).
+                        LaunchedEffect(Unit) { accountStorageViewModel.loadIfNeeded() }
+                        val accountStorageState by accountStorageViewModel.state
+                            .collectAsStateWithLifecycle()
                         com.photonne.app.ui.settings.AccountSettingsScreen(
                             title = stringResource(Res.string.account_settings_title),
+                            storage = accountStorageState.info,
                             onBack = { moreSubscreen = null },
                             onChromeVisibleChange = { subscreenChromeVisible = it },
                             activityNotificationsEnabled = activityNotificationsEnabled
@@ -4017,6 +4027,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             }
                         )
+                    }
                     MoreSubscreen.AccountProfile ->
                         com.photonne.app.ui.settings.AccountProfileScreen(
                             title = stringResource(Res.string.account_section_profile),

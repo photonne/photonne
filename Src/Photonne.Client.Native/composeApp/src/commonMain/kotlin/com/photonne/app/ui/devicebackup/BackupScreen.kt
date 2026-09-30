@@ -820,7 +820,7 @@ private fun CollapsibleHeader(title: String, expanded: Boolean, onToggle: () -> 
 
 /** "hace 5 min" / "5 min ago" style label for the last-run timestamp. */
 @Composable
-private fun relativeTimeLabel(epochMillis: Long): String {
+internal fun relativeTimeLabel(epochMillis: Long): String {
     val now = Clock.System.now().toEpochMilliseconds()
     val minutes = ((now - epochMillis) / 60_000L).coerceAtLeast(0)
     return when {

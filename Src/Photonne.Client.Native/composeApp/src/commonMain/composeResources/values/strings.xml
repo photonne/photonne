@@ -665,8 +665,10 @@
     <string name="appearance_system">Seguir al sistema</string>
     <string name="appearance_light">Claro</string>
     <string name="appearance_dark">Oscuro</string>
+    <string name="appearance_system_short">Sistema</string>
     <string name="storage_used_format">%1$s usados de %2$s</string>
     <string name="storage_used_unbounded_format">%1$s usados</string>
+    <string name="storage_quota_summary">%1$d %% de %2$s</string>
     <string name="storage_no_quota">Sin límite de cuota</string>
     <string name="storage_used_percent_format">%1$s usados de %2$s (%3$d%%)</string>
     <string name="storage_remaining_format">Quedan %1$s</string>
@@ -1200,6 +1202,8 @@
     <string name="backup_destination_default">MobileBackup</string>
     <string name="backup_pending_title">Estado de la copia</string>
     <string name="backup_pending_count">%1$d pendientes</string>
+    <string name="more_backup_all_synced">Todo copiado</string>
+    <string name="more_backup_disabled">Copia desactivada</string>
     <string name="backup_pending_none">Todo al día</string>
     <string name="backup_pending_unknown">Comprueba el estado para ver cuántos faltan</string>
     <string name="backup_pending_view">Ver pendientes</string>

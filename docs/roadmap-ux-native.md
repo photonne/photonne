@@ -437,11 +437,11 @@ Diagnóstico: las superficies de fotos (timeline, rejilla, visor, cromo, snackba
 
 ## Ideas de UX (nuevas)
 
-- [ ] Cabecera de Más con avatar y estado del backup tocable ("Todo copiado · hace 5 min" / "12 pendientes"); cuota como mini barra en la fila de Almacenamiento, en `warning` desde el 90 %.
+- [x] Cabecera de Más con avatar y estado del backup tocable ("Todo copiado · hace 5 min" / "12 pendientes"); cuota como mini barra en la fila de Almacenamiento, en `warning` desde el 90 %. — hecho: tarjeta en cabecera de Más con `UserAvatar` de iniciales (48 dp, extraído de Perfil a `ui/theme/UserAvatar.kt`), nombre y una línea del estado de la copia (`MoreBackupStatus`, derivado de `DeviceBackupUiState` con el orden de veredictos de la tarjeta de Copia de seguridad: desactivada, sin carpeta, verificando, "Subiendo N de M", errores, "N pendientes" en `warning`, omitidos, "Todo copiado · hace X" en `success`; sin comprobar o sin soporte, no sale y queda el correo). La tarjeta abre Perfil y la línea, Copia de seguridad. La fila de Almacenamiento (Ajustes) muestra "62 % de 100 GB" con barra `ProgressHeight.inline` (primaria, `warning` desde el 90 %) o "12,4 GB usados" sin cuota; `AccountStorageViewModel.loadIfNeeded()` pide `users/me/storage` una sola vez y, si falla, la fila queda como antes. `SettingsItem` gana `supportingContent`.
 - [ ] Hub de Utilidades con cifras vivas ("3,2 GB recuperables", "14 no compatibles", "N duplicados").
 - [ ] Cápsula del visor con fecha y lugar junto a Atrás; tocarla abre el panel de info.
 - [ ] Selección múltiple de álbumes y carpetas (borrar, salir, mover en bloque).
 - [ ] Mapa con hoja persistente a media altura que se actualiza al paner.
-- [ ] Selector de tema con tres miniaturas en vez de radios.
+- [x] Selector de tema con tres miniaturas en vez de radios. — hecho: Apariencia pinta tres miniaturas (Sistema · Claro · Oscuro) con cabecera, dos líneas y la cápsula de la nav, con los esquemas reales (`PhotonneLightColorScheme`/`PhotonneDarkColorScheme`); Sistema parte en diagonal claro/oscuro. Elegida con borde primario de 2 dp y check; `selectableGroup` + `Role.RadioButton`. Nueva cadena corta `appearance_system_short`.
 - [x] Aviso de cambios sin guardar en Perfil y Conexión (sale con Q10). — hecho con Q10.
 - [ ] Álbumes fijados arriba; tarjetas de Explorar con contenido real (caras, minimapa) en vez de iconos.
