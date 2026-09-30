@@ -1355,6 +1355,20 @@
     <string name="utilities_section_large_files_subtitle">Items taking the most storage.</string>
     <string name="utilities_section_locations">Manage locations</string>
     <string name="utilities_section_locations_subtitle">Folders and storage paths.</string>
+    <!-- Live figures of the Utilities hub (GET /api/utilities/summary). -->
+    <plurals name="utilities_summary_duplicates">
+        <item quantity="one">%1$d group · %2$s recoverable</item>
+        <item quantity="other">%1$d groups · %2$s recoverable</item>
+    </plurals>
+    <plurals name="utilities_summary_large_files">
+        <item quantity="one">%1$d over 100 MB · %2$s</item>
+        <item quantity="other">%1$d over 100 MB · %2$s</item>
+    </plurals>
+    <plurals name="utilities_summary_unsupported">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="utilities_summary_nothing">Nothing to review</string>
 
     <!-- Duplicates -->
     <string name="utilities_duplicates_empty">No duplicates found.</string>

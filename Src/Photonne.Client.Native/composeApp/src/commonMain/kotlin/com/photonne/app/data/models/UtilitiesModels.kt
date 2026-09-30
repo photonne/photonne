@@ -38,3 +38,21 @@ data class FolderTreeNode(
     val externalLibraryId: String? = null,
     val subFolders: List<FolderTreeNode> = emptyList()
 )
+
+/**
+ * Live figures of the Utilities hub, from `GET /api/utilities/summary`.
+ * Every field defaults to zero so a partial payload still decodes; a server
+ * without the endpoint answers 404 and the hub keeps its static subtitles.
+ * [duplicateRecoverableBytes] uses the duplicates screen's definition (per
+ * group, total minus the largest copy); [largeFilesCount]/[largeFilesBytes]
+ * count visible assets of 100 MB or more and what they weigh.
+ */
+@Serializable
+data class UtilitiesSummary(
+    val duplicateGroups: Int = 0,
+    val duplicateAssets: Int = 0,
+    val duplicateRecoverableBytes: Long = 0,
+    val largeFilesCount: Int = 0,
+    val largeFilesBytes: Long = 0,
+    val unsupportedCount: Int = 0
+)

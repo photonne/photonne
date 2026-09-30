@@ -92,6 +92,7 @@ import com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel
 import com.photonne.app.ui.explore.ExploreFacetsViewModel
 import com.photonne.app.ui.upload.UploadViewModel
 import com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel
+import com.photonne.app.ui.utilities.UtilitiesHubViewModel
 import com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel
 import com.photonne.app.ui.utilities.UtilitiesLocationsViewModel
 import io.ktor.client.HttpClient
@@ -254,6 +255,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::EnrichmentStatusViewModel)
     viewModelOf(::UtilitiesDuplicatesViewModel)
     viewModelOf(::UtilitiesLargeFilesViewModel)
+    viewModelOf(::UtilitiesHubViewModel)
     viewModelOf(::UtilitiesLocationsViewModel)
     viewModelOf(::ExploreFacetsViewModel)
     viewModelOf(::MapViewModel)

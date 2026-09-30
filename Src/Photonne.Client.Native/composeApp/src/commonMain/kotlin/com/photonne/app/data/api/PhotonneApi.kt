@@ -873,6 +873,7 @@ interface PhotonneApi {
     suspend fun utilitiesDuplicates(): List<com.photonne.app.data.models.UserDuplicateGroup>
     suspend fun utilitiesLargeFiles(count: Int): List<com.photonne.app.data.models.TimelineItem>
     suspend fun utilitiesFolderTree(): List<com.photonne.app.data.models.FolderTreeNode>
+    suspend fun utilitiesSummary(): com.photonne.app.data.models.UtilitiesSummary
 
     // Notifications --------------------------------------------------------
     suspend fun getNotifications(
@@ -3097,6 +3098,14 @@ class PhotonneApiClient(
         val response: HttpResponse = client.get("$baseUrl/api/utilities/folders/tree")
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Folder tree fetch failed")
+        }
+        return response.body()
+    }
+
+    override suspend fun utilitiesSummary(): com.photonne.app.data.models.UtilitiesSummary {
+        val response: HttpResponse = client.get("$baseUrl/api/utilities/summary")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Utilities summary fetch failed")
         }
         return response.body()
     }

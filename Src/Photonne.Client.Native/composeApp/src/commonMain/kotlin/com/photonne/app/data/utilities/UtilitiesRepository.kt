@@ -4,6 +4,7 @@ import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.FolderTreeNode
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.UserDuplicateGroup
+import com.photonne.app.data.models.UtilitiesSummary
 
 /**
  * Backs the three sub-pages of the Utilities hub. Each call hits a
@@ -25,6 +26,8 @@ class UtilitiesRepository(private val api: PhotonneApi) {
         api.utilitiesLargeFiles(count.coerceIn(1, 200))
 
     suspend fun folderTree(): List<FolderTreeNode> = api.utilitiesFolderTree()
+
+    suspend fun summary(): UtilitiesSummary = api.utilitiesSummary()
 
     suspend fun deleteAssets(assetIds: List<String>) {
         if (assetIds.isEmpty()) return

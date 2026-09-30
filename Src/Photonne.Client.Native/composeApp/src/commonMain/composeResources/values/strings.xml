@@ -1397,6 +1397,20 @@
     <string name="utilities_section_large_files_subtitle">Los elementos que más espacio ocupan.</string>
     <string name="utilities_section_locations">Administrar ubicación</string>
     <string name="utilities_section_locations_subtitle">Carpetas y rutas de almacenamiento.</string>
+    <!-- Cifras vivas del hub de Utilidades (GET /api/utilities/summary). -->
+    <plurals name="utilities_summary_duplicates">
+        <item quantity="one">%1$d grupo · %2$s recuperables</item>
+        <item quantity="other">%1$d grupos · %2$s recuperables</item>
+    </plurals>
+    <plurals name="utilities_summary_large_files">
+        <item quantity="one">%1$d de más de 100 MB · %2$s</item>
+        <item quantity="other">%1$d de más de 100 MB · %2$s</item>
+    </plurals>
+    <plurals name="utilities_summary_unsupported">
+        <item quantity="one">%1$d archivo</item>
+        <item quantity="other">%1$d archivos</item>
+    </plurals>
+    <string name="utilities_summary_nothing">Nada que revisar</string>
 
     <!-- Duplicates -->
     <string name="utilities_duplicates_empty">No se han encontrado duplicados.</string>
