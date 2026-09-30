@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -172,7 +171,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
-private data class AssetDetailContext(
+internal data class AssetDetailContext(
     val items: List<TimelineItem>,
     val startIndex: Int,
     val source: Source,
@@ -192,7 +191,7 @@ private data class AssetDetailContext(
 /** Visor del que se salió desde su panel de info (una cara → la persona, una
  *  escena u objeto → la búsqueda): Atrás desde allí vuelve a esa foto, y a la
  *  pantalla que había debajo. */
-private data class ViewerReturn(
+internal data class ViewerReturn(
     val tab: MainTab,
     val subscreen: MoreSubscreen?,
     val person: com.photonne.app.data.models.Person?,
@@ -617,21 +616,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val timelineZoomStore: com.photonne.app.data.settings.TimelineZoomStore = koinInject()
-    // Immersive tabs: the active list reports when its chrome hides on scroll
-    // so the shared bottom navigation can slide away in the same rhythm. Fotos,
-    // Álbumes and Carpetas each drive their own flag.
-    var timelineChromeVisible by remember { mutableStateOf(true) }
-    var albumsChromeVisible by remember { mutableStateOf(true) }
-    var foldersChromeVisible by remember { mutableStateOf(true) }
-    var moreChromeVisible by remember { mutableStateOf(true) }
-    var searchChromeVisible by remember { mutableStateOf(true) }
-    // Same, but for the photo grids inside an open album / folder.
-    var albumDetailChromeVisible by remember { mutableStateOf(true) }
-    // Compartido por las subpantallas con cromo flotante propio (Personas, Mapa,
-    // Escenas, Objetos, Para organizar, Recuerdos): sólo hay una visible a la vez,
-    // y ImmersiveChromeEffect lo restaura a `true` al salir de composición.
-    var subscreenChromeVisible by remember { mutableStateOf(true) }
-    var folderDetailChromeVisible by remember { mutableStateOf(true) }
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
     val searchViewModel: com.photonne.app.ui.search.SearchViewModel = koinViewModel()
@@ -703,7 +687,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val utilitiesDuplicatesViewModel:
         com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel = koinViewModel()
     val utilitiesDuplicatesState by utilitiesDuplicatesViewModel.state.collectAsStateWithLifecycle()
-    var showDuplicatesConfirm by remember { mutableStateOf(false) }
     val utilitiesLargeFilesViewModel:
         com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel = koinViewModel()
     val utilitiesLocationsViewModel:
@@ -815,81 +798,33 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val actionsState by actionsStateRef
     val coroutineScope = rememberCoroutineScope()
 
-    // rememberSaveable: la pestaña y la subpantalla de Más sobreviven a la
-    // muerte de proceso y a la recreación de la Activity (punto 49; los
-    // álbumes/carpetas abiertos guardan objetos completos y quedan pendientes).
-    val selectedTabState = androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf(MainTab.Timeline)
-    }
-    var selectedTab by selectedTabState
-    val selectedAlbumState = remember { mutableStateOf<AlbumSummary?>(null) }
-    var selectedAlbum by selectedAlbumState
-    val selectedFolderState = remember {
-        mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
-    }
-    var selectedFolder by selectedFolderState
-    val folderBackStack = remember {
-        mutableStateListOf<com.photonne.app.data.models.FolderSummary>()
-    }
-    var assetDetail by remember { mutableStateOf<AssetDetailContext?>(null) }
-    // Pila de contextos del visor: abrir una foto relacionada apila el contexto
-    // actual para que atrás vuelva a la foto (y la lista) de la que se venía,
-    // en lugar de cerrar el visor y perder el sitio.
-    var assetDetailStack by remember {
-        mutableStateOf<List<AssetDetailContext>>(emptyList())
-    }
-    fun closeAssetDetail() {
-        val previous = assetDetailStack.lastOrNull()
-        if (previous != null) {
-            assetDetailStack = assetDetailStack.dropLast(1)
-            assetDetail = previous
-        } else {
-            assetDetail = null
-        }
-    }
+    val appState = rememberAuthenticatedAppState(
+        peopleRepository = peopleRepository,
+        personDetailViewModel = personDetailViewModel,
+        albumsViewModel = albumsViewModel,
+        foldersViewModel = foldersViewModel,
+        organizeInboxViewModel = organizeInboxViewModel,
+        coroutineScope = coroutineScope,
+    )
     // Red de seguridad: cualquier cierre directo (borrar, papelera del
     // dispositivo…) vacía la pila para no resucitar contextos viejos.
-    LaunchedEffect(assetDetail == null) {
-        if (assetDetail == null) assetDetailStack = emptyList()
+    LaunchedEffect(appState.assetDetail == null) {
+        if (appState.assetDetail == null) appState.assetDetailStack = emptyList()
     }
     // Con el visor abierto el fondo bajo las barras es el scrim negro de la
     // foto: iconos claros aunque el tema sea claro. Este sitio recompone al
     // abrir/cerrar el visor, así que también restaura el estado del tema.
     com.photonne.app.ui.platform.SyncSystemBarIcons(
         darkBackground = com.photonne.app.ui.theme.LocalIsDarkTheme.current ||
-            assetDetail != null
+            appState.assetDetail != null
     )
-    // Retocar la pestaña Fotos activa vuelve arriba (consumido por TimelineScreen).
-    var timelineScrollToTopTick by remember { mutableStateOf(0) }
-    var albumsScrollToTopTick by remember { mutableStateOf(0) }
-    var foldersScrollToTopTick by remember { mutableStateOf(0) }
-    // The bucket the "Mi dispositivo" detail subscreen shows. Survives going
-    // back to the bucket list (harmless), reset on every open.
-    var deviceFolderBucket by remember {
-        mutableStateOf<com.photonne.app.data.devicelibrary.DeviceBucket?>(null)
-    }
-    // Type filter the failures registry opens with when reached from a
-    // notification actionUrl ("/admin/enrichment-failures?type=Exif").
-    var adminEnrichmentInitialType by remember { mutableStateOf<String?>(null) }
-    // The failures registry is reachable from three places now — the System
-    // hub, a notification's actionUrl, and a task row whose queue is stuck —
-    // so "volver" has to remember which one, instead of always landing on the
-    // hub the way it did when the hub was the only door.
-    var adminEnrichmentReturnTo by remember { mutableStateOf(MoreSubscreen.AdminSystemHub) }
-    // An open memory, shown as an album. An overlay rather than a MoreSubscreen:
-    // it's reached from the Fotos strip too, not just from Más → Recuerdos, so it
-    // can't hang off the Más hierarchy.
-    val memoryDetailState = remember {
-        mutableStateOf<com.photonne.app.ui.memories.MemoryDetailContext?>(null)
-    }
-    var memoryDetail by memoryDetailState
     // Lote L9: el recuerdo abierto lleva sus fotos en mano (no tiene
     // ViewModel), así que lo borrado o archivado desde el visor se le quita
     // aquí; si se queda vacío, se cierra.
     val assetMutationBus: com.photonne.app.data.events.AssetMutationBus = koinInject()
     LaunchedEffect(assetMutationBus) {
         assetMutationBus.events.collect { event ->
-            val memory = memoryDetail ?: return@collect
+            val memory = appState.memoryDetail ?: return@collect
             when (event) {
                 // Favorito (visor o favorito en bloque): el rótulo de la barra de
                 // selección depende de este flag.
@@ -897,7 +832,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     fun List<TimelineItem>.patched() = map {
                         if (it.id == event.assetId) it.copy(isFavorite = event.isFavorite) else it
                     }
-                    memoryDetail = memory.copy(
+                    appState.memoryDetail = memory.copy(
                         items = memory.items.patched(),
                         openedItems = memory.openedItems.patched()
                     )
@@ -910,7 +845,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     if (memory.openedItems.none { it.id in back && it.id !in current }) {
                         return@collect
                     }
-                    memoryDetail = memory.copy(
+                    appState.memoryDetail = memory.copy(
                         items = memory.openedItems.filter { it.id in current || it.id in back }
                     )
                 }
@@ -923,7 +858,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }.toSet()
                     val remaining = memory.items.filterNot { it.id in removed }
                     if (remaining.size != memory.items.size) {
-                        memoryDetail = if (remaining.isEmpty()) null else memory.copy(items = remaining)
+                        appState.memoryDetail = if (remaining.isEmpty()) null else memory.copy(items = remaining)
                     }
                 }
                 else -> Unit
@@ -936,302 +871,33 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val memorySelectionStateRef = memorySelectionViewModel.state.collectAsStateWithLifecycle()
     val memorySelectionState by memorySelectionStateRef
     // Cerrar o cambiar de recuerdo no arrastra la selección al siguiente.
-    val openMemoryKey = memoryDetail?.let { it.title to it.coverAssetId }
+    val openMemoryKey = appState.memoryDetail?.let { it.title to it.coverAssetId }
     LaunchedEffect(openMemoryKey) { memorySelectionViewModel.clearSelection() }
-    // Tracks the asset shown by the viewer's pager — drives the
-    // grid → detail shared-element morph. Null when the viewer is closed
-    // so all grid thumbnails return to their normal visible state.
-    var currentDetailAssetId by remember { mutableStateOf<String?>(null) }
-    // Qué rejilla abrió el visor: esa sigue a la foto vista para que al cerrar
-    // la miniatura esté en pantalla (tanda 2 de funciones nuevas).
-    val viewerReturnState = remember { com.photonne.app.ui.grid.ViewerReturnState() }
-    val showCreateAlbumState = remember { mutableStateOf(false) }
-    var showCreateAlbum by showCreateAlbumState
-    val showAlbumTypeChooserState = remember { mutableStateOf(false) }
-    var showAlbumTypeChooser by showAlbumTypeChooserState
-    val showEditAlbumState = remember { mutableStateOf(false) }
-    var showEditAlbum by showEditAlbumState
-    // Smart album opened in the rule editor (SmartAlbumEditor subscreen); null = new album.
-    var editingSmartAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
-    val showDeleteAlbumState = remember { mutableStateOf(false) }
-    var showDeleteAlbum by showDeleteAlbumState
-    val showLeaveAlbumState = remember { mutableStateOf(false) }
-    var showLeaveAlbum by showLeaveAlbumState
-    // Acciones en bloque sobre varias tarjetas seleccionadas en la lista.
-    val showBulkDeleteAlbumsState = remember { mutableStateOf(false) }
-    var showBulkDeleteAlbums by showBulkDeleteAlbumsState
-    val showBulkLeaveAlbumsState = remember { mutableStateOf(false) }
-    var showBulkLeaveAlbums by showBulkLeaveAlbumsState
-    val showSharesState = remember { mutableStateOf(false) }
-    var showShares by showSharesState
-    val showCreateShareState = remember { mutableStateOf(false) }
-    var showCreateShare by showCreateShareState
-    val editingShareLinkState = remember { mutableStateOf<AlbumShareLink?>(null) }
-    var editingShareLink by editingShareLinkState
-    val showMembersState = remember { mutableStateOf(false) }
-    var showMembers by showMembersState
-    val showInviteMemberState = remember { mutableStateOf(false) }
-    var showInviteMember by showInviteMemberState
-    val addToAlbumState = remember { mutableStateOf<AddToAlbumState?>(null) }
-    var addToAlbum by addToAlbumState
-    val bulkAddToAlbumState = remember { mutableStateOf<Boolean>(false) }
-    var bulkAddToAlbum by bulkAddToAlbumState
-    val bulkAddSourceState = remember { mutableStateOf<BulkAddSource?>(null) }
-    var bulkAddSource by bulkAddSourceState
-    val selectedPersonState = remember {
-        mutableStateOf<com.photonne.app.data.models.Person?>(null)
-    }
-    var selectedPerson by selectedPersonState
-    // Punto 49: el álbum, la carpeta y la persona abiertos son objetos
-    // completos (no Saveable). Se guarda solo su id y, tras una recreación
-    // (rotación en tablet, muerte de proceso), se vuelven a pedir al
-    // servidor antes de que la pantalla los necesite. La pila de carpetas
-    // no se rehidrata: atrás desde la carpeta restaurada vuelve a la raíz.
-    var savedAlbumId by androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf<String?>(null)
-    }
-    var savedFolderId by androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf<String?>(null)
-    }
-    var savedPersonId by androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf<String?>(null)
-    }
-    var openIdsRehydrated by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        savedAlbumId?.takeIf { selectedAlbum == null }?.let { id ->
-            runCatching { albumsRepository.get(id) }.onSuccess { selectedAlbum = it }
+        appState.savedAlbumId?.takeIf { appState.selectedAlbum == null }?.let { id ->
+            runCatching { albumsRepository.get(id) }.onSuccess { appState.selectedAlbum = it }
         }
-        savedFolderId?.takeIf { selectedFolder == null }?.let { id ->
-            runCatching { foldersRepository.get(id) }.onSuccess { selectedFolder = it }
+        appState.savedFolderId?.takeIf { appState.selectedFolder == null }?.let { id ->
+            runCatching { foldersRepository.get(id) }.onSuccess { appState.selectedFolder = it }
         }
-        savedPersonId?.takeIf { selectedPerson == null }?.let { id ->
-            runCatching { peopleRepository.get(id) }.onSuccess { selectedPerson = it }
+        appState.savedPersonId?.takeIf { appState.selectedPerson == null }?.let { id ->
+            runCatching { peopleRepository.get(id) }.onSuccess { appState.selectedPerson = it }
         }
-        openIdsRehydrated = true
+        appState.openIdsRehydrated = true
     }
     // Solo después de rehidratar: si no, la primera composición (todo a null)
     // pisaría los ids guardados antes de poder leerlos.
-    LaunchedEffect(openIdsRehydrated, selectedAlbum?.id, selectedFolder?.id, selectedPerson?.id) {
-        if (openIdsRehydrated) {
-            savedAlbumId = selectedAlbum?.id
-            savedFolderId = selectedFolder?.id
-            savedPersonId = selectedPerson?.id
+    LaunchedEffect(appState.openIdsRehydrated, appState.selectedAlbum?.id, appState.selectedFolder?.id, appState.selectedPerson?.id) {
+        if (appState.openIdsRehydrated) {
+            appState.savedAlbumId = appState.selectedAlbum?.id
+            appState.savedFolderId = appState.selectedFolder?.id
+            appState.savedPersonId = appState.selectedPerson?.id
         }
     }
-    val showRenamePersonState = remember { mutableStateOf(false) }
-    var showRenamePerson by showRenamePersonState
-    val showMergePickerState = remember { mutableStateOf(false) }
-    var showMergePicker by showMergePickerState
-    // Confirmación de fusión: la persona elegida (que desaparecerá) y el
-    // estado de la petición.
-    val mergeSourceState = remember {
-        mutableStateOf<com.photonne.app.data.models.Person?>(null)
-    }
-    var mergeSource by mergeSourceState
-    val isMergingState = remember { mutableStateOf(false) }
-    var isMerging by isMergingState
-    val mergeErrorState = remember { mutableStateOf<String?>(null) }
-    var mergeError by mergeErrorState
-    val showAcceptAllSuggestionsState = remember { mutableStateOf(false) }
-    var showAcceptAllSuggestions by showAcceptAllSuggestionsState
-    val showDismissAllSuggestionsState = remember { mutableStateOf(false) }
-    var showDismissAllSuggestions by showDismissAllSuggestionsState
-    // Confirmaciones de revocar enlace / quitar miembro (antes, un toque).
-    val revokingShareTokenState = remember { mutableStateOf<String?>(null) }
-    var revokingShareToken by revokingShareTokenState
-    val revokingAlbumMemberState = remember {
-        mutableStateOf<com.photonne.app.data.models.AlbumPermission?>(null)
-    }
-    var revokingAlbumMember by revokingAlbumMemberState
-    val revokingFolderMemberState = remember {
-        mutableStateOf<com.photonne.app.data.models.AlbumPermission?>(null)
-    }
-    var revokingFolderMember by revokingFolderMemberState
-    val showAssetFacesSheetState = remember { mutableStateOf(false) }
-    var showAssetFacesSheet by showAssetFacesSheetState
-    val assetFacesRevisionState = remember { mutableStateOf(0) }
-    var assetFacesRevision by assetFacesRevisionState
-    val showJumpToDateState = remember { mutableStateOf(false) }
-    var showJumpToDate by showJumpToDateState
-    val pendingJumpDateState = remember { mutableStateOf<kotlin.time.Instant?>(null) }
-    var pendingJumpDate by pendingJumpDateState
-    val pendingAddTargetState = remember { mutableStateOf<PendingAddTarget?>(null) }
-    var pendingAddTarget by pendingAddTargetState
-    // Álbum ya creado cuyo alta falló: reintentar solo repite el alta, nunca
-    // crea un segundo álbum.
-    val pendingAddAlbumState = remember { mutableStateOf<AlbumSummary?>(null) }
-    var pendingAddAlbum by pendingAddAlbumState
-    val pendingAssetAddSubmittingState = remember { mutableStateOf(false) }
-    var pendingAssetAddSubmitting by pendingAssetAddSubmittingState
-    val pendingAssetAddErrorState = remember { mutableStateOf<String?>(null) }
-    var pendingAssetAddError by pendingAssetAddErrorState
-    val showCreateFolderState = remember { mutableStateOf(false) }
-    var showCreateFolder by showCreateFolderState
-    val showEditFolderState = remember { mutableStateOf(false) }
-    var showEditFolder by showEditFolderState
-    val showDeleteFolderState = remember { mutableStateOf(false) }
-    var showDeleteFolder by showDeleteFolderState
-    val showEditSubfolderState = remember { mutableStateOf(false) }
-    var showEditSubfolder by showEditSubfolderState
-    val showDeleteSubfolderState = remember { mutableStateOf(false) }
-    var showDeleteSubfolder by showDeleteSubfolderState
-    val showFolderMembersState = remember { mutableStateOf(false) }
-    var showFolderMembers by showFolderMembersState
-    val showInviteFolderMemberState = remember { mutableStateOf(false) }
-    var showInviteFolderMember by showInviteFolderMemberState
-    val showMoveFolderState = remember { mutableStateOf(false) }
-    var showMoveFolder by showMoveFolderState
-    val showBulkDeleteFoldersState = remember { mutableStateOf(false) }
-    var showBulkDeleteFolders by showBulkDeleteFoldersState
-    val showBulkMoveFoldersState = remember { mutableStateOf(false) }
-    var showBulkMoveFolders by showBulkMoveFoldersState
-    val showMoveSelectedAssetsState = remember { mutableStateOf(false) }
-    var showMoveSelectedAssets by showMoveSelectedAssetsState
-    val showMoveSelectedAssetsTimelineState = remember { mutableStateOf(false) }
-    var showMoveSelectedAssetsTimeline by showMoveSelectedAssetsTimelineState
-    val showMoveSelectedAssetsInboxState = remember { mutableStateOf(false) }
-    var showMoveSelectedAssetsInbox by showMoveSelectedAssetsInboxState
-    val moveSelectionRequestState = remember { mutableStateOf<MoveSelectionRequest?>(null) }
-    var moveSelectionRequest by moveSelectionRequestState
-    val moveSelectionSubmittingState = remember { mutableStateOf(false) }
-    var moveSelectionSubmitting by moveSelectionSubmittingState
-    val moveSelectionErrorState = remember { mutableStateOf<String?>(null) }
-    var moveSelectionError by moveSelectionErrorState
-    // Non-null while the inbox move "Revisar" grid is open: the chosen destination.
-    val inboxReviewTargetState = remember { mutableStateOf<String?>(null) }
-    var inboxReviewTarget by inboxReviewTargetState
-    // Resumen del reparto por año tras mover por condiciones: se confirma antes
-    // de volver a la bandeja.
-    val organizeRuleSummaryState = remember {
-        mutableStateOf<com.photonne.app.data.models.MoveOutcome?>(null)
-    }
-    var organizeRuleSummary by organizeRuleSummaryState
-    val showSearchFiltersState = remember { mutableStateOf(false) }
-    var showSearchFilters by showSearchFiltersState
-    val showAlbumsFiltersState = remember { mutableStateOf(false) }
-    var showAlbumsFilters by showAlbumsFiltersState
-    val showFoldersFiltersState = remember { mutableStateOf(false) }
-    var showFoldersFilters by showFoldersFiltersState
-    val pendingActionAlbumState = remember { mutableStateOf<AlbumSummary?>(null) }
-    var pendingActionAlbum by pendingActionAlbumState
-    val pendingActionFolderState = remember {
-        mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
-    }
-    var pendingActionFolder by pendingActionFolderState
-    val moreSubscreenState = androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf<MoreSubscreen?>(null)
-    }
-    var moreSubscreen by moreSubscreenState
-    // Perfil abierto desde la cabecera de Más: Atrás vuelve a Más, no a Ajustes.
-    var profileOpenedFromMore by androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf(false)
-    }
-    // Buscar abierto desde una etiqueta de Explorar: Atrás vuelve a esa
-    // subpantalla (y a la pestaña que había debajo), no a Fotos.
-    var searchReturnTo by remember { mutableStateOf<Pair<MainTab, MoreSubscreen>?>(null) }
-    // Búsqueda abierta desde una escena u objeto del visor: Atrás vuelve a la foto.
-    var searchViewerReturn by remember { mutableStateOf<ViewerReturn?>(null) }
-    LaunchedEffect(selectedTab) {
-        if (selectedTab != MainTab.Search) {
-            searchReturnTo = null
-            searchViewerReturn = null
-        }
-    }
-    fun restoreViewer(returnTo: ViewerReturn) {
-        selectedTab = returnTo.tab
-        moreSubscreen = returnTo.subscreen
-        selectedPerson = returnTo.person
-        // Si debajo había otra persona abierta, su detalle vuelve a cargarse:
-        // el view model es uno solo y ahora tiene la que se abrió desde la cara.
-        returnTo.person?.let { personDetailViewModel.open(it.id, it.name) }
-        assetDetailStack = returnTo.viewerStack
-        assetDetail = returnTo.viewer
-    }
-    /** Fotografía del visor abierto (en la foto que se está viendo) para volver
-     *  a él; null si no hay visor. */
-    fun viewerReturnPoint(): ViewerReturn? {
-        val ctx = assetDetail ?: return null
-        val atIndex = ctx.items.indexOfFirst { it.id == currentDetailAssetId }
-            .takeIf { it >= 0 } ?: ctx.startIndex
-        return ViewerReturn(
-            tab = selectedTab,
-            subscreen = moreSubscreen,
-            person = selectedPerson,
-            viewer = ctx.copy(startIndex = atIndex),
-            viewerStack = assetDetailStack
-        )
-    }
-    /** Escena u objeto tocado en el panel de info: búsqueda filtrada por él. */
-    fun openSearchFromViewer(applyFilter: () -> Unit) {
-        val returnPoint = viewerReturnPoint() ?: return
-        applyFilter()
-        assetDetailStack = emptyList()
-        assetDetail = null
-        moreSubscreen = null
-        selectedTab = MainTab.Search
-        searchReturnTo = null
-        searchViewerReturn = returnPoint
-    }
-    fun searchBack() {
-        searchViewerReturn?.let { returnTo ->
-            searchViewerReturn = null
-            restoreViewer(returnTo)
-            return
-        }
-        val returnTo = searchReturnTo
-        searchReturnTo = null
-        if (returnTo != null) {
-            selectedTab = returnTo.first
-            moreSubscreen = returnTo.second
-        } else {
-            selectedTab = MainTab.Timeline
-        }
-    }
-    // Carpeta abierta desde Ubicaciones (Lote N8): al salir de su raíz, Atrás
-    // vuelve a esa subpantalla (y a la pestaña de debajo), no a la lista de
-    // Carpetas. Cualquier toque en la barra de navegación lo olvida.
-    var folderReturnTo by remember { mutableStateOf<Pair<MainTab, MoreSubscreen>?>(null) }
-    fun folderBack() {
-        if (folderBackStack.isNotEmpty()) {
-            selectedFolder = folderBackStack.removeAt(folderBackStack.lastIndex)
-            return
-        }
-        selectedFolder = null
-        val returnTo = folderReturnTo
-        folderReturnTo = null
-        if (returnTo != null) {
-            selectedTab = returnTo.first
-            moreSubscreen = returnTo.second
-        }
-    }
-    // Persona abierta desde una cara del visor: Atrás vuelve a la foto.
-    var personReturnTo by remember { mutableStateOf<ViewerReturn?>(null) }
-    fun personBack() {
-        selectedPerson = null
-        val returnTo = personReturnTo
-        personReturnTo = null
-        if (returnTo != null) restoreViewer(returnTo)
-    }
-    /**
-     * Toque en una cara con persona: cierra el visor y abre esa persona. Solo
-     * llega el id (la cara no trae el nombre), así que se abre ya con él y el
-     * nombre y el resto se completan en cuanto responde el servidor.
-     */
-    fun openPersonFromViewer(personId: String) {
-        personReturnTo = viewerReturnPoint() ?: return
-        assetDetailStack = emptyList()
-        assetDetail = null
-        selectedTab = MainTab.More
-        moreSubscreen = MoreSubscreen.People
-        selectedPerson = com.photonne.app.data.models.Person(id = personId)
-        personDetailViewModel.open(personId, null)
-        coroutineScope.launch {
-            runCatching { peopleRepository.get(personId) }.onSuccess { person ->
-                if (selectedPerson?.id == personId) {
-                    selectedPerson = person
-                    personDetailViewModel.open(person.id, person.name)
-                }
-            }
+    LaunchedEffect(appState.selectedTab) {
+        if (appState.selectedTab != MainTab.Search) {
+            appState.searchReturnTo = null
+            appState.searchViewerReturn = null
         }
     }
     // Enlace compartido abierto desde fuera (photonne://share/{token}): tapa la
@@ -1250,76 +916,52 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         when (com.photonne.app.ui.main.ExternalNavigation.consume()) {
             com.photonne.app.ui.main.ExternalDestination.Upload -> {
                 val files = com.photonne.app.ui.main.ExternalNavigation.consumeSharedFiles()
-                assetDetail = null
+                appState.assetDetail = null
                 sharedLinkViewModel.close()
-                selectedTab = MainTab.More
-                moreSubscreen = MoreSubscreen.Upload
+                appState.selectedTab = MainTab.More
+                appState.moreSubscreen = MoreSubscreen.Upload
                 uploadViewModel.enqueue(files) { timelineViewModel.refresh() }
             }
             com.photonne.app.ui.main.ExternalDestination.SharedLink -> {
                 com.photonne.app.ui.main.ExternalNavigation.consumeSharedLink()?.let { target ->
-                    assetDetail = null
+                    appState.assetDetail = null
                     sharedLinkViewModel.open(target)
                 }
             }
             com.photonne.app.ui.main.ExternalDestination.Notifications -> {
-                assetDetail = null
+                appState.assetDetail = null
                 sharedLinkViewModel.close()
-                selectedTab = MainTab.More
-                moreSubscreen = MoreSubscreen.Notifications
+                appState.selectedTab = MainTab.More
+                appState.moreSubscreen = MoreSubscreen.Notifications
                 notificationsViewModel.refresh()
             }
             com.photonne.app.ui.main.ExternalDestination.Backup -> {
-                assetDetail = null
-                selectedTab = MainTab.More
-                moreSubscreen = MoreSubscreen.DeviceBackup
+                appState.assetDetail = null
+                appState.selectedTab = MainTab.More
+                appState.moreSubscreen = MoreSubscreen.DeviceBackup
             }
             com.photonne.app.ui.main.ExternalDestination.BackupPending -> {
-                assetDetail = null
-                selectedTab = MainTab.More
-                moreSubscreen = MoreSubscreen.DeviceBackupPending
+                appState.assetDetail = null
+                appState.selectedTab = MainTab.More
+                appState.moreSubscreen = MoreSubscreen.DeviceBackupPending
             }
             null -> Unit
         }
     }
-    // Vuelta a la bandeja tras un movimiento por condiciones, con el contador y
-    // la rejilla al día.
-    val organizeRuleMoved = {
-        moreSubscreen = MoreSubscreen.OrganizeInbox
-        organizeInboxViewModel.refresh()
-        foldersViewModel.refreshOrganizeCount()
-    }
-    var adminUserEditorId by remember { mutableStateOf<String?>(null) }
-    var adminLibraryEditorId by remember { mutableStateOf<String?>(null) }
-    val showUnarchiveAllState = remember { mutableStateOf(false) }
-    var showUnarchiveAll by showUnarchiveAllState
-    val showRestoreAllTrashState = remember { mutableStateOf(false) }
-    var showRestoreAllTrash by showRestoreAllTrashState
-    val showEmptyTrashState = remember { mutableStateOf(false) }
-    var showEmptyTrash by showEmptyTrashState
-    var showTrashScope by remember { mutableStateOf(false) }
-    val showPurgeSelectedState = remember { mutableStateOf(false) }
-    var showPurgeSelected by showPurgeSelectedState
-    // Active tab of the unified Trash screen (Personal / Compartida).
-    var trashTab by remember { mutableStateOf(com.photonne.app.ui.library.TrashTab.Personal) }
 
-    // Cerrar sesión era un solo toque directo a authRepository.logout();
-    // ahora confirma, y la confirmación avisa si quedan copias pendientes.
-    val showLogoutConfirmState = remember { mutableStateOf(false) }
-    var showLogoutConfirm by showLogoutConfirmState
-    val onLogout: () -> Unit = { showLogoutConfirm = true }
-    val albumBack: () -> Unit = { selectedAlbum = null }
+    val onLogout: () -> Unit = { appState.showLogoutConfirm = true }
+    val albumBack: () -> Unit = { appState.selectedAlbum = null }
 
     // Mirror the share link count for the currently opened album back into
     // the albums list so the public-link badge stays in sync after
     // create/revoke without a full refresh.
-    val openedAlbumId = selectedAlbum?.id
+    val openedAlbumId = appState.selectedAlbum?.id
     val sharedAlbumId = albumSharesState.albumId
     val activeLinks = albumSharesState.links.isNotEmpty()
     LaunchedEffect(openedAlbumId, sharedAlbumId, activeLinks) {
         if (openedAlbumId != null && openedAlbumId == sharedAlbumId) {
             albumsViewModel.applyShareLinkChanged(openedAlbumId, activeLinks)
-            selectedAlbum = selectedAlbum?.copy(hasActiveShareLink = activeLinks)
+            appState.selectedAlbum = appState.selectedAlbum?.copy(hasActiveShareLink = activeLinks)
         }
     }
 
@@ -1329,107 +971,106 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // the activity. Modal dialogs/sheets aren't enumerated here because
     // Compose Material3 forwards back-press to their onDismissRequest.
     val isAnySelectionActive = (
-        (selectedTab == MainTab.Timeline && timelineState.isSelectionActive) ||
-        (selectedTab == MainTab.Albums && selectedAlbum != null &&
+        (appState.selectedTab == MainTab.Timeline && timelineState.isSelectionActive) ||
+        (appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null &&
             albumDetailState.isSelectionActive) ||
-        (selectedTab == MainTab.Albums && albumsState.isSelectionActive) ||
-        (selectedTab == MainTab.Folders && selectedFolder != null &&
+        (appState.selectedTab == MainTab.Albums && albumsState.isSelectionActive) ||
+        (appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
             (folderDetailState.isSelectionActive ||
                 folderDetailState.isSubfolderSelectionActive)) ||
-        (selectedTab == MainTab.Folders && foldersState.isSelectionActive) ||
-        (selectedTab == MainTab.Search && searchState.isSelectionActive) ||
-        (moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive) ||
-        (moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive) ||
-        (moreSubscreen == MoreSubscreen.Trash && trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive) ||
-        (moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
+        (appState.selectedTab == MainTab.Folders && foldersState.isSelectionActive) ||
+        (appState.selectedTab == MainTab.Search && searchState.isSelectionActive) ||
+        (appState.moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive) ||
+        (appState.moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive) ||
+        (appState.moreSubscreen == MoreSubscreen.Trash && appState.trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive) ||
+        (appState.moreSubscreen == MoreSubscreen.People && appState.selectedPerson != null &&
             personDetailState.isSelectionActive) ||
-        (moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive) ||
-        (moreSubscreen == MoreSubscreen.OrganizeExcluded && organizeExcludedState.isSelectionActive)
+        (appState.moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive) ||
+        (appState.moreSubscreen == MoreSubscreen.OrganizeExcluded && organizeExcludedState.isSelectionActive)
     )
-    var overlayForward by remember { mutableStateOf(true) }
     val canHandleBack = (
-        assetDetail != null ||
+        appState.assetDetail != null ||
         sharedLinkOpen ||
-        memoryDetail != null ||
+        appState.memoryDetail != null ||
         isAnySelectionActive ||
         // Un álbum o una carpeta abiertos cuentan solo en SU pestaña: si se
         // quedaron abiertos por debajo y estamos en Fotos, ninguna rama de abajo
         // los cierra y el Atrás se tragaba sin hacer nada (ni salir de la app).
-        (selectedTab == MainTab.Albums && selectedAlbum != null) ||
-        (selectedTab == MainTab.Folders && selectedFolder != null) ||
-        selectedPerson != null ||
-        moreSubscreen != null ||
-        selectedTab != MainTab.Timeline
+        (appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null) ||
+        (appState.selectedTab == MainTab.Folders && appState.selectedFolder != null) ||
+        appState.selectedPerson != null ||
+        appState.moreSubscreen != null ||
+        appState.selectedTab != MainTab.Timeline
     )
     // Dirección de la última navegación del overlay. Se marca aquí y la consume
     // el bloque de transición al montar el destino nuevo: "atrás" entra desde el
     // lado contrario, como en cualquier pila de navegación.
     PlatformBackHandler(enabled = canHandleBack) {
-        overlayForward = false
+        appState.overlayForward = false
         when {
-            assetDetail != null -> { closeAssetDetail() }
+            appState.assetDetail != null -> { appState.closeAssetDetail() }
             sharedLinkOpen -> sharedLinkViewModel.close()
             // Before every selection case: an open memory covers the screen, so
             // back closes what you're actually looking at, not what's underneath.
-            memoryDetail != null -> {
+            appState.memoryDetail != null -> {
                 if (memorySelectionState.isSelectionActive) {
                     memorySelectionViewModel.clearSelection()
                 } else {
-                    memoryDetail = null
+                    appState.memoryDetail = null
                 }
             }
             // Igual con la revisión previa a mover: tapa la pantalla entera (y no
             // se cierra a media confirmación, que el movimiento es irreversible).
-            inboxReviewTarget != null ->
-                if (!organizeInboxState.isBulkMutating) inboxReviewTarget = null
+            appState.inboxReviewTarget != null ->
+                if (!organizeInboxState.isBulkMutating) appState.inboxReviewTarget = null
             organizeRuleState.reviewGroups != null ->
                 if (!organizeRuleState.isMoving) organizeRuleViewModel.closeReview()
-            selectedTab == MainTab.Timeline &&
+            appState.selectedTab == MainTab.Timeline &&
                 timelineState.isSelectionActive -> timelineViewModel.clearSelection()
-            selectedTab == MainTab.Albums && selectedAlbum != null &&
+            appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null &&
                 albumDetailState.isSelectionActive -> albumDetailViewModel.clearSelection()
-            selectedTab == MainTab.Albums && albumsState.isSelectionActive ->
+            appState.selectedTab == MainTab.Albums && albumsState.isSelectionActive ->
                 albumsViewModel.clearSelection()
-            selectedTab == MainTab.Folders && selectedFolder != null &&
+            appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
                 folderDetailState.isSelectionActive -> folderDetailViewModel.clearSelection()
-            selectedTab == MainTab.Folders && selectedFolder != null &&
+            appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
                 folderDetailState.isSubfolderSelectionActive ->
                 folderDetailViewModel.clearSubfolderSelection()
-            selectedTab == MainTab.Folders && foldersState.isSelectionActive ->
+            appState.selectedTab == MainTab.Folders && foldersState.isSelectionActive ->
                 foldersViewModel.clearSelection()
-            selectedTab == MainTab.Search && searchState.isSelectionActive ->
+            appState.selectedTab == MainTab.Search && searchState.isSelectionActive ->
                 searchViewModel.clearSelection()
-            moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive ->
+            appState.moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive ->
                 favoritesViewModel.clearSelection()
-            moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive ->
+            appState.moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive ->
                 archivedViewModel.clearSelection()
-            moreSubscreen == MoreSubscreen.Trash && trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive ->
+            appState.moreSubscreen == MoreSubscreen.Trash && appState.trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive ->
                 trashViewModel.clearSelection()
-            moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
+            appState.moreSubscreen == MoreSubscreen.People && appState.selectedPerson != null &&
                 personDetailState.isSelectionActive -> personDetailViewModel.clearSelection()
-            moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive ->
+            appState.moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive ->
                 organizeInboxViewModel.clearSelection()
-            moreSubscreen == MoreSubscreen.OrganizeExcluded && organizeExcludedState.isSelectionActive ->
+            appState.moreSubscreen == MoreSubscreen.OrganizeExcluded && organizeExcludedState.isSelectionActive ->
                 organizeExcludedViewModel.clearSelection()
-            selectedTab == MainTab.Albums && selectedAlbum != null -> albumBack()
-            selectedTab == MainTab.Folders && selectedFolder != null -> folderBack()
-            moreSubscreen == MoreSubscreen.People && selectedPerson != null -> personBack()
-            moreSubscreen == MoreSubscreen.AdminUserEditor -> {
-                adminUserEditorId = null
+            appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null -> albumBack()
+            appState.selectedTab == MainTab.Folders && appState.selectedFolder != null -> appState.folderBack()
+            appState.moreSubscreen == MoreSubscreen.People && appState.selectedPerson != null -> appState.personBack()
+            appState.moreSubscreen == MoreSubscreen.AdminUserEditor -> {
+                appState.adminUserEditorId = null
                 adminUsersViewModel.clearMessages()
-                moreSubscreen = MoreSubscreen.AdminUsers
+                appState.moreSubscreen = MoreSubscreen.AdminUsers
             }
-            moreSubscreen == MoreSubscreen.AdminLibraryEditor -> {
-                adminLibraryEditorId = null
+            appState.moreSubscreen == MoreSubscreen.AdminLibraryEditor -> {
+                appState.adminLibraryEditorId = null
                 adminLibrariesViewModel.clearMessages()
-                moreSubscreen = MoreSubscreen.AdminLibraries
+                appState.moreSubscreen = MoreSubscreen.AdminLibraries
             }
-            moreSubscreen == MoreSubscreen.AccountProfile && profileOpenedFromMore -> {
-                moreSubscreen = null
+            appState.moreSubscreen == MoreSubscreen.AccountProfile && appState.profileOpenedFromMore -> {
+                appState.moreSubscreen = null
             }
-            moreSubscreen != null -> { moreSubscreen = parentMoreSubscreen(moreSubscreen!!) }
-            selectedTab == MainTab.Search -> searchBack()
-            selectedTab != MainTab.Timeline -> { selectedTab = MainTab.Timeline }
+            appState.moreSubscreen != null -> { appState.moreSubscreen = parentMoreSubscreen(appState.moreSubscreen!!) }
+            appState.selectedTab == MainTab.Search -> appState.searchBack()
+            appState.selectedTab != MainTab.Timeline -> { appState.selectedTab = MainTab.Timeline }
         }
     }
 
@@ -1439,39 +1080,39 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     fun selectAllOf(selected: Int, total: Int, toggle: () -> Unit): (() -> Unit)? =
         if (total <= 0) null else ({ if (selected < total) toggle() })
     val selectAllShortcut: (() -> Unit)? = when {
-        assetDetail != null -> null
-        memoryDetail != null -> memoryDetail?.let { memory ->
+        appState.assetDetail != null -> null
+        appState.memoryDetail != null -> appState.memoryDetail?.let { memory ->
             selectAllOf(memorySelectionState.selection.size, memory.items.size) {
                 memorySelectionViewModel.toggleSelectAll(memory.items.map { it.id })
             }
         }
-        selectedTab == MainTab.Albums && selectedAlbum != null ->
+        appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null ->
             selectAllOf(albumDetailState.selection.size, albumDetailState.items.size,
                 albumDetailViewModel::toggleSelectAll)
-        selectedTab == MainTab.Folders && selectedFolder != null &&
+        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
             !folderDetailState.isSubfolderSelectionActive ->
             selectAllOf(folderDetailState.selection.size, folderDetailState.items.size,
                 folderDetailViewModel::toggleSelectAll)
-        selectedTab == MainTab.Search ->
+        appState.selectedTab == MainTab.Search ->
             selectAllOf(searchState.selection.size, searchState.results.size,
                 searchViewModel::toggleSelectAll)
-        moreSubscreen == MoreSubscreen.Favorites ->
+        appState.moreSubscreen == MoreSubscreen.Favorites ->
             selectAllOf(favoritesState.selection.size, favoritesState.items.size,
                 favoritesViewModel::toggleSelectAll)
-        moreSubscreen == MoreSubscreen.Archived ->
+        appState.moreSubscreen == MoreSubscreen.Archived ->
             selectAllOf(archivedState.selection.size, archivedState.items.size,
                 archivedViewModel::toggleSelectAll)
-        moreSubscreen == MoreSubscreen.People && selectedPerson != null ->
+        appState.moreSubscreen == MoreSubscreen.People && appState.selectedPerson != null ->
             selectAllOf(personDetailState.selection.size, personDetailState.items.size,
                 personDetailViewModel::toggleSelectAll)
-        moreSubscreen == MoreSubscreen.OrganizeInbox ->
+        appState.moreSubscreen == MoreSubscreen.OrganizeInbox ->
             selectAllOf(organizeInboxState.selection.size, organizeInboxState.items.size,
                 organizeInboxViewModel::toggleSelectAll)
         // Listas de álbumes y carpetas: todas las tarjetas visibles.
-        moreSubscreen == null && selectedTab == MainTab.Albums && selectedAlbum == null ->
+        appState.moreSubscreen == null && appState.selectedTab == MainTab.Albums && appState.selectedAlbum == null ->
             selectAllOf(albumsState.selectedAlbums.size, albumsState.visibleAlbums.size,
                 albumsViewModel::toggleSelectAllVisible)
-        moreSubscreen == null && selectedTab == MainTab.Folders && selectedFolder == null ->
+        appState.moreSubscreen == null && appState.selectedTab == MainTab.Folders && appState.selectedFolder == null ->
             selectAllOf(foldersState.selectedFolders.size, foldersState.visibleFolders.size,
                 foldersViewModel::toggleSelectAllVisible)
         else -> null
@@ -1487,17 +1128,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         listOf(MainTab.Timeline, MainTab.Albums, MainTab.Folders, MainTab.More)
     }
     val mainPagerState = rememberPagerState(
-        initialPage = navTabs.indexOf(selectedTab).coerceAtLeast(0),
+        initialPage = navTabs.indexOf(appState.selectedTab).coerceAtLeast(0),
         pageCount = { navTabs.size }
     )
     // Whether an opaque overlay (drill-down / Buscar / More subscreen) is covering
     // the pager base layer. When true the overlay must paint its own solid
     // background, otherwise the tab body underneath shows through — the pager
     // keeps all top-level bodies composed behind it.
-    val overlayVisible = moreSubscreen != null ||
-        (selectedTab == MainTab.Albums && selectedAlbum != null) ||
-        (selectedTab == MainTab.Folders && selectedFolder != null) ||
-        selectedTab == MainTab.Search
+    val overlayVisible = appState.moreSubscreen != null ||
+        (appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null) ||
+        (appState.selectedTab == MainTab.Folders && appState.selectedFolder != null) ||
+        appState.selectedTab == MainTab.Search
     // Only allow the horizontal tab-swipe on a bare top-level tab: never while a
     // detail, Buscar, a subscreen or a multi-select session owns the screen —
     // those render as an opaque overlay and take the horizontal gesture (paging
@@ -1519,21 +1160,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // overlay (detail / Buscar / subscreen / selection) pins it back to
     // selectedTab so those never inherit a neighbour's chrome mid-drag.
     val chromeTab = if (canSwipeTabs) {
-        navTabs.getOrNull(mainPagerState.currentPage) ?: selectedTab
+        navTabs.getOrNull(mainPagerState.currentPage) ?: appState.selectedTab
     } else {
-        selectedTab
+        appState.selectedTab
     }
     // Identidad del destino que ocupa el overlay. Cambiarla es lo que dispara la
     // transición de entrada; navegar dentro del MISMO destino (abrir el visor,
     // seleccionar fotos) la deja quieta.
     val overlayKey: Any = when {
-        moreSubscreen != null ->
-            "more:${moreSubscreen!!.name}:${selectedPerson?.id ?: ""}"
-        selectedTab == MainTab.Albums && selectedAlbum != null ->
-            "album:${selectedAlbum!!.id}"
-        selectedTab == MainTab.Folders && selectedFolder != null ->
-            "folder:${selectedFolder!!.id}"
-        selectedTab == MainTab.Search -> "search"
+        appState.moreSubscreen != null ->
+            "more:${appState.moreSubscreen!!.name}:${appState.selectedPerson?.id ?: ""}"
+        appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null ->
+            "album:${appState.selectedAlbum!!.id}"
+        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null ->
+            "folder:${appState.selectedFolder!!.id}"
+        appState.selectedTab == MainTab.Search -> "search"
         else -> "none"
     }
     // The pager runs edge-to-edge at the top whenever a bare top-level tab is
@@ -1551,9 +1192,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // activa ceden el sitio a la cápsula de selección, que no se esconde: una
     // acción no puede escaparse scroll abajo. Sólo hay una a la vez, así que
     // comparten el estado de visibilidad.
-    val floatingChromeSubscreen = when (moreSubscreen) {
+    val floatingChromeSubscreen = when (appState.moreSubscreen) {
         MoreSubscreen.People ->
-            selectedPerson == null || !personDetailState.isSelectionActive
+            appState.selectedPerson == null || !personDetailState.isSelectionActive
         MoreSubscreen.ExploreScenes,
         MoreSubscreen.ExploreObjects,
         MoreSubscreen.Memories,
@@ -1616,7 +1257,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // La cápsula estática de los formularios nunca reporta visibilidad, así que
     // al entrar a cualquier subpantalla se reinicia la nav a visible; las que sí
     // scrollean la vuelven a reportar en cuanto se mueven.
-    LaunchedEffect(moreSubscreen) { subscreenChromeVisible = true }
+    LaunchedEffect(appState.moreSubscreen) { appState.subscreenChromeVisible = true }
 
     /**
      * Favorito en bloque desde la barra de selección. Si TODAS las
@@ -1671,7 +1312,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // edgeToEdgeTop). Sin hazeState propio: difumina con la fuente del Scaffold.
     fun selectionChrome(content: @Composable () -> Unit) = content
     val selectionTopChrome: (@Composable () -> Unit)? = when {
-        selectedTab == MainTab.Timeline &&
+        appState.selectedTab == MainTab.Timeline &&
             timelineState.isSelectionActive -> selectionChrome {
             AssetSelectionTopBar(
                 selectedCount = timelineState.selection.size,
@@ -1683,7 +1324,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 // lo que promete. La casilla de mes cubre el caso real.
             )
         }
-        selectedTab == MainTab.Albums && selectedAlbum != null &&
+        appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null &&
             albumDetailState.isSelectionActive -> selectionChrome {
             AssetSelectionTopBar(
                 selectedCount = albumDetailState.selection.size,
@@ -1694,8 +1335,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onSelectAll = albumDetailViewModel::toggleSelectAll
             )
         }
-        selectedTab == MainTab.Albums && selectedAlbum != null -> null
-        selectedTab == MainTab.Albums && albumsState.isSelectionActive -> selectionChrome {
+        appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null -> null
+        appState.selectedTab == MainTab.Albums && albumsState.isSelectionActive -> selectionChrome {
             // Si la tarjeta ya no está en la lista (filtrada, borrada) queda
             // solo el cerrar: antes caía a la barra acoplada de Álbumes.
             val selected = albumsState.selectedAlbums
@@ -1708,7 +1349,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onSelectAll = albumsViewModel::toggleSelectAllVisible
             )
         }
-        selectedTab == MainTab.Folders && selectedFolder != null &&
+        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
             folderDetailState.isSelectionActive -> selectionChrome {
             AssetSelectionTopBar(
                 selectedCount = folderDetailState.selection.size,
@@ -1719,7 +1360,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onSelectAll = folderDetailViewModel::toggleSelectAll
             )
         }
-        selectedTab == MainTab.Folders && selectedFolder != null &&
+        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
             folderDetailState.isSubfolderSelectionActive -> selectionChrome {
             val subfolder = folderDetailState.selectedSubfolder
             com.photonne.app.ui.main.FolderCardSelectionTopBar(
@@ -1730,8 +1371,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 statusBarScrim = true
             )
         }
-        selectedTab == MainTab.Folders && selectedFolder != null -> null
-        selectedTab == MainTab.Folders && foldersState.isSelectionActive -> selectionChrome {
+        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null -> null
+        appState.selectedTab == MainTab.Folders && foldersState.isSelectionActive -> selectionChrome {
             val selected = foldersState.selectedFolders
             com.photonne.app.ui.main.FolderCardSelectionTopBar(
                 folderName = selected.singleOrNull()?.let { it.name.ifBlank { it.path } } ?: "",
@@ -1742,7 +1383,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onSelectAll = foldersViewModel::toggleSelectAllVisible
             )
         }
-        selectedTab == MainTab.Search && searchState.isSelectionActive -> selectionChrome {
+        appState.selectedTab == MainTab.Search && searchState.isSelectionActive -> selectionChrome {
             AssetSelectionTopBar(
                 selectedCount = searchState.selection.size,
                 totalCount = searchState.results.size,
@@ -1753,8 +1394,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 statusBarScrim = false
             )
         }
-        selectedTab == MainTab.Search -> null
-        moreSubscreen == MoreSubscreen.DeviceBackupPending &&
+        appState.selectedTab == MainTab.Search -> null
+        appState.moreSubscreen == MoreSubscreen.DeviceBackupPending &&
             deviceBackupState.selectedCount > 0 -> selectionChrome {
             // Same contextual selection capsule as Timeline/Albums, with a
             // select-all action for queueing every pending file at once.
@@ -1778,7 +1419,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             )
         }
-        moreSubscreen == MoreSubscreen.OrganizeInbox &&
+        appState.moreSubscreen == MoreSubscreen.OrganizeInbox &&
             organizeInboxState.isSelectionActive -> selectionChrome {
             AssetSelectionTopBar(
                 selectedCount = organizeInboxState.selection.size,
@@ -1793,7 +1434,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
         // Apartadas: con selección, la cápsula lleva "Devolver a la bandeja"
         // (una sola acción, como Restaurar en la papelera).
-        moreSubscreen == MoreSubscreen.OrganizeExcluded &&
+        appState.moreSubscreen == MoreSubscreen.OrganizeExcluded &&
             organizeExcludedState.isSelectionActive -> selectionChrome {
             val snackbar = LocalSnackbarController.current
             val includedCount = organizeExcludedState.selection.size
@@ -1825,8 +1466,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             }
         }
-        moreSubscreen == MoreSubscreen.People &&
-            selectedPerson != null && personDetailState.isSelectionActive -> selectionChrome {
+        appState.moreSubscreen == MoreSubscreen.People &&
+            appState.selectedPerson != null && personDetailState.isSelectionActive -> selectionChrome {
             AssetSelectionTopBar(
                 selectedCount = personDetailState.selection.size,
                 totalCount = personDetailState.items.size,
@@ -1836,7 +1477,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onSelectAll = personDetailViewModel::toggleSelectAll
             )
         }
-        moreSubscreen == MoreSubscreen.Favorites &&
+        appState.moreSubscreen == MoreSubscreen.Favorites &&
             favoritesState.isSelectionActive -> selectionChrome {
             AssetSelectionTopBar(
                 selectedCount = favoritesState.selection.size,
@@ -1850,7 +1491,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 selectAllLoadedOnly = favoritesState.hasMore
             )
         }
-        moreSubscreen == MoreSubscreen.Archived &&
+        appState.moreSubscreen == MoreSubscreen.Archived &&
             archivedState.isSelectionActive -> selectionChrome {
             AssetSelectionTopBar(
                 selectedCount = archivedState.selection.size,
@@ -1865,15 +1506,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             )
         }
         // Personal tab in selection mode: restore/purge selected.
-        moreSubscreen == MoreSubscreen.Trash &&
-            trashTab == com.photonne.app.ui.library.TrashTab.Personal &&
+        appState.moreSubscreen == MoreSubscreen.Trash &&
+            appState.trashTab == com.photonne.app.ui.library.TrashTab.Personal &&
             trashState.isSelectionActive -> selectionChrome {
             com.photonne.app.ui.main.TrashSelectionTopBar(
                 selectedCount = trashState.selection.size,
                 isMutating = trashState.isBulkMutating,
                 onClose = trashViewModel::clearSelection,
                 onRestore = { trashViewModel.bulkRestore() },
-                onPurge = { showPurgeSelected = true }
+                onPurge = { appState.showPurgeSelected = true }
             )
         }
         else -> null
@@ -1885,16 +1526,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // AlbumDetailScreen paints its own floating top chrome over the
             // grid (docked on the hero's cover, frosted capsules once
             // scrolled), like Fotos, so no separate top bar here.
-            selectedTab == MainTab.Albums && selectedAlbum != null -> {
+            appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null -> {
             }
             // El detalle de carpeta pinta su propio cromo flotante dentro de la
             // pantalla (título de la carpeta + acciones en la cápsula).
-            selectedTab == MainTab.Folders && selectedFolder != null -> {
+            appState.selectedTab == MainTab.Folders && appState.selectedFolder != null -> {
             }
             // Buscar pinta su propio cromo flotante (campo + modo + filtros).
-            selectedTab == MainTab.Search -> {
+            appState.selectedTab == MainTab.Search -> {
             }
-            moreSubscreen == MoreSubscreen.Upload ->
+            appState.moreSubscreen == MoreSubscreen.Upload ->
                 com.photonne.app.ui.main.UploadTopBar(
                     title = stringResource(Res.string.upload_title),
                     subtitle = if (uploadState.pendingCount > 0)
@@ -1903,76 +1544,76 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             uploadState.pendingCount
                         )
                     else null,
-                    onBack = { moreSubscreen = null }
+                    onBack = { appState.moreSubscreen = null }
                 )
             // Cromo flotante dibujado dentro de la pantalla.
-            moreSubscreen == MoreSubscreen.DeviceBackup -> { }
+            appState.moreSubscreen == MoreSubscreen.DeviceBackup -> { }
             // Cromo flotante dibujado dentro de la pantalla (con selección manda
             // la cápsula de selección, arriba).
-            moreSubscreen == MoreSubscreen.DeviceBackupPending -> { }
-            moreSubscreen == MoreSubscreen.EnrichmentStatus -> { }
-            moreSubscreen == MoreSubscreen.Utilities -> { }
-            moreSubscreen == MoreSubscreen.MyLinks -> { }
+            appState.moreSubscreen == MoreSubscreen.DeviceBackupPending -> { }
+            appState.moreSubscreen == MoreSubscreen.EnrichmentStatus -> { }
+            appState.moreSubscreen == MoreSubscreen.Utilities -> { }
+            appState.moreSubscreen == MoreSubscreen.MyLinks -> { }
             // "Archivos no compatibles" pinta su propio cromo flotante dentro de la pantalla.
-            moreSubscreen == MoreSubscreen.UnsupportedFiles -> {
+            appState.moreSubscreen == MoreSubscreen.UnsupportedFiles -> {
             }
             // Para organizar pinta su propio cromo flotante (con "Mover por
             // condiciones" en su cápsula de acciones); con una selección activa
             // manda la cápsula de selección, arriba.
-            moreSubscreen == MoreSubscreen.OrganizeInbox -> {
+            appState.moreSubscreen == MoreSubscreen.OrganizeInbox -> {
             }
-            moreSubscreen == MoreSubscreen.OrganizeRule -> { }
-            moreSubscreen == MoreSubscreen.OrganizeExcluded -> { }
-            moreSubscreen == MoreSubscreen.UtilitiesDuplicates -> { }
-            moreSubscreen == MoreSubscreen.UtilitiesLargeFiles -> { }
-            moreSubscreen == MoreSubscreen.UtilitiesLocations -> { }
+            appState.moreSubscreen == MoreSubscreen.OrganizeRule -> { }
+            appState.moreSubscreen == MoreSubscreen.OrganizeExcluded -> { }
+            appState.moreSubscreen == MoreSubscreen.UtilitiesDuplicates -> { }
+            appState.moreSubscreen == MoreSubscreen.UtilitiesLargeFiles -> { }
+            appState.moreSubscreen == MoreSubscreen.UtilitiesLocations -> { }
             // Recuerdos / Escenas / Objetos / Mapa pintan su propio cromo
             // flotante dentro de la pantalla (ver floatingChromeSubscreen), así
             // que aquí no va ninguna barra.
-            moreSubscreen == MoreSubscreen.Memories ||
-                moreSubscreen == MoreSubscreen.ExploreScenes ||
-                moreSubscreen == MoreSubscreen.ExploreObjects ||
-                moreSubscreen == MoreSubscreen.Map -> {
+            appState.moreSubscreen == MoreSubscreen.Memories ||
+                appState.moreSubscreen == MoreSubscreen.ExploreScenes ||
+                appState.moreSubscreen == MoreSubscreen.ExploreObjects ||
+                appState.moreSubscreen == MoreSubscreen.Map -> {
             }
             // Sugerencias de una persona pinta su propio cromo flotante.
-            moreSubscreen == MoreSubscreen.PeopleSuggestions -> {
+            appState.moreSubscreen == MoreSubscreen.PeopleSuggestions -> {
             }
             // La lista de Personas Y el detalle pintan su propio cromo flotante
             // (menú de recluster / ocultas o de renombrar / fusionar en su cápsula
             // de acciones); aquí no va barra acoplada.
-            moreSubscreen == MoreSubscreen.People -> {
+            appState.moreSubscreen == MoreSubscreen.People -> {
             }
             // Favoritos pinta su propio cromo flotante dentro de la pantalla
             // (ver floatingChromeSubscreen); aquí no va barra acoplada.
-            moreSubscreen == MoreSubscreen.Favorites -> {
+            appState.moreSubscreen == MoreSubscreen.Favorites -> {
             }
             // Archivados pinta su propio cromo flotante dentro de la pantalla.
-            moreSubscreen == MoreSubscreen.Archived -> {
+            appState.moreSubscreen == MoreSubscreen.Archived -> {
             }
             // Papelera (sin selección): cromo flotante dibujado en el contenido,
             // con las acciones restaurar-todo / vaciar en su cápsula (solo en la
             // pestaña Personal).
-            moreSubscreen == MoreSubscreen.Trash -> { }
+            appState.moreSubscreen == MoreSubscreen.Trash -> { }
             // Todas estas subpantallas pintan su propio cromo flotante estático
             // dentro de la pantalla (título + atrás, y acciones en su cápsula
             // cuando las tienen); aquí no va barra acoplada.
-            moreSubscreen == MoreSubscreen.Notifications -> { }
-            moreSubscreen == MoreSubscreen.AccountSettings -> { }
-            moreSubscreen == MoreSubscreen.AccountProfile -> { }
-            moreSubscreen == MoreSubscreen.AccountSecurity -> { }
-            moreSubscreen == MoreSubscreen.AccountAppearance -> { }
-            moreSubscreen == MoreSubscreen.AccountStorage -> { }
-            moreSubscreen == MoreSubscreen.AccountConnection -> { }
-            moreSubscreen == MoreSubscreen.Administration -> { }
-            moreSubscreen == MoreSubscreen.AdminUsers -> { }
-            moreSubscreen == MoreSubscreen.AdminUserEditor -> { }
-            moreSubscreen == MoreSubscreen.AdminLibraries -> { }
-            moreSubscreen == MoreSubscreen.AdminLibraryEditor -> { }
-            moreSubscreen == MoreSubscreen.AdminStats -> { }
-            moreSubscreen == MoreSubscreen.AdminSettingsHub -> { }
-            moreSubscreen == MoreSubscreen.AdminSystemHub -> { }
-            isAdminSettingsSubpage(moreSubscreen) -> { }
-            isAdminSystemSubpage(moreSubscreen) -> { }
+            appState.moreSubscreen == MoreSubscreen.Notifications -> { }
+            appState.moreSubscreen == MoreSubscreen.AccountSettings -> { }
+            appState.moreSubscreen == MoreSubscreen.AccountProfile -> { }
+            appState.moreSubscreen == MoreSubscreen.AccountSecurity -> { }
+            appState.moreSubscreen == MoreSubscreen.AccountAppearance -> { }
+            appState.moreSubscreen == MoreSubscreen.AccountStorage -> { }
+            appState.moreSubscreen == MoreSubscreen.AccountConnection -> { }
+            appState.moreSubscreen == MoreSubscreen.Administration -> { }
+            appState.moreSubscreen == MoreSubscreen.AdminUsers -> { }
+            appState.moreSubscreen == MoreSubscreen.AdminUserEditor -> { }
+            appState.moreSubscreen == MoreSubscreen.AdminLibraries -> { }
+            appState.moreSubscreen == MoreSubscreen.AdminLibraryEditor -> { }
+            appState.moreSubscreen == MoreSubscreen.AdminStats -> { }
+            appState.moreSubscreen == MoreSubscreen.AdminSettingsHub -> { }
+            appState.moreSubscreen == MoreSubscreen.AdminSystemHub -> { }
+            isAdminSettingsSubpage(appState.moreSubscreen) -> { }
+            isAdminSystemSubpage(appState.moreSubscreen) -> { }
             else -> {
                 // Every bare top-level tab now renders its own top bar *inside*
                 // its pager page (Fotos its floating bar; Álbumes/Carpetas/Más a
@@ -1986,7 +1627,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // replaced by an action bar so the primary actions sit within thumb
     // reach on mobile. The slim selection top bar above keeps just Close + count.
     val bottomBar: (@Composable () -> Unit)? = when {
-        selectedTab == MainTab.Timeline &&
+        appState.selectedTab == MainTab.Timeline &&
             timelineState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
@@ -1996,8 +1637,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(timelineState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddToAlbum = true },
-                    onMove = { showMoveSelectedAssetsTimeline = true },
+                    onAddToAlbum = { appState.bulkAddToAlbum = true },
+                    onMove = { appState.showMoveSelectedAssetsTimeline = true },
                     onDownload = {
                         actionsViewModel.download(timelineState.selection.toList())
                     },
@@ -2020,7 +1661,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
-        selectedTab == MainTab.Albums && selectedAlbum != null &&
+        appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null &&
             albumDetailState.isSelectionActive -> {
             {
                 // Textos del snackbar de "Quitar del álbum", resueltos en
@@ -2042,7 +1683,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     Res.plurals.selection_trash_blocked_foreign, untrashable, untrashable
                 ) else null
                 val albumTrashWarning = pluralStringResource(
-                    if (selectedAlbum?.isShared == true) Res.plurals.album_trash_warning_shared
+                    if (appState.selectedAlbum?.isShared == true) Res.plurals.album_trash_warning_shared
                     else Res.plurals.album_trash_warning,
                     removeCount,
                     removeCount
@@ -2056,7 +1697,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(albumDetailState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddSource = BulkAddSource.Album },
+                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Album },
                     onDownload = {
                         actionsViewModel.download(albumDetailState.selection.toList())
                     },
@@ -2088,8 +1729,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             if (moveBlocked != null) {
                                 moveSnackbar?.show(moveBlocked)
                             } else {
-                                moveSelectionError = null
-                                moveSelectionRequest = MoveSelectionRequest(
+                                appState.moveSelectionError = null
+                                appState.moveSelectionRequest = MoveSelectionRequest(
                                     assetIds = albumDetailState.selection.toList(),
                                     onMoved = albumDetailViewModel::clearSelection
                                 )
@@ -2098,15 +1739,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     // En un álbum inteligente el contenido lo deciden las
                     // reglas: ni quitar fotos ni fijar portada aplican.
-                    onRemoveFromAlbum = if (selectedAlbum?.isSmart != true &&
-                        (selectedAlbum?.canWrite == true ||
-                            selectedAlbum?.isOwner == true)
+                    onRemoveFromAlbum = if (appState.selectedAlbum?.isSmart != true &&
+                        (appState.selectedAlbum?.canWrite == true ||
+                            appState.selectedAlbum?.isOwner == true)
                     ) {
                         {
-                            val albumId = selectedAlbum?.id
+                            val albumId = appState.selectedAlbum?.id
                             albumDetailViewModel.bulkRemoveFromAlbum(
                                 onSuccess = { removed ->
-                                    selectedAlbum?.let {
+                                    appState.selectedAlbum?.let {
                                         albumsViewModel.applyAssetsRemoved(it.id, removed)
                                     }
                                 },
@@ -2139,14 +1780,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     } else null,
                     onSetAsCover = if (albumDetailState.selection.size == 1 &&
-                        selectedAlbum?.isSmart != true &&
-                        (selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true)
+                        appState.selectedAlbum?.isSmart != true &&
+                        (appState.selectedAlbum?.canWrite == true || appState.selectedAlbum?.isOwner == true)
                     ) {
                         {
                             val assetId = albumDetailState.selection.first()
                             albumDetailViewModel.setCover(assetId) { updated ->
                                 albumsViewModel.applyUpdate(updated)
-                                selectedAlbum = selectedAlbum?.copy(
+                                appState.selectedAlbum = appState.selectedAlbum?.copy(
                                     coverThumbnailUrl = updated.coverThumbnailUrl
                                 )
                                 albumDetailViewModel.clearSelection()
@@ -2156,7 +1797,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
-        selectedTab == MainTab.Folders && selectedFolder != null &&
+        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
             folderDetailState.isSubfolderSelectionActive -> {
             val subfolder = folderDetailState.selectedSubfolder
             if (subfolder != null) {
@@ -2173,19 +1814,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         canDelete = subfolder.canDelete && !subfolderIsExternal,
                         isMutating = folderDetailState.isMutating,
                         onManageMembers = {},
-                        onRename = { showEditSubfolder = true },
-                        onDelete = { showDeleteSubfolder = true }
+                        onRename = { appState.showEditSubfolder = true },
+                        onDelete = { appState.showDeleteSubfolder = true }
                     )
                 }
             } else null
         }
-        selectedTab == MainTab.Folders && selectedFolder != null &&
+        appState.selectedTab == MainTab.Folders && appState.selectedFolder != null &&
             folderDetailState.isSelectionActive -> {
             {
                 // Sin CanDelete en la carpeta (o en una biblioteca externa) el
                 // servidor rechaza la papelera: se desactiva con el motivo.
-                val folderTrashBlocked = if (selectedFolder?.canDelete == false ||
-                    selectedFolder?.externalLibraryId != null
+                val folderTrashBlocked = if (appState.selectedFolder?.canDelete == false ||
+                    appState.selectedFolder?.externalLibraryId != null
                 ) stringResource(Res.string.selection_trash_blocked_folder) else null
                 AssetSelectionBottomBar(
                     selectedCount = folderDetailState.selection.size,
@@ -2195,7 +1836,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(folderDetailState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddSource = BulkAddSource.Folder },
+                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Folder },
                     onDownload = {
                         actionsViewModel.download(folderDetailState.selection.toList())
                     },
@@ -2217,15 +1858,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     // El servidor pide escritura en la carpeta de origen, no
                     // ser su dueño.
-                    onMove = if (selectedFolder?.canWrite == true &&
-                        selectedFolder?.externalLibraryId == null
+                    onMove = if (appState.selectedFolder?.canWrite == true &&
+                        appState.selectedFolder?.externalLibraryId == null
                     ) {
-                        { showMoveSelectedAssets = true }
+                        { appState.showMoveSelectedAssets = true }
                     } else null
                 )
             }
         }
-        selectedTab == MainTab.Search && searchState.isSelectionActive -> {
+        appState.selectedTab == MainTab.Search && searchState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
                     selectedCount = searchState.selection.size,
@@ -2234,7 +1875,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(searchState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddSource = BulkAddSource.Search },
+                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Search },
                     onDownload = {
                         actionsViewModel.download(searchState.selection.toList())
                     },
@@ -2266,8 +1907,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             if (moveBlocked != null) {
                                 moveSnackbar?.show(moveBlocked)
                             } else {
-                                moveSelectionError = null
-                                moveSelectionRequest = MoveSelectionRequest(
+                                appState.moveSelectionError = null
+                                appState.moveSelectionRequest = MoveSelectionRequest(
                                     assetIds = searchState.selection.toList(),
                                     onMoved = searchViewModel::clearSelection
                                 )
@@ -2277,8 +1918,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
-        moreSubscreen == MoreSubscreen.People &&
-            selectedPerson != null && personDetailState.isSelectionActive -> {
+        appState.moreSubscreen == MoreSubscreen.People &&
+            appState.selectedPerson != null && personDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
                     selectedCount = personDetailState.selection.size,
@@ -2287,7 +1928,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(personDetailState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddSource = BulkAddSource.People },
+                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.People },
                     onDownload = {
                         actionsViewModel.download(personDetailState.selection.toList())
                     },
@@ -2311,16 +1952,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         personDetailViewModel.bulkUnlinkFromPerson { detached ->
                             // Local fan-out: faces removed from a person also
                             // shrink that person's face count in the list.
-                            selectedPerson?.let { p ->
+                            appState.selectedPerson?.let { p ->
                                 val newCount = (p.faceCount - detached).coerceAtLeast(0)
-                                selectedPerson = p.copy(faceCount = newCount)
+                                appState.selectedPerson = p.copy(faceCount = newCount)
                             }
                         }
                     }
                 )
             }
         }
-        moreSubscreen == MoreSubscreen.OrganizeInbox &&
+        appState.moreSubscreen == MoreSubscreen.OrganizeInbox &&
             organizeInboxState.isSelectionActive -> {
             {
                 // Los textos se resuelven aquí, en composición: la acción de
@@ -2338,7 +1979,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(organizeInboxState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddSource = BulkAddSource.Inbox },
+                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Inbox },
                     onDownload = {
                         actionsViewModel.download(organizeInboxState.selection.toList())
                     },
@@ -2359,7 +2000,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsViewModel.undoBulk(kind, ids) { organizeInboxViewModel.refresh() }
                     },
                     onMove = {
-                        showMoveSelectedAssetsInbox = true
+                        appState.showMoveSelectedAssetsInbox = true
                         organizeInboxViewModel.loadMoveYearBreakdown()
                     },
                     onExcludeFromOrganize = {
@@ -2378,7 +2019,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
-        moreSubscreen == MoreSubscreen.Favorites &&
+        appState.moreSubscreen == MoreSubscreen.Favorites &&
             favoritesState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
@@ -2388,7 +2029,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(favoritesState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddSource = BulkAddSource.Favorites },
+                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Favorites },
                     onDownload = {
                         actionsViewModel.download(favoritesState.selection.toList())
                     },
@@ -2420,8 +2061,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             if (moveBlocked != null) {
                                 moveSnackbar?.show(moveBlocked)
                             } else {
-                                moveSelectionError = null
-                                moveSelectionRequest = MoveSelectionRequest(
+                                appState.moveSelectionError = null
+                                appState.moveSelectionRequest = MoveSelectionRequest(
                                     assetIds = favoritesState.selection.toList(),
                                     onMoved = favoritesViewModel::clearSelection
                                 )
@@ -2433,7 +2074,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
         // Duplicados: con algo marcado, la cápsula de confirmar borrar sustituye
         // a la nav, como la de "Mover" en Para organizar (antes era un FAB).
-        moreSubscreen == MoreSubscreen.UtilitiesDuplicates &&
+        appState.moreSubscreen == MoreSubscreen.UtilitiesDuplicates &&
             utilitiesDuplicatesState.totalSelectedCount > 0 -> {
             {
                 com.photonne.app.ui.main.ConfirmCapsule(
@@ -2446,11 +2087,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     isWorking = utilitiesDuplicatesState.isDeleting,
                     icon = com.photonne.app.ui.theme.PhotonneIcons.Delete,
                     destructive = true,
-                    onClick = { showDuplicatesConfirm = true }
+                    onClick = { appState.showDuplicatesConfirm = true }
                 )
             }
         }
-        moreSubscreen == MoreSubscreen.Archived &&
+        appState.moreSubscreen == MoreSubscreen.Archived &&
             archivedState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
@@ -2461,7 +2102,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onShare = {
                         actionsViewModel.beginShare(archivedState.selection.toList())
                     },
-                    onAddToAlbum = { bulkAddSource = BulkAddSource.Archive },
+                    onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Archive },
                     onDownload = {
                         actionsViewModel.download(archivedState.selection.toList())
                     },
@@ -2493,8 +2134,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             if (moveBlocked != null) {
                                 moveSnackbar?.show(moveBlocked)
                             } else {
-                                moveSelectionError = null
-                                moveSelectionRequest = MoveSelectionRequest(
+                                appState.moveSelectionError = null
+                                appState.moveSelectionRequest = MoveSelectionRequest(
                                     assetIds = archivedState.selection.toList(),
                                     onMoved = archivedViewModel::clearSelection
                                 )
@@ -2504,7 +2145,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
-        selectedTab == MainTab.Albums && albumsState.isSelectionActive -> {
+        appState.selectedTab == MainTab.Albums && albumsState.isSelectionActive -> {
             val selected = albumsState.selectedAlbums
             // Una sola tarjeta: sus acciones de siempre. Varias: solo las que
             // valen para todas (albumSelectionActions), en bloque.
@@ -2516,10 +2157,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     val shortcutSnackbar = LocalSnackbarController.current
                     fun requestDelete() {
                         if (target != null) {
-                            pendingActionAlbum = target
-                            showDeleteAlbum = true
+                            appState.pendingActionAlbum = target
+                            appState.showDeleteAlbum = true
                         } else {
-                            showBulkDeleteAlbums = true
+                            appState.showBulkDeleteAlbums = true
                         }
                     }
                     // Escritorio: Supr con tarjetas seleccionadas = Eliminar.
@@ -2546,9 +2187,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         isMutating = albumsState.isMutating,
                         onManageMembers = {
                             if (target != null) {
-                                pendingActionAlbum = target
+                                appState.pendingActionAlbum = target
                                 albumPermissionsViewModel.open(target.id)
-                                showMembers = true
+                                appState.showMembers = true
                             }
                         },
                         onEdit = {
@@ -2558,19 +2199,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 Unit
                             } else if (target.isSmart && target.isOwner) {
                                 albumsViewModel.clearSelection()
-                                editingSmartAlbum = target
-                                moreSubscreen = MoreSubscreen.SmartAlbumEditor
+                                appState.editingSmartAlbum = target
+                                appState.moreSubscreen = MoreSubscreen.SmartAlbumEditor
                             } else {
-                                pendingActionAlbum = target
-                                showEditAlbum = true
+                                appState.pendingActionAlbum = target
+                                appState.showEditAlbum = true
                             }
                         },
                         onLeave = {
                             if (target != null) {
-                                pendingActionAlbum = target
-                                showLeaveAlbum = true
+                                appState.pendingActionAlbum = target
+                                appState.showLeaveAlbum = true
                             } else {
-                                showBulkLeaveAlbums = true
+                                appState.showBulkLeaveAlbums = true
                             }
                         },
                         onDelete = ::requestDelete
@@ -2578,7 +2219,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             } else null
         }
-        selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
+        appState.selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
             val selected = foldersState.selectedFolders
             val target = selected.singleOrNull()
             // Permisos por tarjeta y sin tocar bibliotecas externas: ver
@@ -2590,10 +2231,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     val shortcutSnackbar = LocalSnackbarController.current
                     fun requestDelete() {
                         if (target != null) {
-                            pendingActionFolder = target
-                            showDeleteFolder = true
+                            appState.pendingActionFolder = target
+                            appState.showDeleteFolder = true
                         } else {
-                            showBulkDeleteFolders = true
+                            appState.showBulkDeleteFolders = true
                         }
                     }
                     com.photonne.app.ui.selection.SelectionShortcutsHandler(
@@ -2612,15 +2253,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         isMutating = foldersState.isMutating,
                         onManageMembers = {
                             if (target != null) {
-                                pendingActionFolder = target
+                                appState.pendingActionFolder = target
                                 folderPermissionsViewModel.open(target.id)
-                                showFolderMembers = true
+                                appState.showFolderMembers = true
                             }
                         },
                         onRename = {
                             if (target != null) {
-                                pendingActionFolder = target
-                                showEditFolder = true
+                                appState.pendingActionFolder = target
+                                appState.showEditFolder = true
                             }
                         },
                         onDelete = ::requestDelete,
@@ -2635,7 +2276,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         canMove = allowed.canMove,
-                        onMove = { showBulkMoveFolders = true }
+                        onMove = { appState.showBulkMoveFolders = true }
                     )
                 }
             } else null
@@ -2654,14 +2295,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // sharedElement exit animation to complete before clearing — otherwise
     // the source thumbnail flips back to visible mid-morph and the photo
     // snaps the last bit.
-    LaunchedEffect(assetDetail) {
-        val ctx = assetDetail
+    LaunchedEffect(appState.assetDetail) {
+        val ctx = appState.assetDetail
         if (ctx != null) {
-            currentDetailAssetId = ctx.items.getOrNull(ctx.startIndex)?.id
+            appState.currentDetailAssetId = ctx.items.getOrNull(ctx.startIndex)?.id
         } else {
             kotlinx.coroutines.delay(360)
-            currentDetailAssetId = null
-            viewerReturnState.clear()
+            appState.currentDetailAssetId = null
+            appState.viewerReturnState.clear()
         }
     }
 
@@ -2675,33 +2316,33 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // que asoma bajo el dedo es la lista, y debe ir a sangre como siempre; el
     // detalle solo vuelve a tapar al asentar el gesto.
     val timelineImmersive = chromeTab == MainTab.Timeline &&
-        moreSubscreen == null &&
+        appState.moreSubscreen == null &&
         !timelineState.isSelectionActive
     val albumsImmersive = chromeTab == MainTab.Albums &&
-        moreSubscreen == null &&
-        !(selectedTab == MainTab.Albums && selectedAlbum != null) &&
+        appState.moreSubscreen == null &&
+        !(appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null) &&
         !albumsState.isSelectionActive
     val foldersImmersive = chromeTab == MainTab.Folders &&
-        moreSubscreen == null &&
-        !(selectedTab == MainTab.Folders && selectedFolder != null) &&
+        appState.moreSubscreen == null &&
+        !(appState.selectedTab == MainTab.Folders && appState.selectedFolder != null) &&
         !foldersState.isSelectionActive
-    val moreImmersive = chromeTab == MainTab.More && moreSubscreen == null
+    val moreImmersive = chromeTab == MainTab.More && appState.moreSubscreen == null
     // Buscar dibuja su propio cromo flotante (campo + modo + filtros) que se acopla
     // y se oculta al scroll; con una selección activa vuelve la barra acoplada.
-    val searchImmersive = selectedTab == MainTab.Search &&
-        moreSubscreen == null &&
+    val searchImmersive = appState.selectedTab == MainTab.Search &&
+        appState.moreSubscreen == null &&
         !searchState.isSelectionActive
     // Inside an open album / folder: the photo grid gets the same immersive
     // treatment (nav hides on scroll, grid bleeds behind it), unless a
     // selection is active (which shows its own bottom action bar). These are
     // overlays, so they stay keyed off selectedTab.
-    val albumDetailImmersive = selectedTab == MainTab.Albums &&
-        moreSubscreen == null &&
-        selectedAlbum != null &&
+    val albumDetailImmersive = appState.selectedTab == MainTab.Albums &&
+        appState.moreSubscreen == null &&
+        appState.selectedAlbum != null &&
         !albumDetailState.isSelectionActive
-    val folderDetailImmersive = selectedTab == MainTab.Folders &&
-        moreSubscreen == null &&
-        selectedFolder != null &&
+    val folderDetailImmersive = appState.selectedTab == MainTab.Folders &&
+        appState.moreSubscreen == null &&
+        appState.selectedFolder != null &&
         !folderDetailState.isSelectionActive &&
         !folderDetailState.isSubfolderSelectionActive
 
@@ -2713,65 +2354,29 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // scroll; el resto de pantallas con selección (Buscar, persona, favoritos…)
     // no lo hacen, así que allí el Scaffold sigue apartando el contenido.
     val timelineSelecting = chromeTab == MainTab.Timeline &&
-        moreSubscreen == null &&
+        appState.moreSubscreen == null &&
         timelineState.isSelectionActive
     val albumsSelecting = chromeTab == MainTab.Albums &&
-        moreSubscreen == null &&
-        selectedAlbum == null &&
+        appState.moreSubscreen == null &&
+        appState.selectedAlbum == null &&
         albumsState.isSelectionActive
     val foldersSelecting = chromeTab == MainTab.Folders &&
-        moreSubscreen == null &&
-        selectedFolder == null &&
+        appState.moreSubscreen == null &&
+        appState.selectedFolder == null &&
         foldersState.isSelectionActive
-    val albumDetailSelecting = selectedTab == MainTab.Albums &&
-        moreSubscreen == null &&
-        selectedAlbum != null &&
+    val albumDetailSelecting = appState.selectedTab == MainTab.Albums &&
+        appState.moreSubscreen == null &&
+        appState.selectedAlbum != null &&
         albumDetailState.isSelectionActive
-    val folderDetailSelecting = selectedTab == MainTab.Folders &&
-        moreSubscreen == null &&
-        selectedFolder != null &&
+    val folderDetailSelecting = appState.selectedTab == MainTab.Folders &&
+        appState.moreSubscreen == null &&
+        appState.selectedFolder != null &&
         (folderDetailState.isSelectionActive ||
             folderDetailState.isSubfolderSelectionActive)
 
-    // Shared tab-switch side effects, run by both a nav tap and a settled swipe:
-    // drop any open subscreen / person layer, collapse an open detail when the
-    // same tab is re-selected, and clear the other tabs' multi-selection.
-    val switchTab: (MainTab) -> Unit = { tab ->
-        // Retocar Fotos ya activa (y sin subpantalla que cerrar) vuelve arriba,
-        // como en cualquier app de galería; antes no hacía nada.
-        if (tab == MainTab.Timeline && selectedTab == MainTab.Timeline &&
-            moreSubscreen == null && selectedPerson == null
-        ) {
-            timelineScrollToTopTick++
-        }
-        // Lo mismo en Álbumes y Carpetas, solo en su raíz: con un álbum o una
-        // carpeta abiertos el retoque sigue cerrándolos (abajo).
-        if (tab == MainTab.Albums && selectedTab == MainTab.Albums &&
-            moreSubscreen == null && selectedPerson == null && selectedAlbum == null
-        ) {
-            albumsScrollToTopTick++
-        }
-        if (tab == MainTab.Folders && selectedTab == MainTab.Folders &&
-            moreSubscreen == null && selectedPerson == null && selectedFolder == null
-        ) {
-            foldersScrollToTopTick++
-        }
-        moreSubscreen = null
-        selectedPerson = null
-        folderReturnTo = null
-        personReturnTo = null
-        if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
-        if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
-            selectedFolder = null
-            folderBackStack.clear()
-        }
-        if (tab != MainTab.Albums) albumsViewModel.clearSelection()
-        if (tab != MainTab.Folders) foldersViewModel.clearSelection()
-        selectedTab = tab
-    }
     // Tap on a nav tab (or any programmatic tab change) glides the pager over.
-    LaunchedEffect(selectedTab) {
-        val idx = navTabs.indexOf(selectedTab)
+    LaunchedEffect(appState.selectedTab) {
+        val idx = navTabs.indexOf(appState.selectedTab)
         if (idx >= 0 && mainPagerState.currentPage != idx) {
             mainPagerState.animateScrollToPage(idx)
         }
@@ -2781,8 +2386,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // Buscar) never fights the effect above.
     LaunchedEffect(mainPagerState.settledPage) {
         val tab = navTabs.getOrNull(mainPagerState.settledPage)
-        if (tab != null && tab != selectedTab && selectedTab in navTabs) {
-            switchTab(tab)
+        if (tab != null && tab != appState.selectedTab && appState.selectedTab in navTabs) {
+            appState.switchTab(tab)
         }
     }
 
@@ -2834,17 +2439,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     CompositionLocalProvider(
         LocalSharedTransitionScope provides this,
-        LocalCurrentDetailAssetId provides currentDetailAssetId,
-        com.photonne.app.ui.grid.LocalViewerReturn provides viewerReturnState,
+        LocalCurrentDetailAssetId provides appState.currentDetailAssetId,
+        com.photonne.app.ui.grid.LocalViewerReturn provides appState.viewerReturnState,
         LocalSnackbarController provides snackbarController
     ) {
     Box(modifier = Modifier.fillMaxSize()) {
         MainScaffold(
-            selectedTab = selectedTab,
+            selectedTab = appState.selectedTab,
             // Tapping any bottom-nav tab also dismisses an open subscreen layer
             // (People / Map / Explore facets, or any More destination) so it
             // never lingers over the newly selected tab — see [switchTab].
-            onTabSelected = { tab -> switchTab(tab) },
+            onTabSelected = { tab -> appState.switchTab(tab) },
             topBar = topBar,
             bottomBar = bottomBar,
             moreTabUnreadCount = notificationsState.unreadCount,
@@ -2867,14 +2472,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // On the immersive tabs the bottom nav hides while scrolling down
             // (driven by each screen's chrome), and always shows elsewhere.
             bottomBarVisible = when {
-                timelineImmersive -> timelineChromeVisible
-                albumsImmersive -> albumsChromeVisible
-                foldersImmersive -> foldersChromeVisible
-                moreImmersive -> moreChromeVisible
-                searchImmersive -> searchChromeVisible
-                albumDetailImmersive -> albumDetailChromeVisible
-                folderDetailImmersive -> folderDetailChromeVisible
-                floatingChromeSubscreen -> subscreenChromeVisible
+                timelineImmersive -> appState.timelineChromeVisible
+                albumsImmersive -> appState.albumsChromeVisible
+                foldersImmersive -> appState.foldersChromeVisible
+                moreImmersive -> appState.moreChromeVisible
+                searchImmersive -> appState.searchChromeVisible
+                albumDetailImmersive -> appState.albumDetailChromeVisible
+                folderDetailImmersive -> appState.folderDetailChromeVisible
+                floatingChromeSubscreen -> appState.subscreenChromeVisible
                 else -> true
             },
             // The grid draws behind the bottom nav so content is revealed when
@@ -2891,10 +2496,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 // propio scroll. Excepción: el editor de álbum inteligente monta su
                 // propio Scaffold (con su barra), así que sigue con el hueco que le
                 // reserva este Scaffold para no solaparse con la nav.
-                (moreSubscreen != null &&
-                    moreSubscreen != MoreSubscreen.SmartAlbumEditor) ||
-                selectedTab == MainTab.Search ||
-                (selectedTab == MainTab.More && moreSubscreen == null)
+                (appState.moreSubscreen != null &&
+                    appState.moreSubscreen != MoreSubscreen.SmartAlbumEditor) ||
+                appState.selectedTab == MainTab.Search ||
+                (appState.selectedTab == MainTab.More && appState.moreSubscreen == null)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
             // Base layer: the four primary tabs live in a HorizontalPager so a
@@ -2913,14 +2518,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 when (navTabs.getOrNull(page)) {
                     MainTab.Timeline -> TimelineScreen(
                         state = timelineState,
-                        scrollToTopTick = timelineScrollToTopTick,
+                        scrollToTopTick = appState.timelineScrollToTopTick,
                         // El pager principal compone esta página también como
                         // vecina: la tira de Recuerdos solo anima cuando Fotos
                         // es de verdad la pestaña visible.
-                        memoriesAutoPlay = selectedTab == MainTab.Timeline &&
-                            assetDetail == null,
+                        memoriesAutoPlay = appState.selectedTab == MainTab.Timeline &&
+                            appState.assetDetail == null,
                         onOpenAsset = { mergedItems, mergedIndex, feed ->
-                            assetDetail = AssetDetailContext(
+                            appState.assetDetail = AssetDetailContext(
                                 items = mergedItems,
                                 // The pager starts on the contiguous loaded
                                 // bucket run TimelineScreen handed us; the feed
@@ -2947,24 +2552,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onSetSelected = timelineViewModel::setSelected,
                         onApplySelection = timelineViewModel::applySelection,
                         onOpenUpload = {
-                            selectedTab = MainTab.More
-                            moreSubscreen = MoreSubscreen.Upload
+                            appState.selectedTab = MainTab.More
+                            appState.moreSubscreen = MoreSubscreen.Upload
                         },
                         backupPendingCount = if (deviceBackupState.isBackupEnabled) {
                             deviceBackupState.pendingEntries.size
                         } else 0,
                         onOpenBackup = {
-                            selectedTab = MainTab.More
-                            moreSubscreen = MoreSubscreen.DeviceBackup
+                            appState.selectedTab = MainTab.More
+                            appState.moreSubscreen = MoreSubscreen.DeviceBackup
                         },
-                        onJumpToDate = { showJumpToDate = true },
-                        onOpenSearch = { selectedTab = MainTab.Search },
-                        onChromeVisibleChange = { timelineChromeVisible = it },
-                        pendingJumpDate = pendingJumpDate,
-                        onJumpHandled = { pendingJumpDate = null },
+                        onJumpToDate = { appState.showJumpToDate = true },
+                        onOpenSearch = { appState.selectedTab = MainTab.Search },
+                        onChromeVisibleChange = { appState.timelineChromeVisible = it },
+                        pendingJumpDate = appState.pendingJumpDate,
+                        onJumpHandled = { appState.pendingJumpDate = null },
                         memories = memoriesState.items,
-                        onOpenMemory = { memory -> memoryDetail = memory },
-                        onSeeAllMemories = { moreSubscreen = MoreSubscreen.Memories }
+                        onOpenMemory = { memory -> appState.memoryDetail = memory },
+                        onSeeAllMemories = { appState.moreSubscreen = MoreSubscreen.Memories }
                     )
                     MainTab.Albums -> Column(modifier = Modifier.fillMaxSize()) {
                         // La búsqueda va DENTRO de la cápsula flotante que dibuja
@@ -2978,27 +2583,27 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         // quita; al quitar la última se cierra.
                                         albumsViewModel.toggleAlbumSelection(album.id)
                                     } else {
-                                        selectedAlbum = album
+                                        appState.selectedAlbum = album
                                     }
                                 },
                                 onAlbumLongPress = { album ->
                                     albumsViewModel.selectAlbum(album.id)
                                 },
-                                onCreateAlbum = { showAlbumTypeChooser = true },
+                                onCreateAlbum = { appState.showAlbumTypeChooser = true },
                                 // Explorar cards open their screen as a modal layer
                                 // over the Albums tab (no tab switch) so back
                                 // returns here and the bottom nav stays on Álbumes.
                                 onOpenPeople = {
-                                    selectedPerson = null
-                                    moreSubscreen = MoreSubscreen.People
+                                    appState.selectedPerson = null
+                                    appState.moreSubscreen = MoreSubscreen.People
                                 },
-                                onOpenMap = { moreSubscreen = MoreSubscreen.Map },
-                                onOpenScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
-                                onOpenObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
-                                onOpenFilters = { showAlbumsFilters = true },
+                                onOpenMap = { appState.moreSubscreen = MoreSubscreen.Map },
+                                onOpenScenes = { appState.moreSubscreen = MoreSubscreen.ExploreScenes },
+                                onOpenObjects = { appState.moreSubscreen = MoreSubscreen.ExploreObjects },
+                                onOpenFilters = { appState.showAlbumsFilters = true },
                                 immersive = albumsImmersive,
-                                onChromeVisibleChange = { albumsChromeVisible = it },
-                                scrollToTopTick = albumsScrollToTopTick
+                                onChromeVisibleChange = { appState.albumsChromeVisible = it },
+                                scrollToTopTick = appState.albumsScrollToTopTick
                             )
                         }
                     }
@@ -3010,7 +2615,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             foldersState.scope !=
                                 com.photonne.app.ui.folder.FoldersScope.External
                         ) {
-                            { showCreateFolder = true }
+                            { appState.showCreateFolder = true }
                         } else null
                         Box(modifier = Modifier.weight(1f)) {
                             com.photonne.app.ui.folder.FoldersListScreen(
@@ -3018,25 +2623,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     if (foldersState.isSelectionActive) {
                                         foldersViewModel.toggleFolderSelection(folder.id)
                                     } else {
-                                        selectedFolder = folder
+                                        appState.selectedFolder = folder
                                     }
                                 },
                                 onFolderLongPress = { folder ->
                                     foldersViewModel.selectFolder(folder.id)
                                 },
-                                onOpenOrganize = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                                onOpenOrganize = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
                                 // Como People/Map desde Álbumes: capa modal sobre la
                                 // pestaña, sin cambiar de tab. La tarjeta solo se
                                 // muestra donde hay buckets, así que el callback
                                 // puede ser incondicional.
                                 onOpenDeviceFolders = {
-                                    moreSubscreen = MoreSubscreen.DeviceFolders
+                                    appState.moreSubscreen = MoreSubscreen.DeviceFolders
                                 },
-                                onOpenFilters = { showFoldersFilters = true },
+                                onOpenFilters = { appState.showFoldersFilters = true },
                                 onCreateFolder = foldersCreate,
                                 immersive = foldersImmersive,
-                                onChromeVisibleChange = { foldersChromeVisible = it },
-                                scrollToTopTick = foldersScrollToTopTick
+                                onChromeVisibleChange = { appState.foldersChromeVisible = it },
+                                scrollToTopTick = appState.foldersScrollToTopTick
                             )
                         }
                     }
@@ -3045,19 +2650,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     else -> MoreScreen(
                         user = user.user,
                         onLogout = onLogout,
-                        onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
-                        onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
+                        onOpenFavorites = { appState.moreSubscreen = MoreSubscreen.Favorites },
+                        onOpenArchived = { appState.moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = {
-                            trashTab = com.photonne.app.ui.library.TrashTab.Personal
-                            moreSubscreen = MoreSubscreen.Trash
+                            appState.trashTab = com.photonne.app.ui.library.TrashTab.Personal
+                            appState.moreSubscreen = MoreSubscreen.Trash
                         },
-                        onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
-                        onOpenMyLinks = { moreSubscreen = MoreSubscreen.MyLinks },
+                        onOpenUtilities = { appState.moreSubscreen = MoreSubscreen.Utilities },
+                        onOpenMyLinks = { appState.moreSubscreen = MoreSubscreen.MyLinks },
                         onOpenProfile = {
-                            profileOpenedFromMore = true
-                            moreSubscreen = MoreSubscreen.AccountProfile
+                            appState.profileOpenedFromMore = true
+                            appState.moreSubscreen = MoreSubscreen.AccountProfile
                         },
-                        onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
+                        onOpenDeviceBackup = { appState.moreSubscreen = MoreSubscreen.DeviceBackup },
                         backupPendingCount = if (deviceBackupState.isBackupEnabled) {
                             deviceBackupState.pendingEntries.size
                         } else 0,
@@ -3065,21 +2670,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             deviceBackupState.toMoreBackupStatus()
                         },
                         onOpenNotifications = {
-                            moreSubscreen = MoreSubscreen.Notifications
+                            appState.moreSubscreen = MoreSubscreen.Notifications
                         },
                         notificationsUnreadCount = notificationsState.unreadCount,
                         onOpenAccountSettings = {
-                            moreSubscreen = MoreSubscreen.AccountSettings
+                            appState.moreSubscreen = MoreSubscreen.AccountSettings
                         },
                         onOpenAdministration = if (
                             user.user.role.equals("Admin", ignoreCase = true)
                         ) {
-                            { moreSubscreen = MoreSubscreen.Administration }
+                            { appState.moreSubscreen = MoreSubscreen.Administration }
                         } else {
                             null
                         },
-                        onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
-                        onChromeVisibleChange = { moreChromeVisible = it },
+                        onOpenUpload = { appState.moreSubscreen = MoreSubscreen.Upload },
+                        onChromeVisibleChange = { appState.moreChromeVisible = it },
                         attributions = attributions
                     )
                 }
@@ -3103,13 +2708,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // convertido en el entrante y el gesto contaría una mentira. Con
             // `key` el subárbol se remonta y la entrada arranca sola.
             key(overlayKey) {
-                val enteringForward = remember { overlayForward }
+                val enteringForward = remember { appState.overlayForward }
                 var entered by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) {
                     entered = true
                     // Consumida: la siguiente navegación vuelve a ser hacia
                     // dentro salvo que el back handler diga lo contrario.
-                    overlayForward = true
+                    appState.overlayForward = true
                 }
                 val enterProgress by animateFloatAsState(
                     targetValue = if (entered) 1f else 0f,
@@ -3127,16 +2732,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                 ) {
             when {
-                selectedTab == MainTab.Timeline && moreSubscreen == null -> {
+                appState.selectedTab == MainTab.Timeline && appState.moreSubscreen == null -> {
                     // shown by the pager base layer
                 }
-                selectedTab == MainTab.Albums && moreSubscreen == null -> {
-                    val openedAlbum = selectedAlbum
+                appState.selectedTab == MainTab.Albums && appState.moreSubscreen == null -> {
+                    val openedAlbum = appState.selectedAlbum
                     if (openedAlbum != null) {
                         AlbumDetailScreen(
                             album = openedAlbum,
                             onItemClick = { index ->
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     // Grid renders the re-sorted displayItems, so
                                     // the tapped index is into that list — not the
                                     // raw server-order items.
@@ -3154,33 +2759,33 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onBack = albumBack,
                             onShare = {
                                 albumSharesViewModel.open(openedAlbum.id)
-                                showShares = true
+                                appState.showShares = true
                             },
                             onEdit = {
                                 if (openedAlbum.isSmart && openedAlbum.isOwner) {
-                                    editingSmartAlbum = openedAlbum.copy(
+                                    appState.editingSmartAlbum = openedAlbum.copy(
                                         name = albumDetailState.albumName ?: openedAlbum.name,
                                         description = albumDetailState.albumDescription ?: openedAlbum.description,
                                     )
-                                    moreSubscreen = MoreSubscreen.SmartAlbumEditor
+                                    appState.moreSubscreen = MoreSubscreen.SmartAlbumEditor
                                 } else {
-                                    showEditAlbum = true
+                                    appState.showEditAlbum = true
                                 }
                             },
-                            onDelete = { showDeleteAlbum = true },
+                            onDelete = { appState.showDeleteAlbum = true },
                             onManageMembers = {
                                 albumPermissionsViewModel.open(openedAlbum.id)
-                                showMembers = true
+                                appState.showMembers = true
                             },
-                            onLeave = { showLeaveAlbum = true },
+                            onLeave = { appState.showLeaveAlbum = true },
                             viewModel = albumDetailViewModel,
                             immersive = albumDetailImmersive,
-                            onChromeVisibleChange = { albumDetailChromeVisible = it }
+                            onChromeVisibleChange = { appState.albumDetailChromeVisible = it }
                         )
                     }
                 }
-                selectedTab == MainTab.Folders && moreSubscreen == null -> {
-                    val openedFolder = selectedFolder
+                appState.selectedTab == MainTab.Folders && appState.moreSubscreen == null -> {
+                    val openedFolder = appState.selectedFolder
                     if (openedFolder != null) {
                         com.photonne.app.ui.folder.FolderDetailScreen(
                             folderId = openedFolder.id,
@@ -3188,7 +2793,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             parentFolderId = openedFolder.parentFolderId,
                             title = (folderDetailState.folderName ?: openedFolder.name)
                                 .ifBlank { openedFolder.path },
-                            onBack = { folderBack() },
+                            onBack = { appState.folderBack() },
                             onItemClick = { index ->
                                 if (folderDetailState.isSelectionActive) {
                                     folderDetailState.items.getOrNull(index)?.let {
@@ -3196,7 +2801,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     }
                                 } else {
                                     val folderState = folderDetailViewModel.state.value
-                                    assetDetail = AssetDetailContext(
+                                    appState.assetDetail = AssetDetailContext(
                                         items = folderState.items,
                                         startIndex = index,
                                         source = AssetDetailContext.Source.Timeline,
@@ -3218,8 +2823,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 if (folderDetailState.isSubfolderSelectionActive) {
                                     folderDetailViewModel.toggleSubfolderSelection(subfolder.id)
                                 } else {
-                                    folderBackStack.add(openedFolder)
-                                    selectedFolder = subfolder
+                                    appState.folderBackStack.add(openedFolder)
+                                    appState.selectedFolder = subfolder
                                 }
                             },
                             onSubfolderLongPress = { subfolder ->
@@ -3236,12 +2841,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     canDelete = openedFolder.canDelete && !openedIsExternal,
                                     canManageMembers = openedFolder.isOwner && !openedIsExternal,
                                     canMove = openedFolder.canWrite && !openedIsExternal,
-                                    onEdit = { showEditFolder = true },
-                                    onMove = { showMoveFolder = true },
-                                    onDelete = { showDeleteFolder = true },
+                                    onEdit = { appState.showEditFolder = true },
+                                    onMove = { appState.showMoveFolder = true },
+                                    onDelete = { appState.showDeleteFolder = true },
                                     onManageMembers = {
                                         folderPermissionsViewModel.open(openedFolder.id)
-                                        showFolderMembers = true
+                                        appState.showFolderMembers = true
                                     },
                                     canToggleTimeline = openedFolder.isShared &&
                                         openedFolder.externalLibraryId == null,
@@ -3251,33 +2856,33 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         foldersViewModel.setTimelineIncluded(
                                             openedFolder.id, included = nextIncluded
                                         )
-                                        selectedFolder = openedFolder.copy(
+                                        appState.selectedFolder = openedFolder.copy(
                                             excludedFromDiscovery = !nextIncluded
                                         )
                                     },
                                     onCreateSubfolder = if (!openedIsExternal && openedFolder.canWrite) {
-                                        { showCreateFolder = true }
+                                        { appState.showCreateFolder = true }
                                     } else null
                                 )
                             },
                             immersive = folderDetailImmersive,
-                            onChromeVisibleChange = { folderDetailChromeVisible = it }
+                            onChromeVisibleChange = { appState.folderDetailChromeVisible = it }
                         )
                     }
                 }
-                selectedTab == MainTab.Search && moreSubscreen == null ->
+                appState.selectedTab == MainTab.Search && appState.moreSubscreen == null ->
                     com.photonne.app.ui.search.SearchScreen(
                     viewModel = searchViewModel,
-                    onOpenFilters = { showSearchFilters = true },
-                    onBack = { searchBack() },
-                    onChromeVisibleChange = { searchChromeVisible = it },
+                    onOpenFilters = { appState.showSearchFilters = true },
+                    onBack = { appState.searchBack() },
+                    onChromeVisibleChange = { appState.searchChromeVisible = it },
                     onItemClick = { index ->
                         if (searchState.isSelectionActive) {
                             searchState.results.getOrNull(index)?.let {
                                 searchViewModel.toggleSelection(it.id)
                             }
                         } else {
-                            assetDetail = AssetDetailContext(
+                            appState.assetDetail = AssetDetailContext(
                                 items = searchState.results,
                                 startIndex = index,
                                 source = AssetDetailContext.Source.Timeline,
@@ -3303,30 +2908,30 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     }
                 )
-                else -> when (moreSubscreen) {
+                else -> when (appState.moreSubscreen) {
                     null -> {
                         // The More grid is shown by the pager base layer; a
                         // non-null subscreen renders its screen on top.
                     }
                     MoreSubscreen.SmartAlbumEditor -> com.photonne.app.ui.album.smart.SmartAlbumEditorScreen(
-                        editAlbum = editingSmartAlbum,
+                        editAlbum = appState.editingSmartAlbum,
                         onBack = {
-                            moreSubscreen = null
-                            editingSmartAlbum = null
+                            appState.moreSubscreen = null
+                            appState.editingSmartAlbum = null
                         },
-                        onChromeVisibleChange = { subscreenChromeVisible = it },
+                        onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                         onSaved = { saved ->
-                            val wasEditing = editingSmartAlbum != null
-                            moreSubscreen = null
-                            editingSmartAlbum = null
+                            val wasEditing = appState.editingSmartAlbum != null
+                            appState.moreSubscreen = null
+                            appState.editingSmartAlbum = null
                             if (wasEditing) {
                                 // La respuesta del PUT no trae portada ni miniaturas:
                                 // se recarga la lista en vez de pisar la tarjeta.
                                 albumsViewModel.refresh()
                                 // Nuevas condiciones = otro contenido: si el álbum está
                                 // abierto, se recarga al volver a él.
-                                selectedAlbum?.takeIf { it.id == saved.id }?.let { opened ->
-                                    selectedAlbum = opened.copy(
+                                appState.selectedAlbum?.takeIf { it.id == saved.id }?.let { opened ->
+                                    appState.selectedAlbum = opened.copy(
                                         name = saved.name,
                                         description = saved.description,
                                         assetCount = saved.assetCount,
@@ -3335,8 +2940,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             } else {
                                 albumsViewModel.refresh()
-                                selectedTab = MainTab.Albums
-                                selectedAlbum = saved
+                                appState.selectedTab = MainTab.Albums
+                                appState.selectedAlbum = saved
                             }
                         }
                     )
@@ -3355,7 +2960,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onDismissPickerError = uploadViewModel::clearPickerError,
                         onViewBatch = {
                             uploadState.lastBatch?.takeIf { it.isNotEmpty() }?.let { batch ->
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     items = batch,
                                     startIndex = 0,
                                     source = AssetDetailContext.Source.Timeline,
@@ -3367,33 +2972,33 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 )
                             }
                         },
-                        onAddBatchToAlbum = { bulkAddSource = BulkAddSource.Upload },
+                        onAddBatchToAlbum = { appState.bulkAddSource = BulkAddSource.Upload },
                         onDismissBatch = uploadViewModel::dismissBatchSummary
                     )
                     MoreSubscreen.DeviceBackup ->
                         com.photonne.app.ui.devicebackup.BackupScreen(
                             title = stringResource(Res.string.device_backup_title),
-                            onBack = { moreSubscreen = null },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = null },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = deviceBackupViewModel,
                             enrichmentViewModel = enrichmentStatusViewModel,
                             gallery = deviceGallery,
                             onOpenPending = {
-                                moreSubscreen = MoreSubscreen.DeviceBackupPending
+                                appState.moreSubscreen = MoreSubscreen.DeviceBackupPending
                             },
                             onOpenEnrichment = {
-                                moreSubscreen = MoreSubscreen.EnrichmentStatus
+                                appState.moreSubscreen = MoreSubscreen.EnrichmentStatus
                             }
                         )
                     MoreSubscreen.DeviceBackupPending ->
                         com.photonne.app.ui.devicebackup.BackupPendingScreen(
                             title = stringResource(Res.string.backup_pending_screen_title),
-                            onBack = { moreSubscreen = MoreSubscreen.DeviceBackup },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.DeviceBackup },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = deviceBackupViewModel,
                             gallery = deviceGallery,
                             onOpenAsset = { item ->
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     items = listOf(item),
                                     startIndex = 0,
                                     source = AssetDetailContext.Source.Timeline,
@@ -3408,15 +3013,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.EnrichmentStatus ->
                         com.photonne.app.ui.devicebackup.EnrichmentStatusScreen(
                             title = stringResource(Res.string.enrichment_screen_title),
-                            onBack = { moreSubscreen = MoreSubscreen.DeviceBackup },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.DeviceBackup },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = enrichmentStatusViewModel
                         )
                     MoreSubscreen.MyLinks ->
                         com.photonne.app.ui.album.MyLinksScreen(
                             title = stringResource(Res.string.my_links_title),
-                            onBack = { moreSubscreen = null },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onBack = { appState.moreSubscreen = null },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.UnsupportedFiles ->
                         com.photonne.app.ui.library.UnsupportedFilesScreen(
@@ -3427,8 +3032,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onDownload = unsupportedFilesViewModel::download,
                             onDelete = unsupportedFilesViewModel::delete,
                             onClearDeleteError = unsupportedFilesViewModel::clearDeleteError,
-                            onBack = { moreSubscreen = MoreSubscreen.Utilities },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Utilities },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.OrganizeInbox ->
                         com.photonne.app.ui.organize.OrganizeInboxScreen(
@@ -3442,7 +3047,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         organizeInboxViewModel.toggleSelection(it.id)
                                     }
                                 } else {
-                                    assetDetail = AssetDetailContext(
+                                    appState.assetDetail = AssetDetailContext(
                                         items = organizeInboxViewModel.state.value.items,
                                         startIndex = index,
                                         source = AssetDetailContext.Source.Timeline,
@@ -3465,19 +3070,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             },
                             onBack = {
-                                moreSubscreen = null
+                                appState.moreSubscreen = null
                                 foldersViewModel.refreshOrganizeCount()
                             },
-                            onOpenRules = { moreSubscreen = MoreSubscreen.OrganizeRule },
+                            onOpenRules = { appState.moreSubscreen = MoreSubscreen.OrganizeRule },
                             onPickSuggestion = organizeInboxViewModel::selectSuggestion,
                             onSeeAllItems = organizeInboxViewModel::showAllItems,
                             onBackToSuggestions = organizeInboxViewModel::showSuggestions,
                             onApplySelection = organizeInboxViewModel::applySelection,
                             onOpenExcluded = {
                                 organizeExcludedViewModel.refresh()
-                                moreSubscreen = MoreSubscreen.OrganizeExcluded
+                                appState.moreSubscreen = MoreSubscreen.OrganizeExcluded
                             },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.OrganizeExcluded ->
                         com.photonne.app.ui.organize.OrganizeExcludedScreen(
@@ -3491,7 +3096,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         organizeExcludedViewModel.toggleSelection(it.id)
                                     }
                                 } else {
-                                    assetDetail = AssetDetailContext(
+                                    appState.assetDetail = AssetDetailContext(
                                         items = organizeExcludedViewModel.state.value.items,
                                         startIndex = index,
                                         source = AssetDetailContext.Source.Timeline,
@@ -3513,16 +3118,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     organizeExcludedViewModel.toggleSelection(it.id)
                                 }
                             },
-                            onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
                             onApplySelection = organizeExcludedViewModel::applySelection,
                             onErrorShown = organizeExcludedViewModel::clearError,
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.OrganizeRule ->
                         com.photonne.app.ui.organize.OrganizeRuleScreen(
                             title = stringResource(Res.string.organize_rule_title),
-                            onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             destinations = foldersState.moveDestinations,
                             viewModel = organizeRuleViewModel,
                             reviewOpen = organizeRuleState.reviewGroups != null
@@ -3530,10 +3135,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.Utilities ->
                         com.photonne.app.ui.utilities.UtilitiesHubScreen(
                             title = stringResource(Res.string.utilities_title),
-                            onBack = { moreSubscreen = null },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = null },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             onOpen = { entry ->
-                                moreSubscreen = when (entry) {
+                                appState.moreSubscreen = when (entry) {
                                     com.photonne.app.ui.utilities.UtilitiesEntry.Duplicates ->
                                         MoreSubscreen.UtilitiesDuplicates
                                     com.photonne.app.ui.utilities.UtilitiesEntry.LargeFiles ->
@@ -3548,12 +3153,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.UtilitiesDuplicates ->
                         com.photonne.app.ui.utilities.UtilitiesDuplicatesScreen(
                             title = stringResource(Res.string.utilities_section_duplicates),
-                            onBack = { moreSubscreen = MoreSubscreen.Utilities },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Utilities },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = utilitiesDuplicatesViewModel,
                             baseUrl = apiBaseUrl,
-                            confirmOpen = showDuplicatesConfirm,
-                            onConfirmOpenChange = { showDuplicatesConfirm = it },
+                            confirmOpen = appState.showDuplicatesConfirm,
+                            onConfirmOpenChange = { appState.showDuplicatesConfirm = it },
                             onUndoTrash = { ids ->
                                 actionsViewModel.undoBulk(
                                     com.photonne.app.ui.actions.BulkUndoKind.Trash,
@@ -3564,7 +3169,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             },
                             onOpenAsset = { index, items ->
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     items = items,
                                     startIndex = index,
                                     source = AssetDetailContext.Source.Timeline,
@@ -3579,12 +3184,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.UtilitiesLargeFiles ->
                         com.photonne.app.ui.utilities.UtilitiesLargeFilesScreen(
                             title = stringResource(Res.string.utilities_section_large_files),
-                            onBack = { moreSubscreen = MoreSubscreen.Utilities },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Utilities },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = utilitiesLargeFilesViewModel,
                             baseUrl = apiBaseUrl,
                             onAssetClick = { index, items ->
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     items = items,
                                     startIndex = index,
                                     source = AssetDetailContext.Source.Timeline,
@@ -3599,8 +3204,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.UtilitiesLocations ->
                         com.photonne.app.ui.utilities.UtilitiesLocationsScreen(
                             title = stringResource(Res.string.utilities_section_locations),
-                            onBack = { moreSubscreen = MoreSubscreen.Utilities },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Utilities },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = utilitiesLocationsViewModel,
                             onFolderClick = { node ->
                                 coroutineScope.launch {
@@ -3624,11 +3229,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                                 externalLibraryId = node.externalLibraryId
                                             )
                                         }
-                                    folderReturnTo = selectedTab to MoreSubscreen.UtilitiesLocations
-                                    folderBackStack.clear()
-                                    selectedFolder = folder
-                                    moreSubscreen = null
-                                    selectedTab = MainTab.Folders
+                                    appState.folderReturnTo = appState.selectedTab to MoreSubscreen.UtilitiesLocations
+                                    appState.folderBackStack.clear()
+                                    appState.selectedFolder = folder
+                                    appState.moreSubscreen = null
+                                    appState.selectedTab = MainTab.Folders
                                 }
                             }
                         )
@@ -3637,15 +3242,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             viewModel = memoryFeedViewModel,
                             baseUrl = apiBaseUrl,
                             onOpenMemory = { detail ->
-                                memoryDetail = com.photonne.app.ui.memories.MemoryDetailContext(
+                                appState.memoryDetail = com.photonne.app.ui.memories.MemoryDetailContext(
                                     title = detail.title,
                                     subtitle = detail.subtitle,
                                     coverAssetId = detail.coverAssetId,
                                     items = detail.assets
                                 )
                             },
-                            onBack = { moreSubscreen = null },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onBack = { appState.moreSubscreen = null },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.ExploreScenes ->
                         com.photonne.app.ui.explore.ExploreScenesScreen(
@@ -3655,24 +3260,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // is just a deep-linking surface for the search engine.
                             onSceneClick = { label ->
                                 searchViewModel.showResultsForSceneLabel(label)
-                                searchReturnTo = selectedTab to MoreSubscreen.ExploreScenes
-                                moreSubscreen = null
-                                selectedTab = MainTab.Search
+                                appState.searchReturnTo = appState.selectedTab to MoreSubscreen.ExploreScenes
+                                appState.moreSubscreen = null
+                                appState.selectedTab = MainTab.Search
                             },
-                            onBack = { moreSubscreen = null },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onBack = { appState.moreSubscreen = null },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.ExploreObjects ->
                         com.photonne.app.ui.explore.ExploreObjectsScreen(
                             viewModel = exploreFacetsViewModel,
                             onObjectClick = { label ->
                                 searchViewModel.showResultsForObjectLabel(label)
-                                searchReturnTo = selectedTab to MoreSubscreen.ExploreObjects
-                                moreSubscreen = null
-                                selectedTab = MainTab.Search
+                                appState.searchReturnTo = appState.selectedTab to MoreSubscreen.ExploreObjects
+                                appState.moreSubscreen = null
+                                appState.selectedTab = MainTab.Search
                             },
-                            onBack = { moreSubscreen = null },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onBack = { appState.moreSubscreen = null },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
@@ -3683,7 +3288,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // one, so it swipes like a cluster does. The
                             // viewer re-fetches asset detail on display, so
                             // synthetic TimelineItems are enough.
-                            assetDetail = AssetDetailContext(
+                            appState.assetDetail = AssetDetailContext(
                                 items = visiblePoints.map { it.toSyntheticTimelineItem() },
                                 startIndex = index,
                                 source = AssetDetailContext.Source.Timeline,
@@ -3699,7 +3304,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // the viewer seeded with the sheet's whole list
                             // (viewport or tapped cluster) so it swipes.
                             val items = sheetPoints.map { it.toSyntheticTimelineItem() }
-                            assetDetail = AssetDetailContext(
+                            appState.assetDetail = AssetDetailContext(
                                 items = items,
                                 startIndex = index,
                                 source = AssetDetailContext.Source.Timeline,
@@ -3710,43 +3315,43 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             )
                         },
-                        onBulkAddToAlbum = { bulkAddSource = BulkAddSource.Map },
-                        onBack = { moreSubscreen = null }
+                        onBulkAddToAlbum = { appState.bulkAddSource = BulkAddSource.Map },
+                        onBack = { appState.moreSubscreen = null }
                     )
                     MoreSubscreen.PeopleSuggestions ->
                         com.photonne.app.ui.people.PersonSuggestionsScreen(
                             state = suggestionsState,
-                            title = (suggestionsState.personName ?: selectedPerson?.name).orEmpty(),
+                            title = (suggestionsState.personName ?: appState.selectedPerson?.name).orEmpty(),
                             isBulkMutating = suggestionsState.isBulkMutating,
                             onAccept = personSuggestionsViewModel::acceptFace,
                             onDismissFace = personSuggestionsViewModel::dismissFace,
                             onLoadMore = personSuggestionsViewModel::loadMore,
                             onOpen = {
-                                selectedPerson?.let {
+                                appState.selectedPerson?.let {
                                     personSuggestionsViewModel.open(it.id, it.name)
                                 }
                             },
-                            onBack = { moreSubscreen = MoreSubscreen.People },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.People },
                             // Actúan también sobre las páginas no cargadas, así
                             // que primero confirman con el recuento del servidor.
-                            onAcceptAll = { showAcceptAllSuggestions = true },
-                            onDismissAll = { showDismissAllSuggestions = true },
+                            onAcceptAll = { appState.showAcceptAllSuggestions = true },
+                            onDismissAll = { appState.showDismissAllSuggestions = true },
                             onRefresh = personSuggestionsViewModel::refresh,
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.People -> {
-                        val person = selectedPerson
+                        val person = appState.selectedPerson
                         if (person == null) {
                             com.photonne.app.ui.people.PeopleScreen(
                                 state = peopleState,
                                 onPersonClick = { picked ->
-                                    selectedPerson = picked
+                                    appState.selectedPerson = picked
                                     personDetailViewModel.open(picked.id, picked.name)
                                 },
                                 onLoadMore = peopleViewModel::loadMore,
                                 onLoad = peopleViewModel::ensureLoaded,
                                 onRefresh = peopleViewModel::refresh,
-                                onBack = { moreSubscreen = null },
+                                onBack = { appState.moreSubscreen = null },
                                 onToggleSearch = peopleViewModel::toggleSearch,
                                 onSearchChange = peopleViewModel::setSearch,
                                 onSortChange = peopleViewModel::setSort,
@@ -3771,7 +3376,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     }
                                 },
                                 onToggleHidden = peopleViewModel::toggleShowHidden,
-                                onChromeVisibleChange = { subscreenChromeVisible = it }
+                                onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                             )
                         } else {
                             com.photonne.app.ui.people.PersonDetailScreen(
@@ -3786,7 +3391,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                             personDetailViewModel.toggleSelection(it.id)
                                         }
                                     } else {
-                                        assetDetail = AssetDetailContext(
+                                        appState.assetDetail = AssetDetailContext(
                                             items = personDetailState.items,
                                             startIndex = index,
                                             source = AssetDetailContext.Source.Timeline,
@@ -3811,25 +3416,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 },
                                 onLoadMore = personDetailViewModel::loadMore,
                                 onApplySelection = personDetailViewModel::applySelection,
-                                onBack = ::personBack,
-                                onRename = { showRenamePerson = true },
+                                onBack = appState::personBack,
+                                onRename = { appState.showRenamePerson = true },
                                 onSuggestions = {
                                     personSuggestionsViewModel.open(person.id, person.name)
-                                    moreSubscreen = MoreSubscreen.PeopleSuggestions
+                                    appState.moreSubscreen = MoreSubscreen.PeopleSuggestions
                                 },
-                                onMerge = { showMergePicker = true },
+                                onMerge = { appState.showMergePicker = true },
                                 onToggleHidden = {
                                     if (person.isHidden) {
                                         peopleViewModel.unhide(person.id) {
-                                            selectedPerson = person.copy(isHidden = false)
+                                            appState.selectedPerson = person.copy(isHidden = false)
                                         }
                                     } else {
                                         peopleViewModel.hide(person.id) {
-                                            selectedPerson = null
+                                            appState.selectedPerson = null
                                         }
                                     }
                                 },
-                                onChromeVisibleChange = { subscreenChromeVisible = it }
+                                onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                             )
                         }
                     }
@@ -3839,17 +3444,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onAddToBackup = deviceBackupViewModel::onFolderPicked,
                         onOpenBucket = { bucket ->
-                            deviceFolderBucket = bucket
-                            moreSubscreen = MoreSubscreen.DeviceFolderDetail
+                            appState.deviceFolderBucket = bucket
+                            appState.moreSubscreen = MoreSubscreen.DeviceFolderDetail
                         },
-                        onBack = { moreSubscreen = null },
-                        onChromeVisibleChange = { subscreenChromeVisible = it }
+                        onBack = { appState.moreSubscreen = null },
+                        onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                     )
-                    MoreSubscreen.DeviceFolderDetail -> deviceFolderBucket?.let { bucket ->
+                    MoreSubscreen.DeviceFolderDetail -> appState.deviceFolderBucket?.let { bucket ->
                         com.photonne.app.ui.folder.DeviceFolderDetailScreen(
                             bucket = bucket,
                             onOpenAsset = { items, index ->
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     items = items,
                                     startIndex = index,
                                     source = AssetDetailContext.Source.Timeline,
@@ -3858,8 +3463,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     onFavoriteChanged = { _, _ -> }
                                 )
                             },
-                            onBack = { moreSubscreen = MoreSubscreen.DeviceFolders },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onBack = { appState.moreSubscreen = MoreSubscreen.DeviceFolders },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     }
                     MoreSubscreen.Favorites -> com.photonne.app.ui.library.FavoritesScreen(
@@ -3870,7 +3475,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     favoritesViewModel.toggleSelection(it.id)
                                 }
                             } else {
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     items = favoritesState.items,
                                     startIndex = index,
                                     source = AssetDetailContext.Source.Timeline,
@@ -3897,8 +3502,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onLoad = favoritesViewModel::ensureLoaded,
                         onRefresh = favoritesViewModel::refresh,
                         onApplySelection = favoritesViewModel::applySelection,
-                        onBack = { moreSubscreen = null },
-                        onChromeVisibleChange = { subscreenChromeVisible = it }
+                        onBack = { appState.moreSubscreen = null },
+                        onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                     )
                     MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
                         state = archivedState,
@@ -3908,7 +3513,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     archivedViewModel.toggleSelection(it.id)
                                 }
                             } else {
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     items = archivedState.items,
                                     startIndex = index,
                                     source = AssetDetailContext.Source.Archive,
@@ -3935,9 +3540,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onApplySelection = archivedViewModel::applySelection,
                         onLoad = archivedViewModel::ensureLoaded,
                         onRefresh = archivedViewModel::refresh,
-                        onBack = { moreSubscreen = null },
-                        onUnarchiveAll = { showUnarchiveAll = true },
-                        onChromeVisibleChange = { subscreenChromeVisible = it }
+                        onBack = { appState.moreSubscreen = null },
+                        onUnarchiveAll = { appState.showUnarchiveAll = true },
+                        onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                     )
                     MoreSubscreen.Trash -> Box(modifier = Modifier.fillMaxSize()) {
                         // La pantalla reserva siempre el hueco del cromo flotante:
@@ -3953,7 +3558,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 .fillMaxSize()
                                 .padding(top = subscreenChromeReservedTop())
                         ) {
-                        when (trashTab) {
+                        when (appState.trashTab) {
                             com.photonne.app.ui.library.TrashTab.Personal ->
                                 com.photonne.app.ui.library.TrashScreen(
                                     state = trashState,
@@ -3963,7 +3568,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                                 trashViewModel.toggleSelection(it.id)
                                             }
                                         } else {
-                                            assetDetail = AssetDetailContext(
+                                            appState.assetDetail = AssetDetailContext(
                                                 items = trashState.items,
                                                 startIndex = index,
                                                 source = AssetDetailContext.Source.Trash,
@@ -4007,11 +3612,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 // Con el ámbito escondido en la hoja, el título
                                 // dice cuál de las dos papeleras se ve.
                                 title = stringResource(
-                                    if (trashTab == com.photonne.app.ui.library.TrashTab.Shared) {
+                                    if (appState.trashTab == com.photonne.app.ui.library.TrashTab.Shared) {
                                         Res.string.admin_shared_trash
                                     } else Res.string.trash_title
                                 ),
-                                onBack = { moreSubscreen = null },
+                                onBack = { appState.moreSubscreen = null },
                                 // La rejilla personal manda el acople/ocultar; en
                                 // Compartida no está compuesta, así que queda en
                                 // reposo (acoplada), que es lo correcto.
@@ -4023,36 +3628,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     onScrollToTop = { trashGridState.animateScrollToItem(0) }
                                 ),
                                 hazeState = trashHazeState,
-                                onChromeVisibleChange = { subscreenChromeVisible = it },
+                                onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                                 // Restaurar todo / vaciar solo aplican a la papelera
                                 // personal; en la compartida la propia pantalla pinta
                                 // sus acciones, así que el ⋮ no sale. El filtro de
                                 // ámbito sí, en las dos.
                                 actions = {
                                     TrashChromeActions(
-                                        tab = trashTab,
-                                        showBulkActions = trashTab ==
+                                        tab = appState.trashTab,
+                                        showBulkActions = appState.trashTab ==
                                             com.photonne.app.ui.library.TrashTab.Personal && count > 0,
-                                        onOpenScope = { showTrashScope = true },
-                                        onRestoreAll = { showRestoreAllTrash = true },
-                                        onEmptyTrash = { showEmptyTrash = true }
+                                        onOpenScope = { appState.showTrashScope = true },
+                                        onRestoreAll = { appState.showRestoreAllTrash = true },
+                                        onEmptyTrash = { appState.showEmptyTrash = true }
                                     )
                                 }
                             )
                         }
-                        if (showTrashScope) {
+                        if (appState.showTrashScope) {
                             com.photonne.app.ui.library.TrashScopeSheet(
-                                selected = trashTab,
+                                selected = appState.trashTab,
                                 onSelect = { tab ->
-                                    if (tab != trashTab) {
+                                    if (tab != appState.trashTab) {
                                         // Leaving the personal tab drops its selection
                                         // so the top bar/back don't act on a hidden tab.
                                         trashViewModel.clearSelection()
-                                        trashTab = tab
+                                        appState.trashTab = tab
                                     }
-                                    showTrashScope = false
+                                    appState.showTrashScope = false
                                 },
-                                onDismiss = { showTrashScope = false }
+                                onDismiss = { appState.showTrashScope = false }
                             )
                         }
                     }
@@ -4061,11 +3666,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             stringResource(Res.string.notifications_no_screen)
                         com.photonne.app.ui.notifications.NotificationsScreen(
                             title = stringResource(Res.string.notifications_title),
-                            onBack = { moreSubscreen = null },
+                            onBack = { appState.moreSubscreen = null },
                             canMarkAllRead = notificationsState.unreadCount > 0 &&
                                 !notificationsState.isMarkingAllRead,
                             onMarkAllRead = notificationsViewModel::markAllRead,
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = notificationsViewModel,
                             onNavigate = { url ->
                                 // Map known server actionUrls to in-app
@@ -4074,26 +3679,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 when {
                                     path == "/shared-trash" ||
                                         path.endsWith("/shared-trash") -> {
-                                        trashTab = com.photonne.app.ui.library.TrashTab.Shared
-                                        moreSubscreen = MoreSubscreen.Trash
+                                        appState.trashTab = com.photonne.app.ui.library.TrashTab.Shared
+                                        appState.moreSubscreen = MoreSubscreen.Trash
                                     }
                                     path == "/admin/enrichment-failures" ||
                                         path.endsWith("/admin/enrichment-failures") -> {
-                                        adminEnrichmentInitialType = url
+                                        appState.adminEnrichmentInitialType = url
                                             .substringAfter('?', "")
                                             .split('&')
                                             .firstOrNull { it.startsWith("type=") }
                                             ?.substringAfter('=')
                                             ?.takeIf { it.isNotBlank() }
-                                        adminEnrichmentReturnTo = MoreSubscreen.AdminSystemHub
-                                        moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
+                                        appState.adminEnrichmentReturnTo = MoreSubscreen.AdminSystemHub
+                                        appState.moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
                                     }
                                     path == "/admin/stats" ||
                                         path.endsWith("/admin/stats") -> {
-                                        moreSubscreen = MoreSubscreen.AdminStats
+                                        appState.moreSubscreen = MoreSubscreen.AdminStats
                                     }
                                     path == "/people" || path.endsWith("/people") -> {
-                                        moreSubscreen = MoreSubscreen.People
+                                        appState.moreSubscreen = MoreSubscreen.People
                                     }
                                     // Ruta sin pantalla nativa: decirlo vale
                                     // más que un toque que no hace nada.
@@ -4111,14 +3716,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.settings.AccountSettingsScreen(
                             title = stringResource(Res.string.account_settings_title),
                             storage = accountStorageState.info,
-                            onBack = { moreSubscreen = null },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = null },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             activityNotificationsEnabled = activityNotificationsEnabled
                                 .takeIf { activityNotifications.isSupported },
                             onActivityNotificationsChange = activityNotifications::setEnabled,
                             onOpen = { section ->
-                                profileOpenedFromMore = false
-                                moreSubscreen = when (section) {
+                                appState.profileOpenedFromMore = false
+                                appState.moreSubscreen = when (section) {
                                     com.photonne.app.ui.settings.AccountSettingsSection.Profile ->
                                         MoreSubscreen.AccountProfile
                                     com.photonne.app.ui.settings.AccountSettingsSection.Security ->
@@ -4137,47 +3742,47 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.settings.AccountProfileScreen(
                             title = stringResource(Res.string.account_section_profile),
                             onBack = {
-                                moreSubscreen = if (profileOpenedFromMore) null
+                                appState.moreSubscreen = if (appState.profileOpenedFromMore) null
                                 else MoreSubscreen.AccountSettings
                             },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = accountProfileViewModel
                         )
                     MoreSubscreen.AccountSecurity ->
                         com.photonne.app.ui.settings.AccountSecurityScreen(
                             title = stringResource(Res.string.account_section_security),
-                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = accountSecurityViewModel
                         )
                     MoreSubscreen.AccountAppearance ->
                         com.photonne.app.ui.settings.AccountAppearanceScreen(
                             title = stringResource(Res.string.account_section_appearance),
-                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = appearanceViewModel
                         )
                     MoreSubscreen.AccountStorage ->
                         com.photonne.app.ui.settings.AccountStorageScreen(
                             title = stringResource(Res.string.account_section_storage),
-                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = accountStorageViewModel
                         )
                     MoreSubscreen.AccountConnection ->
                         com.photonne.app.ui.settings.AccountConnectionScreen(
                             title = stringResource(Res.string.account_section_connection),
-                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = deviceConnectionViewModel
                         )
                     MoreSubscreen.Administration ->
                         com.photonne.app.ui.admin.AdministrationScreen(
                             title = stringResource(Res.string.administration_title),
-                            onBack = { moreSubscreen = null },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = null },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             onOpen = { section ->
-                                moreSubscreen = when (section) {
+                                appState.moreSubscreen = when (section) {
                                     com.photonne.app.ui.admin.AdministrationSection.Users ->
                                         MoreSubscreen.AdminUsers
                                     com.photonne.app.ui.admin.AdministrationSection.Libraries ->
@@ -4194,93 +3799,93 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.AdminUsers ->
                         com.photonne.app.ui.admin.AdminUsersScreen(
                             title = stringResource(Res.string.admin_section_users),
-                            onBack = { moreSubscreen = MoreSubscreen.Administration },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
                             onCreateNew = {
-                                adminUserEditorId = null
+                                appState.adminUserEditorId = null
                                 adminUsersViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminUserEditor
+                                appState.moreSubscreen = MoreSubscreen.AdminUserEditor
                             },
                             viewModel = adminUsersViewModel,
                             onEdit = { user ->
-                                adminUserEditorId = user.id
+                                appState.adminUserEditorId = user.id
                                 adminUsersViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminUserEditor
+                                appState.moreSubscreen = MoreSubscreen.AdminUserEditor
                             },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.AdminUserEditor ->
                         com.photonne.app.ui.admin.AdminUserEditorScreen(
                             title = stringResource(
-                                if (adminUserEditorId == null) Res.string.admin_user_action_new
+                                if (appState.adminUserEditorId == null) Res.string.admin_user_action_new
                                 else Res.string.admin_user_edit_title
                             ),
                             onBack = {
-                                adminUserEditorId = null
+                                appState.adminUserEditorId = null
                                 adminUsersViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminUsers
+                                appState.moreSubscreen = MoreSubscreen.AdminUsers
                             },
                             viewModel = adminUsersViewModel,
-                            userId = adminUserEditorId,
+                            userId = appState.adminUserEditorId,
                             onDone = {
-                                adminUserEditorId = null
-                                moreSubscreen = MoreSubscreen.AdminUsers
+                                appState.adminUserEditorId = null
+                                appState.moreSubscreen = MoreSubscreen.AdminUsers
                             },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.AdminLibraries -> {
                         val usersState by adminUsersViewModel.state.collectAsStateWithLifecycle()
                         LaunchedEffect(Unit) { adminUsersViewModel.ensureLoaded() }
                         com.photonne.app.ui.admin.AdminLibrariesScreen(
                             title = stringResource(Res.string.admin_section_libraries),
-                            onBack = { moreSubscreen = MoreSubscreen.Administration },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
                             onCreateNew = {
-                                adminLibraryEditorId = null
+                                appState.adminLibraryEditorId = null
                                 adminLibrariesViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminLibraryEditor
+                                appState.moreSubscreen = MoreSubscreen.AdminLibraryEditor
                             },
                             viewModel = adminLibrariesViewModel,
                             knownUsers = usersState.users,
                             onEdit = { library ->
-                                adminLibraryEditorId = library.id
+                                appState.adminLibraryEditorId = library.id
                                 adminLibrariesViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminLibraryEditor
+                                appState.moreSubscreen = MoreSubscreen.AdminLibraryEditor
                             },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     }
                     MoreSubscreen.AdminLibraryEditor ->
                         com.photonne.app.ui.admin.AdminLibraryEditorScreen(
                             title = stringResource(
-                                if (adminLibraryEditorId == null) Res.string.admin_libraries_action_new
+                                if (appState.adminLibraryEditorId == null) Res.string.admin_libraries_action_new
                                 else Res.string.admin_libraries_edit_title
                             ),
                             onBack = {
-                                adminLibraryEditorId = null
+                                appState.adminLibraryEditorId = null
                                 adminLibrariesViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminLibraries
+                                appState.moreSubscreen = MoreSubscreen.AdminLibraries
                             },
                             viewModel = adminLibrariesViewModel,
-                            libraryId = adminLibraryEditorId,
+                            libraryId = appState.adminLibraryEditorId,
                             onDone = {
-                                adminLibraryEditorId = null
-                                moreSubscreen = MoreSubscreen.AdminLibraries
+                                appState.adminLibraryEditorId = null
+                                appState.moreSubscreen = MoreSubscreen.AdminLibraries
                             },
-                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                         )
                     MoreSubscreen.AdminStats ->
                         com.photonne.app.ui.admin.AdminStatsScreen(
                             title = stringResource(Res.string.admin_section_stats),
-                            onBack = { moreSubscreen = MoreSubscreen.Administration },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminStatsViewModel
                         )
                     MoreSubscreen.AdminSettingsHub ->
                         com.photonne.app.ui.admin.AdminSettingsHubScreen(
                             title = stringResource(Res.string.admin_section_settings),
-                            onBack = { moreSubscreen = MoreSubscreen.Administration },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             onOpen = { entry ->
-                                moreSubscreen = when (entry) {
+                                appState.moreSubscreen = when (entry) {
                                     com.photonne.app.ui.admin.AdminSettingsEntry.FaceRecognition ->
                                         MoreSubscreen.AdminSettingsFaceRecognition
                                     com.photonne.app.ui.admin.AdminSettingsEntry.ObjectDetection ->
@@ -4315,11 +3920,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminFaceRecognitionSettingsScreen(
                             title = stringResource(Res.string.admin_settings_face_recognition),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
-                                moreSubscreen = MoreSubscreen.AdminSettingsNightly
+                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
                             },
                         )
                     }
@@ -4328,11 +3933,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminObjectDetectionSettingsScreen(
                             title = stringResource(Res.string.admin_settings_object_detection),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
-                                moreSubscreen = MoreSubscreen.AdminSettingsNightly
+                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
                             },
                         )
                     }
@@ -4341,11 +3946,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminSceneClassificationSettingsScreen(
                             title = stringResource(Res.string.admin_settings_scene_classification),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
-                                moreSubscreen = MoreSubscreen.AdminSettingsNightly
+                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
                             },
                         )
                     }
@@ -4354,11 +3959,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminTextRecognitionSettingsScreen(
                             title = stringResource(Res.string.admin_settings_text_recognition),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
-                                moreSubscreen = MoreSubscreen.AdminSettingsNightly
+                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
                             },
                         )
                     }
@@ -4367,82 +3972,82 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminImageEmbeddingSettingsScreen(
                             title = stringResource(Res.string.admin_settings_image_embedding),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
-                                moreSubscreen = MoreSubscreen.AdminSettingsNightly
+                                appState.moreSubscreen = MoreSubscreen.AdminSettingsNightly
                             },
                         )
                     }
                     MoreSubscreen.AdminSettingsImage ->
                         com.photonne.app.ui.admin.AdminImageSettingsScreen(
                             title = stringResource(Res.string.admin_settings_image),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminImageSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsMetadata ->
                         com.photonne.app.ui.admin.AdminMetadataSettingsScreen(
                             title = stringResource(Res.string.admin_settings_metadata),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminMetadataSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsNightly ->
                         com.photonne.app.ui.admin.AdminNightlySettingsScreen(
                             title = stringResource(Res.string.admin_settings_nightly),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminNightlySettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsNotifications ->
                         com.photonne.app.ui.admin.AdminNotificationSettingsScreen(
                             title = stringResource(Res.string.admin_settings_notifications),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminNotificationSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsServer ->
                         com.photonne.app.ui.admin.AdminServerSettingsScreen(
                             title = stringResource(Res.string.admin_settings_server),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminServerSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsTrash ->
                         com.photonne.app.ui.admin.AdminTrashSettingsScreen(
                             title = stringResource(Res.string.admin_settings_trash),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminTrashSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsUserDefaults ->
                         com.photonne.app.ui.admin.AdminUserDefaultsScreen(
                             title = stringResource(Res.string.admin_settings_user_defaults),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminUserDefaultsViewModel
                         )
                     MoreSubscreen.AdminSettingsVersion ->
                         com.photonne.app.ui.admin.AdminServerScreen(
                             title = stringResource(Res.string.admin_settings_version),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminVersionViewModel
                         )
                     MoreSubscreen.AdminSystemHub ->
                         com.photonne.app.ui.admin.AdminSystemHubScreen(
                             title = stringResource(Res.string.admin_section_system),
-                            onBack = { moreSubscreen = MoreSubscreen.Administration },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.Administration },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             onOpen = { entry ->
-                                moreSubscreen = when (entry) {
+                                appState.moreSubscreen = when (entry) {
                                     com.photonne.app.ui.admin.AdminSystemEntry.RunTasks ->
                                         MoreSubscreen.AdminSystemRunTasks
                                     com.photonne.app.ui.admin.AdminSystemEntry.EnrichmentFailures -> {
-                                        adminEnrichmentInitialType = null
-                                        adminEnrichmentReturnTo = MoreSubscreen.AdminSystemHub
+                                        appState.adminEnrichmentInitialType = null
+                                        appState.adminEnrichmentReturnTo = MoreSubscreen.AdminSystemHub
                                         MoreSubscreen.AdminSystemEnrichmentFailures
                                     }
                                     com.photonne.app.ui.admin.AdminSystemEntry.Backup ->
@@ -4455,8 +4060,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminRunTasksScreen(
                             title = stringResource(Res.string.admin_system_run_tasks),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSystemHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSystemHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = vm,
                             // Only Duplicates still drills into its own
                             // screen; pipeline + AI rows handle their
@@ -4465,7 +4070,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // currently expose any `onOpen` for them.
                             onOpenTask = { task ->
                                 if (task == com.photonne.app.ui.admin.AdminRunTask.DetectDuplicates) {
-                                    moreSubscreen = MoreSubscreen.AdminSystemDuplicates
+                                    appState.moreSubscreen = MoreSubscreen.AdminSystemDuplicates
                                 }
                             },
                             // A backfill skips assets that used up their
@@ -4473,17 +4078,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // no button left to press. The registry is the only
                             // place they can be retried or suppressed.
                             onOpenFailures = { type ->
-                                adminEnrichmentInitialType = type
-                                adminEnrichmentReturnTo = MoreSubscreen.AdminSystemRunTasks
-                                moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
+                                appState.adminEnrichmentInitialType = type
+                                appState.adminEnrichmentReturnTo = MoreSubscreen.AdminSystemRunTasks
+                                appState.moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
                             },
                         )
                     }
                     MoreSubscreen.AdminSystemDuplicates ->
                         com.photonne.app.ui.admin.AdminDuplicatesScreen(
                             title = stringResource(Res.string.admin_system_duplicates),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSystemRunTasks },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSystemRunTasks },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminDuplicatesViewModel
                         )
                     MoreSubscreen.AdminSystemEnrichmentFailures -> {
@@ -4491,12 +4096,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminEnrichmentFailuresScreen(
                             title = stringResource(Res.string.admin_system_enrichment_failures),
-                            initialType = adminEnrichmentInitialType,
-                            onBack = { moreSubscreen = adminEnrichmentReturnTo },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            initialType = appState.adminEnrichmentInitialType,
+                            onBack = { appState.moreSubscreen = appState.adminEnrichmentReturnTo },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenAsset = { failure ->
-                                assetDetail = AssetDetailContext(
+                                appState.assetDetail = AssetDetailContext(
                                     items = listOf(failure.toSyntheticTimelineItem()),
                                     startIndex = 0,
                                     source = AssetDetailContext.Source.Timeline,
@@ -4512,8 +4117,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.AdminSystemBackup ->
                         com.photonne.app.ui.admin.AdminBackupScreen(
                             title = stringResource(Res.string.admin_system_backup),
-                            onBack = { moreSubscreen = MoreSubscreen.AdminSystemHub },
-                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            onBack = { appState.moreSubscreen = MoreSubscreen.AdminSystemHub },
+                            onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                             viewModel = adminBackupViewModel
                         )
                 }
@@ -4526,7 +4131,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
         // Above the tabs but below the viewer, so tapping a photo covers the
         // memory rather than replacing it — back then lands on the grid again.
-        memoryDetail?.let { memory ->
+        appState.memoryDetail?.let { memory ->
             val memorySelection = memorySelectionState.selection
             com.photonne.app.ui.memories.MemoryDetailScreen(
                 memory = memory,
@@ -4537,7 +4142,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             memorySelectionViewModel.toggleSelection(it.id)
                         }
                     } else {
-                        assetDetail = AssetDetailContext(
+                        appState.assetDetail = AssetDetailContext(
                             items = memory.items,
                             startIndex = index,
                             source = AssetDetailContext.Source.Timeline,
@@ -4547,7 +4152,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     }
                 },
-                onBack = { memoryDetail = null },
+                onBack = { appState.memoryDetail = null },
                 selection = memorySelection,
                 onItemLongClick = { index ->
                     memory.items.getOrNull(index)?.let {
@@ -4584,7 +4189,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         isMutating = memorySelectionState.isBulkMutating ||
                             actionsState.working != AssetActionWorking.Idle,
                         onShare = { actionsViewModel.beginShare(memorySelection.toList()) },
-                        onAddToAlbum = { bulkAddSource = BulkAddSource.Memory },
+                        onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Memory },
                         onDownload = { actionsViewModel.download(memorySelection.toList()) },
                         onArchive = memorySelectionViewModel::bulkArchive,
                         onTrash = memorySelectionViewModel::bulkTrash,
@@ -4612,8 +4217,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 if (moveBlocked != null) {
                                     moveSnackbar?.show(moveBlocked)
                                 } else {
-                                    moveSelectionError = null
-                                    moveSelectionRequest = MoveSelectionRequest(
+                                    appState.moveSelectionError = null
+                                    appState.moveSelectionRequest = MoveSelectionRequest(
                                         assetIds = memorySelection.toList(),
                                         onMoved = memorySelectionViewModel::clearSelection
                                     )
@@ -4625,7 +4230,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             )
         }
 
-        val ctx = assetDetail
+        val ctx = appState.assetDetail
         val isDetailVisible = ctx != null && ctx.startIndex in ctx.items.indices
         // Keep the last visible context alive during AnimatedVisibility's
         // exit animation so the shared-element morph has data to render
@@ -4650,7 +4255,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             com.photonne.app.data.devicelibrary.rememberDeviceMediaTrasher { trashed ->
                 if (trashed) {
                     deviceLibraryStore.requestRefresh()
-                    assetDetail = null
+                    appState.assetDetail = null
                 }
             }
         AnimatedVisibility(
@@ -4687,11 +4292,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         startIndex = displayCtx.startIndex,
                         hasMore = feed?.hasMore?.invoke() ?: displayCtx.hasMore,
                         onLoadMore = feed?.loadMore ?: displayCtx.onLoadMore,
-                        onBack = { closeAssetDetail() },
-                        onPageChanged = { id -> currentDetailAssetId = id },
+                        onBack = { appState.closeAssetDetail() },
+                        onPageChanged = { id -> appState.currentDetailAssetId = id },
                         animatedVisibilityScope = this@AnimatedVisibility,
                         onFavoriteChanged = displayCtx.onFavoriteChanged,
-                        onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) },
+                        onAddToAlbum = { item -> appState.addToAlbum = AddToAlbumState(asset = item) },
                         mode = when (displayCtx.source) {
                             AssetDetailContext.Source.Archive ->
                                 com.photonne.app.ui.asset.AssetViewerMode.Archive
@@ -4703,8 +4308,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         // sale de Archivo o Papelera por el AssetMutationBus; aquí
                         // se cierra el visor y se confirma, como con archivar.
                         onAssetUnarchived = { id ->
-                            assetDetailStack = emptyList()
-                            assetDetail = null
+                            appState.assetDetailStack = emptyList()
+                            appState.assetDetail = null
                             coroutineScope.launch {
                                 snackbarController.show(
                                     message = org.jetbrains.compose.resources.getPluralString(
@@ -4722,8 +4327,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         onAssetRestored = { _ ->
-                            assetDetailStack = emptyList()
-                            assetDetail = null
+                            appState.assetDetailStack = emptyList()
+                            appState.assetDetail = null
                             coroutineScope.launch {
                                 snackbarController.show(
                                     org.jetbrains.compose.resources.getPluralString(
@@ -4733,8 +4338,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         onAssetPurged = { _ ->
-                            assetDetailStack = emptyList()
-                            assetDetail = null
+                            appState.assetDetailStack = emptyList()
+                            appState.assetDetail = null
                             coroutineScope.launch {
                                 snackbarController.show(
                                     org.jetbrains.compose.resources.getPluralString(
@@ -4748,8 +4353,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // aquí solo queda cerrar el visor y ofrecer Deshacer.
                             // Cierre TOTAL (sin volver a un contexto apilado que
                             // podría contener la foto recién borrada).
-                            assetDetailStack = emptyList()
-                            assetDetail = null
+                            appState.assetDetailStack = emptyList()
+                            appState.assetDetail = null
                             // El visor se cerraba en silencio: confirmación con
                             // Deshacer, como las acciones en bloque. Con la
                             // papelera del servidor apagada el borrado es
@@ -4781,8 +4386,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         onAssetArchived = { id ->
-                            assetDetailStack = emptyList()
-                            assetDetail = null
+                            appState.assetDetailStack = emptyList()
+                            appState.assetDetail = null
                             coroutineScope.launch {
                                 snackbarController.show(
                                     message = org.jetbrains.compose.resources.getPluralString(
@@ -4801,16 +4406,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onOpenFaces = { assetId ->
                             assetFacesViewModel.open(assetId)
-                            showAssetFacesSheet = true
+                            appState.showAssetFacesSheet = true
                         },
-                        onOpenPerson = { personId -> openPersonFromViewer(personId) },
+                        onOpenPerson = { personId -> appState.openPersonFromViewer(personId) },
                         onSearchScene = { label ->
-                            openSearchFromViewer { searchViewModel.showResultsForSceneLabel(label) }
+                            appState.openSearchFromViewer { searchViewModel.showResultsForSceneLabel(label) }
                         },
                         onSearchObject = { label ->
-                            openSearchFromViewer { searchViewModel.showResultsForObjectLabel(label) }
+                            appState.openSearchFromViewer { searchViewModel.showResultsForObjectLabel(label) }
                         },
-                        facesRevision = assetFacesRevision,
+                        facesRevision = appState.assetFacesRevision,
                         onShare = { item -> actionsViewModel.shareDirectly(listOf(item.id)) },
                         onDownload = { item -> actionsViewModel.download(listOf(item.id)) },
                         onDeleteFromDevice = { item ->
@@ -4821,8 +4426,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // key(displayCtx) forces a fresh screen + detail load.
                             // El contexto actual se apila: atrás vuelve a la foto
                             // y a la lista de las que se venía.
-                            assetDetailStack = assetDetailStack + displayCtx
-                            assetDetail = AssetDetailContext(
+                            appState.assetDetailStack = appState.assetDetailStack + displayCtx
+                            appState.assetDetail = AssetDetailContext(
                                 items = listOf(item),
                                 startIndex = 0,
                                 source = AssetDetailContext.Source.Timeline,
@@ -4843,73 +4448,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     AuthenticatedDialogs(
         AuthenticatedDialogsHost(
-            selectedTab = selectedTabState,
-            moreSubscreen = moreSubscreenState,
-            selectedAlbum = selectedAlbumState,
-            selectedFolder = selectedFolderState,
-            selectedPerson = selectedPersonState,
-            memoryDetail = memoryDetailState,
-            pendingJumpDate = pendingJumpDateState,
-            pendingAddTarget = pendingAddTargetState,
-            pendingAddAlbum = pendingAddAlbumState,
-            pendingAssetAddSubmitting = pendingAssetAddSubmittingState,
-            pendingAssetAddError = pendingAssetAddErrorState,
-            pendingActionAlbum = pendingActionAlbumState,
-            pendingActionFolder = pendingActionFolderState,
-            editingShareLink = editingShareLinkState,
-            revokingShareToken = revokingShareTokenState,
-            revokingAlbumMember = revokingAlbumMemberState,
-            revokingFolderMember = revokingFolderMemberState,
-            addToAlbum = addToAlbumState,
-            bulkAddToAlbum = bulkAddToAlbumState,
-            bulkAddSource = bulkAddSourceState,
-            moveSelectionRequest = moveSelectionRequestState,
-            moveSelectionSubmitting = moveSelectionSubmittingState,
-            moveSelectionError = moveSelectionErrorState,
-            inboxReviewTarget = inboxReviewTargetState,
-            organizeRuleSummary = organizeRuleSummaryState,
-            mergeSource = mergeSourceState,
-            isMerging = isMergingState,
-            mergeError = mergeErrorState,
-            assetFacesRevision = assetFacesRevisionState,
-            showCreateAlbum = showCreateAlbumState,
-            showAlbumTypeChooser = showAlbumTypeChooserState,
-            showEditAlbum = showEditAlbumState,
-            showDeleteAlbum = showDeleteAlbumState,
-            showLeaveAlbum = showLeaveAlbumState,
-            showBulkDeleteAlbums = showBulkDeleteAlbumsState,
-            showBulkLeaveAlbums = showBulkLeaveAlbumsState,
-            showShares = showSharesState,
-            showCreateShare = showCreateShareState,
-            showMembers = showMembersState,
-            showInviteMember = showInviteMemberState,
-            showRenamePerson = showRenamePersonState,
-            showMergePicker = showMergePickerState,
-            showAcceptAllSuggestions = showAcceptAllSuggestionsState,
-            showDismissAllSuggestions = showDismissAllSuggestionsState,
-            showAssetFacesSheet = showAssetFacesSheetState,
-            showJumpToDate = showJumpToDateState,
-            showCreateFolder = showCreateFolderState,
-            showEditFolder = showEditFolderState,
-            showDeleteFolder = showDeleteFolderState,
-            showEditSubfolder = showEditSubfolderState,
-            showDeleteSubfolder = showDeleteSubfolderState,
-            showFolderMembers = showFolderMembersState,
-            showInviteFolderMember = showInviteFolderMemberState,
-            showMoveFolder = showMoveFolderState,
-            showBulkDeleteFolders = showBulkDeleteFoldersState,
-            showBulkMoveFolders = showBulkMoveFoldersState,
-            showMoveSelectedAssets = showMoveSelectedAssetsState,
-            showMoveSelectedAssetsTimeline = showMoveSelectedAssetsTimelineState,
-            showMoveSelectedAssetsInbox = showMoveSelectedAssetsInboxState,
-            showSearchFilters = showSearchFiltersState,
-            showAlbumsFilters = showAlbumsFiltersState,
-            showFoldersFilters = showFoldersFiltersState,
-            showUnarchiveAll = showUnarchiveAllState,
-            showRestoreAllTrash = showRestoreAllTrashState,
-            showEmptyTrash = showEmptyTrashState,
-            showPurgeSelected = showPurgeSelectedState,
-            showLogoutConfirm = showLogoutConfirmState,
+            appState = appState,
             timelineState = timelineStateRef,
             albumsState = albumsStateRef,
             albumDetailState = albumDetailStateRef,
@@ -4970,9 +4509,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             sharedLinkOpen = sharedLinkOpen,
             showAddedToAlbumSnackbar = { count, albumName -> showAddedToAlbumSnackbar(count, albumName) },
             showMovedToFolderSnackbar = { count, folderName -> showMovedToFolderSnackbar(count, folderName) },
-            folderBack = { folderBack() },
-            openPersonFromViewer = { personId -> openPersonFromViewer(personId) },
-            organizeRuleMoved = { organizeRuleMoved() }
         )
     )
 }

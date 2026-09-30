@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
@@ -91,7 +90,6 @@ import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.timeline.TimelineViewModel
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 
 /**
@@ -99,80 +97,14 @@ import androidx.compose.runtime.State
  * fichero para que el cuerpo de AuthenticatedApp no rebase el límite de 64 KB
  * por método de la JVM.
  *
- * El estado NO vive aquí: son los mismos [MutableState] que AuthenticatedApp
- * recuerda (y los [State] que recoge de sus ViewModels), expuestos como
- * propiedades delegadas para que el código de los diálogos lea y escriba
- * exactamente como cuando estaba en línea. Se reconstruye en cada composición
- * del padre, igual que antes se reevaluaba el bloque en línea.
+ * El estado NO vive aquí: el de UI y navegación está en el mismo
+ * [AuthenticatedAppState] que usa AuthenticatedApp (se lee y escribe como
+ * `appState.x`), y los [State] que el padre recoge de sus ViewModels se exponen
+ * como propiedades delegadas. Se reconstruye en cada composición del padre,
+ * igual que antes se reevaluaba el bloque en línea.
  */
 internal class AuthenticatedDialogsHost(
-    selectedTab: MutableState<MainTab>,
-    moreSubscreen: MutableState<MoreSubscreen?>,
-    selectedAlbum: MutableState<AlbumSummary?>,
-    selectedFolder: MutableState<com.photonne.app.data.models.FolderSummary?>,
-    selectedPerson: MutableState<com.photonne.app.data.models.Person?>,
-    memoryDetail: MutableState<com.photonne.app.ui.memories.MemoryDetailContext?>,
-    pendingJumpDate: MutableState<kotlin.time.Instant?>,
-    pendingAddTarget: MutableState<PendingAddTarget?>,
-    pendingAddAlbum: MutableState<AlbumSummary?>,
-    pendingAssetAddSubmitting: MutableState<Boolean>,
-    pendingAssetAddError: MutableState<String?>,
-    pendingActionAlbum: MutableState<AlbumSummary?>,
-    pendingActionFolder: MutableState<com.photonne.app.data.models.FolderSummary?>,
-    editingShareLink: MutableState<AlbumShareLink?>,
-    revokingShareToken: MutableState<String?>,
-    revokingAlbumMember: MutableState<com.photonne.app.data.models.AlbumPermission?>,
-    revokingFolderMember: MutableState<com.photonne.app.data.models.AlbumPermission?>,
-    addToAlbum: MutableState<AddToAlbumState?>,
-    bulkAddToAlbum: MutableState<Boolean>,
-    bulkAddSource: MutableState<BulkAddSource?>,
-    moveSelectionRequest: MutableState<MoveSelectionRequest?>,
-    moveSelectionSubmitting: MutableState<Boolean>,
-    moveSelectionError: MutableState<String?>,
-    inboxReviewTarget: MutableState<String?>,
-    organizeRuleSummary: MutableState<com.photonne.app.data.models.MoveOutcome?>,
-    mergeSource: MutableState<com.photonne.app.data.models.Person?>,
-    isMerging: MutableState<Boolean>,
-    mergeError: MutableState<String?>,
-    assetFacesRevision: MutableState<Int>,
-    showCreateAlbum: MutableState<Boolean>,
-    showAlbumTypeChooser: MutableState<Boolean>,
-    showEditAlbum: MutableState<Boolean>,
-    showDeleteAlbum: MutableState<Boolean>,
-    showLeaveAlbum: MutableState<Boolean>,
-    showBulkDeleteAlbums: MutableState<Boolean>,
-    showBulkLeaveAlbums: MutableState<Boolean>,
-    showShares: MutableState<Boolean>,
-    showCreateShare: MutableState<Boolean>,
-    showMembers: MutableState<Boolean>,
-    showInviteMember: MutableState<Boolean>,
-    showRenamePerson: MutableState<Boolean>,
-    showMergePicker: MutableState<Boolean>,
-    showAcceptAllSuggestions: MutableState<Boolean>,
-    showDismissAllSuggestions: MutableState<Boolean>,
-    showAssetFacesSheet: MutableState<Boolean>,
-    showJumpToDate: MutableState<Boolean>,
-    showCreateFolder: MutableState<Boolean>,
-    showEditFolder: MutableState<Boolean>,
-    showDeleteFolder: MutableState<Boolean>,
-    showEditSubfolder: MutableState<Boolean>,
-    showDeleteSubfolder: MutableState<Boolean>,
-    showFolderMembers: MutableState<Boolean>,
-    showInviteFolderMember: MutableState<Boolean>,
-    showMoveFolder: MutableState<Boolean>,
-    showBulkDeleteFolders: MutableState<Boolean>,
-    showBulkMoveFolders: MutableState<Boolean>,
-    showMoveSelectedAssets: MutableState<Boolean>,
-    showMoveSelectedAssetsTimeline: MutableState<Boolean>,
-    showMoveSelectedAssetsInbox: MutableState<Boolean>,
-    showSearchFilters: MutableState<Boolean>,
-    showAlbumsFilters: MutableState<Boolean>,
-    showFoldersFilters: MutableState<Boolean>,
-    showUnarchiveAll: MutableState<Boolean>,
-    showRestoreAllTrash: MutableState<Boolean>,
-    showEmptyTrash: MutableState<Boolean>,
-    showPurgeSelected: MutableState<Boolean>,
-    showLogoutConfirm: MutableState<Boolean>,
+    val appState: AuthenticatedAppState,
     timelineState: State<com.photonne.app.ui.timeline.TimelineUiState>,
     albumsState: State<com.photonne.app.ui.album.AlbumsUiState>,
     albumDetailState: State<com.photonne.app.ui.album.AlbumDetailUiState>,
@@ -233,77 +165,7 @@ internal class AuthenticatedDialogsHost(
     val sharedLinkOpen: Boolean,
     val showAddedToAlbumSnackbar: (count: Int, albumName: String) -> Unit,
     val showMovedToFolderSnackbar: (count: Int, folderName: String?) -> Unit,
-    val folderBack: () -> Unit,
-    val openPersonFromViewer: (personId: String) -> Unit,
-    val organizeRuleMoved: () -> Unit
 ) {
-    var selectedTab by selectedTab
-    var moreSubscreen by moreSubscreen
-    var selectedAlbum by selectedAlbum
-    var selectedFolder by selectedFolder
-    var selectedPerson by selectedPerson
-    var memoryDetail by memoryDetail
-    var pendingJumpDate by pendingJumpDate
-    var pendingAddTarget by pendingAddTarget
-    var pendingAddAlbum by pendingAddAlbum
-    var pendingAssetAddSubmitting by pendingAssetAddSubmitting
-    var pendingAssetAddError by pendingAssetAddError
-    var pendingActionAlbum by pendingActionAlbum
-    var pendingActionFolder by pendingActionFolder
-    var editingShareLink by editingShareLink
-    var revokingShareToken by revokingShareToken
-    var revokingAlbumMember by revokingAlbumMember
-    var revokingFolderMember by revokingFolderMember
-    var addToAlbum by addToAlbum
-    var bulkAddToAlbum by bulkAddToAlbum
-    var bulkAddSource by bulkAddSource
-    var moveSelectionRequest by moveSelectionRequest
-    var moveSelectionSubmitting by moveSelectionSubmitting
-    var moveSelectionError by moveSelectionError
-    var inboxReviewTarget by inboxReviewTarget
-    var organizeRuleSummary by organizeRuleSummary
-    var mergeSource by mergeSource
-    var isMerging by isMerging
-    var mergeError by mergeError
-    var assetFacesRevision by assetFacesRevision
-    var showCreateAlbum by showCreateAlbum
-    var showAlbumTypeChooser by showAlbumTypeChooser
-    var showEditAlbum by showEditAlbum
-    var showDeleteAlbum by showDeleteAlbum
-    var showLeaveAlbum by showLeaveAlbum
-    var showBulkDeleteAlbums by showBulkDeleteAlbums
-    var showBulkLeaveAlbums by showBulkLeaveAlbums
-    var showShares by showShares
-    var showCreateShare by showCreateShare
-    var showMembers by showMembers
-    var showInviteMember by showInviteMember
-    var showRenamePerson by showRenamePerson
-    var showMergePicker by showMergePicker
-    var showAcceptAllSuggestions by showAcceptAllSuggestions
-    var showDismissAllSuggestions by showDismissAllSuggestions
-    var showAssetFacesSheet by showAssetFacesSheet
-    var showJumpToDate by showJumpToDate
-    var showCreateFolder by showCreateFolder
-    var showEditFolder by showEditFolder
-    var showDeleteFolder by showDeleteFolder
-    var showEditSubfolder by showEditSubfolder
-    var showDeleteSubfolder by showDeleteSubfolder
-    var showFolderMembers by showFolderMembers
-    var showInviteFolderMember by showInviteFolderMember
-    var showMoveFolder by showMoveFolder
-    var showBulkDeleteFolders by showBulkDeleteFolders
-    var showBulkMoveFolders by showBulkMoveFolders
-    var showMoveSelectedAssets by showMoveSelectedAssets
-    var showMoveSelectedAssetsTimeline by showMoveSelectedAssetsTimeline
-    var showMoveSelectedAssetsInbox by showMoveSelectedAssetsInbox
-    var showSearchFilters by showSearchFilters
-    var showAlbumsFilters by showAlbumsFilters
-    var showFoldersFilters by showFoldersFilters
-    var showUnarchiveAll by showUnarchiveAll
-    var showRestoreAllTrash by showRestoreAllTrash
-    var showEmptyTrash by showEmptyTrash
-    var showPurgeSelected by showPurgeSelected
-    var showLogoutConfirm by showLogoutConfirm
     val timelineState by timelineState
     val albumsState by albumsState
     val albumDetailState by albumDetailState
@@ -344,38 +206,38 @@ internal fun AuthenticatedDialogs(host: AuthenticatedDialogsHost) {
 @Composable
 private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
     with(host) {
-        if (showJumpToDate) {
+        if (appState.showJumpToDate) {
             com.photonne.app.ui.timeline.JumpToDateDialog(
-                onDismiss = { showJumpToDate = false },
+                onDismiss = { appState.showJumpToDate = false },
                 onConfirm = { date ->
-                    showJumpToDate = false
-                    pendingJumpDate = date
+                    appState.showJumpToDate = false
+                    appState.pendingJumpDate = date
                 }
             )
         }
 
-        if (showAlbumTypeChooser) {
+        if (appState.showAlbumTypeChooser) {
             com.photonne.app.ui.album.smart.AlbumTypeChooserSheet(
-                onDismiss = { showAlbumTypeChooser = false },
+                onDismiss = { appState.showAlbumTypeChooser = false },
                 onManual = {
-                    showAlbumTypeChooser = false
-                    showCreateAlbum = true
+                    appState.showAlbumTypeChooser = false
+                    appState.showCreateAlbum = true
                 },
                 onSmart = {
-                    showAlbumTypeChooser = false
-                    moreSubscreen = MoreSubscreen.SmartAlbumEditor
+                    appState.showAlbumTypeChooser = false
+                    appState.moreSubscreen = MoreSubscreen.SmartAlbumEditor
                 }
             )
         }
 
-        if (showCreateAlbum) {
-            val addTarget = pendingAddTarget
+        if (appState.showCreateAlbum) {
+            val addTarget = appState.pendingAddTarget
             val mapBulkState = mapViewModel.state.collectAsStateWithLifecycle().value
             // Estado del alta pendiente según el origen: el error se enseña en la
             // propia hoja del álbum, no en el banner de la pantalla de origen.
             val (addSubmitting, addError) = when (addTarget) {
                 null -> false to null
-                is PendingAddTarget.Asset -> pendingAssetAddSubmitting to pendingAssetAddError
+                is PendingAddTarget.Asset -> appState.pendingAssetAddSubmitting to appState.pendingAssetAddError
                 is PendingAddTarget.Selection -> when (addTarget.source) {
                     null -> timelineState.isBulkMutating to timelineState.error?.userMessage
                     BulkAddSource.Search -> searchState.isBulkMutating to searchState.error?.userMessage
@@ -393,7 +255,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
             fun clearPendingAddError(target: PendingAddTarget?) {
                 when (target) {
                     null -> Unit
-                    is PendingAddTarget.Asset -> pendingAssetAddError = null
+                    is PendingAddTarget.Asset -> appState.pendingAssetAddError = null
                     is PendingAddTarget.Selection -> when (target.source) {
                         null -> timelineViewModel.clearError()
                         BulkAddSource.Search -> searchViewModel.clearError()
@@ -410,14 +272,14 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 }
             }
             fun finishCreateFlow(album: AlbumSummary, addedCount: Int?) {
-                val target = pendingAddTarget
-                showCreateAlbum = false
-                pendingAddTarget = null
-                pendingAddAlbum = null
+                val target = appState.pendingAddTarget
+                appState.showCreateAlbum = false
+                appState.pendingAddTarget = null
+                appState.pendingAddAlbum = null
                 if (target == null || target == PendingAddTarget.Selection(null)) {
                     // Timeline (y creación directa): se abre el álbum recién creado.
-                    selectedTab = MainTab.Albums
-                    selectedAlbum = album
+                    appState.selectedTab = MainTab.Albums
+                    appState.selectedAlbum = album
                 } else if (addedCount != null) {
                     // Desde otras pantallas o el visor se queda donde estaba.
                     showAddedToAlbumSnackbar(addedCount, album.name)
@@ -428,21 +290,21 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                     albumsViewModel.applyAssetsAdded(album.id, added.size)
                     finishCreateFlow(album, added.size)
                 }
-                when (val target = pendingAddTarget) {
+                when (val target = appState.pendingAddTarget) {
                     null -> finishCreateFlow(album, null)
                     is PendingAddTarget.Asset -> {
-                        pendingAssetAddSubmitting = true
-                        pendingAssetAddError = null
+                        appState.pendingAssetAddSubmitting = true
+                        appState.pendingAssetAddError = null
                         coroutineScope.launch {
                             runCatching { albumsRepository.addAsset(album.id, target.item.id) }
                                 .onSuccess {
-                                    pendingAssetAddSubmitting = false
+                                    appState.pendingAssetAddSubmitting = false
                                     albumsViewModel.applyAssetAdded(album.id)
                                     finishCreateFlow(album, 1)
                                 }
                                 .onFailure { error ->
-                                    pendingAssetAddSubmitting = false
-                                    pendingAssetAddError = error.message ?: "No se pudo añadir al álbum"
+                                    appState.pendingAssetAddSubmitting = false
+                                    appState.pendingAssetAddError = error.message ?: "No se pudo añadir al álbum"
                                 }
                         }
                     }
@@ -458,13 +320,13 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                         BulkAddSource.Inbox -> organizeInboxViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Upload -> uploadViewModel.addBatchToAlbum(album.id, onAdded)
                         BulkAddSource.Memory -> memorySelectionViewModel.bulkAddToAlbum(
-                            album.id, memoryDetail?.items.orEmpty(), onAdded
+                            album.id, appState.memoryDetail?.items.orEmpty(), onAdded
                         )
                     }
                 }
             }
-            LaunchedEffect(Unit) { clearPendingAddError(pendingAddTarget) }
-            val createdAlbum = pendingAddAlbum
+            LaunchedEffect(Unit) { clearPendingAddError(appState.pendingAddTarget) }
+            val createdAlbum = appState.pendingAddAlbum
             AlbumFormDialog(
                 title = stringResource(Res.string.album_action_new),
                 // Álbum ya creado y alta fallida: el botón solo reintenta el alta.
@@ -476,10 +338,10 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = albumsState.isMutating || addSubmitting,
                 errorMessage = albumsState.error?.userMessage ?: addError,
                 onDismiss = {
-                    clearPendingAddError(pendingAddTarget)
-                    showCreateAlbum = false
-                    pendingAddTarget = null
-                    pendingAddAlbum = null
+                    clearPendingAddError(appState.pendingAddTarget)
+                    appState.showCreateAlbum = false
+                    appState.pendingAddTarget = null
+                    appState.pendingAddAlbum = null
                     albumsViewModel.clearError()
                 },
                 onConfirm = { name, description ->
@@ -487,7 +349,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                         addPendingTo(createdAlbum)
                     } else {
                         albumsViewModel.create(name, description) { newAlbum ->
-                            if (pendingAddTarget != null) pendingAddAlbum = newAlbum
+                            if (appState.pendingAddTarget != null) appState.pendingAddAlbum = newAlbum
                             addPendingTo(newAlbum)
                         }
                     }
@@ -495,8 +357,8 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        val openedAlbum = selectedAlbum
-        if (showEditAlbum && openedAlbum != null) {
+        val openedAlbum = appState.selectedAlbum
+        if (appState.showEditAlbum && openedAlbum != null) {
             AlbumFormDialog(
                 title = stringResource(Res.string.album_action_edit),
                 confirmLabel = stringResource(Res.string.action_save),
@@ -505,19 +367,19 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = albumDetailState.isMutating,
                 errorMessage = albumDetailState.error?.userMessage,
                 onDismiss = {
-                    showEditAlbum = false
+                    appState.showEditAlbum = false
                     albumDetailViewModel.clearError()
                 },
                 onConfirm = { name, description ->
                     albumDetailViewModel.rename(name, description) { updated ->
-                        showEditAlbum = false
-                        selectedAlbum = openedAlbum.copy(name = updated.name, description = updated.description)
+                        appState.showEditAlbum = false
+                        appState.selectedAlbum = openedAlbum.copy(name = updated.name, description = updated.description)
                         albumsViewModel.applyUpdate(updated)
                     }
                 }
             )
-        } else if (showEditAlbum && pendingActionAlbum != null) {
-            val target = pendingActionAlbum!!
+        } else if (appState.showEditAlbum && appState.pendingActionAlbum != null) {
+            val target = appState.pendingActionAlbum!!
             AlbumFormDialog(
                 title = stringResource(Res.string.album_action_edit),
                 confirmLabel = stringResource(Res.string.action_save),
@@ -526,124 +388,124 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = albumsState.isMutating,
                 errorMessage = albumsState.error?.userMessage,
                 onDismiss = {
-                    showEditAlbum = false
-                    pendingActionAlbum = null
+                    appState.showEditAlbum = false
+                    appState.pendingActionAlbum = null
                     albumsViewModel.clearError()
                 },
                 onConfirm = { name, description ->
                     albumsViewModel.renameAlbum(target.id, name, description) {
-                        showEditAlbum = false
-                        pendingActionAlbum = null
+                        appState.showEditAlbum = false
+                        appState.pendingActionAlbum = null
                     }
                 }
             )
         }
 
-        if (showDeleteAlbum && openedAlbum != null) {
+        if (appState.showDeleteAlbum && openedAlbum != null) {
             DeleteAlbumDialog(
                 albumName = albumDetailState.albumName ?: openedAlbum.name,
                 isSubmitting = albumDetailState.isMutating,
                 errorMessage = albumDetailState.error?.userMessage,
                 onDismiss = {
-                    showDeleteAlbum = false
+                    appState.showDeleteAlbum = false
                     albumDetailViewModel.clearError()
                 },
                 onConfirm = {
                     albumDetailViewModel.delete { albumId ->
-                        showDeleteAlbum = false
+                        appState.showDeleteAlbum = false
                         albumsViewModel.applyDelete(albumId)
-                        selectedAlbum = null
+                        appState.selectedAlbum = null
                     }
                 }
             )
-        } else if (showDeleteAlbum && pendingActionAlbum != null) {
-            val target = pendingActionAlbum!!
+        } else if (appState.showDeleteAlbum && appState.pendingActionAlbum != null) {
+            val target = appState.pendingActionAlbum!!
             DeleteAlbumDialog(
                 albumName = target.name,
                 isSubmitting = albumsState.isMutating,
                 errorMessage = albumsState.error?.userMessage,
                 onDismiss = {
-                    showDeleteAlbum = false
-                    pendingActionAlbum = null
+                    appState.showDeleteAlbum = false
+                    appState.pendingActionAlbum = null
                     albumsViewModel.clearError()
                 },
                 onConfirm = {
                     albumsViewModel.deleteAlbum(target.id) {
-                        showDeleteAlbum = false
-                        pendingActionAlbum = null
+                        appState.showDeleteAlbum = false
+                        appState.pendingActionAlbum = null
                     }
                 }
             )
         }
 
-        if (showLeaveAlbum && openedAlbum != null) {
+        if (appState.showLeaveAlbum && openedAlbum != null) {
             LeaveAlbumDialog(
                 albumName = albumDetailState.albumName ?: openedAlbum.name,
                 isSubmitting = albumDetailState.isMutating,
                 errorMessage = albumDetailState.error?.userMessage,
                 onDismiss = {
-                    showLeaveAlbum = false
+                    appState.showLeaveAlbum = false
                     albumDetailViewModel.clearError()
                 },
                 onConfirm = {
                     albumDetailViewModel.leave { albumId ->
-                        showLeaveAlbum = false
+                        appState.showLeaveAlbum = false
                         albumsViewModel.applyDelete(albumId)
-                        selectedAlbum = null
+                        appState.selectedAlbum = null
                     }
                 }
             )
-        } else if (showLeaveAlbum && pendingActionAlbum != null) {
-            val target = pendingActionAlbum!!
+        } else if (appState.showLeaveAlbum && appState.pendingActionAlbum != null) {
+            val target = appState.pendingActionAlbum!!
             LeaveAlbumDialog(
                 albumName = target.name,
                 isSubmitting = albumsState.isMutating,
                 errorMessage = albumsState.error?.userMessage,
                 onDismiss = {
-                    showLeaveAlbum = false
-                    pendingActionAlbum = null
+                    appState.showLeaveAlbum = false
+                    appState.pendingActionAlbum = null
                     albumsViewModel.clearError()
                 },
                 onConfirm = {
                     albumsViewModel.leaveAlbum(target.id) {
-                        showLeaveAlbum = false
-                        pendingActionAlbum = null
+                        appState.showLeaveAlbum = false
+                        appState.pendingActionAlbum = null
                     }
                 }
             )
         }
 
         // Borrar / salir de varios álbumes seleccionados en la lista.
-        if (showBulkDeleteAlbums || showBulkLeaveAlbums) {
+        if (appState.showBulkDeleteAlbums || appState.showBulkLeaveAlbums) {
             com.photonne.app.ui.album.AlbumsBulkConfirmDialog(
-                leaving = showBulkLeaveAlbums,
+                leaving = appState.showBulkLeaveAlbums,
                 state = albumsState,
                 viewModel = albumsViewModel,
                 snackbar = snackbarController,
                 scope = coroutineScope,
                 onClose = {
-                    showBulkDeleteAlbums = false
-                    showBulkLeaveAlbums = false
+                    appState.showBulkDeleteAlbums = false
+                    appState.showBulkLeaveAlbums = false
                 }
             )
         }
 
-        if (showShares && openedAlbum != null) {
+        if (appState.showShares && openedAlbum != null) {
             ManageSharesDialog(
                 state = albumSharesState,
                 onDismiss = {
-                    showShares = false
+                    appState.showShares = false
                     albumSharesViewModel.clearError()
                 },
-                onCreate = { showCreateShare = true },
-                onEdit = { link -> editingShareLink = link },
+                onCreate = { appState.showCreateShare = true },
+                onEdit = { link -> appState.editingShareLink = link },
                 // Revocar mata el enlace para todo el mundo: confirma, como en
                 // "Mis enlaces".
-                onRevoke = { token -> revokingShareToken = token }
+                onRevoke = { token -> appState.revokingShareToken = token }
             )
         }
 
-        revokingShareToken?.let { token ->
+        appState.revokingShareToken?.let { token ->
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.share_revoke_confirm_title),
                 message = stringResource(Res.string.share_revoke_confirm_message),
@@ -651,14 +513,14 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = true,
                 isSubmitting = albumSharesState.isMutating,
                 errorMessage = albumSharesState.error?.userMessage,
-                onDismiss = { revokingShareToken = null },
+                onDismiss = { appState.revokingShareToken = null },
                 onConfirm = {
-                    albumSharesViewModel.revoke(token) { revokingShareToken = null }
+                    albumSharesViewModel.revoke(token) { appState.revokingShareToken = null }
                 }
             )
         }
 
-        revokingAlbumMember?.let { member ->
+        appState.revokingAlbumMember?.let { member ->
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.member_remove_confirm_title),
                 message = stringResource(
@@ -668,24 +530,24 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = true,
                 isSubmitting = albumPermissionsState.isMutating,
                 errorMessage = albumPermissionsState.error?.userMessage,
-                onDismiss = { revokingAlbumMember = null },
+                onDismiss = { appState.revokingAlbumMember = null },
                 onConfirm = {
                     albumPermissionsViewModel.revoke(member) { newCount ->
-                        revokingAlbumMember = null
-                        selectedAlbum?.let { album ->
+                        appState.revokingAlbumMember = null
+                        appState.selectedAlbum?.let { album ->
                             val updated = album.copy(
                                 isShared = newCount > 0,
                                 sharedWithCount = newCount
                             )
-                            selectedAlbum = updated
+                            appState.selectedAlbum = updated
                             albumsViewModel.applyUpdate(updated)
                         }
-                        pendingActionAlbum?.let { album ->
+                        appState.pendingActionAlbum?.let { album ->
                             val updated = album.copy(
                                 isShared = newCount > 0,
                                 sharedWithCount = newCount
                             )
-                            pendingActionAlbum = updated
+                            appState.pendingActionAlbum = updated
                             albumsViewModel.applyUpdate(updated)
                         }
                     }
@@ -693,7 +555,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        revokingFolderMember?.let { member ->
+        appState.revokingFolderMember?.let { member ->
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.member_remove_confirm_title),
                 message = stringResource(
@@ -703,24 +565,24 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = true,
                 isSubmitting = folderPermissionsState.isMutating,
                 errorMessage = folderPermissionsState.error?.userMessage,
-                onDismiss = { revokingFolderMember = null },
+                onDismiss = { appState.revokingFolderMember = null },
                 onConfirm = {
                     folderPermissionsViewModel.revoke(member) { newCount ->
-                        revokingFolderMember = null
-                        selectedFolder?.let { folder ->
+                        appState.revokingFolderMember = null
+                        appState.selectedFolder?.let { folder ->
                             val updated = folder.copy(
                                 isShared = newCount > 0,
                                 sharedWithCount = newCount
                             )
-                            selectedFolder = updated
+                            appState.selectedFolder = updated
                             foldersViewModel.applyUpdate(updated)
                         }
-                        pendingActionFolder?.let { folder ->
+                        appState.pendingActionFolder?.let { folder ->
                             val updated = folder.copy(
                                 isShared = newCount > 0,
                                 sharedWithCount = newCount
                             )
-                            pendingActionFolder = updated
+                            appState.pendingActionFolder = updated
                             foldersViewModel.applyUpdate(updated)
                         }
                     }
@@ -728,27 +590,27 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        if (showMembers && (openedAlbum != null || pendingActionAlbum != null)) {
+        if (appState.showMembers && (openedAlbum != null || appState.pendingActionAlbum != null)) {
             ManagePermissionsDialog(
                 state = albumPermissionsState,
                 onDismiss = {
-                    showMembers = false
-                    if (openedAlbum == null) pendingActionAlbum = null
+                    appState.showMembers = false
+                    if (openedAlbum == null) appState.pendingActionAlbum = null
                     albumPermissionsViewModel.clearError()
                 },
-                onInvite = { showInviteMember = true },
+                onInvite = { appState.showInviteMember = true },
                 onChangeRole = { member, role -> albumPermissionsViewModel.changeRole(member, role) },
-                onRevoke = { member -> revokingAlbumMember = member }
+                onRevoke = { member -> appState.revokingAlbumMember = member }
             )
         }
 
-        if (showInviteMember && (openedAlbum != null || pendingActionAlbum != null)) {
+        if (appState.showInviteMember && (openedAlbum != null || appState.pendingActionAlbum != null)) {
             InviteMemberDialog(
                 candidates = albumPermissionsState.invitableUsers,
                 isSubmitting = albumPermissionsState.isMutating,
                 errorMessage = albumPermissionsState.error?.userMessage,
                 onDismiss = {
-                    showInviteMember = false
+                    appState.showInviteMember = false
                     albumPermissionsViewModel.clearError()
                 },
                 onInvite = { selectedUser, role ->
@@ -758,35 +620,35 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                         user = selectedUser,
                         role = role,
                         onMembershipChanged = { newCount ->
-                            selectedAlbum?.let { album ->
+                            appState.selectedAlbum?.let { album ->
                                 val updated = album.copy(
                                     isShared = true,
                                     sharedWithCount = newCount
                                 )
-                                selectedAlbum = updated
+                                appState.selectedAlbum = updated
                                 albumsViewModel.applyUpdate(updated)
                             }
-                            pendingActionAlbum?.let { album ->
+                            appState.pendingActionAlbum?.let { album ->
                                 val updated = album.copy(
                                     isShared = true,
                                     sharedWithCount = newCount
                                 )
-                                pendingActionAlbum = updated
+                                appState.pendingActionAlbum = updated
                                 albumsViewModel.applyUpdate(updated)
                             }
                         },
-                        onSuccess = { showInviteMember = false }
+                        onSuccess = { appState.showInviteMember = false }
                     )
                 }
             )
         }
 
-        if (showCreateShare && openedAlbum != null) {
+        if (appState.showCreateShare && openedAlbum != null) {
             CreateShareDialog(
                 isSubmitting = albumSharesState.isMutating,
                 errorMessage = albumSharesState.error?.userMessage,
                 onDismiss = {
-                    showCreateShare = false
+                    appState.showCreateShare = false
                     albumSharesViewModel.clearError()
                 },
                 onConfirm = { expiresAt, password, allowDownload, maxViews, allowUpload ->
@@ -797,19 +659,19 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                         maxViews = maxViews,
                         allowUpload = allowUpload
                     ) {
-                        showCreateShare = false
+                        appState.showCreateShare = false
                     }
                 }
             )
         }
 
-        editingShareLink?.let { link ->
+        appState.editingShareLink?.let { link ->
             EditShareDialog(
                 link = link,
                 isSubmitting = albumSharesState.isMutating,
                 errorMessage = albumSharesState.error?.userMessage,
                 onDismiss = {
-                    editingShareLink = null
+                    appState.editingShareLink = null
                     albumSharesViewModel.clearError()
                 },
                 onConfirm = { expiresAt, password, allowDownload, maxViews, allowUpload ->
@@ -821,13 +683,13 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                         maxViews = maxViews,
                         allowUpload = allowUpload
                     ) {
-                        editingShareLink = null
+                        appState.editingShareLink = null
                     }
                 }
             )
         }
 
-        if (bulkAddToAlbum) {
+        if (appState.bulkAddToAlbum) {
             // Un error viejo de otra acción no debe estrenar el diálogo.
             LaunchedEffect(Unit) { timelineViewModel.clearError() }
             AddToAlbumDialog(
@@ -836,9 +698,9 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = timelineState.isBulkMutating,
                 errorMessage = timelineState.error?.userMessage,
                 onCreateNew = {
-                    bulkAddToAlbum = false
-                    pendingAddTarget = PendingAddTarget.Selection(null)
-                    showCreateAlbum = true
+                    appState.bulkAddToAlbum = false
+                    appState.pendingAddTarget = PendingAddTarget.Selection(null)
+                    appState.showCreateAlbum = true
                 },
                 onAlbumSelected = { album ->
                     // El diálogo se queda abierto hasta el resultado: si falla,
@@ -847,11 +709,11 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                     timelineViewModel.bulkAddToAlbum(album.id) { added ->
                         albumsViewModel.applyAssetsAdded(album.id, added.size)
                         albumDetailViewModel.applyAssetsAdded(album.id, added)
-                        bulkAddToAlbum = false
+                        appState.bulkAddToAlbum = false
                         showAddedToAlbumSnackbar(added.size, album.name)
                     }
                 },
-                onDismiss = { bulkAddToAlbum = false }
+                onDismiss = { appState.bulkAddToAlbum = false }
             )
         }
     }
@@ -861,10 +723,10 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
 @Composable
 private fun FolderDialogs(host: AuthenticatedDialogsHost) {
     with(host) {
-        if (showCreateFolder) {
+        if (appState.showCreateFolder) {
             // When a folder is open, create inside it (a subfolder); shared-space
             // is a root-level concept only, so the option is hidden there.
-            val createParent = selectedFolder
+            val createParent = appState.selectedFolder
             FolderFormDialog(
                 title = stringResource(Res.string.folder_action_new),
                 confirmLabel = stringResource(Res.string.action_create),
@@ -872,7 +734,7 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                 errorMessage = foldersState.error?.userMessage,
                 showSharedSpaceOption = createParent == null,
                 onDismiss = {
-                    showCreateFolder = false
+                    appState.showCreateFolder = false
                     foldersViewModel.clearError()
                 },
                 onConfirm = { name, isSharedSpace ->
@@ -881,15 +743,15 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                         parentFolderId = createParent?.id,
                         isSharedSpace = isSharedSpace
                     ) {
-                        showCreateFolder = false
+                        appState.showCreateFolder = false
                         if (createParent != null) folderDetailViewModel.refresh()
                     }
                 }
             )
         }
 
-        val openedFolder = selectedFolder
-        if (showEditFolder && openedFolder != null) {
+        val openedFolder = appState.selectedFolder
+        if (appState.showEditFolder && openedFolder != null) {
             FolderFormDialog(
                 title = stringResource(Res.string.folder_action_edit),
                 confirmLabel = stringResource(Res.string.action_save),
@@ -897,19 +759,19 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = folderDetailState.isMutating,
                 errorMessage = folderDetailState.error?.userMessage,
                 onDismiss = {
-                    showEditFolder = false
+                    appState.showEditFolder = false
                     folderDetailViewModel.clearError()
                 },
                 onConfirm = { name, _ ->
                     folderDetailViewModel.rename(name) { updated ->
-                        showEditFolder = false
-                        selectedFolder = openedFolder.copy(name = updated.name, path = updated.path)
+                        appState.showEditFolder = false
+                        appState.selectedFolder = openedFolder.copy(name = updated.name, path = updated.path)
                         foldersViewModel.applyUpdate(updated)
                     }
                 }
             )
-        } else if (showEditFolder && pendingActionFolder != null) {
-            val target = pendingActionFolder!!
+        } else if (appState.showEditFolder && appState.pendingActionFolder != null) {
+            val target = appState.pendingActionFolder!!
             FolderFormDialog(
                 title = stringResource(Res.string.folder_action_edit),
                 confirmLabel = stringResource(Res.string.action_save),
@@ -917,66 +779,66 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = foldersState.isMutating,
                 errorMessage = foldersState.error?.userMessage,
                 onDismiss = {
-                    showEditFolder = false
-                    pendingActionFolder = null
+                    appState.showEditFolder = false
+                    appState.pendingActionFolder = null
                     foldersViewModel.clearError()
                 },
                 onConfirm = { name, _ ->
                     foldersViewModel.renameFolder(target.id, name) {
-                        showEditFolder = false
-                        pendingActionFolder = null
+                        appState.showEditFolder = false
+                        appState.pendingActionFolder = null
                     }
                 }
             )
         }
 
-        if (showDeleteFolder && openedFolder != null) {
+        if (appState.showDeleteFolder && openedFolder != null) {
             DeleteFolderDialog(
                 folderName = folderDetailState.folderName ?: openedFolder.name.ifBlank { openedFolder.path },
                 isSubmitting = folderDetailState.isMutating,
                 itemCount = openedFolder.assetCount,
                 errorMessage = folderDetailState.error?.userMessage,
                 onDismiss = {
-                    showDeleteFolder = false
+                    appState.showDeleteFolder = false
                     folderDetailViewModel.clearError()
                 },
                 onConfirm = {
                     folderDetailViewModel.delete { folderId ->
-                        showDeleteFolder = false
+                        appState.showDeleteFolder = false
                         foldersViewModel.applyDelete(folderId)
-                        folderBack()
+                        appState.folderBack()
                     }
                 }
             )
-        } else if (showDeleteFolder && pendingActionFolder != null) {
-            val target = pendingActionFolder!!
+        } else if (appState.showDeleteFolder && appState.pendingActionFolder != null) {
+            val target = appState.pendingActionFolder!!
             DeleteFolderDialog(
                 folderName = target.name.ifBlank { target.path },
                 isSubmitting = foldersState.isMutating,
                 itemCount = target.assetCount,
                 errorMessage = foldersState.error?.userMessage,
                 onDismiss = {
-                    showDeleteFolder = false
-                    pendingActionFolder = null
+                    appState.showDeleteFolder = false
+                    appState.pendingActionFolder = null
                     foldersViewModel.clearError()
                 },
                 onConfirm = {
                     foldersViewModel.deleteFolder(target.id) {
-                        showDeleteFolder = false
-                        pendingActionFolder = null
+                        appState.showDeleteFolder = false
+                        appState.pendingActionFolder = null
                     }
                 }
             )
         }
 
         // Varias carpetas seleccionadas en la lista a la papelera.
-        if (showBulkDeleteFolders) {
+        if (appState.showBulkDeleteFolders) {
             com.photonne.app.ui.folder.FoldersBulkDeleteDialog(
                 state = foldersState,
                 viewModel = foldersViewModel,
                 snackbar = snackbarController,
                 scope = coroutineScope,
-                onClose = { showBulkDeleteFolders = false }
+                onClose = { appState.showBulkDeleteFolders = false }
             )
         }
 
@@ -984,7 +846,7 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
         // the top-level folder selection actions but target a child of the open
         // folder via FolderDetailViewModel, which patches its subfolder list in place.
         val selectedSubfolder = folderDetailState.selectedSubfolder
-        if (showEditSubfolder && selectedSubfolder != null) {
+        if (appState.showEditSubfolder && selectedSubfolder != null) {
             FolderFormDialog(
                 title = stringResource(Res.string.folder_action_edit),
                 confirmLabel = stringResource(Res.string.action_save),
@@ -992,58 +854,58 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = folderDetailState.isMutating,
                 errorMessage = folderDetailState.error?.userMessage,
                 onDismiss = {
-                    showEditSubfolder = false
+                    appState.showEditSubfolder = false
                     folderDetailViewModel.clearError()
                 },
                 onConfirm = { name, _ ->
                     folderDetailViewModel.renameSubfolder(selectedSubfolder.id, name) {
-                        showEditSubfolder = false
+                        appState.showEditSubfolder = false
                         foldersViewModel.refresh()
                     }
                 }
             )
         }
 
-        if (showDeleteSubfolder && selectedSubfolder != null) {
+        if (appState.showDeleteSubfolder && selectedSubfolder != null) {
             DeleteFolderDialog(
                 folderName = selectedSubfolder.name.ifBlank { selectedSubfolder.path },
                 isSubmitting = folderDetailState.isMutating,
                 itemCount = selectedSubfolder.assetCount,
                 errorMessage = folderDetailState.error?.userMessage,
                 onDismiss = {
-                    showDeleteSubfolder = false
+                    appState.showDeleteSubfolder = false
                     folderDetailViewModel.clearError()
                 },
                 onConfirm = {
                     folderDetailViewModel.deleteSubfolder(selectedSubfolder.id) {
-                        showDeleteSubfolder = false
+                        appState.showDeleteSubfolder = false
                         foldersViewModel.refresh()
                     }
                 }
             )
         }
 
-        if (showFolderMembers && (openedFolder != null || pendingActionFolder != null)) {
+        if (appState.showFolderMembers && (openedFolder != null || appState.pendingActionFolder != null)) {
             ManageFolderPermissionsDialog(
                 state = folderPermissionsState,
                 onDismiss = {
-                    showFolderMembers = false
-                    if (openedFolder == null) pendingActionFolder = null
+                    appState.showFolderMembers = false
+                    if (openedFolder == null) appState.pendingActionFolder = null
                     folderPermissionsViewModel.clearError()
                 },
-                onInvite = { showInviteFolderMember = true },
+                onInvite = { appState.showInviteFolderMember = true },
                 onChangeRole = { member, role -> folderPermissionsViewModel.changeRole(member, role) },
-                onRevoke = { member -> revokingFolderMember = member }
+                onRevoke = { member -> appState.revokingFolderMember = member }
             )
         }
 
-        if (showInviteFolderMember && (openedFolder != null || pendingActionFolder != null)) {
+        if (appState.showInviteFolderMember && (openedFolder != null || appState.pendingActionFolder != null)) {
             InviteFolderMemberDialog(
                 candidates = folderPermissionsState.invitableUsers,
                 isSubmitting = folderPermissionsState.isMutating,
                 errorMessage = folderPermissionsState.error?.userMessage,
                 onDismiss = {
-                    showInviteFolderMember = false
+                    appState.showInviteFolderMember = false
                     folderPermissionsViewModel.clearError()
                 },
                 onInvite = { selectedUser, role ->
@@ -1052,30 +914,30 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                         user = selectedUser,
                         role = role,
                         onMembershipChanged = { newCount ->
-                            selectedFolder?.let { folder ->
+                            appState.selectedFolder?.let { folder ->
                                 val updated = folder.copy(
                                     isShared = true,
                                     sharedWithCount = newCount
                                 )
-                                selectedFolder = updated
+                                appState.selectedFolder = updated
                                 foldersViewModel.applyUpdate(updated)
                             }
-                            pendingActionFolder?.let { folder ->
+                            appState.pendingActionFolder?.let { folder ->
                                 val updated = folder.copy(
                                     isShared = true,
                                     sharedWithCount = newCount
                                 )
-                                pendingActionFolder = updated
+                                appState.pendingActionFolder = updated
                                 foldersViewModel.applyUpdate(updated)
                             }
                         },
-                        onSuccess = { showInviteFolderMember = false }
+                        onSuccess = { appState.showInviteFolderMember = false }
                     )
                 }
             )
         }
 
-        if (showMoveFolder && openedFolder != null) {
+        if (appState.showMoveFolder && openedFolder != null) {
             com.photonne.app.ui.folder.FolderPickerDialog(
                 title = stringResource(Res.string.folder_move_title),
                 // Mismos destinos que los otros selectores (toda la profundidad,
@@ -1093,13 +955,13 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                     foldersState.moveDestinations.any { it.id == parentId }
                 },
                 onDismiss = {
-                    showMoveFolder = false
+                    appState.showMoveFolder = false
                     folderDetailViewModel.clearError()
                 },
                 onConfirm = { targetParentId, _ ->
                     folderDetailViewModel.move(targetParentId) { updated ->
-                        showMoveFolder = false
-                        selectedFolder = openedFolder.copy(
+                        appState.showMoveFolder = false
+                        appState.selectedFolder = openedFolder.copy(
                             path = updated.path,
                             parentFolderId = updated.parentFolderId
                         )
@@ -1110,20 +972,20 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
         }
 
         // Mover las carpetas seleccionadas en la lista (una o varias).
-        if (showBulkMoveFolders) {
+        if (appState.showBulkMoveFolders) {
             com.photonne.app.ui.folder.FoldersBulkMoveDialog(
                 state = foldersState,
                 viewModel = foldersViewModel,
                 snackbar = snackbarController,
                 scope = coroutineScope,
-                onClose = { showBulkMoveFolders = false }
+                onClose = { appState.showBulkMoveFolders = false }
             )
         }
 
-        if (showAlbumsFilters) {
+        if (appState.showAlbumsFilters) {
             com.photonne.app.ui.album.AlbumsFiltersSheet(
                 state = albumsState,
-                onDismiss = { showAlbumsFilters = false },
+                onDismiss = { appState.showAlbumsFilters = false },
                 onScopeChange = albumsViewModel::setScope,
                 onSortChange = albumsViewModel::setSort,
                 onDirectionChange = albumsViewModel::setDirection,
@@ -1132,10 +994,10 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        if (showFoldersFilters) {
+        if (appState.showFoldersFilters) {
             com.photonne.app.ui.folder.FoldersFiltersSheet(
                 state = foldersState,
-                onDismiss = { showFoldersFilters = false },
+                onDismiss = { appState.showFoldersFilters = false },
                 onScopeChange = foldersViewModel::setScope,
                 onSortChange = foldersViewModel::setSort,
                 onDirectionChange = foldersViewModel::setDirection,
@@ -1143,10 +1005,10 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        if (showSearchFilters) {
+        if (appState.showSearchFilters) {
             com.photonne.app.ui.search.SearchFiltersSheet(
                 state = searchState,
-                onDismiss = { showSearchFilters = false },
+                onDismiss = { appState.showSearchFilters = false },
                 onDateRangeChange = searchViewModel::setDateRange,
                 onOcrChange = searchViewModel::setOcrText,
                 onToggleObject = searchViewModel::toggleObjectLabel,
@@ -1163,10 +1025,10 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
 @Composable
 private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
     with(host) {
-        val openedFolder = selectedFolder
+        val openedFolder = appState.selectedFolder
         // One add-to-album dialog for every screen's selection bar; [bulkAddSource]
         // says whose selection it adds.
-        bulkAddSource?.let { source ->
+        appState.bulkAddSource?.let { source ->
             val (isSubmitting, errorMessage) = when (source) {
                 BulkAddSource.Search -> searchState.isBulkMutating to searchState.error?.userMessage
                 BulkAddSource.Map -> mapViewModel.state.collectAsStateWithLifecycle().value
@@ -1200,9 +1062,9 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = isSubmitting,
                 errorMessage = errorMessage,
                 onCreateNew = {
-                    bulkAddSource = null
-                    pendingAddTarget = PendingAddTarget.Selection(source)
-                    showCreateAlbum = true
+                    appState.bulkAddSource = null
+                    appState.pendingAddTarget = PendingAddTarget.Selection(source)
+                    appState.showCreateAlbum = true
                 },
                 onAlbumSelected = { album ->
                     val onAdded: (List<com.photonne.app.data.models.TimelineItem>) -> Unit = { added ->
@@ -1212,7 +1074,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                         if (source != BulkAddSource.Album) {
                             albumDetailViewModel.applyAssetsAdded(album.id, added)
                         }
-                        bulkAddSource = null
+                        appState.bulkAddSource = null
                         showAddedToAlbumSnackbar(added.size, album.name)
                     }
                     when (source) {
@@ -1226,15 +1088,15 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                         BulkAddSource.Inbox -> organizeInboxViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Upload -> uploadViewModel.addBatchToAlbum(album.id, onAdded)
                         BulkAddSource.Memory -> memorySelectionViewModel.bulkAddToAlbum(
-                            album.id, memoryDetail?.items.orEmpty(), onAdded
+                            album.id, appState.memoryDetail?.items.orEmpty(), onAdded
                         )
                     }
                 },
-                onDismiss = { bulkAddSource = null }
+                onDismiss = { appState.bulkAddSource = null }
             )
         }
 
-        if (showMoveSelectedAssets && openedFolder != null) {
+        if (appState.showMoveSelectedAssets && openedFolder != null) {
             com.photonne.app.ui.folder.FolderPickerDialog(
                 title = stringResource(Res.string.folder_move_assets_title),
                 folders = foldersState.moveDestinations,
@@ -1244,7 +1106,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                 includeRoot = false,
                 recentDestinationIds = recentDestinations,
                 onDismiss = {
-                    showMoveSelectedAssets = false
+                    appState.showMoveSelectedAssets = false
                     folderDetailViewModel.clearError()
                 },
                 onConfirm = { targetFolderId, _ ->
@@ -1253,10 +1115,10 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                         val targetName = foldersState.moveDestinations
                             .firstOrNull { it.id == targetFolderId }?.name
                         folderDetailViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
-                            showMoveSelectedAssets = false
+                            appState.showMoveSelectedAssets = false
                             val moved = movedIds.size
                             if (moved > 0) {
-                                selectedFolder = openedFolder.copy(
+                                appState.selectedFolder = openedFolder.copy(
                                     assetCount = (openedFolder.assetCount - moved).coerceAtLeast(0)
                                 )
                                 foldersViewModel.refreshOrganizeCount()
@@ -1298,17 +1160,17 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        if (showMoveSelectedAssetsTimeline) {
+        if (appState.showMoveSelectedAssetsTimeline) {
             MoveAssetsToFolderDialog(
                 isSubmitting = timelineState.isBulkMutating,
                 errorMessage = timelineState.error?.userMessage,
                 onDismiss = {
-                    showMoveSelectedAssetsTimeline = false
+                    appState.showMoveSelectedAssetsTimeline = false
                     timelineViewModel.clearError()
                 },
                 onMove = { targetFolderId, targetName ->
                     timelineViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
-                        showMoveSelectedAssetsTimeline = false
+                        appState.showMoveSelectedAssetsTimeline = false
                         foldersViewModel.refreshOrganizeCount()
                         showMovedToFolderSnackbar(movedIds.size, targetName)
                     }
@@ -1316,20 +1178,20 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        moveSelectionRequest?.let { request ->
+        appState.moveSelectionRequest?.let { request ->
             MoveAssetsToFolderDialog(
-                isSubmitting = moveSelectionSubmitting,
-                errorMessage = moveSelectionError,
+                isSubmitting = appState.moveSelectionSubmitting,
+                errorMessage = appState.moveSelectionError,
                 onDismiss = {
-                    if (!moveSelectionSubmitting) {
-                        moveSelectionRequest = null
-                        moveSelectionError = null
+                    if (!appState.moveSelectionSubmitting) {
+                        appState.moveSelectionRequest = null
+                        appState.moveSelectionError = null
                     }
                 },
                 onMove = { targetFolderId, targetName ->
-                    if (!moveSelectionSubmitting) {
-                        moveSelectionSubmitting = true
-                        moveSelectionError = null
+                    if (!appState.moveSelectionSubmitting) {
+                        appState.moveSelectionSubmitting = true
+                        appState.moveSelectionError = null
                         coroutineScope.launch {
                             runCatching {
                                 foldersRepository.moveAssets(
@@ -1338,14 +1200,14 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                                     assetIds = request.assetIds
                                 )
                             }.onSuccess {
-                                moveSelectionSubmitting = false
-                                moveSelectionRequest = null
+                                appState.moveSelectionSubmitting = false
+                                appState.moveSelectionRequest = null
                                 request.onMoved()
                                 foldersViewModel.refreshOrganizeCount()
                                 showMovedToFolderSnackbar(request.assetIds.size, targetName)
                             }.onFailure { error ->
-                                moveSelectionSubmitting = false
-                                moveSelectionError =
+                                appState.moveSelectionSubmitting = false
+                                appState.moveSelectionError =
                                     errorFactory.from(error, "No se pudo mover").userMessage
                             }
                         }
@@ -1354,7 +1216,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        if (showMoveSelectedAssetsInbox) {
+        if (appState.showMoveSelectedAssetsInbox) {
             com.photonne.app.ui.folder.FolderPickerDialog(
                 title = stringResource(Res.string.folder_move_assets_title),
                 folders = foldersState.moveDestinations,
@@ -1367,17 +1229,17 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                     com.photonne.app.data.models.YearCount(it.year, it.count)
                 },
                 onDismiss = {
-                    showMoveSelectedAssetsInbox = false
+                    appState.showMoveSelectedAssetsInbox = false
                     organizeInboxViewModel.clearError()
                 },
                 onConfirm = { targetFolderId, organizeByYear ->
                     if (targetFolderId != null) {
                         recentDestinationsStore.record(targetFolderId)
-                        showMoveSelectedAssetsInbox = false
+                        appState.showMoveSelectedAssetsInbox = false
                         // With year foldering, review the split before committing;
                         // otherwise (or if the preview failed to load) move straight away.
                         if (organizeByYear && organizeInboxState.moveYearGroups.isNotEmpty()) {
-                            inboxReviewTarget = targetFolderId
+                            appState.inboxReviewTarget = targetFolderId
                         } else {
                             organizeInboxViewModel.moveSelectedAssets(targetFolderId, organizeByYear) {
                                 foldersViewModel.refreshOrganizeCount()
@@ -1388,21 +1250,21 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        inboxReviewTarget?.let { target ->
+        appState.inboxReviewTarget?.let { target ->
             com.photonne.app.ui.organize.MoveReviewScreen(
                 movedTotal = organizeInboxState.moveYearGroups.sumOf { it.count },
                 groups = organizeInboxState.moveYearGroups,
                 baseUrl = apiBaseUrl,
                 isMoving = organizeInboxState.isBulkMutating,
                 organizeByYear = true,
-                onBack = { inboxReviewTarget = null },
+                onBack = { appState.inboxReviewTarget = null },
                 onConfirm = { keptIds ->
                     organizeInboxViewModel.moveSelectedAssets(
                         targetFolderId = target,
                         organizeByYear = true,
                         onlyIds = keptIds
                     ) {
-                        inboxReviewTarget = null
+                        appState.inboxReviewTarget = null
                         foldersViewModel.refreshOrganizeCount()
                     }
                 }
@@ -1412,7 +1274,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
         // Misma rejilla de revisión para el flujo por condiciones, hospedada también
         // aquí FUERA del MainScaffold: dentro del contenido quedaba por debajo de la
         // nav flotante y su botón de confirmar era inalcanzable.
-        if (moreSubscreen == MoreSubscreen.OrganizeRule) {
+        if (appState.moreSubscreen == MoreSubscreen.OrganizeRule) {
             organizeRuleState.reviewGroups?.let { groups ->
                 com.photonne.app.ui.organize.MoveReviewScreen(
                     // El total sale de los grupos que se están revisando, NO del
@@ -1428,20 +1290,20 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                         organizeRuleViewModel.move(onlyIds = keptIds) { outcome ->
                             // With a year split, confirm the distribution first; the
                             // navigation back happens when the summary is dismissed.
-                            if (outcome.yearBreakdown.isNotEmpty()) organizeRuleSummary = outcome
-                            else organizeRuleMoved()
+                            if (outcome.yearBreakdown.isNotEmpty()) appState.organizeRuleSummary = outcome
+                            else appState.organizeRuleMoved()
                         }
                     }
                 )
             }
         }
 
-        organizeRuleSummary?.let { outcome ->
+        appState.organizeRuleSummary?.let { outcome ->
             com.photonne.app.ui.organize.MoveSummaryDialog(
                 outcome = outcome,
                 onDismiss = {
-                    organizeRuleSummary = null
-                    organizeRuleMoved()
+                    appState.organizeRuleSummary = null
+                    appState.organizeRuleMoved()
                 }
             )
         }
@@ -1453,7 +1315,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        val addToAlbumState = addToAlbum
+        val addToAlbumState = appState.addToAlbum
         if (addToAlbumState != null) {
             AddToAlbumDialog(
                 albums = albumsState.albums,
@@ -1461,30 +1323,30 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                 isSubmitting = addToAlbumState.isSubmitting,
                 errorMessage = addToAlbumState.errorMessage,
                 onCreateNew = {
-                    addToAlbum = null
-                    pendingAddTarget = PendingAddTarget.Asset(addToAlbumState.asset)
-                    pendingAssetAddError = null
-                    showCreateAlbum = true
+                    appState.addToAlbum = null
+                    appState.pendingAddTarget = PendingAddTarget.Asset(addToAlbumState.asset)
+                    appState.pendingAssetAddError = null
+                    appState.showCreateAlbum = true
                 },
                 onAlbumSelected = { album ->
-                    addToAlbum = addToAlbumState.copy(isSubmitting = true, errorMessage = null)
+                    appState.addToAlbum = addToAlbumState.copy(isSubmitting = true, errorMessage = null)
                     coroutineScope.launch {
                         runCatching { albumsRepository.addAsset(album.id, addToAlbumState.asset.id) }
                             .onSuccess {
                                 albumsViewModel.applyAssetAdded(album.id)
                                 albumDetailViewModel.applyAssetAdded(album.id, addToAlbumState.asset)
-                                addToAlbum = null
+                                appState.addToAlbum = null
                                 showAddedToAlbumSnackbar(1, album.name)
                             }
                             .onFailure { error ->
-                                addToAlbum = addToAlbumState.copy(
+                                appState.addToAlbum = addToAlbumState.copy(
                                     isSubmitting = false,
                                     errorMessage = error.message ?: "Failed to add to album"
                                 )
                             }
                     }
                 },
-                onDismiss = { addToAlbum = null }
+                onDismiss = { appState.addToAlbum = null }
             )
         }
     }
@@ -1494,7 +1356,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
 @Composable
 private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
     with(host) {
-        if (showLogoutConfirm) {
+        if (appState.showLogoutConfirm) {
             val pendingBackup = if (deviceBackupState.isBackupEnabled) {
                 deviceBackupState.pendingEntries.size
             } else 0
@@ -1510,15 +1372,15 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 confirmLabel = stringResource(Res.string.action_logout),
                 isDestructive = true,
                 isSubmitting = false,
-                onDismiss = { showLogoutConfirm = false },
+                onDismiss = { appState.showLogoutConfirm = false },
                 onConfirm = {
-                    showLogoutConfirm = false
+                    appState.showLogoutConfirm = false
                     authRepository.logout()
                 }
             )
         }
 
-        if (showAcceptAllSuggestions) {
+        if (appState.showAcceptAllSuggestions) {
             LaunchedEffect(Unit) { personSuggestionsViewModel.clearError() }
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.people_suggestions_accept_all_title),
@@ -1531,11 +1393,11 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = false,
                 isSubmitting = suggestionsState.isBulkMutating,
                 errorMessage = suggestionsState.error?.userMessage,
-                onDismiss = { showAcceptAllSuggestions = false },
+                onDismiss = { appState.showAcceptAllSuggestions = false },
                 onConfirm = {
                     personSuggestionsViewModel.acceptAll { affected ->
-                        showAcceptAllSuggestions = false
-                        selectedPerson?.let { personDetailViewModel.open(it.id, it.name) }
+                        appState.showAcceptAllSuggestions = false
+                        appState.selectedPerson?.let { personDetailViewModel.open(it.id, it.name) }
                         peopleViewModel.refresh()
                         coroutineScope.launch {
                             snackbarController.show(
@@ -1550,7 +1412,7 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        if (showDismissAllSuggestions) {
+        if (appState.showDismissAllSuggestions) {
             LaunchedEffect(Unit) { personSuggestionsViewModel.clearError() }
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.people_suggestions_dismiss_all_title),
@@ -1563,10 +1425,10 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = true,
                 isSubmitting = suggestionsState.isBulkMutating,
                 errorMessage = suggestionsState.error?.userMessage,
-                onDismiss = { showDismissAllSuggestions = false },
+                onDismiss = { appState.showDismissAllSuggestions = false },
                 onConfirm = {
                     personSuggestionsViewModel.dismissAll { affected ->
-                        showDismissAllSuggestions = false
+                        appState.showDismissAllSuggestions = false
                         coroutineScope.launch {
                             snackbarController.show(
                                 org.jetbrains.compose.resources.getPluralString(
@@ -1580,7 +1442,7 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        if (showUnarchiveAll) {
+        if (appState.showUnarchiveAll) {
             LaunchedEffect(Unit) { archivedViewModel.clearError() }
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.archive_action_unarchive_all_title),
@@ -1589,17 +1451,17 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = false,
                 isSubmitting = archivedState.isBulkMutating,
                 errorMessage = archivedState.error?.userMessage,
-                onDismiss = { showUnarchiveAll = false },
+                onDismiss = { appState.showUnarchiveAll = false },
                 onConfirm = {
                     archivedViewModel.unarchiveAll {
-                        showUnarchiveAll = false
+                        appState.showUnarchiveAll = false
                         timelineViewModel.refresh()
                     }
                 }
             )
         }
 
-        if (showRestoreAllTrash) {
+        if (appState.showRestoreAllTrash) {
             LaunchedEffect(Unit) { trashViewModel.clearError() }
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.trash_action_restore_all),
@@ -1608,17 +1470,17 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = false,
                 isSubmitting = trashState.isBulkMutating,
                 errorMessage = trashState.error?.userMessage,
-                onDismiss = { showRestoreAllTrash = false },
+                onDismiss = { appState.showRestoreAllTrash = false },
                 onConfirm = {
                     trashViewModel.restoreAll {
-                        showRestoreAllTrash = false
+                        appState.showRestoreAllTrash = false
                         timelineViewModel.refresh()
                     }
                 }
             )
         }
 
-        if (showEmptyTrash) {
+        if (appState.showEmptyTrash) {
             LaunchedEffect(Unit) { trashViewModel.clearError() }
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.trash_action_empty),
@@ -1627,14 +1489,14 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = true,
                 isSubmitting = trashState.isBulkMutating,
                 errorMessage = trashState.error?.userMessage,
-                onDismiss = { showEmptyTrash = false },
+                onDismiss = { appState.showEmptyTrash = false },
                 onConfirm = {
-                    trashViewModel.emptyTrash { showEmptyTrash = false }
+                    trashViewModel.emptyTrash { appState.showEmptyTrash = false }
                 }
             )
         }
 
-        if (showPurgeSelected) {
+        if (appState.showPurgeSelected) {
             val count = trashState.selection.size
             LaunchedEffect(Unit) { trashViewModel.clearError() }
             com.photonne.app.ui.library.ConfirmActionDialog(
@@ -1644,34 +1506,34 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 isDestructive = true,
                 isSubmitting = trashState.isBulkMutating,
                 errorMessage = trashState.error?.userMessage,
-                onDismiss = { showPurgeSelected = false },
+                onDismiss = { appState.showPurgeSelected = false },
                 onConfirm = {
-                    trashViewModel.bulkPurge { showPurgeSelected = false }
+                    trashViewModel.bulkPurge { appState.showPurgeSelected = false }
                 }
             )
         }
 
-        val activePerson = selectedPerson
-        if (showRenamePerson && activePerson != null) {
+        val activePerson = appState.selectedPerson
+        if (appState.showRenamePerson && activePerson != null) {
             com.photonne.app.ui.people.RenamePersonDialog(
                 initialName = personDetailState.personName ?: activePerson.name,
                 isSubmitting = peopleState.isMutating,
                 errorMessage = peopleState.error?.userMessage,
                 onDismiss = {
-                    showRenamePerson = false
+                    appState.showRenamePerson = false
                     peopleViewModel.clearError()
                 },
                 onConfirm = { name ->
                     peopleViewModel.rename(activePerson.id, name) {
                         personDetailViewModel.applyRename(name)
-                        selectedPerson = activePerson.copy(name = name)
-                        showRenamePerson = false
+                        appState.selectedPerson = activePerson.copy(name = name)
+                        appState.showRenamePerson = false
                     }
                 }
             )
         }
 
-        if (showMergePicker && activePerson != null) {
+        if (appState.showMergePicker && activePerson != null) {
             // El selector debe poder encontrar a CUALQUIERA: se cargan todas las
             // páginas al abrir (con el paginado perezoso las no cargadas eran
             // infusionables).
@@ -1681,30 +1543,30 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 baseUrl = apiBaseUrl,
                 excludeId = activePerson.id,
                 isLoading = peopleState.isAppending,
-                onDismiss = { showMergePicker = false },
+                onDismiss = { appState.showMergePicker = false },
                 onSelect = { other ->
-                    showMergePicker = false
-                    mergeSource = other
-                    mergeError = null
+                    appState.showMergePicker = false
+                    appState.mergeSource = other
+                    appState.mergeError = null
                 }
             )
         }
 
-        val mergeSourcePerson = mergeSource
+        val mergeSourcePerson = appState.mergeSource
         if (mergeSourcePerson != null && activePerson != null) {
             com.photonne.app.ui.people.ConfirmMergeDialog(
                 target = activePerson,
                 source = mergeSourcePerson,
                 baseUrl = apiBaseUrl,
-                isSubmitting = isMerging,
-                errorMessage = mergeError,
+                isSubmitting = appState.isMerging,
+                errorMessage = appState.mergeError,
                 onDismiss = {
-                    mergeSource = null
-                    mergeError = null
+                    appState.mergeSource = null
+                    appState.mergeError = null
                 },
                 onConfirm = {
-                    isMerging = true
-                    mergeError = null
+                    appState.isMerging = true
+                    appState.mergeError = null
                     coroutineScope.launch {
                         // The current person absorbs the picked one's faces.
                         // Mirror the PWA: target is the receiving person,
@@ -1715,8 +1577,8 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                                 sourcePersonId = mergeSourcePerson.id
                             )
                         }.onSuccess {
-                            isMerging = false
-                            mergeSource = null
+                            appState.isMerging = false
+                            appState.mergeSource = null
                             peopleViewModel.refresh()
                             // The current detail might now contain more faces.
                             personDetailViewModel.open(activePerson.id, activePerson.name)
@@ -1728,8 +1590,8 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                         }.onFailure { error ->
                             // El diálogo sigue abierto con el error: antes el fallo
                             // era silencio absoluto (runCatching sin onFailure).
-                            isMerging = false
-                            mergeError = errorFactory
+                            appState.isMerging = false
+                            appState.mergeError = errorFactory
                                 .from(error, "No se pudo fusionar")
                                 .userMessage
                         }
@@ -1765,14 +1627,14 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        if (showAssetFacesSheet && assetFacesState.assetId != null) {
+        if (appState.showAssetFacesSheet && assetFacesState.assetId != null) {
             com.photonne.app.ui.people.AssetFacesSheet(
                 state = assetFacesState,
                 baseUrl = apiBaseUrl,
                 onDismiss = {
-                    showAssetFacesSheet = false
+                    appState.showAssetFacesSheet = false
                     assetFacesViewModel.close()
-                    assetFacesRevision++
+                    appState.assetFacesRevision++
                 },
                 onAcceptSuggestion = assetFacesViewModel::acceptSuggestion,
                 onDismissSuggestion = assetFacesViewModel::dismissSuggestion,
@@ -1792,10 +1654,10 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 onCancelAssign = assetFacesViewModel::cancelAssigning,
                 onPickerQueryChange = assetFacesViewModel::setPickerQuery,
                 onOpenPerson = { personId ->
-                    showAssetFacesSheet = false
+                    appState.showAssetFacesSheet = false
                     assetFacesViewModel.close()
-                    assetFacesRevision++
-                    openPersonFromViewer(personId)
+                    appState.assetFacesRevision++
+                    appState.openPersonFromViewer(personId)
                 }
             )
         }
