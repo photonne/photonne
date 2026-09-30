@@ -26,9 +26,9 @@ Actualiza:
   servidor .NET, cliente web, Android (`versionName`/`versionCode`), Desktop y
   la constante `PhotonneVersion`.
 - `Src/Photonne.Client.Native/iosApp/iosApp.xcodeproj/project.pbxproj` —
-  `MARKETING_VERSION` (= versión semver) y `CURRENT_PROJECT_VERSION`
-  (= `major*10000 + minor*100 + patch`, igual que el `versionCode` de Android),
-  en las configs Debug y Release.
+  `MARKETING_VERSION` y `CURRENT_PROJECT_VERSION`, ambos = versión semver
+  (`1.162.1`; App Store Connect admite tres enteros como número de build y
+  crece siempre con la versión), en las configs Debug y Release.
 
 No re-bumpea en `--amend` manual, merges, ni rebase/cherry-pick en curso, ni
 cuando el commit ya trae un cambio de versión hecho a mano.

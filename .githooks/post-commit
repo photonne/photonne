@@ -69,12 +69,14 @@ esac
 NEW="$MA.$MI.$PA"
 [ "$NEW" = "$CUR" ] && exit 0
 
-# Mismo esquema de code que Android toVersionCode(): major*10000+minor*100+patch.
-CODE=$((MA * 10000 + MI * 100 + PA))
-
 sed -i.bak "s:<Version>$CUR</Version>:<Version>$NEW</Version>:" "$PROPS" && rm -f "$PROPS.bak"
+# CFBundleVersion = la propia versión: App Store Connect acepta hasta tres
+# enteros separados por puntos y los compara campo a campo, así que crece
+# siempre con semver. Un código numérico tipo major*10000+minor*100+patch se
+# desborda en cuanto minor pasa de 99 (1.162.0 = 26200 = 2.62.0) y la 2.0.0
+# quedaría por debajo.
 if [ -f "$PBX" ]; then
-    sed -i.bak -E "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $NEW;/g; s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = $CODE;/g" "$PBX" && rm -f "$PBX.bak"
+    sed -i.bak -E "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $NEW;/g; s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = $NEW;/g" "$PBX" && rm -f "$PBX.bak"
 fi
 
 git add "$PROPS"

@@ -47,8 +47,10 @@ de las tiendas, y lo que queda fuera del código.
 ### App Store Connect
 - **App Privacy** coherente con `PrivacyInfo.xcprivacy` (sin seguimiento ni
   datos recogidos por el desarrollador).
-- Versión y build: `MARKETING_VERSION` y `CURRENT_PROJECT_VERSION` están fijos
-  en `project.pbxproj`; súbelos a mano en cada envío (el build debe crecer).
+- Versión y build: el hook `.githooks/post-commit` pone la versión semver en
+  `MARKETING_VERSION` y en `CURRENT_PROJECT_VERSION` de `project.pbxproj` en
+  cada commit, así que el build crece solo. Cada subida debe salir de una
+  versión nueva: dos builds de la misma versión chocan.
 - El identificador es `com.photonne.app` (igual que el `applicationId` de
   Android y `Config.xcconfig`); debe coincidir con el App ID explícito
   registrado y con el Bundle ID de la ficha de App Store Connect, que queda
