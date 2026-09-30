@@ -20,6 +20,9 @@ data class UnsupportedFilesUiState(
     val isAppending: Boolean = false,
     val isRefreshing: Boolean = false,
     val isDownloading: Boolean = false,
+    val isDeleting: Boolean = false,
+    /** Fallo del último borrado; lo enseña el diálogo de confirmación, no la lista. */
+    val deleteError: UiError? = null,
     val statusMessage: String? = null,
     val error: UiError? = null,
     val nextCursor: Instant? = null,
@@ -137,6 +140,40 @@ class UnsupportedFilesViewModel(
                     }
                 }
         }
+    }
+
+    /**
+     * Borra el archivo del disco del servidor (definitivo, no hay papelera) y,
+     * solo cuando el servidor lo confirma, lo quita de la lista. [onDeleted]
+     * cierra el diálogo; si falla, el error queda en [UnsupportedFilesUiState.deleteError].
+     */
+    fun delete(file: UnsupportedFileItem, onDeleted: () -> Unit) {
+        if (_state.value.isDeleting) return
+        _state.update { it.copy(isDeleting = true, deleteError = null) }
+        viewModelScope.launch {
+            runCatching { repository.delete(file.id) }
+                .onSuccess {
+                    _state.update {
+                        it.copy(
+                            isDeleting = false,
+                            items = it.items.filterNot { item -> item.id == file.id }
+                        )
+                    }
+                    onDeleted()
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isDeleting = false,
+                            deleteError = errorFactory.from(error, "No se pudo eliminar el archivo")
+                        )
+                    }
+                }
+        }
+    }
+
+    fun clearDeleteError() {
+        _state.update { it.copy(deleteError = null) }
     }
 
     fun clearStatusMessage() {

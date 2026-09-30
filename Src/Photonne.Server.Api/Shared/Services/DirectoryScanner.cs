@@ -18,7 +18,7 @@ public class DirectoryScanner
     /// <summary>
     /// Recursively scans a directory and returns BOTH the indexable media files
     /// and the unsupported files (anything whose extension isn't a known image /
-    /// video). The unsupported list is what feeds the "Otros archivos" catalogue;
+    /// video). The unsupported list is what feeds the "Archivos no compatibles" catalogue;
     /// previously these were silently dropped.
     /// </summary>
     public async Task<ScanResult> ScanDirectoryWithUnsupportedAsync(string directoryPath, CancellationToken cancellationToken = default)

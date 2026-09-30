@@ -13,4 +13,6 @@ class UnsupportedFilesRepository(
 
     suspend fun downloadOriginal(id: String): AssetContentBytes =
         api.getUnsupportedFileContent(id)
+
+    suspend fun delete(id: String) = api.deleteUnsupportedFile(id)
 }

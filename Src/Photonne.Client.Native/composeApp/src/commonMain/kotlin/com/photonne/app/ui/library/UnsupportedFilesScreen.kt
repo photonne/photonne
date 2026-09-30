@@ -18,6 +18,7 @@ import com.photonne.app.resources.unsupported_files_title
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,16 +29,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.UnsupportedFileItem
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_delete
+import com.photonne.app.resources.unsupported_files_delete_confirm_message
+import com.photonne.app.resources.unsupported_files_delete_confirm_title
 import com.photonne.app.resources.unsupported_files_download
 import com.photonne.app.resources.unsupported_files_empty_subtitle
 import com.photonne.app.resources.unsupported_files_empty_title
+import com.photonne.app.resources.unsupported_files_subtitle
 import com.photonne.app.resources.unsupported_files_supported_types
-import com.photonne.app.resources.unsupported_files_unsupported_label
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
@@ -53,12 +61,16 @@ fun UnsupportedFilesScreen(
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onDownload: (UnsupportedFileItem) -> Unit,
+    /** Borra el archivo del servidor; llama al callback cuando queda borrado. */
+    onDelete: (UnsupportedFileItem, onDeleted: () -> Unit) -> Unit,
+    onClearDeleteError: () -> Unit,
     onBack: () -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     val reservedTop = subscreenChromeReservedTop()
+    var deleting by remember { mutableStateOf<UnsupportedFileItem?>(null) }
 
     LaunchedEffect(Unit) { onLoad() }
 
@@ -91,6 +103,27 @@ fun UnsupportedFilesScreen(
                         bottom = floatingNavBarReservedHeight()
                     )
                 ) {
+                    // Qué es la lista y qué sí se admite, una vez arriba en vez
+                    // de repetido en cada fila.
+                    item("intro") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = Spacing.lg, vertical = Spacing.md)
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.unsupported_files_subtitle),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(Res.string.unsupported_files_supported_types),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        HorizontalDivider()
+                    }
                     itemsIndexed(state.items, key = { _, it -> it.id }) { index, file ->
                         // Page in more rows as the user nears the end of the list.
                         if (index >= state.items.size - LOAD_MORE_THRESHOLD) {
@@ -102,7 +135,8 @@ fun UnsupportedFilesScreen(
                             modifier = Modifier.animateItem(),
                             file = file,
                             downloadEnabled = !state.isDownloading,
-                            onDownload = { onDownload(file) }
+                            onDownload = { onDownload(file) },
+                            onDelete = { deleting = file }.takeIf { file.canDelete }
                         )
                         HorizontalDivider()
                     }
@@ -137,6 +171,23 @@ fun UnsupportedFilesScreen(
             )
         }
     }
+
+    deleting?.let { file ->
+        // Diálogo estándar: espera al servidor y enseña el fallo sin cerrarse.
+        ConfirmActionDialog(
+            title = stringResource(Res.string.unsupported_files_delete_confirm_title),
+            message = stringResource(Res.string.unsupported_files_delete_confirm_message, file.fileName),
+            confirmLabel = stringResource(Res.string.action_delete),
+            isDestructive = true,
+            isSubmitting = state.isDeleting,
+            errorMessage = state.deleteError?.userMessage,
+            onDismiss = {
+                deleting = null
+                onClearDeleteError()
+            },
+            onConfirm = { onDelete(file) { deleting = null } }
+        )
+    }
 }
 
 @Composable
@@ -144,6 +195,8 @@ private fun UnsupportedFileRow(
     file: UnsupportedFileItem,
     downloadEnabled: Boolean,
     onDownload: () -> Unit,
+    /** Null cuando el usuario no puede borrar el archivo: no se pinta el botón. */
+    onDelete: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     androidx.compose.foundation.layout.Row(
@@ -155,17 +208,17 @@ private fun UnsupportedFileRow(
                 text = file.fileName,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+            // La ruta entera, sin recortar a una línea: es lo que hace falta
+            // para ir a buscar el archivo y arreglarlo o borrarlo.
             Text(
-                text = stringResource(Res.string.unsupported_files_unsupported_label),
+                text = file.fullPath,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
-            )
-            Text(
-                text = stringResource(Res.string.unsupported_files_supported_types),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "${file.extension} · ${formatBytes(file.fileSize)}",
@@ -179,6 +232,15 @@ private fun UnsupportedFileRow(
                 contentDescription = stringResource(Res.string.unsupported_files_download),
                 tint = MaterialTheme.colorScheme.primary
             )
+        }
+        if (onDelete != null) {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Outlined.DeleteOutline,
+                    contentDescription = stringResource(Res.string.action_delete),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }

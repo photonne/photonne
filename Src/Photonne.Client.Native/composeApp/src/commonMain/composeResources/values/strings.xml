@@ -1427,9 +1427,10 @@
     <string name="unsupported_files_subtitle">Archivos de tus carpetas que no son fotos ni vídeos.</string>
     <string name="unsupported_files_empty_title">No hay archivos no compatibles</string>
     <string name="unsupported_files_empty_subtitle">Todos los archivos detectados en tu almacenamiento tienen un tipo compatible.</string>
-    <string name="unsupported_files_unsupported_label">Tipo de archivo no soportado por la aplicación.</string>
     <string name="unsupported_files_supported_types">Tipos compatibles: .jpg, .png, .heic, .gif, .webp, .mp4, .mov, .mkv, etc.</string>
     <string name="unsupported_files_download">Descargar</string>
+    <string name="unsupported_files_delete_confirm_title">¿Eliminar este archivo?</string>
+    <string name="unsupported_files_delete_confirm_message">«%1$s» se borrará del servidor para siempre. No pasa por la papelera y no se puede deshacer.</string>
     <string name="more_section_discover">Descubrir</string>
     <string name="more_section_manage">Gestión</string>
     <string name="more_section_actions">Acciones</string>

@@ -38,11 +38,7 @@ public class UnsupportedFileIndexingService
 
         try
         {
-            // External-library files store the physical path directly; internal
-            // files use a normalized virtual path — same rule as Asset.
-            var storedPath = externalLibraryId.HasValue
-                ? NormalizeVirtualPath(physicalPath)
-                : NormalizeVirtualPath(await _settingsService.VirtualizePathAsync(physicalPath));
+            var storedPath = await ToStoredPathAsync(physicalPath, externalLibraryId);
 
             var existing = await _dbContext.UnsupportedFiles
                 .FirstOrDefaultAsync(u => u.FullPath == storedPath, ct);
@@ -89,6 +85,50 @@ public class UnsupportedFileIndexingService
             return null;
         }
     }
+
+    /// <summary>
+    /// Drops the catalogue rows of one scan scope (the internal storage, or one
+    /// external library) that the scan no longer reports as unsupported: the
+    /// file was deleted, renamed or moved, or its type is now recognised media
+    /// and it has become an Asset. Without this a row outlives its file forever.
+    /// Call it only after a scan that completed — <paramref name="stillUnsupported"/>
+    /// must be everything the scope holds.
+    /// </summary>
+    public async Task<int> PruneStaleAsync(
+        IReadOnlyCollection<ScannedFile> stillUnsupported,
+        Guid? externalLibraryId,
+        CancellationToken ct)
+    {
+        // Ordinal: IndexUnsupportedFileAsync matches rows by exact path.
+        var keep = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in stillUnsupported)
+            keep.Add(await ToStoredPathAsync(file.FullPath, externalLibraryId));
+
+        var rows = await _dbContext.UnsupportedFiles
+            .AsNoTracking()
+            .Where(u => u.ExternalLibraryId == externalLibraryId)
+            .Select(u => new { u.Id, u.FullPath })
+            .ToListAsync(ct);
+
+        var staleIds = rows.Where(r => !keep.Contains(r.FullPath)).Select(r => r.Id).ToList();
+        foreach (var chunk in staleIds.Chunk(1000))
+        {
+            await _dbContext.UnsupportedFiles
+                .Where(u => chunk.Contains(u.Id))
+                .ExecuteDeleteAsync(ct);
+        }
+
+        if (staleIds.Count > 0)
+            Console.WriteLine($"[UNSUPPORTED-INDEX] Purged {staleIds.Count} stale catalogue rows");
+        return staleIds.Count;
+    }
+
+    // External-library files store the physical path directly; internal files
+    // use a normalized virtual path — same rule as Asset.
+    private async Task<string> ToStoredPathAsync(string physicalPath, Guid? externalLibraryId) =>
+        externalLibraryId.HasValue
+            ? NormalizeVirtualPath(physicalPath)
+            : NormalizeVirtualPath(await _settingsService.VirtualizePathAsync(physicalPath));
 
     private static string NormalizeVirtualPath(string path) =>
         path.Replace('\\', '/').TrimEnd('/');

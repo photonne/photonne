@@ -194,6 +194,13 @@ public class ExternalLibraryScanService
                 });
         }
 
+        // Drop catalogue rows whose file is gone or is now recognised media.
+        using (var pruneScope = _scopeFactory.CreateScope())
+        {
+            var unsupportedIndexer = pruneScope.ServiceProvider.GetRequiredService<UnsupportedFileIndexingService>();
+            await unsupportedIndexer.PruneStaleAsync(unsupportedFiles, libraryId, ct);
+        }
+
         // Mark assets whose physical file is missing on disk
         var scannedPathsSet = new HashSet<string>(scannedPaths, StringComparer.OrdinalIgnoreCase);
         var missingPaths = existingPaths.Except(scannedPathsSet).ToList();

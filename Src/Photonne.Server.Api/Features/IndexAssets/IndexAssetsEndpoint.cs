@@ -207,6 +207,14 @@ public class IndexAssetsEndpoint : IEndpoint
                         });
                 }
 
+                // Y fuera del catálogo lo que ya no está en disco o ha pasado a
+                // ser un tipo compatible.
+                using (var pruneScope = scopeFactory.CreateScope())
+                {
+                    var unsupportedIndexer = pruneScope.ServiceProvider.GetRequiredService<UnsupportedFileIndexingService>();
+                    await unsupportedIndexer.PruneStaleAsync(unsupportedFiles, externalLibraryId: null, taskCt);
+                }
+
                 Send(new IndexProgressUpdate
                 {
                     Message = "Marcando archivos ausentes...",

@@ -17,6 +17,9 @@ public class UnsupportedFileResponse
     public string Extension { get; set; } = string.Empty;
     public DateTime FileCreatedAt { get; set; }
     public DateTime DiscoveredAt { get; set; }
+    // Whether the caller may delete the file from disk — see
+    // UnsupportedFileDeleteEndpoint. Clients gate the delete button on it.
+    public bool CanDelete { get; set; }
 }
 
 public class UnsupportedFilesPageResponse
@@ -29,7 +32,7 @@ public class UnsupportedFilesPageResponse
 
 /// <summary>
 /// Lists files found on disk whose extension isn't a recognised image/video —
-/// the "Otros archivos" catalogue. Scoped to the folders the user can read,
+/// the "Archivos no compatibles" catalogue. Scoped to the folders the user can read,
 /// exactly like the timeline (<see cref="AllowedFolderCache"/>). Paginated by
 /// DiscoveredAt (newest first) with an exclusive cursor.
 /// </summary>
@@ -78,7 +81,19 @@ public class UnsupportedFilesEndpoint : IEndpoint
         var page = await query
             .OrderByDescending(u => u.DiscoveredAt)
             .Take(pageSize + 1)
-            .Select(u => new UnsupportedFileResponse
+            .ToListAsync(cancellationToken);
+
+        var hasMore = page.Count > pageSize;
+        var rows = hasMore ? page.Take(pageSize).ToList() : page;
+        var nextCursor = hasMore ? rows.Last().DiscoveredAt : (DateTime?)null;
+
+        // Many rows share a folder, so the shared-space check runs once per folder.
+        var isAdmin = user.IsInRole("Admin");
+        var deletableFolders = new Dictionary<Guid, bool>();
+        var items = new List<UnsupportedFileResponse>(rows.Count);
+        foreach (var u in rows)
+        {
+            items.Add(new UnsupportedFileResponse
             {
                 Id = u.Id,
                 FileName = u.FileName,
@@ -86,13 +101,11 @@ public class UnsupportedFilesEndpoint : IEndpoint
                 FileSize = u.FileSize,
                 Extension = u.Extension,
                 FileCreatedAt = u.FileCreatedAt,
-                DiscoveredAt = u.DiscoveredAt
-            })
-            .ToListAsync(cancellationToken);
-
-        var hasMore = page.Count > pageSize;
-        var items = hasMore ? page.Take(pageSize).ToList() : page;
-        var nextCursor = hasMore ? items.Last().DiscoveredAt : (DateTime?)null;
+                DiscoveredAt = u.DiscoveredAt,
+                CanDelete = await UnsupportedFileDeleteEndpoint.CanDeleteAsync(
+                    dbContext, u, userId, username, isAdmin, deletableFolders, cancellationToken)
+            });
+        }
 
         return Results.Ok(new UnsupportedFilesPageResponse
         {

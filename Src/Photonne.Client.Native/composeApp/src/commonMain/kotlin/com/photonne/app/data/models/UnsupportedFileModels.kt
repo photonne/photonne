@@ -5,8 +5,9 @@ import kotlinx.serialization.Serializable
 
 /**
  * A file found on disk that the app can't display (unknown extension). Surfaced
- * in the "Otros archivos" screen so the user sees everything physically present
- * in their storage and can download the original.
+ * in the "Archivos no compatibles" screen so the user sees everything physically present
+ * in their storage and can download the original — or delete it, when the
+ * server says they may ([canDelete]; false from servers that predate it).
  */
 @Serializable
 data class UnsupportedFileItem(
@@ -16,7 +17,8 @@ data class UnsupportedFileItem(
     val fileSize: Long,
     val extension: String,
     @Serializable(with = FlexibleInstantSerializer::class) val fileCreatedAt: Instant,
-    @Serializable(with = FlexibleInstantSerializer::class) val discoveredAt: Instant
+    @Serializable(with = FlexibleInstantSerializer::class) val discoveredAt: Instant,
+    val canDelete: Boolean = false
 )
 
 @Serializable

@@ -414,6 +414,8 @@ interface PhotonneApi {
 
     suspend fun listUnsupportedFiles(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): UnsupportedFilesPage
     suspend fun getUnsupportedFileContent(id: String): AssetContentBytes
+    /** Permanent: deletes the file from the server's disk, there is no trash. */
+    suspend fun deleteUnsupportedFile(id: String)
 
     /** "Para organizar" inbox: assets still under MobileBackup, newest first. */
     suspend fun getOrganizeInbox(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
@@ -1008,6 +1010,15 @@ class PhotonneApiClient(
             throw response.apiException("Unsupported files fetch failed (${response.status.value})")
         }
         return response.body()
+    }
+
+    override suspend fun deleteUnsupportedFile(id: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/unsupported-files/$id")
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw response.apiException("Unsupported file delete failed (${response.status.value})")
+        }
     }
 
     override suspend fun getOrganizeInbox(cursor: Instant?, pageSize: Int): TimelinePage {

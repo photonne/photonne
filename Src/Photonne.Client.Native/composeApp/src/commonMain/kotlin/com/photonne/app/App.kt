@@ -3285,6 +3285,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onRefresh = unsupportedFilesViewModel::refresh,
                             onLoadMore = unsupportedFilesViewModel::loadMore,
                             onDownload = unsupportedFilesViewModel::download,
+                            onDelete = unsupportedFilesViewModel::delete,
+                            onClearDeleteError = unsupportedFilesViewModel::clearDeleteError,
                             onBack = { moreSubscreen = MoreSubscreen.Utilities },
                             onChromeVisibleChange = { subscreenChromeVisible = it }
                         )

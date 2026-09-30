@@ -1356,9 +1356,10 @@
     <string name="unsupported_files_subtitle">Files in your folders that aren\'t photos or videos.</string>
     <string name="unsupported_files_empty_title">No unsupported files</string>
     <string name="unsupported_files_empty_subtitle">Every file found in your storage has a supported type.</string>
-    <string name="unsupported_files_unsupported_label">File type not supported by the app.</string>
     <string name="unsupported_files_supported_types">Supported types: .jpg, .png, .heic, .gif, .webp, .mp4, .mov, .mkv, etc.</string>
     <string name="unsupported_files_download">Download</string>
+    <string name="unsupported_files_delete_confirm_title">Delete this file?</string>
+    <string name="unsupported_files_delete_confirm_message">“%1$s” will be deleted from the server for good. It doesn\'t go to the trash and can\'t be undone.</string>
     <string name="more_section_discover">Discover</string>
     <string name="more_section_manage">Manage</string>
     <string name="more_section_actions">Actions</string>

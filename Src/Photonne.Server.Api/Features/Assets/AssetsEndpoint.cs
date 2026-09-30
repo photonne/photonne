@@ -509,7 +509,8 @@ public class AssetsEndpoint : IEndpoint
         return userIdClaim != null && Guid.TryParse(userIdClaim.Value, out userId);
     }
 
-    private static bool IsAssetInUserRoot(string assetPath, string username)
+    // internal: the unsupported-files delete reuses the same "is it yours" rule.
+    internal static bool IsAssetInUserRoot(string assetPath, string username)
     {
         var normalized = assetPath.Replace('\\', '/');
         var virtualRoot = $"/assets/users/{username}/";
