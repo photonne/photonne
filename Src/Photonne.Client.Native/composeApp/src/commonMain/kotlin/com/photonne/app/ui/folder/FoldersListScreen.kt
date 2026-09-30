@@ -21,13 +21,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.Inbox
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
@@ -77,13 +72,11 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.OverlayIconBadge
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.material.icons.outlined.CreateNewFolder
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.unit.Dp
 import com.photonne.app.resources.folder_action_new
@@ -265,7 +258,7 @@ fun FoldersListScreen(
                 actions = {
                     if (onCreateFolder != null) {
                         CreateAction(
-                            icon = Icons.Outlined.CreateNewFolder,
+                            icon = PhotonneIcons.NewFolder,
                             contentDescription = stringResource(Res.string.folder_action_new),
                             onClick = onCreateFolder
                         )
@@ -273,14 +266,14 @@ fun FoldersListScreen(
                     if (!searching) {
                         IconButton(onClick = viewModel::toggleSearch) {
                             Icon(
-                                Icons.Outlined.Search,
+                                PhotonneIcons.Search,
                                 contentDescription = stringResource(Res.string.folders_action_search)
                             )
                         }
                     }
                     IconButton(onClick = onOpenFilters) {
                         Icon(
-                            Icons.Outlined.Tune,
+                            PhotonneIcons.Filter,
                             contentDescription = stringResource(Res.string.folders_action_filters),
                             tint = if (state.isFilterActive) MaterialTheme.colorScheme.primary
                             else LocalContentColor.current
@@ -481,10 +474,10 @@ internal fun FolderRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (folder.isShared) {
-                MetaBadge(stringResource(Res.string.folder_shared_badge), Icons.Filled.Person)
+                MetaBadge(stringResource(Res.string.folder_shared_badge), PhotonneIcons.Person)
             }
             if (folder.externalLibraryId != null) {
-                MetaBadge(stringResource(Res.string.folder_external_badge), Icons.AutoMirrored.Filled.LibraryBooks)
+                MetaBadge(stringResource(Res.string.folder_external_badge), Icons.AutoMirrored.Outlined.LibraryBooks)
             }
             if (folder.excludedFromDiscovery) {
                 MetaBadge(stringResource(Res.string.folder_discovery_excluded_badge), Icons.Outlined.VisibilityOff)
@@ -514,13 +507,13 @@ internal fun FolderCard(
             // Same order as FolderRow, so a folder reads the same in both view modes.
             if (folder.isShared) {
                 OverlayIconBadge(
-                    icon = Icons.Filled.Person,
+                    icon = PhotonneIcons.Person,
                     contentDescription = stringResource(Res.string.folder_shared_badge)
                 )
             }
             if (folder.externalLibraryId != null) {
                 OverlayIconBadge(
-                    icon = Icons.AutoMirrored.Filled.LibraryBooks,
+                    icon = Icons.AutoMirrored.Outlined.LibraryBooks,
                     contentDescription = stringResource(Res.string.folder_external_badge)
                 )
             }
@@ -543,7 +536,7 @@ private fun EmptyState(
     modifier: Modifier = Modifier
 ) {
     SharedEmptyState(
-        icon = Icons.Outlined.Folder,
+        icon = PhotonneIcons.Folder,
         title = title,
         subtitle = subtitle,
         actionLabel = actionLabel,
@@ -555,7 +548,7 @@ private fun EmptyState(
 @Composable
 private fun EmptySearchState(query: String, modifier: Modifier = Modifier) {
     SharedEmptyState(
-        icon = Icons.Filled.Search,
+        icon = PhotonneIcons.Search,
         title = stringResource(Res.string.folders_search_empty_title),
         subtitle = stringResource(Res.string.folders_search_empty_subtitle, query),
         modifier = modifier

@@ -15,12 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -101,6 +95,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
@@ -184,7 +179,7 @@ fun ManageSharesDialog(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onCreate, enabled = !state.isMutating) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
+                    Icon(PhotonneIcons.Add, contentDescription = null)
                     Spacer(Modifier.width(Spacing.xs))
                     Text(stringResource(Res.string.share_action_new))
                 }
@@ -244,7 +239,7 @@ private fun ShareLinkRow(
         }
         IconButton(onClick = onCopy) {
             Icon(
-                Icons.Outlined.ContentCopy,
+                PhotonneIcons.Copy,
                 contentDescription = stringResource(Res.string.share_action_copy)
             )
         }
@@ -252,19 +247,19 @@ private fun ShareLinkRow(
         // donde el usuario lo manda todo (WhatsApp, correo…).
         IconButton(onClick = onShare) {
             Icon(
-                Icons.Outlined.Share,
+                PhotonneIcons.Share,
                 contentDescription = stringResource(Res.string.share_action_share_link)
             )
         }
         IconButton(onClick = onEdit) {
             Icon(
-                Icons.Filled.Edit,
+                PhotonneIcons.Edit,
                 contentDescription = stringResource(Res.string.share_action_edit)
             )
         }
         IconButton(onClick = onRevoke) {
             Icon(
-                Icons.Outlined.Delete,
+                PhotonneIcons.Delete,
                 contentDescription = stringResource(Res.string.share_action_revoke),
                 tint = MaterialTheme.colorScheme.error
             )

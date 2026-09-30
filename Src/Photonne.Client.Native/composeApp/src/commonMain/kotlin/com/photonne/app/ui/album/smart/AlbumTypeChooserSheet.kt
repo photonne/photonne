@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +26,7 @@ import com.photonne.app.resources.album_type_manual_title
 import com.photonne.app.resources.album_type_smart_subtitle
 import com.photonne.app.resources.album_type_smart_title
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
@@ -49,7 +49,7 @@ fun AlbumTypeChooserSheet(
                 modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.md),
             )
             ChooserRow(
-                icon = Icons.Outlined.PhotoAlbum,
+                icon = PhotonneIcons.Album,
                 title = stringResource(Res.string.album_type_manual_title),
                 subtitle = stringResource(Res.string.album_type_manual_subtitle),
                 onClick = onManual,

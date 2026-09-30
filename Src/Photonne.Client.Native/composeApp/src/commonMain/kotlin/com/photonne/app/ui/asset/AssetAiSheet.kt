@@ -15,7 +15,6 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -66,6 +65,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import kotlin.time.Clock
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
@@ -237,7 +237,7 @@ private fun AiAnalysisRowView(
                         tint = MaterialTheme.colorScheme.primary)
                 }
                 else -> IconButton(onClick = onRun) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = stringResource(Res.string.asset_ai_rerun),
+                    Icon(PhotonneIcons.Refresh, contentDescription = stringResource(Res.string.asset_ai_rerun),
                         tint = MaterialTheme.colorScheme.primary)
                 }
             }

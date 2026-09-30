@@ -16,9 +16,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.HorizontalDivider
 import com.photonne.app.ui.main.SearchFieldPill
@@ -28,7 +25,6 @@ import com.photonne.app.resources.people_search_no_results
 import com.photonne.app.resources.people_sort_face_count
 import com.photonne.app.resources.people_sort_name
 import com.photonne.app.resources.people_sort_unnamed_first
-import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -69,6 +65,7 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.ListRowsSkeleton
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -125,7 +122,7 @@ fun PeopleScreen(
                     )
                 state.isEmpty ->
                     EmptyState(
-                        icon = Icons.Outlined.People,
+                        icon = PhotonneIcons.People,
                         title = stringResource(Res.string.people_empty_title),
                         subtitle = stringResource(Res.string.people_empty_subtitle)
                     )
@@ -212,7 +209,7 @@ fun PeopleScreen(
                     if (!searching) {
                         IconButton(onClick = onToggleSearch) {
                             Icon(
-                                Icons.Outlined.Search,
+                                PhotonneIcons.Search,
                                 contentDescription = stringResource(Res.string.people_action_search)
                             )
                         }
@@ -244,7 +241,7 @@ private fun PeopleOverflowMenu(
     Box {
         IconButton(onClick = { menuOpen = true }) {
             Icon(
-                Icons.Filled.MoreVert,
+                PhotonneIcons.More,
                 contentDescription = stringResource(Res.string.action_more)
             )
         }
@@ -265,7 +262,7 @@ private fun PeopleOverflowMenu(
                         )
                     },
                     trailingIcon = if (option == sort) {
-                        { Icon(Icons.Filled.Check, contentDescription = null) }
+                        { Icon(PhotonneIcons.Check, contentDescription = null) }
                     } else null,
                     onClick = { menuOpen = false; onSortChange(option) }
                 )

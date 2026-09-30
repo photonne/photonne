@@ -17,12 +17,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.AddToPhotos
-import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,6 +60,8 @@ import com.photonne.app.resources.map_action_select_all
 import com.photonne.app.ui.main.LocalSnackbarController
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
@@ -227,7 +223,7 @@ private fun SelectionHeader(
     ) {
         IconButton(onClick = onExit, enabled = !isMutating) {
             Icon(
-                Icons.Filled.Close,
+                PhotonneIcons.Close,
                 contentDescription = stringResource(Res.string.selection_action_close)
             )
         }
@@ -242,19 +238,19 @@ private fun SelectionHeader(
         }
         IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
             Icon(
-                Icons.Outlined.AddToPhotos,
+                PhotonneIcons.AddToAlbum,
                 contentDescription = stringResource(Res.string.selection_action_add_to_album)
             )
         }
         IconButton(onClick = onArchive, enabled = !isMutating) {
             Icon(
-                Icons.Outlined.Archive,
+                PhotonneIcons.Archive,
                 contentDescription = stringResource(Res.string.selection_action_archive)
             )
         }
         IconButton(onClick = onTrash, enabled = !isMutating) {
             Icon(
-                Icons.Outlined.Delete,
+                PhotonneIcons.Delete,
                 contentDescription = stringResource(Res.string.selection_action_trash),
                 tint = MaterialTheme.colorScheme.error
             )
@@ -307,10 +303,10 @@ private fun ClusterCell(
             ) {
                 if (selected) {
                     Icon(
-                        Icons.Filled.Check,
+                        PhotonneIcons.Check,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(IconSize.badge)
                     )
                 }
             }

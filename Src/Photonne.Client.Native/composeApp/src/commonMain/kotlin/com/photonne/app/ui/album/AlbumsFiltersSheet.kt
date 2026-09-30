@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material.icons.automirrored.outlined.ViewList
+import androidx.compose.material.icons.outlined.ViewModule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -131,12 +131,12 @@ fun AlbumsFiltersSheet(
                     SegmentOption(
                         AlbumViewMode.Grid,
                         stringResource(Res.string.view_mode_grid),
-                        Icons.Filled.ViewModule
+                        Icons.Outlined.ViewModule
                     ),
                     SegmentOption(
                         AlbumViewMode.List,
                         stringResource(Res.string.view_mode_list),
-                        Icons.AutoMirrored.Filled.ViewList
+                        Icons.AutoMirrored.Outlined.ViewList
                     )
                 ),
                 selected = state.viewMode,

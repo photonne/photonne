@@ -19,8 +19,6 @@ import com.photonne.app.resources.unsupported_files_title
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -48,6 +46,7 @@ import com.photonne.app.resources.unsupported_files_empty_title
 import com.photonne.app.resources.unsupported_files_subtitle
 import com.photonne.app.resources.unsupported_files_supported_types
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ListRowsSkeleton
@@ -229,7 +228,7 @@ private fun UnsupportedFileRow(
         }
         IconButton(onClick = onDownload, enabled = downloadEnabled) {
             Icon(
-                imageVector = Icons.Outlined.Download,
+                imageVector = PhotonneIcons.Download,
                 contentDescription = stringResource(Res.string.unsupported_files_download),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -237,7 +236,7 @@ private fun UnsupportedFileRow(
         if (onDelete != null) {
             IconButton(onClick = onDelete) {
                 Icon(
-                    imageVector = Icons.Outlined.DeleteOutline,
+                    imageVector = PhotonneIcons.Delete,
                     contentDescription = stringResource(Res.string.action_delete),
                     tint = MaterialTheme.colorScheme.error
                 )

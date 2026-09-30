@@ -2,6 +2,7 @@ package com.photonne.app.ui.devicebackup
 
 import androidx.compose.animation.core.animateFloatAsState
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,9 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -165,7 +164,7 @@ fun DeviceAssetPreviewScreen(
                         navigationIcon = {
                             IconButton(onClick = onBack) {
                                 Icon(
-                                    Icons.AutoMirrored.Outlined.ArrowBack,
+                                    PhotonneIcons.Back,
                                     contentDescription = stringResource(Res.string.device_backup_preview_back)
                                 )
                             }
@@ -182,7 +181,7 @@ fun DeviceAssetPreviewScreen(
                             if (isVideoOnScreen) {
                                 IconButton(onClick = { chromeVisible = false }) {
                                     Icon(
-                                        Icons.Filled.Fullscreen,
+                                        Icons.Outlined.Fullscreen,
                                         contentDescription = "Pantalla completa"
                                     )
                                 }
@@ -190,7 +189,7 @@ fun DeviceAssetPreviewScreen(
                             if (syncedCurrent != null) {
                                 IconButton(onClick = { onOpenDetail(syncedCurrent) }) {
                                     Icon(
-                                        Icons.Outlined.Info,
+                                        PhotonneIcons.Info,
                                         contentDescription = stringResource(
                                             Res.string.device_backup_preview_open_detail
                                         )

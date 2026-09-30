@@ -1,7 +1,9 @@
 package com.photonne.app.ui.timeline
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -30,9 +32,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -131,8 +130,6 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import com.photonne.app.resources.backup_timeline_pending_row
 import com.photonne.app.resources.timeline_scope_notice
 import com.photonne.app.resources.timeline_scope_notice_change
@@ -1568,7 +1565,7 @@ private fun derivePackedTimeline(
 @Composable
 private fun TimelineEmptyState(onOpenUpload: (() -> Unit)?) {
     EmptyState(
-        icon = Icons.Outlined.PhotoLibrary,
+        icon = PhotonneIcons.Photos,
         title = stringResource(Res.string.timeline_empty_title),
         subtitle = stringResource(Res.string.timeline_empty_subtitle),
         actionLabel = onOpenUpload?.let { stringResource(Res.string.timeline_empty_action_upload) },
@@ -1594,10 +1591,10 @@ private fun BackupPendingRow(count: Int, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Outlined.CloudUpload,
+            imageVector = PhotonneIcons.Upload,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.tertiary,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(IconSize.md)
         )
         Spacer(Modifier.size(12.dp))
         Text(
@@ -1607,10 +1604,10 @@ private fun BackupPendingRow(count: Int, onClick: () -> Unit) {
             modifier = Modifier.weight(1f)
         )
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            imageVector = PhotonneIcons.Chevron,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(IconSize.md)
         )
     }
 }
@@ -1633,10 +1630,10 @@ private fun LibraryScopeNoticeRow(onChange: () -> Unit, onDismiss: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Outlined.PhotoLibrary,
+            imageVector = PhotonneIcons.Photos,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.tertiary,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(IconSize.md)
         )
         Spacer(Modifier.size(12.dp))
         Text(
@@ -1650,10 +1647,10 @@ private fun LibraryScopeNoticeRow(onChange: () -> Unit, onDismiss: () -> Unit) {
         }
         IconButton(onClick = onDismiss) {
             Icon(
-                imageVector = Icons.Filled.Close,
+                imageVector = PhotonneIcons.Close,
                 contentDescription = stringResource(Res.string.timeline_scope_notice_dismiss),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(IconSize.chip)
             )
         }
     }

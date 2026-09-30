@@ -7,7 +7,6 @@ import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +32,7 @@ import com.photonne.app.resources.settings_activity_notifications_denied
 import com.photonne.app.resources.settings_activity_notifications_subtitle
 import com.photonne.app.data.devicebackup.rememberNotificationPermission
 import com.photonne.app.ui.main.FormPageScaffold
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.SettingsGroup
 import com.photonne.app.ui.theme.SettingsItem
 import com.photonne.app.ui.theme.SettingsTrailing
@@ -67,7 +67,7 @@ fun AccountSettingsScreen(
             AccountSettingsSection.Profile,
             Res.string.account_section_profile,
             Res.string.account_section_profile_subtitle,
-            Icons.Outlined.Person
+            PhotonneIcons.Person
         ),
         SettingsEntry(
             AccountSettingsSection.Security,

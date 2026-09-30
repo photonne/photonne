@@ -1,6 +1,7 @@
 package com.photonne.app.ui.devicebackup
 
 import com.photonne.app.ui.theme.FieldGroupLabel
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.ProgressHeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
@@ -24,13 +25,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -94,6 +90,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.main.LocalSnackbarController
@@ -148,7 +145,7 @@ fun BackupPendingScreen(
             EmptyMessage(stringResource(Res.string.device_backup_not_supported))
         !hasFolders ->
             EmptyState(
-                icon = Icons.Filled.Folder,
+                icon = PhotonneIcons.Folder,
                 title = stringResource(Res.string.device_backup_intro),
                 actionLabel = stringResource(Res.string.device_backup_action_pick_folder),
                 onAction = pickFolder
@@ -613,10 +610,10 @@ private fun CollapsibleSectionLabel(
             modifier = Modifier.weight(1f)
         )
         Icon(
-            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            imageVector = if (expanded) PhotonneIcons.ExpandLess else PhotonneIcons.ExpandMore,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(IconSize.md)
         )
     }
 }
@@ -672,7 +669,7 @@ private fun PendingRow(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(Spacing.xxs)
-                        .size(14.dp)
+                        .size(IconSize.badge)
                 )
             }
             if (entry.isSelected) {
@@ -688,7 +685,7 @@ private fun PendingRow(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .background(Color.White, CircleShape)
-                        .size(18.dp)
+                        .size(IconSize.chip)
                 )
             }
         }
@@ -742,10 +739,10 @@ private fun PendingRow(
                 )
             }
             is DeviceMediaSyncState.Failed -> Icon(
-                imageVector = Icons.Filled.Refresh,
+                imageVector = PhotonneIcons.Refresh,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IconSize.md)
             )
             else -> {}
         }
@@ -786,7 +783,7 @@ private fun MediaCell(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(Spacing.xs)
-                    .size(20.dp)
+                    .size(IconSize.md)
             )
         }
 
@@ -815,7 +812,7 @@ private fun MediaCell(
                     .align(Alignment.BottomEnd)
                     .padding(Spacing.xs)
                     .background(Color.White, shape = CircleShape)
-                    .size(20.dp)
+                    .size(IconSize.md)
             )
         }
     }
@@ -866,10 +863,10 @@ private fun IgnoredCell(
 private fun SyncBadge(state: DeviceMediaSyncState, modifier: Modifier = Modifier) {
     val (bg, tint, icon) = when (state) {
         is DeviceMediaSyncState.Synced ->
-            Triple(PhotonneColors.success, PhotonneColors.onSuccess, Icons.Filled.Check)
+            Triple(PhotonneColors.success, PhotonneColors.onSuccess, PhotonneIcons.Check)
         is DeviceMediaSyncState.NotSynced -> return
         is DeviceMediaSyncState.Failed ->
-            Triple(MaterialTheme.colorScheme.error, Color.White, Icons.Filled.Refresh)
+            Triple(MaterialTheme.colorScheme.error, Color.White, PhotonneIcons.Refresh)
         DeviceMediaSyncState.Uploading ->
             Triple(MaterialTheme.colorScheme.primary, Color.White, Icons.Filled.PlayArrow)
         DeviceMediaSyncState.Unknown -> return
@@ -885,7 +882,7 @@ private fun SyncBadge(state: DeviceMediaSyncState, modifier: Modifier = Modifier
             imageVector = icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(14.dp).align(Alignment.Center)
+            modifier = Modifier.size(IconSize.badge).align(Alignment.Center)
         )
     }
 }

@@ -14,9 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +57,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.contentWidth
 import com.photonne.app.ui.theme.Spacing
 
@@ -241,7 +239,7 @@ private fun DestinationRow(path: String?, onClick: () -> Unit) {
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(PhotonneIcons.Move, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(Res.string.organize_move_destination_label), style = MaterialTheme.typography.titleSmall)
@@ -253,7 +251,7 @@ private fun DestinationRow(path: String?, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(PhotonneIcons.Chevron, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

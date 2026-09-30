@@ -16,11 +16,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Landscape
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +37,8 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.organize_suggestions_see_all
 import com.photonne.app.resources.organize_suggestions_title
 import com.photonne.app.resources.organize_year_photo_count
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import org.jetbrains.compose.resources.stringResource
 
@@ -147,7 +146,7 @@ private fun SuggestionRow(
                     imageVector = iconFor(suggestion.kind),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(IconSize.sm),
                 )
                 Text(
                     suggestion.title,
@@ -168,7 +167,7 @@ private fun SuggestionRow(
             )
         }
         Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            PhotonneIcons.Chevron,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -177,8 +176,8 @@ private fun SuggestionRow(
 
 /** El icono solo dice de dónde sale el lote; todos se comportan igual. */
 private fun iconFor(kind: String): ImageVector = when (kind) {
-    "trip" -> Icons.Outlined.Place
-    "person" -> Icons.Outlined.Person
+    "trip" -> PhotonneIcons.Location
+    "person" -> PhotonneIcons.Person
     "scene" -> Icons.Outlined.Landscape
     else -> Icons.Outlined.CalendarMonth
 }

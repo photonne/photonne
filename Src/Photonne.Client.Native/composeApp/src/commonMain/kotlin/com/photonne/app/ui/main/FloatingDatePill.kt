@@ -1,6 +1,8 @@
 package com.photonne.app.ui.main
 
 import androidx.compose.animation.AnimatedVisibility
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PillShape
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -12,9 +14,6 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -125,16 +124,16 @@ internal fun ScrubberHandle(
             modifier = Modifier.fillMaxSize(),
         ) {
             Icon(
-                imageVector = Icons.Filled.KeyboardArrowUp,
+                imageVector = PhotonneIcons.ChevronUp,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(IconSize.chip),
             )
             Icon(
-                imageVector = Icons.Filled.KeyboardArrowDown,
+                imageVector = PhotonneIcons.ChevronDown,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(IconSize.chip),
             )
         }
     }

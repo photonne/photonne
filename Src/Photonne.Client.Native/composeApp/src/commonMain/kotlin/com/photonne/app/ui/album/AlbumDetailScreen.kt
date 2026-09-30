@@ -23,18 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.PhotoAlbum
-import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -90,6 +79,8 @@ import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -227,7 +218,7 @@ fun AlbumDetailScreen(
                 Column(modifier = Modifier.fillMaxSize()) {
                     hero()
                     EmptyState(
-                        icon = Icons.Outlined.PhotoAlbum,
+                        icon = PhotonneIcons.Album,
                         title = stringResource(Res.string.album_empty_title),
                         subtitle = stringResource(Res.string.album_empty_subtitle)
                     )
@@ -444,7 +435,7 @@ private fun AlbumDetailTopBar(
         HeaderChromePill(dockedFraction = dockedFraction, hazeState = hazeState) {
             IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    imageVector = PhotonneIcons.Back,
                     contentDescription = stringResource(Res.string.action_back),
                     tint = iconTint
                 )
@@ -454,7 +445,7 @@ private fun AlbumDetailTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onSort) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                        imageVector = PhotonneIcons.Sort,
                         contentDescription = stringResource(Res.string.album_action_sort),
                         tint = iconTint
                     )
@@ -462,7 +453,7 @@ private fun AlbumDetailTopBar(
                 if (canShare) {
                     IconButton(onClick = onShare) {
                         Icon(
-                            imageVector = Icons.Outlined.Share,
+                            imageVector = PhotonneIcons.Share,
                             contentDescription = stringResource(Res.string.action_share),
                             tint = iconTint
                         )
@@ -550,10 +541,10 @@ private fun AlbumHero(
                 if (isShared) {
                     Spacer(Modifier.width(Spacing.sm))
                     Icon(
-                        imageVector = Icons.Filled.Group,
+                        imageVector = PhotonneIcons.Members,
                         contentDescription = stringResource(Res.string.album_hero_shared),
                         tint = PhotonneColors.onScrimMuted,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(IconSize.md)
                     )
                 }
             }
@@ -567,10 +558,10 @@ private fun AlbumHero(
                 HeroMetaItem(
                     icon = {
                         Icon(
-                            imageVector = Icons.Filled.PhotoLibrary,
+                            imageVector = PhotonneIcons.Photos,
                             contentDescription = null,
                             tint = PhotonneColors.onScrimMuted,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(IconSize.sm)
                         )
                     },
                     text = pluralStringResource(
@@ -582,10 +573,10 @@ private fun AlbumHero(
                 HeroMetaItem(
                     icon = {
                         Icon(
-                            imageVector = Icons.Filled.CalendarMonth,
+                            imageVector = Icons.Outlined.CalendarMonth,
                             contentDescription = null,
                             tint = PhotonneColors.onScrimMuted,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(IconSize.sm)
                         )
                     },
                     text = formatLocalizedMonth(
@@ -637,7 +628,7 @@ private fun AlbumActionsOverflowMenu(
     Box {
         IconButton(onClick = { menuOpen = true }) {
             Icon(
-                imageVector = Icons.Filled.MoreVert,
+                imageVector = PhotonneIcons.More,
                 contentDescription = stringResource(Res.string.album_action_album_actions),
                 tint = tint
             )
@@ -649,7 +640,7 @@ private fun AlbumActionsOverflowMenu(
             if (canEdit) {
                 DropdownMenuItem(
                     text = { Text(stringResource(Res.string.action_edit)) },
-                    leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                    leadingIcon = { Icon(PhotonneIcons.Edit, contentDescription = null) },
                     onClick = { menuOpen = false; onEdit() }
                 )
             }
@@ -657,7 +648,7 @@ private fun AlbumActionsOverflowMenu(
                 DropdownMenuItem(
                     text = { Text(stringResource(Res.string.album_action_members)) },
                     leadingIcon = {
-                        Icon(Icons.Outlined.People, contentDescription = null)
+                        Icon(PhotonneIcons.Members, contentDescription = null)
                     },
                     onClick = { menuOpen = false; onManageMembers() }
                 )
@@ -666,7 +657,7 @@ private fun AlbumActionsOverflowMenu(
                 DropdownMenuItem(
                     text = { Text(stringResource(Res.string.action_leave)) },
                     leadingIcon = {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                        Icon(PhotonneIcons.Logout, contentDescription = null)
                     },
                     onClick = { menuOpen = false; onLeave() }
                 )
@@ -681,7 +672,7 @@ private fun AlbumActionsOverflowMenu(
                     },
                     leadingIcon = {
                         Icon(
-                            Icons.Outlined.Delete,
+                            PhotonneIcons.Delete,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.error
                         )

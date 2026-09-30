@@ -29,11 +29,6 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -75,6 +70,7 @@ import com.photonne.app.resources.share_link_fallback_title
 import com.photonne.app.resources.share_revoke_confirm_message
 import com.photonne.app.resources.share_revoke_confirm_title
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlin.time.Instant
 import kotlinx.coroutines.launch
@@ -140,7 +136,7 @@ fun MyLinksScreen(
                         ErrorBanner(error = state.error, onRetry = viewModel::refresh)
                     }
                 state.links.isEmpty() -> SharedEmptyState(
-                    icon = Icons.Outlined.Share,
+                    icon = PhotonneIcons.Share,
                     title = stringResource(Res.string.my_links_empty_title),
                     subtitle = stringResource(Res.string.my_links_empty_subtitle)
                 )
@@ -282,7 +278,7 @@ private fun MyLinkRow(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Outlined.Share,
+                    imageVector = PhotonneIcons.Share,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -325,22 +321,22 @@ private fun MyLinkRow(
         }
         IconButton(onClick = onCopy) {
             Icon(
-                Icons.Outlined.ContentCopy,
+                PhotonneIcons.Copy,
                 contentDescription = stringResource(Res.string.share_action_copy)
             )
         }
         IconButton(onClick = onShare) {
             Icon(
-                Icons.Outlined.Share,
+                PhotonneIcons.Share,
                 contentDescription = stringResource(Res.string.share_action_share_link)
             )
         }
         IconButton(onClick = onEdit) {
-            Icon(Icons.Filled.Edit, contentDescription = stringResource(Res.string.share_action_edit))
+            Icon(PhotonneIcons.Edit, contentDescription = stringResource(Res.string.share_action_edit))
         }
         IconButton(onClick = onRevoke) {
             Icon(
-                Icons.Outlined.Delete,
+                PhotonneIcons.Delete,
                 contentDescription = stringResource(Res.string.share_action_revoke),
                 tint = MaterialTheme.colorScheme.error
             )

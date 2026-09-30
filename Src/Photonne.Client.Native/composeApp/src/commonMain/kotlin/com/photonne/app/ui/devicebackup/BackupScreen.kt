@@ -6,7 +6,6 @@ import com.photonne.app.ui.theme.SectionHeader
 import com.photonne.app.ui.theme.SettingsGroup
 import com.photonne.app.ui.theme.SettingsItem
 import com.photonne.app.ui.theme.SettingsTrailing
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,13 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -112,13 +105,12 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.resources.backup_section_settings
@@ -127,7 +119,6 @@ import com.photonne.app.resources.backup_status_waiting_charging
 import com.photonne.app.resources.backup_status_waiting_wifi
 import com.photonne.app.resources.backup_status_waiting_wifi_charging
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -244,7 +235,7 @@ fun BackupScreen(
                         if (state.isBackupEnabled) Res.string.backup_enabled_on
                         else Res.string.backup_enabled_off
                     ),
-                    leadingIcon = Icons.Filled.CloudUpload,
+                    leadingIcon = PhotonneIcons.Upload,
                     trailing = SettingsTrailing.Toggle(
                         checked = state.isBackupEnabled,
                         onCheckedChange = { enabled ->
@@ -326,7 +317,7 @@ fun BackupScreen(
                     val removedMessage = stringResource(removedTemplate, folder.displayName)
                     SettingsItem(
                         headline = folder.displayName,
-                        leadingIcon = Icons.Filled.Folder,
+                        leadingIcon = PhotonneIcons.Folder,
                         headlineMaxLines = 1,
                         showDivider = index > 0,
                         trailing = SettingsTrailing.Custom {
@@ -348,7 +339,7 @@ fun BackupScreen(
                                 }
                             }) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Delete,
+                                    imageVector = PhotonneIcons.Delete,
                                     contentDescription = stringResource(Res.string.backup_source_remove),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -363,7 +354,7 @@ fun BackupScreen(
                     ),
                     supporting = if (state.folders.isEmpty())
                         stringResource(Res.string.backup_source_none) else null,
-                    leadingIcon = Icons.Outlined.CreateNewFolder,
+                    leadingIcon = PhotonneIcons.NewFolder,
                     onClick = addBackupSource,
                     showDivider = state.folders.isNotEmpty()
                 )
@@ -506,26 +497,26 @@ private fun BackupStatusCard(
             // ── Headline: the one-line verdict ──────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val (icon, tint) = when {
-                    !hasFolder -> Icons.Outlined.CloudUpload to
+                    !hasFolder -> PhotonneIcons.Upload to
                         MaterialTheme.colorScheme.onSurfaceVariant
                     state.isSyncing || state.isCheckingHashes ->
                         Icons.Filled.HourglassEmpty to MaterialTheme.colorScheme.primary
-                    state.failedCount > 0 -> Icons.Filled.CloudUpload to
+                    state.failedCount > 0 -> PhotonneIcons.Upload to
                         MaterialTheme.colorScheme.error
-                    pendingCount > 0 -> Icons.Filled.CloudUpload to
+                    pendingCount > 0 -> PhotonneIcons.Upload to
                         PhotonneColors.warning
                     hasChecked && state.ignoredCount == 0 -> Icons.Filled.CheckCircle to
                         PhotonneColors.success
-                    hasChecked -> Icons.Filled.CloudUpload to
+                    hasChecked -> PhotonneIcons.Upload to
                         MaterialTheme.colorScheme.onSurfaceVariant
-                    else -> Icons.Outlined.CloudUpload to
+                    else -> PhotonneIcons.Upload to
                         MaterialTheme.colorScheme.onSurfaceVariant
                 }
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = tint,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(IconSize.xl)
                 )
                 Spacer(Modifier.size(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -588,7 +579,7 @@ private fun BackupStatusCard(
                 if (hasFolder && !state.isCheckingHashes && !state.isSyncing) {
                     IconButton(onClick = onRecheck) {
                         Icon(
-                            imageVector = Icons.Filled.Refresh,
+                            imageVector = PhotonneIcons.Refresh,
                             contentDescription = stringResource(Res.string.backup_status_recheck),
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -651,10 +642,10 @@ private fun BackupStatusCard(
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        imageVector = PhotonneIcons.Chevron,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(IconSize.chip)
                     )
                 }
             }
@@ -672,7 +663,7 @@ private fun BackupStatusCard(
                         Icons.Filled.HourglassEmpty,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(IconSize.chip)
                     )
                     Spacer(Modifier.size(8.dp))
                     Text(
@@ -682,10 +673,10 @@ private fun BackupStatusCard(
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        imageVector = PhotonneIcons.Chevron,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(IconSize.chip)
                     )
                 }
             }
@@ -729,10 +720,10 @@ private fun BackupStatusCard(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
-                                Icons.Outlined.Delete,
+                                PhotonneIcons.Delete,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(IconSize.chip)
                             )
                             Spacer(Modifier.size(8.dp))
                             Text(
@@ -819,7 +810,7 @@ private fun CollapsibleHeader(title: String, expanded: Boolean, onToggle: () -> 
             modifier = Modifier.weight(1f)
         )
         Icon(
-            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            imageVector = if (expanded) PhotonneIcons.ExpandLess else PhotonneIcons.ExpandMore,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(IconSize.md)
@@ -927,7 +918,7 @@ private fun DeviceBucketPickerSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Filled.Folder,
+                        PhotonneIcons.Folder,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -953,7 +944,7 @@ private fun DeviceBucketPickerSheet(
                         )
                     } else {
                         Icon(
-                            Icons.Filled.Add,
+                            PhotonneIcons.Add,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -969,7 +960,7 @@ private fun DeviceBucketPickerSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Filled.Folder,
+                        PhotonneIcons.Folder,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )

@@ -1,5 +1,7 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.main.FormPageScaffold
 import com.photonne.app.ui.main.ResultSnackbar
@@ -22,8 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.AlertDialog
@@ -207,7 +208,7 @@ private fun SettingTile(
                         imageVector = icon,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(IconSize.md)
                     )
                 }
             }
@@ -432,7 +433,7 @@ fun SettingDropdown(
                     modifier = Modifier.widthIn(max = 168.dp)
                 )
                 Icon(
-                    Icons.Filled.ArrowDropDown,
+                    Icons.Outlined.ArrowDropDown,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -630,7 +631,7 @@ fun SettingSlider(
                     Icon(
                         Icons.Outlined.Remove,
                         contentDescription = stringResource(Res.string.admin_settings_decrease),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(IconSize.chip)
                     )
                 }
                 ValueChip(text = valueFormat(value))
@@ -640,9 +641,9 @@ fun SettingSlider(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        Icons.Outlined.Add,
+                        PhotonneIcons.Add,
                         contentDescription = stringResource(Res.string.admin_settings_increase),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(IconSize.chip)
                     )
                 }
             }

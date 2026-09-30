@@ -1,6 +1,7 @@
 package com.photonne.app.ui.upload
 
 import androidx.compose.foundation.background
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.ProgressHeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -19,11 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Image
@@ -68,6 +66,7 @@ import com.photonne.app.resources.upload_summary
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
 
@@ -157,7 +156,7 @@ private fun Header(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(onClick = onPickFiles) {
-                Icon(Icons.Filled.Add, contentDescription = null)
+                Icon(PhotonneIcons.Add, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(Res.string.upload_action_add))
             }
@@ -221,7 +220,7 @@ private fun BatchSummaryCard(
                     Icons.Filled.CheckCircle,
                     contentDescription = null,
                     tint = PhotonneColors.success,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
                 Spacer(Modifier.size(Spacing.sm))
                 Text(
@@ -230,7 +229,7 @@ private fun BatchSummaryCard(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_close))
+                    Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_close))
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
@@ -282,7 +281,7 @@ private fun UploadErrorBanner(message: String, onDismiss: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium
         )
         IconButton(onClick = onDismiss) {
-            Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_close))
+            Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_close))
         }
     }
 }
@@ -359,7 +358,7 @@ private fun Thumbnail(item: UploadItem) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .size(24.dp)
+                    .size(IconSize.lg)
             )
         }
         when (item.status) {
@@ -396,7 +395,7 @@ private fun BoxScope.ThumbStatusOverlay(icon: ImageVector, tint: Color) {
             imageVector = icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(IconSize.lg)
         )
     }
 }
@@ -413,17 +412,17 @@ private fun RowAction(
             strokeWidth = 2.dp
         )
         UploadStatus.Queued -> IconButton(onClick = onRemove) {
-            Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_remove))
+            Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_remove))
         }
         UploadStatus.Failed, UploadStatus.Cancelled -> Row(
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onRetry) {
-                Icon(Icons.Filled.Refresh, contentDescription = stringResource(Res.string.action_retry))
+                Icon(PhotonneIcons.Refresh, contentDescription = stringResource(Res.string.action_retry))
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_remove))
+                Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_remove))
             }
         }
         UploadStatus.Done, UploadStatus.Skipped -> Unit

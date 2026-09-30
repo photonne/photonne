@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +42,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.photonne.app.ui.theme.ChromeElevation
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -234,7 +233,7 @@ internal fun BoxScope.SubscreenFloatingChrome(
                             if (onBack != null) {
                                 IconButton(onClick = onBack) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                        imageVector = PhotonneIcons.Back,
                                         contentDescription = stringResource(Res.string.action_back)
                                     )
                                 }

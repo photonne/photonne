@@ -7,13 +7,25 @@ import androidx.compose.ui.unit.dp
  * Tamaños de icono canónicos. La auditoría encontró 27 tamaños distintos para el
  * mismo tipo de icono (el meta inline aparecía a 12/14/16/18/20 según pantalla).
  * Todo `Icon` debe elegir uno de estos escalones en vez de un `.dp` suelto.
+ *
+ * Además de la escala base hay dos escalones con nombre de rol, porque su
+ * tamaño lo dicta el contenedor y no el texto de al lado: [badge] (14) para el
+ * glifo dentro de una insignia superpuesta y [chip] (18) para el de una
+ * píldora, chip o botón compacto. Los 22 y 28 sueltos se normalizaron a
+ * [lg]/[xl] según su papel.
  */
 object IconSize {
     /** 12.dp — icono diminuto de metadato dentro de un chip/badge. */
     val xs: Dp = 12.dp
 
+    /** 14.dp — glifo dentro de una insignia superpuesta (sobre miniatura o portada). */
+    val badge: Dp = 14.dp
+
     /** 16.dp — icono inline junto a texto (leading de una fila de lista). */
     val sm: Dp = 16.dp
+
+    /** 18.dp — icono dentro de una píldora, chip o botón compacto del cromo. */
+    val chip: Dp = 18.dp
 
     /** 20.dp — icono inline destacado / iconos de meta más visibles. */
     val md: Dp = 20.dp

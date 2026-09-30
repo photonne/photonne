@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +32,7 @@ import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -100,7 +99,7 @@ fun TrashScreen(
                     )
                 state.isEmpty ->
                     EmptyState(
-                        icon = Icons.Outlined.Delete,
+                        icon = PhotonneIcons.Delete,
                         title = stringResource(Res.string.trash_empty_title),
                         subtitle = stringResource(Res.string.trash_empty_subtitle)
                     )

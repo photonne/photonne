@@ -4,7 +4,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.derivedStateOf
 import com.photonne.app.resources.asset_ai_scenes
@@ -57,40 +56,21 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Slideshow
-import androidx.compose.material.icons.outlined.AddToPhotos
-import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.DeleteForever
-import androidx.compose.material.icons.outlined.RestoreFromTrash
-import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Camera
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Iso
 import androidx.compose.material.icons.outlined.ShutterSpeed
+import androidx.compose.material.icons.outlined.Slideshow
 import androidx.compose.material.icons.outlined.Storage
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Face
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -230,9 +210,11 @@ import com.photonne.app.resources.slideshow_pause
 import com.photonne.app.resources.slideshow_play
 import com.photonne.app.resources.slideshow_previous
 import com.photonne.app.resources.slideshow_start
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.theme.ChromeElevation
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.util.openExternalUrl
 import kotlin.math.PI
@@ -905,7 +887,7 @@ fun AssetDetailScreen(
                     ViewerChromeCapsule(hazeState = viewerHazeState) {
                         IconButton(onClick = onBack) {
                             Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                PhotonneIcons.Back,
                                 contentDescription = stringResource(Res.string.action_back)
                             )
                         }
@@ -944,7 +926,7 @@ fun AssetDetailScreen(
                                 slideshowPaused = false
                             }) {
                                 Icon(
-                                    Icons.Filled.Slideshow,
+                                    Icons.Outlined.Slideshow,
                                     contentDescription = stringResource(Res.string.slideshow_start)
                                 )
                             }
@@ -1725,7 +1707,7 @@ private fun LivePhotoBadge(
                 imageVector = Icons.Outlined.MotionPhotosOn,
                 contentDescription = null,
                 tint = PhotonneColors.onScrim,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(IconSize.sm)
             )
             Text(
                 text = label,
@@ -1970,7 +1952,7 @@ private fun ExifStatCard(cell: StatCell, modifier: Modifier = Modifier) {
                 imageVector = cell.icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IconSize.md)
             )
             Column {
                 Text(
@@ -2018,7 +2000,7 @@ private fun FacesSection(
                     imageVector = Icons.Outlined.Face,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
                 Text(
                     text = pluralStringResource(Res.plurals.asset_detail_faces_count, faces.size, faces.size),
@@ -2027,10 +2009,10 @@ private fun FacesSection(
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    imageVector = PhotonneIcons.Chevron,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
             }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2125,10 +2107,10 @@ private fun RecognizedTextSection(text: String) {
                 snackbar?.show(copiedMessage)
             }) {
                 Icon(
-                    Icons.Outlined.ContentCopy,
+                    PhotonneIcons.Copy,
                     contentDescription = stringResource(Res.string.asset_detail_text_copy),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
             }
         }
@@ -2208,7 +2190,7 @@ private fun TagChip(label: String, onRemove: (() -> Unit)?) {
             )
             if (onRemove != null) {
                 Icon(
-                    imageVector = Icons.Filled.Close,
+                    imageVector = PhotonneIcons.Close,
                     contentDescription = "${stringResource(Res.string.action_remove)} $label",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -2236,10 +2218,10 @@ private fun AddTagChip(onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             Icon(
-                imageVector = Icons.Filled.Add,
+                imageVector = PhotonneIcons.Add,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(IconSize.sm)
             )
             Text(
                 text = stringResource(Res.string.asset_detail_tag_add),
@@ -2394,7 +2376,7 @@ private fun MetadataEditableRow(
                     imageVector = leadingIcon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -2406,10 +2388,10 @@ private fun MetadataEditableRow(
                 )
             }
             Icon(
-                imageVector = Icons.Outlined.Edit,
+                imageVector = PhotonneIcons.Edit,
                 contentDescription = stringResource(Res.string.action_edit),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(IconSize.chip)
             )
         }
     }
@@ -2432,7 +2414,7 @@ private fun MetadataInfoRow(leadingIcon: ImageVector, label: String, value: Stri
                 imageVector = leadingIcon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IconSize.md)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -2460,7 +2442,7 @@ private fun MetadataActionRow(leadingIcon: ImageVector, label: String, onClick: 
                 imageVector = leadingIcon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IconSize.md)
             )
             Text(
                 text = label,
@@ -2469,10 +2451,10 @@ private fun MetadataActionRow(leadingIcon: ImageVector, label: String, onClick: 
                 modifier = Modifier.weight(1f)
             )
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = PhotonneIcons.Chevron,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IconSize.md)
             )
         }
     }
@@ -2556,7 +2538,7 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                 modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.sm)
             )
             Icon(
-                imageVector = Icons.Filled.LocationOn,
+                imageVector = PhotonneIcons.MapPin,
                 contentDescription = stringResource(Res.string.asset_metadata_open_map),
                 tint = MapPinColor,
                 modifier = Modifier
@@ -2597,10 +2579,10 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                     horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.LocationOn,
+                        imageVector = PhotonneIcons.Location,
                         contentDescription = null,
                         tint = PhotonneColors.onScrim,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(IconSize.sm)
                     )
                     Text(
                         text = stringResource(Res.string.asset_action_open_in_maps),
@@ -2729,7 +2711,7 @@ private fun SlideshowControls(
             }
             IconButton(onClick = onExit) {
                 Icon(
-                    Icons.Filled.Close,
+                    PhotonneIcons.Close,
                     contentDescription = stringResource(Res.string.slideshow_exit),
                     tint = Color.White
                 )

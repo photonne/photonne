@@ -16,10 +16,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -58,6 +54,7 @@ import com.photonne.app.resources.people_suggestions_empty
 import com.photonne.app.resources.people_suggestions_title
 import com.photonne.app.resources.people_unnamed
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -195,7 +192,7 @@ private fun SuggestionsOverflowMenu(
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { menuOpen = true }, enabled = enabled) {
-            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
+            Icon(PhotonneIcons.More, contentDescription = stringResource(Res.string.action_more))
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
@@ -255,14 +252,14 @@ private fun SuggestionCard(
         ) {
             IconButton(onClick = onDismiss, enabled = !isPending) {
                 Icon(
-                    Icons.Filled.Close,
+                    PhotonneIcons.Close,
                     contentDescription = stringResource(Res.string.people_suggestions_dismiss),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
             IconButton(onClick = onAccept, enabled = !isPending) {
                 Icon(
-                    Icons.Filled.Check,
+                    PhotonneIcons.Check,
                     contentDescription = stringResource(Res.string.people_suggestions_accept),
                     tint = MaterialTheme.colorScheme.primary
                 )

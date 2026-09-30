@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -142,7 +139,7 @@ private fun FolderGroupHeaderRow(label: String, expanded: Boolean, enabled: Bool
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            if (expanded) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            if (expanded) PhotonneIcons.ChevronDown else PhotonneIcons.Chevron,
             contentDescription = if (expanded) "Colapsar" else "Expandir",
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -176,14 +173,14 @@ private fun FolderTreeRow(
         if (node.children.isNotEmpty()) {
             IconButton(onClick = onToggleExpand, modifier = Modifier.size(40.dp)) {
                 Icon(
-                    if (expanded) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    if (expanded) PhotonneIcons.ChevronDown else PhotonneIcons.Chevron,
                     contentDescription = if (expanded) "Colapsar" else "Expandir",
                 )
             }
         } else {
             Spacer(Modifier.width(Spacing.xxl))
         }
-        Icon(Icons.Outlined.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Icon(PhotonneIcons.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(Spacing.sm))
         Column(Modifier.weight(1f)) {
             Text(

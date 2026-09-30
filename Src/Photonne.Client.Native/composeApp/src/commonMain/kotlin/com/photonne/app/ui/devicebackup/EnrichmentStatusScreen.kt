@@ -20,10 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -66,7 +63,9 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -215,7 +214,7 @@ private fun EnrichmentAssetCard(
                             Spacer(Modifier.size(6.dp))
                             Text(stringResource(Res.string.enrichment_retrying_all))
                         } else {
-                            Icon(Icons.Filled.Refresh, contentDescription = null)
+                            Icon(PhotonneIcons.Refresh, contentDescription = null)
                             Spacer(Modifier.size(6.dp))
                             Text(stringResource(Res.string.enrichment_retry_all))
                         }
@@ -273,7 +272,7 @@ private fun FailedTaskChips(
                             Icons.Filled.ErrorOutline,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(IconSize.chip)
                         )
                     }
                 },

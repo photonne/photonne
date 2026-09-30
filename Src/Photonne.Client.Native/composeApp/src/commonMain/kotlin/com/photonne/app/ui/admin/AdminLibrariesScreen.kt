@@ -1,6 +1,7 @@
 package com.photonne.app.ui.admin
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.ProgressHeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,10 +15,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -89,14 +86,14 @@ fun AdminLibrariesScreen(
         isEmpty = state.libraries.isEmpty(),
         error = state.error,
         onRefresh = viewModel::refresh,
-        emptyIcon = Icons.Outlined.CreateNewFolder,
+        emptyIcon = PhotonneIcons.NewFolder,
         emptyTitle = stringResource(Res.string.admin_libraries_empty),
         resultMessage = state.statusMessage,
         onResultShown = viewModel::consumeStatus,
         onDismissError = viewModel::clearMessages,
         actions = {
             CreateAction(
-                icon = Icons.Outlined.CreateNewFolder,
+                icon = PhotonneIcons.NewFolder,
                 contentDescription = stringResource(Res.string.admin_libraries_action_new),
                 onClick = onCreateNew
             )
@@ -149,7 +146,7 @@ private fun ScanProgressCard(progress: LibraryScanProgress, onCancel: () -> Unit
                 )
                 IconButton(onClick = onCancel) {
                     Icon(
-                        Icons.Filled.Close,
+                        PhotonneIcons.Close,
                         contentDescription = stringResource(Res.string.admin_libraries_scan_cancel)
                     )
                 }
@@ -308,7 +305,7 @@ private fun LibraryPermissionsDialog(
                                 .padding(vertical = Spacing.xs),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Filled.Add, contentDescription = null)
+                            Icon(PhotonneIcons.Add, contentDescription = null)
                             Spacer(Modifier.size(Spacing.sm))
                             Column {
                                 Text(user.username, style = MaterialTheme.typography.bodyMedium)

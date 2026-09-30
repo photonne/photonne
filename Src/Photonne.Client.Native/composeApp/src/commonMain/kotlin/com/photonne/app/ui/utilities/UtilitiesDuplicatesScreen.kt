@@ -31,12 +31,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -79,6 +76,7 @@ import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -139,7 +137,7 @@ fun UtilitiesDuplicatesScreen(
                     }
                 state.groups.isEmpty() ->
                     EmptyState(
-                        icon = Icons.Outlined.ContentCopy,
+                        icon = PhotonneIcons.Copy,
                         title = stringResource(Res.string.utilities_duplicates_empty)
                     )
                 else ->
@@ -215,7 +213,7 @@ fun UtilitiesDuplicatesScreen(
         if (state.totalSelectedCount > 0) {
             ExtendedFloatingActionButton(
                 onClick = { confirmOpen = true },
-                icon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                icon = { Icon(PhotonneIcons.Delete, contentDescription = null) },
                 text = {
                     Text(
                         stringResource(
@@ -392,7 +390,7 @@ private fun DuplicateAssetRow(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(Spacing.xxs)
-                        .size(16.dp)
+                        .size(IconSize.sm)
                 )
             }
             if (isSelected) {
@@ -404,7 +402,7 @@ private fun DuplicateAssetRow(
                         .align(Alignment.BottomEnd)
                         .padding(Spacing.xxs)
                         .background(Color.White, shape = CircleShape)
-                        .size(18.dp)
+                        .size(IconSize.chip)
                 )
             }
         }
@@ -430,12 +428,12 @@ private fun DuplicateAssetRow(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Folder,
+                    imageVector = PhotonneIcons.Folder,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .padding(top = 1.dp)
-                        .size(12.dp)
+                        .size(IconSize.xs)
                 )
                 Spacer(Modifier.size(4.dp))
                 Text(
@@ -451,7 +449,7 @@ private fun DuplicateAssetRow(
 
         IconButton(onClick = onOpen) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
                 contentDescription = stringResource(Res.string.utilities_duplicates_open_detail),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

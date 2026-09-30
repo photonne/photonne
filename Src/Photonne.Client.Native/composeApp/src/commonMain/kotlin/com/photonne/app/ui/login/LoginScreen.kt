@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
@@ -76,6 +75,7 @@ import com.photonne.app.resources.login_session_expired
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.resources.login_insecure_public_url
 import com.photonne.app.data.api.ServerUrlStore
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.photonneLogoPainter
 import org.jetbrains.compose.resources.stringResource
@@ -136,7 +136,7 @@ private fun SessionExpiredNotice() {
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             modifier = Modifier.padding(Spacing.md)
         ) {
-            Icon(Icons.Outlined.Info, contentDescription = null)
+            Icon(PhotonneIcons.Info, contentDescription = null)
             Text(
                 stringResource(Res.string.login_session_expired),
                 style = MaterialTheme.typography.bodyMedium

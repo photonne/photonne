@@ -1,6 +1,7 @@
 package com.photonne.app.ui.admin
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +16,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,7 +62,7 @@ fun AdminUsersScreen(
         isEmpty = state.users.isEmpty(),
         error = state.error,
         onRefresh = viewModel::refresh,
-        emptyIcon = Icons.Outlined.Group,
+        emptyIcon = PhotonneIcons.Members,
         emptyTitle = stringResource(Res.string.admin_users_empty),
         resultMessage = state.statusMessage,
         onResultShown = viewModel::consumeStatus,

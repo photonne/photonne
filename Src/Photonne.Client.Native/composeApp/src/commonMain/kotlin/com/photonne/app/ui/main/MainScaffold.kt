@@ -30,46 +30,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddBox
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
-import androidx.compose.material.icons.outlined.DoneAll
-import androidx.compose.material.icons.outlined.AddToPhotos
-import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Collections
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.NotInterested
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.PhotoAlbum
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.DriveFileRenameOutline
-import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
-import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.HeartBroken
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
@@ -214,6 +181,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
 
@@ -407,8 +375,8 @@ private fun MainNavigationBar(
                     label = stringResource(Res.string.tab_timeline),
                     icon = {
                         Icon(
-                            if (timelineActive) Icons.Filled.PhotoLibrary
-                            else Icons.Outlined.PhotoLibrary,
+                            if (timelineActive) PhotonneIcons.PhotosActive
+                            else PhotonneIcons.Photos,
                             contentDescription = null
                         )
                     }
@@ -420,8 +388,8 @@ private fun MainNavigationBar(
                     label = stringResource(Res.string.tab_albums),
                     icon = {
                         Icon(
-                            if (albumsActive) Icons.Filled.Collections
-                            else Icons.Outlined.Collections,
+                            if (albumsActive) PhotonneIcons.AlbumActive
+                            else PhotonneIcons.Album,
                             contentDescription = null
                         )
                     }
@@ -433,7 +401,7 @@ private fun MainNavigationBar(
                     label = stringResource(Res.string.tab_folders),
                     icon = {
                         Icon(
-                            if (foldersActive) Icons.Filled.Folder else Icons.Outlined.Folder,
+                            if (foldersActive) PhotonneIcons.FolderActive else PhotonneIcons.Folder,
                             contentDescription = null
                         )
                     }
@@ -444,7 +412,7 @@ private fun MainNavigationBar(
                     onClick = { onTabSelected(MainTab.More) },
                     label = stringResource(Res.string.tab_more),
                     icon = {
-                        val moreIcon = if (moreActive) Icons.Filled.GridView else Icons.Outlined.GridView
+                        val moreIcon = if (moreActive) PhotonneIcons.MoreTabActive else PhotonneIcons.MoreTab
                         if (moreTabUnreadCount > 0) {
                             BadgedBox(
                                 badge = {
@@ -782,7 +750,7 @@ fun TimelineTopBar(
                 if (onOpenSearch != null) {
                     IconButton(onClick = onOpenSearch) {
                         Icon(
-                            Icons.Outlined.Search,
+                            PhotonneIcons.Search,
                             contentDescription = stringResource(Res.string.tab_search)
                         )
                     }
@@ -800,7 +768,7 @@ fun TimelineTopBar(
                 if (onOpenLibraryScope != null) {
                     IconButton(onClick = onOpenLibraryScope) {
                         Icon(
-                            Icons.Outlined.Tune,
+                            PhotonneIcons.Filter,
                             contentDescription =
                                 stringResource(Res.string.timeline_scope_action)
                         )
@@ -840,7 +808,7 @@ fun AssetSelectionTopBar(
         navigationIcon = {
             IconButton(onClick = onClose, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Close,
+                    PhotonneIcons.Close,
                     contentDescription = stringResource(Res.string.selection_action_close)
                 )
             }
@@ -863,7 +831,7 @@ fun AssetSelectionTopBar(
             } else if (onSelectAll != null) {
                 IconButton(onClick = onSelectAll, enabled = !isMutating) {
                     Icon(
-                        Icons.Outlined.SelectAll,
+                        PhotonneIcons.SelectAll,
                         contentDescription = stringResource(
                             if (allSelected) Res.string.selection_action_deselect_all
                             else Res.string.selection_action_select_all
@@ -1056,7 +1024,7 @@ fun AssetSelectionBottomBar(
             label = stringResource(Res.string.selection_label_share),
             icon = {
                 Icon(
-                    Icons.Outlined.Share,
+                    PhotonneIcons.Share,
                     contentDescription = null
                 )
             }
@@ -1067,7 +1035,7 @@ fun AssetSelectionBottomBar(
             label = stringResource(Res.string.selection_label_add_to_album),
             icon = {
                 Icon(
-                    Icons.Outlined.AddToPhotos,
+                    PhotonneIcons.AddToAlbum,
                     contentDescription = null
                 )
             }
@@ -1079,7 +1047,7 @@ fun AssetSelectionBottomBar(
                 label = stringResource(Res.string.selection_label_download),
                 icon = {
                     Icon(
-                        Icons.Outlined.Download,
+                        PhotonneIcons.Download,
                         contentDescription = null
                     )
                 }
@@ -1092,7 +1060,7 @@ fun AssetSelectionBottomBar(
                 label = stringResource(Res.string.selection_label_move),
                 icon = {
                     Icon(
-                        Icons.AutoMirrored.Outlined.DriveFileMove,
+                        PhotonneIcons.Move,
                         contentDescription = null
                     )
                 }
@@ -1118,7 +1086,7 @@ fun AssetSelectionBottomBar(
                 label = stringResource(Res.string.selection_label_set_cover),
                 icon = {
                     Icon(
-                        Icons.Outlined.PhotoAlbum,
+                        PhotonneIcons.SetCover,
                         contentDescription = null
                     )
                 }
@@ -1144,7 +1112,7 @@ fun AssetSelectionBottomBar(
             icon = {
                 Box {
                     Icon(
-                        Icons.Filled.MoreVert,
+                        PhotonneIcons.More,
                         contentDescription = null
                     )
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -1152,7 +1120,7 @@ fun AssetSelectionBottomBar(
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.selection_action_download)) },
                                 leadingIcon = {
-                                    Icon(Icons.Outlined.Download, contentDescription = null)
+                                    Icon(PhotonneIcons.Download, contentDescription = null)
                                 },
                                 onClick = { menuOpen = false; onDownload() }
                             )
@@ -1161,7 +1129,7 @@ fun AssetSelectionBottomBar(
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.folder_move_assets_title)) },
                                 leadingIcon = {
-                                    Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null)
+                                    Icon(PhotonneIcons.Move, contentDescription = null)
                                 },
                                 onClick = { menuOpen = false; onMove() }
                             )
@@ -1179,7 +1147,7 @@ fun AssetSelectionBottomBar(
                                 leadingIcon = {
                                     Icon(
                                         if (allFavorite) Icons.Outlined.HeartBroken
-                                        else Icons.Outlined.FavoriteBorder,
+                                        else PhotonneIcons.Favorite,
                                         contentDescription = null
                                     )
                                 },
@@ -1201,8 +1169,8 @@ fun AssetSelectionBottomBar(
                             },
                             leadingIcon = {
                                 Icon(
-                                    if (archiveMode == ArchiveMode.Unarchive) Icons.Outlined.Unarchive
-                                    else Icons.Outlined.Archive,
+                                    if (archiveMode == ArchiveMode.Unarchive) PhotonneIcons.Unarchive
+                                    else PhotonneIcons.Archive,
                                     contentDescription = null
                                 )
                             },
@@ -1253,7 +1221,7 @@ fun AssetSelectionBottomBar(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Outlined.Delete,
+                                    PhotonneIcons.Delete,
                                     contentDescription = null,
                                     tint = if (trashAllowed) MaterialTheme.colorScheme.error
                                     else LocalContentColor.current
@@ -1318,13 +1286,13 @@ fun AlbumsListTopBar(
             }
             IconButton(onClick = onToggleSearch) {
                 Icon(
-                    imageVector = if (isSearchActive) Icons.Filled.Search else Icons.Outlined.Search,
+                    imageVector = if (isSearchActive) PhotonneIcons.SearchActive else PhotonneIcons.Search,
                     contentDescription = stringResource(Res.string.albums_action_search)
                 )
             }
             IconButton(onClick = onOpenFilters) {
                 Icon(
-                    imageVector = if (isFilterActive) Icons.Filled.Tune else Icons.Outlined.Tune,
+                    imageVector = if (isFilterActive) PhotonneIcons.FilterActive else PhotonneIcons.Filter,
                     contentDescription = stringResource(
                         if (isFilterActive) Res.string.filters_action_active
                         else Res.string.albums_action_filters
@@ -1352,7 +1320,7 @@ fun AlbumCardSelectionTopBar(
         navigationIcon = {
             IconButton(onClick = onClose, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Close,
+                    PhotonneIcons.Close,
                     contentDescription = stringResource(Res.string.selection_action_close)
                 )
             }
@@ -1388,7 +1356,7 @@ fun AlbumCardSelectionBottomBar(
                 label = stringResource(Res.string.selection_label_members),
                 icon = {
                     Icon(
-                        Icons.Outlined.Group,
+                        PhotonneIcons.Members,
                         contentDescription = null
                     )
                 }
@@ -1401,7 +1369,7 @@ fun AlbumCardSelectionBottomBar(
                 label = stringResource(Res.string.action_edit),
                 icon = {
                     Icon(
-                        Icons.Outlined.Edit,
+                        PhotonneIcons.Edit,
                         contentDescription = null
                     )
                 }
@@ -1414,7 +1382,7 @@ fun AlbumCardSelectionBottomBar(
                 label = stringResource(Res.string.selection_label_leave),
                 icon = {
                     Icon(
-                        Icons.AutoMirrored.Filled.Logout,
+                        PhotonneIcons.Logout,
                         contentDescription = null
                     )
                 }
@@ -1428,7 +1396,7 @@ fun AlbumCardSelectionBottomBar(
                 tint = MaterialTheme.colorScheme.error,
                 icon = {
                     Icon(
-                        Icons.Outlined.Delete,
+                        PhotonneIcons.Delete,
                         contentDescription = null
                     )
                 }
@@ -1452,20 +1420,20 @@ fun FoldersListTopBar(
         actions = {
             if (onCreateFolder != null) {
                 CreateAction(
-                    icon = Icons.Outlined.CreateNewFolder,
+                    icon = PhotonneIcons.NewFolder,
                     contentDescription = stringResource(Res.string.folder_action_new),
                     onClick = onCreateFolder
                 )
             }
             IconButton(onClick = onToggleSearch) {
                 Icon(
-                    imageVector = if (isSearchActive) Icons.Filled.Search else Icons.Outlined.Search,
+                    imageVector = if (isSearchActive) PhotonneIcons.SearchActive else PhotonneIcons.Search,
                     contentDescription = stringResource(Res.string.folders_action_search)
                 )
             }
             IconButton(onClick = onOpenFilters) {
                 Icon(
-                    imageVector = if (isFilterActive) Icons.Filled.Tune else Icons.Outlined.Tune,
+                    imageVector = if (isFilterActive) PhotonneIcons.FilterActive else PhotonneIcons.Filter,
                     contentDescription = stringResource(
                         if (isFilterActive) Res.string.filters_action_active
                         else Res.string.folders_action_filters
@@ -1493,7 +1461,7 @@ fun FolderCardSelectionTopBar(
         navigationIcon = {
             IconButton(onClick = onClose, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Close,
+                    PhotonneIcons.Close,
                     contentDescription = stringResource(Res.string.selection_action_close)
                 )
             }
@@ -1548,7 +1516,7 @@ fun FolderCardSelectionBottomBar(
                 label = stringResource(Res.string.selection_label_members),
                 icon = {
                     Icon(
-                        Icons.Outlined.Group,
+                        PhotonneIcons.Members,
                         contentDescription = null
                     )
                 }
@@ -1561,7 +1529,7 @@ fun FolderCardSelectionBottomBar(
                 label = stringResource(Res.string.action_rename),
                 icon = {
                     Icon(
-                        Icons.Outlined.DriveFileRenameOutline,
+                        PhotonneIcons.Rename,
                         contentDescription = null
                     )
                 }
@@ -1575,7 +1543,7 @@ fun FolderCardSelectionBottomBar(
                 tint = MaterialTheme.colorScheme.error,
                 icon = {
                     Icon(
-                        Icons.Outlined.Delete,
+                        PhotonneIcons.Delete,
                         contentDescription = null
                     )
                 }
@@ -1609,7 +1577,7 @@ fun RowScope.FolderDetailChromeActions(
     val hasMenu = canEdit || canDelete || canManageMembers || canMove || canToggleTimeline
     if (onCreateSubfolder != null) {
         CreateAction(
-            icon = Icons.Outlined.CreateNewFolder,
+            icon = PhotonneIcons.NewFolder,
             contentDescription = stringResource(Res.string.folder_action_new),
             onClick = onCreateSubfolder
         )
@@ -1618,7 +1586,7 @@ fun RowScope.FolderDetailChromeActions(
         Box {
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
-                    Icons.Filled.MoreVert,
+                    PhotonneIcons.More,
                     contentDescription = stringResource(Res.string.folder_action_actions)
                 )
             }
@@ -1646,7 +1614,7 @@ fun RowScope.FolderDetailChromeActions(
                 if (canEdit) {
                     DropdownMenuItem(
                         text = { Text(stringResource(Res.string.action_edit)) },
-                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                        leadingIcon = { Icon(PhotonneIcons.Edit, contentDescription = null) },
                         onClick = { menuOpen = false; onEdit() }
                     )
                 }
@@ -1654,7 +1622,7 @@ fun RowScope.FolderDetailChromeActions(
                     DropdownMenuItem(
                         text = { Text(stringResource(Res.string.folder_action_move)) },
                         leadingIcon = {
-                            Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null)
+                            Icon(PhotonneIcons.Move, contentDescription = null)
                         },
                         onClick = { menuOpen = false; onMove() }
                     )
@@ -1662,7 +1630,7 @@ fun RowScope.FolderDetailChromeActions(
                 if (canManageMembers) {
                     DropdownMenuItem(
                         text = { Text(stringResource(Res.string.album_action_members)) },
-                        leadingIcon = { Icon(Icons.Outlined.People, contentDescription = null) },
+                        leadingIcon = { Icon(PhotonneIcons.Members, contentDescription = null) },
                         onClick = { menuOpen = false; onManageMembers() }
                     )
                 }
@@ -1676,7 +1644,7 @@ fun RowScope.FolderDetailChromeActions(
                         },
                         leadingIcon = {
                             Icon(
-                                Icons.Outlined.Delete,
+                                PhotonneIcons.Delete,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error
                             )
@@ -1700,7 +1668,7 @@ fun UploadTopBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    PhotonneIcons.Back,
                     contentDescription = stringResource(Res.string.action_back)
                 )
             }
@@ -1736,7 +1704,7 @@ fun TrashSelectionTopBar(
         }
         IconButton(onClick = onPurge, enabled = !isMutating) {
             Icon(
-                Icons.Outlined.Delete,
+                PhotonneIcons.Delete,
                 contentDescription = stringResource(Res.string.trash_action_delete_forever),
                 tint = MaterialTheme.colorScheme.error
             )

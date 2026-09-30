@@ -21,11 +21,9 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LinkOff
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,6 +67,8 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.navigation.PlatformBackHandler
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
@@ -199,7 +199,7 @@ fun SharedLinkScreen(
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(Spacing.xs)
-                                        .size(20.dp)
+                                        .size(IconSize.md)
                                 )
                             }
                         }
@@ -245,7 +245,7 @@ fun SharedLinkScreen(
                         .padding(Spacing.sm)
                 ) {
                     Icon(
-                        Icons.Filled.Close,
+                        PhotonneIcons.Close,
                         contentDescription = stringResource(Res.string.action_close),
                         tint = Color.White
                     )
@@ -283,10 +283,10 @@ private fun SharedLinkHeader(
             horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             Icon(
-                Icons.Outlined.PhotoLibrary,
+                PhotonneIcons.Photos,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(IconSize.sm)
             )
             Text(
                 pluralStringResource(Res.plurals.album_hero_photos, count, count),

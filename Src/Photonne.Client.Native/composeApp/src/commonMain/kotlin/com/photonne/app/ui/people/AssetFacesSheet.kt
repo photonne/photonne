@@ -2,6 +2,7 @@ package com.photonne.app.ui.people
 
 import androidx.compose.foundation.background
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import androidx.compose.foundation.clickable
 import com.photonne.app.resources.people_face_assign_to
 import androidx.compose.foundation.layout.Arrangement
@@ -17,12 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -273,13 +268,13 @@ private fun FaceActions(
         if (face.suggestedPersonId != null) {
             IconButton(onClick = onDismissSuggestion, enabled = !isPending) {
                 Icon(
-                    Icons.Filled.Close,
+                    PhotonneIcons.Close,
                     contentDescription = stringResource(Res.string.people_suggestions_dismiss)
                 )
             }
             IconButton(onClick = onAcceptSuggestion, enabled = !isPending) {
                 Icon(
-                    Icons.Filled.Check,
+                    PhotonneIcons.Check,
                     contentDescription = stringResource(Res.string.people_suggestions_accept),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -287,28 +282,28 @@ private fun FaceActions(
         } else if (face.personId != null) {
             IconButton(onClick = onSetCover, enabled = !isPending) {
                 Icon(
-                    Icons.Filled.Favorite,
+                    PhotonneIcons.SetCover,
                     contentDescription = stringResource(Res.string.people_face_set_cover),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
             IconButton(onClick = onUnassign, enabled = !isPending) {
                 Icon(
-                    Icons.Filled.Close,
+                    PhotonneIcons.Close,
                     contentDescription = stringResource(Res.string.people_face_unassign)
                 )
             }
         } else {
             IconButton(onClick = onAssign, enabled = !isPending) {
                 Icon(
-                    Icons.Filled.Edit,
+                    PhotonneIcons.Edit,
                     contentDescription = stringResource(Res.string.people_face_assign)
                 )
             }
         }
         IconButton(onClick = onReject, enabled = !isPending) {
             Icon(
-                Icons.Outlined.Delete,
+                PhotonneIcons.Delete,
                 contentDescription = stringResource(Res.string.people_face_reject),
                 tint = MaterialTheme.colorScheme.error
             )

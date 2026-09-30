@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.DownloadFormat
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
@@ -35,6 +34,7 @@ import com.photonne.app.resources.download_format_original_extension
 import com.photonne.app.resources.download_format_original_subtitle
 import com.photonne.app.resources.download_format_scope_all
 import com.photonne.app.resources.download_format_scope_some
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.Spacing
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.SheetHeader
@@ -136,7 +136,7 @@ private fun FormatOptionRow(
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(IconSize.lg)
         )
         Column(modifier = Modifier.padding(end = Spacing.sm)) {
             Text(title, style = MaterialTheme.typography.bodyMedium)

@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -44,6 +41,7 @@ import com.photonne.app.resources.action_move
 import com.photonne.app.resources.folder_picker_empty
 import com.photonne.app.resources.folder_picker_root
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
@@ -161,11 +159,11 @@ fun FolderPickerDialog(
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 placeholder = { Text("Buscar carpeta…") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                leadingIcon = { Icon(PhotonneIcons.Search, contentDescription = null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { query = "" }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Limpiar")
+                            Icon(PhotonneIcons.Close, contentDescription = "Limpiar")
                         }
                     }
                 },

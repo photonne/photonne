@@ -19,10 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -77,7 +73,7 @@ fun SelectionCheck(modifier: Modifier = Modifier, compact: Boolean = false) {
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Filled.Check,
+            imageVector = PhotonneIcons.Check,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.size(if (compact) IconSize.xs else SelectionCheckIconSize)
@@ -113,7 +109,7 @@ fun CollectionCover(
 @Composable
 fun FolderGlyph(modifier: Modifier = Modifier, large: Boolean = false) {
     Icon(
-        imageVector = Icons.Filled.Folder,
+        imageVector = PhotonneIcons.Folder,
         contentDescription = null,
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = if (large) modifier.size(CollectionCardGlyphSize) else modifier
@@ -356,7 +352,7 @@ fun EntryCard(
         }
         trailing?.invoke(this)
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            imageVector = PhotonneIcons.Chevron,
             contentDescription = null,
             tint = secondary
         )

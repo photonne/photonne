@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +24,7 @@ import com.photonne.app.resources.people_merge_confirm_message
 import com.photonne.app.resources.people_merge_confirm_title
 import com.photonne.app.resources.people_unnamed
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 
 /**
@@ -66,7 +65,7 @@ fun ConfirmMergeDialog(
                         )
                     }
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
+                        PhotonneIcons.Forward,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

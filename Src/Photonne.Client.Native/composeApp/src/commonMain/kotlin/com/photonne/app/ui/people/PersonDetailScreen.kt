@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -46,6 +43,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.AssetGridSkeleton
+import com.photonne.app.ui.theme.PhotonneIcons
 
 @Composable
 fun PersonDetailScreen(
@@ -167,12 +165,12 @@ private fun PersonDetailOverflowMenu(
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { menuOpen = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
+            Icon(PhotonneIcons.More, contentDescription = stringResource(Res.string.action_more))
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.people_action_rename)) },
-                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                leadingIcon = { Icon(PhotonneIcons.Edit, contentDescription = null) },
                 onClick = { menuOpen = false; onRename() }
             )
             DropdownMenuItem(

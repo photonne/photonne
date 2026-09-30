@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.MotionPhotosOn
@@ -84,6 +83,7 @@ import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.onSecondaryClick
@@ -456,7 +456,7 @@ fun AssetGridCell(
         }
         if (asset.isFavorite) {
             Icon(
-                imageVector = Icons.Filled.Favorite,
+                imageVector = PhotonneIcons.FavoriteActive,
                 contentDescription = null,
                 tint = PhotonneColors.favorite,
                 modifier = Modifier
@@ -529,7 +529,7 @@ private fun LocalSyncBadge(badge: LocalSyncBadge, modifier: Modifier = Modifier)
             imageVector = icon,
             contentDescription = description,
             tint = Color.White,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(IconSize.sm)
         )
     }
 }

@@ -2,12 +2,10 @@ package com.photonne.app.ui.admin
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImageSearch
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.NightsStay
@@ -42,6 +40,7 @@ import com.photonne.app.resources.admin_settings_user_defaults
 import com.photonne.app.resources.admin_settings_user_defaults_subtitle
 import com.photonne.app.resources.admin_settings_version
 import com.photonne.app.resources.admin_settings_version_subtitle
+import com.photonne.app.ui.theme.PhotonneIcons
 import org.jetbrains.compose.resources.stringResource
 
 enum class AdminSettingsEntry {
@@ -108,7 +107,7 @@ fun AdminSettingsHubScreen(
             AdminSettingsEntry.Metadata.name,
             stringResource(Res.string.admin_settings_metadata),
             stringResource(Res.string.admin_settings_metadata_subtitle),
-            Icons.Outlined.Info
+            PhotonneIcons.Info
         ),
         AdminHubEntry(
             AdminSettingsEntry.NightlyTasks.name,
@@ -132,7 +131,7 @@ fun AdminSettingsHubScreen(
             AdminSettingsEntry.Trash.name,
             stringResource(Res.string.admin_settings_trash),
             stringResource(Res.string.admin_settings_trash_subtitle),
-            Icons.Outlined.Delete
+            PhotonneIcons.Delete
         ),
         AdminHubEntry(
             AdminSettingsEntry.UserDefaults.name,

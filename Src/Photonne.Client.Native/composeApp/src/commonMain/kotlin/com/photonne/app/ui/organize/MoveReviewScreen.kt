@@ -63,6 +63,7 @@ import com.photonne.app.ui.main.CompactNavBarContentHeight
 import com.photonne.app.ui.main.FloatingNavBarBottomMargin
 import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
 import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -320,7 +321,7 @@ private fun ReviewCell(
                     Icons.Filled.RemoveCircle,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(IconSize.sm),
                 )
             }
         }

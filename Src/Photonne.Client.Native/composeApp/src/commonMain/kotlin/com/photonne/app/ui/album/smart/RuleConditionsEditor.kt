@@ -25,14 +25,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -112,6 +107,8 @@ import com.photonne.app.ui.folder.toggleMember
 import coil3.compose.AsyncImage
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
@@ -195,7 +192,7 @@ fun RuleConditionsEditor(
                 }
             }
             TextButton(onClick = { sheet = EditorSheet.Menu }) {
-                Icon(Icons.Filled.Add, contentDescription = null)
+                Icon(PhotonneIcons.Add, contentDescription = null)
                 Spacer(Modifier.width(Spacing.sm))
                 Text(stringResource(Res.string.smart_album_add_condition))
             }
@@ -311,15 +308,15 @@ private fun ConditionRow(
                 )
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_remove))
+                Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_remove))
             }
         }
     }
 }
 
 private fun SmartCondition.icon(): ImageVector = when (this) {
-    is SmartCondition.People -> Icons.Outlined.Person
-    is SmartCondition.Folders -> Icons.Outlined.Folder
+    is SmartCondition.People -> PhotonneIcons.Person
+    is SmartCondition.Folders -> PhotonneIcons.Folder
     is SmartCondition.DateRange -> Icons.Outlined.DateRange
     is SmartCondition.Scenes -> Icons.Outlined.Image
     is SmartCondition.Objects -> Icons.Outlined.Category
@@ -410,8 +407,8 @@ private fun AddConditionMenuSheet(onDismiss: () -> Unit, onPick: (EditorSheet) -
                 stringResource(Res.string.smart_album_add_condition),
                 modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.md),
             )
-            MenuRow(Icons.Outlined.Person, stringResource(Res.string.smart_album_cond_people)) { onPick(EditorSheet.People) }
-            MenuRow(Icons.Outlined.Folder, stringResource(Res.string.smart_album_cond_folders)) { onPick(EditorSheet.Folders) }
+            MenuRow(PhotonneIcons.Person, stringResource(Res.string.smart_album_cond_people)) { onPick(EditorSheet.People) }
+            MenuRow(PhotonneIcons.Folder, stringResource(Res.string.smart_album_cond_folders)) { onPick(EditorSheet.Folders) }
             MenuRow(Icons.Outlined.DateRange, stringResource(Res.string.smart_album_cond_dates)) { onPick(EditorSheet.Dates) }
             MenuRow(Icons.Outlined.Image, stringResource(Res.string.smart_album_cond_scenes)) { onPick(EditorSheet.Scenes) }
             MenuRow(Icons.Outlined.Category, stringResource(Res.string.smart_album_cond_objects)) { onPick(EditorSheet.Objects) }
@@ -684,10 +681,10 @@ private fun PickerSearchField(query: String, onQueryChange: (String) -> Unit, pl
         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         placeholder = { Text(placeholder) },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        leadingIcon = { Icon(PhotonneIcons.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_clear)) }
+                IconButton(onClick = { onQueryChange("") }) { Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_clear)) }
             }
         },
         singleLine = true,
@@ -704,7 +701,7 @@ private fun SelectedChipsHeader(items: List<Pair<String, String>>, onRemove: (St
                 selected = true,
                 onClick = { onRemove(id) },
                 label = { Text(text) },
-                trailingIcon = { Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_remove), modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_remove), modifier = Modifier.size(IconSize.sm)) },
             )
         }
     }

@@ -11,8 +11,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,6 +54,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.FolderGlyph
 import com.photonne.app.ui.theme.CollectionRow
@@ -183,7 +182,7 @@ private fun DeviceBucketRow(
             } else {
                 IconButton(onClick = onAddToBackup) {
                     Icon(
-                        Icons.Outlined.CloudUpload,
+                        PhotonneIcons.Upload,
                         contentDescription = stringResource(Res.string.device_folders_add_backup),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

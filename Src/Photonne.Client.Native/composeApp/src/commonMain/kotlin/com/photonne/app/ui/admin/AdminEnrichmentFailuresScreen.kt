@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Card
@@ -68,6 +67,8 @@ import org.jetbrains.compose.resources.StringResource
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_enrichment_failures_retry_all_confirm
@@ -441,7 +442,7 @@ private fun FailureCard(
                             Icon(
                                 Icons.Outlined.Block,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(IconSize.sm)
                             )
                             Spacer(Modifier.size(Spacing.xs))
                             Text(stringResource(Res.string.admin_enrichment_failures_suppress))
@@ -449,9 +450,9 @@ private fun FailureCard(
                     }
                     TextButton(onClick = onRetry) {
                         Icon(
-                            Icons.Filled.Refresh,
+                            PhotonneIcons.Refresh,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(IconSize.sm)
                         )
                         Spacer(Modifier.size(Spacing.xs))
                         Text(stringResource(Res.string.admin_enrichment_failures_retry))

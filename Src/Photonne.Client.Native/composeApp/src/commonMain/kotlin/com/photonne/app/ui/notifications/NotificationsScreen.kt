@@ -25,6 +25,7 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.remember
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PhotonneColors
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -35,7 +36,6 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -77,6 +77,7 @@ import com.photonne.app.resources.notifications_time_just_now
 import com.photonne.app.resources.notifications_time_minutes_ago
 import com.photonne.app.resources.notifications_total
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -135,7 +136,7 @@ fun NotificationsScreen(
         ) {
             when {
                 state.isLoading && state.items.isEmpty() ->
-                    ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop), thumbnailSize = 28.dp)
+                    ListRowsSkeleton(contentPadding = PaddingValues(top = reservedTop), thumbnailSize = IconSize.lg)
                 // Una primera carga fallida no es una bandeja vacía: antes caía
                 // en la rama de vacío y decía "total: 0".
                 state.error != null && state.items.isEmpty() ->
@@ -290,7 +291,7 @@ private fun NotificationsFilterMenu(
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.notifications_filter_all)) },
                 leadingIcon = {
-                    if (!unreadOnly) Icon(Icons.Outlined.Check, contentDescription = null)
+                    if (!unreadOnly) Icon(PhotonneIcons.Check, contentDescription = null)
                 },
                 onClick = { open = false; onSelect(false) }
             )
@@ -303,7 +304,7 @@ private fun NotificationsFilterMenu(
                     )
                 },
                 leadingIcon = {
-                    if (unreadOnly) Icon(Icons.Outlined.Check, contentDescription = null)
+                    if (unreadOnly) Icon(PhotonneIcons.Check, contentDescription = null)
                 },
                 onClick = { open = false; onSelect(true) }
             )
@@ -339,7 +340,7 @@ private fun NotificationRow(
             imageVector = icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(IconSize.lg)
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(

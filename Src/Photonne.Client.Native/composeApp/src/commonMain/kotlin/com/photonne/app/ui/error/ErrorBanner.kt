@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -51,6 +49,7 @@ import com.photonne.app.resources.error_details_copied
 import com.photonne.app.resources.error_details_copy
 import com.photonne.app.resources.error_details_share_hint
 import com.photonne.app.resources.error_details_title
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
@@ -101,7 +100,7 @@ fun ErrorBanner(
             if (onDismiss != null) {
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector = Icons.Outlined.Close,
+                        imageVector = PhotonneIcons.Close,
                         contentDescription = stringResource(Res.string.error_banner_dismiss),
                         tint = MaterialTheme.colorScheme.onErrorContainer,
                     )
@@ -181,7 +180,7 @@ private fun ErrorDetailsSheet(
                         copiedAck = false
                     }
                 }) {
-                    Icon(Icons.Outlined.ContentCopy, contentDescription = null)
+                    Icon(PhotonneIcons.Copy, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
                     Text(
                         if (copiedAck) copiedLabel

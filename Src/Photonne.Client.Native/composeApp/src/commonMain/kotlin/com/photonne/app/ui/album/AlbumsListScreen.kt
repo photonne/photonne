@@ -20,15 +20,10 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,9 +65,6 @@ import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.unit.Dp
 import com.photonne.app.resources.albums_title
@@ -82,6 +74,7 @@ import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.MetaBadge
 import com.photonne.app.ui.theme.OverlayIconBadge
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -247,7 +240,7 @@ fun AlbumsListScreen(
                         // CreateAction es el afford de "añadir aquí" de la app
                         // (tonal, no un icono plano más de la fila).
                         CreateAction(
-                            icon = Icons.Outlined.Add,
+                            icon = PhotonneIcons.Add,
                             contentDescription = stringResource(
                                 Res.string.albums_empty_action_create
                             ),
@@ -257,14 +250,14 @@ fun AlbumsListScreen(
                     if (!searching) {
                         IconButton(onClick = viewModel::toggleSearch) {
                             Icon(
-                                Icons.Outlined.Search,
+                                PhotonneIcons.Search,
                                 contentDescription = stringResource(Res.string.albums_action_search)
                             )
                         }
                     }
                     IconButton(onClick = onOpenFilters) {
                         Icon(
-                            Icons.Outlined.Tune,
+                            PhotonneIcons.Filter,
                             contentDescription = stringResource(Res.string.folders_action_filters),
                             tint = if (state.isFilterActive) MaterialTheme.colorScheme.primary
                             else LocalContentColor.current
@@ -279,7 +272,7 @@ fun AlbumsListScreen(
 @Composable
 private fun EmptySearchState(query: String) {
     SharedEmptyState(
-        icon = Icons.Filled.Search,
+        icon = PhotonneIcons.Search,
         title = stringResource(Res.string.albums_search_empty_title),
         subtitle = stringResource(Res.string.albums_search_empty_subtitle, query)
     )
@@ -470,7 +463,7 @@ private fun ExploreRow(
         ) {
             ExploreCard(
                 label = stringResource(Res.string.people_title),
-                icon = Icons.Outlined.People,
+                icon = PhotonneIcons.People,
                 onClick = onOpenPeople,
                 modifier = Modifier.weight(1f)
             )
@@ -519,7 +512,7 @@ private fun EmptyAlbumsState(scope: AlbumsScope, onCreateAlbum: (() -> Unit)?) {
     // at all, so creating one is exactly the right move.
     val action = onCreateAlbum?.takeIf { scope != AlbumsScope.Shared }
     SharedEmptyState(
-        icon = Icons.Outlined.Collections,
+        icon = PhotonneIcons.Album,
         title = title,
         subtitle = subtitle,
         actionLabel = action?.let { stringResource(Res.string.albums_empty_action_create) },
@@ -555,13 +548,13 @@ private fun AlbumCard(
             }
             if (album.isShared || !album.isOwner) {
                 OverlayIconBadge(
-                    icon = Icons.Filled.Person,
+                    icon = PhotonneIcons.Person,
                     contentDescription = stringResource(Res.string.albums_badge_shared)
                 )
             }
             if (album.hasActiveShareLink) {
                 OverlayIconBadge(
-                    icon = Icons.Outlined.Share,
+                    icon = PhotonneIcons.Share,
                     contentDescription = stringResource(Res.string.album_share_link_badge)
                 )
             }
@@ -598,10 +591,10 @@ private fun AlbumRow(
                 MetaBadge(stringResource(Res.string.albums_badge_smart), Icons.Outlined.AutoAwesome)
             }
             if (album.isShared || !album.isOwner) {
-                MetaBadge(stringResource(Res.string.albums_badge_shared), Icons.Filled.Person)
+                MetaBadge(stringResource(Res.string.albums_badge_shared), PhotonneIcons.Person)
             }
             if (album.hasActiveShareLink) {
-                MetaBadge(stringResource(Res.string.album_share_link_badge), Icons.Outlined.Share)
+                MetaBadge(stringResource(Res.string.album_share_link_badge), PhotonneIcons.Share)
             }
         }
     )

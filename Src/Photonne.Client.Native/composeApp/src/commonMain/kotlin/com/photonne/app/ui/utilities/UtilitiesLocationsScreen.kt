@@ -21,11 +21,7 @@ import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.FolderShared
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,6 +46,7 @@ import com.photonne.app.resources.utilities_locations_external_badge
 import com.photonne.app.resources.utilities_locations_item_count
 import com.photonne.app.resources.utilities_locations_shared_badge
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.util.sortedByNatural
 import org.jetbrains.compose.resources.pluralStringResource
@@ -95,7 +92,7 @@ fun UtilitiesLocationsScreen(
                 }
             state.roots.isEmpty() ->
                 EmptyState(
-                    icon = Icons.Outlined.LocationOn,
+                    icon = PhotonneIcons.Location,
                     title = stringResource(Res.string.utilities_locations_empty)
                 )
             else -> LazyColumn(
@@ -207,8 +204,8 @@ private fun FolderRow(
             ) {
                 if (hasChildren) {
                     Icon(
-                        imageVector = if (isExpanded) Icons.Filled.KeyboardArrowDown
-                                      else Icons.Filled.KeyboardArrowRight,
+                        imageVector = if (isExpanded) PhotonneIcons.ChevronDown
+                                      else PhotonneIcons.Chevron,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -218,7 +215,7 @@ private fun FolderRow(
                 imageVector = when {
                     node.externalLibraryId != null -> Icons.Outlined.Storage
                     node.isShared -> Icons.Outlined.FolderShared
-                    else -> Icons.Filled.Folder
+                    else -> PhotonneIcons.Folder
                 },
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary

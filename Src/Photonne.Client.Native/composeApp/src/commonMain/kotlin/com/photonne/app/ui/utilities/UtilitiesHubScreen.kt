@@ -1,7 +1,6 @@
 package com.photonne.app.ui.utilities
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
@@ -17,6 +16,7 @@ import com.photonne.app.resources.utilities_section_large_files_subtitle
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_section_locations_subtitle
 import com.photonne.app.ui.main.FormPageScaffold
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.SettingsGroup
 import com.photonne.app.ui.theme.SettingsItem
 import org.jetbrains.compose.resources.StringResource
@@ -43,7 +43,7 @@ fun UtilitiesHubScreen(
             UtilitiesEntry.Duplicates,
             Res.string.utilities_section_duplicates,
             Res.string.utilities_section_duplicates_subtitle,
-            Icons.Outlined.ContentCopy
+            PhotonneIcons.Copy
         ),
         UtilitiesEntryDef(
             UtilitiesEntry.LargeFiles,

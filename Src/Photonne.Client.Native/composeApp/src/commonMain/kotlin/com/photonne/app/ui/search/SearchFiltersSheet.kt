@@ -13,8 +13,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.foundation.layout.size
 import com.photonne.app.resources.people_search_no_results
 import com.photonne.app.resources.people_picker_search_placeholder
@@ -60,6 +58,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
@@ -156,7 +155,7 @@ fun SearchFiltersSheet(
                 value = state.peopleQuery,
                 onValueChange = onPeopleQueryChange,
                 placeholder = { Text(stringResource(Res.string.people_picker_search_placeholder)) },
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                leadingIcon = { Icon(PhotonneIcons.Search, contentDescription = null) },
                 trailingIcon = if (state.peopleSearching) {
                     { CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp)) }
                 } else null,

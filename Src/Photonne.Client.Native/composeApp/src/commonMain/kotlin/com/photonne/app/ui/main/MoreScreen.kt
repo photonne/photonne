@@ -18,20 +18,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material3.IconButton
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Build
-import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -143,10 +138,10 @@ fun MoreScreen(
     // Scenes / Objects) lives in the Albums tab's "Explorar" row.
     val library = remember(onOpenFavorites, onOpenMyLinks, onOpenArchived, onOpenTrash) {
         listOf(
-            MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
-            MoreShortcut("my-links", Res.string.my_links_title, Icons.Outlined.Share, onOpenMyLinks),
-            MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
-            MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash)
+            MoreShortcut("favorites", Res.string.favorites_title, PhotonneIcons.Favorite, onOpenFavorites),
+            MoreShortcut("my-links", Res.string.my_links_title, PhotonneIcons.Share, onOpenMyLinks),
+            MoreShortcut("archive", Res.string.archive_title, PhotonneIcons.Archive, onOpenArchived),
+            MoreShortcut("trash", Res.string.trash_title, PhotonneIcons.Delete, onOpenTrash)
         )
     }
     // Everything else is a row inside a titled card. Upload lives in the top
@@ -168,7 +163,7 @@ fun MoreScreen(
                     MoreShortcut(
                         "device-backup",
                         Res.string.device_backup_title,
-                        Icons.Outlined.CloudUpload,
+                        PhotonneIcons.Upload,
                         onOpenDeviceBackup,
                         badgeCount = backupPendingCount,
                         countLabelRes = Res.string.backup_pending_count
@@ -190,7 +185,7 @@ fun MoreScreen(
                     MoreShortcut(
                         "account-settings",
                         Res.string.account_settings_title,
-                        Icons.Outlined.Settings,
+                        PhotonneIcons.Settings,
                         onOpenAccountSettings
                     ),
                     onOpenAdministration?.let { handler ->
@@ -401,9 +396,9 @@ fun MoreScreen(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Logout,
+                        imageVector = PhotonneIcons.Logout,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(IconSize.chip)
                     )
                     Spacer(Modifier.size(Spacing.sm))
                     Text(stringResource(Res.string.action_logout))

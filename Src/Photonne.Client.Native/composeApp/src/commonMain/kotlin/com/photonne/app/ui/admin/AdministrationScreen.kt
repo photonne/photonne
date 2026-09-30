@@ -2,9 +2,7 @@ package com.photonne.app.ui.admin
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FolderSpecial
-import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.QueryStats
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -20,6 +18,7 @@ import com.photonne.app.resources.admin_section_system
 import com.photonne.app.resources.admin_section_system_subtitle
 import com.photonne.app.resources.admin_section_users
 import com.photonne.app.resources.admin_section_users_subtitle
+import com.photonne.app.ui.theme.PhotonneIcons
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -50,7 +49,7 @@ fun AdministrationScreen(
             AdministrationSection.Users,
             Res.string.admin_section_users,
             Res.string.admin_section_users_subtitle,
-            Icons.Outlined.People
+            PhotonneIcons.Members
         ),
         AdminEntry(
             AdministrationSection.Libraries,
@@ -68,7 +67,7 @@ fun AdministrationScreen(
             AdministrationSection.Settings,
             Res.string.admin_section_settings,
             Res.string.admin_section_settings_subtitle,
-            Icons.Outlined.Settings
+            PhotonneIcons.Settings
         ),
         AdminEntry(
             AdministrationSection.System,

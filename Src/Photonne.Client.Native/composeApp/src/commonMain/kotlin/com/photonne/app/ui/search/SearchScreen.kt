@@ -18,12 +18,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -49,8 +43,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.graphics.SolidColor
@@ -82,6 +74,7 @@ import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
@@ -132,7 +125,7 @@ fun SearchScreen(
                         }
                     !state.hasCriteriaForMode ->
                         EmptyState(
-                            icon = Icons.Outlined.Search,
+                            icon = PhotonneIcons.Search,
                             title = stringResource(Res.string.search_idle_title),
                             subtitle = stringResource(Res.string.search_idle_subtitle)
                         )
@@ -144,7 +137,7 @@ fun SearchScreen(
                             ActiveFiltersRow(state = state, onClick = onOpenFilters)
                             Box(modifier = Modifier.weight(1f)) {
                                 EmptyState(
-                                    icon = Icons.Outlined.Search,
+                                    icon = PhotonneIcons.Search,
                                     title = stringResource(Res.string.search_empty_results)
                                 )
                             }
@@ -243,7 +236,7 @@ fun SearchScreen(
                         }
                     ) {
                         Icon(
-                            Icons.Outlined.Tune,
+                            PhotonneIcons.Filter,
                             contentDescription = stringResource(Res.string.search_filters),
                             tint = if (state.activeFilterCount > 0)
                                 MaterialTheme.colorScheme.primary
@@ -274,7 +267,7 @@ private fun SearchModeMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(Res.string.action_more))
+            Icon(PhotonneIcons.More, contentDescription = stringResource(Res.string.action_more))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
@@ -282,7 +275,7 @@ private fun SearchModeMenu(
                 onClick = { onModeChange(SearchMode.Text); expanded = false },
                 trailingIcon = {
                     if (mode == SearchMode.Text) {
-                        Icon(Icons.Outlined.Check, contentDescription = null)
+                        Icon(PhotonneIcons.Check, contentDescription = null)
                     }
                 }
             )
@@ -291,7 +284,7 @@ private fun SearchModeMenu(
                 onClick = { onModeChange(SearchMode.Semantic); expanded = false },
                 trailingIcon = {
                     if (mode == SearchMode.Semantic) {
-                        Icon(Icons.Outlined.Check, contentDescription = null)
+                        Icon(PhotonneIcons.Check, contentDescription = null)
                     }
                 }
             )

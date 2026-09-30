@@ -19,7 +19,6 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Button
@@ -72,7 +71,9 @@ import kotlin.time.Instant
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.error.ErrorBanner
@@ -426,10 +427,10 @@ private fun SharedTrashRow(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
                     Icon(
-                        Icons.Outlined.Folder,
+                        PhotonneIcons.Folder,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(IconSize.badge)
                     )
                     Text(
                         folder,

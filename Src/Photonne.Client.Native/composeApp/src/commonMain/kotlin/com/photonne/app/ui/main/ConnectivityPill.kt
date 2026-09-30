@@ -27,13 +27,13 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.ConnectivityStatus
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_retry
 import com.photonne.app.resources.connectivity_offline
 import com.photonne.app.resources.connectivity_server_unreachable
 import com.photonne.app.ui.theme.ChromeElevation
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
 import org.jetbrains.compose.resources.stringResource
@@ -82,7 +82,7 @@ fun ConnectivityPill(
                 Icon(
                     Icons.Outlined.CloudOff,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(IconSize.chip)
                 )
                 Text(
                     label,

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,13 +28,14 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.version.ServerCompatibility
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.compat_pill_client_too_old
 import com.photonne.app.resources.compat_pill_server_too_old
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.ChromeElevation
 import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
@@ -88,7 +88,7 @@ fun CompatibilityPill(
                 Icon(
                     Icons.Outlined.SystemUpdate,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(IconSize.chip)
                 )
                 Text(
                     label,
@@ -99,9 +99,9 @@ fun CompatibilityPill(
                 )
                 IconButton(onClick = { dismissed = true }) {
                     Icon(
-                        Icons.Outlined.Close,
+                        PhotonneIcons.Close,
                         contentDescription = stringResource(Res.string.action_close),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(IconSize.chip)
                     )
                 }
             }

@@ -20,8 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -55,6 +53,7 @@ import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.selection.rangeSelectionIds
 import com.photonne.app.ui.selection.selectionStateOf
 import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.resources.Res
@@ -696,7 +695,7 @@ private fun GroupSelectionCheck(
         ) {
             when (state) {
                 GroupSelectionState.All -> Icon(
-                    imageVector = Icons.Filled.Check,
+                    imageVector = PhotonneIcons.Check,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(IconSize.sm)

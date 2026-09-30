@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.automirrored.outlined.Login
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
@@ -221,14 +221,14 @@ private fun ProfileSummaryCard(user: UserDto) {
             HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.sm))
             parseProfileInstant(user.createdAt)?.let { instant ->
                 ProfileMetaRow(
-                    icon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) },
+                    icon = { Icon(Icons.Outlined.CalendarToday, contentDescription = null) },
                     caption = stringResource(Res.string.account_profile_summary_account_created),
                     value = formatProfileDate(instant)
                 )
             }
             parseProfileInstant(user.lastLoginAt)?.let { instant ->
                 ProfileMetaRow(
-                    icon = { Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null) },
+                    icon = { Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = null) },
                     caption = stringResource(Res.string.account_profile_summary_last_login),
                     value = formatProfileDateTime(instant)
                 )

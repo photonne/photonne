@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +32,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -84,7 +82,7 @@ fun ArchivedScreen(
                     )
                 state.isEmpty ->
                     EmptyState(
-                        icon = Icons.Outlined.Archive,
+                        icon = PhotonneIcons.Archive,
                         title = stringResource(Res.string.archived_empty_title),
                         subtitle = stringResource(Res.string.archived_empty_subtitle)
                     )
@@ -140,7 +138,7 @@ fun ArchivedScreen(
                         {
                             IconButton(onClick = onUnarchiveAll) {
                                 Icon(
-                                    Icons.Outlined.Unarchive,
+                                    PhotonneIcons.Unarchive,
                                     contentDescription = stringResource(Res.string.archive_action_unarchive)
                                 )
                             }

@@ -14,9 +14,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +45,7 @@ import com.photonne.app.ui.haptics.rememberPhotonneHaptics
 import com.photonne.app.ui.theme.EmptyState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.AssetGridSkeleton
@@ -129,7 +127,7 @@ fun FolderDetailScreen(
                     // No reutilizar el vacío de la LISTA de carpetas: aquí
                     // "Indexa una carpeta desde la app web" no aplica.
                     EmptyState(
-                        icon = Icons.Outlined.Folder,
+                        icon = PhotonneIcons.Folder,
                         title = stringResource(Res.string.folder_detail_empty_title),
                         subtitle = stringResource(Res.string.folder_detail_empty_subtitle)
                     )

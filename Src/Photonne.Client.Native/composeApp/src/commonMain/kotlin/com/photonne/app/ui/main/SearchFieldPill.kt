@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +22,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_clear
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -58,7 +57,7 @@ internal fun SearchFieldPill(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(
-            Icons.Filled.Search,
+            PhotonneIcons.Search,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -88,9 +87,9 @@ internal fun SearchFieldPill(
         if (value.isNotEmpty()) {
             IconButton(onClick = onClear, modifier = Modifier.size(40.dp)) {
                 Icon(
-                    Icons.Filled.Close,
+                    PhotonneIcons.Close,
                     contentDescription = stringResource(Res.string.action_clear),
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(IconSize.chip),
                 )
             }
         }

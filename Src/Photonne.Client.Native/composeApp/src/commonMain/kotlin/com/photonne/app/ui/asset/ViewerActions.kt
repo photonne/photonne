@@ -2,22 +2,10 @@ package com.photonne.app.ui.asset
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.AddToPhotos
-import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DeleteForever
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Face
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.RestoreFromTrash
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -46,6 +34,7 @@ import com.photonne.app.resources.selection_label_share
 import com.photonne.app.resources.trash_action_delete_forever
 import com.photonne.app.resources.trash_action_restore
 import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.PhotonneIcons
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -95,11 +84,11 @@ internal fun viewerActions(
 ): List<ViewerAction> {
     if (item.isLocalOnly) {
         return listOfNotNull(
-            ViewerAction(Icons.Outlined.Info, stringResource(Res.string.asset_action_details), true, onClick = onShowInfo),
+            ViewerAction(PhotonneIcons.Info, stringResource(Res.string.asset_action_details), true, onClick = onShowInfo),
             // Straight to the platform flow — the OS shows its own
             // confirmation (see rememberDeviceMediaTrasher).
             onDeleteFromDevice?.let {
-                ViewerAction(Icons.Outlined.Delete, stringResource(Res.string.asset_action_delete_device), true, onClick = it)
+                ViewerAction(PhotonneIcons.Delete, stringResource(Res.string.asset_action_delete_device), true, onClick = it)
             }
         )
     }
@@ -108,13 +97,13 @@ internal fun viewerActions(
         // sitio o se va para siempre (patrón de Google Fotos).
         return listOf(
             ViewerAction(Icons.Outlined.RestoreFromTrash, stringResource(Res.string.trash_action_restore), true, onClick = onRestore),
-            ViewerAction(Icons.Outlined.DeleteForever, stringResource(Res.string.trash_action_delete_forever), true, onClick = onPurgeRequest)
+            ViewerAction(PhotonneIcons.DeletePermanent, stringResource(Res.string.trash_action_delete_forever), true, onClick = onPurgeRequest)
         )
     }
     val isArchiveMode = mode == AssetViewerMode.Archive
     return listOfNotNull(
         ViewerAction(
-            icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            icon = if (isFavorite) PhotonneIcons.FavoriteActive else PhotonneIcons.Favorite,
             label = stringResource(
                 if (isFavorite) Res.string.asset_action_favorite_remove
                 else Res.string.asset_action_favorite_add
@@ -123,13 +112,13 @@ internal fun viewerActions(
             tint = if (isFavorite) PhotonneColors.favorite else Color.White,
             onClick = onToggleFavorite
         ),
-        ViewerAction(Icons.Outlined.Share, stringResource(Res.string.selection_label_share), true, onClick = onShare),
-        ViewerAction(Icons.Outlined.Delete, stringResource(Res.string.asset_action_trash), true, onClick = onTrashRequest),
-        ViewerAction(Icons.Outlined.Info, stringResource(Res.string.asset_action_details), true, onClick = onShowInfo),
-        ViewerAction(Icons.Outlined.AddToPhotos, stringResource(Res.string.add_to_album_title), false, onClick = onAddToAlbum),
-        ViewerAction(Icons.Outlined.Download, stringResource(Res.string.asset_action_download), false, onClick = onDownload),
+        ViewerAction(PhotonneIcons.Share, stringResource(Res.string.selection_label_share), true, onClick = onShare),
+        ViewerAction(PhotonneIcons.Delete, stringResource(Res.string.asset_action_trash), true, onClick = onTrashRequest),
+        ViewerAction(PhotonneIcons.Info, stringResource(Res.string.asset_action_details), true, onClick = onShowInfo),
+        ViewerAction(PhotonneIcons.AddToAlbum, stringResource(Res.string.add_to_album_title), false, onClick = onAddToAlbum),
+        ViewerAction(PhotonneIcons.Download, stringResource(Res.string.asset_action_download), false, onClick = onDownload),
         onEditDescription?.let {
-            ViewerAction(Icons.Outlined.Edit, stringResource(Res.string.asset_action_edit_description), false, onClick = it)
+            ViewerAction(PhotonneIcons.Edit, stringResource(Res.string.asset_action_edit_description), false, onClick = it)
         },
         onEditDate?.let {
             ViewerAction(Icons.Outlined.DateRange, stringResource(Res.string.asset_action_edit_date), false, onClick = it)
@@ -139,7 +128,7 @@ internal fun viewerActions(
             ViewerAction(Icons.Outlined.AutoAwesome, stringResource(Res.string.asset_action_analyze), false, onClick = it)
         },
         ViewerAction(
-            icon = if (isArchiveMode) Icons.Outlined.Unarchive else Icons.Outlined.Archive,
+            icon = if (isArchiveMode) PhotonneIcons.Unarchive else PhotonneIcons.Archive,
             label = stringResource(
                 if (isArchiveMode) Res.string.archive_action_unarchive
                 else Res.string.asset_action_archive
@@ -171,7 +160,7 @@ internal fun ViewerActionButtons(
     Box {
         IconButton(onClick = { onShowOverflowChange(true) }) {
             Icon(
-                Icons.Outlined.MoreVert,
+                PhotonneIcons.More,
                 contentDescription = stringResource(Res.string.asset_action_more),
                 tint = Color.White
             )

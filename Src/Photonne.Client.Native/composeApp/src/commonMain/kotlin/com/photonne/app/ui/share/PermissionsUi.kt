@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,6 +47,7 @@ import com.photonne.app.resources.permissions_invite_people
 import com.photonne.app.resources.permissions_invite_role
 import com.photonne.app.resources.permissions_invite_title
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
@@ -129,7 +127,7 @@ fun ManageMembersSheet(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onInvite, enabled = !isMutating) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
+                    Icon(PhotonneIcons.Add, contentDescription = null)
                     Spacer(Modifier.width(Spacing.xs))
                     Text(stringResource(Res.string.action_invite))
                 }
@@ -164,7 +162,7 @@ private fun MemberRow(
         RoleChip(role = member.role, onChangeRole = onChangeRole)
         IconButton(onClick = onRevoke) {
             Icon(
-                Icons.Outlined.Delete,
+                PhotonneIcons.Delete,
                 contentDescription = stringResource(Res.string.action_remove),
                 tint = MaterialTheme.colorScheme.error
             )

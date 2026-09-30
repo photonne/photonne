@@ -44,7 +44,7 @@ fun MetaBadge(
             imageVector = icon,
             contentDescription = label,
             tint = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.size(12.dp)
+            modifier = Modifier.size(IconSize.xs)
         )
     }
 }

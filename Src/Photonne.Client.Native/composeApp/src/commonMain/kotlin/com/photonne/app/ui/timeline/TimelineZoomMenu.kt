@@ -2,7 +2,6 @@ package com.photonne.app.ui.timeline
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.PhotoSizeSelectActual
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -22,6 +21,7 @@ import com.photonne.app.resources.timeline_zoom_day_medium
 import com.photonne.app.resources.timeline_zoom_day_small
 import com.photonne.app.resources.timeline_zoom_month
 import com.photonne.app.resources.timeline_zoom_year
+import com.photonne.app.ui.theme.PhotonneIcons
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -43,7 +43,7 @@ fun TimelineZoomMenuAction(
                 DropdownMenuItem(
                     text = { Text(stringResource(level.labelRes())) },
                     leadingIcon = if (level == current) {
-                        { Icon(Icons.Filled.Check, contentDescription = null) }
+                        { Icon(PhotonneIcons.Check, contentDescription = null) }
                     } else null,
                     onClick = {
                         menuOpen = false

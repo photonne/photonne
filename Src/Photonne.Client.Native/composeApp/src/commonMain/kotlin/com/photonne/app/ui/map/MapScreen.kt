@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -50,6 +48,7 @@ import com.photonne.app.resources.map_empty_subtitle
 import com.photonne.app.resources.map_empty_title
 import com.photonne.app.resources.map_title
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
@@ -211,7 +210,7 @@ fun MapScreen(
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Icon(
-                    Icons.Filled.Home,
+                    Icons.Outlined.Home,
                     contentDescription = stringResource(Res.string.map_action_fit_to_data)
                 )
             }
@@ -220,7 +219,7 @@ fun MapScreen(
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Icon(
-                    Icons.Filled.Add,
+                    PhotonneIcons.Add,
                     contentDescription = stringResource(Res.string.map_action_zoom_in)
                 )
             }
@@ -229,7 +228,7 @@ fun MapScreen(
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Icon(
-                    Icons.Filled.Remove,
+                    Icons.Outlined.Remove,
                     contentDescription = stringResource(Res.string.map_action_zoom_out)
                 )
             }
@@ -246,7 +245,7 @@ fun MapScreen(
             actions = {
                 IconButton(onClick = viewModel::refresh) {
                     Icon(
-                        Icons.Outlined.Refresh,
+                        PhotonneIcons.Refresh,
                         contentDescription = stringResource(Res.string.action_refresh)
                     )
                 }

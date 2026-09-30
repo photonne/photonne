@@ -8,7 +8,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 
 /**
  * Icon-only badge for grid cards, where a labelled [MetaBadge] wouldn't fit over
@@ -35,7 +34,7 @@ fun OverlayIconBadge(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = PhotonneColors.onScrim,
-            modifier = Modifier.size(14.dp)
+            modifier = Modifier.size(IconSize.badge)
         )
     }
 }

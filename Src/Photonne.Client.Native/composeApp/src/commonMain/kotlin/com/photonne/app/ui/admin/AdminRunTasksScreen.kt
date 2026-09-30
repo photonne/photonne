@@ -1,6 +1,8 @@
 package com.photonne.app.ui.admin
 
 import androidx.lifecycle.compose.LifecycleStartEffect
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.ProgressHeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.Spacing
@@ -23,16 +25,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Face
@@ -40,11 +37,9 @@ import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.GroupWork
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImageSearch
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Straighten
@@ -309,7 +304,7 @@ enum class AdminRunTask(
         titleRes = Res.string.admin_system_metadata,
         subtitleRes = Res.string.admin_system_metadata_subtitle,
         activeLabelRes = Res.string.admin_system_metadata_active,
-        icon = Icons.Outlined.Info,
+        icon = PhotonneIcons.Info,
         backfillKind = null,
         section = AdminRunTaskSection.NewPhotos,
         backgroundType = "Metadata",
@@ -391,7 +386,7 @@ enum class AdminRunTask(
         titleRes = Res.string.admin_system_geocode,
         subtitleRes = Res.string.admin_system_geocode_subtitle,
         activeLabelRes = Res.string.admin_system_geocode_active,
-        icon = Icons.Outlined.Place,
+        icon = PhotonneIcons.Location,
         backfillKind = null,
         section = AdminRunTaskSection.Memories,
         backgroundType = "Maintenance",
@@ -430,7 +425,7 @@ enum class AdminRunTask(
         titleRes = Res.string.admin_system_duplicates,
         subtitleRes = Res.string.admin_system_duplicates_subtitle,
         activeLabelRes = Res.string.admin_system_duplicates_active,
-        icon = Icons.Outlined.ContentCopy,
+        icon = PhotonneIcons.Copy,
         backfillKind = null,
         section = AdminRunTaskSection.Repair,
         backgroundType = null,
@@ -481,7 +476,7 @@ enum class AdminRunTask(
         titleRes = Res.string.admin_maintenance_action_empty_trash,
         subtitleRes = Res.string.admin_maintenance_desc_empty_trash,
         activeLabelRes = Res.string.admin_maintenance_active_empty_trash,
-        icon = Icons.Outlined.DeleteForever,
+        icon = PhotonneIcons.DeletePermanent,
         backfillKind = null,
         section = AdminRunTaskSection.Cleanup,
         backgroundType = MaintenanceTaskType,
@@ -1572,7 +1567,7 @@ private fun SectionHeader(
             }
         }
         Icon(
-            imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            imageVector = if (expanded) PhotonneIcons.ExpandLess else PhotonneIcons.ExpandMore,
             contentDescription = stringResource(
                 if (expanded) Res.string.admin_run_tasks_section_collapse
                 else Res.string.admin_run_tasks_section_expand
@@ -1684,7 +1679,7 @@ private fun TaskRow(
                         imageVector = task.icon,
                         contentDescription = null,
                         tint = contentColor,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(IconSize.lg)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -2126,7 +2121,7 @@ private fun TaskActionRow(
         )
         if (showChevron) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = PhotonneIcons.Chevron,
                 contentDescription = null,
                 tint = color
             )
