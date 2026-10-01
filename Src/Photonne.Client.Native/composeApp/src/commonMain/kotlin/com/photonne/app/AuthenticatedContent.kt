@@ -1833,6 +1833,7 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
     with(host) {
         val feed by memoryFeedViewModel.state.collectAsStateWithLifecycle()
         val facets by exploreFacetsViewModel.state.collectAsStateWithLifecycle()
+        val mapState by mapViewModel.state.collectAsStateWithLifecycle()
         val content = com.photonne.app.ui.collections.CollectionsContent(
             memories = remember(feed.rows) { feed.rows.flatMap { it.memories } },
             memoryOpeningId = feed.openingId,
@@ -1855,6 +1856,14 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 )
             },
             organizePendingCount = foldersState.organizePendingCount,
+            favorites = favoritesState.items,
+            favoritesLoaded = favoritesState.loaded && favoritesState.error == null,
+            // La última vista del mapa (encuadra las fotos al cargarlo); sin
+            // visitarlo, el mundo. La tarjeta va un nivel más lejos: es más pequeña.
+            mapCenterLat = mapState.centerLat,
+            mapCenterLng = mapState.centerLng,
+            mapZoom = (mapState.zoom - 1).coerceIn(1, 10),
+            mapTileApiKey = mapState.tileApiKey,
             scenes = facets.scenesInPageOrder,
             objects = facets.objectsInPageOrder,
             isRefreshing = feed.isLoading && feed.rows.isNotEmpty(),
@@ -1870,6 +1879,7 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 },
                 onRefresh = {
                     memoryFeedViewModel.refresh()
+                    favoritesViewModel.refresh()
                     albumsViewModel.refresh()
                     foldersViewModel.refresh()
                     peopleViewModel.refresh()
@@ -1922,6 +1932,25 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 },
                 onSeeAllObjects = { appState.moreSubscreen = MoreSubscreen.ExploreObjects },
                 onOpenFavorites = { appState.moreSubscreen = MoreSubscreen.Favorites },
+                onOpenFavorite = { index ->
+                    val favorites = favoritesViewModel.state.value
+                    appState.assetDetail = AssetDetailContext(
+                        items = favorites.items,
+                        startIndex = index,
+                        source = AssetDetailContext.Source.Timeline,
+                        hasMore = favorites.hasMore,
+                        onLoadMore = favoritesViewModel::loadMore,
+                        feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                            items = { favoritesViewModel.state.value.items },
+                            hasMore = { favoritesViewModel.state.value.hasMore },
+                            loadMore = favoritesViewModel::loadMore
+                        ),
+                        onFavoriteChanged = { id, isFav ->
+                            favoritesViewModel.setFavorite(id, isFav)
+                            timelineViewModel.setFavorite(id, isFav)
+                        }
+                    )
+                },
                 onOpenMap = { appState.moreSubscreen = MoreSubscreen.Map },
                 onOpenArchived = { appState.moreSubscreen = MoreSubscreen.Archived },
                 onOpenTrash = {
@@ -1967,6 +1996,10 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 ) memoryFeedViewModel.refresh()
                 peopleViewModel.ensureLoaded()
                 exploreFacetsViewModel.ensureLoaded()
+                favoritesViewModel.ensureLoaded()
+                // Solo la clave de teselas (un ajuste): los puntos del mapa no
+                // hacen falta para la tarjeta.
+                mapViewModel.ensureTileApiKey()
             },
             active = appState.selectedTab.navTab() == MainTab.Collections,
             scrollToTopTick = appState.collectionsScrollToTopTick,

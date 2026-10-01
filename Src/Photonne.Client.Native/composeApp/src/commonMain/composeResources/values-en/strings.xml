@@ -7,6 +7,8 @@
     <string name="tab_collections">Collections</string>
     <string name="collections_pinned_empty_title">Nothing pinned yet</string>
     <string name="collections_pinned_empty_subtitle">Pin albums and folders from their ⋮ menu to keep them handy here.</string>
+    <string name="collections_favorites_empty_title">No favorites yet</string>
+    <string name="collections_favorites_empty_subtitle">Tap ♡ on a photo to keep it handy here.</string>
     <string name="collections_customize">Customize Collections</string>
     <string name="collections_customize_subtitle">Reorder the sections and hide the ones you don't use.</string>
     <string name="collections_customize_reset">Reset</string>

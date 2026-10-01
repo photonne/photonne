@@ -154,6 +154,8 @@ class MapViewModel(
      * clave el mapa sigue pintándose (con la marca de agua de CARTO), así que no
      * merece un banner de error encima del mapa.
      */
+    fun ensureTileApiKey() = loadTileApiKey()
+
     private fun loadTileApiKey() {
         if (_state.value.tileApiKey != null) return
         viewModelScope.launch {

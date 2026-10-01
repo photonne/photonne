@@ -75,4 +75,18 @@ class CollectionsLayoutTest {
         store.move(CollectionSection.Memories, -1, adaptive)
         assertFalse(store.layout.value.customized)
     }
+
+    @Test
+    fun sectionsAddedLaterAppendToASavedOrder() {
+        // Un orden guardado antes de que existieran Favoritos y Mapa.
+        val settings = MapSettings()
+        settings.putBoolean("photonne.collections.customized", true)
+        settings.putString("photonne.collections.order", "Objects,Memories,Pinned,People,Albums,Folders,Scenes")
+        val order = CollectionsLayoutStore(settings).layout.value.order
+        assertEquals(CollectionSection.Objects, order.first())
+        assertEquals(
+            listOf(CollectionSection.Favorites, CollectionSection.Map),
+            order.takeLast(2)
+        )
+    }
 }

@@ -84,10 +84,16 @@ private const val TILE_URL_TEMPLATE_DARK =
 private const val TILE_URL_TEMPLATE_LIGHT =
     "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
 
+/** Plantilla de teselas CARTO con su clave; la comparten el mapa y su tarjeta en Colecciones. */
+internal fun cartoTileTemplate(darkTiles: Boolean, tileApiKey: String?): String {
+    val base = if (darkTiles) TILE_URL_TEMPLATE_DARK else TILE_URL_TEMPLATE_LIGHT
+    return if (tileApiKey.isNullOrBlank()) base else "$base?key=$tileApiKey"
+}
+
 private val MarkerBorderColor = Color(0xFFFFD166)
 private val ClusterBadgeColor = Color(0xFFF44336)
-private val MapBackgroundDark = Color(0xFF1A1A1A)
-private val MapBackgroundLight = Color(0xFFE6E2DA)
+internal val MapBackgroundDark = Color(0xFF1A1A1A)
+internal val MapBackgroundLight = Color(0xFFE6E2DA)
 
 /** How long the previous tile pyramid sticks around as a full-opacity
  * backdrop after a zoom commit. Long enough that Coil has warmed the
@@ -148,11 +154,7 @@ fun OsmMap(
     onMovingChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val baseTemplate = if (darkTiles) TILE_URL_TEMPLATE_DARK else TILE_URL_TEMPLATE_LIGHT
-    val tileTemplate = remember(baseTemplate, tileApiKey) {
-        if (tileApiKey.isNullOrBlank()) baseTemplate
-        else "$baseTemplate?key=$tileApiKey"
-    }
+    val tileTemplate = remember(darkTiles, tileApiKey) { cartoTileTemplate(darkTiles, tileApiKey) }
     val backgroundColor = if (darkTiles) MapBackgroundDark else MapBackgroundLight
     var size by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current

@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Las secciones de Colecciones que el usuario puede reordenar u ocultar. */
-enum class CollectionSection { Memories, Pinned, People, Albums, Folders, Scenes, Objects }
+enum class CollectionSection { Memories, Pinned, People, Favorites, Albums, Folders, Map, Scenes, Objects }
 
 /**
  * Orden y visibilidad elegidos a mano. [customized] false = el usuario no ha
@@ -55,9 +55,12 @@ fun adaptiveSectionOrder(
     } else {
         listOf(CollectionSection.Albums, CollectionSection.Folders)
     }
-    return listOf(CollectionSection.Memories, CollectionSection.Pinned, CollectionSection.People) +
-        collections +
-        listOf(CollectionSection.Scenes, CollectionSection.Objects)
+    return listOf(
+        CollectionSection.Memories,
+        CollectionSection.Pinned,
+        CollectionSection.People,
+        CollectionSection.Favorites,
+    ) + collections + listOf(CollectionSection.Map, CollectionSection.Scenes, CollectionSection.Objects)
 }
 
 /**

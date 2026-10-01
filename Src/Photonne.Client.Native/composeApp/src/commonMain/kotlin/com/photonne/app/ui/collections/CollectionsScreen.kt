@@ -1,5 +1,10 @@
 package com.photonne.app.ui.collections
 
+import com.photonne.app.resources.collections_favorites_empty_subtitle
+import com.photonne.app.resources.collections_favorites_empty_title
+import com.photonne.app.ui.map.MapPreview
+import com.photonne.app.ui.image.AssetThumbnailImage
+import com.photonne.app.data.models.TimelineItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -106,6 +111,9 @@ private val MemoryCardHeight = 232.dp
 /** Álbumes, carpetas y fijados: portada cuadrada con el nombre debajo. */
 private val CollectionTileWidth = 128.dp
 
+/** Tarjeta del Mapa: a todo el ancho, apaisada. */
+private val MapCardHeight = 148.dp
+
 /** Escenas y objetos, al tamaño de su rejilla para que se reconozcan. */
 private val LabelTileWidth = 100.dp
 
@@ -142,6 +150,15 @@ data class CollectionsContent(
     val albumsLoaded: Boolean = false,
     val folders: List<FolderSummary> = emptyList(),
     val organizePendingCount: Int = 0,
+    /** Primera página de favoritos, en su orden (más recientes primero). */
+    val favorites: List<TimelineItem> = emptyList(),
+    /** Ya se sabe si hay favoritos: solo entonces se enseña la pista de vacío. */
+    val favoritesLoaded: Boolean = false,
+    /** Dónde centrar la tarjeta del Mapa: la última vista del mapa o el mundo. */
+    val mapCenterLat: Double = 20.0,
+    val mapCenterLng: Double = 0.0,
+    val mapZoom: Int = 2,
+    val mapTileApiKey: String? = null,
     val scenes: List<SceneLabel> = emptyList(),
     val objects: List<ObjectLabel> = emptyList(),
     val isRefreshing: Boolean = false,
@@ -169,6 +186,8 @@ class CollectionsActions(
     val onOpenObject: (String) -> Unit,
     val onSeeAllObjects: () -> Unit,
     val onOpenFavorites: () -> Unit,
+    /** Índice en [CollectionsContent.favorites]: el visor recorre los favoritos. */
+    val onOpenFavorite: (Int) -> Unit,
     val onOpenMap: () -> Unit,
     val onOpenArchived: () -> Unit,
     val onOpenTrash: () -> Unit,
@@ -324,6 +343,52 @@ private fun LazyListScope.collectionSections(
                         PersonTile(person = person, baseUrl = baseUrl, onClick = { actions.onOpenPerson(person) })
                     }
                 }
+            }
+        CollectionSection.Favorites -> if (content.favorites.isNotEmpty() || content.favoritesLoaded) {
+                item(key = "favorites") {
+                    if (content.favorites.isEmpty()) {
+                        // Sin favoritos la sección no desaparece: explica cómo
+                        // se llena, que es lo que no se descubre solo.
+                        SectionTitle(stringResource(Res.string.favorites_title), onClick = actions.onOpenFavorites)
+                        FavoritesHint()
+                    } else {
+                        SliderSection(
+                            title = stringResource(Res.string.favorites_title),
+                            onTitleClick = actions.onOpenFavorites,
+                            items = content.favorites.take(SliderLimit).withIndex().toList(),
+                            key = { "favorite:${it.value.id}" },
+                            truncated = content.favorites.size > SliderLimit,
+                            seeAllSize = LabelTileWidth to LabelTileWidth,
+                            spacing = Spacing.sm,
+                        ) { (index, item) ->
+                            AssetThumbnailImage(
+                                item = item,
+                                baseUrl = baseUrl,
+                                size = "Small",
+                                modifier = Modifier
+                                    .size(LabelTileWidth)
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .clickable { actions.onOpenFavorite(index) }
+                            )
+                        }
+                    }
+                }
+            }
+        CollectionSection.Map -> item(key = "map") {
+                SectionTitle(stringResource(Res.string.map_title), onClick = actions.onOpenMap)
+                MapPreview(
+                    centerLat = content.mapCenterLat,
+                    centerLng = content.mapCenterLng,
+                    zoom = content.mapZoom,
+                    tileApiKey = content.mapTileApiKey,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.lg)
+                        .height(MapCardHeight)
+                        .clip(MaterialTheme.shapes.large)
+                        .clickable(onClick = actions.onOpenMap)
+                )
             }
         CollectionSection.Albums -> if (content.albums.isNotEmpty() || content.albumsLoaded) {
                 item(key = "albums") {
@@ -647,8 +712,9 @@ private fun OrganizeRow(count: Int, onClick: () -> Unit) {
 }
 
 /**
- * Pie de Colecciones: destinos sin portada que antes vivían en la rejilla de
- * Más. Filas, no slider: son sitios a los que ir, no colecciones que hojear.
+ * Pie de Colecciones: Archivados y Papelera, destinos sin portada que antes
+ * vivían en la rejilla de Más. Filas, no slider: son sitios a los que ir, no
+ * colecciones que hojear (Favoritos y Mapa sí lo son y tienen sección).
  */
 @Composable
 private fun LibraryRows(actions: CollectionsActions) {
@@ -658,24 +724,10 @@ private fun LibraryRows(actions: CollectionsActions) {
             .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.xl)
     ) {
         SettingsItem(
-            headline = stringResource(Res.string.favorites_title),
-            leadingIcon = PhotonneIcons.Favorite,
-            onClick = actions.onOpenFavorites,
-            headlineMaxLines = 1
-        )
-        SettingsItem(
-            headline = stringResource(Res.string.map_title),
-            leadingIcon = PhotonneIcons.Location,
-            onClick = actions.onOpenMap,
-            headlineMaxLines = 1,
-            showDivider = true
-        )
-        SettingsItem(
             headline = stringResource(Res.string.archive_title),
             leadingIcon = PhotonneIcons.Archive,
             onClick = actions.onOpenArchived,
-            headlineMaxLines = 1,
-            showDivider = true
+            headlineMaxLines = 1
         )
         SettingsItem(
             headline = stringResource(Res.string.trash_title),
@@ -684,5 +736,37 @@ private fun LibraryRows(actions: CollectionsActions) {
             headlineMaxLines = 1,
             showDivider = true
         )
+    }
+}
+
+/** Favoritos vacío: cómo se llena, en una fila discreta. */
+@Composable
+private fun FavoritesHint() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.lg)
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = PhotonneIcons.Favorite,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Column(modifier = Modifier.weight(1f).padding(start = Spacing.md)) {
+            Text(
+                text = stringResource(Res.string.collections_favorites_empty_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = stringResource(Res.string.collections_favorites_empty_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

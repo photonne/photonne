@@ -7,6 +7,8 @@
     <string name="tab_collections">Colecciones</string>
     <string name="collections_pinned_empty_title">Nada fijado todavía</string>
     <string name="collections_pinned_empty_subtitle">Fija álbumes y carpetas desde su menú ⋮ para tenerlos a mano aquí.</string>
+    <string name="collections_favorites_empty_title">Aún no tienes favoritos</string>
+    <string name="collections_favorites_empty_subtitle">Toca ♡ en una foto para tenerla siempre a mano aquí.</string>
     <string name="collections_customize">Personalizar Colecciones</string>
     <string name="collections_customize_subtitle">Ordena las secciones y oculta las que no uses.</string>
     <string name="collections_customize_reset">Restablecer</string>

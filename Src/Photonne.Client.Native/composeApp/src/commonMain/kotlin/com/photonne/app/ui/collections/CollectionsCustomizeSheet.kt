@@ -33,7 +33,9 @@ import com.photonne.app.resources.collections_move_down
 import com.photonne.app.resources.collections_move_up
 import com.photonne.app.resources.explore_section_objects
 import com.photonne.app.resources.explore_section_scenes
+import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.folders_title
+import com.photonne.app.resources.map_title
 import com.photonne.app.resources.memories_strip_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.ui.theme.SheetHeader
@@ -45,6 +47,8 @@ internal fun CollectionSection.titleRes(): StringResource = when (this) {
     CollectionSection.Memories -> Res.string.memories_strip_title
     CollectionSection.Pinned -> Res.string.albums_section_pinned
     CollectionSection.People -> Res.string.people_title
+    CollectionSection.Favorites -> Res.string.favorites_title
+    CollectionSection.Map -> Res.string.map_title
     CollectionSection.Albums -> Res.string.albums_title
     CollectionSection.Folders -> Res.string.folders_title
     CollectionSection.Scenes -> Res.string.explore_section_scenes
