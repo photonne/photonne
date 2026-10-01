@@ -2,6 +2,7 @@
 
 package com.photonne.app
 
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.pager.HorizontalPager
@@ -88,7 +89,6 @@ import com.photonne.app.ui.timeline.TimelineViewModel
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 
 /**
  * Lo que necesita el contenido principal de [AuthenticatedApp] (el pager de las
@@ -296,12 +296,6 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                 else -> MoreScreen(
                     user = user.user,
                     onLogout = onLogout,
-                    onOpenFavorites = { appState.moreSubscreen = MoreSubscreen.Favorites },
-                    onOpenArchived = { appState.moreSubscreen = MoreSubscreen.Archived },
-                    onOpenTrash = {
-                        appState.trashTab = com.photonne.app.ui.library.TrashTab.Personal
-                        appState.moreSubscreen = MoreSubscreen.Trash
-                    },
                     onOpenUtilities = { appState.moreSubscreen = MoreSubscreen.Utilities },
                     onOpenMyLinks = { appState.moreSubscreen = MoreSubscreen.MyLinks },
                     onOpenProfile = {
@@ -1931,6 +1925,13 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                     appState.selectedTab = MainTab.Search
                 },
                 onSeeAllObjects = { appState.moreSubscreen = MoreSubscreen.ExploreObjects },
+                onOpenFavorites = { appState.moreSubscreen = MoreSubscreen.Favorites },
+                onOpenMap = { appState.moreSubscreen = MoreSubscreen.Map },
+                onOpenArchived = { appState.moreSubscreen = MoreSubscreen.Archived },
+                onOpenTrash = {
+                    appState.trashTab = com.photonne.app.ui.library.TrashTab.Personal
+                    appState.moreSubscreen = MoreSubscreen.Trash
+                },
             )
         }
         com.photonne.app.ui.collections.CollectionsScreen(

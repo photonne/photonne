@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -53,7 +52,11 @@ import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.albums_badge_pinned
 import com.photonne.app.resources.albums_section_pinned
 import com.photonne.app.resources.albums_title
+import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.explore_section_objects
+import com.photonne.app.resources.favorites_title
+import com.photonne.app.resources.map_title
+import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.explore_section_scenes
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.memories_strip_title
@@ -83,7 +86,10 @@ import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import com.photonne.app.ui.theme.SettingsGroup
+import com.photonne.app.ui.theme.SettingsItem
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.contentWidth
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
@@ -158,6 +164,10 @@ class CollectionsActions(
     val onSeeAllScenes: () -> Unit,
     val onOpenObject: (String) -> Unit,
     val onSeeAllObjects: () -> Unit,
+    val onOpenFavorites: () -> Unit,
+    val onOpenMap: () -> Unit,
+    val onOpenArchived: () -> Unit,
+    val onOpenTrash: () -> Unit,
 )
 
 /**
@@ -182,8 +192,6 @@ fun CollectionsScreen(
     active: Boolean = true,
     scrollToTopTick: Int = 0,
     onChromeVisibleChange: (Boolean) -> Unit = {},
-    /** Pie de la página (Favoritos, Mapa, Archivados, Papelera). */
-    footer: (LazyListScope.() -> Unit)? = null,
 ) {
     val listState = rememberLazyListState()
     val hazeState = remember { HazeState() }
@@ -214,7 +222,7 @@ fun CollectionsScreen(
                     }
                 }
                 collectionSections(content, baseUrl, actions)
-                footer?.invoke(this)
+                item(key = "library") { LibraryRows(actions) }
             }
         }
 
@@ -576,6 +584,47 @@ private fun OrganizeCard(count: Int, onClick: () -> Unit) {
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/**
+ * Pie de Colecciones: destinos sin portada que antes vivían en la rejilla de
+ * Más. Filas, no slider: son sitios a los que ir, no colecciones que hojear.
+ */
+@Composable
+private fun LibraryRows(actions: CollectionsActions) {
+    SettingsGroup(
+        modifier = Modifier
+            .contentWidth()
+            .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.xl)
+    ) {
+        SettingsItem(
+            headline = stringResource(Res.string.favorites_title),
+            leadingIcon = PhotonneIcons.Favorite,
+            onClick = actions.onOpenFavorites,
+            headlineMaxLines = 1
+        )
+        SettingsItem(
+            headline = stringResource(Res.string.map_title),
+            leadingIcon = PhotonneIcons.Location,
+            onClick = actions.onOpenMap,
+            headlineMaxLines = 1,
+            showDivider = true
+        )
+        SettingsItem(
+            headline = stringResource(Res.string.archive_title),
+            leadingIcon = PhotonneIcons.Archive,
+            onClick = actions.onOpenArchived,
+            headlineMaxLines = 1,
+            showDivider = true
+        )
+        SettingsItem(
+            headline = stringResource(Res.string.trash_title),
+            leadingIcon = PhotonneIcons.Delete,
+            onClick = actions.onOpenTrash,
+            headlineMaxLines = 1,
+            showDivider = true
         )
     }
 }

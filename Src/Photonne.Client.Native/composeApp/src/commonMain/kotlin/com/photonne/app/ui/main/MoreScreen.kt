@@ -1,5 +1,6 @@
 package com.photonne.app.ui.main
 
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,7 +55,6 @@ import com.photonne.app.resources.account_section_profile
 import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
-import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.backup_pending_count
 import com.photonne.app.resources.device_backup_title
 import com.photonne.app.resources.more_section_actions
@@ -63,15 +62,12 @@ import com.photonne.app.resources.more_section_manage
 import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.upload_title
-import com.photonne.app.resources.favorites_title
-import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.my_links_title
 import com.photonne.app.resources.utilities_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.getValue
 import com.photonne.app.data.version.AppVersionStore
 import com.photonne.app.data.version.ServerCompatibility
 import com.photonne.app.data.version.clientUpdateUrl
@@ -80,7 +76,6 @@ import com.photonne.app.ui.util.openExternalUrl
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.contentWidth
-import com.photonne.app.ui.theme.IconCircle
 import com.photonne.app.ui.theme.SectionHeader
 import com.photonne.app.ui.theme.SettingsGroup
 import com.photonne.app.ui.theme.SettingsItem
@@ -123,9 +118,6 @@ private data class MoreSection(
 fun MoreScreen(
     user: UserDto,
     onLogout: () -> Unit,
-    onOpenFavorites: () -> Unit,
-    onOpenArchived: () -> Unit,
-    onOpenTrash: () -> Unit,
     onOpenUtilities: () -> Unit,
     onOpenMyLinks: () -> Unit,
     onOpenProfile: () -> Unit,
@@ -143,21 +135,12 @@ fun MoreScreen(
      *  when the server bundles none — see [com.photonne.app.data.models.Attribution]. */
     attributions: List<Attribution> = emptyList()
 ) {
-    // Library destinations as a 2×2 grid of wide tiles — always full, so no
-    // entry has to fall out of the grid. Browsing by grouping (People / Map /
-    // Scenes / Objects) lives in the Albums tab's "Explorar" row.
-    val library = remember(onOpenFavorites, onOpenMyLinks, onOpenArchived, onOpenTrash) {
-        listOf(
-            MoreShortcut("favorites", Res.string.favorites_title, PhotonneIcons.Favorite, onOpenFavorites),
-            MoreShortcut("my-links", Res.string.my_links_title, PhotonneIcons.Share, onOpenMyLinks),
-            MoreShortcut("archive", Res.string.archive_title, PhotonneIcons.Archive, onOpenArchived),
-            MoreShortcut("trash", Res.string.trash_title, PhotonneIcons.Delete, onOpenTrash)
-        )
-    }
-    // Everything else is a row inside a titled card. Upload lives in the top
-    // bar (it's an action, not a destination).
+    // Rows inside titled cards. Upload lives in the top bar (it's an action, not
+    // a destination); Favoritos, Archivados y Papelera viven en Colecciones,
+    // con las fotos. Mis enlaces se queda aquí: no son fotos que ver, es gestión.
     val sections = remember(
         onOpenUtilities,
+        onOpenMyLinks,
         onOpenDeviceBackup,
         backupStatus,
         onOpenNotifications,
@@ -184,6 +167,7 @@ fun MoreScreen(
                         onOpenNotifications,
                         badgeCount = notificationsUnreadCount
                     ),
+                    MoreShortcut("my-links", Res.string.my_links_title, PhotonneIcons.Share, onOpenMyLinks),
                     MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities)
                 )
             ),
@@ -244,26 +228,6 @@ fun MoreScreen(
                 user = user,
                 onOpenProfile = onOpenProfile
             )
-        }
-
-        library.chunked(2).forEach { row ->
-            item("library-${row.joinToString { it.key }}") {
-                Row(
-                    modifier = Modifier
-                        .contentWidth()
-                        .padding(horizontal = Spacing.lg),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-                ) {
-                    row.forEach { shortcut ->
-                        MoreLibraryTile(
-                            label = stringResource(shortcut.labelRes),
-                            icon = shortcut.icon,
-                            onClick = shortcut.onClick,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
         }
 
         sections.forEach { section ->
@@ -600,42 +564,6 @@ private fun MoreBackupStatusLine(status: MoreBackupStatus) {
         maxLines = 1,
         overflow = TextOverflow.Ellipsis
     )
-}
-
-/** Wide library tile (icon pill + label on one line) for the 2×2 grid. */
-@Composable
-private fun MoreLibraryTile(
-    label: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 64.dp)
-                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconCircle(icon = icon, compact = true)
-            Spacer(Modifier.size(10.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
 }
 
 /** One card holding a section's rows, split by inset dividers. */
