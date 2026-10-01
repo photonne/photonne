@@ -116,8 +116,9 @@ fun MapScreen(
     // ── Hoja persistente ────────────────────────────────────────────────
     // Tres anclajes: asomada (asa + resumen sobre la nav flotante), media
     // altura y desplegada bajo el cromo de arriba, más oculta del todo (una
-    // píldora sobre la nav la recupera). Arranca asomada: el mapa es lo primero.
-    var savedSheetValue by rememberSaveable { mutableStateOf(MapSheetValue.Peek.name) }
+    // píldora sobre la nav la recupera). Arranca oculta: el mapa es lo primero
+    // y la píldora ya dice cuántas fotos hay; tocar un clúster la sube sola.
+    var savedSheetValue by rememberSaveable { mutableStateOf(MapSheetValue.Hidden.name) }
     val sheetState = remember { AnchoredDraggableState(MapSheetValue.valueOf(savedSheetValue)) }
     val sheetGridState = rememberLazyGridState()
     var peekContentPx by remember { mutableIntStateOf(0) }
