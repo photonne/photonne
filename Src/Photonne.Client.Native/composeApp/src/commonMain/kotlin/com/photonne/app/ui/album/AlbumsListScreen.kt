@@ -1,6 +1,8 @@
 package com.photonne.app.ui.album
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -537,8 +540,16 @@ private fun ExploreRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = Spacing.lg, bottom = 6.dp)
         )
+        // Fila deslizable de teselas de ancho fijo: con cinco a partes iguales
+        // quedaban de ~60 dp en un móvil y se leían diminutas. A 96 dp caben
+        // tres y asoma la cuarta en 360 dp, que es lo que avisa de que desliza.
+        // El margen va dentro del scroll para que la primera y la última
+        // respiren igual que el resto de la pantalla.
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.md),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             // Recuerdos también es una colección generada; aquí gana una segunda
@@ -547,13 +558,13 @@ private fun ExploreRow(
                 label = stringResource(Res.string.memories_strip_title),
                 icon = PhotonneIcons.Memories,
                 onClick = onOpenMemories,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.width(ExploreTileWidth)
             )
             ExploreCard(
                 label = stringResource(Res.string.people_title),
                 icon = PhotonneIcons.People,
                 onClick = onOpenPeople,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.width(ExploreTileWidth),
                 // Las caras de quien más sale; el icono mientras no llegan.
                 preview = if (peopleFaceIds.isNotEmpty()) {
                     { OverlappingFaces(peopleFaceIds, apiBaseUrl) }
@@ -563,23 +574,26 @@ private fun ExploreRow(
                 label = stringResource(Res.string.map_title),
                 icon = Icons.Outlined.Map,
                 onClick = onOpenMap,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.width(ExploreTileWidth)
             )
             ExploreCard(
                 label = stringResource(Res.string.explore_section_scenes),
                 icon = Icons.Outlined.Landscape,
                 onClick = onOpenScenes,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.width(ExploreTileWidth)
             )
             ExploreCard(
                 label = stringResource(Res.string.explore_section_objects),
                 icon = Icons.Outlined.Category,
                 onClick = onOpenObjects,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.width(ExploreTileWidth)
             )
         }
     }
 }
+
+/** Ancho de cada tesela de Explorar; ver la fila deslizable de [ExploreRow]. */
+private val ExploreTileWidth = 96.dp
 
 @Composable
 private fun ExploreCard(
