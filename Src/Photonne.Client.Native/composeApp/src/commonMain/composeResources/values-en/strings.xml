@@ -1634,6 +1634,9 @@
     <string name="explore_places_coming_soon">Places will be available once reverse geocoding is added to the server.</string>
     <string name="explore_scenes_empty">No scenes detected yet. Scene classification runs in the background.</string>
     <string name="explore_search_placeholder">Search labels</string>
+    <string name="explore_action_sort">Sort</string>
+    <string name="explore_sort_count">Most photos first</string>
+    <string name="explore_sort_name">By name</string>
     <string name="explore_objects_empty">No objects detected yet. Object detection runs in the background.</string>
     <string name="explore_label_count">%1$d photos</string>
     <string name="smart_album_editor_title">New smart album</string>

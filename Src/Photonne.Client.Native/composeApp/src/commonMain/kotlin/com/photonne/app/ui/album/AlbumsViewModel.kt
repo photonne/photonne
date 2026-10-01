@@ -76,9 +76,20 @@ data class AlbumsUiState(
                     (album.description?.lowercase()?.contains(needle) == true)
             }
         } else scopeFiltered
+        return sortedInPageOrder(queryFiltered)
+    }
+
+    /**
+     * Todos los álbumes en el orden elegido en Todos los álbumes (criterio y
+     * dirección), sin el ámbito ni la búsqueda de esa página: la fila de
+     * Colecciones replica el orden, no el filtro.
+     */
+    val albumsInPageOrder: List<AlbumSummary> get() = sortedInPageOrder(albums)
+
+    private fun sortedInPageOrder(list: List<AlbumSummary>): List<AlbumSummary> {
         val ascending = when (sort) {
-            AlbumSort.Date -> queryFiltered.sortedBy { it.createdAt }
-            AlbumSort.Name -> queryFiltered.sortedByNatural { it.name }
+            AlbumSort.Date -> list.sortedBy { it.createdAt }
+            AlbumSort.Name -> list.sortedByNatural { it.name }
         }
         return ascending.applyDirection(direction)
     }

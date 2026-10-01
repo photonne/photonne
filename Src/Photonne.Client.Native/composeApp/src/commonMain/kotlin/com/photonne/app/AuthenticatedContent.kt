@@ -1840,17 +1840,23 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 com.photonne.app.ui.collections.mergePinned(albumsState.albums, foldersState.pinnedFolders)
             },
             people = peopleState.people.filterNot { it.isHidden },
-            // Los más recientes primero: el slider es "lo último", el orden
-            // elegido vive en Todos los álbumes.
-            albums = remember(albumsState.albums) { albumsState.albums.sortedByDescending { it.createdAt } },
+            // Mismo orden que su página (criterio y dirección), sin su filtro.
+            albums = albumsState.albumsInPageOrder,
             albumsLoaded = !albumsState.isLoading && albumsState.error == null,
-            folders = remember(foldersState.personalFolders, foldersState.sharedFolders, foldersState.externalRoots) {
-                (foldersState.personalFolders + foldersState.sharedFolders + foldersState.externalRoots)
-                    .distinctBy { it.id }
+            folders = remember(
+                foldersState.personalFolders, foldersState.sharedFolders, foldersState.externalRoots,
+                foldersState.sort, foldersState.direction
+            ) {
+                com.photonne.app.ui.folder.sortFolders(
+                    (foldersState.personalFolders + foldersState.sharedFolders + foldersState.externalRoots)
+                        .distinctBy { it.id },
+                    foldersState.sort,
+                    foldersState.direction
+                )
             },
             organizePendingCount = foldersState.organizePendingCount,
-            scenes = facets.scenes,
-            objects = facets.objects,
+            scenes = facets.scenesInPageOrder,
+            objects = facets.objectsInPageOrder,
             isRefreshing = feed.isLoading && feed.rows.isNotEmpty(),
             isInitialLoading = albumsState.isLoading && albumsState.albums.isEmpty() &&
                 foldersState.isLoading && foldersState.personalFolders.isEmpty() &&

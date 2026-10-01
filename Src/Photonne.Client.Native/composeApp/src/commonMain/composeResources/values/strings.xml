@@ -1516,6 +1516,9 @@
     <string name="explore_places_coming_soon">Lugares estará disponible cuando se añada la geocodificación inversa al servidor.</string>
     <string name="explore_scenes_empty">Aún no hay escenas detectadas. La clasificación de escenas se ejecuta en segundo plano.</string>
     <string name="explore_search_placeholder">Buscar etiqueta</string>
+    <string name="explore_action_sort">Ordenar</string>
+    <string name="explore_sort_count">Más fotos primero</string>
+    <string name="explore_sort_name">Por nombre</string>
     <string name="explore_objects_empty">Aún no hay objetos detectados. La detección de objetos se ejecuta en segundo plano.</string>
     <string name="explore_label_count">%1$d fotos</string>
 

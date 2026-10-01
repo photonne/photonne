@@ -1,5 +1,11 @@
 package com.photonne.app.ui.explore
 
+import com.photonne.app.resources.explore_sort_name
+import com.photonne.app.resources.explore_sort_count
+import com.photonne.app.resources.explore_action_sort
+import com.photonne.app.ui.theme.MenuCheckSlot
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.foundation.background
 import com.photonne.app.ui.theme.PhotonneColors
 import androidx.compose.foundation.clickable
@@ -85,6 +91,8 @@ internal fun ExploreLabelGridScreen(
     query: String = "",
     onQueryChange: (String) -> Unit = {},
     isSearching: Boolean = false,
+    sort: LabelSort = LabelSort.Count,
+    onSortChange: (LabelSort) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     // Abierto si ya había texto (volver a la pantalla no esconde el filtro).
@@ -184,6 +192,7 @@ internal fun ExploreLabelGridScreen(
                             )
                         }
                     }
+                    LabelSortMenu(sort = sort, onSortChange = onSortChange)
                 },
                 scroll = SubscreenScroll(
                     firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
@@ -259,6 +268,38 @@ internal fun LabelTileCard(tile: ExploreLabelTile, baseUrl: String, onClick: () 
                     style = MaterialTheme.typography.labelSmall,
                     color = PhotonneColors.onScrimMuted,
                     maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Orden de la rejilla (y de su fila en Colecciones): dos opciones excluyentes
+ * marcadas con un check, como el orden de Personas.
+ */
+@Composable
+private fun LabelSortMenu(sort: LabelSort, onSortChange: (LabelSort) -> Unit) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { menuOpen = true }) {
+            Icon(PhotonneIcons.Sort, contentDescription = stringResource(Res.string.explore_action_sort))
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            LabelSort.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            stringResource(
+                                when (option) {
+                                    LabelSort.Count -> Res.string.explore_sort_count
+                                    LabelSort.Name -> Res.string.explore_sort_name
+                                }
+                            )
+                        )
+                    },
+                    leadingIcon = { MenuCheckSlot(checked = option == sort) },
+                    onClick = { menuOpen = false; onSortChange(option) }
                 )
             }
         }
