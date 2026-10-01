@@ -9,6 +9,9 @@
 
     <string name="memories_strip_title">Recuerdos</string>
     <string name="memories_strip_see_all">Ver todos los recuerdos</string>
+    <string name="memories_entry_subtitle">Personas, viajes y momentos de otros años</string>
+    <string name="search_discover_see_all">Ver todo</string>
+    <string name="search_discover_map_subtitle">Tus fotos según dónde se hicieron</string>
 
     <string name="action_refresh">Refrescar</string>
     <string name="action_account">Cuenta</string>
@@ -441,8 +444,6 @@
     <string name="search_filters_only_text">Los filtros solo aplican a la búsqueda de texto</string>
     <string name="search_semantic_capped">Mostrando los %1$d más parecidos</string>
     <string name="search_clear_all">Limpiar</string>
-    <string name="search_idle_title">Empieza a buscar</string>
-    <string name="search_idle_subtitle">Escribe un término o aplica filtros para ver resultados.</string>
     <string name="search_empty_results">Sin resultados con esos criterios.</string>
     <string name="search_no_results">Sin resultados</string>
     <string name="search_filters_loading">Cargando filtros…</string>

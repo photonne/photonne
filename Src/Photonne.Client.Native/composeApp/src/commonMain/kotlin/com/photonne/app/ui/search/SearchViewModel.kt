@@ -195,29 +195,25 @@ class SearchViewModel(
         scheduleSearch(immediate = true)
     }
 
-    fun showResultsForSceneLabel(label: String) {
-        pendingSearch?.cancel()
-        _state.update {
-            it.copy(
-                query = "",
-                mode = SearchMode.Text,
-                from = null,
-                to = null,
-                ocrText = "",
-                selectedPersonIds = emptySet(),
-                selectedObjectLabels = emptySet(),
-                selectedSceneLabels = setOf(label),
-                results = emptyList(),
-                hasMore = false,
-                semanticCapped = false,
-                error = null,
-                selection = emptySet()
-            )
-        }
-        scheduleSearch(immediate = true)
+    fun showResultsForSceneLabel(label: String) =
+        showResultsFor(sceneLabels = setOf(label))
+
+    fun showResultsForObjectLabel(label: String) =
+        showResultsFor(objectLabels = setOf(label))
+
+    /** Persona tocada en la pantalla inicial de la búsqueda. Entra en la caché
+     *  para que su chip de filtro tenga nombre. */
+    fun showResultsForPerson(person: Person) {
+        _state.update { it.copy(selectedPeopleCache = it.selectedPeopleCache + (person.id to person)) }
+        showResultsFor(personIds = setOf(person.id))
     }
 
-    fun showResultsForObjectLabel(label: String) {
+    /** Sustituye cualquier criterio anterior por uno solo y busca ya. */
+    private fun showResultsFor(
+        personIds: Set<String> = emptySet(),
+        objectLabels: Set<String> = emptySet(),
+        sceneLabels: Set<String> = emptySet()
+    ) {
         pendingSearch?.cancel()
         _state.update {
             it.copy(
@@ -226,9 +222,9 @@ class SearchViewModel(
                 from = null,
                 to = null,
                 ocrText = "",
-                selectedPersonIds = emptySet(),
-                selectedObjectLabels = setOf(label),
-                selectedSceneLabels = emptySet(),
+                selectedPersonIds = personIds,
+                selectedObjectLabels = objectLabels,
+                selectedSceneLabels = sceneLabels,
                 results = emptyList(),
                 hasMore = false,
                 semanticCapped = false,

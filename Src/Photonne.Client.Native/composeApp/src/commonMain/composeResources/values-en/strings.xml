@@ -9,6 +9,9 @@
 
     <string name="memories_strip_title">Memories</string>
     <string name="memories_strip_see_all">See all memories</string>
+    <string name="memories_entry_subtitle">People, trips and moments from past years</string>
+    <string name="search_discover_see_all">See all</string>
+    <string name="search_discover_map_subtitle">Your photos by where they were taken</string>
 
     <string name="action_refresh">Refresh</string>
     <string name="action_account">Account</string>
@@ -362,8 +365,6 @@
     <string name="search_filters_only_text">Filters only apply to text search</string>
     <string name="search_semantic_capped">Showing the %1$d closest matches</string>
     <string name="search_clear_all">Clear</string>
-    <string name="search_idle_title">Start searching</string>
-    <string name="search_idle_subtitle">Type a term or apply filters to see results.</string>
     <string name="search_empty_results">No matches for those criteria.</string>
     <string name="search_filters_loading">Loading filters…</string>
     <string name="search_date_range">Date range</string>

@@ -194,6 +194,10 @@ fun TimelineScreen(
     memoriesAutoPlay: Boolean = true,
     onOpenMemory: ((memory: com.photonne.app.ui.memories.MemoryDetailContext) -> Unit)? = null,
     onSeeAllMemories: (() -> Unit)? = null,
+    /** True once today's memories have been asked for (found, empty or failed):
+     *  only then may an empty list fall back to [MemoriesEntryRow], so the
+     *  row doesn't flash in before the strip replaces it. */
+    memoriesLoaded: Boolean = false,
     /** Files still waiting to be backed up from this device, and where to go to
      *  deal with them. Surfaces the backup state in the tab people actually
      *  live in instead of only inside the More menu. */
@@ -310,6 +314,9 @@ fun TimelineScreen(
     // AnimatedVisibility below) so entering selection no longer makes the
     // whole grid jump up by the strip's height.
     val hasMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null
+    // Sin aniversarios hoy, la tira se queda en una fila: la sección sigue
+    // teniendo recuerdos y esta era su única puerta desde Fotos.
+    val showMemoriesEntry = !hasMemoriesHeader && memoriesLoaded && onSeeAllMemories != null
     val showBackupRow = backupPendingCount > 0 && onOpenBackup != null
     // The camera-only default must never be silent: until acknowledged, a
     // quiet strip says the timeline is filtered and where to change it.
@@ -318,7 +325,7 @@ fun TimelineScreen(
     // ONE header item, whatever it holds. The scrubber and the zoom transition
     // index off `headerItemCount`, so a second item here would shift every row
     // they compute — the backup and scope rows ride inside the same slot instead.
-    val hasHeader = hasMemoriesHeader || showBackupRow || showScopeNotice
+    val hasHeader = hasMemoriesHeader || showMemoriesEntry || showBackupRow || showScopeNotice
     // Year view renders the compressed per-year summaries (a few sampled
     // rows per year, count in the header); every other zoom level renders
     // the full bucket timeline. Both flatten into the same entries shape.
@@ -1122,6 +1129,8 @@ fun TimelineScreen(
                                                         onSeeAll = onSeeAllMemories,
                                                         autoPlay = memoriesAutoPlay
                                                     )
+                                                } else if (showMemoriesEntry) {
+                                                    MemoriesEntryRow(onClick = onSeeAllMemories!!)
                                                 }
                                             }
                                         }

@@ -214,7 +214,7 @@ private const val SCROLL_TO_TOP_MIN_CELL = 9
 private const val SCROLL_TO_TOP_SNAP_CELL = 24
 
 @Composable
-private fun LabelTileCard(tile: ExploreLabelTile, baseUrl: String, onClick: () -> Unit) {
+internal fun LabelTileCard(tile: ExploreLabelTile, baseUrl: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()

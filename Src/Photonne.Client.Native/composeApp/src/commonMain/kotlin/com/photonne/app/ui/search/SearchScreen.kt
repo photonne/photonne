@@ -61,8 +61,6 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.search_clear_all
 import com.photonne.app.resources.search_empty_results
 import com.photonne.app.resources.search_filters
-import com.photonne.app.resources.search_idle_subtitle
-import com.photonne.app.resources.search_idle_title
 import com.photonne.app.resources.search_input_hint
 import com.photonne.app.resources.search_mode_semantic
 import com.photonne.app.resources.search_mode_text
@@ -86,6 +84,11 @@ fun SearchScreen(
     onItemLongClick: (Int) -> Unit,
     onOpenFilters: () -> Unit,
     onBack: () -> Unit = {},
+    onOpenMemories: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
+    onOpenPeople: () -> Unit = {},
+    onOpenScenes: () -> Unit = {},
+    onOpenObjects: () -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
@@ -125,10 +128,22 @@ fun SearchScreen(
                             modifier = Modifier.padding(top = reservedTop)
                         )
                     !state.hasCriteriaForMode ->
-                        EmptyState(
-                            icon = PhotonneIcons.Search,
-                            title = stringResource(Res.string.search_idle_title),
-                            subtitle = stringResource(Res.string.search_idle_subtitle)
+                        SearchDiscover(
+                            state = state,
+                            baseUrl = apiBaseUrl,
+                            contentPadding = PaddingValues(
+                                top = reservedTop,
+                                bottom = floatingNavBarReservedHeight()
+                            ),
+                            onOpenMemories = onOpenMemories,
+                            onOpenMap = onOpenMap,
+                            onOpenPeople = onOpenPeople,
+                            onOpenScenes = onOpenScenes,
+                            onOpenObjects = onOpenObjects,
+                            onPersonClick = viewModel::showResultsForPerson,
+                            onSceneClick = viewModel::showResultsForSceneLabel,
+                            onObjectClick = viewModel::showResultsForObjectLabel,
+                            modifier = Modifier.hazeSource(hazeState)
                         )
                     state.results.isEmpty() ->
                         // Los chips de filtro siguen visibles con cero

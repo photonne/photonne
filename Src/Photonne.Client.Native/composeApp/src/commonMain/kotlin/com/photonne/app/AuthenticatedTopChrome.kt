@@ -207,7 +207,9 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                     statusBarScrim = false
                 )
             }
-            appState.selectedTab == MainTab.Search -> null
+            // Con una sección abierta desde la pantalla inicial de Buscar
+            // (Personas, Recuerdos…) manda la capa de esa sección.
+            appState.selectedTab == MainTab.Search && appState.moreSubscreen == null -> null
             appState.moreSubscreen == MoreSubscreen.DeviceBackupPending &&
                 deviceBackupState.selectedCount > 0 -> selectionChrome {
                 // Same contextual selection capsule as Timeline/Albums, with a
@@ -359,7 +361,7 @@ internal fun buildTopBar(
                 appState.selectedTab == MainTab.Folders && appState.selectedFolder != null -> {
                 }
                 // Buscar pinta su propio cromo flotante (campo + modo + filtros).
-                appState.selectedTab == MainTab.Search -> {
+                appState.selectedTab == MainTab.Search && appState.moreSubscreen == null -> {
                 }
                 appState.moreSubscreen == MoreSubscreen.Upload ->
                     com.photonne.app.ui.main.UploadTopBar(

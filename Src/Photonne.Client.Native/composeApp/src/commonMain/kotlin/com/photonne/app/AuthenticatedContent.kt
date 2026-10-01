@@ -285,6 +285,7 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                     pendingJumpDate = appState.pendingJumpDate,
                     onJumpHandled = { appState.pendingJumpDate = null },
                     memories = memoriesState.items,
+                    memoriesLoaded = memoriesState.attempted,
                     onOpenMemory = { memory -> appState.memoryDetail = memory },
                     onSeeAllMemories = { appState.moreSubscreen = MoreSubscreen.Memories }
                 )
@@ -310,6 +311,7 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                             // Explorar cards open their screen as a modal layer
                             // over the Albums tab (no tab switch) so back
                             // returns here and the bottom nav stays on Álbumes.
+                            onOpenMemories = { appState.moreSubscreen = MoreSubscreen.Memories },
                             onOpenPeople = {
                                 appState.selectedPerson = null
                                 appState.moreSubscreen = MoreSubscreen.People
@@ -558,6 +560,16 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
                 viewModel = searchViewModel,
                 onOpenFilters = { appState.showSearchFilters = true },
                 onBack = { appState.searchBack() },
+                // Pantalla inicial: estas secciones se abren como capa encima
+                // de Buscar, así que su atrás (moreSubscreen = null) vuelve aquí.
+                onOpenMemories = { appState.moreSubscreen = MoreSubscreen.Memories },
+                onOpenMap = { appState.moreSubscreen = MoreSubscreen.Map },
+                onOpenPeople = {
+                    appState.selectedPerson = null
+                    appState.moreSubscreen = MoreSubscreen.People
+                },
+                onOpenScenes = { appState.moreSubscreen = MoreSubscreen.ExploreScenes },
+                onOpenObjects = { appState.moreSubscreen = MoreSubscreen.ExploreObjects },
                 onChromeVisibleChange = { appState.searchChromeVisible = it },
                 onItemClick = { index ->
                     if (searchState.isSelectionActive) {

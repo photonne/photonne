@@ -362,7 +362,8 @@ fun EntryCard(
 /**
  * Variante en mosaico de [EntryCard] para filas de varias entradas (Explorar
  * en Álbumes): misma forma, fondo e [IconCircle], con el icono encima de la
- * etiqueta porque caben cuatro por fila. Con [preview], una muestra real de
+ * etiqueta porque caben cinco por fila (margen lateral mínimo para que
+ * "Recuerdos" no se corte en un móvil de 360 dp). Con [preview], una muestra real de
  * lo que hay dentro (caras…) ocupa el sitio del icono; debe tener su alto
  * (34 dp) para que la tarjeta no salte al llegar.
  */
@@ -379,7 +380,7 @@ fun EntryTile(
             .clip(MaterialTheme.shapes.large)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
-            .padding(vertical = Spacing.md, horizontal = Spacing.xs),
+            .padding(vertical = Spacing.md, horizontal = Spacing.xxs),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {

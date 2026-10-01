@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Icon
@@ -44,10 +45,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_memories_group_count
+import com.photonne.app.resources.memories_entry_subtitle
 import com.photonne.app.resources.memories_strip_see_all
 import com.photonne.app.resources.memories_strip_title
 import com.photonne.app.resources.timeline_memories_one_year_ago
@@ -60,6 +63,9 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.IconCircle
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.MemoryCardShape
 import com.photonne.app.ui.theme.Spacing
 
 private const val StoryDurationMs = 5000L
@@ -141,7 +147,13 @@ fun MemoriesStrip(
         }
         Spacer(modifier = Modifier.height(10.dp))
 
-        val pagerState = rememberPagerState(pageCount = { groups.size })
+        // Con "ver todo" la tira acaba en una tarjeta más que lleva a la sección:
+        // es donde está el dedo al terminar de pasar historias, y el título con
+        // chevron solo no se leía como enlace.
+        val hasSeeAllCard = onSeeAll != null
+        val pagerState = rememberPagerState(
+            pageCount = { groups.size + if (hasSeeAllCard) 1 else 0 }
+        )
         val progress = remember { Animatable(0f) }
         var paused by remember { mutableStateOf(false) }
         val scrollScope = rememberCoroutineScope()
@@ -188,6 +200,10 @@ fun MemoriesStrip(
                     .fillMaxWidth()
                     .height(cardWidth * 0.62f)
             ) { page ->
+                if (page >= groups.size) {
+                    SeeAllCard(onClick = onSeeAll!!)
+                    return@HorizontalPager
+                }
                 val group = groups[page]
                 // Ken Burns drives off currentPage — the same key that resets
                 // [progress] to 0 — so the incoming page reads progress 0 the
@@ -228,6 +244,87 @@ fun MemoriesStrip(
                 )
             }
         }
+    }
+}
+
+/**
+ * Última página de la tira. Sin portada a propósito: las fotos de hoy ya se han
+ * visto en las historias de antes, y la sección tiene otras (personas, viajes).
+ * La auto-avanzada nunca llega aquí: salta de la última historia a la primera.
+ */
+@Composable
+private fun SeeAllCard(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(MemoryCardShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(Spacing.lg),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        IconCircle(icon = PhotonneIcons.Memories)
+        Spacer(Modifier.height(Spacing.md))
+        Text(
+            text = stringResource(Res.string.memories_strip_see_all),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(Spacing.xs))
+        Text(
+            text = stringResource(Res.string.memories_entry_subtitle),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+/**
+ * Entrada a Recuerdos los días sin "hoy hace…". Antes la tira desaparecía
+ * entera y con ella el único acceso a la sección desde Fotos, que tiene
+ * recuerdos (personas, viajes, favoritos) aunque hoy no sea aniversario de nada.
+ * Mismo estilo discreto que la fila de copia pendiente: no compite con las fotos.
+ */
+@Composable
+fun MemoriesEntryRow(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = PhotonneIcons.Memories,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(IconSize.md)
+        )
+        Spacer(Modifier.size(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(Res.string.memories_strip_title),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = stringResource(Res.string.memories_entry_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            imageVector = PhotonneIcons.Chevron,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(IconSize.md)
+        )
     }
 }
 

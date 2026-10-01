@@ -1030,7 +1030,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             !folderDetailState.isSubfolderSelectionActive ->
             selectAllOf(folderDetailState.selection.size, folderDetailState.items.size,
                 folderDetailViewModel::toggleSelectAll)
-        appState.selectedTab == MainTab.Search ->
+        appState.selectedTab == MainTab.Search && appState.moreSubscreen == null ->
             selectAllOf(searchState.selection.size, searchState.results.size,
                 searchViewModel::toggleSelectAll)
         appState.moreSubscreen == MoreSubscreen.Favorites ->

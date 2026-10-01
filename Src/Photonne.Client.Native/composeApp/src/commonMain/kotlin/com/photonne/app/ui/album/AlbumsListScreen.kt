@@ -58,6 +58,7 @@ import com.photonne.app.resources.album_share_link_badge
 import com.photonne.app.resources.explore_section_objects
 import com.photonne.app.resources.explore_section_scenes
 import com.photonne.app.resources.explore_title
+import com.photonne.app.resources.memories_strip_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.ui.main.CreateAction
@@ -99,6 +100,7 @@ fun AlbumsListScreen(
     onAlbumClick: (AlbumSummary) -> Unit,
     onAlbumLongPress: (AlbumSummary) -> Unit,
     onCreateAlbum: (() -> Unit)? = null,
+    onOpenMemories: () -> Unit = {},
     onOpenPeople: () -> Unit = {},
     onOpenMap: () -> Unit = {},
     onOpenScenes: () -> Unit = {},
@@ -136,7 +138,7 @@ fun AlbumsListScreen(
     // Con selección, la cápsula de selección ocupa el mismo hueco: se reserva siempre.
     val reservedTop = subscreenChromeReservedTop()
 
-    // Automatic asset groupings (People / Map / Scenes / Objects) that sit atop
+    // Automatic asset groupings (Memories / People / Map / Scenes / Objects) that sit atop
     // the album list — a scroll header so they pass under the floating chrome.
     val previewsViewModel: ExplorePreviewsViewModel = koinViewModel()
     val previews by previewsViewModel.state.collectAsStateWithLifecycle()
@@ -145,6 +147,7 @@ fun AlbumsListScreen(
         ExploreRow(
             peopleFaceIds = previews.peopleFaceIds,
             apiBaseUrl = apiBaseUrl,
+            onOpenMemories = onOpenMemories,
             onOpenPeople = onOpenPeople,
             onOpenMap = onOpenMap,
             onOpenScenes = onOpenScenes,
@@ -519,6 +522,7 @@ private fun YearHeader(year: Int, modifier: Modifier = Modifier) {
 private fun ExploreRow(
     peopleFaceIds: List<String>,
     apiBaseUrl: String,
+    onOpenMemories: () -> Unit,
     onOpenPeople: () -> Unit,
     onOpenMap: () -> Unit,
     onOpenScenes: () -> Unit,
@@ -537,6 +541,14 @@ private fun ExploreRow(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
+            // Recuerdos también es una colección generada; aquí gana una segunda
+            // puerta además de la tira de Fotos, que solo enseña "hoy hace…".
+            ExploreCard(
+                label = stringResource(Res.string.memories_strip_title),
+                icon = PhotonneIcons.Memories,
+                onClick = onOpenMemories,
+                modifier = Modifier.weight(1f)
+            )
             ExploreCard(
                 label = stringResource(Res.string.people_title),
                 icon = PhotonneIcons.People,

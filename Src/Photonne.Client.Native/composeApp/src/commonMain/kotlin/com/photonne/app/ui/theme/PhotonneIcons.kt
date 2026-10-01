@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
@@ -161,6 +162,10 @@ object PhotonneIcons {
 
     /** Fusionar una persona con otra. */
     val Merge: ImageVector = Icons.AutoMirrored.Outlined.MergeType
+
+    // ── Recuerdos ───────────────────────────────────────────────────────
+    /** Sección Recuerdos (entradas desde Fotos, Explorar y Buscar). */
+    val Memories: ImageVector = Icons.Outlined.History
 
     // ── Búsqueda, orden y filtros ───────────────────────────────────────
     val Search: ImageVector = Icons.Outlined.Search
