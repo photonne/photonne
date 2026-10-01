@@ -174,6 +174,8 @@ internal class AuthenticatedAppState(
     var albumReturnTo by mutableStateOf<Pair<MainTab, MoreSubscreen?>?>(null)
     // Persona abierta desde una cara del visor: Atrás vuelve a la foto.
     var personReturnTo by mutableStateOf<ViewerReturn?>(null)
+    // Persona abierta desde la fila de Personas de Colecciones (ver personBack).
+    var personFromCollections by mutableStateOf(false)
 
     // ---- Administración ----
     // Type filter the failures registry opens with when reached from a
@@ -386,6 +388,13 @@ internal class AuthenticatedAppState(
 
     fun personBack() {
         selectedPerson = null
+        if (personFromCollections) {
+            // Abierta desde la fila de Personas de Colecciones: Atrás vuelve
+            // allí, no a la lista completa de Personas que nunca se vio.
+            personFromCollections = false
+            moreSubscreen = null
+            return
+        }
         val returnTo = personReturnTo
         personReturnTo = null
         if (returnTo != null) restoreViewer(returnTo)
@@ -398,6 +407,7 @@ internal class AuthenticatedAppState(
      */
     fun openPersonFromViewer(personId: String) {
         personReturnTo = viewerReturnPoint() ?: return
+        personFromCollections = false
         assetDetailStack = emptyList()
         assetDetail = null
         selectedTab = MainTab.More
@@ -454,6 +464,7 @@ internal class AuthenticatedAppState(
         folderReturnTo = null
         albumReturnTo = null
         personReturnTo = null
+        personFromCollections = false
         albumsViewModel.clearSelection()
         foldersViewModel.clearSelection()
         selectedTab = tab

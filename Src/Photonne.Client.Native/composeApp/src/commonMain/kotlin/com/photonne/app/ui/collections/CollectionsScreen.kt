@@ -79,6 +79,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.memories.MemoryCardFace
 import com.photonne.app.ui.people.PersonAvatar
+import com.photonne.app.ui.theme.CardRowsSkeleton
 import com.photonne.app.ui.theme.CollectionCard
 import com.photonne.app.ui.theme.CollectionCover
 import com.photonne.app.ui.theme.EntryCard
@@ -145,6 +146,8 @@ data class CollectionsContent(
     val scenes: List<SceneLabel> = emptyList(),
     val objects: List<ObjectLabel> = emptyList(),
     val isRefreshing: Boolean = false,
+    /** Primera carga sin nada que enseñar todavía: esqueleto en vez de vacío. */
+    val isInitialLoading: Boolean = false,
 )
 
 class CollectionsActions(
@@ -213,7 +216,16 @@ fun CollectionsScreen(
             onRefresh = actions.onRefresh,
             modifier = Modifier.fillMaxSize()
         ) {
-            LazyColumn(
+            if (content.isInitialLoading) {
+                // Misma forma que las secciones: título y fila de tarjetas.
+                CardRowsSkeleton(
+                    contentPadding = PaddingValues(top = reservedTop),
+                    cardWidth = CollectionTileWidth,
+                    cardHeight = CollectionTileWidth,
+                    cardSpacing = Spacing.md,
+                    modifier = Modifier.hazeSource(hazeState)
+                )
+            } else LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                 contentPadding = PaddingValues(

@@ -1041,6 +1041,7 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     com.photonne.app.ui.people.PeopleScreen(
                         state = peopleState,
                         onPersonClick = { picked ->
+                            appState.personFromCollections = false
                             appState.selectedPerson = picked
                             personDetailViewModel.open(picked.id, picked.name)
                         },
@@ -1868,6 +1869,9 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
             scenes = facets.scenes,
             objects = facets.objects,
             isRefreshing = feed.isLoading && feed.rows.isNotEmpty(),
+            isInitialLoading = albumsState.isLoading && albumsState.albums.isEmpty() &&
+                foldersState.isLoading && foldersState.personalFolders.isEmpty() &&
+                foldersState.sharedFolders.isEmpty() && feed.rows.isEmpty(),
         )
         val actions = remember(appState) {
             com.photonne.app.ui.collections.CollectionsActions(
@@ -1900,11 +1904,13 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 onOpenPinned = { entry -> openPinned(entry) },
                 onSeeAllPinned = { appState.moreSubscreen = MoreSubscreen.Pinned },
                 onOpenPerson = { person ->
+                    appState.personFromCollections = true
                     appState.selectedPerson = person
                     appState.moreSubscreen = MoreSubscreen.People
                     personDetailViewModel.open(person.id, person.name)
                 },
                 onSeeAllPeople = {
+                    appState.personFromCollections = false
                     appState.selectedPerson = null
                     appState.moreSubscreen = MoreSubscreen.People
                 },
