@@ -147,7 +147,7 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                             }
                         },
                         // En un álbum inteligente el contenido lo deciden las
-                        // reglas: ni quitar fotos ni fijar portada aplican.
+                        // reglas: quitar fotos no aplica.
                         onRemoveFromAlbum = if (appState.selectedAlbum?.isSmart != true &&
                             (appState.selectedAlbum?.canWrite == true ||
                                 appState.selectedAlbum?.isOwner == true)
@@ -188,8 +188,9 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                                 )
                             }
                         } else null,
+                        // La portada sí aplica a un álbum inteligente: no cambia qué
+                        // fotos entran, y el servidor valida que la foto cumpla la regla.
                         onSetAsCover = if (albumDetailState.selection.size == 1 &&
-                            appState.selectedAlbum?.isSmart != true &&
                             (appState.selectedAlbum?.canWrite == true || appState.selectedAlbum?.isOwner == true)
                         ) {
                             {
