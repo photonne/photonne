@@ -8,9 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
@@ -52,10 +51,11 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.CardRowsSkeleton
 import com.photonne.app.ui.theme.Spacing
 
-/** Three to a phone screen with the fourth peeking in to say "this row keeps
- * going"; same proportions as the old 150×190 card, which only fit two. */
-private val RowCardWidth = 112.dp
-private val RowCardHeight = 142.dp
+/** Square and 12 dp apart, like a Scenes / Objects tile on a phone, so the
+ * three grids of covers read as one family. Three whole cards fit even at 360 dp
+ * (16 + 3·100 + 2·12 = 340), with the fourth peeking in to say "this row keeps
+ * going". */
+private val RowCardSize = 100.dp
 
 /**
  * The Recuerdos section: every generated memory, as one row per theme.
@@ -99,8 +99,9 @@ fun MemoriesScreen(
                 state.isLoading && state.rows.isEmpty() ->
                     CardRowsSkeleton(
                         contentPadding = PaddingValues(top = reservedTop),
-                        cardWidth = RowCardWidth,
-                        cardHeight = RowCardHeight
+                        cardWidth = RowCardSize,
+                        cardHeight = RowCardSize,
+                        cardSpacing = Spacing.md
                     )
 
                 state.error != null && state.rows.isEmpty() ->
@@ -192,7 +193,7 @@ private fun MemoryThemeRow(
     }
     LazyRow(
         contentPadding = PaddingValues(horizontal = Spacing.lg),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         items(items = row.memories, key = { memory -> "memory:${memory.id}" }) { memory ->
             MemoryRowCard(
@@ -214,7 +215,7 @@ private fun MemoryRowCard(
 ) {
     MemoryCardFace(
         coverUrl = memory.coverAssetId
-            // Medium basta para una tarjeta de 112x142 dp; Large descargaba
+            // Medium basta para una tarjeta de 100x100 dp; Large descargaba
                 // el tamaño de visor para una miniatura.
                 ?.let { "$baseUrl/api/assets/$it/thumbnail?size=Medium" },
         contentDescription = memory.title,
@@ -224,8 +225,7 @@ private fun MemoryRowCard(
         subtitle = null,
         compact = true,
         modifier = Modifier
-            .width(RowCardWidth)
-            .height(RowCardHeight)
+            .size(RowCardSize)
             .clickable(enabled = !isOpening, onClick = onClick),
     ) {
         // The feed carries a cover, not the photos — opening one is a

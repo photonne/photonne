@@ -194,6 +194,7 @@ fun CardRowsSkeleton(
     rowCount: Int = 4,
     cardWidth: Dp = 150.dp,
     cardHeight: Dp = 190.dp,
+    cardSpacing: Dp = 10.dp,
     cardsPerRow: Int = 4
 ) {
     Column(
@@ -220,7 +221,7 @@ fun CardRowsSkeleton(
                     .fillMaxWidth()
                     .wrapContentWidth(Alignment.Start, unbounded = true)
                     .padding(horizontal = Spacing.lg),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
             ) {
                 repeat(cardsPerRow) {
                     Box(
