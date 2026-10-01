@@ -103,9 +103,9 @@ fun MapScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
-    // Al salir del mapa el filtro de clúster (y su selección) no sobrevive: la
-    // próxima visita arranca con todo el viewport.
-    DisposableEffect(viewModel) { onDispose { viewModel.clearFocus() } }
+    // Al salir del mapa ni la hoja ni el filtro de clúster (ni su selección)
+    // sobreviven: la próxima visita arranca solo con el mapa.
+    DisposableEffect(viewModel) { onDispose { viewModel.onLeave() } }
 
     var mapSizePx by remember { mutableStateOf(IntSize.Zero) }
     // Mientras el mapa se mueve la hoja deja el cristal por un fondo liso: el
@@ -116,8 +116,9 @@ fun MapScreen(
     // ── Hoja persistente ────────────────────────────────────────────────
     // Tres anclajes: asomada (asa + resumen sobre la nav flotante), media
     // altura y desplegada bajo el cromo de arriba, más oculta del todo (una
-    // píldora sobre la nav la recupera). Arranca oculta: el mapa es lo primero
-    // y la píldora ya dice cuántas fotos hay; tocar un clúster la sube sola.
+    // píldora sobre la nav la recupera). Hasta el primer clúster tocado no hay
+    // hoja ni píldora; ese toque la sube a media altura, y a partir de ahí el
+    // estado oculto deja la píldora a mano el resto de la visita.
     var savedSheetValue by rememberSaveable { mutableStateOf(MapSheetValue.Hidden.name) }
     val sheetState = remember { AnchoredDraggableState(MapSheetValue.valueOf(savedSheetValue)) }
     val sheetGridState = rememberLazyGridState()
@@ -142,7 +143,9 @@ fun MapScreen(
         snapshotFlow { sheetState.settledValue }.collect { savedSheetValue = it.name }
     }
     // Sin fotos con ubicación no hay hoja: el aviso de mapa vacío lo dice todo.
-    val sheetShown = state.firstLoadComplete && state.points.isNotEmpty() && anchorPositions.isNotEmpty()
+    // Ni hoja ni píldora hasta el primer clúster tocado en la visita.
+    val sheetShown = state.sheetEnabled && state.firstLoadComplete &&
+        state.points.isNotEmpty() && anchorPositions.isNotEmpty()
     val peekTopPx = anchorPositions[MapSheetValue.Peek] ?: (mapHeightPx - navReservedPx)
     // Borde superior de la hoja (o de la nav, sin hoja): lo que siguen los
     // controles y la atribución. Se lee en layout/dibujo, no en composición.
@@ -361,7 +364,9 @@ fun MapScreen(
             }
         }
 
-        if (sheetShown) {
+        // Oculta del todo y sin moverse, la hoja no se compone: su rejilla no
+        // pinta nada fuera de la pantalla.
+        if (sheetShown && !(settledSheet == MapSheetValue.Hidden && sheetState.targetValue == MapSheetValue.Hidden)) {
             val sheetPoints = state.sheetPoints
             MapPhotoSheet(
                 sheetState = sheetState,

@@ -52,6 +52,13 @@ data class MapUiState(
     /** False hasta el primer cálculo del viewport: evita enseñar "no hay fotos"
      *  antes de haber mirado. */
     val viewportReady: Boolean = false,
+    /**
+     * La hoja (y su píldora) solo existe a partir del primer clúster tocado en
+     * esta visita: al entrar, el mapa va solo. Hasta entonces tampoco se
+     * calcula qué fotos caen en el viewport, que con decenas de miles de
+     * puntos era trabajo tirado en cada parada del mapa.
+     */
+    val sheetEnabled: Boolean = false,
     /** Clúster tocado: la hoja enseña solo sus fotos hasta que se quita el filtro. */
     val focusedPoints: List<MapPoint>? = null,
     val selection: Set<String> = emptySet(),
@@ -71,7 +78,8 @@ private data class ViewportKey(
     val widthPx: Int,
     val heightPx: Int,
     val points: List<MapPoint>,
-    val frozen: Boolean
+    val frozen: Boolean,
+    val enabled: Boolean
 )
 
 class MapViewModel(
@@ -108,13 +116,14 @@ class MapViewModel(
                         widthPx = it.viewportWidthPx,
                         heightPx = it.viewportHeightPx,
                         points = it.points,
-                        frozen = it.isSelectionActive || it.isBulkMutating
+                        frozen = it.isSelectionActive || it.isBulkMutating,
+                        enabled = it.sheetEnabled
                     )
                 }
                 .distinctUntilChanged()
                 .debounce { if (_state.value.viewportReady) VIEWPORT_DEBOUNCE_MS else 0L }
                 .collect { key ->
-                    if (key.frozen || !_state.value.firstLoadComplete) return@collect
+                    if (!key.enabled || key.frozen || !_state.value.firstLoadComplete) return@collect
                     if (key.widthPx <= 0 || key.heightPx <= 0) return@collect
                     val visible = pointsInViewport(
                         points = key.points,
@@ -234,7 +243,27 @@ class MapViewModel(
     /** Clúster tocado: la hoja pasa a enseñar solo sus fotos. */
     fun focusCluster(points: List<MapPoint>) {
         _state.update {
-            it.copy(focusedPoints = points.newestFirst(), selection = emptySet())
+            it.copy(
+                focusedPoints = points.newestFirst(),
+                selection = emptySet(),
+                sheetEnabled = true
+            )
+        }
+    }
+
+    /**
+     * Salir del mapa: la próxima visita arranca sin hoja ni píldora, sin
+     * filtro de clúster y sin selección.
+     */
+    fun onLeave() {
+        _state.update {
+            it.copy(
+                focusedPoints = null,
+                selection = emptySet(),
+                sheetEnabled = false,
+                viewportPoints = emptyList(),
+                viewportReady = false
+            )
         }
     }
 
