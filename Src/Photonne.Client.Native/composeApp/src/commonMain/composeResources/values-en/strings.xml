@@ -99,6 +99,8 @@
     <string name="albums_section_others">Other albums</string>
     <string name="album_pin_failed">Couldn't pin the album</string>
     <string name="album_unpin_failed">Couldn't unpin the album</string>
+    <string name="folder_pin_failed">Couldn't pin the folder</string>
+    <string name="folder_unpin_failed">Couldn't unpin the folder</string>
     <string name="album_action_members">Members</string>
     <string name="album_action_album_actions">Album actions</string>
     <string name="album_delete_title">Delete album</string>

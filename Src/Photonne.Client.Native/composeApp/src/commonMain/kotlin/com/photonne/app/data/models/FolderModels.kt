@@ -27,5 +27,8 @@ data class FolderSummary(
     // Per-user opt-out: I only administer this shared folder; keep it out of my
     // timeline, memories, people and search (still browsable here).
     val excludedFromDiscovery: Boolean = false,
+    // My own pin (personal, like album pins); Colecciones mixes both in "Fijados".
+    val isPinned: Boolean = false,
+    @Serializable(with = FlexibleInstantSerializer::class) val pinnedAt: Instant? = null,
     val subFolders: List<FolderSummary> = emptyList()
 )

@@ -103,6 +103,8 @@
     <string name="albums_section_others">Otros álbumes</string>
     <string name="album_pin_failed">No se pudo fijar el álbum</string>
     <string name="album_unpin_failed">No se pudo desfijar el álbum</string>
+    <string name="folder_pin_failed">No se pudo fijar la carpeta</string>
+    <string name="folder_unpin_failed">No se pudo desfijar la carpeta</string>
     <string name="album_action_members">Miembros</string>
     <string name="album_action_album_actions">Acciones del álbum</string>
     <string name="album_delete_title">Eliminar álbum</string>

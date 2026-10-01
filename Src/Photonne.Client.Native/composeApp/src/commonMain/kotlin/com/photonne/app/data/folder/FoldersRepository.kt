@@ -29,6 +29,10 @@ class FoldersRepository(
         api.setFolderDiscoveryIncluded(folderId, included)
     }
 
+    suspend fun setPinned(folderId: String, pinned: Boolean) {
+        api.setFolderPinned(folderId = folderId, pinned = pinned)
+    }
+
     suspend fun listMembers(folderId: String): List<AlbumPermission> =
         api.listFolderPermissions(folderId)
 

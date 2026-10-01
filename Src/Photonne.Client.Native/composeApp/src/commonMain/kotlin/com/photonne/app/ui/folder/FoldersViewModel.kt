@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 enum class FolderSort { Name, AssetCount }
 
@@ -38,6 +40,9 @@ data class FoldersUiState(
     // Full-depth writable destinations (personal + shared subtrees) for the
     // move picker, which renders them as an indented tree.
     val moveDestinations: List<FolderSummary> = emptyList(),
+    // My pinned folders at any depth (a pin can sit on a nested folder), last
+    // pinned first. Colecciones mixes them with pinned albums in "Fijados".
+    val pinnedFolders: List<FolderSummary> = emptyList(),
     // Live count of unorganized (MobileBackup) assets, shown on the "Para
     // organizar" entry card.
     val organizePendingCount: Int = 0,
@@ -352,7 +357,7 @@ class FoldersViewModel(
                 )
             }
                 .onSuccess { updated ->
-                    allFolders = allFolders.map { if (it.id == updated.id) updated else it }
+                    allFolders = allFolders.map { if (it.id == updated.id) updated.keepingPinOf(it) else it }
                     repartition()
                     _state.update { it.copy(isMutating = false, selectedFolderIds = emptySet()) }
                     onSuccess(updated)
@@ -486,7 +491,40 @@ class FoldersViewModel(
     }
 
     fun applyUpdate(updated: FolderSummary) {
-        allFolders = allFolders.map { if (it.id == updated.id) updated else it }
+        allFolders = allFolders.map { if (it.id == updated.id) updated.keepingPinOf(it) else it }
+        repartition()
+    }
+
+    private val pinsInFlight = mutableSetOf<String>()
+
+    /**
+     * Fija o desfija [folderId] para mí (optimista), como los álbumes: la
+     * tarjeta cambia al instante y, si el servidor falla, vuelve a como estaba
+     * y [onFailure] recibe si se intentaba fijar (true) o desfijar (false).
+     */
+    fun togglePin(folderId: String, onFailure: (pinning: Boolean) -> Unit = {}) {
+        val current = allFolders.firstOrNull { it.id == folderId } ?: return
+        if (!pinsInFlight.add(folderId)) return
+        val pin = !current.isPinned
+        setPinned(folderId, pin, if (pin) Clock.System.now() else null)
+        viewModelScope.launch {
+            try {
+                repository.setPinned(folderId, pin)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                setPinned(folderId, current.isPinned, current.pinnedAt)
+                onFailure(pin)
+            } finally {
+                pinsInFlight.remove(folderId)
+            }
+        }
+    }
+
+    private fun setPinned(folderId: String, pinned: Boolean, pinnedAt: Instant?) {
+        allFolders = allFolders.map {
+            if (it.id == folderId) it.copy(isPinned = pinned, pinnedAt = pinnedAt) else it
+        }
         repartition()
     }
 
@@ -522,9 +560,17 @@ class FoldersViewModel(
                 personalDescendants = partition.personalDescendants,
                 sharedDescendants = partition.sharedDescendants,
                 externalDescendants = partition.externalDescendants,
-                moveDestinations = sorted(writableMoveDestinations(allFolders, username))
+                moveDestinations = sorted(writableMoveDestinations(allFolders, username)),
+                pinnedFolders = allFolders.filter { f -> f.isPinned }.sortedByDescending { f -> f.pinnedAt }
             )
         }
     }
 }
 
+
+/**
+ * Renombrar devuelve la carpeta entera, pero no toca el fijado (y un servidor
+ * antiguo no lo manda): se conserva el que ya teníamos.
+ */
+private fun FolderSummary.keepingPinOf(previous: FolderSummary): FolderSummary =
+    copy(isPinned = previous.isPinned, pinnedAt = previous.pinnedAt)

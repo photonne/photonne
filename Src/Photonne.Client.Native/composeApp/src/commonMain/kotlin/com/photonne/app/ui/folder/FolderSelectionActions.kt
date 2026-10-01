@@ -20,6 +20,8 @@ data class FolderSelectionActions(
     val canToggleTimeline: Boolean,
     val canMove: Boolean,
     val canDelete: Boolean,
+    /** Fijar es personal y vale para cualquier carpeta que veo; solo con una. */
+    val canPin: Boolean = false,
 )
 
 fun folderSelectionActions(selected: List<FolderSummary>): FolderSelectionActions {
@@ -39,7 +41,8 @@ fun folderSelectionActions(selected: List<FolderSummary>): FolderSelectionAction
         canManageMembers = single != null && single.isOwner && single.isShared,
         canToggleTimeline = single != null && single.isShared && !single.isExternal(),
         canMove = selected.all { it.canWrite && !it.isExternal() },
-        canDelete = selected.all { it.canDelete && !it.isExternal() }
+        canDelete = selected.all { it.canDelete && !it.isExternal() },
+        canPin = single != null
     )
 }
 

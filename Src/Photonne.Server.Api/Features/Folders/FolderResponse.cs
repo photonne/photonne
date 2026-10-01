@@ -34,7 +34,20 @@ public class FolderResponse
     // it.
     public bool ExcludedFromDiscovery { get; set; }
 
+    // The requesting user's own pin (FolderPins); null when not pinned. Pins are
+    // personal, like album pins: Colecciones mixes both in "Fijados", ordered by
+    // PinnedAt on the client.
+    public bool IsPinned { get; set; }
+    public DateTime? PinnedAt { get; set; }
+
     public List<FolderResponse> SubFolders { get; set; } = new();
+}
+
+public class FolderPinResponse
+{
+    public Guid FolderId { get; set; }
+    public bool IsPinned { get; set; }
+    public DateTime? PinnedAt { get; set; }
 }
 
 public class DiscoveryVisibilityRequest

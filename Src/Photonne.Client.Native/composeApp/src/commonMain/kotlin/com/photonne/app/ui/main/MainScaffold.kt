@@ -1548,9 +1548,28 @@ fun FolderCardSelectionBottomBar(
     excludedFromDiscovery: Boolean = false,
     onToggleTimeline: () -> Unit = {},
     canMove: Boolean = false,
-    onMove: () -> Unit = {}
+    onMove: () -> Unit = {},
+    canPin: Boolean = false,
+    isPinned: Boolean = false,
+    onTogglePin: () -> Unit = {}
 ) {
     FloatingSelectionBar {
+        // Primero, como en la cápsula de álbumes.
+        if (canPin) {
+            FloatingSelectionBarItem(
+                onClick = onTogglePin,
+                enabled = !isMutating,
+                label = stringResource(
+                    if (isPinned) Res.string.album_action_unpin else Res.string.album_action_pin
+                ),
+                icon = {
+                    Icon(
+                        if (isPinned) PhotonneIcons.PinActive else PhotonneIcons.Pin,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
         if (canToggleTimeline) {
             val label = stringResource(
                 if (excludedFromDiscovery) Res.string.folder_discovery_add
@@ -1644,10 +1663,13 @@ fun RowScope.FolderDetailChromeActions(
     canToggleTimeline: Boolean = false,
     excludedFromDiscovery: Boolean = false,
     onToggleTimeline: () -> Unit = {},
-    onCreateSubfolder: (() -> Unit)? = null
+    onCreateSubfolder: (() -> Unit)? = null,
+    isPinned: Boolean = false,
+    onTogglePin: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = canEdit || canDelete || canManageMembers || canMove || canToggleTimeline
+    val hasMenu = onTogglePin != null || canEdit || canDelete || canManageMembers || canMove ||
+        canToggleTimeline
     if (onCreateSubfolder != null) {
         CreateAction(
             icon = PhotonneIcons.NewFolder,
@@ -1664,6 +1686,25 @@ fun RowScope.FolderDetailChromeActions(
                 )
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                if (onTogglePin != null) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (isPinned) Res.string.album_action_unpin
+                                    else Res.string.album_action_pin
+                                )
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                if (isPinned) PhotonneIcons.PinActive else PhotonneIcons.Pin,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = { menuOpen = false; onTogglePin() }
+                    )
+                }
                 if (canToggleTimeline) {
                     DropdownMenuItem(
                         text = {

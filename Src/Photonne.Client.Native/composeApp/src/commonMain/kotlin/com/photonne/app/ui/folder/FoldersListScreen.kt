@@ -41,6 +41,7 @@ import com.photonne.app.data.devicelibrary.DeviceBucket
 import com.photonne.app.data.devicelibrary.DeviceLibraryStore
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.albums_badge_pinned
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.device_folders_card_subtitle
 import com.photonne.app.resources.device_folders_title
@@ -468,6 +469,9 @@ internal fun FolderRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (folder.isPinned) {
+                MetaBadge(stringResource(Res.string.albums_badge_pinned), PhotonneIcons.PinActive)
+            }
             if (folder.isShared) {
                 MetaBadge(stringResource(Res.string.folder_shared_badge), PhotonneIcons.Person)
             }
@@ -500,6 +504,12 @@ internal fun FolderCard(
         modifier = modifier,
         badges = {
             // Same order as FolderRow, so a folder reads the same in both view modes.
+            if (folder.isPinned) {
+                OverlayIconBadge(
+                    icon = PhotonneIcons.PinActive,
+                    contentDescription = stringResource(Res.string.albums_badge_pinned)
+                )
+            }
             if (folder.isShared) {
                 OverlayIconBadge(
                     icon = PhotonneIcons.Person,

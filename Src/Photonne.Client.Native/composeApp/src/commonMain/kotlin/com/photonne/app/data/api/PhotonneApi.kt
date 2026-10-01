@@ -664,6 +664,7 @@ interface PhotonneApi {
     suspend fun updateFolder(folderId: String, name: String, parentFolderId: String?): FolderSummary
     suspend fun deleteFolder(folderId: String)
     suspend fun setFolderDiscoveryIncluded(folderId: String, included: Boolean)
+    suspend fun setFolderPinned(folderId: String, pinned: Boolean)
     suspend fun listFolderPermissions(folderId: String): List<AlbumPermission>
     suspend fun setFolderPermission(
         folderId: String,
@@ -2069,6 +2070,16 @@ class PhotonneApiClient(
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Folder timeline visibility update failed (${response.status.value})")
+        }
+    }
+
+    override suspend fun setFolderPinned(folderId: String, pinned: Boolean) {
+        val url = "$baseUrl/api/folders/$folderId/pin"
+        val response: HttpResponse = if (pinned) client.put(url) else client.delete(url)
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw response.apiException("Pin folder failed (${response.status.value})")
         }
     }
 

@@ -521,7 +521,13 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
                             // servidor (antes todo colgaba de isOwner) y sin
                             // tocar bibliotecas externas, como en la lista.
                             val openedIsExternal = openedFolder.externalLibraryId != null
+                            val folderPinned = com.photonne.app.ui.folder.rememberFolderPinned(
+                                openedFolder.id, fallback = openedFolder.isPinned, viewModel = foldersViewModel
+                            )
+                            val toggleFolderPin = com.photonne.app.ui.folder.rememberFolderPinToggle(foldersViewModel)
                             FolderDetailChromeActions(
+                                isPinned = folderPinned,
+                                onTogglePin = { toggleFolderPin(openedFolder.id) },
                                 canEdit = openedFolder.canWrite && !openedIsExternal,
                                 canDelete = openedFolder.canDelete && !openedIsExternal,
                                 canManageMembers = openedFolder.isOwner && !openedIsExternal,

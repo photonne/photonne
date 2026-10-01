@@ -656,6 +656,7 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                                 }
                             }
                         )
+                        val togglePin = com.photonne.app.ui.folder.rememberFolderPinToggle(foldersViewModel)
                         com.photonne.app.ui.main.FolderCardSelectionBottomBar(
                             canManageMembers = allowed.canManageMembers,
                             canRename = allowed.canRename,
@@ -686,7 +687,12 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                                 }
                             },
                             canMove = allowed.canMove,
-                            onMove = { appState.showBulkMoveFolders = true }
+                            onMove = { appState.showBulkMoveFolders = true },
+                            canPin = allowed.canPin,
+                            isPinned = target?.isPinned == true,
+                            onTogglePin = {
+                                target?.let { togglePin(it.id); foldersViewModel.clearSelection() }
+                            }
                         )
                     }
                 } else null

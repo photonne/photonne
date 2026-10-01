@@ -86,6 +86,14 @@ public class FoldersEndpoint : IEndpoint
             .WithName("DeleteFolder")
             .WithDescription("Deletes a folder and moves its contents to the trash");
 
+        group.MapPut("{folderId}/pin", PinFolder)
+            .WithName("PinFolder")
+            .WithDescription("Pins a folder for the current user only (idempotent)");
+
+        group.MapDelete("{folderId}/pin", UnpinFolder)
+            .WithName("UnpinFolder")
+            .WithDescription("Unpins a folder for the current user only (idempotent)");
+
         group.MapPut("{folderId}/discovery-visibility", SetFolderDiscoveryVisibility)
             .WithName("SetFolderDiscoveryVisibility")
             .WithDescription("Per-user opt-out: include/exclude a shared folder from my timeline, memories, people and search (still administrable in Folders)");
@@ -102,6 +110,16 @@ public class FoldersEndpoint : IEndpoint
             .WithName("GetLibraryRootFolder")
             .WithDescription("Gets the root folder of an external library");
     }
+
+    /// <summary>The viewer's own folder pins, by folder id. Pins are per user.</summary>
+    private static Task<Dictionary<Guid, DateTime>> GetPinsAsync(
+        ApplicationDbContext dbContext, Guid userId, CancellationToken cancellationToken) =>
+        dbContext.FolderPins
+            .Where(p => p.UserId == userId)
+            .ToDictionaryAsync(p => p.FolderId, p => p.PinnedAt, cancellationToken);
+
+    private static DateTime? PinnedAtOrNull(Dictionary<Guid, DateTime> pins, Guid folderId) =>
+        pins.TryGetValue(folderId, out var pinnedAt) ? pinnedAt : null;
 
     private async Task<IResult> GetLibraryRootFolder(
         [FromServices] ApplicationDbContext dbContext,
@@ -172,6 +190,8 @@ public class FoldersEndpoint : IEndpoint
                     await CanDeleteFolderAsync(dbContext, userId, f.Id, isAdmin, cancellationToken));
             }
 
+            var libPins = await GetPinsAsync(dbContext, userId, cancellationToken);
+
             var response = new FolderResponse
             {
                 Id = rootFolder.Id,
@@ -193,6 +213,8 @@ public class FoldersEndpoint : IEndpoint
                 CanDelete = libAccess[rootFolder.Id].CanDelete,
                 IsShared = false,
                 ExternalLibraryId = rootFolder.ExternalLibraryId,
+                IsPinned = libPins.ContainsKey(rootFolder.Id),
+                PinnedAt = PinnedAtOrNull(libPins, rootFolder.Id),
                 SubFolders = rootFolder.SubFolders.Select(sf => new FolderResponse
                 {
                     Id = sf.Id,
@@ -213,7 +235,9 @@ public class FoldersEndpoint : IEndpoint
                     CanWrite = libAccess.GetValueOrDefault(sf.Id).CanWrite,
                     CanDelete = libAccess.GetValueOrDefault(sf.Id).CanDelete,
                     IsShared = false,
-                    ExternalLibraryId = sf.ExternalLibraryId
+                    ExternalLibraryId = sf.ExternalLibraryId,
+                    IsPinned = libPins.ContainsKey(sf.Id),
+                    PinnedAt = PinnedAtOrNull(libPins, sf.Id)
                 }).ToList()
             };
 
@@ -273,6 +297,7 @@ public class FoldersEndpoint : IEndpoint
                 .ToListAsync(cancellationToken);
 
             var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
+            var pins = await GetPinsAsync(dbContext, userId, cancellationToken);
 
             // Write/Delete access is inherited down a shared subtree (a grant
             // lives on the share root). Walk each folder's parent chain in-memory
@@ -309,7 +334,9 @@ public class FoldersEndpoint : IEndpoint
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     ExternalLibraryId = f.ExternalLibraryId,
-                    ExcludedFromDiscovery = excludedFolderIds.Contains(f.Id)
+                    ExcludedFromDiscovery = excludedFolderIds.Contains(f.Id),
+                    IsPinned = pins.ContainsKey(f.Id),
+                    PinnedAt = PinnedAtOrNull(pins, f.Id)
                 };
             }).ToList();
 
@@ -374,6 +401,7 @@ public class FoldersEndpoint : IEndpoint
                 .FirstOrDefaultAsync(p => p.FolderId == folderId && p.UserId == userId, cancellationToken);
 
             var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
+            var pins = await GetPinsAsync(dbContext, userId, cancellationToken);
 
             var subfolderIds = folder.SubFolders.Select(sf => sf.Id).ToList();
             var subfolderUserPerms = subfolderIds.Count > 0
@@ -448,6 +476,8 @@ public class FoldersEndpoint : IEndpoint
                 SharedWithCount = sharedCount,
                 ExternalLibraryId = folder.ExternalLibraryId,
                 ExcludedFromDiscovery = excludedFolderIds.Contains(folder.Id),
+                IsPinned = pins.ContainsKey(folder.Id),
+                PinnedAt = PinnedAtOrNull(pins, folder.Id),
                 SubFolders = folder.SubFolders.Select(sf => new FolderResponse
                 {
                     Id = sf.Id,
@@ -471,7 +501,9 @@ public class FoldersEndpoint : IEndpoint
                     CanDelete = subfolderAccess.GetValueOrDefault(sf.Id).CanDelete,
                     IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     ExternalLibraryId = sf.ExternalLibraryId,
-                    ExcludedFromDiscovery = excludedFolderIds.Contains(sf.Id)
+                    ExcludedFromDiscovery = excludedFolderIds.Contains(sf.Id),
+                    IsPinned = pins.ContainsKey(sf.Id),
+                    PinnedAt = PinnedAtOrNull(pins, sf.Id)
                 }).ToList()
             };
 
@@ -636,6 +668,7 @@ public class FoldersEndpoint : IEndpoint
             var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
             var deletableGrantIds = permissions.Where(p => p.CanDelete).Select(p => p.FolderId).ToHashSet();
             var folderByIdForWrite = allFolders.ToDictionary(f => f.Id);
+            var treePins = await GetPinsAsync(dbContext, userId, cancellationToken);
 
             // Build tree structure
             var folderDict = allFolders.ToDictionary(f => f.Id, f =>
@@ -664,6 +697,8 @@ public class FoldersEndpoint : IEndpoint
                     CanDelete = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, deletableGrantIds, folderByIdForWrite),
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
+                    IsPinned = treePins.ContainsKey(f.Id),
+                    PinnedAt = PinnedAtOrNull(treePins, f.Id),
                     SubFolders = new List<FolderResponse>()
                 };
             });
@@ -953,8 +988,13 @@ public class FoldersEndpoint : IEndpoint
             CreatedAt = folder.CreatedAt,
             AssetCount = await dbContext.Assets.CountAsync(a => a.FolderId == folder.Id && a.DeletedAt == null, cancellationToken),
             CanWrite = await CanWriteFolderAsync(dbContext, userId, folder.Id, user.IsInRole("Admin"), cancellationToken),
-            CanDelete = await CanDeleteFolderAsync(dbContext, userId, folder.Id, user.IsInRole("Admin"), cancellationToken)
+            CanDelete = await CanDeleteFolderAsync(dbContext, userId, folder.Id, user.IsInRole("Admin"), cancellationToken),
+            PinnedAt = await dbContext.FolderPins
+                .Where(p => p.UserId == userId && p.FolderId == folder.Id)
+                .Select(p => (DateTime?)p.PinnedAt)
+                .FirstOrDefaultAsync(cancellationToken)
         };
+        response.IsPinned = response.PinnedAt.HasValue;
 
         return Results.Ok(response);
     }
@@ -1056,6 +1096,70 @@ public class FoldersEndpoint : IEndpoint
         }
 
         return Results.NoContent();
+    }
+
+    private async Task<IResult> PinFolder(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
+        [FromRoute] Guid folderId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(user, out var userId))
+            return Results.Unauthorized();
+
+        // Anyone who can read the folder may pin it; one they can't read is a
+        // 404, not a 403, so pinning doesn't leak which ids exist.
+        if (!await CanReadFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
+            return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
+
+        var existing = await dbContext.FolderPins
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.FolderId == folderId, cancellationToken);
+        if (existing == null)
+        {
+            existing = new FolderPin { UserId = userId, FolderId = folderId, PinnedAt = DateTime.UtcNow };
+            dbContext.FolderPins.Add(existing);
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent PUT won the insert: same end state, still idempotent.
+                dbContext.ChangeTracker.Clear();
+                existing = await dbContext.FolderPins.AsNoTracking()
+                    .FirstAsync(p => p.UserId == userId && p.FolderId == folderId, cancellationToken);
+            }
+            cache.Remove($"folders:list:{userId}");
+            cache.Remove($"folders:tree:{userId}");
+        }
+
+        return Results.Ok(new FolderPinResponse { FolderId = folderId, IsPinned = true, PinnedAt = existing.PinnedAt });
+    }
+
+    private async Task<IResult> UnpinFolder(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
+        [FromRoute] Guid folderId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(user, out var userId))
+            return Results.Unauthorized();
+
+        if (!await CanReadFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
+            return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
+
+        var removed = await dbContext.FolderPins
+            .Where(p => p.UserId == userId && p.FolderId == folderId)
+            .ExecuteDeleteAsync(cancellationToken);
+        if (removed > 0)
+        {
+            cache.Remove($"folders:list:{userId}");
+            cache.Remove($"folders:tree:{userId}");
+        }
+
+        return Results.Ok(new FolderPinResponse { FolderId = folderId, IsPinned = false, PinnedAt = null });
     }
 
     private async Task<IResult> SetFolderDiscoveryVisibility(

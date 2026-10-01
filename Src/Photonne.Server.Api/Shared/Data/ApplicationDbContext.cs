@@ -36,6 +36,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AlbumAsset> AlbumAssets { get; set; }
     public DbSet<AlbumPermission> AlbumPermissions { get; set; }
     public DbSet<AlbumPin> AlbumPins { get; set; }
+    public DbSet<FolderPin> FolderPins { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<SharedLink> SharedLinks { get; set; }
     public DbSet<Notification> Notifications { get; set; }
@@ -516,6 +517,25 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.AlbumId);
+            entity.Property(e => e.PinnedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure FolderPin entity — per-user pin, composite PK (UserId, FolderId)
+        modelBuilder.Entity<FolderPin>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.FolderId });
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Folder)
+                .WithMany()
+                .HasForeignKey(e => e.FolderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.FolderId);
             entity.Property(e => e.PinnedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 

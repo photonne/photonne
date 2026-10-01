@@ -37,7 +37,8 @@ class FolderSelectionActionsTest {
                 canManageMembers = true,
                 canToggleTimeline = true,
                 canMove = true,
-                canDelete = true
+                canDelete = true,
+                canPin = true
             ),
             actions
         )
@@ -62,6 +63,8 @@ class FolderSelectionActionsTest {
         assertFalse(actions.canToggleTimeline)
         assertTrue(actions.canMove)
         assertTrue(actions.canDelete)
+        // Fijar es de una carpeta concreta, como en los álbumes.
+        assertFalse(actions.canPin)
     }
 
     @Test
