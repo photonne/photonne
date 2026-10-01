@@ -35,6 +35,9 @@ import com.photonne.app.ui.theme.Spacing
  *
  * Callers add their own motion and chrome through [imageModifier] and [overlay];
  * this composable stays still.
+ *
+ * [compact] is for the Recuerdos rows, where the card is a third of the screen:
+ * the strip's titleLarge with 16 dp of padding would eat a cover that small.
  */
 @Composable
 fun MemoryCardFace(
@@ -44,6 +47,7 @@ fun MemoryCardFace(
     subtitle: String?,
     modifier: Modifier = Modifier,
     imageModifier: Modifier = Modifier,
+    compact: Boolean = false,
     onCoverLoaded: () -> Unit = {},
     overlay: @Composable BoxScope.() -> Unit = {},
 ) {
@@ -81,13 +85,17 @@ fun MemoryCardFace(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = Spacing.lg, vertical = 14.dp),
+                .padding(
+                    horizontal = if (compact) Spacing.md else Spacing.lg,
+                    vertical = if (compact) 10.dp else 14.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
         ) {
             Text(
                 text = title,
                 color = Color.White,
-                style = MaterialTheme.typography.titleLarge,
+                style = if (compact) MaterialTheme.typography.titleSmall
+                else MaterialTheme.typography.titleLarge,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

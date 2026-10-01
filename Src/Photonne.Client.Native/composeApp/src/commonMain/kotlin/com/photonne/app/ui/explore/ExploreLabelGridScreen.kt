@@ -104,7 +104,7 @@ internal fun ExploreLabelGridScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 isLoading && tiles.isEmpty() && query.isBlank() ->
-                    AssetGridSkeleton(cellMinSize = 160.dp, contentPadding = PaddingValues(top = reservedTop))
+                    AssetGridSkeleton(cellMinSize = LabelTileMinSize, contentPadding = PaddingValues(top = reservedTop))
                 error != null && tiles.isEmpty() ->
                     com.photonne.app.ui.error.FullScreenError(
                         error = error,
@@ -113,7 +113,7 @@ internal fun ExploreLabelGridScreen(
                     )
                 tiles.isEmpty() && query.isNotBlank() ->
                     if (isSearching) {
-                        AssetGridSkeleton(cellMinSize = 160.dp, contentPadding = PaddingValues(top = reservedTop))
+                        AssetGridSkeleton(cellMinSize = LabelTileMinSize, contentPadding = PaddingValues(top = reservedTop))
                     } else {
                         EmptyState(
                             icon = PhotonneIcons.NoResults,
@@ -126,9 +126,9 @@ internal fun ExploreLabelGridScreen(
                         title = emptyText
                     )
                 else -> LazyVerticalGrid(
-                    // Adaptive: 2 columnas en un móvil compacto, más en tablet y
+                    // Adaptive: 3 columnas en un móvil compacto, más en tablet y
                     // escritorio, sin estirar miniaturas Small a media pantalla.
-                    columns = GridCells.Adaptive(minSize = 160.dp),
+                    columns = GridCells.Adaptive(minSize = LabelTileMinSize),
                     state = gridState,
                     contentPadding = PaddingValues(
                         start = 16.dp,
@@ -204,8 +204,11 @@ internal fun ExploreLabelGridScreen(
     }
 }
 
-/** Cells scrolled past before the back-to-top pill appears (~3 rows at 2 columns). */
-private const val SCROLL_TO_TOP_MIN_CELL = 6
+/** Fits three columns even on a 360 dp phone: (360 − 2·16 − 2·12) / 3 ≈ 101 dp. */
+private val LabelTileMinSize = 100.dp
+
+/** Cells scrolled past before the back-to-top pill appears (~3 rows at 3 columns). */
+private const val SCROLL_TO_TOP_MIN_CELL = 9
 
 /** Where the tap teleports to before animating the rest of the way up. */
 private const val SCROLL_TO_TOP_SNAP_CELL = 24
@@ -241,7 +244,7 @@ private fun LabelTileCard(tile: ExploreLabelTile, baseUrl: String, onClick: () -
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .background(PhotonneColors.scrimMedium)
-                    .padding(horizontal = 10.dp, vertical = Spacing.sm),
+                    .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
                 verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
             ) {
                 Text(

@@ -52,10 +52,10 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.CardRowsSkeleton
 import com.photonne.app.ui.theme.Spacing
 
-/** Wide enough to read a cover, narrow enough that the next one peeks in and
- * says "this row keeps going". */
-private val RowCardWidth = 150.dp
-private val RowCardHeight = 190.dp
+/** Three to a phone screen with the fourth peeking in to say "this row keeps
+ * going"; same proportions as the old 150×190 card, which only fit two. */
+private val RowCardWidth = 112.dp
+private val RowCardHeight = 142.dp
 
 /**
  * The Recuerdos section: every generated memory, as one row per theme.
@@ -214,7 +214,7 @@ private fun MemoryRowCard(
 ) {
     MemoryCardFace(
         coverUrl = memory.coverAssetId
-            // Medium basta para una tarjeta de 150x190 dp; Large descargaba
+            // Medium basta para una tarjeta de 112x142 dp; Large descargaba
                 // el tamaño de visor para una miniatura.
                 ?.let { "$baseUrl/api/assets/$it/thumbnail?size=Medium" },
         contentDescription = memory.title,
@@ -222,6 +222,7 @@ private fun MemoryRowCard(
         // strings come from the server — neither is assembled here.
         title = memory.cardLabel ?: memory.title,
         subtitle = null,
+        compact = true,
         modifier = Modifier
             .width(RowCardWidth)
             .height(RowCardHeight)
