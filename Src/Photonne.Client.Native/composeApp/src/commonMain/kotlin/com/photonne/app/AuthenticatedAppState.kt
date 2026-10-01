@@ -174,6 +174,11 @@ internal class AuthenticatedAppState(
     var albumReturnTo by mutableStateOf<Pair<MainTab, MoreSubscreen?>?>(null)
     // Persona abierta desde una cara del visor: Atrás vuelve a la foto.
     var personReturnTo by mutableStateOf<ViewerReturn?>(null)
+    // Subpantalla a la que vuelve Atrás desde Escenas, Objetos o un tema abiertos
+    // desde Explorar (por defecto vuelven a la capa de debajo, sin subpantalla).
+    var subscreenReturnTo by mutableStateOf<MoreSubscreen?>(null)
+    // Tema de Explorar abierto en MoreSubscreen.MemoryTheme.
+    var exploreThemeKey by mutableStateOf<String?>(null)
     // Persona abierta desde la fila de Personas de Colecciones (ver personBack).
     var personFromCollections by mutableStateOf(false)
 
@@ -372,6 +377,19 @@ internal class AuthenticatedAppState(
         selectedTab = MainTab.Folders
     }
 
+    /** Atrás desde Escenas, Objetos o un tema: a Explorar si se vino de allí. */
+    fun subscreenBack() {
+        val returnTo = subscreenReturnTo
+        subscreenReturnTo = null
+        moreSubscreen = returnTo
+    }
+
+    /** Abre [target] desde Explorar recordando volver a Explorar. */
+    fun openFromExplore(target: MoreSubscreen) {
+        subscreenReturnTo = if (moreSubscreen == MoreSubscreen.Explore) MoreSubscreen.Explore else null
+        moreSubscreen = target
+    }
+
     fun folderBack() {
         if (folderBackStack.isNotEmpty()) {
             selectedFolder = folderBackStack.removeAt(folderBackStack.lastIndex)
@@ -465,6 +483,7 @@ internal class AuthenticatedAppState(
         albumReturnTo = null
         personReturnTo = null
         personFromCollections = false
+        subscreenReturnTo = null
         albumsViewModel.clearSelection()
         foldersViewModel.clearSelection()
         selectedTab = tab

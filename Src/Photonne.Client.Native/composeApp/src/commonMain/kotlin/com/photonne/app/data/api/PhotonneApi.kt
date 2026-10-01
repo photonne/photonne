@@ -450,7 +450,8 @@ interface PhotonneApi {
     /** Third-party datasets this server bundles, and their licences. Public. */
     suspend fun getAttributions(): List<Attribution>
     /** The generated Recuerdos feed, best first. [kind] filters to one MemoryKind. */
-    suspend fun getMemoryFeed(kind: String? = null, limit: Int = 50): List<Memory>
+    /** [personId]: only the people memories that person is in (their page). */
+    suspend fun getMemoryFeed(kind: String? = null, limit: Int = 50, personId: String? = null): List<Memory>
     /** One memory with its assets, in display order (index 0 is the cover). */
     suspend fun getMemory(id: String): MemoryDetail
     suspend fun getAssetDetail(assetId: String): AssetDetail
@@ -1166,9 +1167,10 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun getMemoryFeed(kind: String?, limit: Int): List<Memory> {
+    override suspend fun getMemoryFeed(kind: String?, limit: Int, personId: String?): List<Memory> {
         val response: HttpResponse = client.get("$baseUrl/api/memories") {
             if (!kind.isNullOrBlank()) parameter("kind", kind)
+            if (!personId.isNullOrBlank()) parameter("personId", personId)
             parameter("limit", limit)
         }
         if (response.status != HttpStatusCode.OK) {

@@ -38,7 +38,11 @@ data class PersonDetailUiState(
     val isAppending: Boolean = false,
     val isBulkMutating: Boolean = false,
     val error: UiError? = null,
-    val selection: Set<String> = emptySet()
+    val selection: Set<String> = emptySet(),
+    /** "Martina a lo largo de los años", "Martina y Joan": ya no van en Recuerdos. */
+    val memories: List<com.photonne.app.data.models.Memory> = emptyList(),
+    /** Recuerdo que se está abriendo (es una petición: el feed solo trae la portada). */
+    val openingMemoryId: String? = null,
 ) {
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
 }
@@ -49,6 +53,7 @@ class PersonDetailViewModel(
     private val albumsRepository: AlbumsRepository,
     private val errorFactory: UiErrorFactory,
     mutationBus: AssetMutationBus,
+    private val memoriesRepository: com.photonne.app.data.timeline.MemoriesRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PersonDetailUiState())
@@ -89,6 +94,7 @@ class PersonDetailViewModel(
             isInitialLoading = true
         )
         loadJob?.cancel()
+        loadMemories(personId)
         loadJob = viewModelScope.launch {
             suspendRunCatching { peopleRepository.assets(personId, limit = PAGE_SIZE, offset = 0) }
                 .onSuccess { page ->
@@ -115,12 +121,48 @@ class PersonDetailViewModel(
         }
     }
 
+    /** Sus recuerdos, en silencio: si fallan, la ficha sigue con sus fotos. */
+    private fun loadMemories(personId: String) {
+        viewModelScope.launch {
+            suspendRunCatching { memoriesRepository.forPerson(personId) }
+                .onSuccess { memories ->
+                    _state.update {
+                        if (it.personId != personId) it
+                        else it.copy(memories = memories.sortedByDescending { m -> m.windowEnd })
+                    }
+                }
+        }
+    }
+
+    /** Abre uno de sus recuerdos; [onLoaded] recibe el detalle con las fotos. */
+    fun openMemory(
+        memoryId: String,
+        onError: (UiError) -> Unit,
+        onLoaded: (com.photonne.app.data.models.MemoryDetail) -> Unit,
+    ) {
+        if (_state.value.openingMemoryId != null) return
+        _state.update { it.copy(openingMemoryId = memoryId) }
+        viewModelScope.launch {
+            suspendRunCatching { memoriesRepository.detail(memoryId) }
+                .onSuccess { detail ->
+                    _state.update { it.copy(openingMemoryId = null) }
+                    if (detail.assets.isNotEmpty()) onLoaded(detail)
+                    else onError(UiError(userMessage = "Este recuerdo ya no tiene fotos"))
+                }
+                .onFailure { error ->
+                    _state.update { it.copy(openingMemoryId = null) }
+                    onError(errorFactory.from(error, "No se pudo abrir el recuerdo"))
+                }
+        }
+    }
+
     /** Recarga la primera página conservando el contenido visible mientras. */
     fun refresh() {
         val personId = _state.value.personId ?: return
         if (_state.value.isInitialLoading || _state.value.isRefreshing) return
         _state.update { it.copy(isRefreshing = true, isAppending = false, error = null) }
         loadJob?.cancel()
+        loadMemories(personId)
         loadJob = viewModelScope.launch {
             suspendRunCatching { peopleRepository.assets(personId, limit = PAGE_SIZE, offset = 0) }
                 .onSuccess { page ->

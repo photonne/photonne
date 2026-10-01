@@ -1,5 +1,7 @@
 package com.photonne.app.ui.collections
 
+import com.photonne.app.resources.explore_theme_count
+import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.collections_favorites_empty_subtitle
 import com.photonne.app.resources.collections_favorites_empty_title
 import com.photonne.app.ui.map.MapPreview
@@ -50,9 +52,7 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.Memory
-import com.photonne.app.data.models.ObjectLabel
 import com.photonne.app.data.models.Person
-import com.photonne.app.data.models.SceneLabel
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.albums_badge_pinned
@@ -60,11 +60,9 @@ import com.photonne.app.resources.albums_section_pinned
 import com.photonne.app.resources.albums_title
 import com.photonne.app.resources.collections_customize
 import com.photonne.app.resources.archive_title
-import com.photonne.app.resources.explore_section_objects
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.trash_title
-import com.photonne.app.resources.explore_section_scenes
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.memories_strip_title
 import com.photonne.app.resources.organize_inbox_count_format
@@ -75,8 +73,6 @@ import com.photonne.app.resources.search_discover_see_all
 import com.photonne.app.resources.tab_collections
 import com.photonne.app.resources.tab_search
 import com.photonne.app.ui.album.AlbumCover
-import com.photonne.app.ui.explore.ExploreLabelTile
-import com.photonne.app.ui.explore.LabelTileCard
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -99,6 +95,7 @@ import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.contentWidth
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Cuántos elementos enseña cada slider antes de la tarjeta "Ver todo". */
@@ -114,8 +111,11 @@ private val CollectionTileWidth = 128.dp
 /** Tarjeta del Mapa: a todo el ancho, con el mundo entero a lo ancho. */
 private val MapCardHeight = 180.dp
 
-/** Escenas y objetos, al tamaño de su rejilla para que se reconozcan. */
-private val LabelTileWidth = 100.dp
+/** Tarjeta de tema de Explorar: cuadrada y menor que las de Recuerdos, para distinguirlas. */
+private val ThemeCardSize = 140.dp
+
+/** Miniaturas de Favoritos, al tamaño de una tesela de escena. */
+private val FavoriteTileSize = 100.dp
 
 private val PersonTileWidth = 76.dp
 private const val PersonAvatarSize = 68
@@ -156,8 +156,8 @@ data class CollectionsContent(
     val favoritesLoaded: Boolean = false,
     /** Clave de teselas para el mapamundi de la tarjeta del Mapa. */
     val mapTileApiKey: String? = null,
-    val scenes: List<SceneLabel> = emptyList(),
-    val objects: List<ObjectLabel> = emptyList(),
+    /** Explorar: una tarjeta por tema de los recuerdos (viajes, playa…). */
+    val exploreThemes: List<ExploreTheme> = emptyList(),
     val isRefreshing: Boolean = false,
     /** Primera carga sin nada que enseñar todavía: esqueleto en vez de vacío. */
     val isInitialLoading: Boolean = false,
@@ -178,10 +178,8 @@ class CollectionsActions(
     val onOpenFolder: (FolderSummary) -> Unit,
     val onSeeAllFolders: () -> Unit,
     val onOpenOrganize: () -> Unit,
-    val onOpenScene: (String) -> Unit,
-    val onSeeAllScenes: () -> Unit,
-    val onOpenObject: (String) -> Unit,
-    val onSeeAllObjects: () -> Unit,
+    val onOpenTheme: (String) -> Unit,
+    val onSeeAllExplore: () -> Unit,
     val onOpenFavorites: () -> Unit,
     /** Índice en [CollectionsContent.favorites]: el visor recorre los favoritos. */
     val onOpenFavorite: (Int) -> Unit,
@@ -355,7 +353,7 @@ private fun LazyListScope.collectionSections(
                             items = content.favorites.take(SliderLimit).withIndex().toList(),
                             key = { "favorite:${it.value.id}" },
                             truncated = content.favorites.size > SliderLimit,
-                            seeAllSize = LabelTileWidth to LabelTileWidth,
+                            seeAllSize = FavoriteTileSize to FavoriteTileSize,
                             spacing = Spacing.sm,
                         ) { (index, item) ->
                             AssetThumbnailImage(
@@ -363,7 +361,7 @@ private fun LazyListScope.collectionSections(
                                 baseUrl = baseUrl,
                                 size = "Small",
                                 modifier = Modifier
-                                    .size(LabelTileWidth)
+                                    .size(FavoriteTileSize)
                                     .clip(MaterialTheme.shapes.medium)
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .clickable { actions.onOpenFavorite(index) }
@@ -438,43 +436,17 @@ private fun LazyListScope.collectionSections(
                     }
                 }
             }
-        CollectionSection.Scenes -> if (content.scenes.isNotEmpty()) {
-                item(key = "scenes") {
+        CollectionSection.Explore -> if (content.exploreThemes.isNotEmpty()) {
+                item(key = "explore") {
                     SliderSection(
-                        title = stringResource(Res.string.explore_section_scenes),
-                        onTitleClick = actions.onSeeAllScenes,
-                        items = content.scenes.take(SliderLimit),
-                        key = { "scene:${it.label}" },
-                        truncated = content.scenes.size > SliderLimit,
-                        seeAllSize = LabelTileWidth to LabelTileWidth,
-                    ) { label ->
-                        Box(Modifier.width(LabelTileWidth)) {
-                            LabelTileCard(
-                                tile = ExploreLabelTile(label.label, label.assetCount, label.coverAssetId),
-                                baseUrl = baseUrl,
-                                onClick = { actions.onOpenScene(label.label) }
-                            )
-                        }
-                    }
-                }
-            }
-        CollectionSection.Objects -> if (content.objects.isNotEmpty()) {
-                item(key = "objects") {
-                    SliderSection(
-                        title = stringResource(Res.string.explore_section_objects),
-                        onTitleClick = actions.onSeeAllObjects,
-                        items = content.objects.take(SliderLimit),
-                        key = { "object:${it.label}" },
-                        truncated = content.objects.size > SliderLimit,
-                        seeAllSize = LabelTileWidth to LabelTileWidth,
-                    ) { label ->
-                        Box(Modifier.width(LabelTileWidth)) {
-                            LabelTileCard(
-                                tile = ExploreLabelTile(label.label, label.assetCount, label.coverAssetId),
-                                baseUrl = baseUrl,
-                                onClick = { actions.onOpenObject(label.label) }
-                            )
-                        }
+                        title = stringResource(Res.string.explore_title),
+                        onTitleClick = actions.onSeeAllExplore,
+                        items = content.exploreThemes.take(SliderLimit),
+                        key = { "theme:${it.key}" },
+                        truncated = content.exploreThemes.size > SliderLimit,
+                        seeAllSize = ThemeCardSize to ThemeCardSize,
+                    ) { theme ->
+                        ThemeCard(theme = theme, baseUrl = baseUrl, onClick = { actions.onOpenTheme(theme.key) })
                     }
                 }
             }
@@ -763,4 +735,26 @@ private fun FavoritesHint() {
             )
         }
     }
+}
+
+/** Un tema de Explorar en Colecciones: su portada más reciente y cuántos recuerdos tiene. */
+data class ExploreTheme(
+    val key: String,
+    val title: String,
+    val cover: Memory,
+    val count: Int,
+)
+
+@Composable
+private fun ThemeCard(theme: ExploreTheme, baseUrl: String, onClick: () -> Unit) {
+    MemoryCardFace(
+        coverUrl = theme.cover.coverAssetId?.let { "$baseUrl/api/assets/$it/thumbnail?size=Medium" },
+        contentDescription = theme.title,
+        title = theme.title,
+        subtitle = pluralStringResource(Res.plurals.explore_theme_count, theme.count, theme.count),
+        compact = true,
+        modifier = Modifier
+            .size(ThemeCardSize)
+            .clickable(onClick = onClick),
+    )
 }

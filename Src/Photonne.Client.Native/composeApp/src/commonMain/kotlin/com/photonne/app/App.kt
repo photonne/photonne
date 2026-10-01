@@ -175,6 +175,10 @@ internal enum class MoreSubscreen {
     Memories,
     /** "Fijados" de Colecciones a pantalla completa. */
     Pinned,
+    /** Explorar: recuerdos por tema, Escenas y Objetos. */
+    Explore,
+    /** Un tema de Explorar a pantalla completa (AuthenticatedAppState.exploreThemeKey). */
+    MemoryTheme,
     ExploreScenes,
     ExploreObjects,
     AccountSettings,
@@ -302,6 +306,8 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.UnsupportedFiles -> MoreSubscreen.Utilities
     MoreSubscreen.Memories,
     MoreSubscreen.Pinned,
+    MoreSubscreen.Explore,
+    MoreSubscreen.MemoryTheme,
     MoreSubscreen.ExploreScenes,
     MoreSubscreen.ExploreObjects -> null
     MoreSubscreen.PeopleSuggestions -> MoreSubscreen.People
@@ -994,6 +1000,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             appState.moreSubscreen == MoreSubscreen.AccountProfile && appState.profileOpenedFromMore -> {
                 appState.moreSubscreen = null
             }
+            appState.subscreenReturnTo != null && (
+                appState.moreSubscreen == MoreSubscreen.ExploreScenes ||
+                    appState.moreSubscreen == MoreSubscreen.ExploreObjects ||
+                    appState.moreSubscreen == MoreSubscreen.MemoryTheme
+                ) -> appState.subscreenBack()
             appState.moreSubscreen != null -> { appState.moreSubscreen = parentMoreSubscreen(appState.moreSubscreen!!) }
             appState.selectedTab == MainTab.Search -> appState.searchBack()
             // "Todos los álbumes" / "Todas las carpetas" son páginas de Colecciones.
@@ -1109,6 +1120,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.ExploreObjects,
         MoreSubscreen.Memories,
         MoreSubscreen.Pinned,
+        MoreSubscreen.Explore,
+        MoreSubscreen.MemoryTheme,
         MoreSubscreen.DeviceFolders,
         MoreSubscreen.DeviceFolderDetail,
         MoreSubscreen.Map -> true

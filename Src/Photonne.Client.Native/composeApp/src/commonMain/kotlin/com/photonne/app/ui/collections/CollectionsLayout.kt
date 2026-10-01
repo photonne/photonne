@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Las secciones de Colecciones que el usuario puede reordenar u ocultar. */
-enum class CollectionSection { Memories, Pinned, People, Favorites, Albums, Folders, Map, Scenes, Objects }
+enum class CollectionSection { Memories, Pinned, People, Favorites, Albums, Folders, Explore, Map }
 
 /**
  * Orden y visibilidad elegidos a mano. [customized] false = el usuario no ha
@@ -32,7 +32,7 @@ data class CollectionsLayout(
  * hace álbumes, quien organiza por carpetas y quien solo ve carpetas
  * compartidas. Recuerdos va siempre arriba y los fijados justo después (son la
  * elección explícita del usuario); entre Álbumes y Carpetas va primero la que
- * de verdad se usa.
+ * de verdad se usa. Explorar (temas, escenas y objetos) y el Mapa, al final.
  *
  * Carpetas primero cuando no hay ningún álbum y sí carpetas, o cuando el
  * usuario no tiene carpetas propias pero sí compartidas (las consume, no las
@@ -60,7 +60,7 @@ fun adaptiveSectionOrder(
         CollectionSection.Pinned,
         CollectionSection.People,
         CollectionSection.Favorites,
-    ) + collections + listOf(CollectionSection.Map, CollectionSection.Scenes, CollectionSection.Objects)
+    ) + collections + listOf(CollectionSection.Explore, CollectionSection.Map)
 }
 
 /**

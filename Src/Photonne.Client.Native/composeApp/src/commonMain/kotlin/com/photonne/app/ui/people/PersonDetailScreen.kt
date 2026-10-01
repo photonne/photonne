@@ -1,5 +1,7 @@
 package com.photonne.app.ui.people
 
+import com.photonne.app.resources.person_memories_title_unnamed
+import com.photonne.app.resources.person_memories_title
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,6 +65,8 @@ fun PersonDetailScreen(
     onRetry: () -> Unit = {},
     onRefresh: () -> Unit = onRetry,
     onApplySelection: (SelectionPatch) -> Unit = {},
+    /** Uno de sus recuerdos ("Martina a lo largo de los años", "Martina y Joan"). */
+    onOpenMemory: (com.photonne.app.data.models.Memory) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
@@ -118,6 +122,26 @@ fun PersonDetailScreen(
                     top = reservedTop,
                     bottom = floatingNavBarReservedHeight()
                 ),
+                // Sus recuerdos encima de sus fotos: antes iban en Recuerdos,
+                // donde nadie los buscaba.
+                header = if (state.memories.isNotEmpty()) {
+                    {
+                        com.photonne.app.ui.memories.MemoryThemeRow(
+                            row = com.photonne.app.ui.memories.MemoryRow(
+                                key = "person",
+                                title = "",
+                                sectionId = null,
+                                memories = state.memories
+                            ),
+                            baseUrl = apiBaseUrl,
+                            openingId = state.openingMemoryId,
+                            onClick = onOpenMemory,
+                            header = title.takeIf { it.isNotBlank() }
+                                ?.let { stringResource(Res.string.person_memories_title, it) }
+                                ?: stringResource(Res.string.person_memories_title_unnamed)
+                        )
+                    }
+                } else null,
                 modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
             )
         }
@@ -126,6 +150,7 @@ fun PersonDetailScreen(
         PhotoGridScrubberOverlay(
             gridState = gridState,
             items = state.items,
+            headerCount = if (state.memories.isNotEmpty()) 1 else 0,
             reservedTop = reservedTop,
             reservedBottom = floatingNavBarReservedHeight(),
             selectionActive = state.isSelectionActive,

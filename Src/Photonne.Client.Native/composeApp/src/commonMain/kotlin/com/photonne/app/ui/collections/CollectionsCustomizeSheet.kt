@@ -31,8 +31,7 @@ import com.photonne.app.resources.collections_customize_reset
 import com.photonne.app.resources.collections_customize_subtitle
 import com.photonne.app.resources.collections_move_down
 import com.photonne.app.resources.collections_move_up
-import com.photonne.app.resources.explore_section_objects
-import com.photonne.app.resources.explore_section_scenes
+import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.map_title
@@ -51,8 +50,7 @@ internal fun CollectionSection.titleRes(): StringResource = when (this) {
     CollectionSection.Map -> Res.string.map_title
     CollectionSection.Albums -> Res.string.albums_title
     CollectionSection.Folders -> Res.string.folders_title
-    CollectionSection.Scenes -> Res.string.explore_section_scenes
-    CollectionSection.Objects -> Res.string.explore_section_objects
+    CollectionSection.Explore -> Res.string.explore_title
 }
 
 /**

@@ -84,6 +84,7 @@ import com.photonne.app.ui.library.TrashChromeActions
 import com.photonne.app.ui.main.toMoreBackupStatus
 import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.main.navTab
+import com.photonne.app.ui.memories.displayTitle
 import com.photonne.app.ui.main.MoreScreen
 import com.photonne.app.ui.timeline.TimelineScreen
 import com.photonne.app.ui.timeline.TimelineViewModel
@@ -905,6 +906,46 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                         }
                     }
                 )
+            MoreSubscreen.Explore -> {
+                val facets by exploreFacetsViewModel.state.collectAsStateWithLifecycle()
+                LaunchedEffect(Unit) { exploreFacetsViewModel.ensureLoaded() }
+                com.photonne.app.ui.memories.ExploreMemoriesScreen(
+                    viewModel = memoryFeedViewModel,
+                    scenes = facets.scenesInPageOrder,
+                    objects = facets.objectsInPageOrder,
+                    baseUrl = apiBaseUrl,
+                    onOpenMemory = { detail -> appState.memoryDetail = detail.toContext() },
+                    onOpenScene = { label ->
+                        searchViewModel.showResultsForSceneLabel(label)
+                        appState.searchReturnTo = appState.selectedTab to MoreSubscreen.Explore
+                        appState.moreSubscreen = null
+                        appState.selectedTab = MainTab.Search
+                    },
+                    onSeeAllScenes = { appState.openFromExplore(MoreSubscreen.ExploreScenes) },
+                    onOpenObject = { label ->
+                        searchViewModel.showResultsForObjectLabel(label)
+                        appState.searchReturnTo = appState.selectedTab to MoreSubscreen.Explore
+                        appState.moreSubscreen = null
+                        appState.selectedTab = MainTab.Search
+                    },
+                    onSeeAllObjects = { appState.openFromExplore(MoreSubscreen.ExploreObjects) },
+                    onRefresh = {
+                        memoryFeedViewModel.refresh()
+                        exploreFacetsViewModel.refresh()
+                    },
+                    onBack = { appState.moreSubscreen = null },
+                    onChromeVisibleChange = { appState.subscreenChromeVisible = it }
+                )
+            }
+            MoreSubscreen.MemoryTheme ->
+                com.photonne.app.ui.memories.MemoryThemeScreen(
+                    viewModel = memoryFeedViewModel,
+                    themeKey = appState.exploreThemeKey.orEmpty(),
+                    baseUrl = apiBaseUrl,
+                    onOpenMemory = { detail -> appState.memoryDetail = detail.toContext() },
+                    onBack = appState::subscreenBack,
+                    onChromeVisibleChange = { appState.subscreenChromeVisible = it }
+                )
             MoreSubscreen.Pinned ->
                 com.photonne.app.ui.collections.PinnedCollectionsScreen(
                     pinned = com.photonne.app.ui.collections.mergePinned(
@@ -942,7 +983,7 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                         appState.moreSubscreen = null
                         appState.selectedTab = MainTab.Search
                     },
-                    onBack = { appState.moreSubscreen = null },
+                    onBack = appState::subscreenBack,
                     onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                 )
             MoreSubscreen.ExploreObjects ->
@@ -954,7 +995,7 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                         appState.moreSubscreen = null
                         appState.selectedTab = MainTab.Search
                     },
-                    onBack = { appState.moreSubscreen = null },
+                    onBack = appState::subscreenBack,
                     onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                 )
             MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
@@ -1095,6 +1136,13 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                         },
                         onLoadMore = personDetailViewModel::loadMore,
                         onApplySelection = personDetailViewModel::applySelection,
+                        onOpenMemory = { memory ->
+                            personDetailViewModel.openMemory(
+                                memoryId = memory.id,
+                                onError = { error -> snackbarController.show(error.userMessage) },
+                                onLoaded = { detail -> appState.memoryDetail = detail.toContext() }
+                            )
+                        },
                         onBack = appState::personBack,
                         onRename = { appState.showRenamePerson = true },
                         onSuggestions = {
@@ -1831,10 +1879,10 @@ internal fun AuthenticatedContentHost.openPinned(entry: com.photonne.app.ui.coll
 private fun CollectionsTabPage(host: AuthenticatedContentHost) {
     with(host) {
         val feed by memoryFeedViewModel.state.collectAsStateWithLifecycle()
-        val facets by exploreFacetsViewModel.state.collectAsStateWithLifecycle()
         val mapState by mapViewModel.state.collectAsStateWithLifecycle()
         val content = com.photonne.app.ui.collections.CollectionsContent(
-            memories = remember(feed.rows) { feed.rows.flatMap { it.memories } },
+            // Recuerdos: solo hoy y este mes; los temas van a Explorar.
+            memories = remember(feed.rows) { feed.recuerdos },
             memoryOpeningId = feed.openingId,
             pinned = remember(albumsState.albums, foldersState.pinnedFolders) {
                 com.photonne.app.ui.collections.mergePinned(albumsState.albums, foldersState.pinnedFolders)
@@ -1858,8 +1906,14 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
             favorites = favoritesState.items,
             favoritesLoaded = favoritesState.loaded && favoritesState.error == null,
             mapTileApiKey = mapState.tileApiKey,
-            scenes = facets.scenesInPageOrder,
-            objects = facets.objectsInPageOrder,
+            exploreThemes = feed.exploreRows.map { row ->
+                com.photonne.app.ui.collections.ExploreTheme(
+                    key = row.key,
+                    title = row.displayTitle(),
+                    cover = row.memories.first(),
+                    count = row.memories.size,
+                )
+            },
             isRefreshing = feed.isLoading && feed.rows.isNotEmpty(),
             isInitialLoading = albumsState.isLoading && albumsState.albums.isEmpty() &&
                 foldersState.isLoading && foldersState.personalFolders.isEmpty() &&
@@ -1877,7 +1931,6 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                     albumsViewModel.refresh()
                     foldersViewModel.refresh()
                     peopleViewModel.refresh()
-                    exploreFacetsViewModel.refresh()
                 },
                 onOpenMemory = { memory ->
                     memoryFeedViewModel.open(
@@ -1913,18 +1966,12 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 onOpenFolder = { folder -> appState.openFolderFromCollections(folder) },
                 onSeeAllFolders = { appState.selectedTab = MainTab.Folders },
                 onOpenOrganize = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
-                onOpenScene = { label ->
-                    searchViewModel.showResultsForSceneLabel(label)
-                    appState.searchReturnTo = MainTab.Collections to null
-                    appState.selectedTab = MainTab.Search
+                onOpenTheme = { key ->
+                    appState.exploreThemeKey = key
+                    appState.subscreenReturnTo = null
+                    appState.moreSubscreen = MoreSubscreen.MemoryTheme
                 },
-                onSeeAllScenes = { appState.moreSubscreen = MoreSubscreen.ExploreScenes },
-                onOpenObject = { label ->
-                    searchViewModel.showResultsForObjectLabel(label)
-                    appState.searchReturnTo = MainTab.Collections to null
-                    appState.selectedTab = MainTab.Search
-                },
-                onSeeAllObjects = { appState.moreSubscreen = MoreSubscreen.ExploreObjects },
+                onSeeAllExplore = { appState.moreSubscreen = MoreSubscreen.Explore },
                 onOpenFavorites = { appState.moreSubscreen = MoreSubscreen.Favorites },
                 onOpenFavorite = { index ->
                     val favorites = favoritesViewModel.state.value
@@ -1989,7 +2036,6 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                     !(feedState.attempted && feedState.error == null)
                 ) memoryFeedViewModel.refresh()
                 peopleViewModel.ensureLoaded()
-                exploreFacetsViewModel.ensureLoaded()
                 favoritesViewModel.ensureLoaded()
                 // Solo la clave de teselas (un ajuste): los puntos del mapa no
                 // hacen falta para la tarjeta.
@@ -2001,3 +2047,11 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
         )
     }
 }
+
+private fun com.photonne.app.data.models.MemoryDetail.toContext() =
+    com.photonne.app.ui.memories.MemoryDetailContext(
+        title = title,
+        subtitle = subtitle,
+        coverAssetId = coverAssetId,
+        items = assets
+    )

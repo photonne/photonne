@@ -32,6 +32,10 @@ class MemoriesRepository(
      */
     suspend fun feed(kind: String? = null): List<Memory> = api.getMemoryFeed(kind, limit = 500)
 
+    /** "Martina a lo largo de los años", "Martina y Joan": la fila de su ficha. */
+    suspend fun forPerson(personId: String): List<Memory> =
+        api.getMemoryFeed(limit = 50, personId = personId)
+
     suspend fun detail(id: String): MemoryDetail = api.getMemory(id)
 
     private suspend fun fakeMemoriesFromTimeline(): List<TimelineItem> {

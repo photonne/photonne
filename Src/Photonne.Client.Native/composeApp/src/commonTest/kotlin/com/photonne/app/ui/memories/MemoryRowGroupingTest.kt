@@ -172,4 +172,25 @@ class MemoryRowGroupingTest {
         assertEquals(MemorySectionId.Other, row.sectionId)
         assertEquals("", row.title)
     }
+
+    @Test
+    fun `the feed splits into Recuerdos, Explorar and people`() {
+        val state = MemoryFeedUiState(
+            rows = groupIntoRows(
+                listOf(
+                    memory("m1", MemoryKind.ThisMonth, "Octubre de 2021", themeKey = "thismonth", groupTitle = "Este mes", year = 2021),
+                    memory("d1", MemoryKind.OnThisDay, "Hace 5 años", themeKey = "onthisday", groupTitle = "Hoy", year = 2020),
+                    memory("d2", MemoryKind.OnThisDay, "Hace 1 año", themeKey = "onthisday", groupTitle = "Hoy", year = 2024),
+                    memory("b1", MemoryKind.CuratedScene, "Días de playa 2023", themeKey = "scene:beach", groupTitle = "Días de playa", year = 2023),
+                    memory("t1", MemoryKind.Trip, "Lisboa", themeKey = "trips", groupTitle = "Viajes", year = 2022),
+                    memory("p1", MemoryKind.PersonThroughYears, "Martina a lo largo de los años", themeKey = "people", groupTitle = "Personas"),
+                )
+            )
+        )
+        // Hoy primero (del más reciente al más antiguo) y luego este mes.
+        assertEquals(listOf("d2", "d1", "m1"), state.recuerdos.map { it.id })
+        // Explorar: los temas, sin hoy, este mes ni personas.
+        assertEquals(setOf("scene:beach", "trips"), state.exploreRows.map { it.key }.toSet())
+        assertTrue(state.exploreRows.none { row -> row.memories.any { it.id == "p1" } })
+    }
 }

@@ -74,7 +74,49 @@ data class MemoryFeedUiState(
     val attempted: Boolean = false,
     /** Id of the memory whose assets are being fetched for the viewer. */
     val openingId: String? = null,
-)
+) {
+    /** Recuerdos: lo que tiene fecha, "hoy hace…" y "este mes". */
+    val recuerdos: List<Memory> get() = recuerdosOf(rows)
+
+    /** Explorar: una fila por tema (viajes, playa, favoritos del año…). */
+    val exploreRows: List<MemoryRow> get() = rows.filter { it.area() == MemoryArea.Explore }
+}
+
+/**
+ * Dónde vive cada recuerdo en la app. Recuerdos se queda con lo que tiene
+ * fecha (hoy, este mes); los temas van a Explorar; los de personas, a la ficha
+ * de cada persona, que es donde se buscan.
+ */
+enum class MemoryArea {
+    Recuerdos, Explore, People;
+
+    companion object {
+        fun of(section: MemorySectionId): MemoryArea = when (section) {
+            MemorySectionId.Today, MemorySectionId.ThisMonth -> Recuerdos
+            MemorySectionId.People -> People
+            MemorySectionId.Trips, MemorySectionId.Favorites, MemorySectionId.Things,
+            MemorySectionId.Other -> Explore
+        }
+
+        fun of(memory: Memory): MemoryArea = of(MemorySectionId.of(MemoryKind.from(memory.kind)))
+    }
+}
+
+/** El área de una fila: la de su primer recuerdo (una fila nunca mezcla áreas). */
+internal fun MemoryRow.area(): MemoryArea =
+    memories.firstOrNull()?.let { MemoryArea.of(it) } ?: MemoryArea.Explore
+
+/**
+ * Hoy primero y luego este mes; dentro de cada uno, del año más reciente al
+ * más antiguo ("hace 1 año" antes que "hace 5 años").
+ */
+internal fun recuerdosOf(rows: List<MemoryRow>): List<Memory> {
+    val all = rows.flatMap { it.memories }.filter { MemoryArea.of(it) == MemoryArea.Recuerdos }
+    val (today, month) = all.partition {
+        MemorySectionId.of(MemoryKind.from(it.kind)) == MemorySectionId.Today
+    }
+    return today.sortedByDescending { it.windowEnd } + month.sortedByDescending { it.windowEnd }
+}
 
 /**
  * Drives the Recuerdos feed: the section itself and the row at the top of

@@ -54,15 +54,15 @@ class CollectionsLayoutTest {
         assertFalse(store.layout.value.customized)
 
         store.move(CollectionSection.Albums, -1, adaptive)
-        store.setHidden(CollectionSection.Objects, true, store.layout.value.fullOrder(adaptive))
+        store.setHidden(CollectionSection.Map, true, store.layout.value.fullOrder(adaptive))
 
         val reloaded = CollectionsLayoutStore(settings).layout.value
         assertTrue(reloaded.customized)
         assertTrue(reloaded.order.albumsBeforeFolders())
-        assertFalse(CollectionSection.Objects in reloaded.visibleSections(adaptive))
+        assertFalse(CollectionSection.Map in reloaded.visibleSections(adaptive))
         // Una vez personalizado, el orden adaptativo deja de moverlo.
         val otherAdaptive = adaptiveSectionOrder(albumCount = 9, personalFolderCount = 0, sharedFolderCount = 0)
-        assertEquals(reloaded.order.filterNot { it == CollectionSection.Objects }, reloaded.visibleSections(otherAdaptive))
+        assertEquals(reloaded.order.filterNot { it == CollectionSection.Map }, reloaded.visibleSections(otherAdaptive))
 
         store.reset()
         assertFalse(CollectionsLayoutStore(settings).layout.value.customized)
@@ -77,15 +77,17 @@ class CollectionsLayoutTest {
     }
 
     @Test
-    fun sectionsAddedLaterAppendToASavedOrder() {
-        // Un orden guardado antes de que existieran Favoritos y Mapa.
+    fun sectionsAddedLaterAppendToASavedOrderAndRemovedOnesDrop() {
+        // Un orden guardado con Escenas y Objetos (que ya no son secciones) y
+        // sin Favoritos ni Explorar (que aún no existían).
         val settings = MapSettings()
         settings.putBoolean("photonne.collections.customized", true)
-        settings.putString("photonne.collections.order", "Objects,Memories,Pinned,People,Albums,Folders,Scenes")
+        settings.putString("photonne.collections.order", "Map,Memories,Pinned,People,Albums,Folders,Scenes,Objects")
         val order = CollectionsLayoutStore(settings).layout.value.order
-        assertEquals(CollectionSection.Objects, order.first())
+        assertEquals(CollectionSection.Map, order.first())
+        assertEquals(CollectionSection.entries.toSet(), order.toSet())
         assertEquals(
-            listOf(CollectionSection.Favorites, CollectionSection.Map),
+            listOf(CollectionSection.Favorites, CollectionSection.Explore),
             order.takeLast(2)
         )
     }
