@@ -564,11 +564,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         koinInject()
     val recentDestinationsRef = recentDestinationsStore.value.collectAsStateWithLifecycle()
     val recentDestinations by recentDestinationsRef
-    val memoriesViewModel:
-        com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
-    // The timeline strip's live "on this day" list (above) and the Recuerdos
-    // section's generated feed are different requests with different lifetimes,
-    // so they get one ViewModel each.
+    // El feed generado de Recuerdos: lo pinta Colecciones (fila de arriba) y
+    // la sección completa.
     val memoryFeedViewModel:
         com.photonne.app.ui.memories.MemoryFeedViewModel = koinViewModel()
 
@@ -601,7 +598,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 timelineViewModel.refresh()
                 albumsViewModel.refresh()
                 foldersViewModel.refresh()
-                memoriesViewModel.refresh()
             }
         }
     }
@@ -632,17 +628,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.utilities.UtilitiesLocationsViewModel = koinViewModel()
     val exploreFacetsViewModel:
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
-    val memoriesStateRef = memoriesViewModel.state.collectAsStateWithLifecycle()
-    // Lote L9: "en este día" caduca a medianoche; al volver a primer plano en
-    // otro día la tira se recarga.
-    val memoriesLifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(memoriesLifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) memoriesViewModel.refreshIfDayChanged()
-        }
-        memoriesLifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { memoriesLifecycleOwner.lifecycle.removeObserver(observer) }
-    }
     val activityNotifications: com.photonne.app.data.notifications.ActivityNotifications =
         koinInject()
     val activityNotificationsEnabledRef = activityNotifications.enabled.collectAsStateWithLifecycle()
@@ -1478,7 +1463,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         deviceBackupState = deviceBackupStateRef,
         uploadState = uploadStateRef,
         unsupportedFilesState = unsupportedFilesStateRef,
-        memoriesState = memoriesStateRef,
         notificationsState = notificationsStateRef,
         attributions = attributionsState,
         activityNotificationsEnabled = activityNotificationsEnabledRef,
@@ -1505,7 +1489,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         utilitiesLargeFilesViewModel = utilitiesLargeFilesViewModel,
         utilitiesLocationsViewModel = utilitiesLocationsViewModel,
         exploreFacetsViewModel = exploreFacetsViewModel,
-        memoriesViewModel = memoriesViewModel,
         memoryFeedViewModel = memoryFeedViewModel,
         notificationsViewModel = notificationsViewModel,
         actionsViewModel = actionsViewModel,

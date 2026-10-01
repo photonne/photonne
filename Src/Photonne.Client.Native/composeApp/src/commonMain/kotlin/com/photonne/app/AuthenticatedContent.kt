@@ -123,7 +123,6 @@ internal class AuthenticatedContentHost(
     deviceBackupState: State<com.photonne.app.ui.devicebackup.DeviceBackupUiState>,
     uploadState: State<com.photonne.app.ui.upload.UploadUiState>,
     unsupportedFilesState: State<com.photonne.app.ui.library.UnsupportedFilesUiState>,
-    memoriesState: State<com.photonne.app.ui.timeline.MemoriesUiState>,
     notificationsState: State<com.photonne.app.ui.notifications.NotificationsUiState>,
     attributions: State<List<com.photonne.app.data.models.Attribution>>,
     activityNotificationsEnabled: State<Boolean>,
@@ -150,7 +149,6 @@ internal class AuthenticatedContentHost(
     val utilitiesLargeFilesViewModel: com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel,
     val utilitiesLocationsViewModel: com.photonne.app.ui.utilities.UtilitiesLocationsViewModel,
     val exploreFacetsViewModel: com.photonne.app.ui.explore.ExploreFacetsViewModel,
-    val memoriesViewModel: com.photonne.app.ui.timeline.MemoriesViewModel,
     val memoryFeedViewModel: com.photonne.app.ui.memories.MemoryFeedViewModel,
     val notificationsViewModel: com.photonne.app.ui.notifications.NotificationsViewModel,
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel,
@@ -211,7 +209,6 @@ internal class AuthenticatedContentHost(
     val deviceBackupState by deviceBackupState
     val uploadState by uploadState
     val unsupportedFilesState by unsupportedFilesState
-    val memoriesState by memoriesState
     val notificationsState by notificationsState
     val attributions by attributions
     val activityNotificationsEnabled by activityNotificationsEnabled
@@ -238,11 +235,6 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                 MainTab.Timeline -> TimelineScreen(
                     state = timelineState,
                     scrollToTopTick = appState.timelineScrollToTopTick,
-                    // El pager principal compone esta página también como
-                    // vecina: la tira de Recuerdos solo anima cuando Fotos
-                    // es de verdad la pestaña visible.
-                    memoriesAutoPlay = appState.selectedTab == MainTab.Timeline &&
-                        appState.assetDetail == null,
                     onOpenAsset = { mergedItems, mergedIndex, feed ->
                         appState.assetDetail = AssetDetailContext(
                             items = mergedItems,
@@ -260,12 +252,7 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                     },
                     onBucketsVisible = timelineViewModel::ensureVisible,
                     onEnsureYearSummaries = timelineViewModel::ensureYearSummaries,
-                    // El pull-to-refresh de Fotos también trae la tira
-                    // de Recuerdos (lote L9).
-                    onRefresh = {
-                        timelineViewModel.refresh()
-                        memoriesViewModel.refresh()
-                    },
+                    onRefresh = timelineViewModel::refresh,
                     onDismissError = timelineViewModel::clearError,
                     onToggleSelection = timelineViewModel::toggleSelection,
                     onSetSelected = timelineViewModel::setSelected,
@@ -285,11 +272,7 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                     onOpenSearch = { appState.selectedTab = MainTab.Search },
                     onChromeVisibleChange = { appState.timelineChromeVisible = it },
                     pendingJumpDate = appState.pendingJumpDate,
-                    onJumpHandled = { appState.pendingJumpDate = null },
-                    memories = memoriesState.items,
-                    memoriesLoaded = memoriesState.attempted,
-                    onOpenMemory = { memory -> appState.memoryDetail = memory },
-                    onSeeAllMemories = { appState.moreSubscreen = MoreSubscreen.Memories }
+                    onJumpHandled = { appState.pendingJumpDate = null }
                 )
                 MainTab.Collections -> CollectionsTabPage(host)
                 // Más pinta su propio cromo flotante dentro de la pantalla

@@ -77,10 +77,8 @@ data class MemoryFeedUiState(
 )
 
 /**
- * Drives the Recuerdos section. Separate from MemoriesViewModel on purpose: that
- * one owns the timeline strip's live "on this day" list, this one owns the
- * generated feed. Merging them would tie the strip's refresh to a much heavier
- * request it doesn't need.
+ * Drives the Recuerdos feed: the section itself and the row at the top of
+ * Colecciones, which share this one instance.
  */
 class MemoryFeedViewModel(
     private val repository: MemoriesRepository,

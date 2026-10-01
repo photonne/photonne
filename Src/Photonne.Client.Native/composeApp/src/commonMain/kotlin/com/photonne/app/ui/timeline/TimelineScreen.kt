@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -48,7 +47,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -96,7 +94,6 @@ import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.grid.dragselect.rememberDragSelectState
 import com.photonne.app.ui.grid.dragselect.rememberLatchedDuringDrag
 import com.photonne.app.ui.selection.SelectionPatch
-import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.FloatingDatePill
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ScrollToTopPill
@@ -188,16 +185,6 @@ fun TimelineScreen(
     onChromeVisibleChange: (Boolean) -> Unit = {},
     pendingJumpDate: Instant? = null,
     onJumpHandled: () -> Unit = {},
-    /** On-this-day memories shown as a carousel pinned above the grid. */
-    memories: List<com.photonne.app.data.models.TimelineItem> = emptyList(),
-    /** False mientras la pestaña Fotos no es la visible: pausa la tira. */
-    memoriesAutoPlay: Boolean = true,
-    onOpenMemory: ((memory: com.photonne.app.ui.memories.MemoryDetailContext) -> Unit)? = null,
-    onSeeAllMemories: (() -> Unit)? = null,
-    /** True once today's memories have been asked for (found, empty or failed):
-     *  only then may an empty list fall back to [MemoriesEntryRow], so the
-     *  row doesn't flash in before the strip replaces it. */
-    memoriesLoaded: Boolean = false,
     /** Files still waiting to be backed up from this device, and where to go to
      *  deal with them. Surfaces the backup state in the tab people actually
      *  live in instead of only inside the More menu. */
@@ -309,14 +296,6 @@ fun TimelineScreen(
         scopeSheetOpen = true
     }
     val scopeUiAvailable = deviceLibrary.supportsBuckets && deviceLibraryState.access.canRead
-    // Whether the Recuerdos strip belongs in the timeline at all. It stays
-    // mounted while selecting and instead collapses smoothly (see the
-    // AnimatedVisibility below) so entering selection no longer makes the
-    // whole grid jump up by the strip's height.
-    val hasMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null
-    // Sin aniversarios hoy, la tira se queda en una fila: la sección sigue
-    // teniendo recuerdos y esta era su única puerta desde Fotos.
-    val showMemoriesEntry = !hasMemoriesHeader && memoriesLoaded && onSeeAllMemories != null
     val showBackupRow = backupPendingCount > 0 && onOpenBackup != null
     // The camera-only default must never be silent: until acknowledged, a
     // quiet strip says the timeline is filtered and where to change it.
@@ -325,7 +304,7 @@ fun TimelineScreen(
     // ONE header item, whatever it holds. The scrubber and the zoom transition
     // index off `headerItemCount`, so a second item here would shift every row
     // they compute — the backup and scope rows ride inside the same slot instead.
-    val hasHeader = hasMemoriesHeader || showMemoriesEntry || showBackupRow || showScopeNotice
+    val hasHeader = showBackupRow || showScopeNotice
     // Year view renders the compressed per-year summaries (a few sampled
     // rows per year, count in the header); every other zoom level renders
     // the full bucket timeline. Both flatten into the same entries shape.
@@ -1120,17 +1099,6 @@ fun TimelineScreen(
                                                         count = backupPendingCount,
                                                         onClick = onOpenBackup!!
                                                     )
-                                                }
-                                                if (hasMemoriesHeader) {
-                                                    MemoriesStrip(
-                                                        memories = memories,
-                                                        baseUrl = apiBaseUrl,
-                                                        onOpenMemory = onOpenMemory!!,
-                                                        onSeeAll = onSeeAllMemories,
-                                                        autoPlay = memoriesAutoPlay
-                                                    )
-                                                } else if (showMemoriesEntry) {
-                                                    MemoriesEntryRow(onClick = onSeeAllMemories!!)
                                                 }
                                             }
                                         }
