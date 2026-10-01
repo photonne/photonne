@@ -4,7 +4,9 @@
     <string name="login_insecure_public_url">This address uses unencrypted HTTP outside your local network: your password and session would travel in clear text over the internet. Use https:// whenever you can.</string>
 
     <string name="tab_timeline">Photos</string>
-    <string name="tab_albums">Albums</string>
+    <string name="tab_collections">Collections</string>
+    <string name="collections_pinned_empty_title">Nothing pinned yet</string>
+    <string name="collections_pinned_empty_subtitle">Pin albums and folders from their ⋮ menu to keep them handy here.</string>
     <string name="tab_more">More</string>
 
     <string name="memories_strip_title">Memories</string>
@@ -259,7 +261,6 @@
     <string name="asset_metadata_location">Location</string>
     <string name="asset_metadata_open_map">View on Maps</string>
 
-    <string name="tab_folders">Folders</string>
     <string name="folders_title">Folders</string>
     <string name="folders_empty_title">No folders</string>
     <string name="folders_empty_subtitle">Index a folder from the web app to see it here.</string>

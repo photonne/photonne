@@ -1,8 +1,6 @@
 package com.photonne.app.ui.album
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Landscape
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.api.rememberApiBaseUrl
@@ -58,12 +52,6 @@ import com.photonne.app.resources.albums_section_others
 import com.photonne.app.resources.albums_section_pinned
 import com.photonne.app.ui.theme.SectionHeader
 import com.photonne.app.resources.album_share_link_badge
-import com.photonne.app.resources.explore_section_objects
-import com.photonne.app.resources.explore_section_scenes
-import com.photonne.app.resources.explore_title
-import com.photonne.app.resources.memories_strip_title
-import com.photonne.app.resources.map_title
-import com.photonne.app.resources.people_title
 import com.photonne.app.ui.main.CreateAction
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
@@ -93,7 +81,6 @@ import com.photonne.app.ui.util.PlatformVerticalScrollbar
 import com.photonne.app.ui.theme.GridTilesSkeleton
 import com.photonne.app.ui.theme.ListRowsSkeleton
 import com.photonne.app.ui.theme.Spacing
-import com.photonne.app.ui.theme.EntryTile
 import com.photonne.app.ui.theme.CollectionRow
 import com.photonne.app.ui.theme.CollectionCover
 import com.photonne.app.ui.theme.CollectionCard
@@ -103,12 +90,9 @@ fun AlbumsListScreen(
     onAlbumClick: (AlbumSummary) -> Unit,
     onAlbumLongPress: (AlbumSummary) -> Unit,
     onCreateAlbum: (() -> Unit)? = null,
-    onOpenMemories: () -> Unit = {},
-    onOpenPeople: () -> Unit = {},
-    onOpenMap: () -> Unit = {},
-    onOpenScenes: () -> Unit = {},
-    onOpenObjects: () -> Unit = {},
     onOpenFilters: () -> Unit = {},
+    /** Vuelve a Colecciones: "Todos los álbumes" es una página suya. */
+    onBack: (() -> Unit)? = null,
     /**
      * Immersive bottom nav: while true the albums list drives the hide-on-scroll
      * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
@@ -141,23 +125,6 @@ fun AlbumsListScreen(
     // Con selección, la cápsula de selección ocupa el mismo hueco: se reserva siempre.
     val reservedTop = subscreenChromeReservedTop()
 
-    // Automatic asset groupings (Memories / People / Map / Scenes / Objects) that sit atop
-    // the album list — a scroll header so they pass under the floating chrome.
-    val previewsViewModel: ExplorePreviewsViewModel = koinViewModel()
-    val previews by previewsViewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { previewsViewModel.loadIfNeeded() }
-    val exploreRow: @Composable () -> Unit = {
-        ExploreRow(
-            peopleFaceIds = previews.peopleFaceIds,
-            apiBaseUrl = apiBaseUrl,
-            onOpenMemories = onOpenMemories,
-            onOpenPeople = onOpenPeople,
-            onOpenMap = onOpenMap,
-            onOpenScenes = onOpenScenes,
-            onOpenObjects = onOpenObjects
-        )
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             PhotonneRefreshableScreen(
@@ -170,13 +137,11 @@ fun AlbumsListScreen(
                     when {
                         state.isLoading && state.albums.isEmpty() ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
-                                exploreRow()
                                 // El esqueleto con la forma de la vista elegida.
                                 if (isGrid) GridTilesSkeleton() else ListRowsSkeleton()
                             }
                         state.error != null && state.albums.isEmpty() ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
-                                exploreRow()
                                 com.photonne.app.ui.error.FullScreenError(
                                     error = state.error,
                                     onRetry = viewModel::refresh,
@@ -185,12 +150,10 @@ fun AlbumsListScreen(
                             }
                         visible.isEmpty() && state.hasActiveQuery ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
-                                exploreRow()
                                 EmptySearchState(query = state.searchQuery.trim())
                             }
                         visible.isEmpty() ->
                             Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
-                                exploreRow()
                                 EmptyAlbumsState(scope = state.scope, onCreateAlbum = onCreateAlbum)
                             }
                         else -> AlbumsContent(
@@ -204,7 +167,6 @@ fun AlbumsListScreen(
                             listState = listState,
                             hazeState = hazeState,
                             chromeTopReserve = reservedTop,
-                            exploreHeader = exploreRow,
                             immersive = immersive,
                             onChromeVisibleChange = onChromeVisibleChange
                         )
@@ -218,7 +180,7 @@ fun AlbumsListScreen(
             SubscreenFloatingChrome(
                 title = if (searching) "" else stringResource(Res.string.albums_title),
                 // Al buscar, el botón de atrás cierra la búsqueda (como el buscador).
-                onBack = if (searching) viewModel::toggleSearch else null,
+                onBack = if (searching) viewModel::toggleSearch else onBack,
                 titleContent = if (searching) {
                     {
                         SearchFieldPill(
@@ -311,8 +273,6 @@ private fun AlbumsContent(
     listState: LazyListState,
     hazeState: HazeState,
     chromeTopReserve: Dp = 0.dp,
-    /** ExploreRow como cabecera del scroll, para que pase bajo el cromo flotante. */
-    exploreHeader: (@Composable () -> Unit)? = null,
     immersive: Boolean = false,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
@@ -362,9 +322,6 @@ private fun AlbumsContent(
             ),
             modifier = Modifier.fillMaxSize().hazeSource(hazeState)
         ) {
-            if (exploreHeader != null) {
-                item(key = "explore-row", span = { GridItemSpan(maxLineSpan) }) { exploreHeader() }
-            }
             if (pinned.isNotEmpty()) {
                 item(key = "pinned-header", span = { GridItemSpan(maxLineSpan) }) {
                     PinnedSectionHeader(pinned = true, modifier = Modifier.animateItem())
@@ -428,9 +385,6 @@ private fun AlbumsContent(
             ),
             modifier = Modifier.fillMaxSize().hazeSource(hazeState)
         ) {
-            if (exploreHeader != null) {
-                item(key = "explore-row") { exploreHeader() }
-            }
             if (pinned.isNotEmpty()) {
                 item(key = "pinned-header") {
                     PinnedSectionHeader(
@@ -519,91 +473,6 @@ private fun YearHeader(year: Int, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(top = Spacing.sm, bottom = Spacing.xs)
     )
-}
-
-@Composable
-private fun ExploreRow(
-    peopleFaceIds: List<String>,
-    apiBaseUrl: String,
-    onOpenMemories: () -> Unit,
-    onOpenPeople: () -> Unit,
-    onOpenMap: () -> Unit,
-    onOpenScenes: () -> Unit,
-    onOpenObjects: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm, bottom = Spacing.lg)
-    ) {
-        Text(
-            text = stringResource(Res.string.explore_title),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = Spacing.lg, bottom = 6.dp)
-        )
-        // Fila deslizable de teselas de ancho fijo: con cinco a partes iguales
-        // quedaban de ~60 dp en un móvil y se leían diminutas. A 96 dp caben
-        // tres y asoma la cuarta en 360 dp, que es lo que avisa de que desliza.
-        // El margen va dentro del scroll para que la primera y la última
-        // respiren igual que el resto de la pantalla.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = Spacing.md),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-        ) {
-            // Recuerdos también es una colección generada; aquí gana una segunda
-            // puerta además de la tira de Fotos, que solo enseña "hoy hace…".
-            ExploreCard(
-                label = stringResource(Res.string.memories_strip_title),
-                icon = PhotonneIcons.Memories,
-                onClick = onOpenMemories,
-                modifier = Modifier.width(ExploreTileWidth)
-            )
-            ExploreCard(
-                label = stringResource(Res.string.people_title),
-                icon = PhotonneIcons.People,
-                onClick = onOpenPeople,
-                modifier = Modifier.width(ExploreTileWidth),
-                // Las caras de quien más sale; el icono mientras no llegan.
-                preview = if (peopleFaceIds.isNotEmpty()) {
-                    { OverlappingFaces(peopleFaceIds, apiBaseUrl) }
-                } else null
-            )
-            ExploreCard(
-                label = stringResource(Res.string.map_title),
-                icon = Icons.Outlined.Map,
-                onClick = onOpenMap,
-                modifier = Modifier.width(ExploreTileWidth)
-            )
-            ExploreCard(
-                label = stringResource(Res.string.explore_section_scenes),
-                icon = Icons.Outlined.Landscape,
-                onClick = onOpenScenes,
-                modifier = Modifier.width(ExploreTileWidth)
-            )
-            ExploreCard(
-                label = stringResource(Res.string.explore_section_objects),
-                icon = Icons.Outlined.Category,
-                onClick = onOpenObjects,
-                modifier = Modifier.width(ExploreTileWidth)
-            )
-        }
-    }
-}
-
-/** Ancho de cada tesela de Explorar; ver la fila deslizable de [ExploreRow]. */
-private val ExploreTileWidth = 96.dp
-
-@Composable
-private fun ExploreCard(
-    label: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    preview: (@Composable () -> Unit)? = null
-) {
-    EntryTile(icon = icon, label = label, onClick = onClick, modifier = modifier, preview = preview)
 }
 
 @Composable

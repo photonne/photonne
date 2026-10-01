@@ -104,6 +104,8 @@ fun FoldersListScreen(
     onOpenDeviceFolders: (() -> Unit)? = null,
     onOpenFilters: () -> Unit = {},
     onCreateFolder: (() -> Unit)? = null,
+    /** Vuelve a Colecciones: "Todas las carpetas" es una página suya. */
+    onBack: (() -> Unit)? = null,
     /**
      * Immersive bottom nav: while true the active folder list drives the
      * hide-on-scroll chrome (reported via [onChromeVisibleChange]) and reserves
@@ -216,7 +218,7 @@ fun FoldersListScreen(
             val searching = state.isSearchActive
             SubscreenFloatingChrome(
                 title = if (searching) "" else stringResource(Res.string.folders_title),
-                onBack = if (searching) viewModel::toggleSearch else null,
+                onBack = if (searching) viewModel::toggleSearch else onBack,
                 titleContent = if (searching) {
                     {
                         SearchFieldPill(

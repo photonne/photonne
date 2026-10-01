@@ -278,8 +278,12 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                 appState.pendingAddAlbum = null
                 if (target == null || target == PendingAddTarget.Selection(null)) {
                     // Timeline (y creación directa): se abre el álbum recién creado.
-                    appState.selectedTab = MainTab.Albums
-                    appState.selectedAlbum = album
+                    // Desde fuera de Todos los álbumes, Atrás vuelve a donde se creó.
+                    if (appState.selectedTab == MainTab.Albums) {
+                        appState.selectedAlbum = album
+                    } else {
+                        appState.openAlbumFromCollections(album)
+                    }
                 } else if (addedCount != null) {
                     // Desde otras pantallas o el visor se queda donde estaba.
                     showAddedToAlbumSnackbar(addedCount, album.name)
@@ -414,7 +418,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                     albumDetailViewModel.delete { albumId ->
                         appState.showDeleteAlbum = false
                         albumsViewModel.applyDelete(albumId)
-                        appState.selectedAlbum = null
+                        appState.albumBack()
                     }
                 }
             )
@@ -451,7 +455,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                     albumDetailViewModel.leave { albumId ->
                         appState.showLeaveAlbum = false
                         albumsViewModel.applyDelete(albumId)
-                        appState.selectedAlbum = null
+                        appState.albumBack()
                     }
                 }
             )

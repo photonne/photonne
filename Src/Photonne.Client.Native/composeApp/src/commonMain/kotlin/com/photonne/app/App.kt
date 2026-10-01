@@ -98,6 +98,7 @@ import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.AssetSelectionTopBar
 import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
+import com.photonne.app.ui.main.navTab
 import com.photonne.app.ui.theme.PhotonneTheme
 import com.photonne.app.ui.timeline.TimelineViewModel
 import io.ktor.client.HttpClient
@@ -172,6 +173,8 @@ internal enum class MoreSubscreen {
     DeviceFolders,
     DeviceFolderDetail,
     Memories,
+    /** "Fijados" de Colecciones a pantalla completa. */
+    Pinned,
     ExploreScenes,
     ExploreObjects,
     AccountSettings,
@@ -298,6 +301,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.UtilitiesLocations,
     MoreSubscreen.UnsupportedFiles -> MoreSubscreen.Utilities
     MoreSubscreen.Memories,
+    MoreSubscreen.Pinned,
     MoreSubscreen.ExploreScenes,
     MoreSubscreen.ExploreObjects -> null
     MoreSubscreen.PeopleSuggestions -> MoreSubscreen.People
@@ -887,7 +891,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     val onLogout: () -> Unit = { appState.showLogoutConfirm = true }
-    val albumBack: () -> Unit = { appState.selectedAlbum = null }
+    val albumBack: () -> Unit = { appState.albumBack() }
 
     // Mirror the share link count for the currently opened album back into
     // the albums list so the public-link badge stays in sync after
@@ -1007,6 +1011,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
             appState.moreSubscreen != null -> { appState.moreSubscreen = parentMoreSubscreen(appState.moreSubscreen!!) }
             appState.selectedTab == MainTab.Search -> appState.searchBack()
+            // "Todos los álbumes" / "Todas las carpetas" son páginas de Colecciones.
+            appState.selectedTab == MainTab.Albums || appState.selectedTab == MainTab.Folders ->
+                appState.selectedTab = MainTab.Collections
             appState.selectedTab != MainTab.Timeline -> { appState.selectedTab = MainTab.Timeline }
         }
     }
@@ -1056,16 +1063,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     com.photonne.app.ui.selection.SelectionShortcutsHandler(onSelectAll = selectAllShortcut)
 
-    // ---- Horizontal swipe between the four primary tabs ----
+    // ---- Horizontal swipe between the primary tabs ----
     // The bottom-nav tabs, in bar order, become pages of a HorizontalPager so a
-    // left/right drag glides between Fotos · Álbumes · Carpetas · Más. Buscar is
-    // not a nav tab (it has no page); it opens as an overlay like the detail
-    // screens and subscreens do.
+    // left/right drag glides between Fotos · Colecciones · Más. Buscar is not a
+    // nav tab (it has no page), and neither are "Todos los álbumes" / "Todas las
+    // carpetas": they open as an overlay like the detail screens and subscreens.
     val navTabs = remember {
-        listOf(MainTab.Timeline, MainTab.Albums, MainTab.Folders, MainTab.More)
+        listOf(MainTab.Timeline, MainTab.Collections, MainTab.More)
     }
     val mainPagerState = rememberPagerState(
-        initialPage = navTabs.indexOf(appState.selectedTab).coerceAtLeast(0),
+        initialPage = navTabs.indexOf(appState.selectedTab.navTab()).coerceAtLeast(0),
         pageCount = { navTabs.size }
     )
     // Whether an opaque overlay (drill-down / Buscar / More subscreen) is covering
@@ -1073,8 +1080,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // background, otherwise the tab body underneath shows through — the pager
     // keeps all top-level bodies composed behind it.
     val overlayVisible = appState.moreSubscreen != null ||
-        (appState.selectedTab == MainTab.Albums && appState.selectedAlbum != null) ||
-        (appState.selectedTab == MainTab.Folders && appState.selectedFolder != null) ||
+        appState.selectedTab == MainTab.Albums ||
+        appState.selectedTab == MainTab.Folders ||
         appState.selectedTab == MainTab.Search
     // Only allow the horizontal tab-swipe on a bare top-level tab: never while a
     // detail, Buscar, a subscreen or a multi-select session owns the screen —
@@ -1085,7 +1092,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // un álbum o una carpeta siguen abiertos en su pestaña al saltar a otra (al
     // volver se retoman), y contarlos aquí dejaba el gesto muerto en las cuatro
     // pestañas hasta volver a cerrarlos.
+    //
+    // Colecciones no desliza (decisión de producto): sus filas son sliders
+    // horizontales y el gesto de pestaña les robaría el arrastre.
     val canSwipeTabs = !overlayVisible &&
+        appState.selectedTab != MainTab.Collections &&
         !timelineState.isSelectionActive &&
         !albumsState.isSelectionActive &&
         !foldersState.isSelectionActive
@@ -1111,6 +1122,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             "album:${appState.selectedAlbum!!.id}"
         appState.selectedTab == MainTab.Folders && appState.selectedFolder != null ->
             "folder:${appState.selectedFolder!!.id}"
+        appState.selectedTab == MainTab.Albums -> "albums"
+        appState.selectedTab == MainTab.Folders -> "folders"
         appState.selectedTab == MainTab.Search -> "search"
         else -> "none"
     }
@@ -1135,6 +1148,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.ExploreScenes,
         MoreSubscreen.ExploreObjects,
         MoreSubscreen.Memories,
+        MoreSubscreen.Pinned,
         MoreSubscreen.DeviceFolders,
         MoreSubscreen.DeviceFolderDetail,
         MoreSubscreen.Map -> true
@@ -1332,6 +1346,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         !(appState.selectedTab == MainTab.Folders && appState.selectedFolder != null) &&
         !foldersState.isSelectionActive
     val moreImmersive = chromeTab == MainTab.More && appState.moreSubscreen == null
+    val collectionsImmersive = chromeTab == MainTab.Collections && appState.moreSubscreen == null
     // Buscar dibuja su propio cromo flotante (campo + modo + filtros) que se acopla
     // y se oculta al scroll; con una selección activa vuelve la barra acoplada.
     val searchImmersive = appState.selectedTab == MainTab.Search &&
@@ -1380,8 +1395,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             folderDetailState.isSubfolderSelectionActive)
 
     // Tap on a nav tab (or any programmatic tab change) glides the pager over.
+    // Álbumes/Carpetas dejan el pager en Colecciones, que es lo que asoma al cerrarlas.
     LaunchedEffect(appState.selectedTab) {
-        val idx = navTabs.indexOf(appState.selectedTab)
+        val idx = navTabs.indexOf(appState.selectedTab.navTab())
         if (idx >= 0 && mainPagerState.currentPage != idx) {
             mainPagerState.animateScrollToPage(idx)
         }
@@ -1564,6 +1580,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // Y con una selección: su cápsula flota sobre el contenido en el hueco
             // que este ya reserva para su cromo, no aparta nada.
             edgeToEdgeTop = pagerBareTop || floatingChromeSubscreen ||
+                albumsImmersive || foldersImmersive ||
                 albumDetailImmersive || folderDetailImmersive || searchImmersive ||
                 selectionTopChrome != null,
             // On the immersive tabs the bottom nav hides while scrolling down
@@ -1573,6 +1590,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 albumsImmersive -> appState.albumsChromeVisible
                 foldersImmersive -> appState.foldersChromeVisible
                 moreImmersive -> appState.moreChromeVisible
+                collectionsImmersive -> appState.collectionsChromeVisible
                 searchImmersive -> appState.searchChromeVisible
                 albumDetailImmersive -> appState.albumDetailChromeVisible
                 folderDetailImmersive -> appState.folderDetailChromeVisible
@@ -1583,7 +1601,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // it slides away (always full-screen, the bar just covers it). Lo
             // mismo con la cápsula de selección, que ocupa ese hueco: sin esto
             // flotaría sobre el fondo del Scaffold en vez de sobre las fotos.
-            edgeToEdgeBottom = timelineImmersive || albumsImmersive || foldersImmersive ||
+            edgeToEdgeBottom = timelineImmersive || collectionsImmersive ||
+                albumsImmersive || foldersImmersive ||
                 albumDetailImmersive || folderDetailImmersive ||
                 timelineSelecting || albumsSelecting || foldersSelecting ||
                 albumDetailSelecting || folderDetailSelecting ||

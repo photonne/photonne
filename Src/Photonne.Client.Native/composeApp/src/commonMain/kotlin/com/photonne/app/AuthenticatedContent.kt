@@ -81,6 +81,7 @@ import com.photonne.app.ui.main.FolderDetailChromeActions
 import com.photonne.app.ui.library.TrashChromeActions
 import com.photonne.app.ui.main.toMoreBackupStatus
 import com.photonne.app.ui.main.MainTab
+import com.photonne.app.ui.main.navTab
 import com.photonne.app.ui.main.MoreScreen
 import com.photonne.app.ui.timeline.TimelineScreen
 import com.photonne.app.ui.timeline.TimelineViewModel
@@ -289,81 +290,7 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                     onOpenMemory = { memory -> appState.memoryDetail = memory },
                     onSeeAllMemories = { appState.moreSubscreen = MoreSubscreen.Memories }
                 )
-                MainTab.Albums -> Column(modifier = Modifier.fillMaxSize()) {
-                    // La búsqueda va DENTRO de la cápsula flotante que dibuja
-                    // AlbumsListScreen (campo en titleContent), como el buscador;
-                    // ya no hay barra acoplada aquí.
-                    Box(modifier = Modifier.weight(1f)) {
-                        AlbumsListScreen(
-                            onAlbumClick = { album ->
-                                if (albumsState.isSelectionActive) {
-                                    // Con la selección abierta, tocar suma o
-                                    // quita; al quitar la última se cierra.
-                                    albumsViewModel.toggleAlbumSelection(album.id)
-                                } else {
-                                    appState.selectedAlbum = album
-                                }
-                            },
-                            onAlbumLongPress = { album ->
-                                albumsViewModel.selectAlbum(album.id)
-                            },
-                            onCreateAlbum = { appState.showAlbumTypeChooser = true },
-                            // Explorar cards open their screen as a modal layer
-                            // over the Albums tab (no tab switch) so back
-                            // returns here and the bottom nav stays on Álbumes.
-                            onOpenMemories = { appState.moreSubscreen = MoreSubscreen.Memories },
-                            onOpenPeople = {
-                                appState.selectedPerson = null
-                                appState.moreSubscreen = MoreSubscreen.People
-                            },
-                            onOpenMap = { appState.moreSubscreen = MoreSubscreen.Map },
-                            onOpenScenes = { appState.moreSubscreen = MoreSubscreen.ExploreScenes },
-                            onOpenObjects = { appState.moreSubscreen = MoreSubscreen.ExploreObjects },
-                            onOpenFilters = { appState.showAlbumsFilters = true },
-                            immersive = albumsImmersive,
-                            onChromeVisibleChange = { appState.albumsChromeVisible = it },
-                            scrollToTopTick = appState.albumsScrollToTopTick
-                        )
-                    }
-                }
-                MainTab.Folders -> Column(modifier = Modifier.fillMaxSize()) {
-                    // La búsqueda va DENTRO de la cápsula flotante que dibuja
-                    // FoldersListScreen (campo en titleContent), como el buscador;
-                    // ya no hay barra acoplada aquí.
-                    val foldersCreate = if (
-                        foldersState.scope !=
-                            com.photonne.app.ui.folder.FoldersScope.External
-                    ) {
-                        { appState.showCreateFolder = true }
-                    } else null
-                    Box(modifier = Modifier.weight(1f)) {
-                        com.photonne.app.ui.folder.FoldersListScreen(
-                            onFolderClick = { folder ->
-                                if (foldersState.isSelectionActive) {
-                                    foldersViewModel.toggleFolderSelection(folder.id)
-                                } else {
-                                    appState.selectedFolder = folder
-                                }
-                            },
-                            onFolderLongPress = { folder ->
-                                foldersViewModel.selectFolder(folder.id)
-                            },
-                            onOpenOrganize = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
-                            // Como People/Map desde Álbumes: capa modal sobre la
-                            // pestaña, sin cambiar de tab. La tarjeta solo se
-                            // muestra donde hay buckets, así que el callback
-                            // puede ser incondicional.
-                            onOpenDeviceFolders = {
-                                appState.moreSubscreen = MoreSubscreen.DeviceFolders
-                            },
-                            onOpenFilters = { appState.showFoldersFilters = true },
-                            onCreateFolder = foldersCreate,
-                            immersive = foldersImmersive,
-                            onChromeVisibleChange = { appState.foldersChromeVisible = it },
-                            scrollToTopTick = appState.foldersScrollToTopTick
-                        )
-                    }
-                }
+                MainTab.Collections -> CollectionsTabPage(host)
                 // Más pinta su propio cromo flotante dentro de la pantalla
                 // (título + acción Subir), como Fotos: nada de barra acoplada.
                 else -> MoreScreen(
@@ -467,6 +394,29 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
                         immersive = albumDetailImmersive,
                         onChromeVisibleChange = { appState.albumDetailChromeVisible = it }
                     )
+                } else {
+                    // "Todos los álbumes": página de Colecciones (filtros, orden,
+                    // crear y selección múltiple), con Atrás a Colecciones.
+                    AlbumsListScreen(
+                        onAlbumClick = { album ->
+                            if (albumsState.isSelectionActive) {
+                                // Con la selección abierta, tocar suma o
+                                // quita; al quitar la última se cierra.
+                                albumsViewModel.toggleAlbumSelection(album.id)
+                            } else {
+                                appState.selectedAlbum = album
+                            }
+                        },
+                        onAlbumLongPress = { album ->
+                            albumsViewModel.selectAlbum(album.id)
+                        },
+                        onCreateAlbum = { appState.showAlbumTypeChooser = true },
+                        onOpenFilters = { appState.showAlbumsFilters = true },
+                        onBack = { appState.selectedTab = MainTab.Collections },
+                        immersive = albumsImmersive,
+                        onChromeVisibleChange = { appState.albumsChromeVisible = it },
+                        scrollToTopTick = appState.albumsScrollToTopTick
+                    )
                 }
             }
             appState.selectedTab == MainTab.Folders && appState.moreSubscreen == null -> {
@@ -558,6 +508,37 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
                         },
                         immersive = folderDetailImmersive,
                         onChromeVisibleChange = { appState.folderDetailChromeVisible = it }
+                    )
+                } else {
+                    // "Todas las carpetas": página de Colecciones, con Atrás a
+                    // Colecciones. Conserva Para organizar y Mi dispositivo.
+                    val foldersCreate = if (
+                        foldersState.scope !=
+                            com.photonne.app.ui.folder.FoldersScope.External
+                    ) {
+                        { appState.showCreateFolder = true }
+                    } else null
+                    com.photonne.app.ui.folder.FoldersListScreen(
+                        onFolderClick = { folder ->
+                            if (foldersState.isSelectionActive) {
+                                foldersViewModel.toggleFolderSelection(folder.id)
+                            } else {
+                                appState.selectedFolder = folder
+                            }
+                        },
+                        onFolderLongPress = { folder ->
+                            foldersViewModel.selectFolder(folder.id)
+                        },
+                        onOpenOrganize = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
+                        onOpenDeviceFolders = {
+                            appState.moreSubscreen = MoreSubscreen.DeviceFolders
+                        },
+                        onOpenFilters = { appState.showFoldersFilters = true },
+                        onCreateFolder = foldersCreate,
+                        onBack = { appState.selectedTab = MainTab.Collections },
+                        immersive = foldersImmersive,
+                        onChromeVisibleChange = { appState.foldersChromeVisible = it },
+                        scrollToTopTick = appState.foldersScrollToTopTick
                     )
                 }
             }
@@ -946,6 +927,16 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                             appState.selectedTab = MainTab.Folders
                         }
                     }
+                )
+            MoreSubscreen.Pinned ->
+                com.photonne.app.ui.collections.PinnedCollectionsScreen(
+                    pinned = com.photonne.app.ui.collections.mergePinned(
+                        albumsState.albums, foldersState.pinnedFolders
+                    ),
+                    baseUrl = apiBaseUrl,
+                    onOpen = { entry -> openPinned(entry) },
+                    onBack = { appState.moreSubscreen = null },
+                    onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                 )
             MoreSubscreen.Memories ->
                 com.photonne.app.ui.memories.MemoriesScreen(
@@ -1843,5 +1834,120 @@ private fun AccountAdminSubscreenOverlay(host: AuthenticatedContentHost) {
                 )
             else -> Unit
         }
+    }
+}
+
+/** Abre un fijado (álbum o carpeta) recordando de dónde se vino. */
+internal fun AuthenticatedContentHost.openPinned(entry: com.photonne.app.ui.collections.PinnedEntry) {
+    when (entry) {
+        is com.photonne.app.ui.collections.PinnedEntry.Album -> appState.openAlbumFromCollections(entry.album)
+        is com.photonne.app.ui.collections.PinnedEntry.Folder -> appState.openFolderFromCollections(entry.folder)
+    }
+}
+
+/**
+ * Página Colecciones del pager: junta lo que ya cargan los ViewModels de
+ * álbumes, carpetas, recuerdos, personas y escenas/objetos.
+ */
+@Composable
+private fun CollectionsTabPage(host: AuthenticatedContentHost) {
+    with(host) {
+        val feed by memoryFeedViewModel.state.collectAsStateWithLifecycle()
+        val facets by exploreFacetsViewModel.state.collectAsStateWithLifecycle()
+        val content = com.photonne.app.ui.collections.CollectionsContent(
+            memories = remember(feed.rows) { feed.rows.flatMap { it.memories } },
+            memoryOpeningId = feed.openingId,
+            pinned = remember(albumsState.albums, foldersState.pinnedFolders) {
+                com.photonne.app.ui.collections.mergePinned(albumsState.albums, foldersState.pinnedFolders)
+            },
+            people = peopleState.people.filterNot { it.isHidden },
+            // Los más recientes primero: el slider es "lo último", el orden
+            // elegido vive en Todos los álbumes.
+            albums = remember(albumsState.albums) { albumsState.albums.sortedByDescending { it.createdAt } },
+            albumsLoaded = !albumsState.isLoading && albumsState.error == null,
+            folders = remember(foldersState.personalFolders, foldersState.sharedFolders, foldersState.externalRoots) {
+                (foldersState.personalFolders + foldersState.sharedFolders + foldersState.externalRoots)
+                    .distinctBy { it.id }
+            },
+            organizePendingCount = foldersState.organizePendingCount,
+            scenes = facets.scenes,
+            objects = facets.objects,
+            isRefreshing = feed.isLoading && feed.rows.isNotEmpty(),
+        )
+        val actions = remember(appState) {
+            com.photonne.app.ui.collections.CollectionsActions(
+                onOpenSearch = {
+                    appState.searchReturnTo = MainTab.Collections to null
+                    appState.selectedTab = MainTab.Search
+                },
+                onRefresh = {
+                    memoryFeedViewModel.refresh()
+                    albumsViewModel.refresh()
+                    foldersViewModel.refresh()
+                    peopleViewModel.refresh()
+                    exploreFacetsViewModel.refresh()
+                },
+                onOpenMemory = { memory ->
+                    memoryFeedViewModel.open(
+                        memoryId = memory.id,
+                        onError = { error -> snackbarController.show(error.userMessage) },
+                        onLoaded = { detail ->
+                            appState.memoryDetail = com.photonne.app.ui.memories.MemoryDetailContext(
+                                title = detail.title,
+                                subtitle = detail.subtitle,
+                                coverAssetId = detail.coverAssetId,
+                                items = detail.assets
+                            )
+                        }
+                    )
+                },
+                onSeeAllMemories = { appState.moreSubscreen = MoreSubscreen.Memories },
+                onOpenPinned = { entry -> openPinned(entry) },
+                onSeeAllPinned = { appState.moreSubscreen = MoreSubscreen.Pinned },
+                onOpenPerson = { person ->
+                    appState.selectedPerson = person
+                    appState.moreSubscreen = MoreSubscreen.People
+                    personDetailViewModel.open(person.id, person.name)
+                },
+                onSeeAllPeople = {
+                    appState.selectedPerson = null
+                    appState.moreSubscreen = MoreSubscreen.People
+                },
+                onOpenAlbum = { album -> appState.openAlbumFromCollections(album) },
+                onSeeAllAlbums = { appState.selectedTab = MainTab.Albums },
+                onCreateAlbum = { appState.showAlbumTypeChooser = true },
+                onOpenFolder = { folder -> appState.openFolderFromCollections(folder) },
+                onSeeAllFolders = { appState.selectedTab = MainTab.Folders },
+                onOpenOrganize = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
+                onOpenScene = { label ->
+                    searchViewModel.showResultsForSceneLabel(label)
+                    appState.searchReturnTo = MainTab.Collections to null
+                    appState.selectedTab = MainTab.Search
+                },
+                onSeeAllScenes = { appState.moreSubscreen = MoreSubscreen.ExploreScenes },
+                onOpenObject = { label ->
+                    searchViewModel.showResultsForObjectLabel(label)
+                    appState.searchReturnTo = MainTab.Collections to null
+                    appState.selectedTab = MainTab.Search
+                },
+                onSeeAllObjects = { appState.moreSubscreen = MoreSubscreen.ExploreObjects },
+            )
+        }
+        com.photonne.app.ui.collections.CollectionsScreen(
+            content = content,
+            baseUrl = apiBaseUrl,
+            actions = actions,
+            onLoad = {
+                val feedState = memoryFeedViewModel.state.value
+                if (feedState.rows.isEmpty() && !feedState.isLoading &&
+                    !(feedState.attempted && feedState.error == null)
+                ) memoryFeedViewModel.refresh()
+                peopleViewModel.ensureLoaded()
+                exploreFacetsViewModel.ensureLoaded()
+            },
+            active = appState.selectedTab.navTab() == MainTab.Collections,
+            scrollToTopTick = appState.collectionsScrollToTopTick,
+            onChromeVisibleChange = { appState.collectionsChromeVisible = it },
+        )
     }
 }

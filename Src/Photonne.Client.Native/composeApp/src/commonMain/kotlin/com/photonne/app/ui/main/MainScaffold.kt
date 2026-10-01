@@ -163,8 +163,7 @@ import com.photonne.app.resources.selection_label_select_all
 import com.photonne.app.resources.selection_label_set_cover
 import com.photonne.app.resources.selection_label_share
 import com.photonne.app.resources.selection_label_trash
-import com.photonne.app.resources.tab_albums
-import com.photonne.app.resources.tab_folders
+import com.photonne.app.resources.tab_collections
 import com.photonne.app.resources.tab_search
 import com.photonne.app.resources.timeline_scope_action
 import com.photonne.app.resources.tab_more
@@ -191,9 +190,22 @@ import com.photonne.app.ui.theme.Spacing
 enum class MainTab {
     Timeline,
     Search,
+    /** Pestaña Colecciones: recuerdos, fijados, personas, álbumes, carpetas… */
+    Collections,
+    /** "Todos los álbumes": página de Colecciones, no pestaña (capa encima). */
     Albums,
+    /** "Todas las carpetas": página de Colecciones, no pestaña (capa encima). */
     Folders,
     More
+}
+
+/**
+ * La pestaña de la barra a la que pertenece [this]: Álbumes y Carpetas son
+ * páginas de Colecciones y la iluminan; Buscar no tiene pestaña.
+ */
+fun MainTab.navTab(): MainTab = when (this) {
+    MainTab.Albums, MainTab.Folders -> MainTab.Collections
+    else -> this
 }
 
 @Composable
@@ -384,27 +396,15 @@ private fun MainNavigationBar(
                         )
                     }
                 )
-                val albumsActive = selectedTab == MainTab.Albums
+                val collectionsActive = selectedTab.navTab() == MainTab.Collections
                 FloatingNavBarItem(
-                    selected = albumsActive,
-                    onClick = { onTabSelected(MainTab.Albums) },
-                    label = stringResource(Res.string.tab_albums),
+                    selected = collectionsActive,
+                    onClick = { onTabSelected(MainTab.Collections) },
+                    label = stringResource(Res.string.tab_collections),
                     icon = {
                         Icon(
-                            if (albumsActive) PhotonneIcons.AlbumActive
-                            else PhotonneIcons.Album,
-                            contentDescription = null
-                        )
-                    }
-                )
-                val foldersActive = selectedTab == MainTab.Folders
-                FloatingNavBarItem(
-                    selected = foldersActive,
-                    onClick = { onTabSelected(MainTab.Folders) },
-                    label = stringResource(Res.string.tab_folders),
-                    icon = {
-                        Icon(
-                            if (foldersActive) PhotonneIcons.FolderActive else PhotonneIcons.Folder,
+                            if (collectionsActive) PhotonneIcons.CollectionsActive
+                            else PhotonneIcons.Collections,
                             contentDescription = null
                         )
                     }

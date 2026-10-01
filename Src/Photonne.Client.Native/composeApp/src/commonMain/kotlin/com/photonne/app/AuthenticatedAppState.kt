@@ -116,6 +116,7 @@ internal class AuthenticatedAppState(
     // Álbumes and Carpetas each drive their own flag.
     var timelineChromeVisible by mutableStateOf(true)
     var albumsChromeVisible by mutableStateOf(true)
+    var collectionsChromeVisible by mutableStateOf(true)
     var foldersChromeVisible by mutableStateOf(true)
     var moreChromeVisible by mutableStateOf(true)
     var searchChromeVisible by mutableStateOf(true)
@@ -155,18 +156,22 @@ internal class AuthenticatedAppState(
     var timelineScrollToTopTick by mutableStateOf(0)
     var albumsScrollToTopTick by mutableStateOf(0)
     var foldersScrollToTopTick by mutableStateOf(0)
+    var collectionsScrollToTopTick by mutableStateOf(0)
     // The bucket the "Mi dispositivo" detail subscreen shows. Survives going
     // back to the bucket list (harmless), reset on every open.
     var deviceFolderBucket by mutableStateOf<com.photonne.app.data.devicelibrary.DeviceBucket?>(null)
     // Buscar abierto desde una etiqueta de Explorar: Atrás vuelve a esa
     // subpantalla (y a la pestaña que había debajo), no a Fotos.
-    var searchReturnTo by mutableStateOf<Pair<MainTab, MoreSubscreen>?>(null)
+    var searchReturnTo by mutableStateOf<Pair<MainTab, MoreSubscreen?>?>(null)
     // Búsqueda abierta desde una escena u objeto del visor: Atrás vuelve a la foto.
     var searchViewerReturn by mutableStateOf<ViewerReturn?>(null)
     // Carpeta abierta desde Ubicaciones (Lote N8): al salir de su raíz, Atrás
     // vuelve a esa subpantalla (y a la pestaña de debajo), no a la lista de
     // Carpetas. Cualquier toque en la barra de navegación lo olvida.
-    var folderReturnTo by mutableStateOf<Pair<MainTab, MoreSubscreen>?>(null)
+    var folderReturnTo by mutableStateOf<Pair<MainTab, MoreSubscreen?>?>(null)
+    // Álbum abierto desde Colecciones (su fila o Fijados): Atrás vuelve allí y
+    // no a "Todos los álbumes", que es donde vive el detalle.
+    var albumReturnTo by mutableStateOf<Pair<MainTab, MoreSubscreen?>?>(null)
     // Persona abierta desde una cara del visor: Atrás vuelve a la foto.
     var personReturnTo by mutableStateOf<ViewerReturn?>(null)
 
@@ -334,6 +339,37 @@ internal class AuthenticatedAppState(
         }
     }
 
+    fun albumBack() {
+        selectedAlbum = null
+        val returnTo = albumReturnTo
+        albumReturnTo = null
+        if (returnTo != null) {
+            selectedTab = returnTo.first
+            moreSubscreen = returnTo.second
+        }
+    }
+
+    /**
+     * Abre un álbum desde Colecciones. El detalle vive en "Todos los álbumes"
+     * (selectedTab = Albums), pero Atrás vuelve a donde se tocó: Colecciones o
+     * la página de Fijados.
+     */
+    fun openAlbumFromCollections(album: AlbumSummary) {
+        albumReturnTo = selectedTab to moreSubscreen
+        moreSubscreen = null
+        selectedAlbum = album
+        selectedTab = MainTab.Albums
+    }
+
+    /** Igual que [openAlbumFromCollections], para una carpeta. */
+    fun openFolderFromCollections(folder: FolderSummary) {
+        folderReturnTo = selectedTab to moreSubscreen
+        moreSubscreen = null
+        folderBackStack.clear()
+        selectedFolder = folder
+        selectedTab = MainTab.Folders
+    }
+
     fun folderBack() {
         if (folderBackStack.isNotEmpty()) {
             selectedFolder = folderBackStack.removeAt(folderBackStack.lastIndex)
@@ -399,29 +435,27 @@ internal class AuthenticatedAppState(
         ) {
             timelineScrollToTopTick++
         }
-        // Lo mismo en Álbumes y Carpetas, solo en su raíz: con un álbum o una
-        // carpeta abiertos el retoque sigue cerrándolos (abajo).
-        if (tab == MainTab.Albums && selectedTab == MainTab.Albums &&
-            moreSubscreen == null && selectedPerson == null && selectedAlbum == null
+        // Lo mismo en Colecciones, solo en su raíz.
+        if (tab == MainTab.Collections && selectedTab == MainTab.Collections &&
+            moreSubscreen == null && selectedPerson == null
         ) {
-            albumsScrollToTopTick++
+            collectionsScrollToTopTick++
         }
-        if (tab == MainTab.Folders && selectedTab == MainTab.Folders &&
-            moreSubscreen == null && selectedPerson == null && selectedFolder == null
-        ) {
-            foldersScrollToTopTick++
+        // "Todos los álbumes", "Todas las carpetas" y lo que tengan abierto son
+        // páginas de Colecciones: tocar cualquier pestaña (también Colecciones
+        // misma) las cierra y deja Colecciones en su raíz.
+        if (selectedTab == MainTab.Albums || selectedTab == MainTab.Folders) {
+            selectedAlbum = null
+            selectedFolder = null
+            folderBackStack.clear()
         }
         moreSubscreen = null
         selectedPerson = null
         folderReturnTo = null
+        albumReturnTo = null
         personReturnTo = null
-        if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
-        if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
-            selectedFolder = null
-            folderBackStack.clear()
-        }
-        if (tab != MainTab.Albums) albumsViewModel.clearSelection()
-        if (tab != MainTab.Folders) foldersViewModel.clearSelection()
+        albumsViewModel.clearSelection()
+        foldersViewModel.clearSelection()
         selectedTab = tab
     }
 }

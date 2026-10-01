@@ -4,7 +4,9 @@
     <string name="login_insecure_public_url">Esta dirección usa HTTP sin cifrar fuera de tu red local: la contraseña y la sesión viajarían en claro por internet. Usa https:// siempre que puedas.</string>
 
     <string name="tab_timeline">Fotos</string>
-    <string name="tab_albums">Álbumes</string>
+    <string name="tab_collections">Colecciones</string>
+    <string name="collections_pinned_empty_title">Nada fijado todavía</string>
+    <string name="collections_pinned_empty_subtitle">Fija álbumes y carpetas desde su menú ⋮ para tenerlos a mano aquí.</string>
     <string name="tab_more">Más</string>
 
     <string name="memories_strip_title">Recuerdos</string>
@@ -338,7 +340,6 @@
     <string name="asset_metadata_location">Ubicación</string>
     <string name="asset_metadata_open_map">Ver en Mapas</string>
 
-    <string name="tab_folders">Carpetas</string>
     <string name="folders_title">Carpetas</string>
     <string name="folders_empty_title">No hay carpetas</string>
     <string name="folders_empty_subtitle">Indexa una carpeta desde la app web para verla aquí.</string>

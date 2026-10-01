@@ -359,38 +359,3 @@ fun EntryCard(
     }
 }
 
-/**
- * Variante en mosaico de [EntryCard] para filas de varias entradas (Explorar
- * en Álbumes): misma forma, fondo e [IconCircle], con el icono encima de la
- * etiqueta porque van varias en fila (deslizable, de ancho fijo). Con [preview], una muestra real de
- * lo que hay dentro (caras…) ocupa el sitio del icono; debe tener su alto
- * (34 dp) para que la tarjeta no salte al llegar.
- */
-@Composable
-fun EntryTile(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    preview: (@Composable () -> Unit)? = null
-) {
-    Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.large)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
-            .padding(vertical = Spacing.md, horizontal = Spacing.xs),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-    ) {
-        if (preview != null) preview() else IconCircle(icon = icon, compact = true)
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
-    }
-}

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.MergeType
 import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.filled.CollectionsBookmark as CollectionsBookmarkFilled
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
@@ -162,6 +164,11 @@ object PhotonneIcons {
 
     /** Fusionar una persona con otra. */
     val Merge: ImageVector = Icons.AutoMirrored.Outlined.MergeType
+
+    // ── Colecciones ─────────────────────────────────────────────────────
+    /** Pestaña Colecciones (álbumes, carpetas, recuerdos… juntos). */
+    val Collections: ImageVector = Icons.Outlined.CollectionsBookmark
+    val CollectionsActive: ImageVector = Icons.Filled.CollectionsBookmarkFilled
 
     // ── Recuerdos ───────────────────────────────────────────────────────
     /** Sección Recuerdos (entradas desde Fotos, Explorar y Buscar). */
