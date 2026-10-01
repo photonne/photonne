@@ -206,6 +206,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { com.photonne.app.data.devicebackup.createBackgroundSyncScheduler() }
     single { ThemePreferenceStore(get()) }
     single { TimelineZoomStore(get()) }
+    single { com.photonne.app.ui.collections.CollectionsLayoutStore(get()) }
     single { RecentDestinationsStore(get()) }
     single { TimelineRepository(api = get()) }
     single { com.photonne.app.data.timeline.TimelineBucketStore(api = get()) }

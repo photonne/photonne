@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -52,6 +53,7 @@ import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.albums_badge_pinned
 import com.photonne.app.resources.albums_section_pinned
 import com.photonne.app.resources.albums_title
+import com.photonne.app.resources.collections_customize
 import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.explore_section_objects
 import com.photonne.app.resources.favorites_title
@@ -184,6 +186,9 @@ fun CollectionsScreen(
     content: CollectionsContent,
     baseUrl: String,
     actions: CollectionsActions,
+    /** Secciones visibles, en orden (ver [CollectionsLayout]). */
+    sections: List<CollectionSection>,
+    onCustomize: () -> Unit,
     onLoad: () -> Unit,
     /**
      * False mientras Colecciones solo se compone como vecina de Fotos en el
@@ -221,8 +226,18 @@ fun CollectionsScreen(
                         OrganizeCard(count = content.organizePendingCount, onClick = actions.onOpenOrganize)
                     }
                 }
-                collectionSections(content, baseUrl, actions)
+                collectionSections(content, baseUrl, actions, sections)
                 item(key = "library") { LibraryRows(actions) }
+                item(key = "customize") {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        TextButton(
+                            onClick = onCustomize,
+                            modifier = Modifier.padding(top = Spacing.md)
+                        ) {
+                            Text(stringResource(Res.string.collections_customize))
+                        }
+                    }
+                }
             }
         }
 
@@ -251,139 +266,142 @@ private fun LazyListScope.collectionSections(
     content: CollectionsContent,
     baseUrl: String,
     actions: CollectionsActions,
+    sections: List<CollectionSection>,
 ) {
-    if (content.memories.isNotEmpty()) {
-        item(key = "memories") {
-            SliderSection(
-                title = stringResource(Res.string.memories_strip_title),
-                onTitleClick = actions.onSeeAllMemories,
-                items = content.memories.take(SliderLimit),
-                key = { "memory:${it.id}" },
-                truncated = content.memories.size > SliderLimit,
-                seeAllSize = MemoryCardWidth to MemoryCardHeight,
-            ) { memory ->
-                MemoryTile(
-                    memory = memory,
-                    baseUrl = baseUrl,
-                    isOpening = content.memoryOpeningId == memory.id,
-                    onClick = { actions.onOpenMemory(memory) }
-                )
-            }
-        }
-    }
-    if (content.pinned.isNotEmpty()) {
-        item(key = "pinned") {
-            SliderSection(
-                title = stringResource(Res.string.albums_section_pinned),
-                onTitleClick = actions.onSeeAllPinned,
-                items = content.pinned.take(SliderLimit),
-                key = { it.key },
-                truncated = content.pinned.size > SliderLimit,
-                seeAllSize = CollectionTileWidth to CollectionTileWidth,
-            ) { entry ->
-                Box(Modifier.width(CollectionTileWidth)) {
-                    PinnedTile(entry = entry, baseUrl = baseUrl, onClick = { actions.onOpenPinned(entry) })
-                }
-            }
-        }
-    }
-    if (content.people.isNotEmpty()) {
-        item(key = "people") {
-            SliderSection(
-                title = stringResource(Res.string.people_title),
-                onTitleClick = actions.onSeeAllPeople,
-                items = content.people.take(SliderLimit),
-                key = { "person:${it.id}" },
-                truncated = content.people.size > SliderLimit,
-                seeAllSize = PersonTileWidth to PersonAvatarSize.dp,
-                spacing = Spacing.sm,
-            ) { person ->
-                PersonTile(person = person, baseUrl = baseUrl, onClick = { actions.onOpenPerson(person) })
-            }
-        }
-    }
-    if (content.albums.isNotEmpty() || content.albumsLoaded) {
-        item(key = "albums") {
-            if (content.albums.isEmpty()) {
-                SectionTitle(stringResource(Res.string.albums_title), onClick = actions.onSeeAllAlbums)
-                EntryCard(
-                    icon = PhotonneIcons.Add,
-                    title = stringResource(Res.string.album_action_new),
-                    subtitle = null,
-                    onClick = actions.onCreateAlbum,
-                    modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs)
-                )
-            } else {
-                SliderSection(
-                    title = stringResource(Res.string.albums_title),
-                    onTitleClick = actions.onSeeAllAlbums,
-                    items = content.albums.take(SliderLimit),
-                    key = { "album:${it.id}" },
-                    truncated = content.albums.size > SliderLimit,
-                    seeAllSize = CollectionTileWidth to CollectionTileWidth,
-                ) { album ->
-                    Box(Modifier.width(CollectionTileWidth)) {
-                        AlbumTile(album = album, baseUrl = baseUrl, onClick = { actions.onOpenAlbum(album) })
+    for (section in sections) when (section) {
+        CollectionSection.Memories -> if (content.memories.isNotEmpty()) {
+                item(key = "memories") {
+                    SliderSection(
+                        title = stringResource(Res.string.memories_strip_title),
+                        onTitleClick = actions.onSeeAllMemories,
+                        items = content.memories.take(SliderLimit),
+                        key = { "memory:${it.id}" },
+                        truncated = content.memories.size > SliderLimit,
+                        seeAllSize = MemoryCardWidth to MemoryCardHeight,
+                    ) { memory ->
+                        MemoryTile(
+                            memory = memory,
+                            baseUrl = baseUrl,
+                            isOpening = content.memoryOpeningId == memory.id,
+                            onClick = { actions.onOpenMemory(memory) }
+                        )
                     }
                 }
             }
-        }
-    }
-    if (content.folders.isNotEmpty()) {
-        item(key = "folders") {
-            SliderSection(
-                title = stringResource(Res.string.folders_title),
-                onTitleClick = actions.onSeeAllFolders,
-                items = content.folders.take(SliderLimit),
-                key = { "folder:${it.id}" },
-                truncated = content.folders.size > SliderLimit,
-                seeAllSize = CollectionTileWidth to CollectionTileWidth,
-            ) { folder ->
-                Box(Modifier.width(CollectionTileWidth)) {
-                    FolderTile(folder = folder, baseUrl = baseUrl, onClick = { actions.onOpenFolder(folder) })
+        CollectionSection.Pinned -> if (content.pinned.isNotEmpty()) {
+                item(key = "pinned") {
+                    SliderSection(
+                        title = stringResource(Res.string.albums_section_pinned),
+                        onTitleClick = actions.onSeeAllPinned,
+                        items = content.pinned.take(SliderLimit),
+                        key = { it.key },
+                        truncated = content.pinned.size > SliderLimit,
+                        seeAllSize = CollectionTileWidth to CollectionTileWidth,
+                    ) { entry ->
+                        Box(Modifier.width(CollectionTileWidth)) {
+                            PinnedTile(entry = entry, baseUrl = baseUrl, onClick = { actions.onOpenPinned(entry) })
+                        }
+                    }
                 }
             }
-        }
-    }
-    if (content.scenes.isNotEmpty()) {
-        item(key = "scenes") {
-            SliderSection(
-                title = stringResource(Res.string.explore_section_scenes),
-                onTitleClick = actions.onSeeAllScenes,
-                items = content.scenes.take(SliderLimit),
-                key = { "scene:${it.label}" },
-                truncated = content.scenes.size > SliderLimit,
-                seeAllSize = LabelTileWidth to LabelTileWidth,
-            ) { label ->
-                Box(Modifier.width(LabelTileWidth)) {
-                    LabelTileCard(
-                        tile = ExploreLabelTile(label.label, label.assetCount, label.coverAssetId),
-                        baseUrl = baseUrl,
-                        onClick = { actions.onOpenScene(label.label) }
-                    )
+        CollectionSection.People -> if (content.people.isNotEmpty()) {
+                item(key = "people") {
+                    SliderSection(
+                        title = stringResource(Res.string.people_title),
+                        onTitleClick = actions.onSeeAllPeople,
+                        items = content.people.take(SliderLimit),
+                        key = { "person:${it.id}" },
+                        truncated = content.people.size > SliderLimit,
+                        seeAllSize = PersonTileWidth to PersonAvatarSize.dp,
+                        spacing = Spacing.sm,
+                    ) { person ->
+                        PersonTile(person = person, baseUrl = baseUrl, onClick = { actions.onOpenPerson(person) })
+                    }
                 }
             }
-        }
-    }
-    if (content.objects.isNotEmpty()) {
-        item(key = "objects") {
-            SliderSection(
-                title = stringResource(Res.string.explore_section_objects),
-                onTitleClick = actions.onSeeAllObjects,
-                items = content.objects.take(SliderLimit),
-                key = { "object:${it.label}" },
-                truncated = content.objects.size > SliderLimit,
-                seeAllSize = LabelTileWidth to LabelTileWidth,
-            ) { label ->
-                Box(Modifier.width(LabelTileWidth)) {
-                    LabelTileCard(
-                        tile = ExploreLabelTile(label.label, label.assetCount, label.coverAssetId),
-                        baseUrl = baseUrl,
-                        onClick = { actions.onOpenObject(label.label) }
-                    )
+        CollectionSection.Albums -> if (content.albums.isNotEmpty() || content.albumsLoaded) {
+                item(key = "albums") {
+                    if (content.albums.isEmpty()) {
+                        SectionTitle(stringResource(Res.string.albums_title), onClick = actions.onSeeAllAlbums)
+                        EntryCard(
+                            icon = PhotonneIcons.Add,
+                            title = stringResource(Res.string.album_action_new),
+                            subtitle = null,
+                            onClick = actions.onCreateAlbum,
+                            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs)
+                        )
+                    } else {
+                        SliderSection(
+                            title = stringResource(Res.string.albums_title),
+                            onTitleClick = actions.onSeeAllAlbums,
+                            items = content.albums.take(SliderLimit),
+                            key = { "album:${it.id}" },
+                            truncated = content.albums.size > SliderLimit,
+                            seeAllSize = CollectionTileWidth to CollectionTileWidth,
+                        ) { album ->
+                            Box(Modifier.width(CollectionTileWidth)) {
+                                AlbumTile(album = album, baseUrl = baseUrl, onClick = { actions.onOpenAlbum(album) })
+                            }
+                        }
+                    }
                 }
             }
-        }
+        CollectionSection.Folders -> if (content.folders.isNotEmpty()) {
+                item(key = "folders") {
+                    SliderSection(
+                        title = stringResource(Res.string.folders_title),
+                        onTitleClick = actions.onSeeAllFolders,
+                        items = content.folders.take(SliderLimit),
+                        key = { "folder:${it.id}" },
+                        truncated = content.folders.size > SliderLimit,
+                        seeAllSize = CollectionTileWidth to CollectionTileWidth,
+                    ) { folder ->
+                        Box(Modifier.width(CollectionTileWidth)) {
+                            FolderTile(folder = folder, baseUrl = baseUrl, onClick = { actions.onOpenFolder(folder) })
+                        }
+                    }
+                }
+            }
+        CollectionSection.Scenes -> if (content.scenes.isNotEmpty()) {
+                item(key = "scenes") {
+                    SliderSection(
+                        title = stringResource(Res.string.explore_section_scenes),
+                        onTitleClick = actions.onSeeAllScenes,
+                        items = content.scenes.take(SliderLimit),
+                        key = { "scene:${it.label}" },
+                        truncated = content.scenes.size > SliderLimit,
+                        seeAllSize = LabelTileWidth to LabelTileWidth,
+                    ) { label ->
+                        Box(Modifier.width(LabelTileWidth)) {
+                            LabelTileCard(
+                                tile = ExploreLabelTile(label.label, label.assetCount, label.coverAssetId),
+                                baseUrl = baseUrl,
+                                onClick = { actions.onOpenScene(label.label) }
+                            )
+                        }
+                    }
+                }
+            }
+        CollectionSection.Objects -> if (content.objects.isNotEmpty()) {
+                item(key = "objects") {
+                    SliderSection(
+                        title = stringResource(Res.string.explore_section_objects),
+                        onTitleClick = actions.onSeeAllObjects,
+                        items = content.objects.take(SliderLimit),
+                        key = { "object:${it.label}" },
+                        truncated = content.objects.size > SliderLimit,
+                        seeAllSize = LabelTileWidth to LabelTileWidth,
+                    ) { label ->
+                        Box(Modifier.width(LabelTileWidth)) {
+                            LabelTileCard(
+                                tile = ExploreLabelTile(label.label, label.assetCount, label.coverAssetId),
+                                baseUrl = baseUrl,
+                                onClick = { actions.onOpenObject(label.label) }
+                            )
+                        }
+                    }
+                }
+            }
     }
 }
 

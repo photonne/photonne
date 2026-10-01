@@ -3,6 +3,7 @@
 package com.photonne.app
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.pager.HorizontalPager
@@ -1934,10 +1935,36 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 },
             )
         }
+        val layoutStore: com.photonne.app.ui.collections.CollectionsLayoutStore =
+            org.koin.compose.koinInject()
+        val layout by layoutStore.layout.collectAsStateWithLifecycle()
+        val adaptiveOrder = com.photonne.app.ui.collections.adaptiveSectionOrder(
+            albumCount = albumsState.albums.size,
+            personalFolderCount = foldersState.personalFolders.size,
+            sharedFolderCount = foldersState.sharedFolders.size + foldersState.externalRoots.size,
+            organizePendingCount = foldersState.organizePendingCount,
+        )
+        var customizing by androidx.compose.runtime.saveable.rememberSaveable {
+            androidx.compose.runtime.mutableStateOf(false)
+        }
+        if (customizing) {
+            val fullOrder = layout.fullOrder(adaptiveOrder)
+            com.photonne.app.ui.collections.CollectionsCustomizeSheet(
+                order = fullOrder,
+                hidden = layout.hidden,
+                customized = layout.customized,
+                onMove = { section, delta -> layoutStore.move(section, delta, fullOrder) },
+                onToggleHidden = { section, hide -> layoutStore.setHidden(section, hide, fullOrder) },
+                onReset = layoutStore::reset,
+                onDismiss = { customizing = false },
+            )
+        }
         com.photonne.app.ui.collections.CollectionsScreen(
             content = content,
             baseUrl = apiBaseUrl,
             actions = actions,
+            sections = layout.visibleSections(adaptiveOrder),
+            onCustomize = { customizing = true },
             onLoad = {
                 val feedState = memoryFeedViewModel.state.value
                 if (feedState.rows.isEmpty() && !feedState.isLoading &&

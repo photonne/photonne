@@ -7,6 +7,11 @@
     <string name="tab_collections">Colecciones</string>
     <string name="collections_pinned_empty_title">Nada fijado todavía</string>
     <string name="collections_pinned_empty_subtitle">Fija álbumes y carpetas desde su menú ⋮ para tenerlos a mano aquí.</string>
+    <string name="collections_customize">Personalizar Colecciones</string>
+    <string name="collections_customize_subtitle">Ordena las secciones y oculta las que no uses.</string>
+    <string name="collections_customize_reset">Restablecer</string>
+    <string name="collections_move_up">Subir</string>
+    <string name="collections_move_down">Bajar</string>
     <string name="tab_more">Más</string>
 
     <string name="memories_strip_title">Recuerdos</string>
