@@ -1504,10 +1504,12 @@ private enum class MotionPlay { None, Hold, TapOnce }
  * plays.
  *
  * The hold detector lives in its own [pointerInput] layered over the image.
- * It only claims the gesture once the press survives [LIVE_HOLD_THRESHOLD_MS]
- * without moving past touch slop, so quick taps, double-tap-zoom and pinch
- * still reach [ZoomablePagerImage] underneath. The pill is drawn above that
- * layer, so a tap on it never reaches the hold detector.
+ * It only claims the gesture once the press survives the system long-press
+ * timeout without moving past touch slop, so quick taps, double-tap-zoom and
+ * pinch still reach [ZoomablePagerImage] underneath. The pill is drawn above
+ * that layer, so a tap on it never reaches the hold detector. While the still
+ * is zoomed in the hold is off altogether: there the user is inspecting and
+ * panning, and only the pill brings the photo to life.
  */
 @Composable
 private fun LivePhotoPage(
@@ -1546,7 +1548,9 @@ private fun LivePhotoPage(
         // separate pointerInput Box was shadowing the still's zoom gestures, so
         // pinch and double-tap did nothing on a Live Photo. Same node → all the
         // detectors cooperate and the still zooms like any other photo.
-        val holdModifier = if (enabled) {
+        // Con zoom no hay mantener pulsado: moverse por la foto ampliada lleva
+        // pausas que lo disparaban sin querer.
+        val holdModifier = if (enabled && motionScale <= 1f) {
             Modifier.pointerInput(item.id) {
                 detectLivePhotoHold(
                     onHoldStart = { motionPlay = MotionPlay.Hold },
@@ -1669,17 +1673,21 @@ private suspend fun PointerInputScope.detectVerticalDriveGesture(
     }
 }
 
-private const val LIVE_HOLD_THRESHOLD_MS = 180L
-
 /**
- * Waits for a press that is held (without panning past touch slop) for
- * [LIVE_HOLD_THRESHOLD_MS], fires [onHoldStart], then [onHoldEnd] once the
+ * Waits for a press that is held (without panning past touch slop) for the
+ * system long-press timeout, fires [onHoldStart], then [onHoldEnd] once the
  * finger lifts or the gesture cancels. Never consumes the pointer, so the
  * underlying zoom/pan/tap detectors keep working.
+ *
+ * The timeout is the platform's long-press one (~400-500 ms), not a shorter
+ * custom value: most drags start with a brief pause before the finger moves,
+ * and a short gate read that pause as a hold.
  *
  * A second finger means the user is pinching, not holding: the gesture is
  * abandoned before it starts (and an already-running hold ends), otherwise
  * settling two fingers on the photo would play the clip instead of zooming.
+ * Likewise, moving past touch slop once the hold is running ends it: the user
+ * is now dragging (info panel, dismiss, pan), not watching the clip.
  */
 private suspend fun PointerInputScope.detectLivePhotoHold(
     onHoldStart: () -> Unit,
@@ -1694,7 +1702,7 @@ private suspend fun PointerInputScope.detectLivePhotoHold(
             // Hold gate: poll for the threshold while watching for movement.
             // withTimeout returns null-ish via cancellation if the finger
             // lifts/moves first, so we model it by hand with a deadline.
-            val holdResult = withTimeoutOrNull(LIVE_HOLD_THRESHOLD_MS) {
+            val holdResult = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                 var totalPan = 0f
                 while (true) {
                     val event = awaitPointerEvent()
@@ -1716,11 +1724,15 @@ private suspend fun PointerInputScope.detectLivePhotoHold(
             }
 
             // Hold active: wait for release/cancel, or bail if a second finger
-            // lands (the user switched to a pinch mid-hold).
+            // lands (the user switched to a pinch mid-hold) or the finger
+            // starts dragging.
+            var heldPan = 0f
             while (true) {
                 val event = awaitPointerEvent()
                 if (event.changes.all { !it.pressed }) break
                 if (event.changes.count { it.pressed } > 1) break
+                heldPan += event.changes.sumOf { it.positionChange().getDistance().toDouble() }.toFloat()
+                if (heldPan > slop) break
             }
         } finally {
             if (started) onHoldEnd()
