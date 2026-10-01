@@ -37,8 +37,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +78,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.theme.ListRowsSkeleton
+import com.photonne.app.ui.theme.SecondaryActionButton
 import com.photonne.app.ui.theme.Spacing
 
 @Composable
@@ -148,10 +149,12 @@ fun UtilitiesDuplicatesScreen(
                         modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                     ) {
                         item("summary") {
+                            // Neutra como las tarjetas de grupo: primaryContainer
+                            // es "algo está en marcha" en el resto de la app.
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
                             ) {
                                 Column(modifier = Modifier.padding(Spacing.lg)) {
@@ -161,25 +164,22 @@ fun UtilitiesDuplicatesScreen(
                                             state.groups.size,
                                             humanBytes(state.totalWastedBytes)
                                         ),
-                                        style = MaterialTheme.typography.titleSmall
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    Spacer(Modifier.height(Spacing.sm))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-                                    ) {
-                                        OutlinedButton(
-                                            onClick = viewModel::autoSelectKeepingBest,
-                                            enabled = !state.isDeleting,
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Text(stringResource(Res.string.utilities_duplicates_action_auto_select))
-                                        }
-                                        OutlinedButton(
+                                    Spacer(Modifier.height(Spacing.md))
+                                    // Apilados: a medio ancho la etiqueta larga se
+                                    // partía en varias líneas en móvil.
+                                    SecondaryActionButton(
+                                        label = stringResource(Res.string.utilities_duplicates_action_auto_select),
+                                        onClick = viewModel::autoSelectKeepingBest,
+                                        enabled = !state.isDeleting
+                                    )
+                                    if (state.totalSelectedCount > 0) {
+                                        TextButton(
                                             onClick = viewModel::clearSelection,
-                                            enabled = !state.isDeleting &&
-                                                state.totalSelectedCount > 0,
-                                            modifier = Modifier.weight(1f)
+                                            enabled = !state.isDeleting,
+                                            modifier = Modifier.align(Alignment.End)
                                         ) {
                                             Text(stringResource(Res.string.utilities_duplicates_action_clear))
                                         }
