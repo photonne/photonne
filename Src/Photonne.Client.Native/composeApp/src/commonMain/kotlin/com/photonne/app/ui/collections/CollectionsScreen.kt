@@ -62,7 +62,6 @@ import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.explore_section_scenes
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.memories_strip_title
-import com.photonne.app.resources.organize_inbox_card_subtitle
 import com.photonne.app.resources.organize_inbox_count_format
 import com.photonne.app.resources.organize_inbox_title
 import com.photonne.app.resources.people_title
@@ -233,11 +232,6 @@ fun CollectionsScreen(
                     bottom = Spacing.lg + floatingNavBarReservedHeight()
                 )
             ) {
-                if (content.organizePendingCount > 0) {
-                    item(key = "organize") {
-                        OrganizeCard(count = content.organizePendingCount, onClick = actions.onOpenOrganize)
-                    }
-                }
                 collectionSections(content, baseUrl, actions, sections)
                 item(key = "library") { LibraryRows(actions) }
                 item(key = "customize") {
@@ -358,11 +352,22 @@ private fun LazyListScope.collectionSections(
                     }
                 }
             }
-        CollectionSection.Folders -> if (content.folders.isNotEmpty()) {
+        // "Para organizar" va dentro de Carpetas: es su bandeja (fotos de la copia
+        // del móvil por mover a una carpeta). La sección sale aunque aún no haya
+        // carpetas si hay algo pendiente.
+        CollectionSection.Folders -> if (content.folders.isNotEmpty() || content.organizePendingCount > 0) {
                 item(key = "folders") {
                     SliderSection(
                         title = stringResource(Res.string.folders_title),
                         onTitleClick = actions.onSeeAllFolders,
+                        subheader = if (content.organizePendingCount > 0) {
+                            {
+                                OrganizeRow(
+                                    count = content.organizePendingCount,
+                                    onClick = actions.onOpenOrganize
+                                )
+                            }
+                        } else null,
                         items = content.folders.take(SliderLimit),
                         key = { "folder:${it.id}" },
                         truncated = content.folders.size > SliderLimit,
@@ -458,11 +463,14 @@ private fun <T> SliderSection(
     truncated: Boolean,
     seeAllSize: Pair<Dp, Dp>,
     spacing: Dp = Spacing.md,
+    /** Entre el título y el slider (p. ej. "Para organizar" en Carpetas). */
+    subheader: (@Composable () -> Unit)? = null,
     itemContent: @Composable (T) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         SectionTitle(title, onClick = onTitleClick)
-        LazyRow(
+        subheader?.invoke()
+        if (items.isNotEmpty()) LazyRow(
             contentPadding = PaddingValues(horizontal = Spacing.lg),
             horizontalArrangement = Arrangement.spacedBy(spacing),
         ) {
@@ -597,23 +605,43 @@ internal fun PinnedTile(entry: PinnedEntry, baseUrl: String, onClick: () -> Unit
     }
 }
 
-/** "Para organizar" arriba del todo, solo con pendientes: es lo único que pide acción. */
+/**
+ * "Para organizar" dentro de la sección Carpetas: fila compacta en el
+ * contenedor primario (pide acción), con el recuento a la vista.
+ */
 @Composable
-private fun OrganizeCard(count: Int, onClick: () -> Unit) {
-    EntryCard(
-        icon = Icons.Outlined.Inbox,
-        title = stringResource(Res.string.organize_inbox_title),
-        subtitle = stringResource(Res.string.organize_inbox_card_subtitle),
-        onClick = onClick,
-        emphasized = true,
-        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm)
+private fun OrganizeRow(count: Int, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = Spacing.lg, end = Spacing.lg, bottom = Spacing.sm)
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(onClick = onClick)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = stringResource(Res.string.organize_inbox_count_format, count),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+        Icon(
+            imageVector = Icons.Outlined.Inbox,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Column(modifier = Modifier.weight(1f).padding(start = Spacing.md)) {
+            Text(
+                text = stringResource(Res.string.organize_inbox_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Text(
+                text = stringResource(Res.string.organize_inbox_count_format, count),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+        Icon(
+            imageVector = PhotonneIcons.Chevron,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
         )
     }
 }
