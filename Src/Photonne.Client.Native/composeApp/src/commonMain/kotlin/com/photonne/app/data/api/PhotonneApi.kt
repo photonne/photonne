@@ -255,7 +255,12 @@ data class PendingEnrichmentAssetDto(
 data class PendingEnrichmentPage(
     val items: List<PendingEnrichmentAssetDto> = emptyList(),
     val nextCursor: String? = null,
-    val totalAssets: Int = 0
+    val totalAssets: Int = 0,
+    /** Backup assets the server will still work on by itself. Null from a
+     *  server that predates the split. */
+    val inFlightAssets: Int? = null,
+    /** Backup assets with a task out of attempts. */
+    val failedAssets: Int? = null
 )
 
 @Serializable

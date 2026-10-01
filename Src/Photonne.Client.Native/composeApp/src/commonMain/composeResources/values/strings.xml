@@ -1304,6 +1304,10 @@
         <item quantity="one">%1$d archivo procesándose en el servidor</item>
         <item quantity="other">%1$d archivos procesándose en el servidor</item>
     </plurals>
+    <plurals name="backup_status_enrichment_failed_row">
+        <item quantity="one">%1$d archivo no se pudo procesar en el servidor</item>
+        <item quantity="other">%1$d archivos no se pudieron procesar en el servidor</item>
+    </plurals>
     <string name="backup_last_run_manual">Última copia: %1$s</string>
     <string name="backup_last_run_background">Última copia automática: %1$s</string>
     <string name="backup_last_run_counts">%1$d subidos · %2$d fallidos</string>
@@ -1389,7 +1393,7 @@
 
     <!-- Enrichment status screen -->
     <string name="enrichment_screen_title">Estado de enriquecimiento</string>
-    <string name="enrichment_summary">%1$d pendientes · %2$d fallidas</string>
+    <string name="enrichment_summary">%1$d procesándose · %2$d con errores</string>
     <string name="enrichment_empty">Todos los assets están enriquecidos.</string>
     <string name="enrichment_load_error">No se pudo cargar el estado: %1$s</string>
     <string name="enrichment_retry_all">Reintentar fallidas</string>

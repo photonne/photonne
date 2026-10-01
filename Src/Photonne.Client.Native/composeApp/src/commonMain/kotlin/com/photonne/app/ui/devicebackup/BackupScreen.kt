@@ -40,8 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.HourglassEmpty
 import com.photonne.app.data.devicebackup.DeviceGallery
 import com.photonne.app.data.devicebackup.DeviceMediaSyncState
@@ -69,6 +72,7 @@ import com.photonne.app.resources.backup_last_run_background
 import com.photonne.app.resources.backup_last_run_counts
 import com.photonne.app.resources.backup_last_run_manual
 import com.photonne.app.resources.backup_status_all_synced
+import com.photonne.app.resources.backup_status_enrichment_failed_row
 import com.photonne.app.resources.backup_status_enrichment_row
 import com.photonne.app.resources.backup_status_failures
 import com.photonne.app.resources.backup_status_pending_sized
@@ -287,7 +291,8 @@ fun BackupScreen(
                     state = state,
                     hasChecked = hasChecked,
                     pendingCount = pendingCount,
-                    enrichmentCount = enrichmentState.totalAssets,
+                    enrichmentCount = enrichmentState.inFlightAssets,
+                    enrichmentFailedCount = enrichmentState.failedAssets,
                     onUploadNow = viewModel::syncAllPending,
                     onOpenPending = onOpenPending,
                     onOpenEnrichment = onOpenEnrichment,
@@ -472,6 +477,7 @@ private fun BackupStatusCard(
     hasChecked: Boolean,
     pendingCount: Int,
     enrichmentCount: Int,
+    enrichmentFailedCount: Int,
     onUploadNow: () -> Unit,
     onOpenPending: () -> Unit,
     onOpenEnrichment: () -> Unit,
@@ -650,35 +656,27 @@ private fun BackupStatusCard(
                 }
             }
 
-            // ── Server-side enrichment queue (secondary) ────────────────
+            // ── Server-side enrichment (secondary) ──────────────────────
+            // Two rows, not one: work the server will still do by itself, and
+            // files out of attempts. Counted together, failures that nobody
+            // would ever retry kept "procesándose" on screen for good.
             if (enrichmentCount > 0) {
                 Spacer(Modifier.size(12.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onOpenEnrichment),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.HourglassEmpty,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(IconSize.chip)
-                    )
-                    Spacer(Modifier.size(8.dp))
-                    Text(
-                        text = pluralStringResource(Res.plurals.backup_status_enrichment_row, enrichmentCount, enrichmentCount),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        imageVector = PhotonneIcons.Chevron,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(IconSize.chip)
-                    )
-                }
+                EnrichmentRow(
+                    icon = Icons.Filled.HourglassEmpty,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    text = pluralStringResource(Res.plurals.backup_status_enrichment_row, enrichmentCount, enrichmentCount),
+                    onClick = onOpenEnrichment
+                )
+            }
+            if (enrichmentFailedCount > 0) {
+                Spacer(Modifier.size(12.dp))
+                EnrichmentRow(
+                    icon = Icons.Filled.ErrorOutline,
+                    iconTint = MaterialTheme.colorScheme.error,
+                    text = pluralStringResource(Res.plurals.backup_status_enrichment_failed_row, enrichmentFailedCount, enrichmentFailedCount),
+                    onClick = onOpenEnrichment
+                )
             }
 
             // ── Actions ─────────────────────────────────────────────────
@@ -1053,5 +1051,40 @@ private fun NotificationsDeniedCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EnrichmentRow(
+    icon: ImageVector,
+    iconTint: Color,
+    text: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(IconSize.chip)
+        )
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = PhotonneIcons.Chevron,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(IconSize.chip)
+        )
     }
 }

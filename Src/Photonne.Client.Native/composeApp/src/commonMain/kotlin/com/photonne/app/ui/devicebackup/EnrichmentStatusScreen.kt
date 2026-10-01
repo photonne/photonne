@@ -131,8 +131,8 @@ fun EnrichmentStatusScreen(
                             Text(
                                 text = stringResource(
                                     Res.string.enrichment_summary,
-                                    state.totalInFlight,
-                                    state.totalFailed
+                                    state.inFlightAssets,
+                                    state.failedAssets
                                 ),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface

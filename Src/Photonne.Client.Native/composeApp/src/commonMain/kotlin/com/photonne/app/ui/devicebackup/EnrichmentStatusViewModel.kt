@@ -3,6 +3,7 @@ package com.photonne.app.ui.devicebackup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.api.PendingEnrichmentAssetDto
+import com.photonne.app.data.api.PendingEnrichmentPage
 import com.photonne.app.data.devicebackup.EnrichmentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,14 +26,23 @@ data class EnrichmentStatusUiState(
     val isLoading: Boolean = false,
     val items: List<EnrichmentAssetItem> = emptyList(),
     val totalAssets: Int = 0,
+    /** Assets the server is still working on (queued, running or retrying). */
+    val inFlightAssets: Int = 0,
+    /** Assets with a task out of attempts: only a manual retry moves them. */
+    val failedAssets: Int = 0,
     val nextCursor: String? = null,
     val loadError: String? = null
-) {
-    /** Sum of failed counts across visible items. Used by the screen header. */
-    val totalFailed: Int get() = items.sumOf { it.asset.failed }
-    /** Sum of pending+processing counts across visible items. */
-    val totalInFlight: Int get() = items.sumOf { it.asset.pending + it.asset.processing }
-}
+)
+
+/**
+ * A server that predates the split only sends [PendingEnrichmentPage.totalAssets],
+ * which mixed both; showing it as "processing" is what it always did.
+ */
+private fun EnrichmentStatusUiState.withCounts(page: PendingEnrichmentPage) = copy(
+    totalAssets = page.totalAssets,
+    inFlightAssets = page.inFlightAssets ?: page.totalAssets,
+    failedAssets = page.failedAssets ?: 0
+)
 
 class EnrichmentStatusViewModel(
     private val repository: EnrichmentRepository
@@ -50,9 +60,8 @@ class EnrichmentStatusViewModel(
                         it.copy(
                             isLoading = false,
                             items = page.items.map { dto -> EnrichmentAssetItem(asset = dto) },
-                            totalAssets = page.totalAssets,
                             nextCursor = page.nextCursor
-                        )
+                        ).withCounts(page)
                     }
                 }
                 .onFailure { ex ->
@@ -116,9 +125,8 @@ class EnrichmentStatusViewModel(
                     _state.update {
                         it.copy(
                             items = page.items.map { dto -> EnrichmentAssetItem(asset = dto) },
-                            totalAssets = page.totalAssets,
                             nextCursor = page.nextCursor
-                        )
+                        ).withCounts(page)
                     }
                 }
             // Swallow errors silently: the user already saw the retry succeed; a

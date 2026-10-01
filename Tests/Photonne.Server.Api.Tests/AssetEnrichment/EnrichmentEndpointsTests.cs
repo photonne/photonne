@@ -47,7 +47,9 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
     private sealed record PendingResponse(
         IReadOnlyList<PendingAssetDto> Items,
         DateTime? NextCursor,
-        int TotalAssets);
+        int TotalAssets,
+        int InFlightAssets,
+        int FailedAssets);
 
     private sealed record RetryAllResponse(Guid AssetId, int Retried);
 
@@ -57,14 +59,15 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
         Guid ownerId,
         string fileName,
         (AssetEnrichmentType type, EnrichmentStatus status, string? error)[] tasks,
-        DateTime? fileCreatedAt = null)
+        DateTime? fileCreatedAt = null,
+        string? fullPath = null)
     {
         return await WithDbContextAsync(async db =>
         {
             var asset = new Asset
             {
                 FileName = fileName,
-                FullPath = $"/assets/users/test/{Guid.NewGuid()}.jpg",
+                FullPath = fullPath ?? $"/assets/users/test/{Guid.NewGuid()}.jpg",
                 FileSize = 1024,
                 Checksum = Guid.NewGuid().ToString("N"),
                 Type = AssetType.Image,
@@ -90,6 +93,10 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
             return asset;
         });
     }
+
+    // The pending listing only covers the caller's MobileBackup subtree.
+    private static string BackupPath(TestUser user) =>
+        $"/assets/users/{user.Username}/MobileBackup/Pixel/{Guid.NewGuid()}.jpg";
 
     // ─── GET /api/assets/{id}/enrichment ─────────────────────────────────────
 
@@ -303,18 +310,18 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
         {
             (AssetEnrichmentType.Exif, EnrichmentStatus.Completed, (string?)null),
             (AssetEnrichmentType.Thumbnails, EnrichmentStatus.Pending, (string?)null),
-        });
+        }, fullPath: BackupPath(user));
         var failedAsset = await SeedAssetWithTasksAsync(user.Id, "failed.jpg", new[]
         {
             (AssetEnrichmentType.Thumbnails, EnrichmentStatus.Failed, (string?)"ffmpeg crashed"),
             (AssetEnrichmentType.FaceRecognition, EnrichmentStatus.Failed, (string?)"no model"),
-        });
+        }, fullPath: BackupPath(user));
         // Fully completed asset — must NOT appear in the listing.
         await SeedAssetWithTasksAsync(user.Id, "done.jpg", new[]
         {
             (AssetEnrichmentType.Exif, EnrichmentStatus.Completed, (string?)null),
             (AssetEnrichmentType.Thumbnails, EnrichmentStatus.Completed, (string?)null),
-        });
+        }, fullPath: BackupPath(user));
 
         var response = await client.GetAsync("/api/assets/enrichment/pending?pageSize=50");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -322,6 +329,8 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
 
         Assert.NotNull(body);
         Assert.Equal(2, body!.TotalAssets);
+        Assert.Equal(1, body.InFlightAssets);
+        Assert.Equal(1, body.FailedAssets);
         Assert.Equal(2, body.Items.Count);
 
         var pendingItem = body.Items.First(i => i.AssetId == pendingAsset.Id);
@@ -341,11 +350,12 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
     public async Task ListPending_DoesNotLeakOtherUsersAssets()
     {
         var (owner, _) = await CreateAuthenticatedUserAsync();
+        var ownerPath = BackupPath(owner);
         var (_, intruderClient) = await CreateAuthenticatedUserAsync();
         await SeedAssetWithTasksAsync(owner.Id, "secret.jpg", new[]
         {
             (AssetEnrichmentType.Thumbnails, EnrichmentStatus.Failed, (string?)"boom"),
-        });
+        }, fullPath: ownerPath);
 
         var response = await intruderClient.GetAsync("/api/assets/enrichment/pending?pageSize=50");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -366,7 +376,8 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
             var a = await SeedAssetWithTasksAsync(
                 user.Id, $"asset-{i}.jpg",
                 new[] { (AssetEnrichmentType.Thumbnails, EnrichmentStatus.Failed, (string?)"err") },
-                fileCreatedAt: baseDate.AddDays(i));
+                fileCreatedAt: baseDate.AddDays(i),
+                fullPath: BackupPath(user));
             assetIds.Add(a.Id);
         }
 
@@ -391,5 +402,75 @@ public sealed class EnrichmentEndpointsTests : IntegrationTestBase
         Assert.Equal(assetIds[1], secondPage.Items[0].AssetId);
         Assert.Equal(assetIds[0], secondPage.Items[1].AssetId);
         Assert.Null(secondPage.NextCursor); // no more pages.
+    }
+
+    [Fact]
+    public async Task ListPending_IgnoresAssetsOutsideMobileBackup()
+    {
+        var (user, client) = await CreateAuthenticatedUserAsync();
+        await SeedAssetWithTasksAsync(user.Id, "library.jpg", new[]
+        {
+            (AssetEnrichmentType.Thumbnails, EnrichmentStatus.Pending, (string?)null),
+        }, fullPath: $"/assets/users/{user.Username}/Viajes/{Guid.NewGuid()}.jpg");
+        var backup = await SeedAssetWithTasksAsync(user.Id, "backup.jpg", new[]
+        {
+            (AssetEnrichmentType.Thumbnails, EnrichmentStatus.Pending, (string?)null),
+        }, fullPath: BackupPath(user));
+
+        var body = await client.GetFromJsonAsync<PendingResponse>("/api/assets/enrichment/pending?pageSize=50");
+
+        Assert.NotNull(body);
+        Assert.Equal(1, body!.TotalAssets);
+        Assert.Equal(1, body.InFlightAssets);
+        Assert.Equal(backup.Id, Assert.Single(body.Items).AssetId);
+    }
+
+    [Fact]
+    public async Task ListPending_SupersededFailureAndScheduledRetry_AreNotErrors()
+    {
+        var (user, client) = await CreateAuthenticatedUserAsync();
+        var now = DateTime.UtcNow;
+
+        // Failed once, then a fresh row completed: the old Failed row stays
+        // behind and used to keep the asset listed forever.
+        var recovered = await SeedAssetWithTasksAsync(user.Id, "recovered.jpg",
+            Array.Empty<(AssetEnrichmentType, EnrichmentStatus, string?)>(), fullPath: BackupPath(user));
+        // Failed with a retry on the calendar: still the queue's business.
+        var retrying = await SeedAssetWithTasksAsync(user.Id, "retrying.jpg",
+            Array.Empty<(AssetEnrichmentType, EnrichmentStatus, string?)>(), fullPath: BackupPath(user));
+
+        await WithDbContextAsync(async db =>
+        {
+            db.AssetEnrichmentTasks.AddRange(
+                new AssetEnrichmentTask
+                {
+                    AssetId = recovered.Id, TaskType = AssetEnrichmentType.Thumbnails,
+                    Status = EnrichmentStatus.Failed, AttemptCount = 3, CreatedAt = now.AddDays(-2),
+                },
+                new AssetEnrichmentTask
+                {
+                    AssetId = recovered.Id, TaskType = AssetEnrichmentType.Thumbnails,
+                    Status = EnrichmentStatus.Completed, CreatedAt = now.AddDays(-1),
+                },
+                new AssetEnrichmentTask
+                {
+                    AssetId = retrying.Id, TaskType = AssetEnrichmentType.FaceRecognition,
+                    Status = EnrichmentStatus.Failed, AttemptCount = 1, CreatedAt = now,
+                    NextRetryAt = now.AddMinutes(10),
+                });
+            await db.SaveChangesAsync();
+        });
+
+        var body = await client.GetFromJsonAsync<PendingResponse>("/api/assets/enrichment/pending?pageSize=50");
+
+        Assert.NotNull(body);
+        Assert.Equal(1, body!.TotalAssets);
+        Assert.Equal(1, body.InFlightAssets);
+        Assert.Equal(0, body.FailedAssets);
+        var item = Assert.Single(body.Items);
+        Assert.Equal(retrying.Id, item.AssetId);
+        Assert.Equal(1, item.Pending);
+        Assert.Equal(0, item.Failed);
+        Assert.Empty(item.FailedTaskTypes);
     }
 }

@@ -1262,6 +1262,10 @@
         <item quantity="one">%1$d file processing on the server</item>
         <item quantity="other">%1$d files processing on the server</item>
     </plurals>
+    <plurals name="backup_status_enrichment_failed_row">
+        <item quantity="one">%1$d file couldn\'t be processed on the server</item>
+        <item quantity="other">%1$d files couldn\'t be processed on the server</item>
+    </plurals>
     <string name="backup_last_run_manual">Last backup: %1$s</string>
     <string name="backup_last_run_background">Last automatic backup: %1$s</string>
     <string name="backup_last_run_counts">%1$d uploaded · %2$d failed</string>
@@ -1347,7 +1351,7 @@
 
     <!-- Enrichment status screen -->
     <string name="enrichment_screen_title">Enrichment status</string>
-    <string name="enrichment_summary">%1$d pending · %2$d failed</string>
+    <string name="enrichment_summary">%1$d processing · %2$d with errors</string>
     <string name="enrichment_empty">All assets are enriched.</string>
     <string name="enrichment_load_error">Couldn\'t load status: %1$s</string>
     <string name="enrichment_retry_all">Retry failed</string>
