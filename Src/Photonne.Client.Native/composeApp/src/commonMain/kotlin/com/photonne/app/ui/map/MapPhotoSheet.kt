@@ -79,6 +79,7 @@ import com.photonne.app.ui.grid.AssetGridCell
 import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import com.photonne.app.ui.main.chromeSolidColor
 import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.ChromeElevation
 import com.photonne.app.ui.theme.EmptyState
@@ -119,6 +120,8 @@ internal fun MapPhotoSheet(
     selectedIds: Set<String>,
     isMutating: Boolean,
     hazeState: HazeState,
+    /** Fondo liso en vez de cristal (mientras el mapa se mueve). */
+    solidBackground: Boolean,
     bottomPadding: Dp,
     onPeekMeasured: (Int) -> Unit,
     onPeekClick: () -> Unit,
@@ -187,7 +190,12 @@ internal fun MapPhotoSheet(
         ) {
             Box {
                 // El mismo cristal que el cromo flotante: difumina el mapa de detrás.
-                Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
+                Box(
+                    Modifier.matchParentSize().then(
+                        if (solidBackground) Modifier.background(chromeSolidColor())
+                        else Modifier.chromeCapsuleBackdrop(hazeState = hazeState)
+                    )
+                )
                 Column(Modifier.fillMaxSize()) {
                     // Lo que asoma en reposo: asa + título (o la cabecera de
                     // selección). Tocarlo en reposo abre la hoja a media altura.

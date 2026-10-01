@@ -104,6 +104,10 @@ fun MapScreen(
     DisposableEffect(viewModel) { onDispose { viewModel.clearFocus() } }
 
     var mapSizePx by remember { mutableStateOf(IntSize.Zero) }
+    // Mientras el mapa se mueve la hoja deja el cristal por un fondo liso: el
+    // blur de casi media pantalla, recalculado en cada frame del arrastre,
+    // encarecía tanto el frame que el mapa temblaba.
+    var mapMoving by remember { mutableStateOf(false) }
 
     // ── Hoja persistente ────────────────────────────────────────────────
     // Tres anclajes: asomada (asa + resumen sobre la nav flotante), media
@@ -233,6 +237,7 @@ fun MapScreen(
                 onPointOpen(ordered, ordered.indexOfFirst { it.id == tapped.id }.coerceAtLeast(0))
             },
             tileApiKey = state.tileApiKey,
+            onMovingChanged = { mapMoving = it },
             modifier = Modifier.fillMaxSize().hazeSource(mapHazeState)
         )
 
@@ -357,6 +362,7 @@ fun MapScreen(
                 selectedIds = state.selection,
                 isMutating = state.isBulkMutating,
                 hazeState = mapHazeState,
+                solidBackground = mapMoving,
                 bottomPadding = navReserved,
                 onPeekMeasured = { peekContentPx = it },
                 onPeekClick = { animateSheetTo(MapSheetValue.Half) },

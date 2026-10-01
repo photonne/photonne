@@ -140,6 +140,12 @@ fun OsmMap(
      * REQUIRED"; vacía o nula se piden igual (el mapa sigue siendo usable).
      */
     tileApiKey: String? = null,
+    /**
+     * true mientras el mapa se mueve por el dedo o por la inercia, false al
+     * pararse. Lo usa la pantalla para abaratar lo que se pinta encima (el
+     * cristal de la hoja) durante el movimiento.
+     */
+    onMovingChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val baseTemplate = if (darkTiles) TILE_URL_TEMPLATE_DARK else TILE_URL_TEMPLATE_LIGHT
@@ -162,6 +168,7 @@ fun OsmMap(
     val currentZoom by rememberUpdatedState(zoom)
     val currentOnCenterChanged by rememberUpdatedState(onCenterChanged)
     val currentOnZoomChanged by rememberUpdatedState(onZoomChanged)
+    val currentOnMovingChanged by rememberUpdatedState(onMovingChanged)
 
     // Visual scale + pivot. Lives at `1f` while the user is idle on an
     // integer zoom; goes to the live pinch ratio during a gesture;
@@ -245,6 +252,14 @@ fun OsmMap(
                     var slopZoom = 1f
                     var slopPan = Offset.Zero
                     val startZoom = currentZoom
+                    // El gesto lleva su propio centro: leer `currentCenterLat`
+                    // en cada evento usaba el último centro RECOMPUESTO, y si
+                    // llegaban dos eventos en un mismo frame el segundo partía
+                    // de un centro viejo, perdía su desplazamiento y el mapa
+                    // temblaba (más cuanto más caro el frame).
+                    var gestureCenterW = project(
+                        LatLng(currentCenterLat, currentCenterLng), startZoom
+                    )
                     var localScale = pinchScale
                     var lastCentroidPx = Offset.Zero
                     var hasCentroid = false
@@ -265,6 +280,7 @@ fun OsmMap(
                             val panMotion = slopPan.getDistance()
                             if (zoomMotion > touchSlop || panMotion > touchSlop) {
                                 pastTouchSlop = true
+                                currentOnMovingChanged(true)
                             }
                         }
 
@@ -288,16 +304,11 @@ fun OsmMap(
                         // finger 1:1 with the content under a
                         // fractional residual.
                         if (panChange != Offset.Zero && localScale > 0f) {
-                            val centerW = project(
-                                LatLng(currentCenterLat, currentCenterLng), startZoom
+                            gestureCenterW = WorldPx(
+                                gestureCenterW.x - panChange.x / localScale,
+                                gestureCenterW.y - panChange.y / localScale
                             )
-                            val unproj = unproject(
-                                WorldPx(
-                                    centerW.x - panChange.x / localScale,
-                                    centerW.y - panChange.y / localScale
-                                ),
-                                startZoom
-                            )
+                            val unproj = unproject(gestureCenterW, startZoom)
                             currentOnCenterChanged(unproj.latitude, unproj.longitude)
                         }
 
@@ -326,9 +337,7 @@ fun OsmMap(
                     val zoomDelta = newZoom - startZoom
 
                     if (zoomDelta != 0 && hasCentroid && size != IntSize.Zero) {
-                        val centerW = project(
-                            LatLng(currentCenterLat, currentCenterLng), startZoom
-                        )
+                        val centerW = gestureCenterW
                         val offsetX = lastCentroidPx.x - size.width / 2.0
                         val offsetY = lastCentroidPx.y - size.height / 2.0
                         val scaleFactor = 2.0.pow(zoomDelta)
@@ -356,6 +365,9 @@ fun OsmMap(
                         if (speed > 300f) {
                             val flingZoom = currentZoom
                             flingJob.value = scope.launch {
+                                // Mismo motivo que el gesto: la inercia acumula
+                                // su centro en vez de releer el recompuesto.
+                                var flingCenterW = gestureCenterW
                                 var lastValue = Offset.Zero
                                 AnimationState(
                                     typeConverter = Offset.VectorConverter,
@@ -364,21 +376,26 @@ fun OsmMap(
                                 ).animateDecay(exponentialDecay(frictionMultiplier = 1.4f)) {
                                     val delta = value - lastValue
                                     lastValue = value
-                                    val centerW = project(
-                                        LatLng(currentCenterLat, currentCenterLng),
-                                        flingZoom
+                                    flingCenterW = WorldPx(
+                                        flingCenterW.x - delta.x,
+                                        flingCenterW.y - delta.y
                                     )
-                                    val unproj = unproject(
-                                        WorldPx(centerW.x - delta.x, centerW.y - delta.y),
-                                        flingZoom
-                                    )
+                                    val unproj = unproject(flingCenterW, flingZoom)
                                     currentOnCenterChanged(
                                         unproj.latitude, unproj.longitude
                                     )
                                 }
-                                flingJob.value = null
+                            }.also { job ->
+                                job.invokeOnCompletion {
+                                    if (flingJob.value === job) flingJob.value = null
+                                    currentOnMovingChanged(false)
+                                }
                             }
+                        } else if (pastTouchSlop) {
+                            currentOnMovingChanged(false)
                         }
+                    } else if (pastTouchSlop) {
+                        currentOnMovingChanged(false)
                     }
 
                     // Glide the residual back to 1f so the integer
