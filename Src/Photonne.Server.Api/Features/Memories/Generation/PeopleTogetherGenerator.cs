@@ -102,7 +102,7 @@ internal sealed class PeopleTogetherGenerator : IMemoryGenerator
                 Kind,
                 // The ids are already ordered, so the key is stable no matter
                 // which way round the pair came out of the fold.
-                dedupeKey: $"together:{a}:{b}",
+                dedupeKey: PeopleMemoryKeys.Together(a, b),
                 // Same row as PersonThroughYears — see the note there.
                 themeKey: "people",
                 groupTitle: "Personas",

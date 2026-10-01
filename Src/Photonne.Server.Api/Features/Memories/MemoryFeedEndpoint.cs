@@ -39,7 +39,7 @@ public class MemoryFeedEndpoint : IEndpoint
         app.MapGet("/api/memories", Handle)
             .WithName("GetMemoryFeed")
             .WithTags("Memories")
-            .WithDescription("Returns the user's generated memories, best first")
+            .WithDescription("Returns the user's generated memories, best first (personId: only the memories that person is in)")
             .RequireAuthorization();
     }
 
@@ -48,6 +48,7 @@ public class MemoryFeedEndpoint : IEndpoint
         ClaimsPrincipal user,
         [FromQuery] string? kind,
         [FromQuery] int? limit,
+        [FromQuery] Guid? personId,
         CancellationToken ct)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -65,6 +66,17 @@ public class MemoryFeedEndpoint : IEndpoint
             if (!Enum.TryParse<MemoryKind>(kind, ignoreCase: true, out var parsed))
                 return Results.BadRequest(new { message = $"Unknown memory kind '{kind}'." });
             query = query.Where(m => m.Kind == parsed);
+        }
+
+        // The memories a person is in ("Martina a lo largo de los años", "Martina
+        // y Joan"), for their page. Read off the dedupe key the generators write:
+        // the person is already in it, so no join table is needed.
+        if (personId is Guid pid)
+        {
+            var years = Generation.PeopleMemoryKeys.Years(pid);
+            var id = pid.ToString();
+            query = query.Where(m => m.DedupeKey == years ||
+                (m.DedupeKey.StartsWith(Generation.PeopleMemoryKeys.TogetherPrefix) && m.DedupeKey.Contains(id)));
         }
 
         var items = await query

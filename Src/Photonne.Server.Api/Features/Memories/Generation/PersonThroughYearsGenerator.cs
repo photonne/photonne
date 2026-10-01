@@ -62,7 +62,7 @@ internal sealed class PersonThroughYearsGenerator : IMemoryGenerator
                 // Keyed on the person, not the year span: the span grows every
                 // time they appear again, and a key that moves would orphan the
                 // row and resurrect a dismissed card.
-                dedupeKey: $"person:{person.Id}:years",
+                dedupeKey: PeopleMemoryKeys.Years(person.Id),
                 // One row for everyone, shared with PeopleTogether: "Martina" and
                 // "Martina y Joan" are the same thought, and a row per kind would
                 // split them for a reason only the enum cares about.
