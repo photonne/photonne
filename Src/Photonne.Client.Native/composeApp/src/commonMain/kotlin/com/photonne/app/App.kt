@@ -1048,9 +1048,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     com.photonne.app.ui.selection.SelectionShortcutsHandler(onSelectAll = selectAllShortcut)
 
-    // ---- Horizontal swipe between the primary tabs ----
-    // The bottom-nav tabs, in bar order, become pages of a HorizontalPager so a
-    // left/right drag glides between Fotos · Colecciones · Más. Buscar is not a
+    // ---- Primary tabs ----
+    // The bottom-nav tabs, in bar order, are pages of a HorizontalPager (no
+    // swipe; see AuthenticatedTabsPager): Fotos · Colecciones · Más. Buscar is not a
     // nav tab (it has no page), and neither are "Todos los álbumes" / "Todas las
     // carpetas": they open as an overlay like the detail screens and subscreens.
     val navTabs = remember {
@@ -1068,35 +1068,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         appState.selectedTab == MainTab.Albums ||
         appState.selectedTab == MainTab.Folders ||
         appState.selectedTab == MainTab.Search
-    // Only allow the horizontal tab-swipe on a bare top-level tab: never while a
-    // detail, Buscar, a subscreen or a multi-select session owns the screen —
-    // those render as an opaque overlay and take the horizontal gesture (paging
-    // through photos, panning a map, selecting items) for themselves.
-    //
-    // Se mira el overlay A LA VISTA, no `selectedAlbum`/`selectedFolder` a secas:
-    // un álbum o una carpeta siguen abiertos en su pestaña al saltar a otra (al
-    // volver se retoman), y contarlos aquí dejaba el gesto muerto en las cuatro
-    // pestañas hasta volver a cerrarlos.
-    //
-    // Colecciones no desliza (decisión de producto): sus filas son sliders
-    // horizontales y el gesto de pestaña les robaría el arrastre.
-    val canSwipeTabs = !overlayVisible &&
-        appState.selectedTab != MainTab.Collections &&
-        !timelineState.isSelectionActive &&
-        !albumsState.isSelectionActive &&
-        !foldersState.isSelectionActive
-    // The tab whose chrome (top bar + immersive edge-to-edge padding) should show
-    // *right now*. While a swipe is in flight we follow the pager's most-visible
-    // page (which flips at the half-way point) rather than `selectedTab` (which
-    // only updates once the swipe settles): otherwise the incoming page snaps its
-    // top padding on landing and the grid jumps up by the app-bar height. Any
-    // overlay (detail / Buscar / subscreen / selection) pins it back to
-    // selectedTab so those never inherit a neighbour's chrome mid-drag.
-    val chromeTab = if (canSwipeTabs) {
-        navTabs.getOrNull(mainPagerState.currentPage) ?: appState.selectedTab
-    } else {
-        appState.selectedTab
-    }
+    // Sin deslizar entre pestañas: con Fotos · Colecciones · Más, y Colecciones
+    // llena de sliders horizontales, el gesto ya no aportaba y robaba arrastres.
+    // El cromo sigue siempre a la pestaña elegida.
+    val chromeTab = appState.selectedTab
     // Identidad del destino que ocupa el overlay. Cambiarla es lo que dispara la
     // transición de entrada; navegar dentro del MISMO destino (abrir el visor,
     // seleccionar fotos) la deja quieta.
@@ -1312,13 +1287,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     // Which primary tab is currently showing its immersive scrollable list (no
     // open detail, no selection, no overriding subscreen). Each drives the
-    // shared bottom nav's hide-on-scroll + edge-to-edge behaviour. Keyed off
-    // [chromeTab] so the padding tracks the swipe instead of snapping on settle.
-    //
-    // "Detalle abierto" es el detalle A LA VISTA (selectedTab), no el álbum o la
-    // carpeta que se quedaron abiertos en su pestaña: al deslizar hacia ella lo
-    // que asoma bajo el dedo es la lista, y debe ir a sangre como siempre; el
-    // detalle solo vuelve a tapar al asentar el gesto.
+    // shared bottom nav's hide-on-scroll + edge-to-edge behaviour.
     val timelineImmersive = chromeTab == MainTab.Timeline &&
         appState.moreSubscreen == null &&
         !timelineState.isSelectionActive
@@ -1379,21 +1348,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         (folderDetailState.isSelectionActive ||
             folderDetailState.isSubfolderSelectionActive)
 
-    // Tap on a nav tab (or any programmatic tab change) glides the pager over.
+    // Tap on a nav tab (or any programmatic tab change) jumps the pager there.
     // Álbumes/Carpetas dejan el pager en Colecciones, que es lo que asoma al cerrarlas.
     LaunchedEffect(appState.selectedTab) {
         val idx = navTabs.indexOf(appState.selectedTab.navTab())
         if (idx >= 0 && mainPagerState.currentPage != idx) {
-            mainPagerState.animateScrollToPage(idx)
-        }
-    }
-    // A settled swipe adopts that page as the active tab, running the same side
-    // effects a tap would. Guarded so a programmatic settle (or being parked on
-    // Buscar) never fights the effect above.
-    LaunchedEffect(mainPagerState.settledPage) {
-        val tab = navTabs.getOrNull(mainPagerState.settledPage)
-        if (tab != null && tab != appState.selectedTab && appState.selectedTab in navTabs) {
-            appState.switchTab(tab)
+            mainPagerState.scrollToPage(idx)
         }
     }
 
@@ -1523,7 +1483,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         apiBaseUrl = apiBaseUrl,
         navTabs = navTabs,
         mainPagerState = mainPagerState,
-        canSwipeTabs = canSwipeTabs,
         albumsImmersive = albumsImmersive,
         foldersImmersive = foldersImmersive,
         albumDetailImmersive = albumDetailImmersive,

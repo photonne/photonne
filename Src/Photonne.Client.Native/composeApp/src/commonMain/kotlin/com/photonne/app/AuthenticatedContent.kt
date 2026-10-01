@@ -183,7 +183,6 @@ internal class AuthenticatedContentHost(
     val apiBaseUrl: String,
     val navTabs: List<MainTab>,
     val mainPagerState: androidx.compose.foundation.pager.PagerState,
-    val canSwipeTabs: Boolean,
     val albumsImmersive: Boolean,
     val foldersImmersive: Boolean,
     val albumDetailImmersive: Boolean,
@@ -218,12 +217,12 @@ internal class AuthenticatedContentHost(
 @Composable
 internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
     with(host) {
-        // Base layer: the four primary tabs live in a HorizontalPager so a
-        // left/right swipe glides between Fotos · Álbumes · Carpetas · Más
-        // (continuous drag; the neighbour page peeks in under the finger).
+        // Base layer: Fotos · Colecciones · Más as pages of a HorizontalPager.
+        // No swipe between them: the pager only keeps the pages composed (so a
+        // return to Fotos doesn't rebuild its grid) and jumps on a nav tap.
         HorizontalPager(
             state = mainPagerState,
-            userScrollEnabled = canSwipeTabs,
+            userScrollEnabled = false,
             // Keep the immediate-neighbour pages composed so a swipe (or a
             // return to a tab) doesn't dispose + rebuild the heavy Timeline
             // grid — that rebuild is what reset the chrome and re-fetched
@@ -1858,11 +1857,6 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
             organizePendingCount = foldersState.organizePendingCount,
             favorites = favoritesState.items,
             favoritesLoaded = favoritesState.loaded && favoritesState.error == null,
-            // La última vista del mapa (encuadra las fotos al cargarlo); sin
-            // visitarlo, el mundo. La tarjeta va un nivel más lejos: es más pequeña.
-            mapCenterLat = mapState.centerLat,
-            mapCenterLng = mapState.centerLng,
-            mapZoom = (mapState.zoom - 1).coerceIn(1, 10),
             mapTileApiKey = mapState.tileApiKey,
             scenes = facets.scenesInPageOrder,
             objects = facets.objectsInPageOrder,

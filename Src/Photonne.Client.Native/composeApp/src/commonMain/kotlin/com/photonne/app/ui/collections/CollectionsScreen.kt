@@ -111,8 +111,8 @@ private val MemoryCardHeight = 232.dp
 /** Álbumes, carpetas y fijados: portada cuadrada con el nombre debajo. */
 private val CollectionTileWidth = 128.dp
 
-/** Tarjeta del Mapa: a todo el ancho, apaisada. */
-private val MapCardHeight = 148.dp
+/** Tarjeta del Mapa: a todo el ancho, con el mundo entero a lo ancho. */
+private val MapCardHeight = 180.dp
 
 /** Escenas y objetos, al tamaño de su rejilla para que se reconozcan. */
 private val LabelTileWidth = 100.dp
@@ -154,10 +154,7 @@ data class CollectionsContent(
     val favorites: List<TimelineItem> = emptyList(),
     /** Ya se sabe si hay favoritos: solo entonces se enseña la pista de vacío. */
     val favoritesLoaded: Boolean = false,
-    /** Dónde centrar la tarjeta del Mapa: la última vista del mapa o el mundo. */
-    val mapCenterLat: Double = 20.0,
-    val mapCenterLng: Double = 0.0,
-    val mapZoom: Int = 2,
+    /** Clave de teselas para el mapamundi de la tarjeta del Mapa. */
     val mapTileApiKey: String? = null,
     val scenes: List<SceneLabel> = emptyList(),
     val objects: List<ObjectLabel> = emptyList(),
@@ -378,9 +375,6 @@ private fun LazyListScope.collectionSections(
         CollectionSection.Map -> item(key = "map") {
                 SectionTitle(stringResource(Res.string.map_title), onClick = actions.onOpenMap)
                 MapPreview(
-                    centerLat = content.mapCenterLat,
-                    centerLng = content.mapCenterLng,
-                    zoom = content.mapZoom,
                     tileApiKey = content.mapTileApiKey,
                     modifier = Modifier
                         .fillMaxWidth()
