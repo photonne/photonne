@@ -94,6 +94,16 @@ private val MapBackgroundLight = Color(0xFFE6E2DA)
  * new zoom's cache before we drop the fallback. */
 private const val BACKDROP_HOLD_MS = 1500
 
+/** Mayor salto de zoom que conserva la capa anterior como fondo. */
+private const val MAX_BACKDROP_ZOOM_DELTA = 2
+
+/**
+ * Red de seguridad: una capa que necesitaría más teselas que esto no se
+ * pinta. Una pantalla de móvil a escala 1 pide ~40; con el fondo a Δz = 2
+ * (escala 1/4) unas 600.
+ */
+private const val MAX_TILES_PER_LAYER = 1024
+
 /** Duration of the pinchScale → 1f settle animation. Matched with the
  * cluster animation in AnimatedMarkers.kt so both motions start and
  * end together — the unified transition masks the discrete "click"
@@ -173,11 +183,16 @@ fun OsmMap(
     // cualquier mapa nativo. Un toque nuevo la corta en seco.
     val flingJob = remember { mutableStateOf<Job?>(null) }
 
+    // Saltos de más de [MAX_BACKDROP_ZOOM_DELTA] niveles ("Encajar" desde
+    // zoom 12 a 3, p. ej.) van sin fondo: escalada a 2^-Δz, la capa anterior
+    // tendría que cubrir un área 2^Δz veces mayor por lado y TileLayer creaba
+    // millones de AsyncImage, que congelaban el mapa. Se ve el fondo liso un
+    // instante mientras cargan las teselas nuevas.
     val effectiveBackdrop: Int? = when {
         renderedZoom != zoom -> renderedZoom
         backdropZoom != null && backdropZoom != zoom -> backdropZoom
         else -> null
-    }
+    }?.takeIf { abs(it - zoom) <= MAX_BACKDROP_ZOOM_DELTA }
 
     LaunchedEffect(zoom) {
         if (renderedZoom == zoom) return@LaunchedEffect
@@ -543,6 +558,9 @@ private fun TileLayer(
         val lastTileY = floor((viewportTopWorldY + visibleBottom) / TILE_SIZE_PX).toInt()
         val tileMax = (1L shl tileZoom).toInt()
         val tileSizeDp = with(density) { TILE_SIZE_PX.toDp() }
+        val columns = (lastTileX - firstTileX + 1).toLong()
+        val rows = (minOf(lastTileY, tileMax - 1) - maxOf(firstTileY, 0) + 1).toLong()
+        if (columns * rows.coerceAtLeast(0) > MAX_TILES_PER_LAYER) return@Box
 
         for (tileY in firstTileY..lastTileY) {
             if (tileY < 0 || tileY >= tileMax) continue
