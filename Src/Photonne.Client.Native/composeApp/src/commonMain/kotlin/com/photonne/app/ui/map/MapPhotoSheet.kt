@@ -105,7 +105,8 @@ import org.jetbrains.compose.resources.stringResource
  * borde superior hasta el fondo de la pantalla; la nav flotante va por encima
  * y la rejilla reserva su alto con [bottomPadding].
  *
- * @param fallbackTopPx dónde pintar la hoja mientras los anclajes aún no existen.
+ * @param fallbackTopPx borde de la hoja asomada: dónde pintarla mientras los
+ *   anclajes aún no existen y el alto mínimo con el que se mide el contenido.
  * @param onPeekMeasured alto de asa + título: lo que asoma en reposo.
  */
 @Composable
@@ -173,7 +174,13 @@ internal fun MapPhotoSheet(
                 .layout { measurable, constraints ->
                     val top = sheetState.offset.takeUnless { it.isNaN() } ?: fallbackTopPx
                     val topPx = top.roundToInt().coerceIn(0, constraints.maxHeight)
-                    val height = constraints.maxHeight - topPx
+                    // Nunca más baja que asomada: al bajar hacia oculta, el
+                    // contenido sigue midiendo su alto completo y se sale por
+                    // abajo en vez de encogerse. Si se encogiera, el asa y el
+                    // título medirían menos, los anclajes se recalcularían a
+                    // mitad del gesto y la hoja daría saltos.
+                    val peekTopPx = fallbackTopPx.roundToInt().coerceIn(0, constraints.maxHeight)
+                    val height = constraints.maxHeight - minOf(topPx, peekTopPx)
                     val placeable = measurable.measure(
                         constraints.copy(minHeight = height, maxHeight = height)
                     )

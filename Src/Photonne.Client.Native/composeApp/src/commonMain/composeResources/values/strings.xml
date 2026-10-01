@@ -1767,4 +1767,5 @@
     <string name="asset_live_play">Ver foto en movimiento</string>
     <string name="asset_quality_preview">HD</string>
     <string name="asset_quality_original">ORIG</string>
+    <string name="map_sheet_show_pill">Fotos · %1$d</string>
 </resources>

@@ -76,10 +76,12 @@ class MapViewportTest {
         val expanded = assertNotNull(anchors[MapSheetValue.Expanded])
         val half = assertNotNull(anchors[MapSheetValue.Half])
         val peek = assertNotNull(anchors[MapSheetValue.Peek])
+        val hidden = assertNotNull(anchors[MapSheetValue.Hidden])
+        assertEquals(2000f, hidden)
         assertEquals(200f, expanded)
         assertEquals(2000f * (1f - MAP_SHEET_HALF_FRACTION), half)
         assertEquals(1700f, peek)
-        assertTrue(expanded < half && half < peek)
+        assertTrue(expanded < half && half < peek && peek < hidden)
     }
 
     @Test

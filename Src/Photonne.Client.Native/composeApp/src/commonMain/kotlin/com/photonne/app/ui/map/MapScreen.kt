@@ -1,5 +1,7 @@
 package com.photonne.app.ui.map
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -42,7 +44,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.photonne.app.resources.map_sheet_show_pill
 import com.photonne.app.ui.navigation.PlatformBackHandler
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.MotionDurations
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -111,8 +115,9 @@ fun MapScreen(
 
     // ── Hoja persistente ────────────────────────────────────────────────
     // Tres anclajes: asomada (asa + resumen sobre la nav flotante), media
-    // altura y desplegada bajo el cromo de arriba. Arranca a media altura.
-    var savedSheetValue by rememberSaveable { mutableStateOf(MapSheetValue.Half.name) }
+    // altura y desplegada bajo el cromo de arriba, más oculta del todo (una
+    // píldora sobre la nav la recupera). Arranca asomada: el mapa es lo primero.
+    var savedSheetValue by rememberSaveable { mutableStateOf(MapSheetValue.Peek.name) }
     val sheetState = remember { AnchoredDraggableState(MapSheetValue.valueOf(savedSheetValue)) }
     val sheetGridState = rememberLazyGridState()
     var peekContentPx by remember { mutableIntStateOf(0) }
@@ -144,6 +149,9 @@ fun MapScreen(
         if (!sheetShown) mapHeightPx - navReservedPx
         else sheetState.offset.takeUnless { it.isNaN() } ?: peekTopPx
     }
+    // Lo que siguen los controles y la atribución: el borde de la hoja, pero
+    // nunca por debajo de la posición asomada (oculta, la píldora ocupa ese hueco).
+    val controlsTop: () -> Float = { minOf(sheetTop(), peekTopPx) }
     // Los controles acompañan a la hoja asomada y se desvanecen al subirla.
     val fadeEndPx = anchorPositions[MapSheetValue.Half] ?: anchorPositions[MapSheetValue.Expanded] ?: peekTopPx
     val controlsAlpha: () -> Float = {
@@ -193,7 +201,10 @@ fun MapScreen(
     // Atrás: selección → desplegada → media → asomada → salir del mapa.
     val settledSheet = sheetState.settledValue
     PlatformBackHandler(
-        enabled = sheetShown && (state.isSelectionActive || settledSheet != MapSheetValue.Peek)
+        enabled = sheetShown && (
+            state.isSelectionActive ||
+                (settledSheet != MapSheetValue.Peek && settledSheet != MapSheetValue.Hidden)
+            )
     ) {
         when {
             state.isSelectionActive -> viewModel.clearSelection()
@@ -301,7 +312,7 @@ fun MapScreen(
                 .offset {
                     IntOffset(
                         Spacing.lg.roundToPx(),
-                        (sheetTop() - attributionHeightPx - Spacing.sm.toPx()).roundToInt()
+                        (controlsTop() - attributionHeightPx - Spacing.sm.toPx()).roundToInt()
                     )
                 }
         )
@@ -319,7 +330,7 @@ fun MapScreen(
                     .offset {
                         IntOffset(
                             -Spacing.lg.roundToPx(),
-                            (sheetTop() - controlsHeightPx - Spacing.lg.toPx()).roundToInt()
+                            (controlsTop() - controlsHeightPx - Spacing.lg.toPx()).roundToInt()
                         )
                     }
                     .graphicsLayer { alpha = controlsAlpha() },
@@ -375,6 +386,34 @@ fun MapScreen(
                 onArchive = viewModel::bulkArchive,
                 onTrash = viewModel::bulkTrash
             )
+        }
+
+        // Hoja oculta: una píldora sobre la nav la devuelve a asomada.
+        if (sheetShown && settledSheet == MapSheetValue.Hidden) {
+            ChromePill(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = navReserved + Spacing.sm),
+                hazeState = mapHazeState,
+                elevation = ChromeElevation.pill,
+                onClick = { animateSheetTo(MapSheetValue.Peek) }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    Icon(
+                        PhotonneIcons.ChevronUp,
+                        contentDescription = null,
+                        modifier = Modifier.size(IconSize.chip)
+                    )
+                    Text(
+                        stringResource(Res.string.map_sheet_show_pill, state.sheetPoints.size),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
         }
 
         // El banner de error estándar de la app (el mismo que en el resto de

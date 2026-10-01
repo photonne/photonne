@@ -1757,4 +1757,5 @@
     <string name="asset_live_play">Play Live Photo</string>
     <string name="asset_quality_preview">HD</string>
     <string name="asset_quality_original">ORIG</string>
+    <string name="map_sheet_show_pill">Photos · %1$d</string>
 </resources>

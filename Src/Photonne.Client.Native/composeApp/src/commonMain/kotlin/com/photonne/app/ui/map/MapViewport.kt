@@ -38,8 +38,11 @@ internal fun pointsInViewport(
     }.newestFirst()
 }
 
-/** Anclajes de la hoja persistente del mapa. */
-enum class MapSheetValue { Peek, Half, Expanded }
+/**
+ * Anclajes de la hoja persistente del mapa. [Hidden] la saca entera por abajo
+ * (queda una píldora para recuperarla); [Peek] asoma asa y resumen.
+ */
+enum class MapSheetValue { Hidden, Peek, Half, Expanded }
 
 /** Fracción del alto del mapa que ocupa la hoja a media altura. */
 internal const val MAP_SHEET_HALF_FRACTION = 0.45f
@@ -65,6 +68,7 @@ internal fun mapSheetAnchorPositions(
     val peek = (heightPx - peekVisiblePx).coerceAtLeast(expandedTopPx)
     val half = heightPx * (1f - halfFraction)
     return buildMap {
+        put(MapSheetValue.Hidden, heightPx)
         put(MapSheetValue.Peek, peek)
         if (half - expandedTopPx >= minGapPx && peek - half >= minGapPx) {
             put(MapSheetValue.Half, half)
