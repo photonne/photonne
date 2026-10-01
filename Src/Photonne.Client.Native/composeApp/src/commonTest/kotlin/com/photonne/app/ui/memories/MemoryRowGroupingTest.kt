@@ -174,7 +174,7 @@ class MemoryRowGroupingTest {
     }
 
     @Test
-    fun `the feed splits into Recuerdos, Explorar and people`() {
+    fun `the feed splits into Recuerdos - Explorar - people`() {
         val state = MemoryFeedUiState(
             rows = groupIntoRows(
                 listOf(
