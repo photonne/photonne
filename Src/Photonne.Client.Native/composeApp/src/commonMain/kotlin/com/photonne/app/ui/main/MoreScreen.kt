@@ -39,7 +39,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -102,8 +101,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 /**
  * A destination on the More tab. Each entry resolves to a subscreen in [App]
  * (Favorites, Archive, Trash, …). `badgeCount` > 0 renders a Material badge
- * before the chevron — or, when [countLabelRes] is set, that text with the
- * count ("12 pendientes").
+ * before the chevron; [backupStatus] paints the backup verdict under the label.
  */
 private data class MoreShortcut(
     val key: String,
@@ -111,7 +109,7 @@ private data class MoreShortcut(
     val icon: ImageVector,
     val onClick: () -> Unit,
     val badgeCount: Int = 0,
-    val countLabelRes: StringResource? = null
+    val backupStatus: MoreBackupStatus? = null
 )
 
 /** A titled group of [MoreShortcut]s rendered as rows inside one card. */
@@ -132,10 +130,8 @@ fun MoreScreen(
     onOpenMyLinks: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenDeviceBackup: () -> Unit,
-    /** Files still to back up, shown on the row so a stalled backup is
-     *  visible without opening the screen. */
-    backupPendingCount: Int = 0,
-    /** Resumen de la copia bajo el nombre en la cabecera; null lo oculta. */
+    /** Resumen de la copia bajo el título de su fila, para ver una copia
+     *  atascada sin abrir la pantalla; null lo oculta. */
     backupStatus: MoreBackupStatus? = null,
     onOpenNotifications: () -> Unit,
     notificationsUnreadCount: Int = 0,
@@ -163,7 +159,7 @@ fun MoreScreen(
     val sections = remember(
         onOpenUtilities,
         onOpenDeviceBackup,
-        backupPendingCount,
+        backupStatus,
         onOpenNotifications,
         notificationsUnreadCount,
         onOpenAccountSettings,
@@ -179,8 +175,7 @@ fun MoreScreen(
                         Res.string.device_backup_title,
                         PhotonneIcons.Upload,
                         onOpenDeviceBackup,
-                        badgeCount = backupPendingCount,
-                        countLabelRes = Res.string.backup_pending_count
+                        backupStatus = backupStatus
                     ),
                     MoreShortcut(
                         "notifications",
@@ -247,9 +242,7 @@ fun MoreScreen(
         item("header") {
             MoreHeaderCard(
                 user = user,
-                backupStatus = backupStatus,
-                onOpenProfile = onOpenProfile,
-                onOpenBackup = onOpenDeviceBackup
+                onOpenProfile = onOpenProfile
             )
         }
 
@@ -466,7 +459,8 @@ fun MoreScreen(
 }
 
 /**
- * Estado de la copia de seguridad en una línea, para la cabecera de Más. Sale
+ * Estado de la copia de seguridad en una línea, bajo la fila de Copia de
+ * seguridad en Más. Sale
  * del mismo estado que pinta la pantalla de Copia de seguridad: aquí no se
  * pide nada nuevo.
  */
@@ -482,7 +476,7 @@ sealed interface MoreBackupStatus {
 }
 
 /**
- * Traduce el estado de la copia a la línea de la cabecera, con el mismo orden
+ * Traduce el estado de la copia a la línea de su fila en Más, con el mismo orden
  * de veredictos que la tarjeta de estado de Copia de seguridad. Null donde la
  * plataforma no tiene copia del dispositivo o aún no se ha comprobado nada
  * (decir "todo copiado" sin haber mirado sería mentir).
@@ -509,16 +503,14 @@ fun DeviceBackupUiState.toMoreBackupStatus(): MoreBackupStatus? {
 }
 
 /**
- * Cabecera de Más: avatar de iniciales, nombre y, debajo, el estado de la
- * copia. Toda la tarjeta abre el perfil; la línea de la copia abre Copia de
- * seguridad.
+ * Cabecera de Más: avatar de iniciales, nombre y correo. Toda la tarjeta abre
+ * el perfil; el estado de la copia va en su propia fila, no aquí, para que
+ * cada elemento tenga un solo destino.
  */
 @Composable
 private fun MoreHeaderCard(
     user: UserDto,
-    backupStatus: MoreBackupStatus?,
-    onOpenProfile: () -> Unit,
-    onOpenBackup: () -> Unit
+    onOpenProfile: () -> Unit
 ) {
     val displayName = listOfNotNull(
         user.firstName?.takeIf { it.isNotBlank() },
@@ -553,17 +545,13 @@ private fun MoreHeaderCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (backupStatus != null) {
-                    MoreBackupStatusLine(status = backupStatus, onClick = onOpenBackup)
-                } else {
-                    Text(
-                        text = user.email.ifBlank { user.username },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = user.email.ifBlank { user.username },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Spacer(Modifier.size(Spacing.sm))
             Icon(
@@ -575,9 +563,9 @@ private fun MoreHeaderCard(
     }
 }
 
-/** La línea tocable del estado de la copia, con el color de su veredicto. */
+/** La línea del estado de la copia, con el color de su veredicto. */
 @Composable
-private fun MoreBackupStatusLine(status: MoreBackupStatus, onClick: () -> Unit) {
+private fun MoreBackupStatusLine(status: MoreBackupStatus) {
     val (text, color) = when (status) {
         MoreBackupStatus.Disabled -> stringResource(Res.string.more_backup_disabled) to
             MaterialTheme.colorScheme.onSurfaceVariant
@@ -610,14 +598,7 @@ private fun MoreBackupStatusLine(status: MoreBackupStatus, onClick: () -> Unit) 
         style = MaterialTheme.typography.bodySmall,
         color = color,
         maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.extraSmall)
-            .clickable(
-                onClickLabel = stringResource(Res.string.device_backup_title),
-                onClick = onClick
-            )
-            .padding(vertical = Spacing.xs)
+        overflow = TextOverflow.Ellipsis
     )
 }
 
@@ -673,17 +654,15 @@ private fun MoreRowGroup(shortcuts: List<MoreShortcut>) {
                 headlineMaxLines = 1,
                 showDivider = index > 0,
                 trailing = if (shortcut.badgeCount > 0) {
-                    val countLabelRes = shortcut.countLabelRes
-                    if (countLabelRes != null) {
-                        SettingsTrailing.Value(stringResource(countLabelRes, shortcut.badgeCount))
-                    } else {
-                        SettingsTrailing.Custom {
-                            Badge {
-                                Text(if (shortcut.badgeCount > 99) "99+" else shortcut.badgeCount.toString())
-                            }
+                    SettingsTrailing.Custom {
+                        Badge {
+                            Text(if (shortcut.badgeCount > 99) "99+" else shortcut.badgeCount.toString())
                         }
                     }
-                } else null
+                } else null,
+                supportingContent = shortcut.backupStatus?.let { status ->
+                    { MoreBackupStatusLine(status) }
+                }
             )
         }
     }

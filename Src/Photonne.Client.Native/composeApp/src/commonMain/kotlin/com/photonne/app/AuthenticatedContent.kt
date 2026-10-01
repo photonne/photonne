@@ -380,9 +380,6 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                         appState.moreSubscreen = MoreSubscreen.AccountProfile
                     },
                     onOpenDeviceBackup = { appState.moreSubscreen = MoreSubscreen.DeviceBackup },
-                    backupPendingCount = if (deviceBackupState.isBackupEnabled) {
-                        deviceBackupState.pendingEntries.size
-                    } else 0,
                     backupStatus = remember(deviceBackupState) {
                         deviceBackupState.toMoreBackupStatus()
                     },
