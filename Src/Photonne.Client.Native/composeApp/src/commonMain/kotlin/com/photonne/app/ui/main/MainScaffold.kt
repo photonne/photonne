@@ -1531,8 +1531,14 @@ fun FolderCardSelectionTopBar(
 /**
  * Bottom bar for the folder-card selection, gated by permissions. Same
  * order, labels and icons as the folder detail's overflow menu
- * (Rename · Move · Members · Delete). With several cards selected the host
- * only enables the actions valid for all of them (see folderSelectionActions).
+ * (Pin · Timeline · Rename · Move · Members · Delete). With several cards
+ * selected the host only enables the actions valid for all of them (see
+ * folderSelectionActions).
+ *
+ * Con una sola carpeta podían salir seis botones y las etiquetas se encogían
+ * hasta no leerse. Ahora, con más de cuatro, se quedan en la cápsula Renombrar,
+ * Mover y Eliminar (lo frecuente y lo destructivo, que no debe esconderse) y el
+ * resto pasa a "Más".
  */
 @Composable
 fun FolderCardSelectionBottomBar(
@@ -1553,96 +1559,76 @@ fun FolderCardSelectionBottomBar(
     isPinned: Boolean = false,
     onTogglePin: () -> Unit = {}
 ) {
+    val pinLabel = stringResource(if (isPinned) Res.string.album_action_unpin else Res.string.album_action_pin)
+    val timelineLabel = stringResource(
+        if (excludedFromDiscovery) Res.string.folder_discovery_add else Res.string.folder_discovery_remove
+    )
+    val error = MaterialTheme.colorScheme.error
+    val actions = buildList {
+        if (canPin) add(BarAction(pinLabel, if (isPinned) PhotonneIcons.PinActive else PhotonneIcons.Pin, onTogglePin, primary = false))
+        if (canToggleTimeline) add(
+            BarAction(
+                timelineLabel,
+                if (excludedFromDiscovery) PhotonneIcons.Show else PhotonneIcons.Hide,
+                onToggleTimeline,
+                primary = false
+            )
+        )
+        if (canRename) add(BarAction(stringResource(Res.string.action_rename), PhotonneIcons.Rename, onRename, primary = true))
+        if (canMove) add(BarAction(stringResource(Res.string.action_move), PhotonneIcons.Move, onMove, primary = true))
+        if (canManageMembers) add(BarAction(stringResource(Res.string.album_action_members), PhotonneIcons.Members, onManageMembers, primary = false))
+        if (canDelete) add(BarAction(stringResource(Res.string.action_delete), PhotonneIcons.Delete, onDelete, primary = true, tint = error))
+    }
+    val collapse = actions.size > MaxInlineSelectionActions
+    val inline = if (collapse) actions.filter { it.primary } else actions
+    val overflow = if (collapse) actions.filterNot { it.primary } else emptyList()
+    var menuOpen by remember { mutableStateOf(false) }
+
     FloatingSelectionBar {
-        // Primero, como en la cápsula de álbumes.
-        if (canPin) {
+        inline.forEach { action ->
             FloatingSelectionBarItem(
-                onClick = onTogglePin,
+                onClick = action.onClick,
                 enabled = !isMutating,
-                label = stringResource(
-                    if (isPinned) Res.string.album_action_unpin else Res.string.album_action_pin
-                ),
-                icon = {
-                    Icon(
-                        if (isPinned) PhotonneIcons.PinActive else PhotonneIcons.Pin,
-                        contentDescription = null
-                    )
-                }
+                label = action.label,
+                tint = action.tint,
+                icon = { Icon(action.icon, contentDescription = null) }
             )
         }
-        if (canToggleTimeline) {
-            val label = stringResource(
-                if (excludedFromDiscovery) Res.string.folder_discovery_add
-                else Res.string.folder_discovery_remove
-            )
+        if (overflow.isNotEmpty()) {
             FloatingSelectionBarItem(
-                onClick = onToggleTimeline,
+                onClick = { menuOpen = true },
                 enabled = !isMutating,
-                label = label,
+                label = stringResource(Res.string.selection_label_more),
                 icon = {
-                    Icon(
-                        if (excludedFromDiscovery) PhotonneIcons.Show
-                        else PhotonneIcons.Hide,
-                        contentDescription = label
-                    )
-                }
-            )
-        }
-        if (canRename) {
-            FloatingSelectionBarItem(
-                onClick = onRename,
-                enabled = !isMutating,
-                label = stringResource(Res.string.action_rename),
-                icon = {
-                    Icon(
-                        PhotonneIcons.Rename,
-                        contentDescription = null
-                    )
-                }
-            )
-        }
-        if (canMove) {
-            FloatingSelectionBarItem(
-                onClick = onMove,
-                enabled = !isMutating,
-                label = stringResource(Res.string.action_move),
-                icon = {
-                    Icon(
-                        PhotonneIcons.Move,
-                        contentDescription = null
-                    )
-                }
-            )
-        }
-        if (canManageMembers) {
-            FloatingSelectionBarItem(
-                onClick = onManageMembers,
-                enabled = !isMutating,
-                label = stringResource(Res.string.album_action_members),
-                icon = {
-                    Icon(
-                        PhotonneIcons.Members,
-                        contentDescription = null
-                    )
-                }
-            )
-        }
-        if (canDelete) {
-            FloatingSelectionBarItem(
-                onClick = onDelete,
-                enabled = !isMutating,
-                label = stringResource(Res.string.action_delete),
-                tint = MaterialTheme.colorScheme.error,
-                icon = {
-                    Icon(
-                        PhotonneIcons.Delete,
-                        contentDescription = null
-                    )
+                    Box {
+                        Icon(PhotonneIcons.More, contentDescription = null)
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            overflow.forEach { action ->
+                                DropdownMenuItem(
+                                    text = { Text(action.label) },
+                                    leadingIcon = { Icon(action.icon, contentDescription = null) },
+                                    onClick = { menuOpen = false; action.onClick() }
+                                )
+                            }
+                        }
+                    }
                 }
             )
         }
     }
 }
+
+/** Botones que caben legibles en la cápsula de selección antes de recurrir a "Más". */
+private const val MaxInlineSelectionActions = 4
+
+/** Una acción de la cápsula de selección; [primary] la mantiene a la vista al plegar. */
+private class BarAction(
+    val label: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+    val primary: Boolean,
+    val tint: Color = Color.Unspecified,
+)
 
 /**
  * Las acciones del detalle de carpeta (crear subcarpeta + menú de

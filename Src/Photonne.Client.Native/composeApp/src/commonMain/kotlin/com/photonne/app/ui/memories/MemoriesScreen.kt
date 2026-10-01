@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -73,6 +74,15 @@ import com.photonne.app.ui.theme.Spacing
  * going". */
 internal val RowCardSize = 100.dp
 
+/**
+ * Proporción de las tarjetas de Recuerdos: apaisadas, la de la antigua tira de
+ * Fotos (alto = 0,62 × ancho). En 4:5 cada una llenaba la pantalla.
+ */
+private const val BigCardAspect = 1f / 0.62f
+
+/** Tope de ancho de una tarjeta, como la tira: en tablet no crece sin límite. */
+private val BigCardMaxWidth = 560.dp
+
 /** Lo que dura una pasada del zoom lento de las tarjetas grandes (ida o vuelta). */
 private const val KenBurnsMillis = 14_000
 
@@ -82,8 +92,9 @@ private const val KenBurnsMillis = 14_000
  * ficha de cada persona.
  *
  * Con tan pocos recuerdos, dos filas de miniaturas dejaban la página vacía.
- * Ahora es un feed de tarjetas grandes a todo el ancho (4:5), una por año: Hoy
- * primero y luego Este mes, cada una con un zoom lento sobre la portada.
+ * Ahora es un feed de tarjetas a todo el ancho con la forma de la antigua tira
+ * de Fotos, una por año: Hoy primero y luego Este mes, cada una con un zoom
+ * lento sobre la portada.
  */
 @Composable
 fun MemoriesScreen(
@@ -174,8 +185,9 @@ private fun BigMemoryCard(
             scaleY = scale
         },
         modifier = modifier
+            .widthIn(max = BigCardMaxWidth)
             .fillMaxWidth()
-            .aspectRatio(4f / 5f)
+            .aspectRatio(BigCardAspect)
             .clickable(enabled = !isOpening, onClick = onClick),
     ) {
         if (isOpening) OpeningScrim()
