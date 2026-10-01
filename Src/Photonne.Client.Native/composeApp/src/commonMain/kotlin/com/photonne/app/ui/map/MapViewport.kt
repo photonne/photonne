@@ -40,40 +40,34 @@ internal fun pointsInViewport(
 
 /**
  * Anclajes de la hoja persistente del mapa. [Hidden] la saca entera por abajo
- * (queda una píldora para recuperarla); [Peek] asoma asa y resumen.
+ * (queda una píldora para recuperarla). No hay posición "asomada": con la
+ * píldora hacía de resumen repetido y obligaba a bajar la hoja dos veces.
  */
-enum class MapSheetValue { Hidden, Peek, Half, Expanded }
+enum class MapSheetValue { Hidden, Half, Expanded }
 
 /** Fracción del alto del mapa que ocupa la hoja a media altura. */
 internal const val MAP_SHEET_HALF_FRACTION = 0.45f
 
 /**
  * Posición (y del borde superior de la hoja, en px desde arriba del mapa) de
- * cada anclaje. Media altura se omite cuando no cabe con aire entre los otros
- * dos (ventanas muy bajas de escritorio): la hoja salta entonces de asomada a
- * desplegada.
+ * cada anclaje. Media altura se omite cuando no cabe con aire bajo la
+ * desplegada (ventanas muy bajas de escritorio): la hoja salta entonces de
+ * oculta a desplegada.
  *
  * @param heightPx alto del mapa.
  * @param expandedTopPx dónde acaba el cromo de arriba: la hoja desplegada no lo tapa.
- * @param peekVisiblePx cuánto asoma la hoja en reposo (asa + resumen + la nav
- *   flotante, que flota por encima de la hoja).
  */
 internal fun mapSheetAnchorPositions(
     heightPx: Float,
     expandedTopPx: Float,
-    peekVisiblePx: Float,
     halfFraction: Float = MAP_SHEET_HALF_FRACTION,
     minGapPx: Float = 48f
 ): Map<MapSheetValue, Float> {
-    val peek = (heightPx - peekVisiblePx).coerceAtLeast(expandedTopPx)
     val half = heightPx * (1f - halfFraction)
     return buildMap {
         put(MapSheetValue.Hidden, heightPx)
-        put(MapSheetValue.Peek, peek)
-        if (half - expandedTopPx >= minGapPx && peek - half >= minGapPx) {
-            put(MapSheetValue.Half, half)
-        }
-        if (peek - expandedTopPx >= minGapPx) put(MapSheetValue.Expanded, expandedTopPx)
+        if (half - expandedTopPx >= minGapPx) put(MapSheetValue.Half, half)
+        put(MapSheetValue.Expanded, expandedTopPx.coerceAtMost(heightPx))
     }
 }
 

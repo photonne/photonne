@@ -70,18 +70,15 @@ class MapViewportTest {
     fun anchors_are_ordered_top_to_bottom() {
         val anchors = mapSheetAnchorPositions(
             heightPx = 2000f,
-            expandedTopPx = 200f,
-            peekVisiblePx = 300f
+            expandedTopPx = 200f
         )
         val expanded = assertNotNull(anchors[MapSheetValue.Expanded])
         val half = assertNotNull(anchors[MapSheetValue.Half])
-        val peek = assertNotNull(anchors[MapSheetValue.Peek])
         val hidden = assertNotNull(anchors[MapSheetValue.Hidden])
         assertEquals(2000f, hidden)
         assertEquals(200f, expanded)
         assertEquals(2000f * (1f - MAP_SHEET_HALF_FRACTION), half)
-        assertEquals(1700f, peek)
-        assertTrue(expanded < half && half < peek && peek < hidden)
+        assertTrue(expanded < half && half < hidden)
     }
 
     @Test
@@ -89,11 +86,10 @@ class MapViewportTest {
         // Ventana muy baja: media altura quedaría pegada a la hoja asomada.
         val anchors = mapSheetAnchorPositions(
             heightPx = 500f,
-            expandedTopPx = 100f,
-            peekVisiblePx = 250f
+            expandedTopPx = 240f
         )
         assertFalse(MapSheetValue.Half in anchors)
-        assertTrue(MapSheetValue.Peek in anchors)
+        assertTrue(MapSheetValue.Hidden in anchors)
         assertTrue(MapSheetValue.Expanded in anchors)
     }
 

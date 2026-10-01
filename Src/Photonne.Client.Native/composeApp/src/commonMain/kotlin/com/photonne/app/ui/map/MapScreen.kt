@@ -114,31 +114,35 @@ fun MapScreen(
     var mapMoving by remember { mutableStateOf(false) }
 
     // ── Hoja persistente ────────────────────────────────────────────────
-    // Tres anclajes: asomada (asa + resumen sobre la nav flotante), media
-    // altura y desplegada bajo el cromo de arriba, más oculta del todo (una
-    // píldora sobre la nav la recupera). Hasta el primer clúster tocado no hay
-    // hoja ni píldora; ese toque la sube a media altura, y a partir de ahí el
-    // estado oculto deja la píldora a mano el resto de la visita.
+    // Anclajes: oculta del todo (una píldora sobre la nav la recupera), media
+    // altura y desplegada bajo el cromo de arriba. Hasta el primer clúster
+    // tocado no hay hoja ni píldora; ese toque la sube a media altura, y a
+    // partir de ahí la píldora queda a mano el resto de la visita.
     var savedSheetValue by rememberSaveable { mutableStateOf(MapSheetValue.Hidden.name) }
-    val sheetState = remember { AnchoredDraggableState(MapSheetValue.valueOf(savedSheetValue)) }
+    val sheetState = remember {
+        // Un estado guardado por una versión anterior puede nombrar "Peek".
+        val initial = MapSheetValue.entries.firstOrNull { it.name == savedSheetValue }
+            ?: MapSheetValue.Hidden
+        AnchoredDraggableState(initial)
+    }
     val sheetGridState = rememberLazyGridState()
-    var peekContentPx by remember { mutableIntStateOf(0) }
     val navReservedPx = with(density) { navReserved.toPx() }
     val reservedTopPx = with(density) { reservedTop.toPx() }
     val expandedTopPx = with(density) { (reservedTop + Spacing.sm).toPx() }
-    val peekVisiblePx = navReservedPx +
-        (if (peekContentPx > 0) peekContentPx.toFloat() else with(density) { DefaultPeekContent.toPx() })
     val mapHeightPx = mapSizePx.height.toFloat()
-    val anchorPositions = remember(mapHeightPx, expandedTopPx, peekVisiblePx) {
+    val anchorPositions = remember(mapHeightPx, expandedTopPx) {
         if (mapHeightPx <= 0f) emptyMap()
-        else mapSheetAnchorPositions(mapHeightPx, expandedTopPx, peekVisiblePx)
+        else mapSheetAnchorPositions(mapHeightPx, expandedTopPx)
     }
     LaunchedEffect(anchorPositions) {
         if (anchorPositions.isEmpty()) return@LaunchedEffect
         val anchors = DraggableAnchors { anchorPositions.forEach { (value, position) -> value at position } }
-        val target = sheetState.targetValue.takeIf { it in anchorPositions } ?: MapSheetValue.Peek
+        val target = sheetState.targetValue.takeIf { it in anchorPositions } ?: MapSheetValue.Hidden
         sheetState.updateAnchors(anchors, target)
     }
+    /** Posición abierta más baja: media altura, o desplegada si no cabe. */
+    val openSheetValue =
+        if (MapSheetValue.Half in anchorPositions) MapSheetValue.Half else MapSheetValue.Expanded
     LaunchedEffect(sheetState) {
         snapshotFlow { sheetState.settledValue }.collect { savedSheetValue = it.name }
     }
@@ -146,23 +150,26 @@ fun MapScreen(
     // Ni hoja ni píldora hasta el primer clúster tocado en la visita.
     val sheetShown = state.sheetEnabled && state.firstLoadComplete &&
         state.points.isNotEmpty() && anchorPositions.isNotEmpty()
-    val peekTopPx = anchorPositions[MapSheetValue.Peek] ?: (mapHeightPx - navReservedPx)
-    // Borde superior de la hoja (o de la nav, sin hoja): lo que siguen los
-    // controles y la atribución. Se lee en layout/dibujo, no en composición.
+    val hiddenTopPx = anchorPositions[MapSheetValue.Hidden] ?: mapHeightPx
+    // Donde descansan los controles y la atribución con la hoja oculta: sobre
+    // la nav y, si la hoja ya existe en esta visita, también sobre la píldora.
+    val restTopPx = mapHeightPx - navReservedPx -
+        (if (sheetShown) with(density) { HiddenPillReserve.toPx() } else 0f)
+    // Borde superior de la hoja (se lee en layout/dibujo, no en composición).
     val sheetTop: () -> Float = {
-        if (!sheetShown) mapHeightPx - navReservedPx
-        else sheetState.offset.takeUnless { it.isNaN() } ?: peekTopPx
+        if (!sheetShown) hiddenTopPx
+        else sheetState.offset.takeUnless { it.isNaN() } ?: hiddenTopPx
     }
     // Lo que siguen los controles y la atribución: el borde de la hoja, pero
-    // nunca por debajo de la posición asomada (oculta, la píldora ocupa ese hueco).
-    val controlsTop: () -> Float = { minOf(sheetTop(), peekTopPx) }
-    // Los controles acompañan a la hoja asomada y se desvanecen al subirla.
-    val fadeEndPx = anchorPositions[MapSheetValue.Half] ?: anchorPositions[MapSheetValue.Expanded] ?: peekTopPx
+    // nunca por debajo de su sitio de descanso.
+    val controlsTop: () -> Float = { minOf(sheetTop(), restTopPx) }
+    // Los controles se desvanecen al subir la hoja hacia media altura.
+    val fadeEndPx = anchorPositions[openSheetValue] ?: restTopPx
     val controlsAlpha: () -> Float = {
-        if (!sheetShown || peekTopPx <= fadeEndPx) 1f
-        else ((sheetTop() - fadeEndPx) / (peekTopPx - fadeEndPx)).coerceIn(0f, 1f)
+        if (!sheetShown || restTopPx <= fadeEndPx) 1f
+        else ((controlsTop() - fadeEndPx) / (restTopPx - fadeEndPx)).coerceIn(0f, 1f)
     }
-    val controlsVisible by remember(sheetShown, peekTopPx, fadeEndPx) {
+    val controlsVisible by remember(sheetShown, restTopPx, fadeEndPx) {
         derivedStateOf { controlsAlpha() > 0.05f }
     }
 
@@ -176,9 +183,7 @@ fun MapScreen(
     var centerJob by remember { mutableStateOf<Job?>(null) }
     val onClusterClick: (List<MapPoint>) -> Unit = { cluster ->
         viewModel.focusCluster(cluster)
-        animateSheetTo(
-            if (MapSheetValue.Half in anchorPositions) MapSheetValue.Half else MapSheetValue.Expanded
-        )
+        animateSheetTo(openSheetValue)
         val current = viewModel.state.value
         val target = centerToRevealCluster(
             points = cluster,
@@ -202,19 +207,16 @@ fun MapScreen(
         }
     }
 
-    // Atrás: selección → desplegada → media → asomada → salir del mapa.
+    // Atrás: selección → desplegada → media → oculta → salir del mapa.
     val settledSheet = sheetState.settledValue
     PlatformBackHandler(
-        enabled = sheetShown && (
-            state.isSelectionActive ||
-                (settledSheet != MapSheetValue.Peek && settledSheet != MapSheetValue.Hidden)
-            )
+        enabled = sheetShown && (state.isSelectionActive || settledSheet != MapSheetValue.Hidden)
     ) {
         when {
             state.isSelectionActive -> viewModel.clearSelection()
             settledSheet == MapSheetValue.Expanded && MapSheetValue.Half in anchorPositions ->
                 animateSheetTo(MapSheetValue.Half)
-            else -> animateSheetTo(MapSheetValue.Peek)
+            else -> animateSheetTo(MapSheetValue.Hidden)
         }
     }
 
@@ -371,7 +373,8 @@ fun MapScreen(
             MapPhotoSheet(
                 sheetState = sheetState,
                 gridState = sheetGridState,
-                fallbackTopPx = peekTopPx,
+                fallbackTopPx = hiddenTopPx,
+                minVisibleTopPx = anchorPositions[openSheetValue] ?: expandedTopPx,
                 points = sheetPoints,
                 isFocused = state.focusedPoints != null,
                 isReady = state.viewportReady || state.focusedPoints != null,
@@ -381,8 +384,6 @@ fun MapScreen(
                 hazeState = mapHazeState,
                 solidBackground = mapMoving,
                 bottomPadding = navReserved,
-                onPeekMeasured = { peekContentPx = it },
-                onPeekClick = { animateSheetTo(MapSheetValue.Half) },
                 onClearFocus = viewModel::clearFocus,
                 onPhotoClick = { index -> onSheetPhotoOpen(sheetPoints, index) },
                 onToggleSelection = viewModel::toggleSelection,
@@ -394,7 +395,7 @@ fun MapScreen(
             )
         }
 
-        // Hoja oculta: una píldora sobre la nav la devuelve a asomada.
+        // Hoja oculta: una píldora sobre la nav la devuelve a media altura.
         if (sheetShown && settledSheet == MapSheetValue.Hidden) {
             ChromePill(
                 modifier = Modifier
@@ -402,7 +403,7 @@ fun MapScreen(
                     .padding(bottom = navReserved + Spacing.sm),
                 hazeState = mapHazeState,
                 elevation = ChromeElevation.pill,
-                onClick = { animateSheetTo(MapSheetValue.Peek) }
+                onClick = { animateSheetTo(openSheetValue) }
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
@@ -456,5 +457,5 @@ fun MapScreen(
     }
 }
 
-/** Alto de asa + título antes de medirlos (primer frame). */
-private val DefaultPeekContent = 64.dp
+/** Hueco que deja la píldora "Fotos · N" (alto + margen) para los controles. */
+private val HiddenPillReserve = 52.dp

@@ -1,7 +1,6 @@
 package com.photonne.app.ui.map
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
@@ -45,7 +44,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
@@ -105,9 +103,9 @@ import org.jetbrains.compose.resources.stringResource
  * borde superior hasta el fondo de la pantalla; la nav flotante va por encima
  * y la rejilla reserva su alto con [bottomPadding].
  *
- * @param fallbackTopPx borde de la hoja asomada: dónde pintarla mientras los
- *   anclajes aún no existen y el alto mínimo con el que se mide el contenido.
- * @param onPeekMeasured alto de asa + título: lo que asoma en reposo.
+ * @param fallbackTopPx dónde pintar la hoja mientras los anclajes aún no existen.
+ * @param minVisibleTopPx borde de la posición abierta más baja (media altura):
+ *   la hoja nunca se mide más baja que eso.
  */
 @Composable
 internal fun MapPhotoSheet(
@@ -124,8 +122,7 @@ internal fun MapPhotoSheet(
     /** Fondo liso en vez de cristal (mientras el mapa se mueve). */
     solidBackground: Boolean,
     bottomPadding: Dp,
-    onPeekMeasured: (Int) -> Unit,
-    onPeekClick: () -> Unit,
+    minVisibleTopPx: Float,
     onClearFocus: () -> Unit,
     onPhotoClick: (Int) -> Unit,
     onToggleSelection: (String) -> Unit,
@@ -174,13 +171,11 @@ internal fun MapPhotoSheet(
                 .layout { measurable, constraints ->
                     val top = sheetState.offset.takeUnless { it.isNaN() } ?: fallbackTopPx
                     val topPx = top.roundToInt().coerceIn(0, constraints.maxHeight)
-                    // Nunca más baja que asomada: al bajar hacia oculta, el
-                    // contenido sigue midiendo su alto completo y se sale por
-                    // abajo en vez de encogerse. Si se encogiera, el asa y el
-                    // título medirían menos, los anclajes se recalcularían a
-                    // mitad del gesto y la hoja daría saltos.
-                    val peekTopPx = fallbackTopPx.roundToInt().coerceIn(0, constraints.maxHeight)
-                    val height = constraints.maxHeight - minOf(topPx, peekTopPx)
+                    // Nunca más baja que media altura: al bajar hacia oculta el
+                    // contenido conserva su alto y se sale por abajo en vez de
+                    // encogerse (y volver a medir la rejilla en cada frame).
+                    val minTopPx = minVisibleTopPx.roundToInt().coerceIn(0, constraints.maxHeight)
+                    val height = constraints.maxHeight - minOf(topPx, minTopPx)
                     val placeable = measurable.measure(
                         constraints.copy(minHeight = height, maxHeight = height)
                     )
@@ -204,17 +199,8 @@ internal fun MapPhotoSheet(
                     )
                 )
                 Column(Modifier.fillMaxSize()) {
-                    // Lo que asoma en reposo: asa + título (o la cabecera de
-                    // selección). Tocarlo en reposo abre la hoja a media altura.
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onSizeChanged { onPeekMeasured(it.height) }
-                            .clickable(
-                                enabled = sheetState.settledValue == MapSheetValue.Peek,
-                                onClick = onPeekClick
-                            )
-                    ) {
+                    // Asa + título (o la cabecera de selección).
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         SheetDragHandle()
                         if (isSelectionActive) {
                             SelectionHeader(
