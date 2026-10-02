@@ -1,7 +1,18 @@
 package com.photonne.app.ui.people
 
-import com.photonne.app.resources.person_memories_title_unnamed
-import com.photonne.app.resources.person_memories_title
+import com.photonne.app.resources.person_memories_together
+import com.photonne.app.resources.person_memories_through_years
+import com.photonne.app.ui.theme.Spacing
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -122,23 +133,14 @@ fun PersonDetailScreen(
                     top = reservedTop,
                     bottom = floatingNavBarReservedHeight()
                 ),
-                // Sus recuerdos encima de sus fotos: antes iban en Recuerdos,
-                // donde nadie los buscaba.
+                // Sus recuerdos encima de sus fotos (ver PersonMemoriesHeader).
                 header = if (state.memories.isNotEmpty()) {
                     {
-                        com.photonne.app.ui.memories.MemoryThemeRow(
-                            row = com.photonne.app.ui.memories.MemoryRow(
-                                key = "person",
-                                title = "",
-                                sectionId = null,
-                                memories = state.memories
-                            ),
+                        PersonMemoriesHeader(
+                            memories = state.memories,
                             baseUrl = apiBaseUrl,
                             openingId = state.openingMemoryId,
-                            onClick = onOpenMemory,
-                            header = title.takeIf { it.isNotBlank() }
-                                ?.let { stringResource(Res.string.person_memories_title, it) }
-                                ?: stringResource(Res.string.person_memories_title_unnamed)
+                            onOpen = onOpenMemory
                         )
                     }
                 } else null,
@@ -241,3 +243,78 @@ private fun PersonDetailOverflowMenu(
 
 private const val SCROLL_TO_TOP_MIN_CELL = 12
 private const val SCROLL_TO_TOP_SNAP_CELL = 48
+
+/** Tarjeta de pareja: cuadrada, con la otra persona y cuántas fotos tienen juntas. */
+private val PairCardSize = 120.dp
+
+/**
+ * Lo de esta persona encima de sus fotos: "A lo largo de los años" como tarjeta
+ * destacada (solo hay una por persona) y "Personas con más fotos juntas" como
+ * fila, cada tarjeta con la OTRA persona ("Joan · 42 fotos"), no con la de la
+ * ficha. Con margen debajo para que no se pegue a la rejilla.
+ */
+@Composable
+private fun PersonMemoriesHeader(
+    memories: List<com.photonne.app.data.models.Memory>,
+    baseUrl: String,
+    openingId: String?,
+    onOpen: (com.photonne.app.data.models.Memory) -> Unit,
+) {
+    val throughYears = memories.firstOrNull {
+        com.photonne.app.data.models.MemoryKind.from(it.kind) ==
+            com.photonne.app.data.models.MemoryKind.PersonThroughYears
+    }
+    val pairs = memories.filter {
+        com.photonne.app.data.models.MemoryKind.from(it.kind) ==
+            com.photonne.app.data.models.MemoryKind.PeopleTogether
+    }
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.lg)) {
+        if (throughYears != null) {
+            PersonHeaderTitle(stringResource(Res.string.person_memories_through_years))
+            com.photonne.app.ui.memories.BigMemoryCard(
+                memory = throughYears,
+                // La ficha ya dice de quién es: basta el periodo como subtítulo.
+                title = stringResource(Res.string.person_memories_through_years),
+                baseUrl = baseUrl,
+                isOpening = openingId == throughYears.id,
+                onClick = { onOpen(throughYears) },
+                modifier = Modifier
+                    .padding(horizontal = Spacing.lg)
+                    .widthIn(max = 560.dp)
+                    .fillMaxWidth()
+            )
+        }
+        if (pairs.isNotEmpty()) {
+            PersonHeaderTitle(stringResource(Res.string.person_memories_together))
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = Spacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                items(pairs, key = { "pair:${it.id}" }) { pair ->
+                    com.photonne.app.ui.memories.MemoryCardFace(
+                        coverUrl = pair.coverAssetId?.let { "$baseUrl/api/assets/$it/thumbnail?size=Medium" },
+                        contentDescription = pair.title,
+                        title = pair.companionName ?: pair.title,
+                        subtitle = pair.subtitle,
+                        compact = true,
+                        modifier = Modifier
+                            .size(PairCardSize)
+                            .clickable(enabled = openingId != pair.id) { onOpen(pair) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonHeaderTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.lg, bottom = Spacing.sm)
+            .semantics { heading() }
+    )
+}

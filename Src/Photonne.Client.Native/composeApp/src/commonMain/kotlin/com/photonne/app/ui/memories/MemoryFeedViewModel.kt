@@ -83,23 +83,32 @@ data class MemoryFeedUiState(
 }
 
 /**
- * Dónde vive cada recuerdo en la app. Recuerdos se queda con lo que tiene
- * fecha (hoy, este mes); los temas van a Explorar; los de personas, a la ficha
- * de cada persona, que es donde se buscan.
+ * Dónde vive cada recuerdo en la app. Recuerdos se queda con los recorridos en
+ * el tiempo (hoy, este mes, "Martina a lo largo de los años"); los temas van a
+ * Explorar; las parejas ("personas con más fotos juntas"), solo a la ficha de
+ * cada persona.
  */
 enum class MemoryArea {
     Recuerdos, Explore, People;
 
     companion object {
-        fun of(section: MemorySectionId): MemoryArea = when (section) {
-            MemorySectionId.Today, MemorySectionId.ThisMonth -> Recuerdos
-            MemorySectionId.People -> People
-            MemorySectionId.Trips, MemorySectionId.Favorites, MemorySectionId.Things,
-            MemorySectionId.Other -> Explore
+        fun of(memory: Memory): MemoryArea = when (MemoryKind.from(memory.kind)) {
+            MemoryKind.OnThisDay, MemoryKind.ThisMonth, MemoryKind.PersonThroughYears -> Recuerdos
+            MemoryKind.PeopleTogether -> People
+            MemoryKind.FavoritesOfYear, MemoryKind.CuratedScene, MemoryKind.PetsAndFood,
+            MemoryKind.Trip, MemoryKind.Unknown -> Explore
         }
-
-        fun of(memory: Memory): MemoryArea = of(MemorySectionId.of(MemoryKind.from(memory.kind)))
     }
+}
+
+/** Los tres bloques de Recuerdos, en el orden en que se enseñan. */
+enum class RecuerdosBlock { Today, ThisMonth, ThroughYears }
+
+fun recuerdosBlockOf(memory: Memory): RecuerdosBlock? = when (MemoryKind.from(memory.kind)) {
+    MemoryKind.OnThisDay -> RecuerdosBlock.Today
+    MemoryKind.ThisMonth -> RecuerdosBlock.ThisMonth
+    MemoryKind.PersonThroughYears -> RecuerdosBlock.ThroughYears
+    else -> null
 }
 
 /** El área de una fila: la de su primer recuerdo (una fila nunca mezcla áreas). */
@@ -107,15 +116,15 @@ internal fun MemoryRow.area(): MemoryArea =
     memories.firstOrNull()?.let { MemoryArea.of(it) } ?: MemoryArea.Explore
 
 /**
- * Hoy primero y luego este mes; dentro de cada uno, del año más reciente al
- * más antiguo ("hace 1 año" antes que "hace 5 años").
+ * Hoy, este mes y "a lo largo de los años", en ese orden. Hoy y este mes van del
+ * año más reciente al más antiguo ("hace 1 año" antes que "hace 5 años"); las
+ * personas, en el orden del servidor (las más presentes primero).
  */
 internal fun recuerdosOf(rows: List<MemoryRow>): List<Memory> {
-    val all = rows.flatMap { it.memories }.filter { MemoryArea.of(it) == MemoryArea.Recuerdos }
-    val (today, month) = all.partition {
-        MemorySectionId.of(MemoryKind.from(it.kind)) == MemorySectionId.Today
-    }
-    return today.sortedByDescending { it.windowEnd } + month.sortedByDescending { it.windowEnd }
+    val byBlock = rows.flatMap { it.memories }.groupBy { recuerdosBlockOf(it) }
+    return byBlock[RecuerdosBlock.Today].orEmpty().sortedByDescending { it.windowEnd } +
+        byBlock[RecuerdosBlock.ThisMonth].orEmpty().sortedByDescending { it.windowEnd } +
+        byBlock[RecuerdosBlock.ThroughYears].orEmpty()
 }
 
 /**

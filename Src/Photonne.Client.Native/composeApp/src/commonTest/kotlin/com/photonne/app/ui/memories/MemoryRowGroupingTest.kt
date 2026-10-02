@@ -184,13 +184,16 @@ class MemoryRowGroupingTest {
                     memory("b1", MemoryKind.CuratedScene, "Días de playa 2023", themeKey = "scene:beach", groupTitle = "Días de playa", year = 2023),
                     memory("t1", MemoryKind.Trip, "Lisboa", themeKey = "trips", groupTitle = "Viajes", year = 2022),
                     memory("p1", MemoryKind.PersonThroughYears, "Martina a lo largo de los años", themeKey = "people", groupTitle = "Personas"),
+                    memory("p2", MemoryKind.PeopleTogether, "Martina y Joan", themeKey = "people", groupTitle = "Personas"),
                 )
             )
         )
-        // Hoy primero (del más reciente al más antiguo) y luego este mes.
-        assertEquals(listOf("d2", "d1", "m1"), state.recuerdos.map { it.id })
-        // Explorar: los temas, sin hoy, este mes ni personas.
+        // Hoy (del más reciente al más antiguo), este mes y "a lo largo de los años".
+        assertEquals(listOf("d2", "d1", "m1", "p1"), state.recuerdos.map { it.id })
+        // Explorar: los temas, sin recuerdos con fecha ni personas.
         assertEquals(setOf("scene:beach", "trips"), state.exploreRows.map { it.key }.toSet())
-        assertTrue(state.exploreRows.none { row -> row.memories.any { it.id == "p1" } })
+        // Las parejas solo van a la ficha de cada persona.
+        assertTrue(state.recuerdos.none { it.id == "p2" })
+        assertTrue(state.exploreRows.none { row -> row.memories.any { it.id == "p2" } })
     }
 }

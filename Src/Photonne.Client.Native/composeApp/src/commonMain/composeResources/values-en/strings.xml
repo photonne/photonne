@@ -1637,11 +1637,12 @@
     <string name="explore_scenes_empty">No scenes detected yet. Scene classification runs in the background.</string>
     <string name="explore_search_placeholder">Search labels</string>
     <string name="memories_header_today">Today</string>
+    <string name="memories_header_through_years">Through the years</string>
+    <string name="person_memories_together">People with the most photos together</string>
+    <string name="person_memories_through_years">Through the years</string>
     <string name="memories_empty_dated">No memories from today or this month in past years.</string>
     <string name="explore_empty">Nothing to explore yet. Themes are generated every night from your photos.</string>
     <string name="explore_theme_missing">This theme has no memories any more.</string>
-    <string name="person_memories_title">Memories with %1$s</string>
-    <string name="person_memories_title_unnamed">Their memories</string>
     <plurals name="explore_theme_count">
         <item quantity="one">%1$d memory</item>
         <item quantity="other">%1$d memories</item>

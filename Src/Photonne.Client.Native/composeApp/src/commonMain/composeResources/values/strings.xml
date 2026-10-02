@@ -1519,11 +1519,12 @@
     <string name="explore_scenes_empty">Aún no hay escenas detectadas. La clasificación de escenas se ejecuta en segundo plano.</string>
     <string name="explore_search_placeholder">Buscar etiqueta</string>
     <string name="memories_header_today">Hoy</string>
+    <string name="memories_header_through_years">A lo largo de los años</string>
+    <string name="person_memories_together">Personas con más fotos juntas</string>
+    <string name="person_memories_through_years">A lo largo de los años</string>
     <string name="memories_empty_dated">No hay recuerdos de hoy ni de este mes en otros años.</string>
     <string name="explore_empty">Aún no hay temas para explorar. Se generan cada noche a partir de tus fotos.</string>
     <string name="explore_theme_missing">Este tema ya no tiene recuerdos.</string>
-    <string name="person_memories_title">Recuerdos con %1$s</string>
-    <string name="person_memories_title_unnamed">Sus recuerdos</string>
     <plurals name="explore_theme_count">
         <item quantity="one">%1$d recuerdo</item>
         <item quantity="other">%1$d recuerdos</item>

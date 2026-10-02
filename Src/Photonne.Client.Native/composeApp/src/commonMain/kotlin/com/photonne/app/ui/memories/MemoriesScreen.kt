@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,12 +47,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.Memory
 import com.photonne.app.data.models.MemoryDetail
-import com.photonne.app.data.models.MemoryKind
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_memories_group_count
 import com.photonne.app.resources.explore_section_memories
 import com.photonne.app.resources.memories_empty_dated
 import com.photonne.app.resources.memories_header_today
+import com.photonne.app.resources.memories_header_through_years
 import com.photonne.app.resources.memories_section_favorites
 import com.photonne.app.resources.memories_section_people
 import com.photonne.app.resources.memories_section_places
@@ -83,18 +84,21 @@ private const val BigCardAspect = 1f / 0.62f
 /** Tope de ancho de una tarjeta, como la tira: en tablet no crece sin límite. */
 private val BigCardMaxWidth = 560.dp
 
+/** Parte del ancho que ocupa cada tarjeta de un carrusel; el resto deja asomar la siguiente. */
+private const val CarouselCardFraction = 0.86f
+
 /** Lo que dura una pasada del zoom lento de las tarjetas grandes (ida o vuelta). */
 private const val KenBurnsMillis = 14_000
 
 /**
- * Recuerdos: solo lo que tiene fecha, "hoy hace…" y "este mes". Los temas
- * (viajes, playa, favoritos del año…) viven en Explorar y los de personas en la
- * ficha de cada persona.
+ * Recuerdos: los recorridos en el tiempo, en tres bloques — Hoy, Este mes y
+ * "A lo largo de los años" (una persona a través de los años). Los temas
+ * (viajes, playa…) viven en Explorar y las parejas, en la ficha de cada persona.
  *
- * Con tan pocos recuerdos, dos filas de miniaturas dejaban la página vacía.
- * Ahora es un feed de tarjetas a todo el ancho con la forma de la antigua tira
- * de Fotos, una por año: Hoy primero y luego Este mes, cada una con un zoom
- * lento sobre la portada.
+ * Cada bloque es un carrusel de tarjetas grandes y apaisadas (la forma de la
+ * antigua tira de Fotos, con su zoom lento) en las que asoma la siguiente: con
+ * los bloques apilados en vertical, "A lo largo de los años" quedaba dos o tres
+ * pantallas más abajo. Así se ven los tres en poco más de una.
  */
 @Composable
 fun MemoriesScreen(
@@ -113,54 +117,95 @@ fun MemoriesScreen(
         isEmpty = { it.recuerdos.isEmpty() },
         emptyTitle = stringResource(Res.string.memories_empty_dated),
     ) { state, open ->
-        val (today, month) = state.recuerdos.partition {
-            MemorySectionId.of(MemoryKind.from(it.kind)) == MemorySectionId.Today
+        val blocks = state.recuerdos.groupBy { recuerdosBlockOf(it) }
+        RecuerdosBlock.entries.forEach { block ->
+            val memories = blocks[block].orEmpty()
+            if (memories.isEmpty()) return@forEach
+            item(key = "block:${block.name}") {
+                RecuerdosCarousel(
+                    title = stringResource(
+                        when (block) {
+                            RecuerdosBlock.Today -> Res.string.memories_header_today
+                            RecuerdosBlock.ThisMonth -> Res.string.memories_section_this_month
+                            RecuerdosBlock.ThroughYears -> Res.string.memories_header_through_years
+                        }
+                    ),
+                    memories = memories,
+                    // Bajo "A lo largo de los años" basta el nombre; el título
+                    // del servidor lo repetiría.
+                    useCardLabel = block == RecuerdosBlock.ThroughYears,
+                    baseUrl = baseUrl,
+                    openingId = state.openingId,
+                    onClick = open,
+                )
+            }
         }
-        bigCardSection("today", Res.string.memories_header_today, today, baseUrl, state.openingId, open)
-        bigCardSection("month", Res.string.memories_section_this_month, month, baseUrl, state.openingId, open)
-    }
-}
-
-private fun LazyListScope.bigCardSection(
-    key: String,
-    header: StringResource,
-    memories: List<Memory>,
-    baseUrl: String,
-    openingId: String?,
-    open: (Memory) -> Unit,
-) {
-    if (memories.isEmpty()) return
-    item(key = "header:$key") {
-        Text(
-            text = stringResource(header),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .contentWidth()
-                .padding(start = Spacing.lg, end = Spacing.lg, top = 20.dp, bottom = Spacing.sm)
-                .semantics { heading() }
-        )
-    }
-    items(memories, key = { "memory:${it.id}" }) { memory ->
-        BigMemoryCard(
-            memory = memory,
-            baseUrl = baseUrl,
-            isOpening = openingId == memory.id,
-            onClick = { open(memory) },
-            modifier = Modifier
-                .contentWidth()
-                .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
-        )
     }
 }
 
 @Composable
-private fun BigMemoryCard(
+private fun RecuerdosCarousel(
+    title: String,
+    memories: List<Memory>,
+    useCardLabel: Boolean,
+    baseUrl: String,
+    openingId: String?,
+    onClick: (Memory) -> Unit,
+) {
+    Column(modifier = Modifier.contentWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(start = Spacing.lg, end = Spacing.lg, top = 20.dp, bottom = Spacing.sm)
+                .semantics { heading() }
+        )
+        if (memories.size == 1) {
+            // Una sola: a todo el ancho, sin carrusel que no lleva a nada.
+            val memory = memories.single()
+            BigMemoryCard(
+                memory = memory,
+                title = if (useCardLabel) memory.cardLabel ?: memory.title else memory.title,
+                baseUrl = baseUrl,
+                isOpening = openingId == memory.id,
+                onClick = { onClick(memory) },
+                modifier = Modifier
+                    .padding(horizontal = Spacing.lg)
+                    .widthIn(max = BigCardMaxWidth)
+                    .fillMaxWidth()
+            )
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = Spacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                items(memories, key = { "memory:${it.id}" }) { memory ->
+                    BigMemoryCard(
+                        memory = memory,
+                        title = if (useCardLabel) memory.cardLabel ?: memory.title else memory.title,
+                        baseUrl = baseUrl,
+                        isOpening = openingId == memory.id,
+                        onClick = { onClick(memory) },
+                        // Asoma la siguiente: dice "desliza" sin decirlo.
+                        modifier = Modifier
+                            .fillParentMaxWidth(CarouselCardFraction)
+                            .widthIn(max = BigCardMaxWidth)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun BigMemoryCard(
     memory: Memory,
     baseUrl: String,
     isOpening: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    title: String = memory.title,
 ) {
     // Zoom lento de ida y vuelta, leído en la fase de dibujo (graphicsLayer):
     // no recompone la tarjeta en cada fotograma.
@@ -177,7 +222,7 @@ private fun BigMemoryCard(
     MemoryCardFace(
         coverUrl = memory.coverAssetId?.let { "$baseUrl/api/assets/$it/thumbnail?size=Large" },
         contentDescription = memory.title,
-        title = memory.title,
+        title = title,
         subtitle = memory.subtitle
             ?: stringResource(Res.string.explore_memories_group_count, memory.assetCount),
         imageModifier = Modifier.graphicsLayer {
@@ -185,8 +230,6 @@ private fun BigMemoryCard(
             scaleY = scale
         },
         modifier = modifier
-            .widthIn(max = BigCardMaxWidth)
-            .fillMaxWidth()
             .aspectRatio(BigCardAspect)
             .clickable(enabled = !isOpening, onClick = onClick),
     ) {

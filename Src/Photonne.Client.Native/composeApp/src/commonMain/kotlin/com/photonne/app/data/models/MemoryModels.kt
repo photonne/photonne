@@ -28,6 +28,10 @@ data class Memory(
     val cardLabel: String? = null,
     val coverAssetId: String? = null,
     val assetCount: Int = 0,
+    /** Only on a pair asked for with a personId: the other person, to label the
+     *  card "Joan · 42 fotos" on Martina's page. */
+    val companionPersonId: String? = null,
+    val companionName: String? = null,
     // Capture-date span in the photo's own wall-clock, like TimelineItem.fileCreatedAt.
     // Decode with captureLocalDate(), never the device zone.
     @Serializable(with = FlexibleInstantSerializer::class) val windowStart: Instant,
