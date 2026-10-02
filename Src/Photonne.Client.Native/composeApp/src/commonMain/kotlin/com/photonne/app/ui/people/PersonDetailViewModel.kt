@@ -39,7 +39,7 @@ data class PersonDetailUiState(
     val isBulkMutating: Boolean = false,
     val error: UiError? = null,
     val selection: Set<String> = emptySet(),
-    /** "Martina a lo largo de los años", "Martina y Joan": ya no van en Recuerdos. */
+    /** Sus parejas ("personas con más fotos juntas"), en el orden del servidor. */
     val memories: List<com.photonne.app.data.models.Memory> = emptyList(),
     /** Recuerdo que se está abriendo (es una petición: el feed solo trae la portada). */
     val openingMemoryId: String? = null,
@@ -128,7 +128,14 @@ class PersonDetailViewModel(
                 .onSuccess { memories ->
                     _state.update {
                         if (it.personId != personId) it
-                        else it.copy(memories = memories.sortedByDescending { m -> m.windowEnd })
+                        // Solo las parejas: "a lo largo de los años" son sus propias
+                        // fotos (la ficha ya las enseña) y vive en Recuerdos.
+                        else it.copy(
+                            memories = memories.filter { m ->
+                                com.photonne.app.data.models.MemoryKind.from(m.kind) ==
+                                    com.photonne.app.data.models.MemoryKind.PeopleTogether
+                            }
+                        )
                     }
                 }
         }

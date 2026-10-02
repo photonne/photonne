@@ -1639,7 +1639,6 @@
     <string name="memories_header_today">Today</string>
     <string name="memories_header_through_years">Through the years</string>
     <string name="person_memories_together">People with the most photos together</string>
-    <string name="person_memories_through_years">Through the years</string>
     <string name="memories_empty_dated">No memories from today or this month in past years.</string>
     <string name="explore_empty">Nothing to explore yet. Themes are generated every night from your photos.</string>
     <string name="explore_theme_missing">This theme has no memories any more.</string>

@@ -1781,8 +1781,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             if (extra.isEmpty()) displayCtx.items else displayCtx.items + extra
                         }
                     }
+                    // La clave de teselas (un ajuste) para que el mapa de la
+                    // ubicación tenga el estilo de la página Mapa.
+                    LaunchedEffect(Unit) { mapViewModel.ensureTileApiKey() }
+                    val mapState by mapViewModel.state.collectAsStateWithLifecycle()
                     AssetDetailScreen(
                         items = viewerItems,
+                        mapTileApiKey = mapState.tileApiKey,
                         startIndex = displayCtx.startIndex,
                         hasMore = feed?.hasMore?.invoke() ?: displayCtx.hasMore,
                         onLoadMore = feed?.loadMore ?: displayCtx.onLoadMore,

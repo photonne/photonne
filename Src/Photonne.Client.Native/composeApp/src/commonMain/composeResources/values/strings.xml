@@ -1521,7 +1521,6 @@
     <string name="memories_header_today">Hoy</string>
     <string name="memories_header_through_years">A lo largo de los años</string>
     <string name="person_memories_together">Personas con más fotos juntas</string>
-    <string name="person_memories_through_years">A lo largo de los años</string>
     <string name="memories_empty_dated">No hay recuerdos de hoy ni de este mes en otros años.</string>
     <string name="explore_empty">Aún no hay temas para explorar. Se generan cada noche a partir de tus fotos.</string>
     <string name="explore_theme_missing">Este tema ya no tiene recuerdos.</string>

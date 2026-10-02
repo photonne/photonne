@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -145,6 +146,9 @@ import com.photonne.app.ui.main.FloatingNavBarBottomMargin
 import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
 import com.photonne.app.ui.main.ChromePill
 import com.photonne.app.ui.map.MapAttribution
+import com.photonne.app.ui.map.MapBackgroundDark
+import com.photonne.app.ui.map.MapBackgroundLight
+import com.photonne.app.ui.map.cartoTileTemplate
 import com.photonne.app.ui.map.MapPinColor
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -154,6 +158,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -204,6 +209,7 @@ import com.photonne.app.resources.asset_action_show_original
 import com.photonne.app.resources.asset_action_show_preview
 import com.photonne.app.resources.asset_metadata_location
 import com.photonne.app.resources.asset_metadata_open_map
+import com.photonne.app.resources.map_attribution
 import com.photonne.app.resources.map_attribution_osm
 import com.photonne.app.resources.slideshow_exit
 import com.photonne.app.resources.slideshow_next
@@ -288,6 +294,12 @@ fun AssetDetailScreen(
      * Null hides the action (host without device-library support).
      */
     onDeleteFromDevice: ((TimelineItem) -> Unit)? = null,
+    /**
+     * Clave de CARTO del servidor: con ella el mapa de la ubicación usa las
+     * mismas teselas que la página Mapa, en el tema de la app. Null o vacía →
+     * OpenStreetMap (CARTO sin clave devuelve teselas "API KEY REQUIRED").
+     */
+    mapTileApiKey: String? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
@@ -749,6 +761,7 @@ fun AssetDetailScreen(
                         isLoading = isCurrent && state.isLoading,
                         errorMessage = if (isCurrent) state.error?.userMessage else null,
                         baseUrl = apiBaseUrl,
+                        mapTileApiKey = mapTileApiKey,
                         faces = if (isCurrent) state.faces else emptyList(),
                         facesFailed = isCurrent && state.facesFailed,
                         samePersonAssets = if (isCurrent) state.samePersonAssets else emptyList(),
@@ -1783,6 +1796,7 @@ private fun AssetMetadataPanel(
     isLoading: Boolean,
     errorMessage: String?,
     baseUrl: String,
+    mapTileApiKey: String?,
     faces: List<com.photonne.app.data.models.Face>,
     facesFailed: Boolean,
     samePersonAssets: List<com.photonne.app.data.models.PersonAsset>,
@@ -1899,7 +1913,7 @@ private fun AssetMetadataPanel(
                     )
                 }
             }
-            LocationMap(latitude = lat, longitude = lon)
+            LocationMap(latitude = lat, longitude = lon, tileApiKey = mapTileApiKey)
         }
 
         // Detected faces — thumbnails inline; tapping the card opens the full
@@ -2538,16 +2552,23 @@ private fun MetadataActionRow(leadingIcon: ImageVector, label: String, onClick: 
 }
 
 /**
- * A cropped OSM map centred exactly on [latitude]/[longitude] with the pin in
- * the dead centre. The tiles are laid out as an adjacent grid (Column of Rows)
+ * A cropped map centred exactly on [latitude]/[longitude] with the pin in
+ * the dead centre. With the server's CARTO key it uses the same tiles as the
+ * Map page (dark or light following the app theme, at @2x); without it, OSM. The tiles are laid out as an adjacent grid (Column of Rows)
  * — so the layout itself guarantees they meet edge-to-edge with no seam — sized
  * with requiredSize so the box constraints don't clip the grid (which once
- * blanked the map), and the WHOLE grid is shifted by a single offset to centre
- * the point.
+ * blanked the map), anchored top-left with an unbounded wrapContentSize, and
+ * the WHOLE grid is shifted by a single offset to centre the point.
  */
 @Composable
-private fun LocationMap(latitude: Double, longitude: Double) {
+private fun LocationMap(latitude: Double, longitude: Double, tileApiKey: String?) {
     val mapsUrl = "https://www.google.com/maps/?q=$latitude,$longitude"
+    val useCarto = !tileApiKey.isNullOrBlank()
+    val darkTiles = useCarto && MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val tileTemplate = remember(darkTiles, tileApiKey) {
+        if (useCarto) cartoTileTemplate(darkTiles, tileApiKey).replace(".png", "@2x.png")
+        else OSM_TILE_TEMPLATE
+    }
     val density = LocalDensity.current
     val n = 1 shl MAP_ZOOM
     val worldX = (longitude + 180.0) / 360.0 * n
@@ -2572,7 +2593,13 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                 .fillMaxWidth()
                 .height(MAP_HEIGHT_DP)
                 .clip(MaterialTheme.shapes.large)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(
+                    when {
+                        !useCarto -> MaterialTheme.colorScheme.surfaceVariant
+                        darkTiles -> MapBackgroundDark
+                        else -> MapBackgroundLight
+                    }
+                )
                 .clickable { openExternalUrl(mapsUrl) }
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -2587,6 +2614,12 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                 val gridOffsetY = (boxHpx / 2.0 - (halfY + fracY) * tilePx).roundToInt()
                 Column(
                     modifier = Modifier
+                        // Anchor the oversized grid at the top-left: otherwise
+                        // Compose centres a child larger than its constraints,
+                        // that centring stacks on top of gridOffset and the map
+                        // shows the wrong spot (and a blank band at the bottom
+                        // or right when the point sits past mid-tile).
+                        .wrapContentSize(Alignment.TopStart, unbounded = true)
                         .requiredSize(
                             width = MAP_TILE_DP * (2 * halfX + 1),
                             height = MAP_TILE_DP * (2 * halfY + 1)
@@ -2598,8 +2631,13 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                             for (dx in -halfX..halfX) {
                                 val tileX = (((centerTileX + dx) % n) + n) % n
                                 val tileY = (centerTileY + dy).coerceIn(0, n - 1)
+                                val subdomain = "abcd"[(tileX + tileY) % 4]
                                 AsyncImage(
-                                    model = "https://tile.openstreetmap.org/$MAP_ZOOM/$tileX/$tileY.png",
+                                    model = tileTemplate
+                                        .replace("{s}", subdomain.toString())
+                                        .replace("{z}", MAP_ZOOM.toString())
+                                        .replace("{x}", tileX.toString())
+                                        .replace("{y}", tileY.toString()),
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(MAP_TILE_DP)
@@ -2609,9 +2647,11 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                     }
                 }
             }
-            // Condición de uso de las teselas de OSM: atribución sobre el mapa.
+            // Condición de uso de las teselas: atribución sobre el mapa.
             MapAttribution(
-                text = stringResource(Res.string.map_attribution_osm),
+                text = stringResource(
+                    if (useCarto) Res.string.map_attribution else Res.string.map_attribution_osm
+                ),
                 modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.sm)
             )
             Icon(
@@ -2680,6 +2720,7 @@ private fun LocationMap(latitude: Double, longitude: Double) {
 private const val AUTO_ORIGINAL_SCALE = 2f
 
 private const val MAP_ZOOM = 16
+private const val OSM_TILE_TEMPLATE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 private val MAP_TILE_DP = 180.dp
 private val MAP_HEIGHT_DP = 200.dp
 

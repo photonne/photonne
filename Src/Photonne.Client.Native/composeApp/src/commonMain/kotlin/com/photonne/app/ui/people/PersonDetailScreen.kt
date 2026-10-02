@@ -1,14 +1,12 @@
 package com.photonne.app.ui.people
 
 import com.photonne.app.resources.person_memories_together
-import com.photonne.app.resources.person_memories_through_years
 import com.photonne.app.ui.theme.Spacing
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
@@ -248,10 +246,12 @@ private const val SCROLL_TO_TOP_SNAP_CELL = 48
 private val PairCardSize = 120.dp
 
 /**
- * Lo de esta persona encima de sus fotos: "A lo largo de los años" como tarjeta
- * destacada (solo hay una por persona) y "Personas con más fotos juntas" como
- * fila, cada tarjeta con la OTRA persona ("Joan · 42 fotos"), no con la de la
- * ficha. Con margen debajo para que no se pegue a la rejilla.
+ * "Personas con más fotos juntas" encima de sus fotos: cada tarjeta con la OTRA
+ * persona ("Joan · 42 fotos"), no con la de la ficha. Con margen debajo para que
+ * no se pegue a la rejilla.
+ *
+ * "A lo largo de los años" no va aquí: es un resumen de sus propias fotos, que
+ * la ficha ya enseña todas debajo. Vive en Recuerdos.
  */
 @Composable
 private fun PersonMemoriesHeader(
@@ -260,30 +260,11 @@ private fun PersonMemoriesHeader(
     openingId: String?,
     onOpen: (com.photonne.app.data.models.Memory) -> Unit,
 ) {
-    val throughYears = memories.firstOrNull {
-        com.photonne.app.data.models.MemoryKind.from(it.kind) ==
-            com.photonne.app.data.models.MemoryKind.PersonThroughYears
-    }
     val pairs = memories.filter {
         com.photonne.app.data.models.MemoryKind.from(it.kind) ==
             com.photonne.app.data.models.MemoryKind.PeopleTogether
     }
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.lg)) {
-        if (throughYears != null) {
-            PersonHeaderTitle(stringResource(Res.string.person_memories_through_years))
-            com.photonne.app.ui.memories.BigMemoryCard(
-                memory = throughYears,
-                // La ficha ya dice de quién es: basta el periodo como subtítulo.
-                title = stringResource(Res.string.person_memories_through_years),
-                baseUrl = baseUrl,
-                isOpening = openingId == throughYears.id,
-                onClick = { onOpen(throughYears) },
-                modifier = Modifier
-                    .padding(horizontal = Spacing.lg)
-                    .widthIn(max = 560.dp)
-                    .fillMaxWidth()
-            )
-        }
         if (pairs.isNotEmpty()) {
             PersonHeaderTitle(stringResource(Res.string.person_memories_together))
             LazyRow(
