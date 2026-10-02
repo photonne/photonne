@@ -81,8 +81,16 @@ Es el camino más largo (14 días como mínimo), así que va primero.
    ./gradlew :composeApp:bundleRelease
    # → composeApp/build/outputs/bundle/release/composeApp-release.aab
    ```
-   Guarda también `composeApp/build/outputs/mapping/release/mapping.txt`;
-   se sube junto al AAB en Play Console para desofuscar los fallos.
+   El mapping de R8 va dentro del AAB
+   (`BUNDLE-METADATA/.../proguard.map`) y Play lo usa solo para desofuscar
+   los fallos: no hay que subirlo aparte. El aviso de Play "contiene código
+   nativo pero no has subido símbolos de depuración" se ignora: el único
+   `.so` es `libandroidx.graphics.path.so` (de Compose, precompilado y sin
+   símbolos publicados); la app no tiene código nativo propio. Comprobar la firma (debe salir la
+   clave de subida, no `CN=Android Debug`):
+   ```sh
+   keytool -printcert -jarfile composeApp/build/outputs/bundle/release/composeApp-release.aab
+   ```
 4. **Play Console → Crear app**: nombre "Photonne", app gratuita, idioma
    predeterminado español.
 5. **Prueba → Prueba cerrada → crear pista**: lista de testers (correos de
@@ -104,8 +112,22 @@ Es el camino más largo (14 días como mínimo), así que va primero.
    - **Permisos de fotos y vídeos** (`READ_MEDIA_IMAGES/VIDEO`): la copia de
      seguridad de la galería es la función principal; el selector del sistema
      no sirve porque hay que leer toda la galería en segundo plano.
-   - **Servicio en primer plano `dataSync`**: descripción + vídeo corto de
-     "Subir ahora" con la notificación de progreso.
+   - **Servicio en primer plano**: tipo "Sincronización de datos", caso de
+     uso subida/transferencia de archivos. Declarar los dos usos reales de
+     `BackupWorker`: "Subir ahora" y la copia programada cuando hay archivos
+     pendientes. Vídeo (Drive o YouTube, accesible con el enlace sin iniciar
+     sesión): pulsar "Subir ahora", salir y bajar la persiana con la
+     notificación de progreso. No borrar ni mover el vídeo: Play puede
+     revisarlo en cualquier actualización.
+   - **Identificador de publicidad**: no. El manifiesto final no lleva
+     `AD_ID` ni hay SDK de anuncios o analítica; si alguna dependencia nueva
+     lo añade, esta respuesta cambia.
+   - La **prueba interna** sirve para instalar el build de release en el
+     móvil sin revisión, pero **no cuenta** para el requisito de los 14 días:
+     solo cuenta la cerrada. Promocionar la versión interna a la cerrada
+     evita volver a subir el AAB. Un build de debug de Android Studio choca
+     con el de Play (misma `applicationId`, otra firma): hay que
+     desinstalarlo antes de instalar desde Play.
 7. **Reclutar 12 testers** y comprobar que *aceptan* la invitación (Play
    cuenta los apuntados, no los invitados). Deben seguir apuntados los 14
    días; mejor buscar 15 o más por si alguien se borra.
