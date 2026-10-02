@@ -37,6 +37,10 @@ de las tiendas, y lo que queda fuera del código.
   administrador del servidor. Si un revisor lo pide, la respuesta es esa; el
   plan B sería `DELETE /api/users/me` + opción en Ajustes → Cuenta.
 
+- **iOS solo para iPhone** (`TARGETED_DEVICE_FAMILY = 1`): en iPad se
+  instala en modo compatibilidad. Añadir iPad más adelante está permitido;
+  quitarlo de una versión publicada, no.
+
 ## Siguientes pasos, por orden
 
 ### 1. Antes del primer build
@@ -156,8 +160,9 @@ Connect apuntando a él.
 3. **TestFlight**: el build aparece en 10–30 min tras el procesado. Pruébalo
    con testers internos (hasta 100 usuarios de tu equipo, sin revisión).
    Los testers externos requieren una revisión ligera de Beta App Review.
-4. **Ficha de la versión**: capturas (iPhone 6,9" obligatorias; iPad 13"
-   también porque `TARGETED_DEVICE_FAMILY = 1,2`), descripción, palabras
+4. **Ficha de la versión**: capturas de iPhone 6,9" (solo iPhone:
+   `TARGETED_DEVICE_FAMILY = 1`, así que no hacen falta las de iPad),
+   descripción, palabras
    clave, URL de soporte, URL de la política de privacidad, categoría
    (Fotografía) y clasificación por edades.
 5. **App Privacy**: "No se recopilan datos", coherente con
@@ -180,8 +185,7 @@ Connect apuntando a él.
   descripción corta (Play, 80), descripción larga, palabras clave (Apple,
   100), notas de la versión.
 - Capturas desde un dispositivo o emulador con la instancia demo: Play pide
-  2–8 de teléfono y un gráfico destacado de 1024×500; Apple, las de 6,9" y
-  13".
+  2–8 de teléfono y un gráfico destacado de 1024×500; Apple, las de 6,9".
 - Icono: Play pide 512×512 PNG; Apple lo toma del build
   (`AppIcon.appiconset/icon-1024.png`).
 - Mejora opcional: icono adaptativo de Android (`mipmap-anydpi-v26`, con capa
