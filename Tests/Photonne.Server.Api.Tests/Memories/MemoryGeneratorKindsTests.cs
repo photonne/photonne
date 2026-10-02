@@ -245,6 +245,42 @@ public class MemoryGeneratorKindsTests : IntegrationTestBase
         Assert.Equal(24, memory.AssetCount);
     }
 
+    [Fact]
+    public async Task PersonThroughYears_SamplesEveryYearOldestFirst()
+    {
+        var user = await CreateUserAsync();
+        var folder = await CreateFolderAsync(user);
+        var today = await LocalTodayAsync();
+
+        // A busy last year (30) and three quiet ones (5 each). The newest-200
+        // rule took the busy year whole; the summary takes at most 8 per year.
+        var seen = new List<Guid>();
+        seen.AddRange(await CreateAssetsAsync(user, folder, today.AddYears(-1), count: 30));
+        foreach (var yearsAgo in new[] { 2, 3, 4 })
+            seen.AddRange(await CreateAssetsAsync(user, folder, today.AddYears(-yearsAgo), count: 5));
+        await NamePersonAsync(user, user, "Martina", seen);
+
+        await GenerateAsync(user.Id);
+
+        var (memory, years) = await WithDbContextAsync(async db =>
+        {
+            var m = await db.Memories
+                .SingleAsync(x => x.OwnerId == user.Id && x.Kind == MemoryKind.PersonThroughYears);
+            var ordered = await db.MemoryAssets
+                .Where(ma => ma.MemoryId == m.Id)
+                .OrderBy(ma => ma.Position)
+                .Select(ma => ma.Asset.CapturedAt.Year)
+                .ToListAsync();
+            return (m, ordered);
+        });
+
+        Assert.Equal(8 + 3 * 5, memory.AssetCount);
+        Assert.Equal(4, years.Distinct().Count());
+        // After the cover (index 0), oldest year first.
+        var afterCover = years.Skip(1).ToList();
+        Assert.Equal(afterCover.OrderBy(y => y).ToList(), afterCover);
+    }
+
     /// <summary>
     /// The one non-obvious call in the grouping: a person and a pair are two
     /// kinds but one row. Without this pinned it reads like a bug and gets

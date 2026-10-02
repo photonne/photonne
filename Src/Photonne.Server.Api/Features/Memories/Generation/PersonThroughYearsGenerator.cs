@@ -26,6 +26,14 @@ internal sealed class PersonThroughYearsGenerator : IMemoryGenerator
     /// summer belongs in a trip memory, not in "a lo largo de los años".</summary>
     private const int MinDistinctYears = 3;
 
+    /// <summary>Photos per year in the summary: enough to see the year, few
+    /// enough that ten years fit in one sitting.</summary>
+    private const int PerYear = 8;
+
+    /// <summary>How many of a year's newest photos are looked at to pick its
+    /// PerYear. Bounds the per-year query however much was shot that year.</summary>
+    private const int PoolPerYear = 120;
+
     public MemoryKind Kind => MemoryKind.PersonThroughYears;
 
     public async Task<IReadOnlyList<MemoryDraft>> GenerateAsync(MemoryContext ctx, CancellationToken ct)
@@ -53,9 +61,21 @@ internal sealed class PersonThroughYearsGenerator : IMemoryGenerator
                 .ToListAsync(ct);
 
             if (years.Count < MinDistinctYears) continue;
+            if (await theirs.CountAsync(ct) < MinAssets) continue;
 
-            var candidates = await MemoryCandidates.LoadAsync(theirs, ctx.UserId, ctx.Db, ct);
-            if (candidates.Count < MinAssets) continue;
+            // A summary across the years, not their newest 200: that was the same
+            // grid their own page shows, and with a busy last year the older ones
+            // never made it in. A few photos from every year instead, oldest first.
+            var candidates = new List<MemoryCandidate>();
+            foreach (var year in years.OrderBy(y => y))
+            {
+                var start = new DateTime(year, 1, 1);
+                var end = start.AddYears(1);
+                var pool = await MemoryCandidates.LoadAsync(
+                    theirs.Where(a => a.CapturedAt >= start && a.CapturedAt < end),
+                    ctx.UserId, ctx.Db, ct, take: PoolPerYear);
+                candidates.AddRange(SampleYear(pool, PerYear));
+            }
 
             drafts.Add(candidates.ToDraft(
                 Kind,
@@ -70,9 +90,34 @@ internal sealed class PersonThroughYearsGenerator : IMemoryGenerator
                 groupTitle: "Personas",
                 title: $"{person.Name} a lo largo de los años",
                 subtitle: $"{years.Min()} – {years.Max()}",
-                cardLabel: person.Name));
+                cardLabel: person.Name,
+                chronological: true));
         }
 
         return drafts;
+    }
+
+    /// <summary>
+    /// Up to [count] photos of one year: favourites first (the user's own pick),
+    /// then the rest spread evenly over the year so one busy weekend can't fill it.
+    /// </summary>
+    internal static List<MemoryCandidate> SampleYear(IReadOnlyList<MemoryCandidate> pool, int count)
+    {
+        if (pool.Count <= count) return pool.ToList();
+        var picked = pool.Where(c => c.IsFavorite)
+            .OrderByDescending(c => c.HasNamedFace)
+            .ThenBy(c => c.CapturedAt)
+            .Take(count)
+            .ToList();
+        var rest = pool.Where(c => !picked.Contains(c)).OrderBy(c => c.CapturedAt).ToList();
+        var missing = count - picked.Count;
+        if (missing > 0 && rest.Count > 0)
+        {
+            // Evenly spaced indices across the year's remaining photos.
+            var step = rest.Count / (double)missing;
+            for (var i = 0; i < missing && i < rest.Count; i++)
+                picked.Add(rest[(int)(i * step)]);
+        }
+        return picked;
     }
 }

@@ -75,14 +75,18 @@ internal static class MemoryCandidates
         string groupTitle,
         string title,
         string? subtitle = null,
-        string? cardLabel = null)
+        string? cardLabel = null,
+        bool chronological = false)
     {
         var cover = PickCover(candidates);
         // Cover first: the client opens the viewer at index 0 and morphs from the
-        // cover thumbnail, so the two must agree.
+        // cover thumbnail, so the two must agree. Then newest first, or oldest
+        // first for a memory that tells a passage of time.
         var ordered = new List<Guid> { cover.Id };
-        ordered.AddRange(candidates.Where(c => c.Id != cover.Id)
-            .OrderByDescending(c => c.CapturedAt)
+        var rest = candidates.Where(c => c.Id != cover.Id);
+        ordered.AddRange((chronological
+                ? rest.OrderBy(c => c.CapturedAt)
+                : rest.OrderByDescending(c => c.CapturedAt))
             .Select(c => c.Id));
 
         return new MemoryDraft
