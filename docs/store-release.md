@@ -41,11 +41,13 @@ de las tiendas, y lo que queda fuera del código.
 
 ### 1. Antes del primer build
 
-- [ ] **Política de privacidad** en GitHub Pages: qué datos maneja la app
-  (fotos, vídeos, ubicación EXIF, credenciales), que solo viajan al servidor
-  que configura el usuario, que el desarrollador no recibe ni comparte nada,
-  sin analítica ni publicidad, y un contacto. Activar Pages en Settings →
-  Pages y anotar la URL.
+- [ ] **Política de privacidad**: escrita en `site/privacy/index.html`
+  (español e inglés) y publicada por `.github/workflows/pages.yml` en
+  `https://photonne.github.io/photonne/privacy/`. Falta activar una vez
+  Settings → Pages → Source: "GitHub Actions". Si la app empieza a hablar
+  con un servicio nuevo (otro proveedor de mapas, informes de fallos…), hay
+  que actualizarla junto con `PrivacyInfo.xcprivacy` y los formularios de
+  las tiendas.
 - [ ] **Instancia demo para revisores** (Apple 2.1, Play "App access"):
   servidor accesible por HTTPS con fotos de ejemplo, en modo demo
   (`DemoModeGuardMiddleware`) y con un usuario y contraseña que no caduquen.

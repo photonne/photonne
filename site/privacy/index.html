@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photonne · Política de privacidad</title>
+<meta name="description" content="Política de privacidad de las apps de Photonne para Android e iOS.">
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1d1d1f; --muted: #5f6368; --rule: #e3e3e6; --link: #0b57d0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111214; --fg: #e8e8ea; --muted: #a0a3a8; --rule: #2c2e33; --link: #8ab4f8; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 .25rem; }
+  h2 { font-size: 1.2rem; margin: 2.2rem 0 .5rem; }
+  .meta { color: var(--muted); margin: 0 0 1.5rem; }
+  .lang { margin: 0 0 2rem; }
+  a { color: var(--link); }
+  ul { padding-left: 1.25rem; }
+  li { margin: .3rem 0; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 3.5rem 0; }
+</style>
+</head>
+<body>
+<main>
+
+<article id="es" lang="es">
+<h1>Política de privacidad de Photonne</h1>
+<p class="meta">Apps de Photonne para Android e iOS · Vigente desde el 2 de octubre de 2026</p>
+<p class="lang"><a href="#en">English version below</a></p>
+
+<p>Photonne es la app cliente de un servidor de fotos <strong>autoalojado</strong>: tus fotos y vídeos se guardan en un servidor Photonne que instalas tú o el administrador de tu servidor, no en un servicio del desarrollador. Esta política explica qué hace la app con tus datos.</p>
+
+<h2>Resumen</h2>
+<ul>
+  <li>El desarrollador de Photonne <strong>no recibe, no almacena y no tiene acceso</strong> a tus fotos, vídeos ni datos de cuenta.</li>
+  <li>La app solo envía tus datos al servidor cuya dirección escribes al iniciar sesión.</li>
+  <li>Sin publicidad, sin analítica, sin seguimiento y sin informes de fallos enviados a terceros. No vendemos ni compartimos datos.</li>
+</ul>
+
+<h2>Datos que la app maneja</h2>
+<ul>
+  <li><strong>Fotos y vídeos de tu galería.</strong> Con tu permiso, la app los lee para hacer la copia de seguridad y los sube a tu servidor, con sus metadatos originales (fecha, cámara y, si la foto la tiene, la ubicación GPS). También puede guardar en tu galería lo que descargas de tu servidor.</li>
+  <li><strong>Datos de cuenta.</strong> La dirección de tu servidor, tu usuario y los tokens de sesión. Los tokens se guardan cifrados en el dispositivo (Android Keystore / Llavero de iOS). Si activas «Recordar contraseña», la contraseña también se guarda cifrada en el mismo almacén; si no, solo se envía a tu servidor al iniciar sesión.</li>
+  <li><strong>Datos locales de funcionamiento.</strong> Preferencias, una caché de miniaturas y un registro de qué archivos del dispositivo ya están copiados (identificadores y sumas de comprobación). Se quedan en el dispositivo.</li>
+</ul>
+
+<h2>Permisos</h2>
+<ul>
+  <li><strong>Fotos y vídeos</strong> (y ubicación de los archivos multimedia en Android): para copiar tu galería al servidor sin perder la ubicación de las fotos.</li>
+  <li><strong>Notificaciones</strong>: para informarte del progreso y los errores de la copia de seguridad.</li>
+  <li><strong>Red local</strong> (iOS): para encontrar tu servidor cuando estás en la misma red.</li>
+  <li><strong>Segundo plano e inicio del dispositivo</strong> (Android): para que la copia de seguridad siga funcionando con la app cerrada.</li>
+</ul>
+<p>Puedes retirar cualquier permiso en los ajustes del sistema; la función correspondiente dejará de estar disponible.</p>
+
+<h2>Dónde van tus datos</h2>
+<p>Al servidor Photonne que configuras, y a ningún otro sitio, salvo en estos casos:</p>
+<ul>
+  <li><strong>Mapas.</strong> Al ver una foto con ubicación, la app descarga el fragmento de mapa correspondiente de <a href="https://www.openstreetmap.org/">OpenStreetMap</a>. Esa petición revela a la Fundación OpenStreetMap tu dirección IP y la zona aproximada del mapa; se rige por su <a href="https://osmfoundation.org/wiki/Privacy_Policy">política de privacidad</a>.</li>
+  <li><strong>Abrir en Google Maps.</strong> Solo si lo pulsas, la app abre las coordenadas de la foto en Google Maps (app o navegador), que se rige por la política de privacidad de Google.</li>
+  <li><strong>Compartir.</strong> Cuando compartes una foto o un enlace, se entrega a la app que elijas en la hoja de compartir del sistema.</li>
+</ul>
+<p>Te recomendamos usar tu servidor mediante HTTPS. La app también permite conexiones sin cifrar (HTTP) para servidores en tu red local.</p>
+
+<h2>Tu servidor</h2>
+<p>Quien administra el servidor Photonne (tú mismo u otra persona) es el responsable de los datos guardados en él, incluido su análisis (reconocimiento de caras, objetos y texto), las copias de seguridad y su eliminación. Para acceder a tus datos, corregirlos o borrarlos del servidor, o para borrar tu cuenta, dirígete a ese administrador. El servidor puede consultar la última versión publicada de Photonne en GitHub para avisar de actualizaciones; esa consulta no incluye datos tuyos.</p>
+
+<h2>Conservación y eliminación en el dispositivo</h2>
+<p>Al cerrar sesión se borran los tokens de sesión. Al desinstalar la app se borran todos los datos que guarda en el dispositivo. Las fotos de tu galería nunca se borran sin que lo confirmes (por ejemplo, con «Liberar espacio»).</p>
+
+<h2>Menores</h2>
+<p>La app no está dirigida a menores de 16 años y no recoge datos de forma deliberada de ellos.</p>
+
+<h2>Cambios</h2>
+<p>Si esta política cambia, publicaremos la nueva versión en esta misma dirección con su fecha de vigencia.</p>
+
+<h2>Contacto</h2>
+<p>Para preguntas sobre esta política, abre una incidencia en <a href="https://github.com/photonne/photonne/issues">github.com/photonne/photonne/issues</a>.</p>
+</article>
+
+<hr>
+
+<article id="en" lang="en">
+<h1>Photonne Privacy Policy</h1>
+<p class="meta">Photonne apps for Android and iOS · Effective October 2, 2026</p>
+<p class="lang"><a href="#es">Versión en español arriba</a></p>
+
+<p>Photonne is the client app for a <strong>self-hosted</strong> photo server: your photos and videos are stored on a Photonne server that you or your server administrator run, not on a service run by the developer. This policy explains what the app does with your data.</p>
+
+<h2>Summary</h2>
+<ul>
+  <li>The Photonne developer <strong>does not receive, store or have access to</strong> your photos, videos or account data.</li>
+  <li>The app only sends your data to the server whose address you enter when signing in.</li>
+  <li>No advertising, analytics, tracking or third-party crash reporting. We do not sell or share data.</li>
+</ul>
+
+<h2>Data the app handles</h2>
+<ul>
+  <li><strong>Photos and videos from your library.</strong> With your permission, the app reads them to back them up and uploads them to your server with their original metadata (date, camera and, if the photo has it, GPS location). It can also save items you download from your server to your library.</li>
+  <li><strong>Account data.</strong> Your server address, username and session tokens. Tokens are stored encrypted on the device (Android Keystore / iOS Keychain). If you turn on “Remember password”, the password is also stored encrypted in the same place; otherwise it is only sent to your server when you sign in.</li>
+  <li><strong>Local operating data.</strong> Preferences, a thumbnail cache and a record of which files on the device are already backed up (identifiers and checksums). They stay on the device.</li>
+</ul>
+
+<h2>Permissions</h2>
+<ul>
+  <li><strong>Photos and videos</strong> (and media location on Android): to back up your library to the server without losing photo locations.</li>
+  <li><strong>Notifications</strong>: to tell you about backup progress and errors.</li>
+  <li><strong>Local network</strong> (iOS): to find your server when you are on the same network.</li>
+  <li><strong>Background work and device startup</strong> (Android): so the backup keeps working while the app is closed.</li>
+</ul>
+<p>You can revoke any permission in the system settings; the related feature will stop working.</p>
+
+<h2>Where your data goes</h2>
+<p>To the Photonne server you configure and nowhere else, except in these cases:</p>
+<ul>
+  <li><strong>Maps.</strong> When you view a photo with a location, the app downloads the matching map tile from <a href="https://www.openstreetmap.org/">OpenStreetMap</a>. That request reveals your IP address and the approximate map area to the OpenStreetMap Foundation, and is governed by its <a href="https://osmfoundation.org/wiki/Privacy_Policy">privacy policy</a>.</li>
+  <li><strong>Open in Google Maps.</strong> Only when you tap it, the app opens the photo's coordinates in Google Maps (app or browser), which is governed by Google's privacy policy.</li>
+  <li><strong>Sharing.</strong> When you share a photo or a link, it is handed to the app you pick in the system share sheet.</li>
+</ul>
+<p>We recommend reaching your server over HTTPS. The app also allows unencrypted (HTTP) connections for servers on your local network.</p>
+
+<h2>Your server</h2>
+<p>Whoever administers the Photonne server (you or someone else) is responsible for the data stored on it, including its analysis (face, object and text recognition), backups and deletion. To access, correct or delete your data on the server, or to delete your account, contact that administrator. The server may check the latest Photonne release on GitHub to notify about updates; that check includes none of your data.</p>
+
+<h2>Retention and deletion on the device</h2>
+<p>Signing out deletes the session tokens. Uninstalling the app deletes all data it keeps on the device. Photos in your library are never deleted without your confirmation (for example, with “Free up space”).</p>
+
+<h2>Children</h2>
+<p>The app is not directed at children under 16 and does not knowingly collect data from them.</p>
+
+<h2>Changes</h2>
+<p>If this policy changes, we will publish the new version at this same address with its effective date.</p>
+
+<h2>Contact</h2>
+<p>For questions about this policy, open an issue at <a href="https://github.com/photonne/photonne/issues">github.com/photonne/photonne/issues</a>.</p>
+</article>
+
+</main>
+</body>
+</html>
