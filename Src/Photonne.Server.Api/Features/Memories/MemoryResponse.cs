@@ -33,6 +33,14 @@ public class MemoryResponse
     public Guid? CoverAssetId { get; set; }
     public int AssetCount { get; set; }
 
+    /// <summary>
+    /// Only on a pair ("Martina y Joan") asked for with <c>personId</c>: the other
+    /// person, so their page can say "Joan · 42 fotos" rather than repeating
+    /// whose page it is.
+    /// </summary>
+    public Guid? CompanionPersonId { get; set; }
+    public string? CompanionName { get; set; }
+
     /// <summary>Capture-date span, in the photo's own wall-clock. Same frame as
     /// TimelineResponse.FileCreatedAt.</summary>
     public DateTime WindowStart { get; set; }

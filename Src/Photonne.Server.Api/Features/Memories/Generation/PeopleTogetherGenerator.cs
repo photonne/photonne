@@ -14,20 +14,26 @@ internal sealed class PeopleTogetherGenerator : IMemoryGenerator
 {
     private const int MinFaceCount = 20;
 
-    /// <summary>Two people in fifteen photos together is a relationship. In three,
-    /// it's a party they both attended.</summary>
-    private const int MinTogether = 15;
+    /// <summary>Two people in eight photos together is already someone they share
+    /// a life with; in three, it's a party they both attended. It was 15 while
+    /// pairs competed for a slot in the feed — now each person's page shows their
+    /// own, so a quieter pair still belongs there.</summary>
+    private const int MinTogether = 8;
 
     /// <summary>
     /// Pair counting is quadratic, so the candidate set is capped rather than the
     /// pairs: the most-photographed people are the ones whose pairings mean
-    /// anything, and 12 of them is 66 possible pairs — a bound that holds however
-    /// many faces the library grows.
+    /// anything, and 30 of them is 435 possible pairs — folded in memory over a
+    /// set bounded by their faces, a bound that holds however the library grows.
     /// </summary>
-    private const int MaxPeopleConsidered = 12;
+    private const int MaxPeopleConsidered = 30;
 
-    /// <summary>Even with good data, the tail of pairs is noise. Keep the strongest.</summary>
-    private const int MaxPairs = 5;
+    /// <summary>
+    /// Strongest pairs kept per person ("Personas con más fotos juntas" on their
+    /// page). It used to be five for the whole library, which left most people
+    /// with none: one very photographed couple used up every slot.
+    /// </summary>
+    private const int MaxPairsPerPerson = 5;
 
     public MemoryKind Kind => MemoryKind.PeopleTogether;
 
@@ -78,12 +84,21 @@ internal sealed class PeopleTogetherGenerator : IMemoryGenerator
                 }
         }
 
-        var pairs = counts
-            .Where(kv => kv.Value >= MinTogether)
-            .OrderByDescending(kv => kv.Value)
-            .Take(MaxPairs)
-            .Select(kv => kv.Key)
-            .ToList();
+        // Strongest first; a pair stays while neither of the two already has its
+        // MaxPairsPerPerson, so everyone keeps their own closest people.
+        var perPerson = new Dictionary<Guid, int>();
+        var pairs = new List<(Guid A, Guid B)>();
+        foreach (var (pair, _) in counts
+                     .Where(kv => kv.Value >= MinTogether)
+                     .OrderByDescending(kv => kv.Value)
+                     .Select(kv => (kv.Key, kv.Value)))
+        {
+            if (perPerson.GetValueOrDefault(pair.A) >= MaxPairsPerPerson ||
+                perPerson.GetValueOrDefault(pair.B) >= MaxPairsPerPerson) continue;
+            pairs.Add(pair);
+            perPerson[pair.A] = perPerson.GetValueOrDefault(pair.A) + 1;
+            perPerson[pair.B] = perPerson.GetValueOrDefault(pair.B) + 1;
+        }
 
         var drafts = new List<MemoryDraft>();
 

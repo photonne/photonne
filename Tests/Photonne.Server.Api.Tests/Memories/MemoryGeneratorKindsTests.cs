@@ -337,6 +337,28 @@ public class MemoryGeneratorKindsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PeopleTogether_KeepsAQuieterPair()
+    {
+        var user = await CreateUserAsync();
+        var folder = await CreateFolderAsync(user);
+        var today = await LocalTodayAsync();
+
+        // Each clears MinFaceCount on their own, but they share only 10 photos:
+        // below the old bar of 15, above the new one of 8.
+        var together = await CreateAssetsAsync(user, folder, today.AddYears(-1), count: 10);
+        var martinaAlone = await CreateAssetsAsync(user, folder, today.AddYears(-2), count: 12);
+        var joanAlone = await CreateAssetsAsync(user, folder, today.AddYears(-3), count: 12);
+        await NamePersonAsync(user, user, "Martina", together.Concat(martinaAlone).ToList());
+        await NamePersonAsync(user, user, "Joan", together.Concat(joanAlone).ToList());
+
+        await GenerateAsync(user.Id);
+
+        var pair = await WithDbContextAsync(async db => await db.Memories
+            .SingleAsync(m => m.OwnerId == user.Id && m.Kind == MemoryKind.PeopleTogether));
+        Assert.Equal(10, pair.AssetCount);
+    }
+
+    [Fact]
     public async Task PetsAndFood_FindsThePetsButNotTheStreetFurniture()
     {
         var user = await CreateUserAsync();

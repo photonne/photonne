@@ -78,6 +78,12 @@ public class MemoryFeedEndpoint : IEndpoint
             query = query.Where(m => m.DedupeKey == years ||
                 (m.DedupeKey.StartsWith(Generation.PeopleMemoryKeys.TogetherPrefix) && m.DedupeKey.Contains(id)));
         }
+        else
+        {
+            // Pairs only live on a person's page ("Personas con más fotos
+            // juntas"); in the general feed nobody shows them.
+            query = query.Where(m => m.Kind != MemoryKind.PeopleTogether);
+        }
 
         var items = await query
             .OrderByDescending(m => m.Score)
@@ -99,7 +105,39 @@ public class MemoryFeedEndpoint : IEndpoint
             })
             .ToListAsync(ct);
 
+        if (personId is Guid viewed)
+            await FillCompanionsAsync(db, userId, viewed, items, ct);
+
         return Results.Ok(items);
+    }
+
+    /// <summary>Names the other person of each pair, seen from [viewed]'s page.</summary>
+    private static async Task FillCompanionsAsync(
+        ApplicationDbContext db, Guid userId, Guid viewed, List<MemoryResponse> items, CancellationToken ct)
+    {
+        var pairIds = items.Where(i => i.Kind == nameof(MemoryKind.PeopleTogether)).Select(i => i.Id).ToList();
+        if (pairIds.Count == 0) return;
+
+        var keys = await db.Memories
+            .AsNoTracking()
+            .Where(m => pairIds.Contains(m.Id))
+            .Select(m => new { m.Id, m.DedupeKey })
+            .ToDictionaryAsync(m => m.Id, m => m.DedupeKey, ct);
+        var companions = keys.ToDictionary(
+            kv => kv.Key,
+            kv => Generation.PeopleMemoryKeys.Companion(kv.Value, viewed));
+        var companionIds = companions.Values.OfType<Guid>().Distinct().ToList();
+        var names = await db.People
+            .AsNoTracking()
+            .Where(p => p.OwnerId == userId && companionIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.Name, ct);
+
+        foreach (var item in items)
+        {
+            if (companions.GetValueOrDefault(item.Id) is not Guid companion) continue;
+            item.CompanionPersonId = companion;
+            item.CompanionName = names.GetValueOrDefault(companion);
+        }
     }
 }
 
