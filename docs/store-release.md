@@ -154,9 +154,29 @@ Connect apuntando a él.
    - Destino: **Any iOS Device (arm64)**.
    - **Product → Archive**. El enlace de Kotlin/Native en Release es lento
      (varios minutos en local).
-2. **Organizer → Distribute App → App Store Connect → Upload**, con firma
-   automática. Xcode crea el certificado y el perfil de distribución si no
-   existen.
+2. **Firmar con el certificado Apple Distribution local**, no con el
+   gestionado en la nube. Con la firma en la nube, Xcode 27 escribe el
+   nombre del certificado en el *designated requirement* con la "í" de
+   "Fontrubí" descompuesta (`i` + U+0301) mientras el certificado la lleva
+   compuesta (U+00ED): la firma no cumple su propio requisito y App Store
+   Connect la rechaza con **ITMS-90035 "Invalid Signature"**. El certificado
+   local está en el Llavero (Xcode → Settings → Accounts → Manage
+   Certificates); la primera vez macOS pide permiso para usar su clave:
+   "Permitir siempre". Exportar y comprobar antes de subir:
+   ```sh
+   xcodebuild -exportArchive -archivePath <archivo>.xcarchive \
+     -exportPath <dir> -exportOptionsPlist <ExportOptions.plist> \
+     -allowProvisioningUpdates
+   # ExportOptions: method app-store-connect, destination export,
+   # signingStyle automatic, teamID ZUSGZTSQRK,
+   # signingCertificate "Apple Distribution"
+   unzip -q <dir>/iosApp.ipa -d <dir>
+   codesign --verify --deep --strict --verbose=2 <dir>/Payload/iosApp.app
+   # debe decir "satisfies its Designated Requirement"
+   ```
+   Con el certificado local en el Llavero, **Organizer → Distribute App →
+   App Store Connect → Upload** ya firma con él y la subida pasa (1.185.3,
+   2026-10-03). Alternativa: subir el `.ipa` verificado con **Transporter**.
 3. **TestFlight**: el build aparece en 10–30 min tras el procesado. Pruébalo
    con testers internos (hasta 100 usuarios de tu equipo, sin revisión).
    Los testers externos requieren una revisión ligera de Beta App Review.
