@@ -40,6 +40,9 @@ public class AssetDetailResponse
     /// <summary>The caller may edit description, capture date and tags. Same
     /// rule as the edit endpoints (<see cref="Photonne.Server.Api.Shared.Services.AssetMetadataPermissions"/>).</summary>
     public bool CanEdit { get; set; }
+    /// <summary>The asset is a motion photo and the caller may save one of its
+    /// frames as a new photo in the same folder (see MotionFramesEndpoint).</summary>
+    public bool CanSaveMotionFrame { get; set; }
 }
 
 public class ExifDataResponse

@@ -116,7 +116,8 @@ public class AssetDetailEndpoint : IEndpoint
                 AiDescription = asset.AiDescription,
                 IsReadOnly = asset.ExternalLibraryId.HasValue,
                 IsOwner = asset.OwnerId == userId,
-                CanEdit = AssetMetadataPermissions.CanEdit(asset.FullPath, asset.DeletedAt != null, user.GetUsername())
+                CanEdit = AssetMetadataPermissions.CanEdit(asset.FullPath, asset.DeletedAt != null, user.GetUsername()),
+                CanSaveMotionFrame = await MotionFramesEndpoint.CanSaveFrameAsync(dbContext, asset, user, cancellationToken)
             };
 
             return Results.Ok(response);

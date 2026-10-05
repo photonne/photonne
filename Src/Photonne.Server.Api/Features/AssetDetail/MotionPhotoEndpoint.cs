@@ -48,7 +48,7 @@ public class MotionPhotoEndpoint : IEndpoint
         }
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-        var motionPath = ResolveMotionClipPath(physicalPath);
+        var motionPath = MotionFrameService.ResolveSiblingClipPath(physicalPath);
 
         if (motionPath != null)
         {
@@ -73,31 +73,5 @@ public class MotionPhotoEndpoint : IEndpoint
         }
 
         return Results.NotFound(new { error = $"Asset {assetId} has no paired motion clip" });
-    }
-
-    /// <summary>
-    /// Returns the path to the sibling motion clip ({basename}.mov / .MOV) next
-    /// to <paramref name="stillPath"/>, or null when none exists. Tries the
-    /// common casings explicitly since the host filesystem may be case-sensitive.
-    /// </summary>
-    private static string? ResolveMotionClipPath(string stillPath)
-    {
-        var directory = Path.GetDirectoryName(stillPath);
-        if (string.IsNullOrEmpty(directory))
-        {
-            return null;
-        }
-
-        var baseName = Path.GetFileNameWithoutExtension(stillPath);
-        foreach (var ext in new[] { ".mov", ".MOV", ".mp4", ".MP4" })
-        {
-            var candidate = Path.Combine(directory, baseName + ext);
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        return null;
     }
 }
