@@ -112,4 +112,13 @@ class AssetDetailRepository(
         assetId: String
     ): com.photonne.app.data.models.CaptureDateSuggestion =
         api.getCaptureDateSuggestion(assetId)
+
+    suspend fun getMotionFrameCount(assetId: String): Int = api.getMotionFrameCount(assetId)
+
+    /** The new photo lands in the original's folder and day: lists reload to
+     *  pick it up (there is no "added" mutation to patch them in place). */
+    suspend fun saveMotionFrame(assetId: String, index: Int): String =
+        api.saveMotionFrame(assetId, index).also {
+            mutationBus.emit(AssetMutation.AllChanged)
+        }
 }

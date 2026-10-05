@@ -1786,4 +1786,12 @@
     <string name="asset_quality_preview">HD</string>
     <string name="asset_quality_original">ORIG</string>
     <string name="map_sheet_show_pill">Photos · %1$d</string>
+    <string name="asset_action_pick_frame">Choose frame</string>
+    <string name="motion_frames_position">Frame %1$d of %2$d</string>
+    <string name="motion_frames_previous">Previous frame</string>
+    <string name="motion_frames_next">Next frame</string>
+    <string name="motion_frames_save">Save as new photo</string>
+    <string name="motion_frames_saved">Frame saved next to the original photo</string>
+    <string name="motion_frames_load_error">Couldn\'t read this photo\'s motion</string>
+    <string name="motion_frames_hint">The new photo has the video\'s resolution, lower than the original\'s.</string>
 </resources>

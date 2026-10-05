@@ -96,6 +96,12 @@ import kotlinx.serialization.json.JsonPrimitive
 internal data class FavoriteResponse(val isFavorite: Boolean)
 
 @Serializable
+internal data class MotionFramesResponse(val frameCount: Int)
+
+@Serializable
+internal data class SaveMotionFrameResponse(val assetId: String)
+
+@Serializable
 internal data class AlbumWriteRequest(
     val name: String,
     val description: String?,
@@ -474,6 +480,13 @@ interface PhotonneApi {
     suspend fun getCaptureDateSuggestion(
         assetId: String
     ): com.photonne.app.data.models.CaptureDateSuggestion
+    /** Frames in a motion photo's clip (`GET /motion/frames`); the server
+     *  decodes them on the first call. Each one is then a JPEG at
+     *  `/api/assets/{id}/motion/frames/{index}`. */
+    suspend fun getMotionFrameCount(assetId: String): Int
+    /** Saves frame [index] (0-based) as a new photo next to the original.
+     *  Returns the new asset's id. */
+    suspend fun saveMotionFrame(assetId: String, index: Int): String
     suspend fun getAlbums(): List<AlbumSummary>
     suspend fun getAlbum(albumId: String): AlbumSummary
     suspend fun getAlbumAssets(albumId: String): List<TimelineItem>
@@ -1479,6 +1492,22 @@ class PhotonneApiClient(
             throw response.apiException("Capture date suggestion failed (${response.status.value})")
         }
         return response.body()
+    }
+
+    override suspend fun getMotionFrameCount(assetId: String): Int {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/motion/frames")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Motion frames fetch failed (${response.status.value})")
+        }
+        return response.body<MotionFramesResponse>().frameCount
+    }
+
+    override suspend fun saveMotionFrame(assetId: String, index: Int): String {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/$assetId/motion/frames/$index/save")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Save motion frame failed (${response.status.value})")
+        }
+        return response.body<SaveMotionFrameResponse>().assetId
     }
 
     override suspend fun addAssetsToAlbumBatch(albumId: String, assetIds: List<String>) {

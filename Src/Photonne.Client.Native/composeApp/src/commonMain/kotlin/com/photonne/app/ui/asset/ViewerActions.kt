@@ -3,6 +3,7 @@ package com.photonne.app.ui.asset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.BurstMode
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.RestoreFromTrash
@@ -29,6 +30,7 @@ import com.photonne.app.resources.asset_action_faces
 import com.photonne.app.resources.asset_action_favorite_add
 import com.photonne.app.resources.asset_action_favorite_remove
 import com.photonne.app.resources.asset_action_more
+import com.photonne.app.resources.asset_action_pick_frame
 import com.photonne.app.resources.asset_action_trash
 import com.photonne.app.resources.selection_label_share
 import com.photonne.app.resources.trash_action_delete_forever
@@ -60,7 +62,8 @@ internal class ViewerAction(
  * Variantes por origen (Lote K): solo-dispositivo → Info y Eliminar del
  * dispositivo; Papelera → Restaurar y Eliminar definitivamente; Archivo →
  * Desarchivar en vez de Archivar. Las entradas con callback null (editar sin
- * permiso, analizar sin ser dueño o en un vídeo) no aparecen.
+ * permiso, analizar sin ser dueño o en un vídeo, elegir fotograma fuera de
+ * una foto en movimiento o sin poder escribir en su carpeta) no aparecen.
  */
 @Composable
 internal fun viewerActions(
@@ -77,6 +80,7 @@ internal fun viewerActions(
     onEditDate: (() -> Unit)?,
     onOpenFaces: () -> Unit,
     onAnalyze: (() -> Unit)?,
+    onPickFrame: (() -> Unit)?,
     onArchive: () -> Unit,
     onRestore: () -> Unit,
     onPurgeRequest: () -> Unit,
@@ -126,6 +130,9 @@ internal fun viewerActions(
         ViewerAction(Icons.Outlined.Face, stringResource(Res.string.asset_action_faces), false, onClick = onOpenFaces),
         onAnalyze?.let {
             ViewerAction(Icons.Outlined.AutoAwesome, stringResource(Res.string.asset_action_analyze), false, onClick = it)
+        },
+        onPickFrame?.let {
+            ViewerAction(Icons.Outlined.BurstMode, stringResource(Res.string.asset_action_pick_frame), false, onClick = it)
         },
         ViewerAction(
             icon = if (isArchiveMode) PhotonneIcons.Unarchive else PhotonneIcons.Archive,

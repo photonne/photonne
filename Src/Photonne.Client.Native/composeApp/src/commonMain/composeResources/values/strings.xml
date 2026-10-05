@@ -1796,4 +1796,12 @@
     <string name="asset_quality_preview">HD</string>
     <string name="asset_quality_original">ORIG</string>
     <string name="map_sheet_show_pill">Fotos · %1$d</string>
+    <string name="asset_action_pick_frame">Elegir fotograma</string>
+    <string name="motion_frames_position">Fotograma %1$d de %2$d</string>
+    <string name="motion_frames_previous">Fotograma anterior</string>
+    <string name="motion_frames_next">Fotograma siguiente</string>
+    <string name="motion_frames_save">Guardar como foto nueva</string>
+    <string name="motion_frames_saved">Fotograma guardado junto a la foto original</string>
+    <string name="motion_frames_load_error">No se pudo leer el movimiento de esta foto</string>
+    <string name="motion_frames_hint">La foto nueva tiene la resolución del vídeo, menor que la de la original.</string>
 </resources>

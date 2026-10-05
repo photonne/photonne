@@ -132,6 +132,7 @@ import com.photonne.app.resources.asset_auto_tag_screenshot
 import com.photonne.app.resources.asset_auto_tag_hdr
 import com.photonne.app.resources.asset_auto_tag_portrait
 import com.photonne.app.resources.asset_auto_tag_motion_part
+import com.photonne.app.resources.motion_frames_saved
 import com.photonne.app.resources.asset_detail_faces_count
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.asset_live_badge
@@ -364,8 +365,11 @@ fun AssetDetailScreen(
     // zoom, luego el panel de info, luego el pase automático, y solo entonces
     // se cierra. Incrementar el tick anima el zoom de vuelta a 1x en la página.
     var zoomResetTick by remember { mutableIntStateOf(0) }
+    // "Elegir fotograma" tapa el visor entero: Atrás la cierra a ella primero.
+    var showFramePicker by remember { mutableStateOf(false) }
     com.photonne.app.ui.navigation.PlatformBackHandler(enabled = true) {
         when {
+            showFramePicker -> showFramePicker = false
             currentScale > 1.05f -> zoomResetTick++
             infoProgress.value > 0.05f ->
                 coroutineScope.launch { infoProgress.animateTo(0f, infoSpring) }
@@ -459,6 +463,10 @@ fun AssetDetailScreen(
     // ofrecen: sin él tampoco hay valor que editar.
     val currentCanEdit = !isTrashMode && currentItem != null &&
         (state.detail?.takeIf { it.id == currentItem.id }?.canEdit ?: false)
+    // Elegir fotograma: foto en movimiento cuya carpeta admite fotos nuevas
+    // del usuario (el fotograma se guarda junto a la original).
+    val currentCanPickFrame = !isTrashMode && currentItem != null && currentItem.isLivePhoto &&
+        (state.detail?.takeIf { it.id == currentItem.id }?.canSaveMotionFrame ?: false)
     // Archivar o desarchivar según de dónde se abrió el visor.
     val archiveToggle: () -> Unit = {
         currentItem?.let { item ->
@@ -880,6 +888,7 @@ fun AssetDetailScreen(
                     onEditDate = if (currentCanEdit) { { showEditDate = true } } else null,
                     onOpenFaces = { onOpenFaces(item.id) },
                     onAnalyze = if (canAnalyze) { { showAiSheet = true } } else null,
+                    onPickFrame = if (currentCanPickFrame) { { showFramePicker = true } } else null,
                     onArchive = archiveToggle,
                     onRestore = {
                         viewModel.restore(item.id) { id -> onAssetRestored(id) }
@@ -1083,6 +1092,19 @@ fun AssetDetailScreen(
                         .windowInsetsPadding(WindowInsets.navigationBars)
                         .padding(bottom = Spacing.xl)
                         .graphicsLayer { alpha = chromeAlpha }
+                )
+            }
+
+            if (showFramePicker && currentItem != null) {
+                val savedMessage = stringResource(Res.string.motion_frames_saved)
+                MotionFramePicker(
+                    assetId = currentItem.id,
+                    baseUrl = apiBaseUrl,
+                    onClose = { showFramePicker = false },
+                    onSaved = {
+                        showFramePicker = false
+                        actionSnackbar?.show(savedMessage)
+                    }
                 )
             }
         }

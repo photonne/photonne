@@ -39,6 +39,9 @@ data class AssetDetail(
      *  own rule for those endpoints). Defaults to true for older servers that
      *  don't send it; they still answer 403 and the viewer reverts. */
     val canEdit: Boolean = true,
+    /** Motion photo whose folder the caller may write to: "Elegir fotograma"
+     *  can save a frame as a new photo. False on servers without the feature. */
+    val canSaveMotionFrame: Boolean = false,
 ) {
     val isVideo: Boolean get() = type.equals("VIDEO", ignoreCase = true)
 }
