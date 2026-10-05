@@ -212,6 +212,39 @@ Connect apuntando a él.
   monocroma para los iconos temáticos de Android 13+); hoy solo hay PNG
   planos.
 
+## Versión nueva en Google Play
+
+El flujo de cada versión, una vez montadas las pistas: primero a la prueba
+interna para probarla en el móvil sin esperar a nadie, y de ahí a la cerrada.
+
+1. **Generar el AAB** desde un commit con versión nueva (el hook sube la
+   versión en cada commit y `versionCode` sale de ella), como en el paso 3 de
+   la prueba cerrada:
+   ```sh
+   cd Src/Photonne.Client.Native
+   ./gradlew :composeApp:bundleRelease
+   ```
+2. **Prueba → Prueba interna → Crear nueva versión**, subir el AAB y las
+   notas de la versión (`<es-ES>…</es-ES>` y `<en-US>…</en-US>`, máximo 500
+   caracteres por idioma). **Siguiente → Guardar → Publicar**. La interna
+   **no pasa revisión**: llega a sus testers en minutos. Si el AAB ya se subió
+   a otra pista, **Añadir desde biblioteca** evita subirlo otra vez.
+3. **En el teléfono**, con la cuenta de Google que está en la lista de
+   testers de la interna (el enlace de apuntarse está en la pista →
+   Testers; basta con aceptarlo una vez): Play Store → Photonne →
+   **Actualizar**. Si no aparece, borrar la caché de Google Play Store
+   (Ajustes → Aplicaciones → Google Play Store → Almacenamiento) y volver a
+   mirar. Estando en varias pistas, Play instala el `versionCode` más alto de
+   todas, así que la interna y la cerrada no chocan.
+4. **Probada, a la prueba cerrada**: en la versión de la interna,
+   **Promocionar versión → Prueba cerrada**, sin volver a subir el AAB. Esa sí
+   pasa revisión (de unas horas a un par de días; el estado está en
+   **Resumen de la publicación**), y solo entonces les llega a los testers.
+   Más adelante, el mismo paso hacia **Producción**.
+
+Si la versión trae funciones que necesitan endpoints nuevos, hay que
+desplegar el servidor antes de probarla en el móvil.
+
 ## Más adelante: subidas desde CI
 
 Cuando las subidas sean frecuentes, un workflow `workflow_dispatch` que
