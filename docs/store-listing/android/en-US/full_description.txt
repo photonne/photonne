@@ -1,0 +1,46 @@
+Photonne is the app for your photos and videos, stored on your own server instead of another company's cloud. Everything you expect from a great photo app (automatic backup, smart search, face recognition, memories), with your memories under your control.
+
+ALBUMS AND FOLDERS, YOUR WAY
+Most photo apps make you pick a single way to organize. Photonne lets you use both at the same time:
+• Albums: group photos without moving them. Perfect if you'd rather not think about where each file lives.
+• Folders: create, rename and move your photos between real folders, for those who like everything sorted their own way.
+• The same photo can live in its folder and in as many albums as you like.
+• Smart albums that fill themselves based on the conditions you choose: people, dates, folders…
+• "To organize": an inbox that suggests what to sort and files your photos by year in a few taps.
+
+AI THAT WORKS FOR YOU
+• Search the way you talk: type "beach at sunset" or "dog in the snow" and find the photo.
+• Face recognition: name the people in your photos and see all their pictures together.
+• Search by objects, scenes and the text that appears in your photos: receipts, signs, documents.
+• Automatic memories: trips, people and what happened on this day in past years.
+• Analyze any photo with AI whenever you want, from its menu.
+• All analysis runs on your server: your photos are never sent to outside services.
+
+AUTOMATIC BACKUP
+• Photos and videos from your phone back up on their own, even in the background.
+• Choose which phone folders to back up, and whether to do it only on Wi-Fi or while charging.
+• Free up space on your phone by deleting only what is already safe on the server.
+• Keeps each photo's original date and location.
+
+YOUR WHOLE LIBRARY IN ONE PLACE
+• Timeline that zooms by year, month and day, with quick jumps to any date.
+• Map with your photos grouped by place.
+• Favorites, archive and a trash you can restore from.
+• Motion photos, videos and formats such as HEIC.
+• Download any photo in its original format or as JPG.
+
+SHARING MADE EASY
+• Albums shared with family or friends, with view or edit permissions.
+• Public links with a password, expiry date and view limit.
+• Request links: your guests upload their photos from a wedding or a trip to your album, no account needed.
+• Share any photo with other apps from the system share menu.
+
+TRULY PRIVATE
+• Your photos live on your server: nobody else sees them, analyzes them or uses them for advertising.
+• No ads and no tracking.
+• Several accounts on one server: everyone at home gets their own library.
+
+WHAT YOU NEED
+Photonne connects to a Photonne server, which you can run at home (on a computer or a NAS) or get from someone who manages one. Photonne is open source; the installation guide is at github.com/photonne/photonne.
+
+Available in English and Spanish, with light and dark mode.

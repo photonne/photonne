@@ -1,0 +1,5 @@
+First release of Photonne:
+• Automatic backup of photos and videos to your own server.
+• Albums and folders side by side, smart albums and a "To organize" inbox.
+• AI search, face recognition and memories.
+• Shared albums and links to share or request photos.

@@ -201,9 +201,9 @@ Connect apuntando a él.
 
 ### 4. Ficha de la tienda (ambas)
 
-- Textos en español e inglés: nombre, subtítulo (Apple, 30 caracteres),
-  descripción corta (Play, 80), descripción larga, palabras clave (Apple,
-  100), notas de la versión.
+- Textos en español e inglés: en `docs/store-listing/` (estructura de
+  fastlane, un archivo por campo y por idioma, con sus límites y reglas en
+  el README de esa carpeta).
 - Capturas desde un dispositivo o emulador con la instancia demo: Play pide
   2–8 de teléfono y un gráfico destacado de 1024×500; Apple, las de 6,9".
 - Icono: Play pide 512×512 PNG; Apple lo toma del build

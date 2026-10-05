@@ -1,0 +1,46 @@
+Photonne es la app para tus fotos y vídeos, pero guardados en tu propio servidor y no en la nube de otra empresa. Todo lo que esperas de una gran app de fotos (copia automática, búsqueda inteligente, reconocimiento de caras, recuerdos), con tus recuerdos bajo tu control.
+
+ÁLBUMES Y CARPETAS, COMO TÚ PREFIERAS
+La mayoría de apps de fotos te obligan a elegir una sola forma de organizar. Photonne te deja usar las dos a la vez:
+• Álbumes: agrupa fotos sin moverlas de sitio. Ideal si no quieres preocuparte de dónde está cada archivo.
+• Carpetas: crea, renombra y mueve tus fotos entre carpetas reales, para quien quiere tenerlo todo ordenado a su manera.
+• Una misma foto puede estar en su carpeta y en tantos álbumes como quieras.
+• Álbumes inteligentes que se llenan solos con las condiciones que elijas: personas, fechas, carpetas…
+• "Para organizar": una bandeja que te propone qué ordenar y reparte las fotos por años en pocos toques.
+
+INTELIGENCIA ARTIFICIAL QUE TRABAJA PARA TI
+• Busca como hablas: escribe "playa al atardecer" o "perro en la nieve" y encuentra la foto.
+• Reconocimiento de caras: pon nombre a las personas y ve todas sus fotos juntas.
+• Busca también por objetos, escenas y por el texto que aparece en las fotos: tickets, carteles, documentos.
+• Recuerdos automáticos: viajes, personas y lo que pasó tal día como hoy en otros años.
+• Analiza cualquier foto con IA cuando quieras, desde su menú.
+• Todo el análisis se hace en tu servidor: tus fotos no se envían a servicios externos.
+
+COPIA DE SEGURIDAD AUTOMÁTICA
+• Las fotos y vídeos del móvil se copian solos, también en segundo plano.
+• Elige qué carpetas del móvil copiar y si hacerlo solo con Wi-Fi o mientras carga.
+• Libera espacio en el móvil borrando solo lo que ya está a salvo en el servidor.
+• Conserva la fecha y la ubicación originales de cada foto.
+
+TODA TU BIBLIOTECA EN UN SOLO LUGAR
+• Línea de tiempo con zoom por años, meses y días, y saltos rápidos a cualquier fecha.
+• Mapa con tus fotos agrupadas por lugares.
+• Favoritos, archivo y papelera con recuperación.
+• Fotos en movimiento, vídeos y formatos como HEIC.
+• Descarga cada foto en su formato original o en JPG.
+
+COMPARTE SIN COMPLICACIONES
+• Álbumes compartidos con tu familia o amigos, con permisos para ver o para editar.
+• Enlaces públicos con contraseña, fecha de caducidad y límite de visitas.
+• Enlaces de solicitud: tus invitados suben sus fotos de una boda o un viaje a tu álbum, sin crear una cuenta.
+• Comparte cualquier foto con otras apps desde el menú del sistema.
+
+PRIVADA DE VERDAD
+• Tus fotos viven en tu servidor: nadie más las ve, las analiza ni las usa para publicidad.
+• Sin anuncios y sin rastreo.
+• Varias cuentas en un mismo servidor: cada persona de casa con su propia biblioteca.
+
+QUÉ NECESITAS
+Photonne se conecta a un servidor Photonne, que puedes instalar en casa (en un ordenador o un NAS) o usar uno que gestione otra persona. Photonne es de código abierto; la guía de instalación está en github.com/photonne/photonne.
+
+Disponible en español e inglés, con modo claro y oscuro.

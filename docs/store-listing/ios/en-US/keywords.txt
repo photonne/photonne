@@ -1,0 +1,1 @@
+gallery,backup,self-hosted,server,private cloud,faces,people,memories,map,videos,organize,NAS

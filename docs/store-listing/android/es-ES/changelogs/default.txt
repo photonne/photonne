@@ -1,0 +1,5 @@
+Primera versión de Photonne:
+• Copia de seguridad automática de fotos y vídeos en tu propio servidor.
+• Álbumes y carpetas a la vez, álbumes inteligentes y bandeja "Para organizar".
+• Búsqueda con IA, reconocimiento de caras y recuerdos.
+• Álbumes compartidos y enlaces para compartir o pedir fotos.
