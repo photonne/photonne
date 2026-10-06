@@ -179,6 +179,8 @@ internal fun TimelineScrubber(
         }
     }
     val alpha by animateFloatAsState(if (visible) 1f else 0f, label = "scrubberAlpha")
+    // Lo que el usuario no ve no puede tapar la rejilla de debajo.
+    val handleShown by remember { derivedStateOf { alpha > 0f } }
 
     BoxWithConstraints(
         modifier = modifier
@@ -241,14 +243,13 @@ internal fun TimelineScrubber(
                 .offset(handleOffset)
                 .width(HandleTouchWidth)
                 .height(HandleTouchHeight)
-                .pointerHoverIcon(PointerIcon.Hand)
                 .semantics {
                     contentDescription = scrubberDescription
                     if (currentLabel.isNotEmpty()) stateDescription = currentLabel
                 }
                 .then(
                     if (visible) {
-                        Modifier.pointerInput(Unit) {
+                        Modifier.pointerHoverIcon(PointerIcon.Hand).pointerInput(Unit) {
                             // Gesture callbacks stay trivial — a float write
                             // and nothing else. The throttled applier above
                             // moves the list; the end handlers land exactly.
@@ -281,13 +282,16 @@ internal fun TimelineScrubber(
                 ),
             contentAlignment = Alignment.CenterEnd
         ) {
-            ScrubberHandle(
-                hazeState = hazeState,
-                modifier = Modifier
-                    .padding(end = 6.dp)
-                    .width(HandleWidth)
-                    .height(HandleHeight)
-            )
+            // Oculto no se compone: su Surface bloquea toques aun transparente.
+            if (handleShown) {
+                ScrubberHandle(
+                    hazeState = hazeState,
+                    modifier = Modifier
+                        .padding(end = 6.dp)
+                        .width(HandleWidth)
+                        .height(HandleHeight)
+                )
+            }
         }
 
         // Date pill next to the handle — ONLY while dragging. During ordinary

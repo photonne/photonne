@@ -145,6 +145,8 @@ internal fun AlbumGridScrubber(
         }
     }
     val alpha by animateFloatAsState(if (visible) 1f else 0f, label = "albumScrubberAlpha")
+    // Lo que el usuario no ve no puede tapar la rejilla de debajo.
+    val handleShown by remember { derivedStateOf { alpha > 0f } }
 
     BoxWithConstraints(
         modifier = modifier
@@ -195,10 +197,9 @@ internal fun AlbumGridScrubber(
                 .offset(handleOffset)
                 .width(HandleTouchWidth)
                 .height(HandleTouchHeight)
-                .pointerHoverIcon(PointerIcon.Hand)
                 .then(
                     if (visible) {
-                        Modifier.pointerInput(Unit) {
+                        Modifier.pointerHoverIcon(PointerIcon.Hand).pointerInput(Unit) {
                             fun endDrag() {
                                 isDragging = false
                                 onDraggingChangeLatest(false)
@@ -228,13 +229,16 @@ internal fun AlbumGridScrubber(
                 ),
             contentAlignment = Alignment.CenterEnd
         ) {
-            ScrubberHandle(
-                hazeState = hazeState,
-                modifier = Modifier
-                    .padding(end = 6.dp)
-                    .width(HandleWidth)
-                    .height(HandleHeight)
-            )
+            // Oculto no se compone: su Surface bloquea toques aun transparente.
+            if (handleShown) {
+                ScrubberHandle(
+                    hazeState = hazeState,
+                    modifier = Modifier
+                        .padding(end = 6.dp)
+                        .width(HandleWidth)
+                        .height(HandleHeight)
+                )
+            }
         }
 
         // Date bubble next to the handle — ONLY while dragging (it follows the
