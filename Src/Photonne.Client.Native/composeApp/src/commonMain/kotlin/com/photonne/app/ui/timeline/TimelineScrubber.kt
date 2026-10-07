@@ -2,7 +2,6 @@ package com.photonne.app.ui.timeline
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
@@ -182,134 +183,50 @@ internal fun TimelineScrubber(
     // Lo que el usuario no ve no puede tapar la rejilla de debajo.
     val handleShown by remember { derivedStateOf { alpha > 0f } }
 
-    BoxWithConstraints(
+    // Alto de la pista, medido en la capa de decoración (que no tiene nodos de
+    // entrada). Hasta la primera medida el mango se queda arriba.
+    var trackHeightPx by remember { mutableFloatStateOf(0f) }
+    val touchHeightPx = with(density) { HandleTouchHeight.toPx() }
+    val usableTrackPx = (trackHeightPx - touchHeightPx).coerceAtLeast(1f)
+    // Deferred state read: the offset lambda resolves during the
+    // PLACEMENT phase, so the handle tracks every scroll frame without
+    // recomposing this composable — reading the fraction in composition
+    // is what made the handle visibly lag behind the list.
+    val handleOffset: androidx.compose.ui.unit.Density.() -> IntOffset = {
+        val f = if (isDragging) dragFraction else scrollFraction
+        IntOffset(0, (usableTrackPx * f).roundToInt())
+    }
+    val usableTrack by rememberUpdatedState(usableTrackPx)
+
+    // Date pill next to the handle — ONLY while dragging. During ordinary
+    // scrolling the month rides the centred [FloatingDatePill] the host
+    // draws at the top instead; here it follows the finger's target row.
+    // derivedStateOf so it only recomposes when the month label changes,
+    // not every scroll frame.
+    val handleLabel by remember(prefix, labels) {
+        derivedStateOf {
+            if (!isDragging) return@derivedStateOf ""
+            labels.getOrNull(rowIndexForFraction(prefix, dragFraction)).orEmpty()
+        }
+    }
+    val yearMarkers = remember(rows) { scrubberYearMarkers(rows) }
+
+    // Capa de decoración (años + píldora de fecha, solo al arrastrar). El carril
+    // y el mango NO van dentro: Compose solo deja que un toque siga hacia la
+    // rejilla si el hermano DIRECTO de la rejilla comparte el puntero, así que
+    // anidados en esta caja el carril (aunque comparta) y el mango oculto se
+    // comían los toques de toda la franja derecha.
+    Box(
         modifier = modifier
             .fillMaxHeight()
             .width(200.dp) // room for the bubble; plain Boxes don't eat touches
+            .onSizeChanged { trackHeightPx = it.height.toFloat() }
             .graphicsLayer { this.alpha = alpha }
     ) {
-        val trackHeightPx = constraints.maxHeight.toFloat()
-        val touchHeightPx = with(density) { HandleTouchHeight.toPx() }
-        val usableTrackPx = (trackHeightPx - touchHeightPx).coerceAtLeast(1f)
-        // Deferred state read: the offset lambda resolves during the
-        // PLACEMENT phase, so the handle tracks every scroll frame without
-        // recomposing this composable — reading the fraction in composition
-        // is what made the handle visibly lag behind the list.
-        val handleOffset: androidx.compose.ui.unit.Density.() -> IntOffset = {
-            val f = if (isDragging) dragFraction else scrollFraction
-            IntOffset(0, (usableTrackPx * f).roundToInt())
-        }
-
-        val usableTrack by rememberUpdatedState(usableTrackPx)
-        // Carril de ratón DETRÁS del mango (hermano anterior): hover revela el
-        // scrubber y pulsar/arrastrar mueve en absoluto. En táctil es inerte.
-        ScrubberMouseRail(
-            railWidth = HandleTouchWidth,
-            touchHeightPx = touchHeightPx,
-            usableTrackPx = usableTrackPx,
-            onHoverChange = { railHovered = it },
-            onScrubStart = { fraction ->
-                dragFraction = fraction
-                isDragging = true
-                onDraggingChange(true)
-            },
-            onScrub = { fraction -> dragFraction = fraction },
-            onScrubEnd = {
-                isDragging = false
-                onDraggingChange(false)
-                scope.launch {
-                    val row = rowIndexForFraction(prefix, dragFraction)
-                    runCatching { gridState.scrollToItem(row + headerCount) }
-                }
-            },
-            modifier = Modifier.align(Alignment.TopEnd)
-        )
-        // Punto 47: el mango era mudo para el lector de pantalla. Se anuncia
-        // como control de desplazamiento rápido, con el mes visible como estado.
-        val scrubberDescription = stringResource(Res.string.timeline_scrubber_description)
-        val currentLabel by remember(prefix, labels) {
-            derivedStateOf {
-                labels.getOrNull(rowIndexForFraction(prefix, scrollFraction)).orEmpty()
-            }
-        }
-        // Drag-on-the-handle only. Delta-based: the pointer input sits on
-        // the element that moves, so absolute positions would feed back
-        // into themselves. Keyed on Unit on purpose — every mutable input
-        // is read through a rememberUpdatedState holder, so the gesture
-        // survives bucket loads, resizes and zoom changes mid-drag.
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(handleOffset)
-                .width(HandleTouchWidth)
-                .height(HandleTouchHeight)
-                .semantics {
-                    contentDescription = scrubberDescription
-                    if (currentLabel.isNotEmpty()) stateDescription = currentLabel
-                }
-                .then(
-                    if (visible) {
-                        Modifier.pointerHoverIcon(PointerIcon.Hand).pointerInput(Unit) {
-                            // Gesture callbacks stay trivial — a float write
-                            // and nothing else. The throttled applier above
-                            // moves the list; the end handlers land exactly.
-                            fun endDrag() {
-                                isDragging = false
-                                onDraggingChange(false)
-                                scope.launch {
-                                    val row = rowIndexForFraction(prefix, dragFraction)
-                                    runCatching { gridState.scrollToItem(row + headerCount) }
-                                }
-                            }
-                            detectVerticalDragGestures(
-                                onDragStart = {
-                                    dragFraction = scrollFraction
-                                    isDragging = true
-                                    onDraggingChange(true)
-                                },
-                                onVerticalDrag = { change, dragAmount ->
-                                    change.consume()
-                                    dragFraction = (dragFraction + dragAmount / usableTrack)
-                                        .coerceIn(0f, 1f)
-                                },
-                                onDragEnd = ::endDrag,
-                                onDragCancel = ::endDrag
-                            )
-                        }
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentAlignment = Alignment.CenterEnd
-        ) {
-            // Oculto no se compone: su Surface bloquea toques aun transparente.
-            if (handleShown) {
-                ScrubberHandle(
-                    hazeState = hazeState,
-                    modifier = Modifier
-                        .padding(end = 6.dp)
-                        .width(HandleWidth)
-                        .height(HandleHeight)
-                )
-            }
-        }
-
-        // Date pill next to the handle — ONLY while dragging. During ordinary
-        // scrolling the month rides the centred [FloatingDatePill] the host
-        // draws at the top instead; here it follows the finger's target row.
-        // derivedStateOf so it only recomposes when the month label changes,
-        // not every scroll frame.
-        val handleLabel by remember(prefix, labels) {
-            derivedStateOf {
-                if (!isDragging) return@derivedStateOf ""
-                labels.getOrNull(rowIndexForFraction(prefix, dragFraction)).orEmpty()
-            }
-        }
         // Años a lo largo del carril, en su posición real: solo mientras se
         // arrastra, como referencia de a qué altura cae cada año. Se dibuja
         // ANTES que la píldora de fecha para que la fecha dorada quede por
         // delante cuando el mango pasa junto a un año.
-        val yearMarkers = remember(rows) { scrubberYearMarkers(rows) }
         ScrubberYearMarkers(
             markers = yearMarkers,
             usableTrackPx = usableTrackPx,
@@ -330,6 +247,104 @@ internal fun TimelineScrubber(
                     // than at its top edge (handle touch area is 64dp tall).
                     .offset(y = 18.dp)
                     .padding(end = HandleTouchWidth + 6.dp)
+            )
+        }
+    }
+
+    // Carril de ratón DETRÁS del mango (hermano anterior): hover revela el
+    // scrubber y pulsar/arrastrar mueve en absoluto. En táctil deja pasar los
+    // toques a la rejilla.
+    ScrubberMouseRail(
+        railWidth = HandleTouchWidth,
+        touchHeightPx = touchHeightPx,
+        usableTrackPx = usableTrackPx,
+        onHoverChange = { railHovered = it },
+        onScrubStart = { fraction ->
+            dragFraction = fraction
+            isDragging = true
+            onDraggingChange(true)
+        },
+        onScrub = { fraction -> dragFraction = fraction },
+        onScrubEnd = {
+            isDragging = false
+            onDraggingChange(false)
+            scope.launch {
+                val row = rowIndexForFraction(prefix, dragFraction)
+                runCatching { gridState.scrollToItem(row + headerCount) }
+            }
+        },
+        modifier = modifier
+    )
+    // Punto 47: el mango era mudo para el lector de pantalla. Se anuncia
+    // como control de desplazamiento rápido, con el mes visible como estado.
+    val scrubberDescription = stringResource(Res.string.timeline_scrubber_description)
+    val currentLabel by remember(prefix, labels) {
+        derivedStateOf {
+            labels.getOrNull(rowIndexForFraction(prefix, scrollFraction)).orEmpty()
+        }
+    }
+    // Drag-on-the-handle only. Delta-based: the pointer input sits on
+    // the element that moves, so absolute positions would feed back
+    // into themselves. Keyed on Unit on purpose — every mutable input
+    // is read through a rememberUpdatedState holder, so the gesture
+    // survives bucket loads, resizes and zoom changes mid-drag.
+    // La columna ocupa el alto de la pista, pero el puntero solo se engancha
+    // DESPUÉS de offset + height: su zona de toque es la del mango, nada más.
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(HandleTouchWidth)
+            .wrapContentHeight(Alignment.Top)
+            .offset(handleOffset)
+            .height(HandleTouchHeight)
+            .graphicsLayer { this.alpha = alpha }
+            .semantics {
+                contentDescription = scrubberDescription
+                if (currentLabel.isNotEmpty()) stateDescription = currentLabel
+            }
+            .then(
+                if (visible) {
+                    Modifier.pointerHoverIcon(PointerIcon.Hand).pointerInput(Unit) {
+                        // Gesture callbacks stay trivial — a float write
+                        // and nothing else. The throttled applier above
+                        // moves the list; the end handlers land exactly.
+                        fun endDrag() {
+                            isDragging = false
+                            onDraggingChange(false)
+                            scope.launch {
+                                val row = rowIndexForFraction(prefix, dragFraction)
+                                runCatching { gridState.scrollToItem(row + headerCount) }
+                            }
+                        }
+                        detectVerticalDragGestures(
+                            onDragStart = {
+                                dragFraction = scrollFraction
+                                isDragging = true
+                                onDraggingChange(true)
+                            },
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                dragFraction = (dragFraction + dragAmount / usableTrack)
+                                    .coerceIn(0f, 1f)
+                            },
+                            onDragEnd = ::endDrag,
+                            onDragCancel = ::endDrag
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        // Oculto no se compone: su Surface bloquea toques aun transparente.
+        if (handleShown) {
+            ScrubberHandle(
+                hazeState = hazeState,
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .width(HandleWidth)
+                    .height(HandleHeight)
             )
         }
     }

@@ -35,8 +35,9 @@ import androidx.compose.foundation.gestures.awaitFirstDown
  * rejilla que tiene debajo aunque no consuma nada, y eso dejaba una franja
  * muerta de 48 dp a lo alto del borde derecho en táctil. La captura que sí
  * bloquea solo se instala tras un hover real de ratón, que en táctil no existe.
- * Debe componerse ANTES que el mango para que este, como hermano superior,
- * siga ganando sus gestos.
+ * Debe ser hermano DIRECTO de la rejilla (compartir solo cuenta en ese nivel:
+ * metido en otra caja, la caja se come el toque) y componerse ANTES que el
+ * mango para que este, como hermano superior, siga ganando sus gestos.
  */
 @Composable
 internal fun ScrubberMouseRail(

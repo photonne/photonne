@@ -165,6 +165,14 @@ kotlin {
                 implementation(libs.java.keyring)
             }
         }
+
+        val desktopTest by getting {
+            dependencies {
+                // Tests de interfaz (hit-test de toques sobre la rejilla).
+                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+                implementation(compose.uiTest)
+            }
+        }
     }
 }
 
