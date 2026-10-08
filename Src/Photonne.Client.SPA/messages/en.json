@@ -93,5 +93,15 @@
 	"admin_backup": "Backup",
 	"admin_shared_trash": "Shared trash",
 	"admin_system": "System",
-	"admin_only": "This section is for administrators only."
+	"admin_only": "This section is for administrators only.",
+	"nav_notifications_unread": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Notifications: {count} unread",
+				"countPlural=other": "Notifications: {count} unread"
+			}
+		}
+	]
 }

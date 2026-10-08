@@ -7,6 +7,7 @@
 	import { session } from '#lib/auth/session.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
+	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -29,7 +30,11 @@
 	});
 
 	document.documentElement.lang = getLocale();
-	session.restore();
+
+	// Public shared links (/share/…) work without a session: they don't wait
+	// for (or depend on) restoring one.
+	const isPublic = $derived(page.route.id?.startsWith('/share') ?? false);
+	if (!page.route.id?.startsWith('/share')) session.restore();
 </script>
 
 <svelte:head>
@@ -37,7 +42,9 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	{#if session.status === 'restoring'}
+	{#if isPublic}
+		{@render children()}
+	{:else if session.status === 'restoring'}
 		<div class="center" role="status">{m.session_restoring()}</div>
 	{:else if session.status === 'unreachable'}
 		<div class="center">
