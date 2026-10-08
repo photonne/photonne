@@ -83,11 +83,15 @@ public class LoginEndpoint : IEndpoint
 
         var token = await authService.GenerateTokenAsync(user);
         MediaSessionCookie.Append(httpContext, token);
+        if (request.RefreshTokenInCookie)
+        {
+            RefreshTokenCookie.Append(httpContext, refreshToken, refreshEntity.ExpiresAt);
+        }
 
         return Results.Ok(new LoginResponse
         {
             Token = token,
-            RefreshToken = refreshToken,
+            RefreshToken = request.RefreshTokenInCookie ? string.Empty : refreshToken,
             User = new UserDto
             {
                 Id = user.Id,
@@ -111,6 +115,12 @@ public class LoginRequest
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string DeviceId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Web clients: keep the refresh token in an HttpOnly cookie instead of the
+    /// response body (see <see cref="RefreshTokenCookie"/>).
+    /// </summary>
+    public bool RefreshTokenInCookie { get; set; }
 }
 
 public class LoginResponse

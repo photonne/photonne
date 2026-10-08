@@ -26,13 +26,18 @@ public class RefreshTokenEndpoint : IEndpoint
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.RefreshToken) || string.IsNullOrWhiteSpace(request.DeviceId))
+        // A web client that logged in with refreshTokenInCookie sends no token:
+        // it rides in the HttpOnly cookie, and the rotated one goes back there.
+        var fromCookie = string.IsNullOrWhiteSpace(request.RefreshToken);
+        var presentedToken = fromCookie ? RefreshTokenCookie.Read(httpContext) : request.RefreshToken;
+
+        if (string.IsNullOrWhiteSpace(presentedToken) || string.IsNullOrWhiteSpace(request.DeviceId))
         {
             return Results.BadRequest(new { error = "RefreshToken and DeviceId are required" });
         }
 
         var deviceId = request.DeviceId.Trim();
-        var refreshTokenHash = RefreshTokenHelper.HashToken(request.RefreshToken);
+        var refreshTokenHash = RefreshTokenHelper.HashToken(presentedToken);
         var tokenEntity = await dbContext.RefreshTokens
             .Include(rt => rt.User)
             .FirstOrDefaultAsync(rt => rt.TokenHash == refreshTokenHash && rt.DeviceId == deviceId, cancellationToken);
@@ -74,11 +79,15 @@ public class RefreshTokenEndpoint : IEndpoint
 
         var token = await authService.GenerateTokenAsync(tokenEntity.User);
         MediaSessionCookie.Append(httpContext, token);
+        if (fromCookie)
+        {
+            RefreshTokenCookie.Append(httpContext, newRefreshToken, refreshEntity.ExpiresAt);
+        }
 
         return Results.Ok(new RefreshTokenResponse
         {
             Token = token,
-            RefreshToken = newRefreshToken
+            RefreshToken = fromCookie ? string.Empty : newRefreshToken
         });
     }
 }
