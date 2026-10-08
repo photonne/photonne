@@ -7,9 +7,9 @@ using Photonne.Server.Api.Tests.Infrastructure;
 namespace Photonne.Server.Api.Tests.DemoMode;
 
 /// <summary>
-/// DemoModeGuardMiddleware must block mutating admin-panel endpoints when the
-/// public demo is running, while still letting self-service endpoints
-/// through (the demo user has to be able to use its own account).
+/// The demo guards must block mutating admin-panel endpoints when the public demo
+/// is running, while still letting self-service endpoints and the regular-account
+/// lifecycle through (visitors must be able to create, use and delete one).
 /// </summary>
 public sealed class DemoModeGuardTests : IntegrationTestBase, IDisposable
 {
@@ -22,15 +22,20 @@ public sealed class DemoModeGuardTests : IntegrationTestBase, IDisposable
 
     private sealed record LoginReq(string Username, string Password, string DeviceId);
     private sealed record LoginResp(string Token, string RefreshToken);
-    private sealed record CreateUserReq(string Username, string Email, string Password);
+    private sealed record CreateUserReq(string Username, string Email, string Password, string? Role = null);
+    private sealed record CreatedUserResp(Guid Id, string Role);
+    private sealed record DeleteAccountReq(string Password);
     private sealed record SaveSettingReq(string Key, string Value);
 
-    private async Task<HttpClient> CreateAdminDemoClientAsync()
+    private Task<HttpClient> CreateAdminDemoClientAsync()
+        => LoginDemoClientAsync(PhotonneApiFactory.AdminUsername, PhotonneApiFactory.AdminPassword);
+
+    private async Task<HttpClient> LoginDemoClientAsync(string username, string password)
     {
         var client = _demoFactory.CreateClient();
         var login = await client.PostAsJsonAsync("/api/auth/login", new LoginReq(
-            PhotonneApiFactory.AdminUsername,
-            PhotonneApiFactory.AdminPassword,
+            username,
+            password,
             Guid.NewGuid().ToString("N")));
         login.EnsureSuccessStatusCode();
 
@@ -40,14 +45,15 @@ public sealed class DemoModeGuardTests : IntegrationTestBase, IDisposable
     }
 
     [Fact]
-    public async Task CreateUser_IsBlocked_InDemoMode()
+    public async Task CreateAdminUser_IsBlocked_InDemoMode()
     {
         var client = await CreateAdminDemoClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/users", new CreateUserReq(
             Username: "hijacker",
             Email: "hijacker@test.local",
-            Password: "Doesn't-Matter-1!"));
+            Password: "Doesn't-Matter-1!",
+            Role: "Admin"));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
@@ -56,11 +62,58 @@ public sealed class DemoModeGuardTests : IntegrationTestBase, IDisposable
     }
 
     [Fact]
-    public async Task DeleteUser_IsBlocked_InDemoMode()
+    public async Task RegularUser_CanBeCreated_AndDeleteItsOwnAccount_InDemoMode()
     {
+        // The store review needs the whole lifecycle in the demo: the admin creates a
+        // regular account, the visitor signs in with it and deletes it from the app.
+        var admin = await CreateAdminDemoClientAsync();
+        var username = "visitor-" + Guid.NewGuid().ToString("N")[..6];
+        const string password = "Valid-Pass-1!";
+
+        var created = await admin.PostAsJsonAsync("/api/users", new CreateUserReq(
+            Username: username,
+            Email: $"{username}@test.local",
+            Password: password));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var createdBody = await created.Content.ReadFromJsonAsync<CreatedUserResp>();
+        Assert.Equal("User", createdBody!.Role);
+
+        var visitor = await LoginDemoClientAsync(username, password);
+        var deleted = await visitor.PostAsJsonAsync("/api/users/me/delete-account", new DeleteAccountReq(password));
+
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteAdminUser_IsBlocked_InDemoMode()
+    {
+        var target = await CreateUserAsync(role: "Admin");
         var client = await CreateAdminDemoClientAsync();
 
-        var response = await client.DeleteAsync($"/api/users/{Guid.NewGuid()}");
+        var response = await client.DeleteAsync($"/api/users/{target.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteRegularUser_IsAllowed_InDemoMode()
+    {
+        var target = await CreateUserAsync();
+        var client = await CreateAdminDemoClientAsync();
+
+        var response = await client.DeleteAsync($"/api/users/{target.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteOwnAdminAccount_IsBlocked_InDemoMode()
+    {
+        // The shared demo account is an admin and must survive for the next visitor.
+        var client = await CreateAdminDemoClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users/me/delete-account",
+            new DeleteAccountReq(PhotonneApiFactory.AdminPassword));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Photonne.Server.Api.Features.Auth;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -11,6 +12,12 @@ namespace Photonne.Server.Api.Features.Users;
 
 public class UsersEndpoint : IEndpoint
 {
+    /// <summary>
+    /// The only role the public demo lets visitors create and manage. Admins (the
+    /// shared demo account among them) stay untouchable so nobody breaks the demo.
+    /// </summary>
+    private const string DemoManageableRole = "User";
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/users")
@@ -71,6 +78,10 @@ public class UsersEndpoint : IEndpoint
         group.MapPost("me/change-password", ChangePassword)
             .WithName("ChangePassword")
             .WithDescription("Changes the current user's password");
+
+        group.MapPost("me/delete-account", DeleteMyAccount)
+            .WithName("DeleteMyAccount")
+            .WithDescription("Deletes the current user's own account after confirming the password");
 
         group.MapGet("me/rename-preview", PreviewMyRename)
             .WithName("PreviewMyRename")
@@ -190,8 +201,15 @@ public class UsersEndpoint : IEndpoint
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
         [FromServices] SettingsService settingsService,
+        [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
         CancellationToken cancellationToken)
     {
+        // The demo admin may create regular accounts (so visitors can try signing in
+        // with one and deleting it), never another admin.
+        var isDemo = demoOptions.CurrentValue.Enabled;
+        if (isDemo && request.Role != null && request.Role != DemoManageableRole)
+            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+
         if (string.IsNullOrWhiteSpace(request.Username) ||
             string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Password))
@@ -234,7 +252,7 @@ public class UsersEndpoint : IEndpoint
             PasswordHash = authService.HashPassword(request.Password),
             FirstName = request.FirstName,
             LastName = request.LastName,
-            Role = request.Role ?? defaultRole,
+            Role = isDemo ? DemoManageableRole : request.Role ?? defaultRole,
             IsActive = request.IsActive ?? defaultActive.Equals("true", StringComparison.OrdinalIgnoreCase),
             StorageQuotaBytes = request.StorageQuotaBytes ?? defaultQuotaBytes,
             CreatedAt = DateTime.UtcNow
@@ -264,11 +282,16 @@ public class UsersEndpoint : IEndpoint
         [FromBody] UpdateUserRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] UserStorageService userStorage,
+        [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
         CancellationToken cancellationToken)
     {
         var user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user == null)
             return Results.NotFound();
+
+        if (demoOptions.CurrentValue.Enabled
+            && (user.Role != DemoManageableRole || (request.Role != null && request.Role != DemoManageableRole)))
+            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (user.IsPrimaryAdmin)
         {
@@ -330,19 +353,74 @@ public class UsersEndpoint : IEndpoint
     private async Task<IResult> DeleteUser(
         Guid id,
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
         CancellationToken cancellationToken)
     {
         var user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user == null)
             return Results.NotFound();
 
+        if (demoOptions.CurrentValue.Enabled && user.Role != DemoManageableRole)
+            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+
         if (user.IsPrimaryAdmin)
             return Results.BadRequest(new { error = "El administrador principal del sistema no puede ser eliminado." });
 
-        dbContext.Users.Remove(user);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await RemoveUserAsync(dbContext, user, cancellationToken);
 
         return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Self-service account deletion, required by the app stores for any app where
+    /// accounts can be created. Same scope as the admin delete: the user's rows go
+    /// away (their assets stay on disk, ownerless), and the password confirms intent.
+    /// </summary>
+    private async Task<IResult> DeleteMyAccount(
+        [FromBody] DeleteAccountRequest request,
+        ClaimsPrincipal user,
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IAuthService authService,
+        [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Results.Unauthorized();
+
+        var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (dbUser == null)
+            return Results.NotFound();
+
+        // The shared demo admin must survive for the next visitor; accounts created
+        // inside the demo can delete themselves.
+        if (demoOptions.CurrentValue.Enabled && dbUser.Role != DemoManageableRole)
+            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+
+        if (dbUser.IsPrimaryAdmin)
+            return Results.BadRequest(new { error = "El administrador principal no puede eliminar su cuenta. Transfiere antes ese rol a otro administrador." });
+
+        if (string.IsNullOrEmpty(request.Password) || !authService.VerifyPassword(request.Password, dbUser.PasswordHash))
+            return Results.BadRequest(new { error = "La contraseña no es correcta" });
+
+        await RemoveUserAsync(dbContext, dbUser, cancellationToken);
+
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Deletes a user row. Owned albums are removed first because their FK is
+    /// <c>Restrict</c> (everything else cascades or is nulled by the database).
+    /// </summary>
+    private static async Task RemoveUserAsync(ApplicationDbContext dbContext, User user, CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        await dbContext.Albums
+            .Where(a => a.OwnerId == user.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+        dbContext.Users.Remove(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private async Task<IResult> ResetPassword(
@@ -350,6 +428,7 @@ public class UsersEndpoint : IEndpoint
         [FromBody] ResetPasswordRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
+        [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.NewPassword))
@@ -367,6 +446,9 @@ public class UsersEndpoint : IEndpoint
         var user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user == null)
             return Results.NotFound();
+
+        if (demoOptions.CurrentValue.Enabled && user.Role != DemoManageableRole)
+            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         user.PasswordHash = authService.HashPassword(request.NewPassword);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -746,6 +828,11 @@ public class UpdateProfileRequest
     public string? Email { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
+}
+
+public class DeleteAccountRequest
+{
+    public string Password { get; set; } = string.Empty;
 }
 
 public class ChangePasswordRequest

@@ -7,14 +7,16 @@ namespace Photonne.Server.Api.Shared.Services;
 /// <summary>
 /// Blocks destructive endpoints while the app runs in demo mode.
 ///
-/// Blocklist (matches Backup page, user management and external libraries):
-///   - User management: POST/PUT/DELETE /api/users, POST /api/users/{id}/reset-password
+/// Blocklist (matches Backup page and external libraries):
 ///   - Database backup: GET /api/admin/database/backup, POST /api/admin/database/restore
 ///   - External libraries: POST/PUT/DELETE /api/libraries, permissions, scan stream
 ///
 /// Global settings are blocked in <c>SettingsEndpoint</c> instead of here: the same
 /// POST /api/settings saves the user's own settings too, and telling them apart
-/// needs the key from the request body.
+/// needs the key from the request body. User management is gated in <c>UsersEndpoint</c>
+/// for the same reason: regular accounts can be created, edited and deleted (visitors
+/// must be able to try the account lifecycle), admins can't, and that depends on the
+/// target user and the requested role.
 ///
 /// Read endpoints (GET /api/users, GET /api/libraries) stay allowed so pages still render.
 /// Self-service endpoints (/api/users/me, /api/users/me/change-password) are NOT blocked
@@ -28,12 +30,6 @@ public sealed class DemoModeGuardMiddleware
 
     private static readonly Rule[] Rules = new[]
     {
-        // ── User management ────────────────────────────────────────────────
-        new Rule("POST",   @"^/api/users/?$"),
-        new Rule("PUT",    @"^/api/users/[0-9a-fA-F\-]{36}/?$"),
-        new Rule("DELETE", @"^/api/users/[0-9a-fA-F\-]{36}/?$"),
-        new Rule("POST",   @"^/api/users/[0-9a-fA-F\-]{36}/reset-password/?$"),
-
         // ── Backup / restore ───────────────────────────────────────────────
         new Rule("GET",    @"^/api/admin/database/backup/?$"),
         new Rule("POST",   @"^/api/admin/database/restore/?$"),
