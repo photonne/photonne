@@ -50,7 +50,14 @@ data class DeviceMedia(
      * (capture second, width, height) instead.
      */
     val width: Int? = null,
-    val height: Int? = null
+    val height: Int? = null,
+    /**
+     * iOS Live Photo: PhotoKit keeps the still and its motion clip as two
+     * resources of one asset, and the backup uploads the clip right after the
+     * still ([DeviceGallery.withMotionClipSource]). Android motion photos carry
+     * the clip inside the JPEG itself, so it stays false there.
+     */
+    val isLivePhoto: Boolean = false
 )
 
 /**

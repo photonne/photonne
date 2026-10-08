@@ -95,6 +95,12 @@ actual class DeviceGallery {
         }
     }
 
+    // Motion photos here embed the clip inside the still: nothing separate to send.
+    actual suspend fun <T> withMotionClipSource(
+        media: DeviceMedia,
+        block: suspend (source: Source, sizeBytes: Long, fileName: String, mimeType: String) -> T
+    ): T? = null
+
     actual fun thumbnailModel(media: DeviceMedia): String = media.uri
 
     actual suspend fun deleteFile(media: DeviceMedia): Boolean =

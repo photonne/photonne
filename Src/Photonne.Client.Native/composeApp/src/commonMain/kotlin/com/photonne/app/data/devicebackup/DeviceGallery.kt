@@ -72,6 +72,17 @@ expect class DeviceGallery {
     ): T
 
     /**
+     * Same contract as [withUploadSource] for the motion clip paired with a
+     * Live Photo still: [block] gets the clip's bytes, size, file name and
+     * MIME type. Null when [media] has no paired clip — always on Android and
+     * desktop, whose motion photos embed the clip in the still.
+     */
+    suspend fun <T> withMotionClipSource(
+        media: DeviceMedia,
+        block: suspend (source: kotlinx.io.Source, sizeBytes: Long, fileName: String, mimeType: String) -> T
+    ): T?
+
+    /**
      * Returns an opaque value that Coil can resolve to a thumbnail.
      * On Android this is the original `content://` URI string (Coil
      * 3's Android fetcher handles content URIs); on iOS/desktop it's

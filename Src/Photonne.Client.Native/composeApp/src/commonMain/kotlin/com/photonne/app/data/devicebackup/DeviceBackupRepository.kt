@@ -508,8 +508,98 @@ class DeviceBackupRepository(
      * Streams [media] to the server without ever holding the payload in
      * memory — large videos OOM the Android heap if read into a ByteArray.
      * The server dedupes by SHA-256 itself, so if the hash check above
-     * raced the upload still ends with the right asset id.
-     *
+     * raced the upload still ends with the right asset id. Retries follow
+     * [withUploadRetries]. A Live Photo's motion clip follows its still.
+     */
+    suspend fun upload(
+        media: DeviceMedia,
+        maxAttempts: Int = DEFAULT_MAX_ATTEMPTS,
+        onProgress: ((fraction: Float) -> Unit)? = null
+    ): com.photonne.app.data.api.UploadAssetResponse {
+        val response = withUploadRetries(maxAttempts) {
+            gallery.withUploadSource(media) { source, sizeBytes ->
+                uploads.uploadStream(
+                    fileName = media.displayName,
+                    mimeType = media.mimeType,
+                    source = source,
+                    sizeBytes = sizeBytes,
+                    destination = MOBILE_BACKUP_DESTINATION,
+                    deviceName = currentDeviceName(),
+                    fileModifiedAtMillis = media.dateModifiedMillis.takeIf { it > 0 },
+                    fileCreatedAtMillis = media.dateCreatedMillis,
+                    onProgress = onProgress?.let { report ->
+                        { sent, total -> report((sent.toFloat() / total).coerceIn(0f, 1f)) }
+                    }
+                )
+            }
+        }
+        // The still is what the backup promises, so a clip that doesn't make
+        // it never fails the file: [repairMotionClips] sends it on a later pass.
+        val assetId = response.assetId
+        if (media.isLivePhoto && !assetId.isNullOrEmpty()) attachMotionClip(media, assetId)
+        return response
+    }
+
+    /**
+     * Sends the motion clip of every Live Photo in [synced] (device file →
+     * server asset id) whose still the server holds without one: stills backed
+     * up before the clip travelled with them, or whose clip upload failed.
+     * One lookup per [MOTION_CLIP_BATCH] stills; only the missing clips are
+     * uploaded. Never throws but for cancellation — the stills themselves are
+     * safe, so a failure here just waits for the next pass. Returns how many
+     * clips landed.
+     */
+    suspend fun repairMotionClips(
+        synced: List<Pair<DeviceMedia, String>>,
+        shouldContinue: () -> Boolean = { true }
+    ): Int {
+        val mediaByAssetId = synced
+            .filter { (media, assetId) -> media.isLivePhoto && assetId.isNotEmpty() }
+            .associate { (media, assetId) -> assetId to media }
+        if (mediaByAssetId.isEmpty()) return 0
+        var repaired = 0
+        try {
+            for (batch in mediaByAssetId.keys.chunked(MOTION_CLIP_BATCH)) {
+                if (!shouldContinue()) break
+                val missing = api.motionClipsMissing(batch)
+                val permits = Semaphore(uploadConcurrency().video)
+                val counter = Mutex()
+                coroutineScope {
+                    missing.map { assetId ->
+                        async {
+                            permits.withPermit {
+                                if (!shouldContinue()) return@withPermit
+                                val media = mediaByAssetId[assetId] ?: return@withPermit
+                                if (attachMotionClip(media, assetId)) counter.withLock { repaired++ }
+                            }
+                        }
+                    }.awaitAll()
+                }
+            }
+        } catch (ex: CancellationException) {
+            throw ex
+        } catch (_: Throwable) {
+            // Server without the endpoint (404) or unreachable: next pass.
+        }
+        return repaired
+    }
+
+    /** Uploads the paired clip of [media] to the still [assetId]. False when it
+     *  has none or the upload failed after its retries. */
+    private suspend fun attachMotionClip(media: DeviceMedia, assetId: String): Boolean = try {
+        withUploadRetries(DEFAULT_MAX_ATTEMPTS) {
+            gallery.withMotionClipSource(media) { source, sizeBytes, fileName, mimeType ->
+                api.attachMotionClip(assetId, fileName, mimeType, source, sizeBytes)
+            }
+        } != null
+    } catch (ex: CancellationException) {
+        throw ex
+    } catch (_: Throwable) {
+        false
+    }
+
+    /**
+     * Runs one streamed upload [attempt] with the backup's retry policy.
      * Transient failures (network, 5xx, 429) are retried with exponential
      * backoff up to [maxAttempts] times, re-opening the source each try.
      * Permanent failures (quota, oversize, forbidden, unauthorized) bail
@@ -518,31 +608,13 @@ class DeviceBackupRepository(
      * can't be replayed by the auth plugin, which only refreshes the token,
      * so the upload is resent once, right away, with a reopened source.
      */
-    suspend fun upload(
-        media: DeviceMedia,
-        maxAttempts: Int = DEFAULT_MAX_ATTEMPTS,
-        onProgress: ((fraction: Float) -> Unit)? = null
-    ): com.photonne.app.data.api.UploadAssetResponse {
+    private suspend fun <T> withUploadRetries(maxAttempts: Int, attempt: suspend () -> T): T {
         var lastError: Throwable? = null
         var retriedAfterRefresh = false
-        var attempt = 0
-        while (attempt < maxAttempts) {
+        var tries = 0
+        while (tries < maxAttempts) {
             try {
-                return gallery.withUploadSource(media) { source, sizeBytes ->
-                    uploads.uploadStream(
-                        fileName = media.displayName,
-                        mimeType = media.mimeType,
-                        source = source,
-                        sizeBytes = sizeBytes,
-                        destination = MOBILE_BACKUP_DESTINATION,
-                        deviceName = currentDeviceName(),
-                        fileModifiedAtMillis = media.dateModifiedMillis.takeIf { it > 0 },
-                        fileCreatedAtMillis = media.dateCreatedMillis,
-                        onProgress = onProgress?.let { report ->
-                            { sent, total -> report((sent.toFloat() / total).coerceIn(0f, 1f)) }
-                        }
-                    )
-                }
+                return attempt()
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Throwable) {
@@ -556,10 +628,10 @@ class DeviceBackupRepository(
                 if (!ex.toUploadFailureReason().isRetryable) {
                     throw ex // permanent — no point retrying
                 }
-                if (attempt < maxAttempts - 1) {
-                    delay(retryDelayFor(attempt))
+                if (tries < maxAttempts - 1) {
+                    delay(retryDelayFor(tries))
                 }
-                attempt++
+                tries++
             }
         }
         throw lastError ?: RuntimeException("Upload failed after $maxAttempts attempts")
@@ -584,6 +656,9 @@ class DeviceBackupRepository(
 
         // Server caps /check-checksums at 1000 hashes per request; stay under.
         const val CHECKSUM_BATCH = 500
+
+        // Same cap and margin for /motion-clips/missing.
+        const val MOTION_CLIP_BATCH = 500
 
         // Parallel SHA-256 workers during verification. Bounded so a phone
         // doesn't read too many large videos into the hash pipeline at once.

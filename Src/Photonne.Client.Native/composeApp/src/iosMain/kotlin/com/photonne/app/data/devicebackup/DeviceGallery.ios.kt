@@ -31,12 +31,15 @@ import platform.Foundation.timeIntervalSince1970
 import platform.Photos.PHAccessLevelReadWrite
 import platform.Photos.PHAsset
 import platform.Photos.PHAssetChangeRequest
+import platform.Photos.PHAssetMediaSubtypePhotoLive
 import platform.Photos.PHAssetMediaTypeImage
 import platform.Photos.PHAssetMediaTypeVideo
 import platform.Photos.PHAssetResource
 import platform.Photos.PHAssetResourceManager
 import platform.Photos.PHAssetResourceRequestOptions
+import platform.Photos.PHAssetResourceTypeFullSizePairedVideo
 import platform.Photos.PHAssetResourceTypeFullSizePhoto
+import platform.Photos.PHAssetResourceTypePairedVideo
 import platform.Photos.PHAssetResourceTypeFullSizeVideo
 import platform.Photos.PHAssetResourceTypePhoto
 import platform.Photos.PHAssetResourceTypeVideo
@@ -135,47 +138,22 @@ actual class DeviceGallery {
             ?: throw DeviceGalleryUnavailable("Asset not found for ${media.displayName}")
         val resource = primaryResource(asset)
             ?: throw DeviceGalleryUnavailable("No data resource for ${media.displayName}")
+        return withSpilledResource(resource, media.displayName, media.sizeBytes, block)
+    }
 
-        // PhotoKit only hands data out in push-style chunks, so spill them
-        // to a temp file and serve the upload from a plain seekable source —
-        // RAM usage stays flat no matter how big the video is.
-        val tmpPath = NSTemporaryDirectory() + "photonne-upload-" + NSUUID().UUIDString
-        NSFileManager.defaultManager.createFileAtPath(tmpPath, contents = null, attributes = null)
-        val handle = NSFileHandle.fileHandleForWritingAtPath(tmpPath)
-            ?: throw DeviceGalleryUnavailable("Cannot create temp file for ${media.displayName}")
-        // PhotoKit keeps calling the data handler on its own queue until the
-        // cancelled request winds down, and writing to a closed NSFileHandle
-        // raises an NSException that Kotlin can't catch: it kills the app.
-        // Writes and the close are serialised so no chunk lands after close.
-        val handleLock = NSLock()
-        var handleClosed = false
-        try {
-            streamResourceData(resource) { data ->
-                handleLock.lock()
-                try {
-                    if (!handleClosed) handle.writeData(data)
-                } finally {
-                    handleLock.unlock()
-                }
-            }
-        } finally {
-            handleLock.lock()
-            try {
-                handleClosed = true
-                handle.closeFile()
-            } finally {
-                handleLock.unlock()
-            }
-        }
-
-        val path = Path(tmpPath)
-        try {
-            val sizeBytes = SystemFileSystem.metadataOrNull(path)?.size ?: media.sizeBytes
-            return SystemFileSystem.source(path).buffered().use { source ->
-                block(source, sizeBytes)
-            }
-        } finally {
-            runCatching { SystemFileSystem.delete(path, mustExist = false) }
+    actual suspend fun <T> withMotionClipSource(
+        media: DeviceMedia,
+        block: suspend (source: Source, sizeBytes: Long, fileName: String, mimeType: String) -> T
+    ): T? {
+        if (!media.isLivePhoto) return null
+        val asset = resolveAsset(media.uri)
+            ?: throw DeviceGalleryUnavailable("Asset not found for ${media.displayName}")
+        val resource = pairedVideoResource(asset) ?: return null
+        val fileName = resource.originalFilename
+        val mime = UTType.typeWithIdentifier(resource.uniformTypeIdentifier)?.preferredMIMEType()
+            ?: "video/quicktime"
+        return withSpilledResource(resource, fileName, 0L) { source, sizeBytes ->
+            block(source, sizeBytes, fileName, mime)
         }
     }
 
@@ -240,7 +218,9 @@ private fun assetToMedia(asset: PHAsset): DeviceMedia? {
         sizeBytes = 0L,
         dateModifiedMillis = modified ?: created ?: 0L,
         type = type,
-        dateCreatedMillis = created
+        dateCreatedMillis = created,
+        isLivePhoto = type == DeviceMediaType.Image &&
+            (asset.mediaSubtypes and PHAssetMediaSubtypePhotoLive) != 0uL
     )
 }
 
@@ -260,6 +240,78 @@ private fun primaryResource(asset: PHAsset): PHAssetResource? {
         when (resource.type) {
             PHAssetResourceTypePhoto, PHAssetResourceTypeVideo -> return resource
             PHAssetResourceTypeFullSizePhoto, PHAssetResourceTypeFullSizeVideo -> fullSize = resource
+        }
+    }
+    return fullSize
+}
+
+/**
+ * Runs [block] over a temp-file copy of [resource], deleted afterwards.
+ * [fallbackSize] stands in when the copy's size can't be read.
+ */
+@OptIn(ExperimentalForeignApi::class)
+private suspend fun <T> withSpilledResource(
+    resource: PHAssetResource,
+    displayName: String,
+    fallbackSize: Long,
+    block: suspend (source: Source, sizeBytes: Long) -> T
+): T {
+    // PhotoKit only hands data out in push-style chunks, so spill them
+    // to a temp file and serve the upload from a plain seekable source —
+    // RAM usage stays flat no matter how big the video is.
+    val tmpPath = NSTemporaryDirectory() + "photonne-upload-" + NSUUID().UUIDString
+    NSFileManager.defaultManager.createFileAtPath(tmpPath, contents = null, attributes = null)
+    val handle = NSFileHandle.fileHandleForWritingAtPath(tmpPath)
+        ?: throw DeviceGalleryUnavailable("Cannot create temp file for $displayName")
+    // PhotoKit keeps calling the data handler on its own queue until the
+    // cancelled request winds down, and writing to a closed NSFileHandle
+    // raises an NSException that Kotlin can't catch: it kills the app.
+    // Writes and the close are serialised so no chunk lands after close.
+    val handleLock = NSLock()
+    var handleClosed = false
+    try {
+        streamResourceData(resource) { data ->
+            handleLock.lock()
+            try {
+                if (!handleClosed) handle.writeData(data)
+            } finally {
+                handleLock.unlock()
+            }
+        }
+    } finally {
+        handleLock.lock()
+        try {
+            handleClosed = true
+            handle.closeFile()
+        } finally {
+            handleLock.unlock()
+        }
+    }
+
+    val path = Path(tmpPath)
+    try {
+        val sizeBytes = SystemFileSystem.metadataOrNull(path)?.size ?: fallbackSize
+        return SystemFileSystem.source(path).buffered().use { source ->
+            block(source, sizeBytes)
+        }
+    } finally {
+        runCatching { SystemFileSystem.delete(path, mustExist = false) }
+    }
+}
+
+/**
+ * The motion clip of a Live Photo: the original paired video, or the edited
+ * one when only that is around (same preference as [primaryResource]).
+ */
+@OptIn(ExperimentalForeignApi::class)
+private fun pairedVideoResource(asset: PHAsset): PHAssetResource? {
+    val resources = PHAssetResource.assetResourcesForAsset(asset)
+    var fullSize: PHAssetResource? = null
+    for (any in resources) {
+        val resource = any as? PHAssetResource ?: continue
+        when (resource.type) {
+            PHAssetResourceTypePairedVideo -> return resource
+            PHAssetResourceTypeFullSizePairedVideo -> fullSize = resource
         }
     }
     return fullSize

@@ -371,6 +371,12 @@ internal data class ExistsByChecksumBody(val assetId: String = "")
 internal data class CheckChecksumsRequest(val checksums: List<String>)
 
 @Serializable
+internal data class MotionClipsMissingRequest(val assetIds: List<String>)
+
+@Serializable
+internal data class MotionClipsMissingBody(val missing: List<String> = emptyList())
+
+@Serializable
 internal data class CheckChecksumsBody(val existing: Map<String, String> = emptyMap())
 
 @Serializable
@@ -570,6 +576,22 @@ interface PhotonneApi {
         fileCreatedAtMillis: Long? = null,
         onProgress: ((bytesSent: Long, totalBytes: Long) -> Unit)? = null
     ): UploadAssetResponse
+
+    /**
+     * Stores the motion clip of the Live Photo still [assetId] next to it
+     * (idempotent: an already paired still just answers OK). A server older
+     * than the endpoint answers 404, surfaced as a [PhotonneApiException].
+     */
+    suspend fun attachMotionClip(
+        assetId: String,
+        fileName: String,
+        mimeType: String,
+        source: kotlinx.io.Source,
+        sizeBytes: Long
+    )
+
+    /** Which of the caller's stills [assetIds] have no motion clip yet (1000 per call at most). */
+    suspend fun motionClipsMissing(assetIds: List<String>): List<String>
 
     /** Lists the caller's assets with at least one Pending or Failed enrichment task. */
     suspend fun listPendingEnrichment(
@@ -1713,7 +1735,63 @@ class PhotonneApiClient(
         fileModifiedAtMillis: Long?,
         fileCreatedAtMillis: Long?,
         onProgress: ((bytesSent: Long, totalBytes: Long) -> Unit)?
-    ): UploadAssetResponse = coroutineScope {
+    ): UploadAssetResponse {
+        val fields = buildMap {
+            if (!destination.isNullOrBlank()) put("destination", destination)
+            if (!deviceName.isNullOrBlank()) put("deviceName", deviceName)
+            if (fileModifiedAtMillis != null) put("fileModifiedAt", fileModifiedAtMillis.toString())
+            if (fileCreatedAtMillis != null) put("fileCreatedAt", fileCreatedAtMillis.toString())
+        }
+        return postStreamedFile(
+            "$baseUrl/api/assets/upload", fileName, mimeType, source, sizeBytes, fields, onProgress
+        ) { response ->
+            response.ensureSuccess { "Upload failed ($it)" }
+            response.body()
+        }
+    }
+
+    override suspend fun attachMotionClip(
+        assetId: String,
+        fileName: String,
+        mimeType: String,
+        source: kotlinx.io.Source,
+        sizeBytes: Long
+    ) {
+        postStreamedFile(
+            "$baseUrl/api/assets/$assetId/motion-clip", fileName, mimeType, source, sizeBytes,
+            fields = emptyMap(), onProgress = null
+        ) { response ->
+            response.ensureSuccess { "Motion clip upload failed ($it)" }
+        }
+    }
+
+    override suspend fun motionClipsMissing(assetIds: List<String>): List<String> {
+        if (assetIds.isEmpty()) return emptyList()
+        val response: HttpResponse = client.post("$baseUrl/api/assets/motion-clips/missing") {
+            backupIdleTimeout()
+            contentType(ContentType.Application.Json)
+            setBody(MotionClipsMissingRequest(assetIds))
+        }
+        response.ensureSuccess { "Motion clip lookup failed ($it)" }
+        val body: MotionClipsMissingBody = response.body()
+        return body.missing
+    }
+
+    /**
+     * POSTs [source] as the multipart `file` part (plus [fields]) without ever
+     * holding it in memory, and hands the response to [handle] while the
+     * request is still scoped.
+     */
+    private suspend fun <T> postStreamedFile(
+        url: String,
+        fileName: String,
+        mimeType: String,
+        source: kotlinx.io.Source,
+        sizeBytes: Long,
+        fields: Map<String, String>,
+        onProgress: ((bytesSent: Long, totalBytes: Long) -> Unit)?,
+        handle: suspend (HttpResponse) -> T
+    ): T = coroutineScope {
         val parsedType = runCatching { ContentType.parse(mimeType) }
             .getOrDefault(ContentType.Application.OctetStream)
 
@@ -1741,7 +1819,7 @@ class PhotonneApiClient(
         }
 
         try {
-            val response: HttpResponse = client.post("$baseUrl/api/assets/upload") {
+            val response: HttpResponse = client.post(url) {
                 // The pumped channel can't be replayed after a 401.
                 oneShotBody()
                 // Fail fast if the transfer stalls (network switched away)
@@ -1772,24 +1850,12 @@ class PhotonneApiClient(
                                     )
                                 }
                             )
-                            if (!destination.isNullOrBlank()) {
-                                append("destination", destination)
-                            }
-                            if (!deviceName.isNullOrBlank()) {
-                                append("deviceName", deviceName)
-                            }
-                            if (fileModifiedAtMillis != null) {
-                                append("fileModifiedAt", fileModifiedAtMillis.toString())
-                            }
-                            if (fileCreatedAtMillis != null) {
-                                append("fileCreatedAt", fileCreatedAtMillis.toString())
-                            }
+                            fields.forEach { (key, value) -> append(key, value) }
                         }
                     )
                 )
             }
-            response.ensureSuccess { "Upload failed ($it)" }
-            response.body()
+            handle(response)
         } finally {
             // If the server replied without draining the body (e.g. an early
             // 4xx), the pump is parked on backpressure — release it.

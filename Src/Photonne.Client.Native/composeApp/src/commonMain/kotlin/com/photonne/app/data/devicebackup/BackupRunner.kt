@@ -111,6 +111,7 @@ class BackupRunner(
         // progress bar counts the whole job instead of restarting per folder.
         val pending = mutableListOf<DeviceMedia>()
         val folderByUri = mutableMapOf<String, DeviceFolderRef>()
+        val listed = mutableListOf<DeviceMedia>()
         var verifiedHashes = 0
         // A user-triggered pass always re-asks the server about everything; a
         // scheduled one only does that sweep about once a day (see
@@ -126,6 +127,7 @@ class BackupRunner(
             val items = gallery.listMedia(folder)
             total += items.size
             items.forEach { folderByUri[it.uri] = folder }
+            listed += items
 
             val folderPending = if (only != null) {
                 // An explicit "upload these": the user already picked the files,
@@ -256,6 +258,19 @@ class BackupRunner(
                 progress.bumpLedger()
             }
         )
+
+        // Live Photos already on the server without their motion clip (backed
+        // up before the clip travelled with the still, or its upload failed).
+        // Rides the full reconcile: one lookup per 500 Live Photos.
+        if (only == null && fullReconcile && blockedBy == null && shouldContinue()) {
+            val states = repository.syncStatesFor(folders)
+            repository.repairMotionClips(
+                synced = listed.mapNotNull { media ->
+                    (states[media.uri] as? DeviceMediaSyncState.Synced)?.let { media to it.assetId }
+                },
+                shouldContinue = shouldContinue
+            )
+        }
 
         val result = Result(
             total = total,

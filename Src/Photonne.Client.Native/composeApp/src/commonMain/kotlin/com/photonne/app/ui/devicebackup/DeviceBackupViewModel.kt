@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.photonne.app.resources.Res
@@ -236,6 +237,7 @@ class DeviceBackupViewModel(
      * own `isCheckingHashes` gate and abort the verification we're running.
      */
     private var ownPassActive = false
+    private var motionClipRepair: Job? = null
 
     /** Throttle for the ledger re-reads triggered by a worker pass. */
     private var lastLedgerRefreshMillis = 0L
@@ -752,7 +754,29 @@ class DeviceBackupViewModel(
         if (_state.value.isSyncing || _state.value.isCheckingHashes) return
         if (startWorkerPass(uris = null)) return
         selectAllNotSynced()
+        if (_state.value.entries.none { it.isSelected }) {
+            // Nothing new to upload, but Live Photos backed up without their
+            // motion clip may still be missing it.
+            launchMotionClipRepair()
+            return
+        }
         syncSelected()
+    }
+
+    /**
+     * In-process twin of the sweep [BackupRunner] runs on a full pass: sends
+     * the motion clips the server lacks for Live Photos already backed up.
+     * Silent on purpose — the stills are safe and the counters belong to
+     * files, not clips. One at a time.
+     */
+    private fun launchMotionClipRepair() {
+        if (motionClipRepair?.isActive == true) return
+        val synced = _state.value.entries.mapNotNull { entry ->
+            (entry.syncState as? DeviceMediaSyncState.Synced)?.let { entry.media to it.assetId }
+        }
+        motionClipRepair = viewModelScope.launch {
+            withBackgroundExecution { repository.repairMotionClips(synced) }
+        }
     }
 
     /** Re-uploads exactly one entry — the failure dialog's retry action. */
@@ -1066,6 +1090,7 @@ class DeviceBackupViewModel(
             repository.clearPassBlock()
         }
         ownPassActive = false
+        if (blocker == null) launchMotionClipRepair()
         _state.update {
             it.copy(
                 isSyncing = false,
