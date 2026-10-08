@@ -1,3 +1,248 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"people_search": "Search people",
+	"people_sort": "Sort",
+	"people_sort_faces": "Most photos first",
+	"people_sort_name": "By name",
+	"people_sort_unnamed": "Unnamed first",
+	"people_show_hidden": "Show hidden",
+	"people_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} person",
+				"countPlural=other": "{count} people"
+			}
+		}
+	],
+	"people_faces": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} face",
+				"countPlural=other": "{count} faces"
+			}
+		}
+	],
+	"people_pending_badge": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} suggestion to review",
+				"countPlural=other": "{count} suggestions to review"
+			}
+		}
+	],
+	"people_unnamed": "Unnamed",
+	"people_hidden": "Hidden",
+	"people_empty": "No people yet. Once face recognition goes through your photos, similar faces are grouped here.",
+	"people_search_empty": "Nobody matches “{query}”.",
+	"people_select": "Select {name}",
+	"people_grid": "People",
+	"people_selection_hint": "Ctrl or Cmd + click selects several people to merge or hide them.",
+	"people_action_rename": "Rename",
+	"people_action_hide": "Hide",
+	"people_action_unhide": "Unhide",
+	"people_action_merge": "Merge",
+	"people_action_merge_with": "Merge with…",
+	"people_rename_title": "Rename",
+	"people_rename_label": "Name",
+	"people_rename_hint": "Leave it empty to remove the name.",
+	"people_save": "Save",
+	"people_cancel": "Cancel",
+	"people_close": "Close",
+	"people_renamed": "Name saved",
+	"people_hidden_toast": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} person hidden",
+				"countPlural=other": "{count} people hidden"
+			}
+		}
+	],
+	"people_unhidden_toast": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} person visible again",
+				"countPlural=other": "{count} people visible again"
+			}
+		}
+	],
+	"people_merge_title": "Merge people",
+	"people_merge_keep": "Who do you keep?",
+	"people_merge_body": "The others' faces move to the person you keep, and the others go away. This can't be undone.",
+	"people_merge_confirm": "Merge",
+	"people_merged": [
+		{
+			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} person merged into {name}",
+				"countPlural=other": "{count} people merged into {name}"
+			}
+		}
+	],
+	"people_picker_title": "Choose a person",
+	"people_picker_search": "Search by name",
+	"people_picker_empty": "No matching people.",
+	"people_picker_create": "New person: “{name}”",
+	"people_tabs": "Person sections",
+	"people_tab_photos": "Photos",
+	"people_tab_faces": "Faces",
+	"people_tab_suggestions": "Suggestions",
+	"people_photos_empty": "No photos of this person.",
+	"people_not_found": "This person doesn't exist or is no longer available.",
+	"people_back": "Back to People",
+	"people_unlink": "Remove from this person",
+	"people_unlink_title": "Remove photos from {name}",
+	"people_unlink_body": [
+		{
+			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{name}'s faces in {count} photo will no longer be assigned. The photo isn't deleted.",
+				"countPlural=other": "{name}'s faces in {count} photos will no longer be assigned. The photos aren't deleted."
+			}
+		}
+	],
+	"people_unlinked": [
+		{
+			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo removed from {name}",
+				"countPlural=other": "{count} photos removed from {name}"
+			}
+		}
+	],
+	"people_faces_empty": "This person has no confirmed faces.",
+	"people_faces_hint": "Click or Space selects; Enter opens the photo.",
+	"people_face_item": "Face {index}",
+	"people_face_item_cover": "Face {index}, cover",
+	"people_face_cover": "Cover",
+	"people_face_set_cover": "Use as cover",
+	"people_cover_set": "Cover updated",
+	"people_face_unassign": "Not this person",
+	"people_face_move": "Move to another person",
+	"people_face_reject": "Not a face",
+	"people_face_open": "Open the photo",
+	"people_faces_unassigned": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} face removed",
+				"countPlural=other": "{count} faces removed"
+			}
+		}
+	],
+	"people_faces_moved": [
+		{
+			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} face moved to {name}",
+				"countPlural=other": "{count} faces moved to {name}"
+			}
+		}
+	],
+	"people_faces_rejected": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} face discarded",
+				"countPlural=other": "{count} faces discarded"
+			}
+		}
+	],
+	"people_suggestions_intro": "Faces that look like {name}. Confirm the ones that are theirs.",
+	"people_suggestions_hint": "Shortcuts on the focused face: A accepts, D dismisses.",
+	"people_suggestions_empty": "No pending suggestions.",
+	"people_suggestion_item": "Suggested face {index}",
+	"people_suggestion_accept": "It's {name}",
+	"people_suggestion_dismiss": "Not {name}",
+	"people_suggestions_accept_all": "Accept all",
+	"people_suggestions_dismiss_all": "Dismiss all",
+	"people_suggestions_accept_all_body": [
+		{
+			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} suggested face will be assigned to {name}.",
+				"countPlural=other": "{count} suggested faces will be assigned to {name}."
+			}
+		}
+	],
+	"people_suggestions_dismiss_all_body": [
+		{
+			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} suggestion for {name} will be dismissed. The face stays unassigned.",
+				"countPlural=other": "{count} suggestions for {name} will be dismissed. The faces stay unassigned."
+			}
+		}
+	],
+	"people_suggestions_accepted": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} face confirmed",
+				"countPlural=other": "{count} faces confirmed"
+			}
+		}
+	],
+	"people_suggestions_dismissed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} suggestion dismissed",
+				"countPlural=other": "{count} suggestions dismissed"
+			}
+		}
+	],
+	"people_recognition": "Face recognition",
+	"people_recognition_intro": "Face analysis of your photos. New ones are analysed on their own; here you can follow progress and queue whatever is missing.",
+	"people_recognition_unprocessed": "To analyse",
+	"people_recognition_queue": "Queued",
+	"people_recognition_processing": "Analysing",
+	"people_recognition_completed": "Analysed",
+	"people_recognition_failed": "Failed",
+	"people_recognition_last": "Last analysis: {date}",
+	"people_recognition_backfill": "Analyse pending photos",
+	"people_recognition_queued": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo queued for analysis",
+				"countPlural=other": "{count} photos queued for analysis"
+			}
+		}
+	],
+	"people_recognition_nothing": "No photos pending analysis.",
+	"people_recognition_disabled": "Face recognition is turned off in the server settings.",
+	"people_recognition_recluster": "Regroup faces",
+	"people_recognition_recluster_hint": "Groups again the faces that don't have a person yet.",
+	"people_reclustered_none": "Faces regrouped; no new people",
+	"people_reclustered": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Faces regrouped: {count} new person",
+				"countPlural=other": "Faces regrouped: {count} new people"
+			}
+		}
+	]
 }

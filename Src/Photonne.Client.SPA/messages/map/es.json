@@ -1,3 +1,42 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"map_label": "Mapa de fotos. Flechas para moverte, + y − para acercar o alejar.",
+	"map_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto con ubicación",
+				"countPlural=other": "{count} fotos con ubicación"
+			}
+		}
+	],
+	"map_empty_title": "Sin fotos con ubicación",
+	"map_empty_body": "Cuando tus fotos lleven coordenadas GPS aparecerán aquí, sobre el mapa.",
+	"map_fit": "Ver todas",
+	"map_zoom_in": "Acercar",
+	"map_zoom_out": "Alejar",
+	"map_cluster": [
+		{
+			"declarations": ["input count", "input range", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto, {range}",
+				"countPlural=other": "{count} fotos, {range}"
+			}
+		}
+	],
+	"map_cluster_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto aquí",
+				"countPlural=other": "{count} fotos aquí"
+			}
+		}
+	],
+	"map_cluster_close": "Cerrar el panel",
+	"map_cluster_empty": "Estas fotos ya no están disponibles.",
+	"map_updating": "Actualizando el mapa…"
 }

@@ -1,3 +1,42 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"map_label": "Photo map. Arrow keys move around, + and − zoom in or out.",
+	"map_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo with a location",
+				"countPlural=other": "{count} photos with a location"
+			}
+		}
+	],
+	"map_empty_title": "No photos with a location",
+	"map_empty_body": "When your photos carry GPS coordinates they show up here, on the map.",
+	"map_fit": "Show all",
+	"map_zoom_in": "Zoom in",
+	"map_zoom_out": "Zoom out",
+	"map_cluster": [
+		{
+			"declarations": ["input count", "input range", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo, {range}",
+				"countPlural=other": "{count} photos, {range}"
+			}
+		}
+	],
+	"map_cluster_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo here",
+				"countPlural=other": "{count} photos here"
+			}
+		}
+	],
+	"map_cluster_close": "Close the panel",
+	"map_cluster_empty": "These photos are no longer available.",
+	"map_updating": "Updating the map…"
 }
