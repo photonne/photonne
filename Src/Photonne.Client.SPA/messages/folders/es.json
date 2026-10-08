@@ -1,3 +1,86 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"folders_back": "Volver a Carpetas",
+	"folders_breadcrumb": "Ruta de la carpeta",
+	"folders_create": "Crear",
+	"folders_created": "Carpeta «{name}» creada",
+	"folders_delete": "Eliminar carpeta",
+	"folders_delete_message": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "«{name}», sus subcarpetas y {count} elemento irán a la papelera.",
+				"countPlural=other": "«{name}», sus subcarpetas y {count} elementos irán a la papelera."
+			}
+		}
+	],
+	"folders_delete_title": "¿Eliminar la carpeta?",
+	"folders_deleted": "Carpeta «{name}» eliminada",
+	"folders_discovery_hidden": "«{name}» ya no aparece en tus fotos, recuerdos ni búsquedas",
+	"folders_discovery_hidden_badge": "Oculta de mis fotos",
+	"folders_discovery_hidden_hint": "No aparece en tu línea de tiempo, recuerdos, personas ni búsquedas; aquí sigue accesible.",
+	"folders_discovery_hide": "Ocultar de mis fotos",
+	"folders_discovery_show": "Mostrar en mis fotos",
+	"folders_discovery_shown": "«{name}» vuelve a aparecer en tus fotos",
+	"folders_drag_tip": "Arrastra fotos a una carpeta para moverlas, o una carpeta a otra.",
+	"folders_edit": "Renombrar o mover",
+	"folders_edit_title": "Renombrar o mover la carpeta",
+	"folders_empty": "Esta carpeta no tiene fotos.",
+	"folders_empty_with_subfolders": "Esta carpeta no tiene fotos sueltas; están en sus subcarpetas.",
+	"folders_error_exists": "Ya hay una carpeta con ese nombre ahí.",
+	"folders_error_parent": "Una carpeta no puede ir dentro de sí misma.",
+	"folders_error_slash": "El nombre no puede llevar «/» ni «\\\\».",
+	"folders_field_location": "Ubicación",
+	"folders_field_name": "Nombre",
+	"folders_folder_moved": "«{folder}» movida a «{parent}»",
+	"folders_intro": "Elige una carpeta en el árbol o aquí abajo.",
+	"folders_library": "Biblioteca externa",
+	"folders_location_root": "Mis carpetas (raíz)",
+	"folders_move": "Mover a otra carpeta",
+	"folders_move_hint": "Se moverá con todo su contenido, también en el disco.",
+	"folders_moved_by_year": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} movida a «{folder}» por años ({years})",
+				"countPlural=other": "{count} movidas a «{folder}» por años ({years})"
+			}
+		}
+	],
+	"folders_new": "Nueva carpeta",
+	"folders_new_sub": "Nueva subcarpeta",
+	"folders_new_title": "Nueva carpeta",
+	"folders_none": "No hay carpetas",
+	"folders_none_body": "Crea una carpeta con el botón de arriba a la izquierda.",
+	"folders_not_found": "Esta carpeta no existe o no tienes acceso.",
+	"folders_remove": "Quitar de la carpeta (sin borrar)",
+	"folders_removed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} quitada de la carpeta",
+				"countPlural=other": "{count} quitadas de la carpeta"
+			}
+		}
+	],
+	"folders_roots": "Carpetas principales",
+	"folders_saved": "Carpeta actualizada",
+	"folders_shared_space": "En el espacio compartido",
+	"folders_shared_space_badge": "Espacio compartido",
+	"folders_shared_space_hint": "Una carpeta común para varias personas, fuera de tu espacio personal.",
+	"folders_subfolders": "Subcarpetas",
+	"folders_tree": "Árbol de carpetas",
+	"folders_tree_item": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{name}, {count} elemento",
+				"countPlural=other": "{name}, {count} elementos"
+			}
+		}
+	]
 }

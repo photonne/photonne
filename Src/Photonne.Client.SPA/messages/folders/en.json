@@ -1,3 +1,86 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"folders_back": "Back to Folders",
+	"folders_breadcrumb": "Folder path",
+	"folders_create": "Create",
+	"folders_created": "Folder “{name}” created",
+	"folders_delete": "Delete folder",
+	"folders_delete_message": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "“{name}”, its subfolders and {count} item will go to the trash.",
+				"countPlural=other": "“{name}”, its subfolders and {count} items will go to the trash."
+			}
+		}
+	],
+	"folders_delete_title": "Delete the folder?",
+	"folders_deleted": "Folder “{name}” deleted",
+	"folders_discovery_hidden": "“{name}” no longer shows in your photos, memories or searches",
+	"folders_discovery_hidden_badge": "Hidden from my photos",
+	"folders_discovery_hidden_hint": "It stays out of your timeline, memories, people and searches; it’s still here.",
+	"folders_discovery_hide": "Hide from my photos",
+	"folders_discovery_show": "Show in my photos",
+	"folders_discovery_shown": "“{name}” shows in your photos again",
+	"folders_drag_tip": "Drag photos onto a folder to move them, or a folder onto another.",
+	"folders_edit": "Rename or move",
+	"folders_edit_title": "Rename or move the folder",
+	"folders_empty": "This folder has no photos.",
+	"folders_empty_with_subfolders": "This folder has no photos of its own; they’re in its subfolders.",
+	"folders_error_exists": "There’s already a folder with that name there.",
+	"folders_error_parent": "A folder can’t go inside itself.",
+	"folders_error_slash": "The name can’t contain “/” or “\\\\”.",
+	"folders_field_location": "Location",
+	"folders_field_name": "Name",
+	"folders_folder_moved": "“{folder}” moved to “{parent}”",
+	"folders_intro": "Pick a folder in the tree or below.",
+	"folders_library": "External library",
+	"folders_location_root": "My folders (top level)",
+	"folders_move": "Move to another folder",
+	"folders_move_hint": "It moves with everything inside, on disk too.",
+	"folders_moved_by_year": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} moved to “{folder}” by year ({years})",
+				"countPlural=other": "{count} moved to “{folder}” by year ({years})"
+			}
+		}
+	],
+	"folders_new": "New folder",
+	"folders_new_sub": "New subfolder",
+	"folders_new_title": "New folder",
+	"folders_none": "No folders",
+	"folders_none_body": "Create one with the button at the top left.",
+	"folders_not_found": "This folder doesn’t exist or you don’t have access.",
+	"folders_remove": "Remove from folder (keeps the photos)",
+	"folders_removed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} removed from the folder",
+				"countPlural=other": "{count} removed from the folder"
+			}
+		}
+	],
+	"folders_roots": "Top-level folders",
+	"folders_saved": "Folder updated",
+	"folders_shared_space": "In the shared space",
+	"folders_shared_space_badge": "Shared space",
+	"folders_shared_space_hint": "A common folder for several people, outside your personal space.",
+	"folders_subfolders": "Subfolders",
+	"folders_tree": "Folder tree",
+	"folders_tree_item": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{name}, {count} item",
+				"countPlural=other": "{name}, {count} items"
+			}
+		}
+	]
 }

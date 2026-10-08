@@ -1,3 +1,263 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"albums_back": "Volver a Álbumes",
+	"albums_close": "Cerrar",
+	"albums_cover_set": "Portada actualizada",
+	"albums_create": "Crear",
+	"albums_created": "Álbum «{name}» creado",
+	"albums_delete": "Eliminar álbum",
+	"albums_delete_message": "Se eliminará «{name}». Las fotos no se borran: siguen en tu biblioteca.",
+	"albums_delete_title": "¿Eliminar el álbum?",
+	"albums_deleted": "Álbum «{name}» eliminado",
+	"albums_edit": "Editar álbum",
+	"albums_edit_title": "Editar álbum",
+	"albums_empty_album": "Este álbum está vacío. Añade fotos desde Fotos con «Añadir a un álbum», o arrástralas a un álbum fijado.",
+	"albums_empty_body": "Crea un álbum y añade fotos, o un álbum inteligente que se llena solo.",
+	"albums_empty_smart": "Ninguna foto cumple las condiciones de este álbum.",
+	"albums_empty_title": "Todavía no hay álbumes",
+	"albums_error_rule": "El servidor no acepta estas condiciones. Revísalas.",
+	"albums_error_rule_load": "No se han podido cargar las condiciones del álbum.",
+	"albums_field_description": "Descripción (opcional)",
+	"albums_field_name": "Nombre",
+	"albums_filters": "Filtrar álbumes",
+	"albums_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} elemento",
+				"countPlural=other": "{count} elementos"
+			}
+		}
+	],
+	"albums_kind": "Tipo de álbum",
+	"albums_kind_all": "Todos los tipos",
+	"albums_kind_manual": "Normales",
+	"albums_kind_smart": "Inteligentes",
+	"albums_leave": "Salir del álbum",
+	"albums_leave_message": "Dejarás de ver «{name}». Para volver, quien lo comparte tendrá que invitarte otra vez.",
+	"albums_leave_title": "¿Salir del álbum?",
+	"albums_left": "Has salido de «{name}»",
+	"albums_level": "Permiso",
+	"albums_level_contribute": "Puede añadir",
+	"albums_level_custom": "Personalizado",
+	"albums_level_edit": "Puede editar y borrar",
+	"albums_level_for": "Permiso de {name}",
+	"albums_level_hint": "Cada nivel incluye los anteriores. «Gestionar» permite compartir con otras personas.",
+	"albums_level_manage": "Puede gestionar y compartir",
+	"albums_level_view": "Puede ver",
+	"albums_link_active": "Enlace público activo",
+	"albums_link_allow_download": "Permitir descargar",
+	"albums_link_allow_upload": "Permitir subir fotos",
+	"albums_link_allow_upload_hint": "Quien tenga el enlace podrá añadir fotos a este álbum.",
+	"albums_link_copied": "Enlace copiado",
+	"albums_link_copy": "Copiar",
+	"albums_link_copy_failed": "No se ha podido copiar. Selecciona el enlace y cópialo a mano.",
+	"albums_link_create": "Crear enlace",
+	"albums_link_created": "Enlace creado",
+	"albums_link_created_copied": "Enlace creado y copiado",
+	"albums_link_edit": "Editar",
+	"albums_link_error_password": "Escribe la contraseña.",
+	"albums_link_error_past": "La fecha ya ha pasado.",
+	"albums_link_error_views": "El límite de visitas debe ser un número entero mayor que cero.",
+	"albums_link_expired": "Caducado",
+	"albums_link_expiry": "Caducidad",
+	"albums_link_expiry_date": "Válido hasta",
+	"albums_link_expiry_day": "1 día",
+	"albums_link_expiry_month": "1 mes",
+	"albums_link_expiry_never": "Sin caducidad",
+	"albums_link_expiry_week": "1 semana",
+	"albums_link_has_password": "Con contraseña",
+	"albums_link_max_views": "Límite de visitas",
+	"albums_link_new": "Nuevo enlace",
+	"albums_link_no_download": "Sin descargas",
+	"albums_link_no_expiry": "Sin caducidad",
+	"albums_link_password": "Contraseña",
+	"albums_link_password_change": "Cambiarla",
+	"albums_link_password_keep": "Mantener la actual",
+	"albums_link_password_none": "Sin contraseña",
+	"albums_link_password_remove": "Quitar la contraseña",
+	"albums_link_password_set": "Con contraseña",
+	"albums_link_revoke": "Revocar",
+	"albums_link_revoke_message": "Quien lo tenga dejará de poder abrirlo. No se puede deshacer.",
+	"albums_link_revoke_title": "¿Revocar el enlace?",
+	"albums_link_revoked": "Enlace revocado",
+	"albums_link_unlimited": "Sin límite",
+	"albums_link_until": "Hasta el {date}",
+	"albums_link_updated": "Enlace actualizado",
+	"albums_link_uploads": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} subida",
+				"countPlural=other": "{count} subidas"
+			}
+		}
+	],
+	"albums_link_url": "Enlace público",
+	"albums_link_used_up": "Visitas agotadas",
+	"albums_link_views": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} visita",
+				"countPlural=other": "{count} visitas"
+			}
+		}
+	],
+	"albums_link_views_of": "{count} de {max} visitas",
+	"albums_links_intro": "Cualquiera con el enlace puede ver el álbum sin cuenta. Solo ves los enlaces que has creado tú.",
+	"albums_links_list": "Enlaces públicos",
+	"albums_links_none": "No hay enlaces activos.",
+	"albums_more": "Más acciones",
+	"albums_new": "Nuevo álbum",
+	"albums_new_smart": "Álbum inteligente",
+	"albums_new_smart_title": "Nuevo álbum inteligente",
+	"albums_new_title": "Nuevo álbum",
+	"albums_no_match": "Ningún álbum coincide con el filtro.",
+	"albums_not_found": "Este álbum no existe o no tienes acceso.",
+	"albums_order": "Orden de las fotos",
+	"albums_order_album": "Orden del álbum",
+	"albums_order_newest": "Más recientes primero",
+	"albums_order_oldest": "Más antiguas primero",
+	"albums_people_add": "Elige a quién…",
+	"albums_people_list": "Personas con acceso",
+	"albums_people_no_more": "No hay más personas con quien compartir",
+	"albums_people_none": "Todavía no está compartido con nadie.",
+	"albums_picker_filter": "Buscar en {label}",
+	"albums_picker_more": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} más: escribe para afinar",
+				"countPlural=other": "{count} más: escribe para afinar"
+			}
+		}
+	],
+	"albums_picker_none": "Sin resultados",
+	"albums_picker_remove": "Quitar {name}",
+	"albums_picker_selected": "Elegidos",
+	"albums_pin": "Fijar en la barra lateral",
+	"albums_pin_named": "Fijar «{name}»",
+	"albums_pinned": "«{name}» fijado",
+	"albums_remove": "Quitar del álbum",
+	"albums_removed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} quitada del álbum",
+				"countPlural=other": "{count} quitadas del álbum"
+			}
+		}
+	],
+	"albums_rule_add": "Añadir condición",
+	"albums_rule_all": "todas las condiciones",
+	"albums_rule_any": "alguna condición",
+	"albums_rule_counting": "Contando…",
+	"albums_rule_date": "Fechas",
+	"albums_rule_empty": "Añade al menos una condición para decidir qué fotos entran.",
+	"albums_rule_favorite": "Favoritas",
+	"albums_rule_folder": "Carpetas",
+	"albums_rule_from": "Desde",
+	"albums_rule_is_favorite": "Son favoritas",
+	"albums_rule_labels_match": "Con",
+	"albums_rule_match": "Las fotos deben cumplir",
+	"albums_rule_match_all_labels": "todas ellas",
+	"albums_rule_match_all_people": "todas juntas",
+	"albums_rule_match_any_label": "cualquiera de ellas",
+	"albums_rule_match_any_person": "cualquiera de ellas",
+	"albums_rule_matches": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto cumple las condiciones",
+				"countPlural=other": "{count} fotos cumplen las condiciones"
+			}
+		}
+	],
+	"albums_rule_media": "Tipo de archivo",
+	"albums_rule_missing_folder": "Carpeta borrada",
+	"albums_rule_not_favorite": "No son favoritas",
+	"albums_rule_object": "Objetos detectados",
+	"albums_rule_ocr": "Texto dentro de la foto",
+	"albums_rule_ocr_placeholder": "Texto que aparece en la imagen…",
+	"albums_rule_owner_only": "Solo quien creó el álbum puede cambiar sus condiciones.",
+	"albums_rule_people_match": "Aparece",
+	"albums_rule_person": "Personas",
+	"albums_rule_photos": "Fotos",
+	"albums_rule_preserved": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "La regla tiene {count} condición más que aquí no se muestra; se conserva al guardar.",
+				"countPlural=other": "La regla tiene {count} condiciones más que aquí no se muestran; se conservan al guardar."
+			}
+		}
+	],
+	"albums_rule_preview": "Vista previa",
+	"albums_rule_preview_error": "No se ha podido calcular la vista previa.",
+	"albums_rule_preview_none": "Completa una condición para ver qué fotos entrarían.",
+	"albums_rule_remove": "Quitar la condición {condition}",
+	"albums_rule_scene": "Escenas",
+	"albums_rule_subfolders": "Incluir subcarpetas",
+	"albums_rule_tag": "Tipo de foto",
+	"albums_rule_text": "Nombre, ruta o etiqueta",
+	"albums_rule_text_placeholder": "Parte del nombre, la ruta o una etiqueta…",
+	"albums_rule_title": "Condiciones",
+	"albums_rule_to": "Hasta",
+	"albums_rule_unnamed": "Sin nombre",
+	"albums_rule_videos": "Vídeos",
+	"albums_save": "Guardar",
+	"albums_saved": "Cambios guardados",
+	"albums_scope": "Qué álbumes",
+	"albums_scope_all": "Todos",
+	"albums_scope_mine": "Míos",
+	"albums_scope_shared": "Compartidos conmigo",
+	"albums_search": "Buscar álbumes",
+	"albums_section_all": "Álbumes",
+	"albums_set_cover": "Usar como portada",
+	"albums_share": "Compartir",
+	"albums_share_links": "Enlaces públicos",
+	"albums_share_people": "Compartir con personas",
+	"albums_share_submit": "Compartir",
+	"albums_share_title": "Compartir «{name}»",
+	"albums_shared": "Compartido",
+	"albums_shared_with": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Compartido con {count} persona",
+				"countPlural=other": "Compartido con {count} personas"
+			}
+		}
+	],
+	"albums_shared_with_user": "Compartido con {name}",
+	"albums_shared_with_you": "Compartido contigo",
+	"albums_smart": "Inteligente",
+	"albums_smart_hint": "Álbum inteligente: lo llenan sus condiciones",
+	"albums_sort": "Ordenar por",
+	"albums_sort_ascending": "Orden ascendente",
+	"albums_sort_count": "Número de elementos",
+	"albums_sort_created": "Fecha de creación",
+	"albums_sort_descending": "Orden descendente",
+	"albums_sort_name": "Nombre",
+	"albums_sort_updated": "Última modificación",
+	"albums_tag_burst": "Ráfaga",
+	"albums_tag_hdr": "HDR",
+	"albums_tag_live": "Live Photo",
+	"albums_tag_panorama": "Panorámica",
+	"albums_tag_portrait": "Retrato",
+	"albums_tag_screenshot": "Captura de pantalla",
+	"albums_unpin": "Quitar de la barra lateral",
+	"albums_unpin_named": "Desfijar «{name}»",
+	"albums_unpinned": "«{name}» ya no está fijado",
+	"albums_unshare_user": "Dejar de compartir con {name}",
+	"albums_unshared_with_user": "Ya no se comparte con {name}"
 }
