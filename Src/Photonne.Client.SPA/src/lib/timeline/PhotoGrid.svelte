@@ -130,12 +130,15 @@
 		scroller!.scrollTop = fraction * maxScroll;
 	}
 
+	// Without headers there are no dated sections to name on the scrubber.
 	const currentLabel = $derived.by(() => {
+		if (!headers) return '';
 		const key = sectionAt(layout, scrollTop);
 		return key ? sectionTitle(key) : '';
 	});
 
 	function labelAt(fraction: number) {
+		if (!headers) return '';
 		const key = sectionAt(layout, fraction * maxScroll);
 		return key ? sectionTitle(key) : '';
 	}

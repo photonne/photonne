@@ -32,6 +32,8 @@
 		selectionActions?: Snippet<[Selection, BatchActions]>;
 		/** What the viewer offers for the open photo. */
 		viewerActions?: readonly ('trash' | 'archive' | 'album')[];
+		/** The page's own viewer buttons; receives the open asset id. */
+		viewerExtra?: Snippet<[string]>;
 		/** Next to the title: page-level buttons (empty trash, edit album…). */
 		toolbar?: Snippet;
 		/** Above the grid, under the title (album description, filters…). */
@@ -48,6 +50,7 @@
 		available,
 		selectionActions,
 		viewerActions = ['trash', 'archive', 'album'],
+		viewerExtra,
 		toolbar,
 		header,
 		onnearend
@@ -164,7 +167,11 @@
 		onaddtoalbum={viewerActions.includes('album')
 			? () => (pickingAlbumFor = viewer.openId)
 			: undefined}
-	/>
+	>
+		{#snippet actions()}
+			{#if viewerExtra && viewer.openId}{@render viewerExtra(viewer.openId)}{/if}
+		{/snippet}
+	</AssetViewer>
 	<AlbumPickerDialog
 		open={pickingAlbumFor !== null}
 		onclose={() => (pickingAlbumFor = null)}

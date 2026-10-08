@@ -13,8 +13,9 @@ function formatter(options: Intl.DateTimeFormatOptions) {
 	return format;
 }
 
-/** "septiembre de 2026" for the bucket key "2026-09". */
+/** "septiembre de 2026" for the bucket key "2026-09"; '' for any other key. */
 export function monthTitle(key: string) {
+	if (!/^\d{4}-\d{2}$/.test(key)) return '';
 	const [year, month] = key.split('-').map(Number);
 	return formatter({ month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
 		new Date(Date.UTC(year, month - 1, 1))
