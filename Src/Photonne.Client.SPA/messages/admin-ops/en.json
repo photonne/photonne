@@ -1,3 +1,730 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"ops_all": "All",
+	"ops_cancel": "Cancel",
+	"ops_clear_selection": "Clear selection",
+	"ops_col_actions": "Actions",
+	"ops_col_attempts": "Attempts",
+	"ops_col_cause": "Cause",
+	"ops_col_duration": "Duration",
+	"ops_col_error": "Error",
+	"ops_col_file": "File",
+	"ops_col_last_attempt": "Last attempt",
+	"ops_col_progress": "Progress",
+	"ops_col_queue": "Queue",
+	"ops_col_started": "Started",
+	"ops_col_status": "Status",
+	"ops_col_task": "Task",
+	"ops_col_user": "User",
+	"ops_dup_assets_in_db": "Assets in the database",
+	"ops_dup_auto": "Automatic selection",
+	"ops_dup_auto_group": "Automatic",
+	"ops_dup_bytes": "Reclaimable space",
+	"ops_dup_cleanup_confirm": "Clean up duplicate records?",
+	"ops_dup_cleanup_confirm_text": "Repeated database records of the same file are deleted, with their related data. Files on disk aren’t touched. This can’t be undone.",
+	"ops_dup_copies": "Redundant copies",
+	"ops_dup_delete": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Delete {count} file ({size})",
+				"countPlural=other": "Delete {count} files ({size})"
+			}
+		}
+	],
+	"ops_dup_delete_confirm": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Delete {count} file from disk?",
+				"countPlural=other": "Delete {count} files from disk?"
+			}
+		}
+	],
+	"ops_dup_delete_confirm_text": "They’re permanently deleted from disk with their records, freeing {size}. This can’t be undone.",
+	"ops_dup_delete_short": "Delete",
+	"ops_dup_deleted": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} file deleted.",
+				"countPlural=other": "{count} files deleted."
+			}
+		}
+	],
+	"ops_dup_deleted_errors": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} file deleted; {errors} couldn’t be deleted.",
+				"countPlural=other": "{count} files deleted; {errors} couldn’t be deleted."
+			}
+		}
+	],
+	"ops_dup_done": "Duplicate search finished.",
+	"ops_dup_files_on_disk": "Files on disk",
+	"ops_dup_group_plan": "{remove} to delete · {keep} to keep",
+	"ops_dup_group_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} identical file",
+				"countPlural=other": "{count} identical files"
+			}
+		}
+	],
+	"ops_dup_groups": "Duplicate groups",
+	"ops_dup_indexed": "Indexed",
+	"ops_dup_intro": "Compares the files’ SHA-256 hash to find identical copies.",
+	"ops_dup_keep": "Keep",
+	"ops_dup_last_copy": "It’s the only copy being kept",
+	"ops_dup_leave_stops": "Leaving this page stops the search.",
+	"ops_dup_mode": "What to do",
+	"ops_dup_mode_analyze": "Analyse only",
+	"ops_dup_mode_analyze_hint": "Counts the duplicates in the database without touching anything.",
+	"ops_dup_mode_cleanup": "Analyse and clean up",
+	"ops_dup_mode_cleanup_hint": "Removes repeated database records of the same file.",
+	"ops_dup_mode_physical": "Scan the disk",
+	"ops_dup_mode_physical_hint": "Looks for identical files on disk and lets you choose which to delete.",
+	"ops_dup_none": "No duplicates.",
+	"ops_dup_not_indexed": "Not indexed",
+	"ops_dup_remove": "Delete",
+	"ops_dup_removed": "Removed",
+	"ops_dup_result": "Result",
+	"ops_dup_review": "Review duplicates on disk",
+	"ops_dup_review_hint": "Click a file to switch between keeping and deleting it. At least one always stays.",
+	"ops_dup_start": "Start",
+	"ops_dup_stopped": "Duplicate search stopped.",
+	"ops_dup_unindexed": "Not indexed",
+	"ops_elapsed": "Elapsed: {time}",
+	"ops_error_generic": "Couldn't complete the action.",
+	"ops_error_unknown_action": "The server doesn't know this action (an older version?).",
+	"ops_failures_action_failed": "Couldn't apply the action.",
+	"ops_failures_also_retrying": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} retrying on its own",
+				"countPlural=other": "{count} retrying on their own"
+			}
+		}
+	],
+	"ops_failures_also_suppressed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} dismissed",
+				"countPlural=other": "{count} dismissed"
+			}
+		}
+	],
+	"ops_failures_badge_permanent": "No retries left",
+	"ops_failures_badge_retrying": "Will retry",
+	"ops_failures_badge_suppressed": "Dismissed",
+	"ops_failures_empty": "No assets with problems.",
+	"ops_failures_filter_kind": "Cause",
+	"ops_failures_filter_type": "Task",
+	"ops_failures_intro": "Metadata, thumbnail and analysis tasks that failed, for every user, with their cause.",
+	"ops_failures_retried": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} task sent to the queue.",
+				"countPlural=other": "{count} tasks sent to the queue."
+			}
+		}
+	],
+	"ops_failures_retry": "Retry",
+	"ops_failures_retry_all": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Retry {count} task",
+				"countPlural=other": "Retry {count} tasks"
+			}
+		}
+	],
+	"ops_failures_retry_all_text": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "The task in the current filter is queued again. If the file itself is the cause, it will fail the same way.",
+				"countPlural=other": "The {count} tasks in the current filter are queued again. Those failing because of the file itself will fail the same way."
+			}
+		}
+	],
+	"ops_failures_retry_item": "Retry {name}",
+	"ops_failures_suppress": "Dismiss",
+	"ops_failures_suppress_item": "Dismiss {name}",
+	"ops_failures_suppressed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} task dismissed: it won’t be retried.",
+				"countPlural=other": "{count} tasks dismissed: they won’t be retried."
+			}
+		}
+	],
+	"ops_failures_title": "Assets with problems",
+	"ops_failures_total": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} task with problems",
+				"countPlural=other": "{count} tasks with problems"
+			}
+		}
+	],
+	"ops_field_hide": "Hide",
+	"ops_field_not_decimal": "Must be a number.",
+	"ops_field_not_integer": "Must be a whole number.",
+	"ops_field_range": "Between {min} and {max}.",
+	"ops_field_required": "Required.",
+	"ops_field_show": "Show",
+	"ops_field_suggestion_band": "Must be equal to or above the clustering threshold.",
+	"ops_field_time": "Invalid time (HH:mm).",
+	"ops_field_url": "Must be an http:// or https:// address.",
+	"ops_kind_needs_action": "Needs a fix",
+	"ops_kind_needs_action_hint": "The feature is switched off or its model didn’t load. Fix the service, then retry everything.",
+	"ops_kind_permanent": "File",
+	"ops_kind_permanent_hint": "The file itself fails the same way every time (unreadable, rejected format). Retrying is pointless: fix it or dismiss it.",
+	"ops_kind_transient": "Transient",
+	"ops_kind_transient_hint": "The service was unreachable or timed out: retrying later usually works.",
+	"ops_kind_unknown": "Unclassified",
+	"ops_kind_unknown_hint": "An older failure, or one that couldn’t be classified.",
+	"ops_last_run": "Last run {time}",
+	"ops_load_failed": "Couldn't load.",
+	"ops_load_more": "Load more",
+	"ops_loading": "Loading…",
+	"ops_ml_pending_total": "Photos some model hasn’t analysed",
+	"ops_mt_clustering": "Re-cluster faces",
+	"ops_mt_clustering_active": "Re-clustering faces",
+	"ops_mt_clustering_hint": "Groups the faces already detected into people again, for every user.",
+	"ops_mt_coverage": "Indexing coverage",
+	"ops_mt_coverage_active": "Comparing disk and database",
+	"ops_mt_coverage_desc": "Walks the disk the way the indexer does and checks every file is indexed.",
+	"ops_mt_coverage_offline": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} external library was offline and wasn’t checked.",
+				"countPlural=other": "{count} external libraries were offline and weren’t checked."
+			}
+		}
+	],
+	"ops_mt_coverage_ok": "All indexed",
+	"ops_mt_coverage_paths": "Files not indexed",
+	"ops_mt_coverage_result": "{total} files · {indexed} indexed · {unsupported} unsupported",
+	"ops_mt_coverage_truncated": "The list is cut short: there are more.",
+	"ops_mt_coverage_unindexed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} not indexed",
+				"countPlural=other": "{count} not indexed"
+			}
+		}
+	],
+	"ops_mt_coverage_verified": "Checked {time}:",
+	"ops_mt_dates": "Restore dates",
+	"ops_mt_dates_active": "Restoring dates",
+	"ops_mt_dates_desc": "Recomputes the capture date from EXIF and, when missing, from the name or the file.",
+	"ops_mt_duplicates": "Duplicate detection",
+	"ops_mt_duplicates_active": "Looking for duplicates",
+	"ops_mt_duplicates_desc": "Finds identical copies by hash and lets you choose which to keep.",
+	"ops_mt_embedding": "Smart search",
+	"ops_mt_embedding_active": "Computing embeddings",
+	"ops_mt_embedding_desc": "Computes the embeddings to search by describing the photo, in any language.",
+	"ops_mt_empty_trash": "Empty trash bins",
+	"ops_mt_empty_trash_active": "Emptying trash bins",
+	"ops_mt_empty_trash_confirm": "Empty every trash bin?",
+	"ops_mt_empty_trash_confirm_text": "Everything in any user’s trash, not just yours, will be permanently deleted. This can’t be undone.",
+	"ops_mt_empty_trash_desc": "Permanently deletes everything in every user’s trash.",
+	"ops_mt_faces": "Face recognition",
+	"ops_mt_faces_active": "Analysing faces",
+	"ops_mt_faces_desc": "Detects faces and groups them into people.",
+	"ops_mt_geocode": "Places",
+	"ops_mt_geocode_active": "Resolving places",
+	"ops_mt_geocode_desc": "Names the city and country of each set of coordinates.",
+	"ops_mt_geocode_no_dataset": "This installation has no city dataset: the task won’t resolve any place.",
+	"ops_mt_geocode_pending": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo with coordinates but no place · {cities} known cities",
+				"countPlural=other": "{count} photos with coordinates but no place · {cities} known cities"
+			}
+		}
+	],
+	"ops_mt_index": "Index",
+	"ops_mt_index_active": "Indexing the library",
+	"ops_mt_index_desc": "Scans the folders, adds new files and flags missing ones.",
+	"ops_mt_interpolate": "Infer locations",
+	"ops_mt_interpolate_active": "Interpolating locations",
+	"ops_mt_interpolate_desc": "Gives coordinates to photos taken next to others with GPS.",
+	"ops_mt_intro": "Index, analyse, repair and clean up. Each task keeps running on the server if you leave.",
+	"ops_mt_media": "Live Photos",
+	"ops_mt_media_active": "Pairing Live Photos",
+	"ops_mt_media_desc": "Pairs photos with their video again and recognises panoramas, screenshots and bursts.",
+	"ops_mt_memories": "Generate memories",
+	"ops_mt_memories_active": "Generating memories",
+	"ops_mt_memories_desc": "Rebuilds every user’s Memories.",
+	"ops_mt_metadata": "Extract metadata",
+	"ops_mt_metadata_active": "Reading metadata",
+	"ops_mt_metadata_desc": "Reads EXIF, GPS and IPTC from photos and videos that don’t have them yet.",
+	"ops_mt_missing": "Flag missing files",
+	"ops_mt_missing_active": "Checking for missing files",
+	"ops_mt_missing_desc": "Flags as missing the assets whose file is no longer on disk.",
+	"ops_mt_objects": "Object detection",
+	"ops_mt_objects_active": "Detecting objects",
+	"ops_mt_objects_desc": "Detects objects to tag and search photos.",
+	"ops_mt_open_tasks": "Tasks and queues",
+	"ops_mt_opt_dry_run": "Count only",
+	"ops_mt_opt_dry_run_hint": "Says how many would change, without changing anything.",
+	"ops_mt_opt_file_date": "Fall back to the file’s date",
+	"ops_mt_opt_file_date_hint": "Its modification date on disk, which may not be the capture date.",
+	"ops_mt_opt_from_file": "Re-read EXIF from the file",
+	"ops_mt_opt_from_file_hint": "Slower; otherwise the EXIF stored in the database is used.",
+	"ops_mt_opt_infer_path": "Infer from the name and folder",
+	"ops_mt_opt_infer_path_hint": "For photos without an EXIF date: IMG_20240512, 2024/05…",
+	"ops_mt_opt_overwrite": "Re-read all",
+	"ops_mt_opt_overwrite_hint": "Including those that already have metadata.",
+	"ops_mt_opt_regenerate": "Regenerate all",
+	"ops_mt_opt_regenerate_hint": "After changing the format or quality in Settings.",
+	"ops_mt_opt_simulate": "Simulate only",
+	"ops_mt_opt_simulate_hint": "Counts what would be purged, without deleting anything.",
+	"ops_mt_opt_write_file": "Write the inferred date into the file",
+	"ops_mt_opt_write_file_hint": "So it survives a database rebuild.",
+	"ops_mt_options": "{task} options",
+	"ops_mt_orphans": "Orphan thumbnails",
+	"ops_mt_orphans_active": "Cleaning orphan thumbnails",
+	"ops_mt_orphans_desc": "Deletes thumbnails on disk with no asset behind them. They can be regenerated.",
+	"ops_mt_purge": "Purge assets without a file",
+	"ops_mt_purge_active": "Purging assets without a file",
+	"ops_mt_purge_confirm": "Purge the assets without a file?",
+	"ops_mt_purge_confirm_text": "Assets flagged as missing and folders whose directory no longer exists will be removed from the database, along with their albums and faces. This can’t be undone. If in doubt, run it with “Simulate only” first.",
+	"ops_mt_purge_desc": "Removes from the database the assets flagged as missing and folders that no longer exist.",
+	"ops_mt_scenes": "Scene classification",
+	"ops_mt_scenes_active": "Classifying scenes",
+	"ops_mt_scenes_desc": "Recognises the kind of scene (beach, mountain, indoors…).",
+	"ops_mt_section_ai": "AI analysis",
+	"ops_mt_section_ai_hint": "Queues what’s pending; the models process it in the background.",
+	"ops_mt_section_cleanup": "Clean up",
+	"ops_mt_section_cleanup_hint": "Frees space. This is where things get deleted.",
+	"ops_mt_section_memories": "Memories and places",
+	"ops_mt_section_memories_hint": "Each one feeds the next, in this order.",
+	"ops_mt_section_new": "New photos",
+	"ops_mt_section_new_hint": "After adding files, in this order.",
+	"ops_mt_section_repair": "Repair",
+	"ops_mt_section_repair_hint": "When something is already wrong.",
+	"ops_mt_sizes": "Recalculate sizes",
+	"ops_mt_sizes_active": "Recalculating sizes",
+	"ops_mt_sizes_desc": "Reads every file’s size again to fix the quotas.",
+	"ops_mt_text": "Text recognition (OCR)",
+	"ops_mt_text_active": "Reading text in photos",
+	"ops_mt_text_desc": "Reads the text in images so it can be searched.",
+	"ops_mt_thumbnails": "Generate thumbnails",
+	"ops_mt_thumbnails_active": "Generating thumbnails",
+	"ops_mt_thumbnails_desc": "Creates missing thumbnails.",
+	"ops_mt_title": "Maintenance",
+	"ops_mt_trips": "Detect trips",
+	"ops_mt_trips_active": "Detecting trips",
+	"ops_mt_trips_desc": "Looks for runs of photos away from home.",
+	"ops_nightly_last": "Last run",
+	"ops_nightly_last_hint": "The scheduler checks every minute whether it’s time; the cycle runs once a day.",
+	"ops_nightly_last_value": "Last cycle: {date}",
+	"ops_nightly_never": "No nightly cycle has run yet.",
+	"ops_nightly_reset": "Force the next run",
+	"ops_nightly_reset_done": "The cycle will run again at the next scheduled time.",
+	"ops_notif_oldest": "Oldest",
+	"ops_notif_purge": "Purge now",
+	"ops_notif_purge_hint": "Deletes those past the retention (or every read one if retention is 0). It also happens every night.",
+	"ops_notif_purge_text": "Notifications past the retention are deleted for every user. This can’t be undone.",
+	"ops_notif_purged": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} notification deleted.",
+				"countPlural=other": "{count} notifications deleted."
+			}
+		}
+	],
+	"ops_notif_total": "Notifications",
+	"ops_notif_unread": "Unread",
+	"ops_notif_usage": "Current state",
+	"ops_open": "Open",
+	"ops_perf_cores": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "It has {count} CPU core.",
+				"countPlural=other": "It has {count} CPU cores."
+			}
+		}
+	],
+	"ops_perf_hint": "More workers speed things up but use more CPU and memory. Better not to exceed the core count, especially for models.",
+	"ops_perf_recommended_io": "Recommended (indexing)",
+	"ops_perf_recommended_ml": "Recommended (models)",
+	"ops_perf_restart": "Model workers are created when the server starts: restart it for changes to apply.",
+	"ops_perf_server": "This server",
+	"ops_progress_of": "Progress of {task}",
+	"ops_queue_all_done": "All processed.",
+	"ops_queue_emptied": [
+		{
+			"declarations": ["input deleted", "local deletedPlural = deleted: plural"],
+			"selectors": ["deletedPlural"],
+			"match": {
+				"deletedPlural=one": "Queue emptied: {deleted} job removed.",
+				"deletedPlural=other": "Queue emptied: {deleted} jobs removed."
+			}
+		}
+	],
+	"ops_queue_emptied_busy": [
+		{
+			"declarations": ["input deleted", "local deletedPlural = deleted: plural"],
+			"selectors": ["deletedPlural"],
+			"match": {
+				"deletedPlural=one": "Queue emptied: {deleted} job removed; {busy} running will finish on their own.",
+				"deletedPlural=other": "Queue emptied: {deleted} jobs removed; {busy} running will finish on their own."
+			}
+		}
+	],
+	"ops_queue_empty": "Empty queue",
+	"ops_queue_empty_confirm": "Empty the {queue} queue?",
+	"ops_queue_empty_confirm_text": "Waiting jobs and those waiting for a retry are removed. Jobs already running finish on their own. The photos stay pending: you can queue them again any time.",
+	"ops_queue_enqueued": "{task}: queued {enqueued} of {total} in {time}. They’ll be processed in the background.",
+	"ops_queue_failed": "Failed",
+	"ops_queue_failed_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} failed",
+				"countPlural=other": "{count} failed"
+			}
+		}
+	],
+	"ops_queue_failed_link": "Assets with problems",
+	"ops_queue_in_queue": "Queued",
+	"ops_queue_in_queue_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} queued",
+				"countPlural=other": "{count} queued"
+			}
+		}
+	],
+	"ops_queue_nothing": "{task}: nothing to queue.",
+	"ops_queue_processing": "Processing",
+	"ops_queue_processing_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} processing",
+				"countPlural=other": "{count} processing"
+			}
+		}
+	],
+	"ops_queue_queueing": "Queueing everything pending…",
+	"ops_queue_retrying": "Retrying",
+	"ops_queue_retrying_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} retrying",
+				"countPlural=other": "{count} retrying"
+			}
+		}
+	],
+	"ops_queue_start": "Queue pending",
+	"ops_queue_unprocessed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} unprocessed",
+				"countPlural=other": "{count} unprocessed"
+			}
+		}
+	],
+	"ops_queues_hint": "Per-photo jobs: metadata, thumbnails and AI models.",
+	"ops_queues_title": "Analysis queues",
+	"ops_refresh": "Refresh",
+	"ops_retry": "Retry",
+	"ops_run": "Run",
+	"ops_select_all": "Select all",
+	"ops_select_item": "Select {name}",
+	"ops_selected": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} selected",
+				"countPlural=other": "{count} selected"
+			}
+		}
+	],
+	"ops_set_clean": "No changes",
+	"ops_set_demo": "Read-only in the demo: server settings can’t be changed.",
+	"ops_set_device": "Compute device",
+	"ops_set_device_auto": "Automatic (server default)",
+	"ops_set_device_cpu": "CPU",
+	"ops_set_device_gpu": "GPU (CUDA)",
+	"ops_set_device_hint": "Where it runs. “GPU” needs the ML image with CUDA; without it, the CPU is used.",
+	"ops_set_device_ocr_warning": "OCR on a GPU reserves a lot of video memory. On a shared GPU it can run out and fail with “out of memory”; if it does, leave it on CPU.",
+	"ops_set_discard": "Discard changes",
+	"ops_set_embedding": "Smart search",
+	"ops_set_embedding_desc": "CLIP embeddings to search by describing the photo.",
+	"ops_set_embedding_distance": "Maximum distance",
+	"ops_set_embedding_distance_hint": "Lower means stricter results. Typical: 0.5–0.9.",
+	"ops_set_embedding_enabled": "Smart search enabled",
+	"ops_set_embedding_model": "Model version",
+	"ops_set_embedding_model_hint": "Stable identifier of the CLIP model. Default: mclip-vit-b32-v1.",
+	"ops_set_embedding_model_warning": "Changing the version invalidates every embedding. Until they’re all reprocessed, search mixes old and new vectors and gives inconsistent results.",
+	"ops_set_faces": "Face recognition",
+	"ops_set_faces_clustering": "Clustering threshold",
+	"ops_set_faces_clustering_hint": "Maximum distance for two faces to be the same person. Typical: 0.40–0.45.",
+	"ops_set_faces_desc": "Face detection and grouping into people.",
+	"ops_set_faces_enabled": "Face recognition enabled",
+	"ops_set_faces_knn": "kNN neighbours",
+	"ops_set_faces_knn_hint": "How many similar faces are looked up per face.",
+	"ops_set_faces_knn_switch": "Switch to kNN search",
+	"ops_set_faces_knn_switch_hint": "With more unassigned faces than this, database kNN is used instead of comparing them all in memory.",
+	"ops_set_faces_min_faces": "Minimum faces per person",
+	"ops_set_faces_min_score": "Minimum detection confidence",
+	"ops_set_faces_min_score_hint": "Faces detected with less confidence are discarded.",
+	"ops_set_faces_suggestion": "Suggestion threshold",
+	"ops_set_faces_suggestion_hint": "Faces between the clustering threshold and this one are offered as suggestions.",
+	"ops_set_group_ai": "Artificial intelligence",
+	"ops_set_group_general": "General",
+	"ops_set_group_processing": "Processing",
+	"ops_set_images": "Images and thumbnails",
+	"ops_set_images_desc": "Thumbnail format and quality.",
+	"ops_set_images_format": "Format",
+	"ops_set_images_format_hint": "WebP is smaller at the same quality. Applies to new ones; regenerate existing ones in Maintenance.",
+	"ops_set_images_large": "Large (1280 px)",
+	"ops_set_images_medium": "Medium (640 px)",
+	"ops_set_images_quality": "Compression quality",
+	"ops_set_images_quality_hint": "From 1 to 100. Higher is sharper and heavier.",
+	"ops_set_images_small": "Small (220 px)",
+	"ops_set_invalid": "Fix the marked fields to save.",
+	"ops_set_keep_editing": "Keep editing",
+	"ops_set_leave_text": "Some settings were changed and not saved. Leaving now loses them.",
+	"ops_set_leave_title": "Discard the changes?",
+	"ops_set_load_failed": "Couldn't load the settings.",
+	"ops_set_master_hint": "Master switch: off, no photo goes through the model.",
+	"ops_set_metadata": "Metadata",
+	"ops_set_metadata_camera": "Camera and exposure",
+	"ops_set_metadata_datetime": "Date and time",
+	"ops_set_metadata_desc": "What is read from EXIF, IPTC and XMP.",
+	"ops_set_metadata_extract": "Read",
+	"ops_set_metadata_gps": "GPS location",
+	"ops_set_metadata_iptc": "IPTC (author, copyright…)",
+	"ops_set_metadata_timezone": "Default time zone",
+	"ops_set_metadata_timezone_hint": "For EXIF dates that don’t state their zone.",
+	"ops_set_metadata_xmp": "XMP sidecar files",
+	"ops_set_min_score": "Minimum confidence",
+	"ops_set_mode_all": "All",
+	"ops_set_mode_missing": "Pending only",
+	"ops_set_model_group": "Model parameters",
+	"ops_set_nav": "Settings sections",
+	"ops_set_nightly": "Nightly tasks",
+	"ops_set_nightly_after": "Afterwards",
+	"ops_set_nightly_clustering": "Re-cluster faces",
+	"ops_set_nightly_coverage": "Check indexing coverage",
+	"ops_set_nightly_desc": "A daily cycle that catches up on whatever is pending.",
+	"ops_set_nightly_enabled": "Nightly tasks enabled",
+	"ops_set_nightly_feature_enabled": "Process every night",
+	"ops_set_nightly_group": "Nightly run",
+	"ops_set_nightly_group_hint": "Whether it’s processed in the nightly cycle (see Nightly tasks).",
+	"ops_set_nightly_mode": "What to process",
+	"ops_set_nightly_modules": "What is processed",
+	"ops_set_nightly_modules_hint": "“Pending only” processes what isn’t yet; “All” redoes everything every night.",
+	"ops_set_nightly_thumbnails": "Thumbnails",
+	"ops_set_nightly_time": "Start time",
+	"ops_set_nightly_timezone": "Time zone",
+	"ops_set_nightly_trash": "Empty expired trash",
+	"ops_set_notifications": "Notifications",
+	"ops_set_notifications_desc": "Which notices are sent and how long they’re kept.",
+	"ops_set_notifications_enabled": "Notifications enabled",
+	"ops_set_notifications_job_completed": "Task completed",
+	"ops_set_notifications_job_failed": "Task failed",
+	"ops_set_notifications_max": "Maximum per user",
+	"ops_set_notifications_max_hint": "Past it, the oldest are deleted. 0 = no limit.",
+	"ops_set_notifications_retention": "Retention",
+	"ops_set_notifications_retention_hint": "Days a notification is kept. 0 = never deleted.",
+	"ops_set_notifications_share_viewed": "Shared link viewed",
+	"ops_set_notifications_types": "Types",
+	"ops_set_objects": "Object detection",
+	"ops_set_objects_desc": "Object detection for tagging and search.",
+	"ops_set_objects_enabled": "Object detection enabled",
+	"ops_set_objects_max": "Maximum objects per photo",
+	"ops_set_objects_max_hint": "The most confident ones are kept.",
+	"ops_set_objects_min_score_hint": "Objects detected with less confidence are discarded.",
+	"ops_set_objects_min_size": "Minimum object size",
+	"ops_set_objects_min_size_hint": "Fraction of the image side (0.02 = 2%). Filters out tiny objects.",
+	"ops_set_open_maintenance": "Process pending",
+	"ops_set_pending": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} unsaved change",
+				"countPlural=other": "{count} unsaved changes"
+			}
+		}
+	],
+	"ops_set_performance": "Performance",
+	"ops_set_performance_backfill": "Reprocessing",
+	"ops_set_performance_batch": "Batch size",
+	"ops_set_performance_batch_hint": "How many photos are queued per batch in the nightly run.",
+	"ops_set_performance_desc": "How many photos each kind of task processes at once.",
+	"ops_set_performance_io": "Indexing and thumbnails",
+	"ops_set_performance_io_hint": "Parallel workers while scanning and extracting.",
+	"ops_set_performance_metadata": "Metadata",
+	"ops_set_performance_ml": "AI models",
+	"ops_set_performance_ml_hint": "Each worker holds a connection to the ML service.",
+	"ops_set_performance_thumbnails": "Thumbnails",
+	"ops_set_prefer_large": "Use the large thumbnail",
+	"ops_set_prefer_large_hint": "Analyses the 1280 px thumbnail instead of the original: less disk reading, same result.",
+	"ops_set_save": "Save",
+	"ops_set_save_failed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} setting couldn't be saved.",
+				"countPlural=other": "{count} settings couldn't be saved."
+			}
+		}
+	],
+	"ops_set_save_region": "Save settings",
+	"ops_set_saved": "Settings saved.",
+	"ops_set_saving": "Saving…",
+	"ops_set_scenes": "Scene classification",
+	"ops_set_scenes_desc": "Scene recognition for search.",
+	"ops_set_scenes_enabled": "Scene classification enabled",
+	"ops_set_scenes_max": "Maximum scenes per photo",
+	"ops_set_scenes_max_hint": "Kept in order of likelihood.",
+	"ops_set_scenes_min_score": "Minimum confidence (from the second on)",
+	"ops_set_scenes_min_score_hint": "The most likely scene is always kept; the others only if they pass it.",
+	"ops_set_server": "Server",
+	"ops_set_server_desc": "Public address, upload and session limits, and the map.",
+	"ops_set_server_map_key": "Map API key (CARTO)",
+	"ops_set_server_map_key_hint": "Without a key, tiles carry a watermark. Get one free at carto.com/basemaps/apikey. Empty = no key.",
+	"ops_set_server_max_upload": "Maximum upload size",
+	"ops_set_server_public_url": "Public URL",
+	"ops_set_server_public_url_hint": "Shared links are built with it. Empty = the address the server is reached at.",
+	"ops_set_server_session": "Session length",
+	"ops_set_server_session_hint": "From 5 to 43,200 minutes (1440 = one day, 43,200 = 30 days).",
+	"ops_set_shortcut": "Ctrl+S saves",
+	"ops_set_text": "Text recognition (OCR)",
+	"ops_set_text_desc": "Reading the text in images for search.",
+	"ops_set_text_enabled": "OCR enabled",
+	"ops_set_text_max": "Maximum lines per photo",
+	"ops_set_text_max_hint": "Cap per image, useful for dense documents.",
+	"ops_set_text_min_score_hint": "Lines read with less confidence are discarded.",
+	"ops_set_trash": "Trash",
+	"ops_set_trash_desc": "How long deleted items are kept and how much room they may take.",
+	"ops_set_trash_enabled": "Trash enabled",
+	"ops_set_trash_enabled_hint": "Off, deleted items are gone immediately.",
+	"ops_set_trash_quota": "Maximum quota per user",
+	"ops_set_trash_retention": "Retention",
+	"ops_set_trash_retention_hint": "Days until permanent deletion. 0 = kept forever.",
+	"ops_set_users": "New users",
+	"ops_set_users_active": "Account active when created",
+	"ops_set_users_desc": "Defaults when an account is created.",
+	"ops_set_users_quota": "Storage quota",
+	"ops_set_users_role": "Role",
+	"ops_set_users_role_admin": "Administrator",
+	"ops_set_users_role_user": "User",
+	"ops_set_zero_unlimited": "0 = no limit.",
+	"ops_starting": "Starting…",
+	"ops_status_cancelled": "Cancelled",
+	"ops_status_completed": "Completed",
+	"ops_status_failed": "Failed",
+	"ops_status_running": "Running",
+	"ops_stop": "Stop",
+	"ops_task_face_clustering": "Face re-clustering",
+	"ops_task_finished": "{task}: finished",
+	"ops_task_library_scan": "External library scan",
+	"ops_task_maintenance": "Maintenance",
+	"ops_tasks_background": "Background tasks",
+	"ops_tasks_background_hint": "They keep going if you close this page. Finished ones are forgotten after an hour.",
+	"ops_tasks_cancelled": "{task}: cancelled",
+	"ops_tasks_empty": "No tasks in the last hour.",
+	"ops_tasks_intro": "What the server is doing now and did in the last hour, and the per-photo analysis queues.",
+	"ops_tasks_open_maintenance": "Run tasks",
+	"ops_tasks_remaining": "~{time} left",
+	"ops_tasks_running_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} running",
+				"countPlural=other": "{count} running"
+			}
+		}
+	],
+	"ops_tasks_title": "Tasks and queues",
+	"ops_trash_bytes": "Space",
+	"ops_trash_cleaned": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} expired item deleted.",
+				"countPlural=other": "{count} expired items deleted."
+			}
+		}
+	],
+	"ops_trash_cleanup": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Delete {count} expired",
+				"countPlural=other": "Delete {count} expired"
+			}
+		}
+	],
+	"ops_trash_cleanup_short": "Delete",
+	"ops_trash_cleanup_text": "Trash items past the retention or the quota are permanently deleted. This can’t be undone.",
+	"ops_trash_expired": "Expired",
+	"ops_trash_items": "Items",
+	"ops_trash_over_bytes": "Over quota",
+	"ops_trash_over_quota": "Over quota",
+	"ops_trash_over_users": "Users over quota",
+	"ops_trash_per_user": "Per user",
+	"ops_trash_usage": "Current state",
+	"ops_type_embedding": "Smart search",
+	"ops_type_exif": "Metadata",
+	"ops_type_faces": "Faces",
+	"ops_type_media": "Live Photos and types",
+	"ops_type_objects": "Objects",
+	"ops_type_scenes": "Scenes",
+	"ops_type_text": "Text (OCR)",
+	"ops_type_thumbnails": "Thumbnails",
+	"ops_unit_days": "days"
 }

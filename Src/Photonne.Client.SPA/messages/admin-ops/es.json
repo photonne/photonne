@@ -1,3 +1,730 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"ops_all": "Todas",
+	"ops_cancel": "Cancelar",
+	"ops_clear_selection": "Quitar selección",
+	"ops_col_actions": "Acciones",
+	"ops_col_attempts": "Intentos",
+	"ops_col_cause": "Causa",
+	"ops_col_duration": "Duración",
+	"ops_col_error": "Error",
+	"ops_col_file": "Archivo",
+	"ops_col_last_attempt": "Último intento",
+	"ops_col_progress": "Progreso",
+	"ops_col_queue": "Cola",
+	"ops_col_started": "Inicio",
+	"ops_col_status": "Estado",
+	"ops_col_task": "Tarea",
+	"ops_col_user": "Usuario",
+	"ops_dup_assets_in_db": "Assets en la base de datos",
+	"ops_dup_auto": "Selección automática",
+	"ops_dup_auto_group": "Automático",
+	"ops_dup_bytes": "Espacio recuperable",
+	"ops_dup_cleanup_confirm": "¿Limpiar los registros duplicados?",
+	"ops_dup_cleanup_confirm_text": "Se borrarán de la base de datos los registros repetidos del mismo archivo, con sus datos asociados. Los archivos en disco no se tocan. No se puede deshacer.",
+	"ops_dup_copies": "Copias redundantes",
+	"ops_dup_delete": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Borrar {count} archivo ({size})",
+				"countPlural=other": "Borrar {count} archivos ({size})"
+			}
+		}
+	],
+	"ops_dup_delete_confirm": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "¿Borrar {count} archivo del disco?",
+				"countPlural=other": "¿Borrar {count} archivos del disco?"
+			}
+		}
+	],
+	"ops_dup_delete_confirm_text": "Se borrarán del disco de forma permanente, junto con sus registros, y se liberarán {size}. No se puede deshacer.",
+	"ops_dup_delete_short": "Borrar",
+	"ops_dup_deleted": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivo borrado.",
+				"countPlural=other": "{count} archivos borrados."
+			}
+		}
+	],
+	"ops_dup_deleted_errors": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivo borrado; {errors} no se han podido borrar.",
+				"countPlural=other": "{count} archivos borrados; {errors} no se han podido borrar."
+			}
+		}
+	],
+	"ops_dup_done": "Búsqueda de duplicados terminada.",
+	"ops_dup_files_on_disk": "Archivos en disco",
+	"ops_dup_group_plan": "{remove} a borrar · {keep} a conservar",
+	"ops_dup_group_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivo idéntico",
+				"countPlural=other": "{count} archivos idénticos"
+			}
+		}
+	],
+	"ops_dup_groups": "Grupos duplicados",
+	"ops_dup_indexed": "Indexado",
+	"ops_dup_intro": "Compara el hash SHA-256 de los archivos para encontrar copias idénticas.",
+	"ops_dup_keep": "Conservar",
+	"ops_dup_last_copy": "Es la única copia que se conserva",
+	"ops_dup_leave_stops": "Si sales de esta página, la búsqueda se detiene.",
+	"ops_dup_mode": "Qué hacer",
+	"ops_dup_mode_analyze": "Solo analizar",
+	"ops_dup_mode_analyze_hint": "Cuenta los duplicados de la base de datos sin tocar nada.",
+	"ops_dup_mode_cleanup": "Analizar y limpiar",
+	"ops_dup_mode_cleanup_hint": "Quita de la base de datos los registros repetidos del mismo archivo.",
+	"ops_dup_mode_physical": "Escanear el disco",
+	"ops_dup_mode_physical_hint": "Busca archivos idénticos en disco y te deja elegir cuáles borrar.",
+	"ops_dup_none": "No hay duplicados.",
+	"ops_dup_not_indexed": "Sin indexar",
+	"ops_dup_remove": "Borrar",
+	"ops_dup_removed": "Eliminados",
+	"ops_dup_result": "Resultado",
+	"ops_dup_review": "Revisar duplicados en disco",
+	"ops_dup_review_hint": "Pulsa un archivo para alternar entre conservarlo y borrarlo. Siempre queda al menos uno.",
+	"ops_dup_start": "Empezar",
+	"ops_dup_stopped": "Búsqueda de duplicados detenida.",
+	"ops_dup_unindexed": "Sin indexar",
+	"ops_elapsed": "Tiempo: {time}",
+	"ops_error_generic": "No se ha podido completar la acción.",
+	"ops_error_unknown_action": "El servidor no conoce esta acción (¿versión antigua?).",
+	"ops_failures_action_failed": "No se ha podido aplicar la acción.",
+	"ops_failures_also_retrying": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} reintentándose sola",
+				"countPlural=other": "{count} reintentándose solas"
+			}
+		}
+	],
+	"ops_failures_also_suppressed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} descartada",
+				"countPlural=other": "{count} descartadas"
+			}
+		}
+	],
+	"ops_failures_badge_permanent": "Sin reintentos",
+	"ops_failures_badge_retrying": "Reintentará",
+	"ops_failures_badge_suppressed": "Descartada",
+	"ops_failures_empty": "Ningún asset con problemas.",
+	"ops_failures_filter_kind": "Causa",
+	"ops_failures_filter_type": "Tarea",
+	"ops_failures_intro": "Tareas de metadatos, miniaturas y análisis que han fallado, de todos los usuarios, con su causa.",
+	"ops_failures_retried": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} tarea enviada a la cola.",
+				"countPlural=other": "{count} tareas enviadas a la cola."
+			}
+		}
+	],
+	"ops_failures_retry": "Reintentar",
+	"ops_failures_retry_all": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Reintentar {count} tarea",
+				"countPlural=other": "Reintentar {count} tareas"
+			}
+		}
+	],
+	"ops_failures_retry_all_text": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Se volverá a encolar la tarea del filtro actual. Si falla por el propio archivo, volverá a fallar igual.",
+				"countPlural=other": "Se volverán a encolar las {count} tareas del filtro actual. Las que fallan por el propio archivo volverán a fallar igual."
+			}
+		}
+	],
+	"ops_failures_retry_item": "Reintentar {name}",
+	"ops_failures_suppress": "Descartar",
+	"ops_failures_suppress_item": "Descartar {name}",
+	"ops_failures_suppressed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} tarea descartada: no se reintentará.",
+				"countPlural=other": "{count} tareas descartadas: no se reintentarán."
+			}
+		}
+	],
+	"ops_failures_title": "Assets con problemas",
+	"ops_failures_total": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} tarea con problemas",
+				"countPlural=other": "{count} tareas con problemas"
+			}
+		}
+	],
+	"ops_field_hide": "Ocultar",
+	"ops_field_not_decimal": "Tiene que ser un número.",
+	"ops_field_not_integer": "Tiene que ser un número entero.",
+	"ops_field_range": "Entre {min} y {max}.",
+	"ops_field_required": "Obligatorio.",
+	"ops_field_show": "Mostrar",
+	"ops_field_suggestion_band": "Tiene que ser igual o mayor que el umbral de agrupado.",
+	"ops_field_time": "Hora no válida (HH:mm).",
+	"ops_field_url": "Tiene que ser una dirección http:// o https://.",
+	"ops_kind_needs_action": "Requiere arreglo",
+	"ops_kind_needs_action_hint": "La función está desactivada o su modelo no carga. Arregla el servicio y entonces reintenta todo.",
+	"ops_kind_permanent": "Del archivo",
+	"ops_kind_permanent_hint": "El propio archivo falla siempre igual (ilegible, formato rechazado). Reintentar no sirve: arréglalo o descártalo.",
+	"ops_kind_transient": "Pasajero",
+	"ops_kind_transient_hint": "El servicio no respondía o tardó demasiado: reintentar más tarde suele funcionar.",
+	"ops_kind_unknown": "Sin clasificar",
+	"ops_kind_unknown_hint": "Un fallo antiguo o que no se ha podido clasificar.",
+	"ops_last_run": "Última ejecución {time}",
+	"ops_load_failed": "No se ha podido cargar.",
+	"ops_load_more": "Cargar más",
+	"ops_loading": "Cargando…",
+	"ops_ml_pending_total": "Fotos sin analizar por algún modelo",
+	"ops_mt_clustering": "Reagrupar caras",
+	"ops_mt_clustering_active": "Reagrupando caras",
+	"ops_mt_clustering_hint": "Vuelve a agrupar en personas las caras ya detectadas, de todos los usuarios.",
+	"ops_mt_coverage": "Cobertura de indexación",
+	"ops_mt_coverage_active": "Comparando disco y base de datos",
+	"ops_mt_coverage_desc": "Recorre el disco como el indexador y comprueba que cada archivo esté indexado.",
+	"ops_mt_coverage_offline": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} biblioteca externa no estaba accesible y no se ha comprobado.",
+				"countPlural=other": "{count} bibliotecas externas no estaban accesibles y no se han comprobado."
+			}
+		}
+	],
+	"ops_mt_coverage_ok": "Todo indexado",
+	"ops_mt_coverage_paths": "Archivos sin indexar",
+	"ops_mt_coverage_result": "{total} archivos · {indexed} indexados · {unsupported} sin soporte",
+	"ops_mt_coverage_truncated": "La lista está recortada: hay más.",
+	"ops_mt_coverage_unindexed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} sin indexar",
+				"countPlural=other": "{count} sin indexar"
+			}
+		}
+	],
+	"ops_mt_coverage_verified": "Verificado {time}:",
+	"ops_mt_dates": "Restaurar fechas",
+	"ops_mt_dates_active": "Restaurando fechas",
+	"ops_mt_dates_desc": "Recalcula la fecha de captura desde el EXIF y, si falta, desde el nombre o el archivo.",
+	"ops_mt_duplicates": "Detección de duplicados",
+	"ops_mt_duplicates_active": "Buscando duplicados",
+	"ops_mt_duplicates_desc": "Encuentra copias idénticas por su hash y elige cuáles conservar.",
+	"ops_mt_embedding": "Búsqueda inteligente",
+	"ops_mt_embedding_active": "Calculando embeddings",
+	"ops_mt_embedding_desc": "Calcula los embeddings para buscar describiendo la foto, en cualquier idioma.",
+	"ops_mt_empty_trash": "Vaciar papeleras",
+	"ops_mt_empty_trash_active": "Vaciando papeleras",
+	"ops_mt_empty_trash_confirm": "¿Vaciar todas las papeleras?",
+	"ops_mt_empty_trash_confirm_text": "Se eliminará de forma permanente todo lo que haya en la papelera de cualquier usuario, no solo la tuya. No se puede deshacer.",
+	"ops_mt_empty_trash_desc": "Borra para siempre lo que haya en la papelera de cualquier usuario.",
+	"ops_mt_faces": "Reconocimiento facial",
+	"ops_mt_faces_active": "Analizando caras",
+	"ops_mt_faces_desc": "Detecta caras y las agrupa en personas.",
+	"ops_mt_geocode": "Lugares",
+	"ops_mt_geocode_active": "Resolviendo lugares",
+	"ops_mt_geocode_desc": "Pone nombre de ciudad y país a las coordenadas.",
+	"ops_mt_geocode_no_dataset": "Esta instalación no tiene el conjunto de datos de ciudades: la tarea no resolverá ningún lugar.",
+	"ops_mt_geocode_pending": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto con coordenadas sin lugar · {cities} ciudades conocidas",
+				"countPlural=other": "{count} fotos con coordenadas sin lugar · {cities} ciudades conocidas"
+			}
+		}
+	],
+	"ops_mt_index": "Indexar",
+	"ops_mt_index_active": "Indexando la biblioteca",
+	"ops_mt_index_desc": "Escanea las carpetas, añade los archivos nuevos y marca los que faltan.",
+	"ops_mt_interpolate": "Inferir ubicaciones",
+	"ops_mt_interpolate_active": "Interpolando ubicaciones",
+	"ops_mt_interpolate_desc": "Da coordenadas a las fotos hechas junto a otras con GPS.",
+	"ops_mt_intro": "Indexar, analizar, reparar y limpiar. Cada tarea sigue en el servidor aunque salgas de aquí.",
+	"ops_mt_media": "Live Photos",
+	"ops_mt_media_active": "Emparejando Live Photos",
+	"ops_mt_media_desc": "Vuelve a emparejar las fotos con su vídeo y reconoce panorámicas, capturas y ráfagas.",
+	"ops_mt_memories": "Generar recuerdos",
+	"ops_mt_memories_active": "Generando recuerdos",
+	"ops_mt_memories_desc": "Rehace la sección Recuerdos de cada usuario.",
+	"ops_mt_metadata": "Extraer metadatos",
+	"ops_mt_metadata_active": "Leyendo metadatos",
+	"ops_mt_metadata_desc": "Lee EXIF, GPS e IPTC de las fotos y vídeos que aún no los tienen.",
+	"ops_mt_missing": "Marcar archivos ausentes",
+	"ops_mt_missing_active": "Comprobando archivos ausentes",
+	"ops_mt_missing_desc": "Marca como ausentes los assets cuyo archivo ya no está en disco.",
+	"ops_mt_objects": "Reconocimiento de objetos",
+	"ops_mt_objects_active": "Detectando objetos",
+	"ops_mt_objects_desc": "Detecta objetos para etiquetar y buscar fotos.",
+	"ops_mt_open_tasks": "Tareas y colas",
+	"ops_mt_opt_dry_run": "Solo contar",
+	"ops_mt_opt_dry_run_hint": "Dice cuántas cambiarían, sin cambiar nada.",
+	"ops_mt_opt_file_date": "Usar la fecha del archivo como último recurso",
+	"ops_mt_opt_file_date_hint": "La de modificación en disco, que puede no ser la de captura.",
+	"ops_mt_opt_from_file": "Releer el EXIF del archivo",
+	"ops_mt_opt_from_file_hint": "Más lento; si no, usa el EXIF guardado en la base de datos.",
+	"ops_mt_opt_infer_path": "Deducir del nombre y la carpeta",
+	"ops_mt_opt_infer_path_hint": "Para las fotos sin fecha EXIF: IMG_20240512, 2024/05…",
+	"ops_mt_opt_overwrite": "Volver a leer todos",
+	"ops_mt_opt_overwrite_hint": "También los que ya tienen metadatos.",
+	"ops_mt_opt_regenerate": "Regenerar todas",
+	"ops_mt_opt_regenerate_hint": "Tras cambiar el formato o la calidad en Ajustes.",
+	"ops_mt_opt_simulate": "Solo simular",
+	"ops_mt_opt_simulate_hint": "Cuenta lo que se purgaría, sin borrar nada.",
+	"ops_mt_opt_write_file": "Escribir la fecha deducida en el archivo",
+	"ops_mt_opt_write_file_hint": "Así sobrevive a una reconstrucción de la base de datos.",
+	"ops_mt_options": "Opciones de {task}",
+	"ops_mt_orphans": "Miniaturas huérfanas",
+	"ops_mt_orphans_active": "Limpiando miniaturas huérfanas",
+	"ops_mt_orphans_desc": "Borra las miniaturas en disco que ya no tienen asset. Se pueden regenerar.",
+	"ops_mt_purge": "Purgar assets sin archivo",
+	"ops_mt_purge_active": "Purgando assets sin archivo",
+	"ops_mt_purge_confirm": "¿Purgar los assets sin archivo?",
+	"ops_mt_purge_confirm_text": "Se eliminarán de la base de datos los assets marcados como ausentes y las carpetas cuyo directorio ya no exista, con sus álbumes y sus caras. No se puede deshacer. Si dudas, ejecútalo antes con «Solo simular».",
+	"ops_mt_purge_desc": "Elimina de la base de datos los assets marcados como ausentes y las carpetas que ya no existen.",
+	"ops_mt_scenes": "Clasificación de escenas",
+	"ops_mt_scenes_active": "Clasificando escenas",
+	"ops_mt_scenes_desc": "Reconoce el tipo de escena (playa, montaña, interior…).",
+	"ops_mt_section_ai": "Análisis con IA",
+	"ops_mt_section_ai_hint": "Encola lo pendiente; los modelos lo procesan en segundo plano.",
+	"ops_mt_section_cleanup": "Limpiar",
+	"ops_mt_section_cleanup_hint": "Libera espacio. Aquí sí se borra.",
+	"ops_mt_section_memories": "Recuerdos y lugares",
+	"ops_mt_section_memories_hint": "Cada una alimenta a la siguiente, en este orden.",
+	"ops_mt_section_new": "Fotos nuevas",
+	"ops_mt_section_new_hint": "Cuando has añadido archivos, en este orden.",
+	"ops_mt_section_repair": "Reparar",
+	"ops_mt_section_repair_hint": "Cuando algo ya está mal.",
+	"ops_mt_sizes": "Recalcular tamaños",
+	"ops_mt_sizes_active": "Recalculando tamaños",
+	"ops_mt_sizes_desc": "Vuelve a leer el tamaño de cada archivo para corregir las cuotas.",
+	"ops_mt_text": "Reconocimiento de texto (OCR)",
+	"ops_mt_text_active": "Leyendo texto en las fotos",
+	"ops_mt_text_desc": "Lee el texto de las imágenes para poder buscarlo.",
+	"ops_mt_thumbnails": "Generar miniaturas",
+	"ops_mt_thumbnails_active": "Generando miniaturas",
+	"ops_mt_thumbnails_desc": "Crea las miniaturas que faltan.",
+	"ops_mt_title": "Mantenimiento",
+	"ops_mt_trips": "Detectar viajes",
+	"ops_mt_trips_active": "Detectando viajes",
+	"ops_mt_trips_desc": "Busca rachas de fotos lejos de casa.",
+	"ops_nightly_last": "Última ejecución",
+	"ops_nightly_last_hint": "El planificador mira cada minuto si es la hora; el ciclo corre una vez al día.",
+	"ops_nightly_last_value": "Último ciclo: {date}",
+	"ops_nightly_never": "Todavía no se ha ejecutado ningún ciclo nocturno.",
+	"ops_nightly_reset": "Forzar la siguiente ejecución",
+	"ops_nightly_reset_done": "El ciclo volverá a ejecutarse a la próxima hora programada.",
+	"ops_notif_oldest": "La más antigua",
+	"ops_notif_purge": "Purgar ahora",
+	"ops_notif_purge_hint": "Borra las que superan la retención (o todas las leídas si la retención es 0). Se hace también cada noche.",
+	"ops_notif_purge_text": "Se borrarán las notificaciones que superan la retención de todos los usuarios. No se puede deshacer.",
+	"ops_notif_purged": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} notificación borrada.",
+				"countPlural=other": "{count} notificaciones borradas."
+			}
+		}
+	],
+	"ops_notif_total": "Notificaciones",
+	"ops_notif_unread": "Sin leer",
+	"ops_notif_usage": "Estado actual",
+	"ops_open": "Abrir",
+	"ops_perf_cores": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Tiene {count} núcleo de CPU.",
+				"countPlural=other": "Tiene {count} núcleos de CPU."
+			}
+		}
+	],
+	"ops_perf_hint": "Más procesos aceleran el trabajo, pero consumen más CPU y memoria. No conviene pasar del número de núcleos, sobre todo con los modelos.",
+	"ops_perf_recommended_io": "Recomendado (indexado)",
+	"ops_perf_recommended_ml": "Recomendado (modelos)",
+	"ops_perf_restart": "Los procesos de los modelos se crean al arrancar el servidor: reinícialo para que se apliquen los cambios.",
+	"ops_perf_server": "Este servidor",
+	"ops_progress_of": "Progreso de {task}",
+	"ops_queue_all_done": "Todo procesado.",
+	"ops_queue_emptied": [
+		{
+			"declarations": ["input deleted", "local deletedPlural = deleted: plural"],
+			"selectors": ["deletedPlural"],
+			"match": {
+				"deletedPlural=one": "Cola vaciada: {deleted} trabajo eliminado.",
+				"deletedPlural=other": "Cola vaciada: {deleted} trabajos eliminados."
+			}
+		}
+	],
+	"ops_queue_emptied_busy": [
+		{
+			"declarations": ["input deleted", "local deletedPlural = deleted: plural"],
+			"selectors": ["deletedPlural"],
+			"match": {
+				"deletedPlural=one": "Cola vaciada: {deleted} trabajo eliminado; {busy} en curso terminarán solos.",
+				"deletedPlural=other": "Cola vaciada: {deleted} trabajos eliminados; {busy} en curso terminarán solos."
+			}
+		}
+	],
+	"ops_queue_empty": "Vaciar cola",
+	"ops_queue_empty_confirm": "¿Vaciar la cola de {queue}?",
+	"ops_queue_empty_confirm_text": "Se quitan los trabajos en espera y los que esperan un reintento. Los que ya están en curso terminarán solos. Las fotos siguen pendientes: puedes volver a encolarlas cuando quieras.",
+	"ops_queue_enqueued": "{task}: encoladas {enqueued} de {total} en {time}. Se irán procesando en segundo plano.",
+	"ops_queue_failed": "Con errores",
+	"ops_queue_failed_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} con errores",
+				"countPlural=other": "{count} con errores"
+			}
+		}
+	],
+	"ops_queue_failed_link": "Assets con problemas",
+	"ops_queue_in_queue": "En cola",
+	"ops_queue_in_queue_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} en cola",
+				"countPlural=other": "{count} en cola"
+			}
+		}
+	],
+	"ops_queue_nothing": "{task}: no había nada que encolar.",
+	"ops_queue_processing": "En curso",
+	"ops_queue_processing_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} en curso",
+				"countPlural=other": "{count} en curso"
+			}
+		}
+	],
+	"ops_queue_queueing": "Encolando todo lo pendiente…",
+	"ops_queue_retrying": "Reintentando",
+	"ops_queue_retrying_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} reintentándose",
+				"countPlural=other": "{count} reintentándose"
+			}
+		}
+	],
+	"ops_queue_start": "Encolar pendientes",
+	"ops_queue_unprocessed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} sin procesar",
+				"countPlural=other": "{count} sin procesar"
+			}
+		}
+	],
+	"ops_queues_hint": "Trabajos por foto: metadatos, miniaturas y modelos de IA.",
+	"ops_queues_title": "Colas de análisis",
+	"ops_refresh": "Actualizar",
+	"ops_retry": "Reintentar",
+	"ops_run": "Ejecutar",
+	"ops_select_all": "Seleccionar todo",
+	"ops_select_item": "Seleccionar {name}",
+	"ops_selected": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} seleccionada",
+				"countPlural=other": "{count} seleccionadas"
+			}
+		}
+	],
+	"ops_set_clean": "Sin cambios",
+	"ops_set_demo": "Solo lectura en la demo: los ajustes del servidor no se pueden cambiar.",
+	"ops_set_device": "Dispositivo de cómputo",
+	"ops_set_device_auto": "Automático (lo que diga el servidor)",
+	"ops_set_device_cpu": "CPU",
+	"ops_set_device_gpu": "GPU (CUDA)",
+	"ops_set_device_hint": "Dónde se ejecuta. «GPU» requiere la imagen ML con CUDA; si no está, se usa la CPU.",
+	"ops_set_device_ocr_warning": "El OCR en GPU reserva mucha memoria de vídeo. En una GPU compartida puede agotarla y fallar con «out of memory»; si pasa, déjalo en CPU.",
+	"ops_set_discard": "Descartar cambios",
+	"ops_set_embedding": "Búsqueda inteligente",
+	"ops_set_embedding_desc": "Embeddings CLIP para buscar describiendo la foto.",
+	"ops_set_embedding_distance": "Distancia máxima",
+	"ops_set_embedding_distance_hint": "Más baja, resultados más exigentes. Típico: 0,5–0,9.",
+	"ops_set_embedding_enabled": "Búsqueda inteligente activada",
+	"ops_set_embedding_model": "Versión del modelo",
+	"ops_set_embedding_model_hint": "Identificador estable del modelo CLIP. Por defecto: mclip-vit-b32-v1.",
+	"ops_set_embedding_model_warning": "Cambiar la versión invalida todos los embeddings. Hasta reprocesarlos todos, la búsqueda mezclará vectores antiguos y nuevos y dará resultados incoherentes.",
+	"ops_set_faces": "Reconocimiento facial",
+	"ops_set_faces_clustering": "Umbral de agrupado",
+	"ops_set_faces_clustering_hint": "Distancia máxima para considerar dos caras la misma persona. Típico: 0,40–0,45.",
+	"ops_set_faces_desc": "Detección de caras y agrupación en personas.",
+	"ops_set_faces_enabled": "Reconocimiento facial activado",
+	"ops_set_faces_knn": "Vecinos kNN",
+	"ops_set_faces_knn_hint": "Cuántas caras parecidas se consultan por cara.",
+	"ops_set_faces_knn_switch": "Paso a búsqueda kNN",
+	"ops_set_faces_knn_switch_hint": "Con más caras sin asignar que esto, se usa kNN en la base de datos en vez de compararlas todas en memoria.",
+	"ops_set_faces_min_faces": "Caras mínimas por persona",
+	"ops_set_faces_min_score": "Confianza mínima de detección",
+	"ops_set_faces_min_score_hint": "Las caras detectadas con menos confianza se descartan.",
+	"ops_set_faces_suggestion": "Umbral de sugerencias",
+	"ops_set_faces_suggestion_hint": "Las caras entre el umbral de agrupado y este se proponen como sugerencia.",
+	"ops_set_group_ai": "Inteligencia artificial",
+	"ops_set_group_general": "General",
+	"ops_set_group_processing": "Procesado",
+	"ops_set_images": "Imagen y miniaturas",
+	"ops_set_images_desc": "Formato y calidad de las miniaturas.",
+	"ops_set_images_format": "Formato",
+	"ops_set_images_format_hint": "WebP ocupa menos con la misma calidad. Se aplica a las nuevas; regenera las existentes en Mantenimiento.",
+	"ops_set_images_large": "Grande (1280 px)",
+	"ops_set_images_medium": "Mediana (640 px)",
+	"ops_set_images_quality": "Calidad de compresión",
+	"ops_set_images_quality_hint": "De 1 a 100. Más alta, más nítida y más pesada.",
+	"ops_set_images_small": "Pequeña (220 px)",
+	"ops_set_invalid": "Corrige los campos marcados para poder guardar.",
+	"ops_set_keep_editing": "Seguir editando",
+	"ops_set_leave_text": "Hay ajustes modificados sin guardar. Si sales ahora, se pierden.",
+	"ops_set_leave_title": "¿Descartar los cambios?",
+	"ops_set_load_failed": "No se han podido cargar los ajustes.",
+	"ops_set_master_hint": "Interruptor general: apagado, ninguna foto pasa por el modelo.",
+	"ops_set_metadata": "Metadatos",
+	"ops_set_metadata_camera": "Cámara y exposición",
+	"ops_set_metadata_datetime": "Fecha y hora",
+	"ops_set_metadata_desc": "Qué se lee de EXIF, IPTC y XMP.",
+	"ops_set_metadata_extract": "Leer",
+	"ops_set_metadata_gps": "Ubicación GPS",
+	"ops_set_metadata_iptc": "IPTC (autoría, copyright…)",
+	"ops_set_metadata_timezone": "Zona horaria por defecto",
+	"ops_set_metadata_timezone_hint": "Para las fechas EXIF que no dicen su zona.",
+	"ops_set_metadata_xmp": "Archivos XMP adjuntos",
+	"ops_set_min_score": "Confianza mínima",
+	"ops_set_mode_all": "Todos",
+	"ops_set_mode_missing": "Solo los pendientes",
+	"ops_set_model_group": "Parámetros del modelo",
+	"ops_set_nav": "Secciones de ajustes",
+	"ops_set_nightly": "Tareas nocturnas",
+	"ops_set_nightly_after": "Al terminar",
+	"ops_set_nightly_clustering": "Reagrupar caras",
+	"ops_set_nightly_coverage": "Comprobar la cobertura de indexación",
+	"ops_set_nightly_desc": "Un ciclo diario que pone al día lo pendiente.",
+	"ops_set_nightly_enabled": "Tareas nocturnas activadas",
+	"ops_set_nightly_feature_enabled": "Procesar cada noche",
+	"ops_set_nightly_group": "Tarea nocturna",
+	"ops_set_nightly_group_hint": "Si se procesa en el ciclo de cada noche (ver Tareas nocturnas).",
+	"ops_set_nightly_mode": "Qué procesar",
+	"ops_set_nightly_modules": "Qué se procesa",
+	"ops_set_nightly_modules_hint": "«Solo los pendientes» procesa lo que aún no lo está; «Todos» lo rehace todo cada noche.",
+	"ops_set_nightly_thumbnails": "Miniaturas",
+	"ops_set_nightly_time": "Hora de inicio",
+	"ops_set_nightly_timezone": "Zona horaria",
+	"ops_set_nightly_trash": "Vaciar lo caducado de las papeleras",
+	"ops_set_notifications": "Notificaciones",
+	"ops_set_notifications_desc": "Qué avisos se envían y cuánto tiempo se guardan.",
+	"ops_set_notifications_enabled": "Notificaciones activadas",
+	"ops_set_notifications_job_completed": "Tarea completada",
+	"ops_set_notifications_job_failed": "Tarea fallida",
+	"ops_set_notifications_max": "Máximo por usuario",
+	"ops_set_notifications_max_hint": "Al superarlo se borran las más antiguas. 0 = sin límite.",
+	"ops_set_notifications_retention": "Retención",
+	"ops_set_notifications_retention_hint": "Días que se conserva una notificación. 0 = no se borran nunca.",
+	"ops_set_notifications_share_viewed": "Enlace compartido visto",
+	"ops_set_notifications_types": "Tipos",
+	"ops_set_objects": "Reconocimiento de objetos",
+	"ops_set_objects_desc": "Detección de objetos para etiquetar y buscar.",
+	"ops_set_objects_enabled": "Detección de objetos activada",
+	"ops_set_objects_max": "Máximo de objetos por foto",
+	"ops_set_objects_max_hint": "Se quedan los de más confianza.",
+	"ops_set_objects_min_score_hint": "Los objetos detectados con menos confianza se descartan.",
+	"ops_set_objects_min_size": "Tamaño mínimo del objeto",
+	"ops_set_objects_min_size_hint": "Fracción del lado de la imagen (0,02 = 2 %). Filtra objetos diminutos.",
+	"ops_set_open_maintenance": "Procesar pendientes",
+	"ops_set_pending": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} cambio sin guardar",
+				"countPlural=other": "{count} cambios sin guardar"
+			}
+		}
+	],
+	"ops_set_performance": "Rendimiento",
+	"ops_set_performance_backfill": "Reprocesado",
+	"ops_set_performance_batch": "Tamaño del lote",
+	"ops_set_performance_batch_hint": "Cuántas fotos se encolan por tanda en la tarea nocturna.",
+	"ops_set_performance_desc": "Cuántas fotos se procesan a la vez en cada tipo de tarea.",
+	"ops_set_performance_io": "Indexado y miniaturas",
+	"ops_set_performance_io_hint": "Procesos en paralelo durante el escaneo y la extracción.",
+	"ops_set_performance_metadata": "Metadatos",
+	"ops_set_performance_ml": "Modelos de IA",
+	"ops_set_performance_ml_hint": "Cada proceso mantiene una conexión con el servicio de ML.",
+	"ops_set_performance_thumbnails": "Miniaturas",
+	"ops_set_prefer_large": "Usar la miniatura grande",
+	"ops_set_prefer_large_hint": "Analiza la miniatura de 1280 px en vez del original: menos lectura de disco, el mismo resultado.",
+	"ops_set_save": "Guardar",
+	"ops_set_save_failed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "No se ha podido guardar {count} ajuste.",
+				"countPlural=other": "No se han podido guardar {count} ajustes."
+			}
+		}
+	],
+	"ops_set_save_region": "Guardar ajustes",
+	"ops_set_saved": "Ajustes guardados.",
+	"ops_set_saving": "Guardando…",
+	"ops_set_scenes": "Clasificación de escenas",
+	"ops_set_scenes_desc": "Reconocimiento del tipo de escena para la búsqueda.",
+	"ops_set_scenes_enabled": "Clasificación de escenas activada",
+	"ops_set_scenes_max": "Máximo de escenas por foto",
+	"ops_set_scenes_max_hint": "Se guardan en orden de probabilidad.",
+	"ops_set_scenes_min_score": "Confianza mínima (a partir de la segunda)",
+	"ops_set_scenes_min_score_hint": "La escena más probable se guarda siempre; las demás, solo si la superan.",
+	"ops_set_server": "Servidor",
+	"ops_set_server_desc": "Dirección pública, límites de subida y sesión, y el mapa.",
+	"ops_set_server_map_key": "Clave de API del mapa (CARTO)",
+	"ops_set_server_map_key_hint": "Sin clave, las teselas salen con marca de agua. Pídela gratis en carto.com/basemaps/apikey. Vacía = sin clave.",
+	"ops_set_server_max_upload": "Tamaño máximo de subida",
+	"ops_set_server_public_url": "URL pública",
+	"ops_set_server_public_url_hint": "Con ella se generan los enlaces compartidos. Vacía = la dirección desde la que se accede.",
+	"ops_set_server_session": "Duración de la sesión",
+	"ops_set_server_session_hint": "De 5 a 43 200 minutos (1440 = un día, 43 200 = 30 días).",
+	"ops_set_shortcut": "Ctrl+S guarda",
+	"ops_set_text": "Reconocimiento de texto (OCR)",
+	"ops_set_text_desc": "Lectura del texto de las imágenes para la búsqueda.",
+	"ops_set_text_enabled": "OCR activado",
+	"ops_set_text_max": "Máximo de líneas por foto",
+	"ops_set_text_max_hint": "Tope por imagen, útil con documentos densos.",
+	"ops_set_text_min_score_hint": "Las líneas leídas con menos confianza se descartan.",
+	"ops_set_trash": "Papelera",
+	"ops_set_trash_desc": "Cuánto se guarda lo borrado y cuánto puede ocupar.",
+	"ops_set_trash_enabled": "Papelera activada",
+	"ops_set_trash_enabled_hint": "Apagada, lo que se borra desaparece al momento.",
+	"ops_set_trash_quota": "Cuota máxima por usuario",
+	"ops_set_trash_retention": "Retención",
+	"ops_set_trash_retention_hint": "Días hasta el borrado definitivo. 0 = se conserva siempre.",
+	"ops_set_users": "Usuarios nuevos",
+	"ops_set_users_active": "Cuenta activa al crearla",
+	"ops_set_users_desc": "Valores por defecto al crear una cuenta.",
+	"ops_set_users_quota": "Cuota de almacenamiento",
+	"ops_set_users_role": "Rol",
+	"ops_set_users_role_admin": "Administrador",
+	"ops_set_users_role_user": "Usuario",
+	"ops_set_zero_unlimited": "0 = sin límite.",
+	"ops_starting": "Arrancando…",
+	"ops_status_cancelled": "Cancelada",
+	"ops_status_completed": "Completada",
+	"ops_status_failed": "Fallida",
+	"ops_status_running": "En curso",
+	"ops_stop": "Detener",
+	"ops_task_face_clustering": "Reagrupación de caras",
+	"ops_task_finished": "{task}: terminada",
+	"ops_task_library_scan": "Escaneo de biblioteca externa",
+	"ops_task_maintenance": "Mantenimiento",
+	"ops_tasks_background": "Tareas en segundo plano",
+	"ops_tasks_background_hint": "Siguen aunque cierres esta página. Las terminadas se olvidan tras una hora.",
+	"ops_tasks_cancelled": "{task}: cancelada",
+	"ops_tasks_empty": "Ninguna tarea en la última hora.",
+	"ops_tasks_intro": "Lo que el servidor está haciendo ahora y lo que hizo en la última hora, y las colas de análisis por foto.",
+	"ops_tasks_open_maintenance": "Ejecutar tareas",
+	"ops_tasks_remaining": "quedan ~{time}",
+	"ops_tasks_running_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} en curso",
+				"countPlural=other": "{count} en curso"
+			}
+		}
+	],
+	"ops_tasks_title": "Tareas y colas",
+	"ops_trash_bytes": "Espacio",
+	"ops_trash_cleaned": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} elemento caducado borrado.",
+				"countPlural=other": "{count} elementos caducados borrados."
+			}
+		}
+	],
+	"ops_trash_cleanup": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Borrar {count} caducado",
+				"countPlural=other": "Borrar {count} caducados"
+			}
+		}
+	],
+	"ops_trash_cleanup_short": "Borrar",
+	"ops_trash_cleanup_text": "Se borrarán para siempre los elementos de la papelera que superan la retención o la cuota. No se puede deshacer.",
+	"ops_trash_expired": "Caducados",
+	"ops_trash_items": "Elementos",
+	"ops_trash_over_bytes": "Exceso sobre la cuota",
+	"ops_trash_over_quota": "Excede la cuota",
+	"ops_trash_over_users": "Usuarios por encima de la cuota",
+	"ops_trash_per_user": "Por usuario",
+	"ops_trash_usage": "Estado actual",
+	"ops_type_embedding": "Búsqueda inteligente",
+	"ops_type_exif": "Metadatos",
+	"ops_type_faces": "Caras",
+	"ops_type_media": "Live Photos y tipos",
+	"ops_type_objects": "Objetos",
+	"ops_type_scenes": "Escenas",
+	"ops_type_text": "Texto (OCR)",
+	"ops_type_thumbnails": "Miniaturas",
+	"ops_unit_days": "días"
 }
