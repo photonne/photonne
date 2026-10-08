@@ -11,7 +11,12 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	reporter: process.env.CI ? 'github' : 'list',
-	use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure' },
+	use: {
+		baseURL: `http://localhost:${port}`,
+		trace: 'retain-on-failure',
+		// The app's service worker would sit between the page and the faked API.
+		serviceWorkers: 'block'
+	},
 	projects: [
 		{
 			name: 'chromium',
