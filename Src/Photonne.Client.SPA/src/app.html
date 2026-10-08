@@ -6,6 +6,13 @@
 		<meta name="text-scale" content="scale" />
 		<meta name="color-scheme" content="light dark" />
 		<title>Photonne</title>
+		<script>
+			// Saved theme before the first paint (src/lib/theme.ts keeps it in sync).
+			try {
+				const theme = localStorage.getItem('photonne.theme');
+				if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+			} catch {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
