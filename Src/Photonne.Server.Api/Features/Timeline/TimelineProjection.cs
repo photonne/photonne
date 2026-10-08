@@ -57,6 +57,10 @@ internal static class TimelineProjection
             .Where(t => t.Size == ThumbnailSize.Small)
             .Select(t => t.DominantColor)
             .FirstOrDefault(),
+        AspectRatio = a.Thumbnails
+            .Where(t => t.Size == ThumbnailSize.Small && t.Height > 0)
+            .Select(t => (double?)t.Width / t.Height)
+            .FirstOrDefault(),
         ThumbnailsGeneratedAt = a.Thumbnails
             .Where(t => t.Size == ThumbnailSize.Small)
             .Select(t => (DateTime?)t.CreatedAt)

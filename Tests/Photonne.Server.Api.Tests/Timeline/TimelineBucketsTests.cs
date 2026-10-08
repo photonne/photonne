@@ -175,4 +175,33 @@ public sealed class TimelineBucketsTests : IntegrationTestBase
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    private sealed record ShapedItem(Guid Id, int? Width, int? Height, double? AspectRatio);
+
+    [Fact]
+    public async Task BucketItems_AspectRatio_FollowsTheOrientedThumbnail()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        var capturedAt = new DateTime(2026, 3, 10, 12, 0, 0, DateTimeKind.Utc);
+        // A phone portrait: stored as 4000×3000 pixels with EXIF orientation 6.
+        var portrait = await CreateAssetAsync(alice, "portrait.jpg", folderId, capturedAt);
+        var noThumbs = await CreateAssetAsync(alice, "fresh.jpg", folderId, capturedAt.AddMinutes(-1));
+        await WithDbContextAsync(async db =>
+        {
+            db.AssetExifs.Add(new AssetExif { AssetId = portrait, Width = 4000, Height = 3000, Orientation = 6 });
+            db.AssetThumbnails.Add(new AssetThumbnail
+            {
+                AssetId = portrait, Size = ThumbnailSize.Small, Width = 165, Height = 220, FilePath = "/tmp/x.jpg"
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var items = await client.GetFromJsonAsync<List<ShapedItem>>("/api/assets/timeline/buckets/2026-03");
+
+        var shaped = Assert.Single(items!, i => i.Id == portrait);
+        Assert.Equal(4000, shaped.Width);
+        Assert.Equal(0.75, shaped.AspectRatio!.Value, precision: 3);
+        Assert.Null(Assert.Single(items!, i => i.Id == noThumbs).AspectRatio);
+    }
 }
