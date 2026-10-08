@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using ImageMagick;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -26,7 +26,7 @@ public class AssetContentEndpoint : IEndpoint
         [FromServices] SettingsService settingsService,
         [FromServices] ILogger<AssetContentEndpoint> logger,
         [FromServices] AssetVisibilityService visibility,
-        ClaimsPrincipal user,
+        HttpContext httpContext,
         [FromRoute] Guid assetId,
         [FromQuery] bool? download,
         [FromQuery] string? format,
@@ -37,7 +37,7 @@ public class AssetContentEndpoint : IEndpoint
 
         var asset = await dbContext.Assets.FindAsync(new object[] { assetId }, cancellationToken);
 
-        if (asset == null || !await visibility.CanReadAsync(user, asset, cancellationToken))
+        if (asset == null || !await visibility.CanReadAsync(httpContext.User, asset, cancellationToken))
         {
             return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
         }
@@ -60,15 +60,24 @@ public class AssetContentEndpoint : IEndpoint
             ? AssetDownloadFormats.ConvertsOnDownload(extension, downloadFormat)
             : AssetDownloadFormats.IsConvertible(extension);
 
+        var file = new FileInfo(physicalPath);
+        MediaCaching.ApplyCacheControl(httpContext);
+
         if (asJpeg)
         {
+            // The render is the expensive part: answer a revalidation before it.
+            var jpegTag = MediaCaching.ETagFor(file, "jpeg");
+            if (MediaCaching.IsNotModified(httpContext.Request, jpegTag))
+                return MediaCaching.NotModified(httpContext, jpegTag);
+
             try
             {
                 var jpegBytes = RawImageLoader.RenderJpeg(physicalPath);
                 return download == true
                     ? Results.File(jpegBytes, "image/jpeg",
-                        fileDownloadName: AssetDownloadFormats.JpegFileName(asset.FileName))
-                    : Results.File(jpegBytes, "image/jpeg");
+                        fileDownloadName: AssetDownloadFormats.JpegFileName(asset.FileName),
+                        entityTag: jpegTag)
+                    : Results.File(jpegBytes, "image/jpeg", entityTag: jpegTag);
             }
             catch (MagickException ex)
             {
@@ -79,10 +88,14 @@ public class AssetContentEndpoint : IEndpoint
 
         var contentType = GetContentType(extension, asset.Type);
 
-        if (download == true)
-            return Results.File(physicalPath, contentType, fileDownloadName: asset.FileName);
+        var etag = MediaCaching.ETagFor(file);
 
-        return Results.File(physicalPath, contentType, enableRangeProcessing: true);
+        if (download == true)
+            return Results.File(physicalPath, contentType, fileDownloadName: asset.FileName,
+                lastModified: file.LastWriteTimeUtc, entityTag: etag);
+
+        return Results.File(physicalPath, contentType,
+            lastModified: file.LastWriteTimeUtc, entityTag: etag, enableRangeProcessing: true);
     }
 
     private string GetContentType(string extension, AssetType type)

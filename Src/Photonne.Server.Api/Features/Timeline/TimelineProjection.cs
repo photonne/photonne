@@ -57,6 +57,10 @@ internal static class TimelineProjection
             .Where(t => t.Size == ThumbnailSize.Small)
             .Select(t => t.DominantColor)
             .FirstOrDefault(),
+        ThumbnailsGeneratedAt = a.Thumbnails
+            .Where(t => t.Size == ThumbnailSize.Small)
+            .Select(t => (DateTime?)t.CreatedAt)
+            .FirstOrDefault(),
         IsReadOnly = a.ExternalLibraryId.HasValue
     };
 

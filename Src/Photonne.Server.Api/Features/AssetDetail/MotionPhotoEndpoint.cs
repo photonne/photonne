@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -39,7 +39,7 @@ public class MotionPhotoEndpoint : IEndpoint
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] AssetVisibilityService visibility,
-        ClaimsPrincipal user,
+        HttpContext httpContext,
         [FromRoute] Guid assetId,
         CancellationToken cancellationToken)
     {
@@ -47,7 +47,7 @@ public class MotionPhotoEndpoint : IEndpoint
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == assetId, cancellationToken);
 
-        if (asset == null || !await visibility.CanReadAsync(user, asset, cancellationToken))
+        if (asset == null || !await visibility.CanReadAsync(httpContext.User, asset, cancellationToken))
         {
             return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
         }
@@ -55,9 +55,15 @@ public class MotionPhotoEndpoint : IEndpoint
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
         var motionPath = MotionFrameService.ResolveSiblingClipPath(physicalPath);
 
+        MediaCaching.ApplyCacheControl(httpContext);
+
         if (motionPath != null)
         {
-            return Results.File(motionPath, "video/quicktime", enableRangeProcessing: true);
+            var clipFile = new FileInfo(motionPath);
+            return Results.File(motionPath, "video/quicktime",
+                lastModified: clipFile.LastWriteTimeUtc,
+                entityTag: MediaCaching.ETagFor(clipFile),
+                enableRangeProcessing: true);
         }
 
         // No sibling clip — try a Samsung/Google motion photo with the MP4
@@ -67,6 +73,10 @@ public class MotionPhotoEndpoint : IEndpoint
         var embedded = EmbeddedMotionPhotoExtractor.ResolveEmbeddedVideo(physicalPath);
         if (embedded is { } range)
         {
+            var motionTag = MediaCaching.ETagFor(new FileInfo(physicalPath), "motion");
+            if (MediaCaching.IsNotModified(httpContext.Request, motionTag))
+                return MediaCaching.NotModified(httpContext, motionTag);
+
             var clip = new MemoryStream();
             await using (var file = File.OpenRead(physicalPath))
             {
@@ -74,7 +84,7 @@ public class MotionPhotoEndpoint : IEndpoint
                 await file.CopyToAsync(clip, cancellationToken);
             }
             clip.Position = 0;
-            return Results.Stream(clip, "video/mp4", enableRangeProcessing: true);
+            return Results.Stream(clip, "video/mp4", entityTag: motionTag, enableRangeProcessing: true);
         }
 
         return Results.NotFound(new { error = $"Asset {assetId} has no paired motion clip" });

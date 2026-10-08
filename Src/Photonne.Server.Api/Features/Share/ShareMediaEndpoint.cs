@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -120,9 +121,11 @@ public class ShareMediaEndpoint : IEndpoint
 
         if (thumbnail == null || !File.Exists(thumbnail.FilePath)) return Results.NotFound();
 
-        var bytes = await File.ReadAllBytesAsync(thumbnail.FilePath, ct);
         var contentType = thumbnail.Format == "WebP" ? "image/webp" : "image/jpeg";
-        return Results.File(bytes, contentType);
+        var file = new FileInfo(thumbnail.FilePath);
+        return Results.File(thumbnail.FilePath, contentType,
+            lastModified: file.LastWriteTimeUtc,
+            entityTag: MediaCaching.ETagFor(file));
     }
 
     private static async Task<IResult> ServeContent(

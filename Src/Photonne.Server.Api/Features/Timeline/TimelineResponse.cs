@@ -26,6 +26,10 @@ public class TimelineResponse
     public bool IsFileMissing { get; set; }
     // Dominant color from the Small thumbnail (#rrggbb). Null for assets without thumbnails.
     public string? DominantColor { get; set; }
+    // When the thumbnails were last generated. Append it to the thumbnail URL
+    // as ?v= and the response is cached as immutable; a regeneration changes
+    // it, so the client asks for the new bytes. Null without thumbnails.
+    public DateTime? ThumbnailsGeneratedAt { get; set; }
     public bool IsReadOnly { get; set; }
 }
 
