@@ -136,5 +136,61 @@
 	"settings_discovery_state_shown": "In your photos",
 	"settings_discovery_state_hidden": "Hidden",
 	"settings_discovery_shown": "“{name}” is back in your photos",
-	"settings_discovery_hidden": "“{name}” no longer shows in your photos"
+	"settings_discovery_hidden": "“{name}” no longer shows in your photos",
+	"settings_analysis": "Photo analysis",
+	"settings_analysis_lead": "Your photos whose analysis (metadata, thumbnails, faces, objects, text, AI search…) is still running or has failed.",
+	"settings_analysis_summary": "Status",
+	"settings_analysis_in_flight": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo processing",
+				"countPlural=other": "{count} photos processing"
+			}
+		}
+	],
+	"settings_analysis_failed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} with errors",
+				"countPlural=other": "{count} with errors"
+			}
+		}
+	],
+	"settings_analysis_refresh": "Refresh",
+	"settings_analysis_retry_everything": "Retry everything that failed",
+	"settings_analysis_retry_everything_hint": "Queues the failed tasks of the photos in this list again.",
+	"settings_analysis_empty": "Everything is analyzed. Nothing pending and no errors.",
+	"settings_analysis_list": "Photos pending or with errors",
+	"settings_analysis_counts": "Pending: {pending} · Running: {processing} · Failed: {failed}",
+	"settings_analysis_failed_tasks": "Failed tasks of {name}",
+	"settings_analysis_retry_task": "Retry {task}",
+	"settings_analysis_retry_all": "Retry failed",
+	"settings_analysis_retrying": "Retrying…",
+	"settings_analysis_retried": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} task queued again",
+				"countPlural=other": "{count} tasks queued again"
+			}
+		}
+	],
+	"settings_analysis_retried_task": "{task} of “{name}” queued again",
+	"settings_analysis_retried_assets": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Retrying {count} photo",
+				"countPlural=other": "Retrying {count} photos"
+			}
+		}
+	],
+	"settings_analysis_retry_failed": "Couldn't retry. Try again later.",
+	"settings_analysis_more": "Load more"
 }

@@ -4,12 +4,17 @@ import type { AlbumResponse } from '#lib/api/index.js';
 export type AlbumScope = 'all' | 'mine' | 'shared';
 export type AlbumKindFilter = 'all' | 'manual' | 'smart';
 export type AlbumSort = 'updated' | 'created' | 'name' | 'count';
+/** Cover tiles or compact rows (shared with the folders page). */
+export type ListView = 'grid' | 'list';
 
 export interface AlbumListOptions {
 	scope: AlbumScope;
 	kind: AlbumKindFilter;
 	sort: AlbumSort;
 	descending: boolean;
+	view: ListView;
+	/** Albums under a header per creation year, as in the native app. */
+	groupByYear: boolean;
 	/** Free text matched against name and description, accent- and case-insensitive. */
 	query: string;
 }
@@ -19,6 +24,8 @@ export const defaultListOptions: AlbumListOptions = {
 	kind: 'all',
 	sort: 'updated',
 	descending: true,
+	view: 'grid',
+	groupByYear: false,
 	query: ''
 };
 
@@ -105,9 +112,36 @@ export function parseListOptions(raw: string | null): AlbumListOptions {
 			sort: pick(saved.sort, ['updated', 'created', 'name', 'count'], defaultListOptions.sort),
 			descending:
 				typeof saved.descending === 'boolean' ? saved.descending : defaultListOptions.descending,
+			view: pick(saved.view, ['grid', 'list'], defaultListOptions.view),
+			groupByYear: saved.groupByYear === true,
 			query: ''
 		};
 	} catch {
 		return { ...defaultListOptions };
 	}
+}
+
+/** Albums by the year they were created, newest year first, keeping their order inside. */
+export function groupByYear(albums: readonly AlbumResponse[]) {
+	const groups: { year: number; albums: AlbumResponse[] }[] = [];
+	for (const album of albums) {
+		const year = new Date(album.createdAt).getUTCFullYear();
+		const group = groups.find((candidate) => candidate.year === year);
+		if (group) group.albums.push(album);
+		else groups.push({ year, albums: [album] });
+	}
+	return groups.sort((a, b) => b.year - a.year);
+}
+
+/**
+ * What a selection of albums allows, as in the native app: an action is
+ * offered only if it works for every selected album, so a batch never fails
+ * halfway on permissions known in advance. Leaving is for albums others
+ * shared with me; deleting needs ownership or the delete grant.
+ */
+export function albumSelectionActions(selected: readonly AlbumResponse[]) {
+	return {
+		canDelete: selected.length > 0 && selected.every((album) => album.isOwner || album.canDelete),
+		canLeave: selected.length > 0 && selected.every((album) => !album.isOwner)
+	};
 }

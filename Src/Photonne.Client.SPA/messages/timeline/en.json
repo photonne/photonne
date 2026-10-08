@@ -1,3 +1,43 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"timeline_toolbar": "Timeline view",
+	"timeline_zoom": "Thumbnail size",
+	"timeline_zoom_in": "Larger thumbnails",
+	"timeline_zoom_in_hint": "Larger thumbnails (+ or Ctrl + wheel)",
+	"timeline_zoom_out": "Smaller thumbnails",
+	"timeline_zoom_out_hint": "Smaller thumbnails (− or Ctrl + wheel)",
+	"timeline_zoom_year": "Years",
+	"timeline_zoom_small": "Small, by month",
+	"timeline_zoom_medium": "Medium, by month",
+	"timeline_zoom_large": "Large, by day",
+	"timeline_zoom_xlarge": "Extra large, by day",
+	"timeline_zoom_changed": "View: {level}",
+	"timeline_jump": "Go to a date",
+	"timeline_jump_hint_short": "Go to a date (G)",
+	"timeline_jump_title": "Go to a date",
+	"timeline_jump_year": "Year",
+	"timeline_jump_months": "Months of {year}",
+	"timeline_jump_month": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{month}, {count} item",
+				"countPlural=other": "{month}, {count} items"
+			}
+		}
+	],
+	"timeline_jump_month_empty": "{month}, no photos",
+	"timeline_jump_hint": "Shortcut: G. Months without photos are disabled.",
+	"timeline_year_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} item",
+				"countPlural=other": "{count} items"
+			}
+		}
+	],
+	"timeline_year_item": "Show {month}, from a photo of {date}"
 }

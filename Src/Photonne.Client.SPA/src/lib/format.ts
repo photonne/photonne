@@ -22,6 +22,15 @@ export function monthTitle(key: string) {
 	);
 }
 
+/** "jueves, 3 de septiembre" for the day key "2026-09-03"; '' for any other key. */
+export function dayTitle(key: string) {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return '';
+	const [year, month, day] = key.split('-').map(Number);
+	return formatter({ weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
+		new Date(Date.UTC(year, month - 1, day))
+	);
+}
+
 /**
  * "3 de septiembre de 2026". Capture times are stored as UTC instants of the
  * camera's wall clock, so they are shown in UTC to keep the day the photo says.

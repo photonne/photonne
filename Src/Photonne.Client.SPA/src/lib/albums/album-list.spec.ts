@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { AlbumResponse } from '#lib/api/index.js';
 import {
+	albumSelectionActions,
 	arrangeAlbums,
 	defaultListOptions,
 	fold,
+	groupByYear,
 	parseListOptions,
 	scopeCounts
 } from './album-list.js';
@@ -99,5 +101,45 @@ describe('parseListOptions', () => {
 	it('falls back to the defaults on garbage', () => {
 		expect(parseListOptions('not json')).toEqual(defaultListOptions);
 		expect(parseListOptions(null)).toEqual(defaultListOptions);
+	});
+
+	it('keeps the view and the year grouping', () => {
+		expect(parseListOptions('{"view":"list","groupByYear":true}')).toEqual({
+			...defaultListOptions,
+			view: 'list',
+			groupByYear: true
+		});
+		expect(parseListOptions('{"view":"tiles","groupByYear":"yes"}')).toEqual(defaultListOptions);
+	});
+});
+
+describe('groupByYear', () => {
+	it('groups by creation year, newest first, keeping the order inside', () => {
+		const groups = groupByYear([
+			album({ id: 'a', createdAt: '2024-05-01T00:00:00Z' }),
+			album({ id: 'b', createdAt: '2026-01-01T00:00:00Z' }),
+			album({ id: 'c', createdAt: '2024-12-31T23:00:00Z' })
+		]);
+		expect(groups.map((g) => [g.year, g.albums.map((a) => a.id)])).toEqual([
+			[2026, ['b']],
+			[2024, ['a', 'c']]
+		]);
+	});
+});
+
+describe('albumSelectionActions', () => {
+	const mine = album({ id: 'm' });
+	const shared = album({ id: 's', isOwner: false, canDelete: false });
+	const sharedEditable = album({ id: 'e', isOwner: false, canDelete: true });
+
+	it('offers delete only if every album can be deleted', () => {
+		expect(albumSelectionActions([mine, sharedEditable]).canDelete).toBe(true);
+		expect(albumSelectionActions([mine, shared]).canDelete).toBe(false);
+	});
+
+	it('offers leave only for albums others shared with me', () => {
+		expect(albumSelectionActions([shared, sharedEditable]).canLeave).toBe(true);
+		expect(albumSelectionActions([shared, mine]).canLeave).toBe(false);
+		expect(albumSelectionActions([])).toEqual({ canDelete: false, canLeave: false });
 	});
 });

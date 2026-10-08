@@ -244,5 +244,6 @@
 				"countPlural=other": "Caras reagrupadas: {count} personas nuevas"
 			}
 		}
-	]
+	],
+	"people_together": "Personas con más fotos juntas"
 }

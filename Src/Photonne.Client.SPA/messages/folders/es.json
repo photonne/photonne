@@ -82,5 +82,76 @@
 				"countPlural=other": "{name}, {count} elementos"
 			}
 		}
-	]
+	],
+	"folders_filters": "Filtrar carpetas",
+	"folders_search": "Buscar carpetas",
+	"folders_scope": "Qué carpetas",
+	"folders_scope_all": "Todas",
+	"folders_scope_personal": "Personales",
+	"folders_scope_shared": "Compartidas",
+	"folders_scope_external": "Externas",
+	"folders_sort": "Ordenar por",
+	"folders_sort_name": "Nombre",
+	"folders_sort_count": "Número de elementos",
+	"folders_sort_ascending": "Orden ascendente",
+	"folders_sort_descending": "Orden descendente",
+	"folders_results": "Carpetas encontradas",
+	"folders_no_match": "Ninguna carpeta coincide con el filtro.",
+	"folders_select_named": "Seleccionar «{name}»",
+	"folders_bulk_move": "Mover",
+	"folders_bulk_delete": "Eliminar",
+	"folders_bulk_cannot_move": "Alguna de las carpetas seleccionadas no se puede mover",
+	"folders_bulk_cannot_delete": "Alguna de las carpetas seleccionadas no se puede eliminar",
+	"folders_bulk_move_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Mover {count} carpeta",
+				"countPlural=other": "Mover {count} carpetas"
+			}
+		}
+	],
+	"folders_bulk_moved": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} carpeta movida a «{parent}»",
+				"countPlural=other": "{count} carpetas movidas a «{parent}»"
+			}
+		}
+	],
+	"folders_bulk_delete_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "¿Eliminar {count} carpeta?",
+				"countPlural=other": "¿Eliminar {count} carpetas?"
+			}
+		}
+	],
+	"folders_bulk_delete_message": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "La carpeta seleccionada, sus subcarpetas y sus fotos irán a la papelera.",
+				"countPlural=other": "Las {count} carpetas seleccionadas, sus subcarpetas y sus fotos irán a la papelera."
+			}
+		}
+	],
+	"folders_bulk_deleted": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} carpeta eliminada",
+				"countPlural=other": "{count} carpetas eliminadas"
+			}
+		}
+	],
+	"folders_bulk_nested": "Las subcarpetas de otra seleccionada van con ella.",
+	"folders_bulk_partial": "Hecho con {done} de {total}. Las que fallaron siguen seleccionadas."
 }

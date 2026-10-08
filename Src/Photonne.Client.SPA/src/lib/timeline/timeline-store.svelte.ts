@@ -42,9 +42,19 @@ export class TimelineStore implements GridHost {
 		this.#buckets = buckets;
 	}
 
-	async load(key: string) {
-		if (this.#requested.has(key)) return;
+	// The request of each month in flight or done, so a caller that needs the
+	// items (jumping into a month) can wait for the one already running.
+	#loading: Record<string, Promise<void>> = {};
+
+	load(key: string): Promise<void> {
+		if (this.#requested.has(key)) return this.#loading[key] ?? Promise.resolve();
 		this.#requested.add(key);
+		const loading = this.#fetch(key);
+		this.#loading[key] = loading;
+		return loading;
+	}
+
+	async #fetch(key: string) {
 		try {
 			const items = await this.#queryClient.fetchQuery(
 				getTimelineBucketItemsOptions({ path: { yearMonth: key } })
@@ -53,6 +63,7 @@ export class TimelineStore implements GridHost {
 		} catch {
 			// Retried the next time the month scrolls into reach.
 			this.#requested.delete(key);
+			delete this.#loading[key];
 		}
 	}
 
@@ -96,6 +107,7 @@ export class TimelineStore implements GridHost {
 	reload() {
 		this.#months.clear();
 		this.#requested.clear();
+		this.#loading = {};
 		this.#queryClient.invalidateQueries({ queryKey: getTimelineBucketsOptions().queryKey });
 	}
 }

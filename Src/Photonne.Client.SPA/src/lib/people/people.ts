@@ -1,4 +1,13 @@
-import type { GetApiPeopleData, PersonDto } from '#lib/api/index.js';
+import type { GetApiPeopleData, MemoryResponse, PersonDto } from '#lib/api/index.js';
+
+/**
+ * The "most photos together with" row of a person's page: their memories of
+ * kind PeopleTogether, in the server's order (most photos first), as the
+ * native app shows them. "Through the years" is left to Recuerdos.
+ */
+export function companions<T extends Pick<MemoryResponse, 'kind'>>(memories: readonly T[]): T[] {
+	return memories.filter((memory) => memory.kind === 'PeopleTogether');
+}
 
 /** How the people grid is ordered (the native app offers the same three). */
 export type PeopleSort = 'faces' | 'name' | 'unnamed';

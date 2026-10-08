@@ -2,6 +2,7 @@ import type {
 	FaceAssignmentResponse,
 	MapClusterResponse,
 	MapPointResponse,
+	MemoryResponse,
 	PeoplePageResponse,
 	PendingCountResponse,
 	PersonDto,
@@ -161,9 +162,76 @@ function clusters(): MapClusterResponse[] {
 	});
 }
 
+/**
+ * The memories a person appears in (GET /api/memories?personId=): Ana has two
+ * "people together" pairs and a "through the years" one the page leaves out;
+ * the rest have none.
+ */
+function personMemories(personId: string): MemoryResponse[] {
+	if (personId !== 'person-ana') return [];
+	const memory = (overrides: Partial<MemoryResponse> & Pick<MemoryResponse, 'id' | 'kind'>) => ({
+		title: '',
+		subtitle: null,
+		themeKey: 'people',
+		groupTitle: 'Personas',
+		cardLabel: null,
+		coverAssetId: photos[0].id,
+		assetCount: 12,
+		companionPersonId: null,
+		companionName: null,
+		windowStart: '2023-03-01T00:00:00Z',
+		windowEnd: '2026-09-28T00:00:00Z',
+		...overrides
+	});
+	return [
+		memory({
+			id: 'pair-luis',
+			kind: 'PeopleTogether',
+			title: 'Ana y Luis',
+			subtitle: '42 fotos',
+			companionPersonId: 'person-luis',
+			companionName: 'Luis'
+		}),
+		memory({ id: 'ana-years', kind: 'PersonThroughYears', title: 'Ana a lo largo de los años' }),
+		memory({
+			id: 'pair-marta',
+			kind: 'PeopleTogether',
+			title: 'Ana y Marta',
+			subtitle: '7 fotos',
+			coverAssetId: photos[3].id,
+			companionPersonId: 'person-marta',
+			companionName: 'Marta'
+		})
+	];
+}
+
 const handle: FakeHandler = async ({ method, path, request, authorized, json, route, state }) => {
 	const isPeople = path.startsWith('/api/people') || path.startsWith('/api/faces/');
 	const url = new URL(request.url());
+	if (path === '/api/memories' && url.searchParams.has('personId')) {
+		if (!authorized) return json(401).then(() => true);
+		return json(200, personMemories(url.searchParams.get('personId')!)).then(() => true);
+	}
+	const pair = personMemories('person-ana').find((m) => path === `/api/memories/${m.id}`);
+	if (pair) {
+		const assets = photos.slice(0, pair.assetCount).map((item) => ({
+			...item,
+			fullPath: `/assets/users/ana/${item.fileName}`,
+			fileSize: 3_400_000,
+			fileModifiedAt: item.fileCreatedAt,
+			extension: '.jpg',
+			scannedAt: item.fileCreatedAt,
+			checksum: `sum-${item.id}`,
+			hasExif: true,
+			hasThumbnails: true,
+			syncStatus: 'Synced',
+			deletedAt: null,
+			isArchived: false,
+			isFileMissing: false,
+			isReadOnly: false
+		}));
+		return json(200, { ...pair, assets }).then(() => true);
+	}
 	const isPersonSearch = path === '/api/assets/search' && url.searchParams.has('personId');
 	const isMap = path.startsWith('/api/assets/map');
 	const isTileKey =

@@ -244,5 +244,6 @@
 				"countPlural=other": "Faces regrouped: {count} new people"
 			}
 		}
-	]
+	],
+	"people_together": "People with the most photos together"
 }
