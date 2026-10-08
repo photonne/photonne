@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { toggleFavorite } from '#lib/api/index.js';
 	import {
@@ -31,6 +31,8 @@
 		ontrash?: () => void;
 		onarchive?: () => void;
 		onaddtoalbum?: () => void;
+		/** A page's own buttons for the open photo (restore in the trash…), before the standard ones. */
+		actions?: Snippet;
 	}
 
 	let {
@@ -44,7 +46,8 @@
 		neighborVersion = () => null,
 		ontrash,
 		onarchive,
-		onaddtoalbum
+		onaddtoalbum,
+		actions
 	}: Props = $props();
 
 	const INFO_KEY = 'photonne.viewer.info';
@@ -201,6 +204,7 @@
 				{/if}
 			</div>
 			<div class="actions">
+				{@render actions?.()}
 				{#if isLive && !isVideo}
 					<button
 						type="button"

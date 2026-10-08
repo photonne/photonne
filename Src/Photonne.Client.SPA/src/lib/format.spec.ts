@@ -7,6 +7,7 @@ const { formatBytes, fromDateTimeLocal, monthTitle, toDateTimeLocal } = await im
 describe('format', () => {
 	it('titles a bucket month', () => {
 		expect(monthTitle('2026-09')).toBe('septiembre de 2026');
+		expect(monthTitle('all')).toBe('');
 	});
 
 	it('formats sizes', () => {

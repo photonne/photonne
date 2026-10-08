@@ -11,3 +11,8 @@ bun.lockb
 # Generated
 src/lib/api/generated
 src/lib/paraglide
+
+# Written by the inlang compiler
+project.inlang/README.md
+project.inlang/.meta.json
+project.inlang/.lix

@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// E2E_PORT lets several checkouts run their e2e at the same time.
+const port = Number(process.env.E2E_PORT ?? 4173);
+
 // End-to-end tests run against the production build. The API is faked per
 // test (e2e/fake-api.ts), so no server is needed.
 export default defineConfig({
@@ -8,7 +11,7 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	reporter: process.env.CI ? 'github' : 'list',
-	use: { baseURL: 'http://localhost:4173', trace: 'retain-on-failure' },
+	use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure' },
 	projects: [
 		{
 			name: 'chromium',
@@ -23,8 +26,10 @@ export default defineConfig({
 		}
 	],
 	webServer: {
-		command: 'npm run build && npm run preview -- --port 4173 --strictPort',
-		port: 4173,
-		reuseExistingServer: !process.env.CI
+		command: `npm run build && npm run preview -- --port ${port} --strictPort`,
+		port,
+		// Only reuse a server explicitly started for this checkout (E2E_REUSE=1):
+		// another checkout's preview on the same port would be tested silently.
+		reuseExistingServer: process.env.E2E_REUSE === '1'
 	}
 });
