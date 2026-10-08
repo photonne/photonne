@@ -190,7 +190,7 @@
 	}
 
 	/** Scrolls an item into view if needed, then moves DOM focus to it. */
-	async function focusItem(id: string) {
+	export async function focusItem(id: string) {
 		focusedId = id;
 		const blockIndex = layout.blockOfItem.get(id);
 		if (blockIndex === undefined || !scroller) return;

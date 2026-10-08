@@ -21,7 +21,7 @@
 
 	async function logout() {
 		await session.logout();
-		await goto(resolve('/login'), { replaceState: true });
+		await goto(resolve('/login'), { replace: true });
 	}
 </script>
 

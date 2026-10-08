@@ -30,3 +30,33 @@ export function longDate(iso: string) {
 		new Date(iso)
 	);
 }
+
+/** "3,2 MB" in the user's language. */
+export function formatBytes(bytes: number) {
+	const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+	let value = bytes;
+	let unit = 0;
+	while (value >= 1024 && unit < units.length - 1) {
+		value /= 1024;
+		unit++;
+	}
+	const digits = unit === 0 || value >= 100 ? 0 : 1;
+	return `${new Intl.NumberFormat(getLocale(), { maximumFractionDigits: digits }).format(value)} ${units[unit]}`;
+}
+
+/** "3 sept 2026, 14:05" — the capture time as the camera recorded it (UTC wall clock). */
+export function dateTime(iso: string) {
+	return formatter({ dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(
+		new Date(iso)
+	);
+}
+
+/** "2026-09-03T14:05" for a datetime-local input, from a UTC wall-clock instant. */
+export function toDateTimeLocal(iso: string) {
+	return new Date(iso).toISOString().slice(0, 16);
+}
+
+/** The inverse of toDateTimeLocal: the input's wall clock as a UTC instant. */
+export function fromDateTimeLocal(value: string) {
+	return new Date(`${value}:00Z`).toISOString();
+}

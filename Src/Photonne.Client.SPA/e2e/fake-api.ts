@@ -6,6 +6,8 @@ import type { Page, Route } from '@playwright/test';
  */
 export async function fakeApi(page: Page, options: { signedIn?: boolean; offline?: boolean } = {}) {
 	let signedIn = options.signedIn ?? false;
+	const favorites = new Set<string>();
+	const descriptions: string[] = [];
 	const json = (route: Route, status: number, body?: unknown) =>
 		route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body ?? {}) });
 
@@ -37,11 +39,27 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 			case 'GET /api/assets/timeline/buckets':
 				return authorized ? json(route, 200, library.buckets) : json(route, 401);
 			default:
+				if (/^\/api\/assets\/[^/]+\/favorite$/.test(path) && request.method() === 'POST') {
+					const id = path.split('/')[3];
+					if (favorites.has(id)) favorites.delete(id);
+					else favorites.add(id);
+					return json(route, 200, { isFavorite: favorites.has(id) });
+				}
+				if (/^\/api\/assets\/[^/]+\/description$/.test(path)) {
+					descriptions.push(request.postDataJSON().caption);
+					return json(route, 200, { caption: request.postDataJSON().caption });
+				}
+				if (/^\/api\/assets\/[0-9]{4}-[0-9]{2}-[0-9]+$/.test(path) && request.method() === 'GET') {
+					return authorized
+						? json(route, 200, detail(path.split('/')[3], favorites))
+						: json(route, 401);
+				}
+				if (path === '/api/tags') return json(route, 200, ['familia', 'viaje']);
 				if (path.startsWith('/api/assets/timeline/buckets/')) {
 					const key = path.split('/').at(-1)!;
 					return authorized ? json(route, 200, library.items(key)) : json(route, 401);
 				}
-				if (/^\/api\/assets\/[^/]+\/thumbnail$/.test(path)) {
+				if (/^\/api\/assets\/[^/]+\/(thumbnail|content)$/.test(path)) {
 					return route.fulfill({
 						status: 200,
 						contentType: 'image/svg+xml',
@@ -51,6 +69,7 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 				return json(route, 404, { error: 'Not faked', code: 'not_found' });
 		}
 	});
+	return { descriptions };
 }
 
 const user = {
@@ -100,4 +119,56 @@ function thumbnail(id: string) {
 	for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
 	const hue = hash % 360;
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="300" height="200" fill="hsl(${hue} 55% 55%)"/><circle cx="210" cy="70" r="28" fill="hsl(${(hue + 40) % 360} 80% 80%)"/><path d="M0 200 L90 110 L150 160 L210 120 L300 200Z" fill="hsl(${(hue + 180) % 360} 35% 35%)"/></svg>`;
+}
+
+function detail(id: string, favorites: Set<string>) {
+	const [year, month, index] = id.split('-');
+	const item = library.items(`${year}-${month}`)[Number(index)];
+	return {
+		...item,
+		fullPath: `/assets/users/ana/${item.fileName}`,
+		fileSize: 3_400_000,
+		fileModifiedAt: item.fileCreatedAt,
+		capturedAt: item.fileCreatedAt,
+		extension: '.jpg',
+		scannedAt: item.fileCreatedAt,
+		checksum: `sum-${id}`,
+		hasExif: true,
+		hasThumbnails: true,
+		folderId: null,
+		folderPath: '/assets/users/ana/Camera',
+		exif: {
+			dateTaken: item.fileCreatedAt,
+			cameraMake: 'Apple',
+			cameraModel: 'iPhone 15',
+			width: 4000,
+			height: 3000,
+			orientation: 1,
+			latitude: 41.4,
+			longitude: 2.17,
+			altitude: null,
+			iso: 50,
+			aperture: 1.8,
+			shutterSpeed: 0.004,
+			focalLength: 6.9,
+			description: null,
+			keywords: null,
+			software: null,
+			placeName: 'Barcelona',
+			placeCountryCode: 'ES'
+		},
+		thumbnails: [],
+		userTags: ['familia'],
+		autoTags: ['playa'],
+		syncStatus: 'Synced',
+		isFavorite: favorites.has(id) || item.isFavorite,
+		isArchived: false,
+		isFileMissing: false,
+		caption: null,
+		aiDescription: null,
+		isReadOnly: false,
+		isOwner: true,
+		canEdit: true,
+		canSaveMotionFrame: false
+	};
 }

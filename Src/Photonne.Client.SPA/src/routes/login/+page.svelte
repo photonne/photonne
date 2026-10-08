@@ -20,7 +20,7 @@
 	};
 
 	$effect(() => {
-		if (session.status === 'signedIn') goto(returnTo, { replaceState: true });
+		if (session.status === 'signedIn') goto(returnTo, { replace: true });
 	});
 
 	async function submit(event: SubmitEvent) {
