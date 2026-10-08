@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -122,12 +123,12 @@ public class ThumbnailEndpoint : IEndpoint
             }
 
             var contentType = thumbnail.Format == "WebP" ? "image/webp" : "image/jpeg";
+            var file = new FileInfo(thumbnail.FilePath);
 
-            // Private: the photo belongs to a user, so a shared cache (reverse
-            // proxy, CDN) must never store it.
-            httpContext.Response.Headers.CacheControl = "private, max-age=2592000, immutable";
-
-            return Results.File(thumbnail.FilePath, contentType, $"{asset.FileName}_thumb_{size}.jpg");
+            MediaCaching.ApplyCacheControl(httpContext);
+            return Results.File(thumbnail.FilePath, contentType,
+                lastModified: file.LastWriteTimeUtc,
+                entityTag: MediaCaching.ETagFor(file));
         }
         catch (Exception ex)
         {

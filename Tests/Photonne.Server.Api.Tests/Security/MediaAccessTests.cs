@@ -122,18 +122,58 @@ public sealed class MediaAccessTests : IntegrationTestBase
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    [Fact]
-    public async Task Thumbnail_IsCacheableOnlyByTheBrowser()
+    [Theory]
+    [InlineData("/api/assets/{0}/thumbnail?size=Small")]
+    [InlineData("/api/assets/{0}/content")]
+    public async Task Media_IsCacheableOnlyByTheBrowser_AndRevalidatesDaily(string route)
     {
         var owner = await CreateUserAsync();
         var assetId = await CreatePhotoAsync(owner);
         var client = await LoginAsClientAsync(owner);
 
-        var response = await client.GetAsync($"/api/assets/{assetId}/thumbnail?size=Small");
+        var response = await client.GetAsync(string.Format(route, assetId));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.True(response.Headers.CacheControl?.Private);
-        Assert.False(response.Headers.CacheControl?.Public);
+        var cacheControl = response.Headers.CacheControl!;
+        Assert.True(cacheControl.Private);
+        Assert.False(cacheControl.Public);
+        Assert.Equal(TimeSpan.FromDays(1), cacheControl.MaxAge);
+        Assert.NotNull(response.Headers.ETag);
+    }
+
+    [Theory]
+    [InlineData("/api/assets/{0}/thumbnail?size=Small&v=1")]
+    [InlineData("/api/assets/{0}/content?v=abc")]
+    public async Task VersionedMedia_IsImmutable(string route)
+    {
+        var owner = await CreateUserAsync();
+        var assetId = await CreatePhotoAsync(owner);
+        var client = await LoginAsClientAsync(owner);
+
+        var response = await client.GetAsync(string.Format(route, assetId));
+
+        var cacheControl = response.Headers.CacheControl!;
+        Assert.True(cacheControl.Private);
+        Assert.Equal(TimeSpan.FromDays(365), cacheControl.MaxAge);
+        Assert.Contains(cacheControl.Extensions, e => e.Name == "immutable");
+    }
+
+    [Theory]
+    [InlineData("/api/assets/{0}/thumbnail?size=Small")]
+    [InlineData("/api/assets/{0}/content")]
+    public async Task Media_AnswersRevalidationWithNotModified(string route)
+    {
+        var owner = await CreateUserAsync();
+        var assetId = await CreatePhotoAsync(owner);
+        var client = await LoginAsClientAsync(owner);
+        var url = string.Format(route, assetId);
+        var first = await client.GetAsync(url);
+
+        using var revalidation = new HttpRequestMessage(HttpMethod.Get, url);
+        revalidation.Headers.IfNoneMatch.Add(first.Headers.ETag!);
+        var second = await client.SendAsync(revalidation);
+
+        Assert.Equal(HttpStatusCode.NotModified, second.StatusCode);
     }
 
     [Fact]
