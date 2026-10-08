@@ -10,11 +10,11 @@ Esfuerzo: S pequeño, M medio, L grande.
 
 Ya figuraba como deuda consciente en [ADR-003](../Src/Photonne.Client.Web/docs/ADR-003-user-workspace.md) ("endpoints de media anónimos protegidos solo por GUID"). Se amplía con lo encontrado en esta revisión.
 
-- [ ] **1. Media sin autenticación ni control de propiedad** (M). `Features/AssetDetail/AssetContentEndpoint.cs` (`/api/assets/{id}/content`) y `Features/Thumbnails/ThumbnailEndpoint.cs` (`/api/assets/{id}/thumbnail`) no tienen `RequireAuthorization()`. `Program.cs` no define ninguna política por defecto, y ningún handler comprueba que el asset sea visible para quien lo pide. Revisar también `/motion` y `/api/assets/pending/content`. Toca servidor, KMP y la web a la vez.
-- [ ] **2. `/thumbnails` como ficheros estáticos anónimos** (S). `Program.cs` monta el directorio completo de miniaturas con `UseStaticFiles` y un `PhysicalFileProvider`.
-- [ ] **3. Stack traces en las respuestas 500** (S). El middleware de excepciones de `Program.cs` añade `ex.ToString()` y `ex.Message` en producción. Se deben incluir solo en Development.
-- [ ] **4. `Cache-Control: public` en contenido privado** (S). `ThumbnailEndpoint` permite que proxies y CDN compartidos guarden fotos privadas. Debe ser `private`.
-- [ ] **5. Rutas físicas en los mensajes de error** (S). Varios 404 devuelven la ruta del fichero en disco (`File not found at: ...`).
+- [x] **1. Media sin autenticación ni control de propiedad** (M). Cerrado con `AssetVisibilityService.CanReadAsync` (dueño, carpeta legible aunque esté oculta del timeline, biblioteca, álbum compartido; admin lo lee todo) y un test que exige `RequireAuthorization` o `AllowAnonymous` en todo `/api`. Un extraño recibe 404, igual que si el asset no existiera. `Features/AssetDetail/AssetContentEndpoint.cs` (`/api/assets/{id}/content`) y `Features/Thumbnails/ThumbnailEndpoint.cs` (`/api/assets/{id}/thumbnail`) no tienen `RequireAuthorization()`. `Program.cs` no define ninguna política por defecto, y ningún handler comprueba que el asset sea visible para quien lo pide. Revisar también `/motion` y `/api/assets/pending/content`. Toca servidor, KMP y la web a la vez.
+- [x] **2. `/thumbnails` como ficheros estáticos anónimos** (S). Eliminado: ningún cliente lo usaba. `Program.cs` monta el directorio completo de miniaturas con `UseStaticFiles` y un `PhysicalFileProvider`.
+- [x] **3. Stack traces en las respuestas 500** (S). Fuera de Development solo se envían el título y el `traceId`; la excepción va al log. El middleware de excepciones de `Program.cs` añade `ex.ToString()` y `ex.Message` en producción. Se deben incluir solo en Development.
+- [x] **4. `Cache-Control: public` en contenido privado** (S). `ThumbnailEndpoint` permite que proxies y CDN compartidos guarden fotos privadas. Debe ser `private`.
+- [x] **5. Rutas físicas en los mensajes de error** (S). Cerrado en los endpoints de media. Quedan unos 35 endpoints autenticados (casi todos de admin) que devuelven `ex.Message`; se revisarán con el punto 9, al tipar las respuestas. Varios 404 devuelven la ruta del fichero en disco (`File not found at: ...`).
 
 ## Fase 1 — Base para la web (antes de construir pantallas)
 

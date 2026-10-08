@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
@@ -56,20 +57,7 @@ public class AssetVisibilityService
     /// </summary>
     public async Task<AssetVisibilityScope> GetScopeAsync(Guid userId, CancellationToken ct)
     {
-        // Personal-root semantics key on the USERNAME path, so the fallback
-        // must resolve it from the Users table — the previous
-        // "/assets/users/{userId}" GUID fallback silently disabled the
-        // personal-space rule whenever GetVirtualRootAsync returned null.
-        var userRootPath = await _userStorage.GetVirtualRootAsync(userId, ct);
-        if (string.IsNullOrEmpty(userRootPath))
-        {
-            var username = await _db.Users
-                .AsNoTracking()
-                .Where(u => u.Id == userId)
-                .Select(u => u.Username)
-                .FirstOrDefaultAsync(ct);
-            userRootPath = $"/assets/users/{username}";
-        }
+        var userRootPath = await ResolveUserRootPathAsync(userId, ct);
 
         // Folder visibility — single source of truth shared with the timeline
         // endpoints (explicit grants inherited across the subtree +
@@ -107,6 +95,61 @@ public class AssetVisibilityService
             allowedExternalLibraryIds,
             albumVisibleAssetIds,
             excludedFolderIds);
+    }
+
+    /// <summary>
+    /// "May this caller read this one asset?" — the per-request check of the
+    /// media and detail endpoints. Same four buckets as
+    /// <see cref="AssetVisibilityScope.AssetPredicate"/>, evaluated cheapest
+    /// first and without pre-fetching the album id set: a timeline page fires
+    /// one thumbnail request per cell, and nearly all of them stop at the
+    /// owner check or the cached folder set.
+    ///
+    /// Admins read everything: the server tools (duplicates, large files,
+    /// shared trash) show thumbnails of every user's assets.
+    /// </summary>
+    public async Task<bool> CanReadAsync(ClaimsPrincipal user, Asset asset, CancellationToken ct)
+    {
+        if (user.IsInRole("Admin")) return true;
+
+        var userId = user.GetUserId();
+        if (userId == Guid.Empty) return false;
+        if (asset.OwnerId == userId) return true;
+
+        if (asset.FolderId is { } folderId)
+        {
+            var userRootPath = await ResolveUserRootPathAsync(userId, ct);
+            var readableFolderIds = await _allowedFolders.GetReadableFolderIdsAsync(_db, userId, userRootPath, ct);
+            if (readableFolderIds.Contains(folderId)) return true;
+        }
+
+        if (asset.ExternalLibraryId is { } libraryId
+            && await _db.ExternalLibraryPermissions.AnyAsync(
+                p => p.UserId == userId && p.ExternalLibraryId == libraryId && p.CanRead, ct))
+        {
+            return true;
+        }
+
+        var assetId = asset.Id;
+        return await _db.AlbumPermissions.AnyAsync(
+            p => p.UserId == userId && p.CanRead && p.Album.AlbumAssets.Any(aa => aa.AssetId == assetId), ct);
+    }
+
+    private async Task<string> ResolveUserRootPathAsync(Guid userId, CancellationToken ct)
+    {
+        // Personal-root semantics key on the USERNAME path, so the fallback
+        // must resolve it from the Users table — the previous
+        // "/assets/users/{userId}" GUID fallback silently disabled the
+        // personal-space rule whenever GetVirtualRootAsync returned null.
+        var userRootPath = await _userStorage.GetVirtualRootAsync(userId, ct);
+        if (!string.IsNullOrEmpty(userRootPath)) return userRootPath;
+
+        var username = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.Username)
+            .FirstOrDefaultAsync(ct);
+        return $"/assets/users/{username}";
     }
 }
 

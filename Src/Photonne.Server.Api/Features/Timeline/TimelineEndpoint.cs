@@ -13,6 +13,7 @@ public class TimelineEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/timeline", Handle)
+            .RequireAuthorization()
         .CodeSample(
                 codeSample: "curl -X GET \"http://localhost:5000/api/assets/timeline\" -H \"Accept: application/json\"",
                 label: "cURL Example")

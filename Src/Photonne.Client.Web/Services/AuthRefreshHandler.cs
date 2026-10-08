@@ -57,7 +57,8 @@ public sealed class AuthRefreshHandler : DelegatingHandler
 
         var uri = request.RequestUri?.ToString() ?? string.Empty;
         return uri.Contains("/api/auth/login", StringComparison.OrdinalIgnoreCase)
-               || uri.Contains("/api/auth/refresh", StringComparison.OrdinalIgnoreCase);
+               || uri.Contains("/api/auth/refresh", StringComparison.OrdinalIgnoreCase)
+               || uri.Contains("/api/auth/logout", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<HttpRequestMessage> CloneRequestAsync(

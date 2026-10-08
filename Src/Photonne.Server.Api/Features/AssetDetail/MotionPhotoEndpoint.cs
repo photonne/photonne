@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -27,6 +29,7 @@ public class MotionPhotoEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/{assetId:guid}/motion", Handle)
+            .RequireAuthorization()
             .WithName("GetAssetMotion")
             .WithTags("Assets")
             .WithDescription("Gets the paired motion video for a Live Photo, if one exists");
@@ -35,6 +38,8 @@ public class MotionPhotoEndpoint : IEndpoint
     private async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] AssetVisibilityService visibility,
+        ClaimsPrincipal user,
         [FromRoute] Guid assetId,
         CancellationToken cancellationToken)
     {
@@ -42,7 +47,7 @@ public class MotionPhotoEndpoint : IEndpoint
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == assetId, cancellationToken);
 
-        if (asset == null)
+        if (asset == null || !await visibility.CanReadAsync(user, asset, cancellationToken))
         {
             return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
         }

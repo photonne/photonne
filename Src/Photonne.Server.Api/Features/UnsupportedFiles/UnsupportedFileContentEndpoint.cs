@@ -19,6 +19,7 @@ public class UnsupportedFileContentEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/unsupported-files/{id:guid}/content", Handle)
+            .RequireAuthorization()
             .WithName("GetUnsupportedFileContent")
             .WithTags("Assets")
             .WithDescription("Downloads the original bytes of an unsupported file");
@@ -53,7 +54,7 @@ public class UnsupportedFileContentEndpoint : IEndpoint
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(file.FullPath);
         if (!File.Exists(physicalPath))
-            return Results.NotFound(new { error = $"File not found at: {physicalPath}" });
+            return Results.NotFound(new { error = "File not found" });
 
         return Results.File(physicalPath, "application/octet-stream",
             fileDownloadName: file.FileName, enableRangeProcessing: true);

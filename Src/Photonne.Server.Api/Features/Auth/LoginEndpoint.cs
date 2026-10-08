@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -26,6 +27,7 @@ public class LoginEndpoint : IEndpoint
         [FromBody] LoginRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
@@ -80,6 +82,7 @@ public class LoginEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var token = await authService.GenerateTokenAsync(user);
+        MediaSessionCookie.Append(httpContext, token);
 
         return Results.Ok(new LoginResponse
         {

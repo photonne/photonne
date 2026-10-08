@@ -13,6 +13,7 @@ public class GetShareEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/share/{token}", Handle)
+            .AllowAnonymous()
             .WithName("GetShareLink")
             .WithTags("Share")
             .WithDescription("Returns public share info for a token (no authentication required)");

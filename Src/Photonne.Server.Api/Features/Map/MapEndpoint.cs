@@ -15,6 +15,7 @@ public class MapAssetsEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/map", Handle)
+            .RequireAuthorization()
             .CodeSample(
                 codeSample: "curl -X GET \"http://localhost:5000/api/assets/map?zoom=10&bounds=40.0,-3.0,41.0,-2.0\" -H \"Accept: application/json\"",
                 label: "cURL Example")

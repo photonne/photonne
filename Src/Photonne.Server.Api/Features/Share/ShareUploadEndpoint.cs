@@ -23,6 +23,7 @@ public class ShareUploadEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/api/share/{token}/upload", Handle)
+            .AllowAnonymous()
             .DisableAntiforgery()
             .WithName("ShareUpload")
             .WithTags("Share")
