@@ -1,9 +1,9 @@
+using Photonne.Server.Api.Shared.Dtos;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Photonne.Client.Web.Models;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;

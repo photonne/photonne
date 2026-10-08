@@ -61,11 +61,23 @@ RUN set -eux; \
     fi; \
     touch cities.tsv.gz
 
+# ─── Web client ───────────────────────────────────────────────────────────────
+# The SvelteKit SPA (Src/Photonne.Client.SPA), built to static files that the
+# server hosts from wwwroot. Its API client is generated from the committed
+# OpenAPI contract, so the build needs that file too.
+FROM node:22-alpine AS spa
+WORKDIR /src
+COPY Src/Photonne.Server.Api/openapi/v1.json Src/Photonne.Server.Api/openapi/v1.json
+COPY Src/Photonne.Client.SPA/package.json Src/Photonne.Client.SPA/package-lock.json Src/Photonne.Client.SPA/
+WORKDIR /src/Src/Photonne.Client.SPA
+RUN npm ci --ignore-scripts
+COPY Src/Photonne.Client.SPA/ ./
+RUN npm run prepare && npm run build
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Src/Photonne.Server.Api/Photonne.Server.Api.csproj", "Src/Photonne.Server.Api/"]
-COPY ["Src/Photonne.Client.Web/Photonne.Client.Web.csproj", "Src/Photonne.Client.Web/"]
 RUN dotnet restore "Src/Photonne.Server.Api/Photonne.Server.Api.csproj"
 COPY . .
 WORKDIR "/src/Src/Photonne.Server.Api"
@@ -80,6 +92,7 @@ RUN --mount=type=secret,id=sixlabors_lic \
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+COPY --from=spa /src/Src/Photonne.Client.SPA/build ./wwwroot
 COPY --from=geodata /opt/geo/cities.tsv.gz /opt/geo/cities.tsv.gz
 COPY Src/Photonne.Server.Api/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

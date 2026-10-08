@@ -8,7 +8,7 @@ Esfuerzo: S pequeño, M medio, L grande.
 
 ## Fase 0 — Seguridad (independiente de la web, hacer ya)
 
-Ya figuraba como deuda consciente en [ADR-003](../Src/Photonne.Client.Web/docs/ADR-003-user-workspace.md) ("endpoints de media anónimos protegidos solo por GUID"). Se amplía con lo encontrado en esta revisión.
+Ya figuraba como deuda consciente en [ADR-003](ADR-003-user-workspace.md) ("endpoints de media anónimos protegidos solo por GUID"). Se amplía con lo encontrado en esta revisión.
 
 - [x] **1. Media sin autenticación ni control de propiedad** (M). Cerrado con `AssetVisibilityService.CanReadAsync` (dueño, carpeta legible aunque esté oculta del timeline, biblioteca, álbum compartido; admin lo lee todo) y un test que exige `RequireAuthorization` o `AllowAnonymous` en todo `/api`. Un extraño recibe 404, igual que si el asset no existiera. `Features/AssetDetail/AssetContentEndpoint.cs` (`/api/assets/{id}/content`) y `Features/Thumbnails/ThumbnailEndpoint.cs` (`/api/assets/{id}/thumbnail`) no tienen `RequireAuthorization()`. `Program.cs` no define ninguna política por defecto, y ningún handler comprueba que el asset sea visible para quien lo pide. Revisar también `/motion` y `/api/assets/pending/content`. Toca servidor, KMP y la web a la vez.
 - [x] **2. `/thumbnails` como ficheros estáticos anónimos** (S). Eliminado: ningún cliente lo usaba. `Program.cs` monta el directorio completo de miniaturas con `UseStaticFiles` y un `PhysicalFileProvider`.

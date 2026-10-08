@@ -176,7 +176,6 @@ await app.EnsureFFmpegAsync();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseWebAssemblyDebugging();
     app.MapScalarApiReference();
 }
 
@@ -224,21 +223,18 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 // Security headers (CSP, X-CTO, Referrer-Policy, X-Frame-Options). Skipped for the
 // dev-only Scalar/OpenAPI endpoints, which pull their UI from third-party CDNs.
-// In Development we extend connect-src with ws/wss + unpkg.com so the ASP.NET Core
-// Browser Refresh WebSocket and library source maps (.js.map) work under DevTools.
-var isDev = app.Environment.IsDevelopment();
-var connectSrc = isDev
-    ? "connect-src 'self' ws: wss: https://unpkg.com"
-    : "connect-src 'self'";
-
+// The web client's only inline scripts are the ones in its index.html, allowed by
+// hash; styles stay 'unsafe-inline' for the style attributes Svelte writes. Map
+// tiles come from CARTO.
 var csp = string.Join("; ", new[]
 {
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
+    string.Join(' ', new[] { "script-src 'self'" }.Concat(SpaHosting.InlineScriptHashes(app.Environment))),
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     "img-src 'self' data: blob: https://*.basemaps.cartocdn.com",
-    connectSrc,
+    "media-src 'self' blob:",
+    "connect-src 'self'",
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",
@@ -267,7 +263,6 @@ if (builder.Configuration.GetValue<bool>("HTTPS_REDIRECT"))
     app.UseHttpsRedirection();
 }
 
-// IMPORTANTE: Authentication y Authorization deben ir antes de UseBlazorFrameworkFiles
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -279,8 +274,8 @@ app.UseMiddleware<DemoModeGuardMiddleware>();
 // Rate limiter — always present but NoLimiter outside demo mode.
 app.UseRateLimiter();
 
-app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
+// The web client (Src/Photonne.Client.SPA, built into wwwroot).
+app.UseSpaStaticFiles();
 
 app.RegisterEndpoints();
 
@@ -293,7 +288,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ready" }))
     .AllowAnonymous()
     .ExcludeFromDescription();
 
-app.MapFallbackToFile("index.html");
+app.MapSpaFallback();
 
 app.Run();
 

@@ -40,6 +40,14 @@ public sealed class PhotonneApiFactory : WebApplicationFactory<Program>, IAsyncL
         "photonne-tests-thumbs",
         Guid.NewGuid().ToString("N"));
 
+    private readonly string _webRootPath = Path.Combine(
+        Path.GetTempPath(),
+        "photonne-tests-web",
+        Guid.NewGuid().ToString("N"));
+
+    /// <summary>The one inline script of the stand-in web client's index.html.</summary>
+    public const string IndexInlineScript = "window.started = true;";
+
     private Respawner? _respawner;
     private NpgsqlConnection? _respawnConnection;
 
@@ -71,6 +79,14 @@ public sealed class PhotonneApiFactory : WebApplicationFactory<Program>, IAsyncL
         builder.UseSetting("AssetsPath", _internalAssetsPath);
         builder.UseSetting("InternalAssetsPath", _internalAssetsPath);
         builder.UseSetting("ThumbnailsPath", _thumbnailsPath);
+
+        // A stand-in for the built web client (wwwroot in the image).
+        Directory.CreateDirectory(_webRootPath);
+        File.WriteAllText(Path.Combine(_webRootPath, "index.html"),
+            $"<!doctype html><html><head><title>Photonne</title></head><body><script>{IndexInlineScript}</script></body></html>");
+        Directory.CreateDirectory(Path.Combine(_webRootPath, "_app", "immutable"));
+        File.WriteAllText(Path.Combine(_webRootPath, "_app", "immutable", "start.abc123.js"), "export {};");
+        builder.UseWebRoot(_webRootPath);
 
         builder.ConfigureServices(services =>
         {
