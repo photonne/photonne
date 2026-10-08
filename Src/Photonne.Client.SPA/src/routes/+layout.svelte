@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import { configureApiClient } from '#lib/api/index.js';
+	import Toaster from '#lib/components/Toaster.svelte';
 	import favicon from '#lib/assets/favicon.svg';
 	import { session } from '#lib/auth/session.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -47,6 +48,7 @@
 	{:else}
 		{@render children()}
 	{/if}
+	<Toaster />
 </QueryClientProvider>
 
 <style>

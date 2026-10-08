@@ -1,0 +1,95 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"action_favorite": "Favorito",
+	"action_add_to_album": "Añadir a un álbum",
+	"action_move_to_folder": "Mover a una carpeta",
+	"action_download": "Descargar",
+	"action_archive": "Archivar",
+	"action_trash": "Mover a la papelera",
+	"action_undo": "Deshacer",
+	"action_failed": "No se ha podido completar la acción.",
+	"action_favorited": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} marcada como favorita",
+				"countPlural=other": "{count} marcadas como favoritas"
+			}
+		}
+	],
+	"action_unfavorited": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} quitada de favoritas",
+				"countPlural=other": "{count} quitadas de favoritas"
+			}
+		}
+	],
+	"action_archived": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivada",
+				"countPlural=other": "{count} archivadas"
+			}
+		}
+	],
+	"action_trashed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} movida a la papelera",
+				"countPlural=other": "{count} movidas a la papelera"
+			}
+		}
+	],
+	"action_added_to_album": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} añadida a «{album}»",
+				"countPlural=other": "{count} añadidas a «{album}»"
+			}
+		}
+	],
+	"action_moved": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} movida a «{folder}»",
+				"countPlural=other": "{count} movidas a «{folder}»"
+			}
+		}
+	],
+	"action_zip_preparing": "Preparando la descarga…",
+	"album_picker_title": "Añadir a un álbum",
+	"album_picker_search": "Buscar álbum",
+	"album_picker_new": "Nuevo álbum",
+	"album_picker_new_name": "Nombre del nuevo álbum",
+	"album_picker_create": "Crear y añadir",
+	"album_picker_empty": "No hay álbumes que coincidan.",
+	"album_picker_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} elemento",
+				"countPlural=other": "{count} elementos"
+			}
+		}
+	],
+	"folder_picker_title": "Mover a una carpeta",
+	"folder_picker_by_year": "Organizar por año de captura",
+	"folder_picker_move": "Mover",
+	"folder_picker_empty": "No tienes carpetas donde mover.",
+	"dialog_cancel": "Cancelar",
+	"drop_add_to_album": "Soltar para añadir a «{album}»",
+	"drop_move_to_folder": "Soltar para mover a «{folder}»"
+}

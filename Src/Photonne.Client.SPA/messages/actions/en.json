@@ -1,0 +1,95 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"action_favorite": "Favorite",
+	"action_add_to_album": "Add to an album",
+	"action_move_to_folder": "Move to a folder",
+	"action_download": "Download",
+	"action_archive": "Archive",
+	"action_trash": "Move to trash",
+	"action_undo": "Undo",
+	"action_failed": "Couldn't complete the action.",
+	"action_favorited": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} marked as favorite",
+				"countPlural=other": "{count} marked as favorites"
+			}
+		}
+	],
+	"action_unfavorited": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} removed from favorites",
+				"countPlural=other": "{count} removed from favorites"
+			}
+		}
+	],
+	"action_archived": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archived",
+				"countPlural=other": "{count} archived"
+			}
+		}
+	],
+	"action_trashed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} moved to trash",
+				"countPlural=other": "{count} moved to trash"
+			}
+		}
+	],
+	"action_added_to_album": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} added to “{album}”",
+				"countPlural=other": "{count} added to “{album}”"
+			}
+		}
+	],
+	"action_moved": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} moved to “{folder}”",
+				"countPlural=other": "{count} moved to “{folder}”"
+			}
+		}
+	],
+	"action_zip_preparing": "Preparing the download…",
+	"album_picker_title": "Add to an album",
+	"album_picker_search": "Search albums",
+	"album_picker_new": "New album",
+	"album_picker_new_name": "New album name",
+	"album_picker_create": "Create and add",
+	"album_picker_empty": "No matching albums.",
+	"album_picker_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} item",
+				"countPlural=other": "{count} items"
+			}
+		}
+	],
+	"folder_picker_title": "Move to a folder",
+	"folder_picker_by_year": "Organize by capture year",
+	"folder_picker_move": "Move",
+	"folder_picker_empty": "You have no folders to move to.",
+	"dialog_cancel": "Cancel",
+	"drop_add_to_album": "Drop to add to “{album}”",
+	"drop_move_to_folder": "Drop to move to “{folder}”"
+}

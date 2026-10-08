@@ -3,51 +3,33 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
+	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
+	import { BatchActions } from '#lib/actions/batch-actions.svelte.js';
+	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import {
 		getAssetDetailQueryKey,
-		getTimelineBucketItemsOptions,
 		getTimelineBucketsOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
-	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import { longDate, monthTitle } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import PhotoGrid from '#lib/timeline/PhotoGrid.svelte';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
-	import { toGridAsset, type GridAsset } from '#lib/timeline/types.js';
+	import { TimelineStore } from '#lib/timeline/timeline-store.svelte.js';
+	import type { GridAsset } from '#lib/timeline/types.js';
 	import AssetViewer, { type AssetChange } from '#lib/viewer/AssetViewer.svelte';
 	import { neighborsIn } from '#lib/viewer/neighbors.js';
 
 	const queryClient = useQueryClient();
 	const buckets = createQuery(() => getTimelineBucketsOptions());
-
-	// Months are loaded on demand as they approach the viewport; until then
-	// they are placeholders sized from their count (the bucket model).
-	const months = new SvelteMap<string, GridAsset[]>();
-	const requested = new SvelteSet<string>();
+	const store = new TimelineStore(queryClient, () => buckets.data);
 	const selection = new Selection();
+	const batch = new BatchActions(store, selection);
 
-	const sections = $derived(
-		(buckets.data ?? []).map((bucket) => ({
-			key: bucket.key,
-			count: bucket.count,
-			items: months.get(bucket.key) ?? null
-		}))
-	);
-
-	async function loadMonth(key: string) {
-		if (requested.has(key)) return;
-		requested.add(key);
-		try {
-			const items = await queryClient.fetchQuery(
-				getTimelineBucketItemsOptions({ path: { yearMonth: key } })
-			);
-			months.set(key, items.map(toGridAsset));
-		} catch {
-			// Retried the next time the month scrolls into reach.
-			requested.delete(key);
-		}
+	function itemLabel(item: GridAsset) {
+		const date = longDate(item.capturedAt);
+		return item.isVideo ? m.grid_item_video({ date }) : m.grid_item_photo({ date });
 	}
 
 	// --- Viewer ----------------------------------------------------------
@@ -56,21 +38,19 @@
 
 	let grid = $state<PhotoGrid<GridAsset>>();
 	let openedHere = false;
+	let pickingAlbumFor = $state<string | null>(null);
 
 	const openId = $derived(page.url.searchParams.get('asset'));
-	const order = $derived(sections.flatMap((section) => section.items?.map((i) => i.id) ?? []));
-	const byId = $derived(
-		new Map(sections.flatMap((section) => section.items?.map((i) => [i.id, i] as const) ?? []))
+	const neighbors = $derived(
+		openId ? neighborsIn(store.order, openId) : { previous: null, next: null }
 	);
-	const neighbors = $derived(openId ? neighborsIn(order, openId) : { previous: null, next: null });
 
 	// Reaching the last loaded photo pulls in the next month, so the arrow
 	// keeps going across month boundaries.
 	$effect(() => {
 		if (!openId || neighbors.next) return;
-		const index = sections.findIndex((s) => s.items?.some((i) => i.id === openId));
-		const following = sections.slice(index + 1).find((s) => s.items === null);
-		if (index >= 0 && following) loadMonth(following.key);
+		const following = store.nextUnloadedAfter(openId);
+		if (following) store.load(following);
 	});
 
 	function viewerUrl(assetId: string | null) {
@@ -98,36 +78,33 @@
 		if (last) grid?.focusItem(last);
 	}
 
+	/** After the shown photo leaves the timeline: next, else previous, else close. */
+	function leaveViewer() {
+		const target = neighbors.next ?? neighbors.previous;
+		if (target) navigateViewer(target);
+		else closeViewer();
+	}
+
+	async function removeFromViewer(remove: (ids: readonly string[]) => Promise<void>) {
+		if (!openId) return;
+		const id = openId;
+		leaveViewer();
+		await remove([id]);
+	}
+
 	function assetChanged(assetId: string, change: AssetChange) {
 		if (change === 'favorite') {
 			const detail = queryClient.getQueryData<AssetDetailResponse>(
 				getAssetDetailQueryKey({ path: { assetId } })
 			);
-			updateItem(assetId, (item) => ({
+			store.update([assetId], (item) => ({
 				...item,
 				isFavorite: detail?.isFavorite ?? !item.isFavorite
 			}));
 		} else if (change === 'date') {
 			// The photo may now belong to another month: rebuild the skeleton.
-			months.clear();
-			requested.clear();
-			queryClient.invalidateQueries({ queryKey: getTimelineBucketsOptions().queryKey });
+			store.reload();
 		}
-	}
-
-	function updateItem(assetId: string, update: (item: GridAsset) => GridAsset) {
-		for (const [key, items] of months) {
-			const index = items.findIndex((item) => item.id === assetId);
-			if (index >= 0) {
-				months.set(key, items.toSpliced(index, 1, update(items[index])));
-				return;
-			}
-		}
-	}
-
-	function itemLabel(item: GridAsset) {
-		const date = longDate(item.capturedAt);
-		return item.isVideo ? m.grid_item_video({ date }) : m.grid_item_photo({ date });
 	}
 </script>
 
@@ -138,23 +115,27 @@
 <h1 class="visually-hidden">{m.photos_title()}</h1>
 
 <div class="page">
-	<SelectionBar {selection} />
+	<SelectionBar {selection}>
+		{#snippet actions()}
+			<BatchActionBar actions={batch} {selection} />
+		{/snippet}
+	</SelectionBar>
 
 	{#if buckets.isPending}
 		<p class="status" role="status">{m.session_restoring()}</p>
 	{:else if buckets.isError}
 		<p class="status" role="alert">{m.error_loading()}</p>
-	{:else if sections.length === 0}
+	{:else if store.sections.length === 0}
 		<p class="status">{m.photos_empty()}</p>
 	{:else}
 		<div class="grid">
 			<PhotoGrid
-				{sections}
+				sections={store.sections}
 				{selection}
 				label={m.photos_title()}
 				sectionTitle={monthTitle}
 				{itemLabel}
-				onneedsection={loadMonth}
+				onneedsection={(key) => store.load(key)}
 				onopen={openViewer}
 				bind:this={grid}
 			/>
@@ -165,13 +146,25 @@
 {#if openId}
 	<AssetViewer
 		assetId={openId}
-		thumbnailVersion={byId.get(openId)?.thumbnailVersion}
+		thumbnailVersion={store.byId.get(openId)?.thumbnailVersion}
 		previous={neighbors.previous}
 		next={neighbors.next}
-		neighborVersion={(id) => byId.get(id)?.thumbnailVersion}
+		neighborVersion={(id) => store.byId.get(id)?.thumbnailVersion}
 		onnavigate={navigateViewer}
 		onclose={closeViewer}
 		onchanged={assetChanged}
+		ontrash={() => removeFromViewer((ids) => batch.trash(ids))}
+		onarchive={() => removeFromViewer((ids) => batch.archive(ids))}
+		onaddtoalbum={() => (pickingAlbumFor = openId)}
+	/>
+	<AlbumPickerDialog
+		open={pickingAlbumFor !== null}
+		onclose={() => (pickingAlbumFor = null)}
+		onpick={(album) => {
+			const id = pickingAlbumFor;
+			pickingAlbumFor = null;
+			if (id) batch.addToAlbum(album, [id]);
+		}}
 	/>
 {/if}
 

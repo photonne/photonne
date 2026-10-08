@@ -60,3 +60,10 @@ export function toDateTimeLocal(iso: string) {
 export function fromDateTimeLocal(value: string) {
 	return new Date(`${value}:00Z`).toISOString();
 }
+
+/** "202610081430" for file names, from the current local time. */
+export function fileStamp(now = Date.now()) {
+	const d = new Date(now);
+	const pad = (n: number) => String(n).padStart(2, '0');
+	return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
+}

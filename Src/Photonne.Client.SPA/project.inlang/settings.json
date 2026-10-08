@@ -5,7 +5,22 @@
 		"./node_modules/@inlang/plugin-m-function-matcher/dist/index.js"
 	],
 	"plugin.inlang.messageFormat": {
-		"pathPattern": "./messages/{locale}.json"
+		"pathPattern": [
+			"./messages/{locale}.json",
+			"./messages/actions/{locale}.json",
+			"./messages/albums/{locale}.json",
+			"./messages/folders/{locale}.json",
+			"./messages/collections/{locale}.json",
+			"./messages/people/{locale}.json",
+			"./messages/map/{locale}.json",
+			"./messages/search/{locale}.json",
+			"./messages/organize/{locale}.json",
+			"./messages/upload/{locale}.json",
+			"./messages/notifications/{locale}.json",
+			"./messages/settings/{locale}.json",
+			"./messages/share/{locale}.json",
+			"./messages/admin/{locale}.json"
+		]
 	},
 	"baseLocale": "es",
 	"locales": ["es", "en"]

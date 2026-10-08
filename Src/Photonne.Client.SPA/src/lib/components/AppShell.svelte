@@ -1,27 +1,54 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { createQuery } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { dropOnAlbum, dropOnFolder, isAssetDrag } from '#lib/actions/drag-assets.js';
+	import {
+		getAllAlbumsOptions,
+		getAllFoldersOptions
+	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { session } from '#lib/auth/session.svelte.js';
+	import { appHref as href } from '#lib/navigation/href.js';
+	import { navigation } from '#lib/navigation/sections.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale, type Locale } from '#lib/paraglide/runtime.js';
+	import Icon from './Icon.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
-	const navigation = [{ href: resolve('/(app)'), label: m.nav_photos }] as const;
-
 	const localeNames: Record<Locale, string> = { es: 'Español', en: 'English' };
 
-	function isCurrent(href: string) {
-		return href === resolve('/(app)')
-			? page.url.pathname === href
-			: page.url.pathname.startsWith(href);
+	const albums = createQuery(() => getAllAlbumsOptions());
+	const folders = createQuery(() => getAllFoldersOptions());
+
+	const pinned = $derived([
+		...(albums.data ?? [])
+			.filter((album) => album.isPinned && album.kind !== 'Smart')
+			.map((album) => ({ kind: 'album' as const, id: album.id, name: album.name })),
+		...(folders.data ?? [])
+			.filter((folder) => folder.isPinned)
+			.map((folder) => ({ kind: 'folder' as const, id: folder.id, name: folder.name }))
+	]);
+
+	let dropTarget = $state<string | null>(null);
+	let search = $state('');
+
+	function isCurrent(path: string) {
+		const target = href(path);
+		return path === '/' ? page.url.pathname === target : page.url.pathname.startsWith(target);
 	}
 
 	async function logout() {
 		await session.logout();
 		await goto(resolve('/login'), { replace: true });
+	}
+
+	function submitSearch(event: SubmitEvent) {
+		event.preventDefault();
+		const query = search.trim();
+		if (query) goto(`${href('/search')}?q=${encodeURIComponent(query)}`);
 	}
 </script>
 
@@ -29,37 +56,94 @@
 
 <div class="shell">
 	<header class="topbar">
-		<a class="brand" href={resolve('/(app)')}>{m.app_name()}</a>
+		<a class="brand" href={href('/')}>{m.app_name()}</a>
 
-		<details class="account">
-			<summary aria-label={m.account_menu()}>{session.user?.username}</summary>
-			<div class="menu">
-				<label>
-					<span>{m.language()}</span>
-					<select
-						value={getLocale()}
-						onchange={(event) => setLocale(event.currentTarget.value as Locale)}
-					>
-						{#each locales as locale (locale)}
-							<option value={locale}>{localeNames[locale]}</option>
-						{/each}
-					</select>
-				</label>
-				<button type="button" onclick={logout}>{m.account_logout()}</button>
-			</div>
-		</details>
+		<form class="search" role="search" onsubmit={submitSearch}>
+			<Icon name="search" size={18} />
+			<input
+				type="search"
+				aria-label={m.nav_search()}
+				placeholder={m.nav_search()}
+				bind:value={search}
+			/>
+		</form>
+
+		<div class="tools">
+			<a class="icon" href={href('/notifications')} aria-label={m.nav_notifications()}>
+				<Icon name="notifications" />
+			</a>
+			<details class="account">
+				<summary aria-label={m.account_menu()}>
+					<Icon name="person" size={18} />
+					<span>{session.user?.username}</span>
+				</summary>
+				<div class="menu">
+					<a href={href('/settings')}>{m.nav_settings()}</a>
+					<label>
+						<span>{m.language()}</span>
+						<select
+							value={getLocale()}
+							onchange={(event) => setLocale(event.currentTarget.value as Locale)}
+						>
+							{#each locales as locale (locale)}
+								<option value={locale}>{localeNames[locale]}</option>
+							{/each}
+						</select>
+					</label>
+					<button type="button" onclick={logout}>{m.account_logout()}</button>
+				</div>
+			</details>
+		</div>
 	</header>
 
 	<nav class="sidebar" aria-label={m.nav_main()}>
-		<ul>
-			{#each navigation as item (item.href)}
-				<li>
-					<a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
-						{item.label()}
-					</a>
-				</li>
-			{/each}
-		</ul>
+		{#each navigation.filter((section) => !section.adminOnly || session.isAdmin) as section (section.label())}
+			<h2>{section.label()}</h2>
+			<ul>
+				{#each section.items as item (item.path)}
+					<li>
+						<a href={href(item.path)} aria-current={isCurrent(item.path) ? 'page' : undefined}>
+							<Icon name={item.icon} size={18} />
+							{item.label()}
+						</a>
+					</li>
+				{/each}
+			</ul>
+		{/each}
+
+		{#if pinned.length > 0}
+			<h2>{m.nav_section_pinned()}</h2>
+			<ul>
+				{#each pinned as item (item.kind + item.id)}
+					{@const path = item.kind === 'album' ? `/albums/${item.id}` : `/folders/${item.id}`}
+					<li>
+						<a
+							href={href(path)}
+							class:drop={dropTarget === item.id}
+							aria-current={isCurrent(path) ? 'page' : undefined}
+							title={item.kind === 'album'
+								? m.drop_add_to_album({ album: item.name })
+								: m.drop_move_to_folder({ folder: item.name })}
+							ondragover={(event) => {
+								if (!isAssetDrag(event)) return;
+								event.preventDefault();
+								dropTarget = item.id;
+							}}
+							ondragleave={() => (dropTarget = null)}
+							ondrop={(event) => {
+								event.preventDefault();
+								dropTarget = null;
+								if (item.kind === 'album') dropOnAlbum(event, item);
+								else dropOnFolder(event, item);
+							}}
+						>
+							<Icon name={item.kind === 'album' ? 'album' : 'folder'} size={18} />
+							{item.name}
+						</a>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	</nav>
 
 	<main id="content" class="content" tabindex="-1">
@@ -96,16 +180,63 @@
 		grid-area: topbar;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		gap: var(--space-4);
 		padding: 0 var(--space-4);
 		border-bottom: 1px solid var(--color-border);
 	}
 
 	.brand {
+		width: calc(var(--sidebar-width) - var(--space-4));
 		font-weight: 700;
 		font-size: var(--font-size-lg);
 		color: inherit;
 		text-decoration: none;
+	}
+
+	.search {
+		flex: 1;
+		max-width: 640px;
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: 0 var(--space-3);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		color: var(--color-text-muted);
+	}
+
+	.search input {
+		flex: 1;
+		min-width: 0;
+		padding: var(--space-2) 0;
+		border: 0;
+		background: transparent;
+		color: var(--color-text);
+		outline: none;
+	}
+
+	.search:focus-within {
+		outline: 2px solid var(--color-focus);
+	}
+
+	.tools {
+		margin-left: auto;
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.icon {
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		color: inherit;
+	}
+
+	.icon:hover {
+		background: var(--color-surface);
 	}
 
 	.account {
@@ -113,6 +244,9 @@
 	}
 
 	.account summary {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 		list-style: none;
 		cursor: pointer;
 		padding: var(--space-1) var(--space-3);
@@ -134,12 +268,18 @@
 		z-index: 5;
 		display: grid;
 		gap: var(--space-3);
-		min-width: 200px;
+		min-width: 220px;
 		padding: var(--space-3);
 		background: var(--color-surface-raised);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-raised);
+	}
+
+	.menu a {
+		color: inherit;
+		text-decoration: none;
+		padding: var(--space-1) 0;
 	}
 
 	.menu label {
@@ -160,8 +300,17 @@
 
 	.sidebar {
 		grid-area: sidebar;
-		padding: var(--space-3);
+		padding: var(--space-2) var(--space-3) var(--space-6);
 		overflow-y: auto;
+	}
+
+	.sidebar h2 {
+		margin: var(--space-4) var(--space-3) var(--space-1);
+		font-size: var(--font-size-xs);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-text-muted);
 	}
 
 	.sidebar ul {
@@ -169,15 +318,20 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: var(--space-1);
+		gap: 2px;
 	}
 
 	.sidebar a {
-		display: block;
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
 		padding: var(--space-2) var(--space-3);
 		border-radius: var(--radius-sm);
 		color: inherit;
 		text-decoration: none;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.sidebar a:hover {
@@ -188,6 +342,11 @@
 		background: var(--color-surface);
 		color: var(--color-accent);
 		font-weight: 600;
+	}
+
+	.sidebar a.drop {
+		outline: 2px dashed var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent) 15%, transparent);
 	}
 
 	.content {

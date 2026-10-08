@@ -9,7 +9,7 @@ Cada fase termina en un commit (o varios) que deja la rama compilando, con lint,
 - [x] **1. Base.** Proyecto, i18n (es/en), cliente generado del contrato, sesión (login, refresh en cookie, logout, cookie de media), shell con navegación, tokens de diseño claro/oscuro, CI.
 - [x] **2. Timeline.** Rejilla justificada sobre el modelo de buckets, virtualizada; scrubber por meses; miniaturas versionadas; selección con teclado y ratón (Shift, Ctrl/Cmd, arrastre).
 - [x] **3. Visor.** Overlay con URL propia, anterior/siguiente, zoom, vídeo y Live Photo, panel de información editable, descarga, atajos.
-- [ ] **4. Acciones en lote.** Favorito, archivar, papelera con deshacer, añadir a álbum, mover a carpeta, descargar zip, compartir; arrastrar a álbumes y carpetas.
+- [x] **4. Acciones en lote.** Favorito, archivar, papelera con deshacer, añadir a álbum, mover a carpeta, descargar zip, compartir; arrastrar a álbumes y carpetas.
 - [ ] **5. Álbumes y carpetas.** CRUD, álbumes inteligentes con editor de reglas, compartición y permisos; árbol de carpetas, permisos y movimientos.
 - [ ] **6. Colecciones y descubrimiento.** Favoritos, archivados, papelera, recuerdos, explorar (etiquetas, objetos, escenas), personas, mapa.
 - [ ] **7. Búsqueda y gestión.** Búsqueda con filtros y semántica, organizar (bandeja y reglas), duplicados, utilidades.
