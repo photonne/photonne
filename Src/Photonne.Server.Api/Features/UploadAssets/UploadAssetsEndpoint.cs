@@ -50,33 +50,9 @@ public class UploadAssetsEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        // Validar tamaño máximo global (ServerSettings.MaxUploadSizeMb). 0 = sin límite.
-        var maxUploadRaw = await settingsService.GetSettingAsync(
-            "ServerSettings.MaxUploadSizeMb", Guid.Empty, "0");
-        if (int.TryParse(maxUploadRaw, out var maxUploadMb) && maxUploadMb > 0)
-        {
-            var maxBytes = (long)maxUploadMb * 1024L * 1024L;
-            if (file.Length > maxBytes)
-            {
-                return Results.Problem(
-                    detail: $"El archivo supera el tamaño máximo permitido ({maxUploadMb} MB).",
-                    statusCode: StatusCodes.Status413PayloadTooLarge);
-            }
-        }
-
-        // Validar cuota de almacenamiento
-        var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
-        if (dbUser?.StorageQuotaBytes.HasValue == true)
-        {
-            var usedBytes = await dbContext.Assets
-                .Where(a => a.OwnerId == userId && a.DeletedAt == null)
-                .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
-
-            if (usedBytes + file.Length > dbUser.StorageQuotaBytes.Value)
-                return Results.Problem(
-                    detail: "Has alcanzado el límite de almacenamiento asignado.",
-                    statusCode: StatusCodes.Status409Conflict);
-        }
+        var limitError = await CheckUploadLimitsAsync(
+            dbContext, settingsService, userId, file.Length, cancellationToken);
+        if (limitError != null) return limitError;
 
         // Resolve the destination folder. Manual uploads always go to /Uploads.
         // Mobile backups go to /MobileBackup, optionally with a per-device subfolder
@@ -191,6 +167,47 @@ public class UploadAssetsEndpoint : IEndpoint
             if (File.Exists(tempPath)) File.Delete(tempPath);
             return Results.Problem(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// The global maximum upload size (ServerSettings.MaxUploadSizeMb, 0 = no
+    /// limit) and the user's storage quota. Null when <paramref name="length"/>
+    /// more bytes fit; otherwise the problem response to return.
+    /// </summary>
+    internal static async Task<IResult?> CheckUploadLimitsAsync(
+        ApplicationDbContext dbContext,
+        SettingsService settingsService,
+        Guid userId,
+        long length,
+        CancellationToken cancellationToken)
+    {
+        var maxUploadRaw = await settingsService.GetSettingAsync(
+            "ServerSettings.MaxUploadSizeMb", Guid.Empty, "0");
+        if (int.TryParse(maxUploadRaw, out var maxUploadMb) && maxUploadMb > 0)
+        {
+            var maxBytes = (long)maxUploadMb * 1024L * 1024L;
+            if (length > maxBytes)
+            {
+                return Results.Problem(
+                    detail: $"El archivo supera el tamaño máximo permitido ({maxUploadMb} MB).",
+                    statusCode: StatusCodes.Status413PayloadTooLarge);
+            }
+        }
+
+        var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (dbUser?.StorageQuotaBytes.HasValue == true)
+        {
+            var usedBytes = await dbContext.Assets
+                .Where(a => a.OwnerId == userId && a.DeletedAt == null)
+                .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
+
+            if (usedBytes + length > dbUser.StorageQuotaBytes.Value)
+                return Results.Problem(
+                    detail: "Has alcanzado el límite de almacenamiento asignado.",
+                    statusCode: StatusCodes.Status409Conflict);
+        }
+
+        return null;
     }
 
     /// <summary>
