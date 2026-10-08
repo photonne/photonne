@@ -14,8 +14,9 @@ import kotlinx.serialization.json.Json
  * intents: backing up WhatsApp shouldn't flood the timeline, and the
  * timeline must work before any backup is configured).
  *
- * Only meaningful where the platform indexes media into folders
- * ([DeviceLibrary.supportsBuckets]); iOS/desktop ignore it.
+ * Folder-based modes need [DeviceLibrary.supportsBuckets] (Android). iOS
+ * offers All, CameraOnly (as "Solo biblioteca") and SyncedOnly; desktop
+ * has no device library.
  */
 sealed interface DeviceLibraryScope {
     /** The whole library — every app's images and videos. */
@@ -27,6 +28,10 @@ sealed interface DeviceLibraryScope {
      * `100MEDIA`…) stay visible; the trade-off is that OEMs that put
      * screenshots under `DCIM/Screenshots` (Samsung, Xiaomi) keep those
      * visible too.
+     *
+     * iOS has no folders nor a "taken by the camera" flag, so there it is
+     * "Solo biblioteca": the user's own library (no iCloud shared albums or
+     * computer-synced photos) without screenshots and screen recordings.
      */
     data object CameraOnly : DeviceLibraryScope
 

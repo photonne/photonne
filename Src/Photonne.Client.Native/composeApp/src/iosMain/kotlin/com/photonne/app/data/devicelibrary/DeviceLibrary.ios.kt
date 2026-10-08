@@ -17,7 +17,10 @@ import platform.Foundation.NSSortDescriptor
 import platform.Foundation.timeIntervalSince1970
 import platform.Photos.PHAccessLevelReadWrite
 import platform.Photos.PHAsset
+import platform.Photos.PHAssetMediaSubtypePhotoScreenshot
+import platform.Photos.PHAssetMediaSubtypeVideoScreenRecording
 import platform.Photos.PHAssetMediaTypeImage
+import platform.Photos.PHAssetSourceTypeUserLibrary
 import platform.Photos.PHAssetMediaTypeVideo
 import platform.Photos.PHAuthorizationStatusAuthorized
 import platform.Photos.PHAuthorizationStatusLimited
@@ -46,7 +49,8 @@ actual class DeviceLibrary {
 
     actual val isSupported: Boolean = true
 
-    /** PhotoKit has no per-asset folder concept — no buckets, no scoping. */
+    /** PhotoKit has no per-asset folder concept — no buckets. The scope
+     *  still applies, without folders (see [loadAll]). */
     actual val supportsBuckets: Boolean = false
 
     actual fun accessState(): DeviceLibraryAccess =
@@ -58,8 +62,12 @@ actual class DeviceLibrary {
         }
 
     actual suspend fun loadAll(scope: DeviceLibraryScope): List<DeviceMedia> {
-        // The scope is ignored on purpose (supportsBuckets = false): there
-        // are no folders to scope by, so the whole Camera Roll always shows.
+        // No folders to scope by: CameraOnly ("Solo biblioteca") keeps the
+        // user's own library minus screenshots and screen recordings, which
+        // is as close to "the camera" as PhotoKit gets. Buckets can't be
+        // picked here, so it falls back to everything. SyncedOnly never
+        // reaches the platform (DeviceLibraryStore short-circuits it).
+        val libraryOnly = scope == DeviceLibraryScope.CameraOnly
         if (!accessState().canRead) return emptyList()
         return withContext(Dispatchers.Default) {
             val options = PHFetchOptions().apply {
@@ -72,6 +80,7 @@ actual class DeviceLibrary {
             val out = ArrayList<DeviceMedia>(count)
             for (i in 0 until count) {
                 val asset = result.objectAtIndex(i.toULong()) as? PHAsset ?: continue
+                if (libraryOnly && !isOwnLibraryCapture(asset)) continue
                 val type = when (asset.mediaType) {
                     PHAssetMediaTypeImage -> DeviceMediaType.Image
                     PHAssetMediaTypeVideo -> DeviceMediaType.Video
@@ -112,6 +121,15 @@ actual class DeviceLibrary {
         awaitClose { PHPhotoLibrary.sharedPhotoLibrary().unregisterChangeObserver(observer) }
     }
 }
+
+private val SCREEN_SUBTYPES: ULong =
+    PHAssetMediaSubtypePhotoScreenshot or PHAssetMediaSubtypeVideoScreenRecording
+
+/** Checked on the asset rather than with a fetch predicate: these are plain
+ *  properties already in memory, and the bitmask predicate syntax is fragile. */
+private fun isOwnLibraryCapture(asset: PHAsset): Boolean =
+    (asset.sourceType and PHAssetSourceTypeUserLibrary) != 0uL &&
+        (asset.mediaSubtypes and SCREEN_SUBTYPES) == 0uL
 
 private fun syntheticFilename(asset: PHAsset, type: DeviceMediaType): String {
     val ext = if (type == DeviceMediaType.Video) "mov" else "jpg"

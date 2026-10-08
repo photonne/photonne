@@ -110,6 +110,10 @@ class DeviceLibraryStore(
      *  [DeviceLibrary.supportsBuckets]). */
     val supportsBuckets: Boolean get() = library.supportsBuckets
 
+    /** Whether the timeline can be scoped at all ([DeviceLibrary.isSupported]):
+     *  Android by folders, iOS without them (see [DeviceLibraryScope.CameraOnly]). */
+    val supportsScope: Boolean get() = library.isSupported
+
     /** The library's folders for the scope sheet and the "Mi dispositivo"
      *  listing — the same enumeration the backup picker uses. */
     suspend fun listBuckets(): List<DeviceBucket> = library.listBuckets()
@@ -181,8 +185,8 @@ class DeviceLibraryStore(
             }
             _state.update { it.copy(access = access, isLoading = true) }
             // SyncedOnly never touches the platform: no local side at all, on
-            // every platform alike (iOS ignores scopes it can't express, so
-            // deciding here is what keeps the semantics uniform).
+            // every platform alike (deciding here keeps the semantics uniform
+            // instead of each platform's loadAll handling it).
             val libraryScope = scopeStore.value.value
             val media = if (libraryScope == DeviceLibraryScope.SyncedOnly) {
                 emptyList()

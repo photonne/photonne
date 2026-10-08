@@ -31,12 +31,16 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.backup_bucket_item_count
 import com.photonne.app.resources.timeline_scope_all
 import com.photonne.app.resources.timeline_scope_all_hint
+import com.photonne.app.resources.timeline_scope_all_hint_library
 import com.photonne.app.resources.timeline_scope_backed_up
 import com.photonne.app.resources.timeline_scope_camera
 import com.photonne.app.resources.timeline_scope_camera_hint
 import com.photonne.app.resources.timeline_scope_custom
 import com.photonne.app.resources.timeline_scope_custom_hint
+import com.photonne.app.resources.timeline_scope_library
+import com.photonne.app.resources.timeline_scope_library_hint
 import com.photonne.app.resources.timeline_scope_sheet_hint
+import com.photonne.app.resources.timeline_scope_sheet_hint_library
 import com.photonne.app.resources.timeline_scope_sheet_title
 import com.photonne.app.resources.timeline_scope_synced
 import com.photonne.app.resources.timeline_scope_synced_hint
@@ -51,11 +55,15 @@ import com.photonne.app.ui.theme.SheetHeader
  * backup-folder list (see [DeviceLibraryScope]). Buckets already being
  * backed up carry a small "backed up" tag so both worlds stay legible
  * without being coupled.
+ *
+ * Without [byFolders] (iOS: PhotoKit has no folders) the dial loses
+ * "Carpetas concretas" and its middle step reads "Solo biblioteca".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineLibraryScopeSheet(
     scope: DeviceLibraryScope,
+    byFolders: Boolean,
     /** Null while the bucket enumeration is still running. */
     buckets: List<DeviceBucket>?,
     /** Folder-ref uris currently in the backup list, for the tag. */
@@ -72,7 +80,10 @@ fun TimelineLibraryScopeSheet(
             item("header") {
                 SheetHeader(
                     title = stringResource(Res.string.timeline_scope_sheet_title),
-                    subtitle = stringResource(Res.string.timeline_scope_sheet_hint),
+                    subtitle = stringResource(
+                        if (byFolders) Res.string.timeline_scope_sheet_hint
+                        else Res.string.timeline_scope_sheet_hint_library
+                    ),
                     modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.sm)
                 )
             }
@@ -83,20 +94,28 @@ fun TimelineLibraryScopeSheet(
             item("mode-all") {
                 ScopeModeRow(
                     title = stringResource(Res.string.timeline_scope_all),
-                    hint = stringResource(Res.string.timeline_scope_all_hint),
+                    hint = stringResource(
+                        if (byFolders) Res.string.timeline_scope_all_hint
+                        else Res.string.timeline_scope_all_hint_library
+                    ),
                     selected = scope == DeviceLibraryScope.All,
                     onClick = { onSelect(DeviceLibraryScope.All) }
                 )
             }
             item("mode-camera") {
                 ScopeModeRow(
-                    title = stringResource(Res.string.timeline_scope_camera),
-                    hint = stringResource(Res.string.timeline_scope_camera_hint),
+                    title = stringResource(
+                        if (byFolders) Res.string.timeline_scope_camera else Res.string.timeline_scope_library
+                    ),
+                    hint = stringResource(
+                        if (byFolders) Res.string.timeline_scope_camera_hint
+                        else Res.string.timeline_scope_library_hint
+                    ),
                     selected = scope == DeviceLibraryScope.CameraOnly,
                     onClick = { onSelect(DeviceLibraryScope.CameraOnly) }
                 )
             }
-            item("mode-custom") {
+            if (byFolders) item("mode-custom") {
                 ScopeModeRow(
                     title = stringResource(Res.string.timeline_scope_custom),
                     hint = stringResource(Res.string.timeline_scope_custom_hint),

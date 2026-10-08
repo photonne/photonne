@@ -72,6 +72,11 @@
     <string name="timeline_scope_custom">Specific folders</string>
     <string name="timeline_scope_custom_hint">Pick the folders you want to see</string>
     <string name="timeline_scope_backed_up">Backed up</string>
+    <string name="timeline_scope_notice_library">Only photos from your library are shown, without screenshots</string>
+    <string name="timeline_scope_sheet_hint_library">Choose which photos on this device show up in the timeline. This doesn\'t affect backup.</string>
+    <string name="timeline_scope_all_hint_library">Includes screenshots and shared albums</string>
+    <string name="timeline_scope_library">Library only</string>
+    <string name="timeline_scope_library_hint">Your photos and videos, without screenshots or screen recordings</string>
     <string name="timeline_scope_notice">Showing camera photos only</string>
     <string name="timeline_scope_notice_change">Change</string>
     <string name="timeline_scope_notice_dismiss">Dismiss</string>

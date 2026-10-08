@@ -129,6 +129,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import com.photonne.app.resources.backup_timeline_pending_row
 import com.photonne.app.resources.timeline_scope_notice
+import com.photonne.app.resources.timeline_scope_notice_library
 import com.photonne.app.resources.timeline_scope_notice_change
 import com.photonne.app.resources.timeline_scope_notice_dismiss
 import com.photonne.app.ui.main.ImmersiveChromeEffect
@@ -295,7 +296,7 @@ fun TimelineScreen(
         scopeStore.dismissNotice()
         scopeSheetOpen = true
     }
-    val scopeUiAvailable = deviceLibrary.supportsBuckets && deviceLibraryState.access.canRead
+    val scopeUiAvailable = deviceLibrary.supportsScope && deviceLibraryState.access.canRead
     val showBackupRow = backupPendingCount > 0 && onOpenBackup != null
     // The camera-only default must never be silent: until acknowledged, a
     // quiet strip says the timeline is filtered and where to change it.
@@ -1090,6 +1091,7 @@ fun TimelineScreen(
                                             Column {
                                                 if (showScopeNotice) {
                                                     LibraryScopeNoticeRow(
+                                                        byFolders = deviceLibrary.supportsBuckets,
                                                         onChange = openScopeSheet,
                                                         onDismiss = scopeStore::dismissNotice
                                                     )
@@ -1287,12 +1289,14 @@ fun TimelineScreen(
                     withContext(Dispatchers.Default) {
                         backedUpUris = runCatching { backupStateStore.savedFolders() }
                             .getOrDefault(emptyList()).map { it.uri }.toSet()
+                        // Sin carpetas (iOS) la hoja no lista ninguna.
                         scopeBuckets = runCatching { deviceLibrary.listBuckets() }
                             .getOrDefault(emptyList())
                     }
                 }
                 TimelineLibraryScopeSheet(
                     scope = libraryScope,
+                    byFolders = deviceLibrary.supportsBuckets,
                     buckets = scopeBuckets,
                     backedUpUris = backedUpUris,
                     onSelect = scopeStore::update,
@@ -1595,7 +1599,7 @@ private fun BackupPendingRow(count: Int, onClick: () -> Unit) {
  * be discoverable, but never compete with the photos.
  */
 @Composable
-private fun LibraryScopeNoticeRow(onChange: () -> Unit, onDismiss: () -> Unit) {
+private fun LibraryScopeNoticeRow(byFolders: Boolean, onChange: () -> Unit, onDismiss: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1614,7 +1618,9 @@ private fun LibraryScopeNoticeRow(onChange: () -> Unit, onDismiss: () -> Unit) {
         )
         Spacer(Modifier.size(12.dp))
         Text(
-            text = stringResource(Res.string.timeline_scope_notice),
+            text = stringResource(
+                if (byFolders) Res.string.timeline_scope_notice else Res.string.timeline_scope_notice_library
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
