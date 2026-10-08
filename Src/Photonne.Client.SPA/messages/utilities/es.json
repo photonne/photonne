@@ -1,3 +1,210 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"utilities_lead": "Herramientas para mantener tu biblioteca en orden.",
+	"utilities_breadcrumb": "Ruta de navegación",
+	"utilities_nothing": "Nada que revisar",
+	"utilities_loading": "Cargando…",
+	"utilities_failed": "No se ha podido completar la acción.",
+	"utilities_undo": "Deshacer",
+	"utilities_cancel": "Cancelar",
+	"utilities_duplicates": "Duplicados",
+	"utilities_duplicates_description": "Copias exactas de la misma foto en distintas carpetas.",
+	"utilities_duplicates_figure": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} grupo · {size} recuperables",
+				"countPlural=other": "{count} grupos · {size} recuperables"
+			}
+		}
+	],
+	"utilities_duplicates_lead": "Marca en cada grupo las copias que sobran; van a la papelera y se pueden recuperar desde allí.",
+	"utilities_duplicates_empty": "No hay copias exactas en tu biblioteca.",
+	"utilities_duplicates_summary": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} grupo · hasta {size} recuperables",
+				"countPlural=other": "{count} grupos · hasta {size} recuperables"
+			}
+		}
+	],
+	"utilities_marked_summary": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} marcada ({size})",
+				"countPlural=other": "{count} marcadas ({size})"
+			}
+		}
+	],
+	"utilities_keep_oldest": "Conservar la más antigua en todos",
+	"utilities_keep_largest": "Conservar la más grande en todos",
+	"utilities_unmark_all": "Desmarcar todo",
+	"utilities_trash_marked": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Mover {count} a la papelera",
+				"countPlural=other": "Mover {count} a la papelera"
+			}
+		}
+	],
+	"utilities_trash": "Mover a la papelera",
+	"utilities_group_label": "Grupo {index}",
+	"utilities_group_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} copia de {size}",
+				"countPlural=other": "{count} copias de {size} cada una"
+			}
+		}
+	],
+	"utilities_open_copy": "Ver {name}",
+	"utilities_copy_label": "{name} en {folder}",
+	"utilities_badge_keep": "Se conserva",
+	"utilities_badge_trash": "A la papelera",
+	"utilities_to_trash": "A la papelera",
+	"utilities_mark_copy": "Mover a la papelera: {copy}",
+	"utilities_keep_only": "Conservar solo esta",
+	"utilities_keep_only_copy": "Conservar solo {copy}",
+	"utilities_keep_one": "Cada grupo conserva al menos una copia.",
+	"utilities_confirm_trash_title": "¿Mover las copias a la papelera?",
+	"utilities_confirm_trash_body": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Se moverá {count} copia ({size}) a la papelera. Podrás recuperarla desde allí.",
+				"countPlural=other": "Se moverán {count} copias ({size}) a la papelera. Podrás recuperarlas desde allí."
+			}
+		}
+	],
+	"utilities_trashed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} movida a la papelera",
+				"countPlural=other": "{count} movidas a la papelera"
+			}
+		}
+	],
+	"utilities_large_files": "Archivos grandes",
+	"utilities_large_files_description": "Lo que más espacio ocupa en tu biblioteca.",
+	"utilities_large_files_figure": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivo grande · {size}",
+				"countPlural=other": "{count} archivos grandes · {size}"
+			}
+		}
+	],
+	"utilities_large_files_lead": "Los {count} elementos que más ocupan, del más grande al más pequeño.",
+	"utilities_large_files_empty": "No se han encontrado archivos.",
+	"utilities_large_files_total": "Entre todos ocupan {size}",
+	"utilities_show": "Mostrar",
+	"utilities_trash_selected": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Mover {count} a la papelera",
+				"countPlural=other": "Mover {count} a la papelera"
+			}
+		}
+	],
+	"utilities_select_all": "Seleccionar todos",
+	"utilities_select_file": "Seleccionar {name}",
+	"utilities_col_file": "Archivo",
+	"utilities_col_type": "Tipo",
+	"utilities_col_size": "Tamaño",
+	"utilities_col_date": "Fecha",
+	"utilities_col_extension": "Extensión",
+	"utilities_col_found": "Encontrado",
+	"utilities_col_actions": "Acciones",
+	"utilities_type_photo": "Foto",
+	"utilities_type_video": "Vídeo",
+	"utilities_locations": "Ubicaciones",
+	"utilities_locations_description": "Las carpetas donde viven tus archivos.",
+	"utilities_locations_lead": "Carpetas y rutas donde se guardan tus archivos, con lo que contiene cada una.",
+	"utilities_locations_empty": "No se han encontrado carpetas.",
+	"utilities_expand_all": "Expandir todo",
+	"utilities_collapse_all": "Contraer todo",
+	"utilities_filter_folders": "Filtrar carpetas",
+	"utilities_folder_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} carpeta",
+				"countPlural=other": "{count} carpetas"
+			}
+		}
+	],
+	"utilities_photos": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivo",
+				"countPlural=other": "{count} archivos"
+			}
+		}
+	],
+	"utilities_subfolders": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} subcarpeta",
+				"countPlural=other": "{count} subcarpetas"
+			}
+		}
+	],
+	"utilities_here": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} aquí",
+				"countPlural=other": "{count} aquí"
+			}
+		}
+	],
+	"utilities_toggle_folder": "Mostrar u ocultar las subcarpetas de {folder}",
+	"utilities_badge_shared": "Compartida",
+	"utilities_badge_external": "Biblioteca externa",
+	"utilities_badge_hidden": "Fuera de descubrir",
+	"utilities_unsupported": "Archivos no compatibles",
+	"utilities_unsupported_description": "Archivos de tus carpetas que no son fotos ni vídeos.",
+	"utilities_unsupported_figure": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivo",
+				"countPlural=other": "{count} archivos"
+			}
+		}
+	],
+	"utilities_unsupported_lead": "Encontrados al escanear tus carpetas. No salen en la biblioteca; puedes descargarlos o borrarlos del disco.",
+	"utilities_unsupported_empty": "No hay archivos no compatibles.",
+	"utilities_load_more": "Cargar más",
+	"utilities_download": "Descargar",
+	"utilities_download_file": "Descargar {name}",
+	"utilities_delete": "Borrar del disco",
+	"utilities_delete_file": "Borrar {name} del disco",
+	"utilities_delete_title": "¿Borrar el archivo para siempre?",
+	"utilities_delete_body": "«{name}» se borrará del disco. Esto no se puede deshacer.",
+	"utilities_delete_forever": "Borrar para siempre",
+	"utilities_unsupported_deleted": "«{name}» borrado"
 }

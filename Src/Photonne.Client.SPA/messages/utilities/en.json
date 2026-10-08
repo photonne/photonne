@@ -1,3 +1,210 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"utilities_lead": "Tools to keep your library tidy.",
+	"utilities_breadcrumb": "Breadcrumb",
+	"utilities_nothing": "Nothing to review",
+	"utilities_loading": "Loading…",
+	"utilities_failed": "The action couldn't be completed.",
+	"utilities_undo": "Undo",
+	"utilities_cancel": "Cancel",
+	"utilities_duplicates": "Duplicates",
+	"utilities_duplicates_description": "Exact copies of the same photo in different folders.",
+	"utilities_duplicates_figure": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} group · {size} to free",
+				"countPlural=other": "{count} groups · {size} to free"
+			}
+		}
+	],
+	"utilities_duplicates_lead": "Mark the spare copies in each group; they go to the trash and can be recovered from there.",
+	"utilities_duplicates_empty": "There are no exact copies in your library.",
+	"utilities_duplicates_summary": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} group · up to {size} to free",
+				"countPlural=other": "{count} groups · up to {size} to free"
+			}
+		}
+	],
+	"utilities_marked_summary": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} marked ({size})",
+				"countPlural=other": "{count} marked ({size})"
+			}
+		}
+	],
+	"utilities_keep_oldest": "Keep the oldest everywhere",
+	"utilities_keep_largest": "Keep the largest everywhere",
+	"utilities_unmark_all": "Unmark all",
+	"utilities_trash_marked": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Move {count} to the trash",
+				"countPlural=other": "Move {count} to the trash"
+			}
+		}
+	],
+	"utilities_trash": "Move to the trash",
+	"utilities_group_label": "Group {index}",
+	"utilities_group_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} copy of {size}",
+				"countPlural=other": "{count} copies of {size} each"
+			}
+		}
+	],
+	"utilities_open_copy": "View {name}",
+	"utilities_copy_label": "{name} in {folder}",
+	"utilities_badge_keep": "Kept",
+	"utilities_badge_trash": "To the trash",
+	"utilities_to_trash": "To the trash",
+	"utilities_mark_copy": "Move to the trash: {copy}",
+	"utilities_keep_only": "Keep only this one",
+	"utilities_keep_only_copy": "Keep only {copy}",
+	"utilities_keep_one": "Each group keeps at least one copy.",
+	"utilities_confirm_trash_title": "Move the copies to the trash?",
+	"utilities_confirm_trash_body": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} copy ({size}) will move to the trash. You can recover it from there.",
+				"countPlural=other": "{count} copies ({size}) will move to the trash. You can recover them from there."
+			}
+		}
+	],
+	"utilities_trashed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} moved to the trash",
+				"countPlural=other": "{count} moved to the trash"
+			}
+		}
+	],
+	"utilities_large_files": "Large files",
+	"utilities_large_files_description": "What takes the most space in your library.",
+	"utilities_large_files_figure": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} large file · {size}",
+				"countPlural=other": "{count} large files · {size}"
+			}
+		}
+	],
+	"utilities_large_files_lead": "The {count} items that take the most space, largest first.",
+	"utilities_large_files_empty": "No files found.",
+	"utilities_large_files_total": "Together they take {size}",
+	"utilities_show": "Show",
+	"utilities_trash_selected": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Move {count} to the trash",
+				"countPlural=other": "Move {count} to the trash"
+			}
+		}
+	],
+	"utilities_select_all": "Select all",
+	"utilities_select_file": "Select {name}",
+	"utilities_col_file": "File",
+	"utilities_col_type": "Type",
+	"utilities_col_size": "Size",
+	"utilities_col_date": "Date",
+	"utilities_col_extension": "Extension",
+	"utilities_col_found": "Found",
+	"utilities_col_actions": "Actions",
+	"utilities_type_photo": "Photo",
+	"utilities_type_video": "Video",
+	"utilities_locations": "Locations",
+	"utilities_locations_description": "The folders your files live in.",
+	"utilities_locations_lead": "Folders and paths where your files are stored, with what each one holds.",
+	"utilities_locations_empty": "No folders found.",
+	"utilities_expand_all": "Expand all",
+	"utilities_collapse_all": "Collapse all",
+	"utilities_filter_folders": "Filter folders",
+	"utilities_folder_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} folder",
+				"countPlural=other": "{count} folders"
+			}
+		}
+	],
+	"utilities_photos": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} file",
+				"countPlural=other": "{count} files"
+			}
+		}
+	],
+	"utilities_subfolders": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} subfolder",
+				"countPlural=other": "{count} subfolders"
+			}
+		}
+	],
+	"utilities_here": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} here",
+				"countPlural=other": "{count} here"
+			}
+		}
+	],
+	"utilities_toggle_folder": "Show or hide the subfolders of {folder}",
+	"utilities_badge_shared": "Shared",
+	"utilities_badge_external": "External library",
+	"utilities_badge_hidden": "Out of discovery",
+	"utilities_unsupported": "Unsupported files",
+	"utilities_unsupported_description": "Files in your folders that aren't photos or videos.",
+	"utilities_unsupported_figure": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} file",
+				"countPlural=other": "{count} files"
+			}
+		}
+	],
+	"utilities_unsupported_lead": "Found while scanning your folders. They don't show in the library; you can download them or delete them from disk.",
+	"utilities_unsupported_empty": "There are no unsupported files.",
+	"utilities_load_more": "Load more",
+	"utilities_download": "Download",
+	"utilities_download_file": "Download {name}",
+	"utilities_delete": "Delete from disk",
+	"utilities_delete_file": "Delete {name} from disk",
+	"utilities_delete_title": "Delete the file forever?",
+	"utilities_delete_body": "“{name}” will be deleted from disk. This can't be undone.",
+	"utilities_delete_forever": "Delete forever",
+	"utilities_unsupported_deleted": "“{name}” deleted"
 }

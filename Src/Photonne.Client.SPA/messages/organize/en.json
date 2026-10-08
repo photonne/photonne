@@ -1,3 +1,146 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"organize_lead": "What the automatic backup uploads waits here until you file it in a folder.",
+	"organize_pending": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} pending",
+				"countPlural=other": "{count} pending"
+			}
+		}
+	],
+	"organize_range": "{from} – {to}",
+	"organize_sections": "Organize sections",
+	"organize_tab_inbox": "Inbox",
+	"organize_tab_rules": "By rules",
+	"organize_tab_excluded": "Set aside",
+	"organize_inbox_empty": "All organized: nothing is waiting to be filed.",
+	"organize_excluded_empty": "You haven't set anything aside.",
+	"organize_excluded_hint": "Photos that don't need a folder (screenshots, memes…). They don't count as pending; you can put them back in the inbox.",
+	"organize_suggestions": "Suggestions",
+	"organize_kind_trip": "Trip",
+	"organize_kind_person": "Person",
+	"organize_kind_scene": "Scene",
+	"organize_kind_month": "Month",
+	"organize_photo_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo",
+				"countPlural=other": "{count} photos"
+			}
+		}
+	],
+	"organize_review_and_move": "Review and move",
+	"organize_review_suggestion": "Review and move “{title}”",
+	"organize_dismiss": "Dismiss",
+	"organize_dismiss_suggestion": "Dismiss “{title}” (sets them aside)",
+	"organize_move": "Move to a folder",
+	"organize_choose_destination": "Choose destination",
+	"organize_cancel": "Cancel",
+	"organize_moved": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} moved to “{folder}”",
+				"countPlural=other": "{count} moved to “{folder}”"
+			}
+		}
+	],
+	"organize_set_aside_action": "Set aside from the inbox",
+	"organize_set_aside": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} set aside",
+				"countPlural=other": "{count} set aside"
+			}
+		}
+	],
+	"organize_put_back_action": "Put back in the inbox",
+	"organize_put_back": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} put back in the inbox",
+				"countPlural=other": "{count} put back in the inbox"
+			}
+		}
+	],
+	"organize_undo": "Undo",
+	"organize_failed": "The action couldn't be completed.",
+	"organize_review_count": "{kept} of {total} will move. Untick the ones you want to leave.",
+	"organize_review_group": "Move all of {group}",
+	"organize_review_item": "Photo {index} of {group}",
+	"organize_rule_title": "Conditions",
+	"organize_rule_hint": "Move everything pending that meets the conditions in one go.",
+	"organize_rule_match": "Match",
+	"organize_rule_all": "all conditions",
+	"organize_rule_any": "any condition",
+	"organize_rule_add": "Add a condition…",
+	"organize_rule_empty": "Add at least one condition.",
+	"organize_rule_negate": "Exclude those that match",
+	"organize_rule_remove": "Remove the condition {condition}",
+	"organize_rule_date": "Dates",
+	"organize_rule_folder": "Folder",
+	"organize_rule_person": "People",
+	"organize_rule_media": "Type",
+	"organize_rule_favorite": "Favorite",
+	"organize_rule_tag": "Automatic tag",
+	"organize_rule_object": "Objects",
+	"organize_rule_scene": "Scenes",
+	"organize_rule_text": "Name, path or tag",
+	"organize_rule_ocr": "Text in image",
+	"organize_rule_pick": "Choose…",
+	"organize_rule_picked": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} chosen",
+				"countPlural=other": "{count} chosen"
+			}
+		}
+	],
+	"organize_rule_subfolders": "Include subfolders",
+	"organize_rule_match_values": "How to combine the values",
+	"organize_rule_match_any": "any of them",
+	"organize_rule_match_all": "all together",
+	"organize_rule_photos": "Photos",
+	"organize_rule_videos": "Videos",
+	"organize_rule_favorite_yes": "Is a favorite",
+	"organize_rule_favorite_no": "Is not a favorite",
+	"organize_tag_live": "Live Photo",
+	"organize_tag_burst": "Burst",
+	"organize_tag_panorama": "Panorama",
+	"organize_tag_screenshot": "Screenshot",
+	"organize_tag_hdr": "HDR",
+	"organize_tag_portrait": "Portrait",
+	"organize_rule_preview": "Matches",
+	"organize_rule_preview_empty": "Complete a condition to see what matches.",
+	"organize_rule_matches": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} pending photo matches",
+				"countPlural=other": "{count} pending photos match"
+			}
+		}
+	],
+	"organize_rule_years": "By year",
+	"organize_rule_sample": "Sample",
+	"organize_rule_destination": "Destination",
+	"organize_rule_folder_target": "Destination folder",
+	"organize_rule_folder_choose": "Choose a folder…",
+	"organize_rule_by_year": "Organize into subfolders by year",
+	"organize_rule_review_title": "Review before moving to “{folder}”",
+	"organize_rule_nothing": "Nothing pending meets the rule any more.",
+	"organize_rule_invalid": "The server doesn't accept this rule."
 }
