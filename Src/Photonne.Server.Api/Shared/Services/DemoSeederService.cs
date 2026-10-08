@@ -17,7 +17,7 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   4. Create a handful of sample albums + mark some assets as favourites so the UI
 ///      feels alive on first visit.
 ///
-/// The operator-pinned settings (<see cref="DemoModeOptions.Settings"/>) are applied on
+/// The operator-pinned settings (<see cref="DemoModeOptions.ReadPinnedSettings"/>) are applied on
 /// every run, even when the assets are already seeded.
 ///
 /// Exposed as a hosted service (auto-runs on startup) and as a reusable method
@@ -27,6 +27,7 @@ public sealed class DemoSeederService : IHostedService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IOptions<DemoModeOptions> _options;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<DemoSeederService> _logger;
 
     private const string DemoFolderName = "demo-seed";
@@ -34,10 +35,12 @@ public sealed class DemoSeederService : IHostedService
     public DemoSeederService(
         IServiceProvider serviceProvider,
         IOptions<DemoModeOptions> options,
+        IConfiguration configuration,
         ILogger<DemoSeederService> logger)
     {
         _serviceProvider = serviceProvider;
         _options = options;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -111,7 +114,7 @@ public sealed class DemoSeederService : IHostedService
                 demoUser.Username, demoUser.Id);
         }
 
-        await ApplyPinnedSettingsAsync(settingsService, opts);
+        await ApplyPinnedSettingsAsync(settingsService);
 
         // Skip if already seeded — idempotent guard.
         var hasAssets = await dbContext.Assets
@@ -177,18 +180,15 @@ public sealed class DemoSeederService : IHostedService
     }
 
     /// <summary>
-    /// Writes <see cref="DemoModeOptions.Settings"/> as global settings. Runs on every
+    /// Writes <see cref="DemoModeOptions.ReadPinnedSettings"/> as global settings. Runs on every
     /// seed so a value changed in the config wins on the next boot, and so the values
     /// come back after <c>DemoResetService</c> wipes the Settings table.
     /// </summary>
-    private async Task ApplyPinnedSettingsAsync(SettingsService settingsService, DemoModeOptions opts)
+    private async Task ApplyPinnedSettingsAsync(SettingsService settingsService)
     {
-        foreach (var (key, value) in opts.Settings)
+        foreach (var (key, value) in DemoModeOptions.ReadPinnedSettings(_configuration))
         {
-            if (string.IsNullOrWhiteSpace(key))
-                continue;
-
-            await settingsService.SetSettingAsync(key, value ?? "", Guid.Empty);
+            await settingsService.SetSettingAsync(key, value, Guid.Empty);
             _logger.LogInformation("[DEMO] Applied pinned setting '{Key}'", key);
         }
     }

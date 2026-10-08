@@ -43,12 +43,26 @@ public class DemoModeOptions
     public string DemoPassword { get; set; } = "demo";
 
     /// <summary>
-    /// Server-wide settings the operator pins for the demo (e.g.
-    /// <c>ServerSettings.MapTileApiKey</c>). The seeder writes them as global
-    /// settings on every boot and after every reset, since the reset wipes the
-    /// Settings table and visitors can't edit global settings themselves.
-    /// Set them as <c>DemoMode:Settings:&lt;key&gt;</c> in appsettings or as
-    /// <c>DemoMode__Settings__&lt;key&gt;</c> environment variables.
+    /// Server-wide settings the operator pins for the demo (e.g. the map key), read
+    /// from <c>DemoMode:Settings</c>. The seeder writes them as global settings on every
+    /// boot and after every reset, since the reset wipes the Settings table and visitors
+    /// can't edit global settings themselves.
+    ///
+    /// Not a bound property on purpose: setting keys contain a dot, and the image's
+    /// <c>/bin/sh</c> entrypoint (dash) drops environment variables whose name isn't a
+    /// valid shell identifier. So every nesting level is joined back with a dot, and
+    /// <c>DemoMode__Settings__ServerSettings__MapTileApiKey</c> (env),
+    /// <c>"ServerSettings.MapTileApiKey"</c> and <c>{"ServerSettings":{"MapTileApiKey":…}}</c>
+    /// (appsettings) all pin <c>ServerSettings.MapTileApiKey</c>.
     /// </summary>
-    public Dictionary<string, string> Settings { get; set; } = new();
+    public static IReadOnlyDictionary<string, string> ReadPinnedSettings(IConfiguration configuration)
+    {
+        var section = configuration.GetSection(SectionName).GetSection("Settings");
+        return section.AsEnumerable(makePathsRelative: true)
+            .Where(kv => kv.Value != null)
+            .ToDictionary(
+                kv => kv.Key.Replace(ConfigurationPath.KeyDelimiter, "."),
+                kv => kv.Value!,
+                StringComparer.Ordinal);
+    }
 }

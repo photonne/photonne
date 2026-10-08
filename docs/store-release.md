@@ -57,8 +57,9 @@ de las tiendas, y lo que queda fuera del código.
   (`DemoModeGuardMiddleware`) y con un usuario y contraseña que no caduquen.
   Los ajustes globales no se pueden tocar desde la demo; los que necesite
   (la key del mapa…) se fijan en la configuración, p. ej.
-  `DemoMode__Settings__ServerSettings.MapTileApiKey`, y se reaplican tras
-  cada reinicio.
+  `DemoMode__Settings__ServerSettings__MapTileApiKey` (con `__` en vez del
+  punto: el `sh` del entrypoint descarta las variables con punto), y se
+  reaplican tras cada reinicio.
   También les sirve a los testers de la prueba cerrada que no tengan servidor.
 - [ ] **Probar en dispositivo real el build de release** (Android con R8, iOS
   archivado): login, timeline, visor, copia en segundo plano, liberar
