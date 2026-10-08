@@ -73,7 +73,7 @@
 		<BatchActionBar
 			actions={batch}
 			{selection}
-			available={['favorite', 'album', 'folder', 'download', 'trash']}
+			available={['favorite', 'album', 'folder', 'share', 'download', 'trash']}
 		/>
 	{/snippet}
 	{#snippet viewerExtra()}

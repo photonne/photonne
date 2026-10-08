@@ -299,7 +299,7 @@
 			<BatchActionBar
 				actions={batch}
 				{selection}
-				available={['favorite', 'album', 'download', 'trash']}
+				available={['favorite', 'album', 'share', 'download', 'trash']}
 			/>
 		{/snippet}
 	</CollectionView>
