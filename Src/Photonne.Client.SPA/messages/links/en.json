@@ -1,3 +1,75 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"links_nav": "My links",
+	"links_title": "My links",
+	"links_intro": "Every public link you have created, for any album or photo. Anyone who has one can open it without an account.",
+	"links_search": "Search by name",
+	"links_totals_active": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} active link",
+				"countPlural=other": "{count} active links"
+			}
+		}
+	],
+	"links_empty_title": "You haven't created any links yet",
+	"links_empty_body": "Select photos and press Share, or create a link from an album's Share window.",
+	"links_no_match": "No link matches the search.",
+	"links_unknown_subject": "Deleted content",
+	"links_kind_album": "Album",
+	"links_kind_photo": "Photo",
+	"links_status": "Link status",
+	"links_status_active": "Active",
+	"links_status_upload": "Accepts uploads",
+	"links_created_on": "Created {date}",
+	"links_open": "Open",
+	"links_close": "Close",
+	"links_share_action": "Share as a link",
+	"links_share_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Share {count} photo",
+				"countPlural=other": "Share {count} photos"
+			}
+		}
+	],
+	"links_share_intro": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "An album is created with the photo, plus a public link to view it without an account.",
+				"countPlural=other": "An album is created with the {count} photos, plus a public link to view it without an account."
+			}
+		}
+	],
+	"links_share_default_name": "Shared on {date}",
+	"links_share_name": "Album name",
+	"links_share_name_hint": "It's what people opening the link will see.",
+	"links_share_name_required": "Enter a name for the album.",
+	"links_share_failed": "The link could not be created.",
+	"links_share_ready": "Link ready",
+	"links_share_ready_hint": "Copy it and send it. You can change or revoke it any time from My links.",
+	"links_share_view_album": "View the album",
+	"links_format_title": "Original or JPEG?",
+	"links_format_scope_all": "All {total} photos are RAW or HEIC.",
+	"links_format_scope_some": [
+		{
+			"declarations": ["input count", "input total", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} of the {total} photos is RAW or HEIC; the rest download as they are.",
+				"countPlural=other": "{count} of the {total} photos are RAW or HEIC; the rest download as they are."
+			}
+		}
+	],
+	"links_format_original": "Original",
+	"links_format_original_extension": "Original (.{extension})",
+	"links_format_original_hint": "The file as it is, at full quality. For editing.",
+	"links_format_jpeg": "JPEG",
+	"links_format_jpeg_hint": "Opens anywhere. For sending or posting."
 }

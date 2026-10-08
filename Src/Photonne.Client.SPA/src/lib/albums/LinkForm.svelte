@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { daysFromNow, localDate, validateLinkForm, type LinkForm } from './share-link.js';
 
@@ -10,9 +11,19 @@
 		busy: boolean;
 		onsubmit: () => void;
 		oncancel: () => void;
+		/** Fields of the host's own above the link options (e.g. a name), inside the same form. */
+		leading?: Snippet;
 	}
 
-	let { form = $bindable(), hadPassword, submitLabel, busy, onsubmit, oncancel }: Props = $props();
+	let {
+		form = $bindable(),
+		hadPassword,
+		submitLabel,
+		busy,
+		onsubmit,
+		oncancel,
+		leading
+	}: Props = $props();
 
 	const id = $props.id();
 	let tried = $state(false);
@@ -41,6 +52,8 @@
 </script>
 
 <form class="link-form" onsubmit={submit} novalidate>
+	{@render leading?.()}
+
 	<fieldset>
 		<legend>{m.albums_link_expiry()}</legend>
 		<div class="row">

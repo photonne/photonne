@@ -4,24 +4,31 @@
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
 	import AlbumPickerDialog from './AlbumPickerDialog.svelte';
 	import type { BatchActions } from './batch-actions.svelte.js';
+	import DownloadFormatDialog from './DownloadFormatDialog.svelte';
 	import FolderPickerDialog from './FolderPickerDialog.svelte';
+
+	type Action = 'favorite' | 'album' | 'folder' | 'share' | 'download' | 'archive' | 'trash';
 
 	interface Props {
 		actions: BatchActions;
 		selection: Selection;
-		/** Which actions this surface offers (archive makes no sense in the archive). */
-		available?: readonly ('favorite' | 'album' | 'folder' | 'download' | 'archive' | 'trash')[];
+		/**
+		 * Which actions this surface offers (archive makes no sense in the
+		 * archive). `share` needs the host to render ShareAssetsDialog for
+		 * `actions.sharing` (CollectionView and the timeline do).
+		 */
+		available?: readonly Action[];
 	}
 
 	let {
 		actions,
 		selection,
-		available = ['favorite', 'album', 'folder', 'download', 'archive', 'trash']
+		available = ['favorite', 'album', 'folder', 'share', 'download', 'archive', 'trash']
 	}: Props = $props();
 
 	let picking = $state<'album' | 'folder' | null>(null);
 
-	const buttons: Record<string, { icon: IconName; label: () => string; run: () => void }> = {
+	const buttons: Record<Action, { icon: IconName; label: () => string; run: () => void }> = {
 		favorite: {
 			icon: 'favoriteOutline',
 			label: m.action_favorite,
@@ -29,14 +36,17 @@
 		},
 		album: { icon: 'albumAdd', label: m.action_add_to_album, run: () => (picking = 'album') },
 		folder: { icon: 'folder', label: m.action_move_to_folder, run: () => (picking = 'folder') },
-		download: { icon: 'download', label: m.action_download, run: () => actions.downloadZip() },
+		share: { icon: 'share', label: m.links_share_action, run: () => actions.share() },
+		download: { icon: 'download', label: m.action_download, run: () => actions.download() },
 		archive: { icon: 'archive', label: m.action_archive, run: () => actions.archive() },
 		trash: { icon: 'delete', label: m.action_trash, run: () => actions.trash() }
 	};
 
+	const shortcuts: Partial<Record<Action, string>> = { favorite: 'F', share: 'S', trash: 'Delete' };
+
 	// Shortcuts while photos are selected and no dialog or text field has focus.
 	function onkeydown(event: KeyboardEvent) {
-		if (!selection.active || picking || event.defaultPrevented) return;
+		if (!selection.active || picking || actions.sharing || event.defaultPrevented) return;
 		const target = event.target as HTMLElement;
 		if (target.closest('input, textarea, select, dialog, [role="dialog"]')) return;
 		if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -46,6 +56,9 @@
 		} else if (event.key === 'f' && available.includes('favorite')) {
 			event.preventDefault();
 			actions.toggleFavorites();
+		} else if (event.key === 's' && available.includes('share')) {
+			event.preventDefault();
+			actions.share();
 		}
 	}
 </script>
@@ -59,7 +72,8 @@
 		class="action"
 		title={button.label()}
 		aria-label={button.label()}
-		disabled={actions.busy}
+		aria-keyshortcuts={shortcuts[key]}
+		disabled={actions.busy || (key === 'download' && actions.downloader.busy)}
 		onclick={button.run}
 	>
 		<Icon name={button.icon} />
@@ -74,6 +88,7 @@
 		actions.addToAlbum(album);
 	}}
 />
+<DownloadFormatDialog downloader={actions.downloader} />
 <FolderPickerDialog
 	open={picking === 'folder'}
 	onclose={() => (picking = null)}

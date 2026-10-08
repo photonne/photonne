@@ -1,3 +1,84 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"links_nav": "Mis enlaces",
+	"links_title": "Mis enlaces",
+	"links_intro": "Todos los enlaces públicos que has creado, de cualquier álbum o foto. Cualquiera que tenga uno puede abrirlo sin cuenta.",
+	"links_search": "Buscar por nombre",
+	"links_totals_active": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} enlace activo",
+				"countPlural=other": "{count} enlaces activos"
+			}
+		}
+	],
+	"links_empty_title": "Aún no has creado enlaces",
+	"links_empty_body": "Selecciona fotos y pulsa Compartir, o crea un enlace desde la ventana Compartir de un álbum.",
+	"links_no_match": "Ningún enlace coincide con la búsqueda.",
+	"links_unknown_subject": "Contenido eliminado",
+	"links_kind_album": "Álbum",
+	"links_kind_photo": "Foto",
+	"links_status": "Estado del enlace",
+	"links_status_active": "Activo",
+	"links_status_upload": "Admite subidas",
+	"links_created_on": "Creado el {date}",
+	"links_open": "Abrir",
+	"links_close": "Cerrar",
+	"links_share_action": "Compartir con un enlace",
+	"links_share_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Compartir {count} foto",
+				"countPlural=other": "Compartir {count} fotos"
+			}
+		}
+	],
+	"links_share_intro": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Se crea un álbum con la foto y un enlace público para verlo sin cuenta.",
+				"countPlural=other": "Se crea un álbum con las {count} fotos y un enlace público para verlo sin cuenta."
+			}
+		}
+	],
+	"links_share_default_name": [
+		{
+			"declarations": ["input count", "input date", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Compartida el {date}",
+				"countPlural=other": "Compartidas el {date}"
+			}
+		}
+	],
+	"links_share_name": "Nombre del álbum",
+	"links_share_name_hint": "Es lo que verá quien abra el enlace.",
+	"links_share_name_required": "Escribe un nombre para el álbum.",
+	"links_share_failed": "No se ha podido crear el enlace.",
+	"links_share_ready": "Enlace listo",
+	"links_share_ready_hint": "Cópialo y envíalo. Puedes cambiarlo o revocarlo cuando quieras desde Mis enlaces.",
+	"links_share_view_album": "Ver el álbum",
+	"links_format_title": "¿Original o JPEG?",
+	"links_format_scope_all": "Las {total} fotos son RAW o HEIC.",
+	"links_format_scope_some": [
+		{
+			"declarations": ["input count", "input total", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} de las {total} fotos es RAW o HEIC; el resto se descarga tal cual.",
+				"countPlural=other": "{count} de las {total} fotos son RAW o HEIC; el resto se descarga tal cual."
+			}
+		}
+	],
+	"links_format_original": "Original",
+	"links_format_original_extension": "Original (.{extension})",
+	"links_format_original_hint": "El archivo tal cual, con toda su calidad. Para editarlo.",
+	"links_format_jpeg": "JPEG",
+	"links_format_jpeg_hint": "Se abre en cualquier sitio. Para enviarla o publicarla."
 }

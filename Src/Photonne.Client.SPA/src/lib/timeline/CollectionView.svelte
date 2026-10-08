@@ -4,6 +4,7 @@
 	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import { BatchActions } from '#lib/actions/batch-actions.svelte.js';
+	import ShareAssetsDialog from '#lib/actions/ShareAssetsDialog.svelte';
 	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import { getAssetDetailQueryKey } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { longDate, monthTitle } from '#lib/format.js';
@@ -17,7 +18,7 @@
 	import { Selection } from './selection.svelte.js';
 	import type { GridAsset } from './types.js';
 
-	type Action = 'favorite' | 'album' | 'folder' | 'download' | 'archive' | 'trash';
+	type Action = 'favorite' | 'album' | 'folder' | 'share' | 'download' | 'archive' | 'trash';
 
 	interface Props {
 		store: ListStore;
@@ -185,6 +186,12 @@
 		}}
 	/>
 {/if}
+
+<ShareAssetsDialog
+	assetIds={batch.sharing}
+	onclose={() => batch.closeShare()}
+	oncreated={() => batch.shared()}
+/>
 
 <style>
 	.page {
