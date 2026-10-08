@@ -1,0 +1,8 @@
+# Breaking-change reports that were reviewed and accepted (see docs/api-compatibilidad.md).
+# Only for corrections of the document itself, where the wire format did not
+# change. One line per report: "<METHOD> <path> <message as oasdiff prints it>".
+
+# 2026-10: assetId was always omitted when null ([JsonIgnore(WhenWritingNull)]);
+# the document now says so instead of listing it as required.
+POST /api/assets/sync the response property `assetId` became optional for the status `200`
+POST /api/assets/{assetId}/motion-clip the response property `assetId` became optional for the status `200`

@@ -20,6 +20,7 @@ on:
       - 'Tests/Photonne.Server.Api.Tests/**'
       - 'global.json'
       - '.github/oasdiff-severity.txt'
+      - '.github/oasdiff-ignore.txt'
       - '.github/workflows/api-contract.yml'
   workflow_dispatch:
 
@@ -66,11 +67,13 @@ jobs:
           fi
           cp "$SPEC" /tmp/contract/head.json
           cp .github/oasdiff-severity.txt /tmp/contract/severity.txt
+          cp .github/oasdiff-ignore.txt /tmp/contract/ignore.txt
 
           status=0
           docker run --rm -v /tmp/contract:/specs tufin/oasdiff:v1.32.1 \
             breaking /specs/base.json /specs/head.json \
-            --severity-levels /specs/severity.txt --fail-on ERR || status=$?
+            --severity-levels /specs/severity.txt --err-ignore /specs/ignore.txt \
+            --fail-on ERR || status=$?
 
           if [ "$status" -eq 0 ]; then
             echo "No breaking changes."

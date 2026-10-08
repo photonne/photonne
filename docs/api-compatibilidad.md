@@ -36,7 +36,9 @@ En `Src/Directory.Build.props`, y se suben a mano:
 El workflow [`api-contract.yml`](../.github/workflows/api-contract.yml) se ejecuta en cada PR que toca el servidor:
 
 - **`snapshot`**: comprueba que `openapi/v1.json` coincide con lo que genera el código. Si cambias un endpoint, regenéralo con `UPDATE_OPENAPI_SNAPSHOT=1 dotnet test Tests/Photonne.Server.Api.Tests --filter OpenApiContractTests` y súbelo en la misma PR. Este job también exige que todos los endpoints declaren autorización y estén tipados.
-- **`breaking`**: compara el contrato de la PR con el de la rama base usando [oasdiff](https://github.com/oasdiff/oasdiff). Si encuentra un cambio incompatible, falla a no ser que la PR suba `PhotonneMinClientVersion`. Por defecto oasdiff considera "info" quitar un campo opcional de una respuesta; aquí se trata como error (ver [`.github/oasdiff-severity.txt`](../.github/oasdiff-severity.txt)), porque nuestras respuestas no marcan campos como obligatorios y las apps los leen igualmente.
+- **`breaking`**: compara el contrato de la PR con el de la rama base usando [oasdiff](https://github.com/oasdiff/oasdiff). Si encuentra un cambio incompatible, falla a no ser que la PR suba `PhotonneMinClientVersion`. Por defecto oasdiff considera "info" quitar un campo opcional de una respuesta; aquí se trata como error (ver [`.github/oasdiff-severity.txt`](../.github/oasdiff-severity.txt)), porque los esquemas que también se usan en peticiones dejan sus campos como opcionales y las apps los leen igualmente.
+
+Si oasdiff marca algo que en realidad no cambia lo que viaja por la red (una corrección del documento), la excepción se anota, revisada, en [`.github/oasdiff-ignore.txt`](../.github/oasdiff-ignore.txt).
 
 Para probar `breaking` en local:
 
@@ -44,5 +46,6 @@ Para probar `breaking` en local:
 git show origin/main:Src/Photonne.Server.Api/openapi/v1.json > /tmp/base.json
 docker run --rm -v /tmp:/base -v "$PWD":/head tufin/oasdiff:v1.32.1 breaking \
   /base/base.json /head/Src/Photonne.Server.Api/openapi/v1.json \
-  --severity-levels /head/.github/oasdiff-severity.txt --fail-on ERR
+  --severity-levels /head/.github/oasdiff-severity.txt \
+  --err-ignore /head/.github/oasdiff-ignore.txt --fail-on ERR
 ```
