@@ -600,6 +600,7 @@ public class UsersEndpoint : IEndpoint
         ClaimsPrincipal user,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] UserStorageService userStorage,
+        [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
         CancellationToken cancellationToken)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -609,6 +610,11 @@ public class UsersEndpoint : IEndpoint
         var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
         if (dbUser == null)
             return Results.NotFound();
+
+        // Renaming the shared demo account (or changing its email) would lock every
+        // other visitor out of the published credentials until the next reset.
+        if (demoOptions.CurrentValue.Enabled && dbUser.Role != DemoManageableRole)
+            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (!string.IsNullOrWhiteSpace(request.Username) && request.Username.Trim() != dbUser.Username)
         {
@@ -657,6 +663,7 @@ public class UsersEndpoint : IEndpoint
         ClaimsPrincipal user,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
+        [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
@@ -669,6 +676,10 @@ public class UsersEndpoint : IEndpoint
         var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
         if (dbUser == null)
             return Results.NotFound();
+
+        // Same as the profile: the demo account's password is published on the login page.
+        if (demoOptions.CurrentValue.Enabled && dbUser.Role != DemoManageableRole)
+            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (!authService.VerifyPassword(request.CurrentPassword, dbUser.PasswordHash))
             return Results.BadRequest(new { error = "La contraseña actual no es correcta" });

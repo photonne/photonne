@@ -19,8 +19,9 @@ namespace Photonne.Server.Api.Shared.Services;
 /// target user and the requested role.
 ///
 /// Read endpoints (GET /api/users, GET /api/libraries) stay allowed so pages still render.
-/// Self-service endpoints (/api/users/me, /api/users/me/change-password) are NOT blocked
-/// on purpose — the demo user should still be able to update its own profile.
+/// Self-service endpoints (/api/users/me, /api/users/me/change-password) aren't blocked
+/// here either: <c>UsersEndpoint</c> refuses them only for admin accounts (the shared
+/// demo user's credentials are published), while accounts created in the demo keep them.
 /// </summary>
 public sealed class DemoModeGuardMiddleware
 {

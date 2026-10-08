@@ -25,6 +25,8 @@ public sealed class DemoModeGuardTests : IntegrationTestBase, IDisposable
     private sealed record CreateUserReq(string Username, string Email, string Password, string? Role = null);
     private sealed record CreatedUserResp(Guid Id, string Role);
     private sealed record DeleteAccountReq(string Password);
+    private sealed record ChangePasswordReq(string CurrentPassword, string NewPassword);
+    private sealed record UpdateProfileReq(string Username);
     private sealed record SaveSettingReq(string Key, string Value);
 
     private Task<HttpClient> CreateAdminDemoClientAsync()
@@ -116,6 +118,42 @@ public sealed class DemoModeGuardTests : IntegrationTestBase, IDisposable
             new DeleteAccountReq(PhotonneApiFactory.AdminPassword));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangeOwnPassword_IsBlocked_ForAdmin_InDemoMode()
+    {
+        // The demo credentials are on the login page: changing them would lock
+        // every other visitor out until the next reset.
+        var client = await CreateAdminDemoClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users/me/change-password",
+            new ChangePasswordReq(PhotonneApiFactory.AdminPassword, "Another-Pass-1!"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RenameOwnAccount_IsBlocked_ForAdmin_InDemoMode()
+    {
+        var client = await CreateAdminDemoClientAsync();
+
+        var response = await client.PutAsJsonAsync("/api/users/me",
+            new UpdateProfileReq("renamed-" + Guid.NewGuid().ToString("N")[..6]));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangeOwnPassword_IsAllowed_ForRegularUser_InDemoMode()
+    {
+        var user = await CreateUserAsync();
+        var client = await LoginDemoClientAsync(user.Username, user.Password);
+
+        var response = await client.PostAsJsonAsync("/api/users/me/change-password",
+            new ChangePasswordReq(user.Password, "Another-Pass-1!"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
