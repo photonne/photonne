@@ -10,7 +10,7 @@
 	import { useTrashPolicy } from '#lib/library/trash-settings.svelte.js';
 	import TrashSelectionActions from '#lib/library/TrashSelectionActions.svelte';
 	import { leaveViewerThen } from '#lib/library/viewer-flow.js';
-	import ViewerExtras from '#lib/library/ViewerExtras.svelte';
+	import ViewerExtraButtons from '#lib/library/ViewerExtraButtons.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
@@ -159,26 +159,26 @@
 				undoable={policy.current.enabled}
 			/>
 		{/snippet}
+		{#snippet viewerExtra()}
+			<ViewerExtraButtons
+				actions={[
+					{
+						label: m.trash_restore(),
+						icon: { name: 'restore' },
+						disabled: actions.busy,
+						run: restoreOpen
+					},
+					{
+						label: m.trash_purge(),
+						icon: { path: icons.deleteForever },
+						disabled: actions.busy,
+						run: () => (confirming = 'purgeOpen')
+					}
+				]}
+			/>
+		{/snippet}
 	</CollectionView>
 {/key}
-
-<ViewerExtras
-	openId={viewer.openId}
-	actions={[
-		{
-			label: m.trash_restore(),
-			icon: { name: 'restore' },
-			disabled: actions.busy,
-			run: restoreOpen
-		},
-		{
-			label: m.trash_purge(),
-			icon: { path: icons.deleteForever },
-			disabled: actions.busy,
-			run: () => (confirming = 'purgeOpen')
-		}
-	]}
-/>
 
 <ConfirmDialog
 	open={confirming === 'restoreAll'}
