@@ -13,7 +13,10 @@
          - PhotonneMinServerVersion: el servidor más antiguo que esta app
            necesita. Súbelo cuando la app empiece a usar un endpoint o campo
            nuevo del servidor.
-         Si alguno no se cumple, la app avisa de qué hay que actualizar. -->
+         Si alguno no se cumple, la app avisa de qué hay que actualizar.
+         La CI (api-contract.yml) rechaza un cambio incompatible del contrato
+         OpenAPI salvo que la misma PR suba PhotonneMinClientVersion; ver
+         docs/api-compatibilidad.md. -->
     <PhotonneMinClientVersion>1.159.0</PhotonneMinClientVersion>
     <PhotonneMinServerVersion>1.159.0</PhotonneMinServerVersion>
   </PropertyGroup>
