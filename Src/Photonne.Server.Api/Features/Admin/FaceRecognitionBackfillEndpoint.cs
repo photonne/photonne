@@ -49,11 +49,11 @@ public class FaceRecognitionBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/face-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.FaceRecognition, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.FaceRecognition, ct));
     }
 }
 
