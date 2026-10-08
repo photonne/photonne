@@ -1,3 +1,58 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"share_title": "Shared album",
+	"share_go_to_library": "Go to your library",
+	"share_password_title": "Protected link",
+	"share_password_lead": "Enter the password you were given to see the album.",
+	"share_password_label": "Password",
+	"share_password_wrong": "That password is wrong.",
+	"share_password_submit": "View album",
+	"share_expired_title": "This link has expired",
+	"share_expired_body": "Ask whoever sent it for a new link.",
+	"share_max_views_title": "This link allows no more views",
+	"share_max_views_body": "It has reached its maximum number of views. Ask for a new link.",
+	"share_not_found_title": "Link not found",
+	"share_not_found_body": "It may have been revoked, or the address may be incomplete.",
+	"share_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo or video",
+				"countPlural=other": "{count} photos and videos"
+			}
+		}
+	],
+	"share_expires": "Expires on {date}",
+	"share_download_all": "Download all",
+	"share_downloading": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Downloading {count} file…",
+				"countPlural=other": "Downloading {count} files…"
+			}
+		}
+	],
+	"share_download_one": "Download {name}",
+	"share_position": "{position} of {total}",
+	"share_empty": "This album is still empty.",
+	"share_upload_title": "Got photos of this?",
+	"share_upload_lead": "Add them to the album: they go to whoever shared it.",
+	"share_upload_name": "Your name (optional)",
+	"share_upload_name_hint": "So they know who uploaded them.",
+	"share_upload_drop": "Drag your photos and videos here",
+	"share_upload_drop_hint": "Or pick them from your computer.",
+	"share_upload_duplicate": "Already in the album",
+	"share_upload_thanks": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Thank you! Your file was added to the album.",
+				"countPlural=other": "Thank you! {count} files were added to the album."
+			}
+		}
+	]
 }

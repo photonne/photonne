@@ -1,3 +1,140 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"settings_profile": "Perfil",
+	"settings_security": "Seguridad",
+	"settings_appearance": "Apariencia e idioma",
+	"settings_storage": "Almacenamiento",
+	"settings_discovery": "Carpetas compartidas",
+	"settings_save": "Guardar cambios",
+	"settings_saving": "Guardando…",
+	"settings_saved": "Cambios guardados",
+	"settings_discard": "Descartar",
+	"settings_error_forbidden": "Este servidor no permite este cambio (modo demostración).",
+	"settings_password_show": "Mostrar contraseña",
+	"settings_password_hide": "Ocultar contraseña",
+	"settings_profile_lead": "Tu nombre, tu usuario y tu correo.",
+	"settings_profile_details": "Datos personales",
+	"settings_profile_first_name": "Nombre",
+	"settings_profile_last_name": "Apellidos",
+	"settings_profile_username": "Nombre de usuario",
+	"settings_profile_username_hint": "Letras, números, puntos, guiones y guiones bajos. Es también el nombre de tu carpeta personal.",
+	"settings_profile_email": "Correo electrónico",
+	"settings_profile_error_username": "El nombre de usuario solo puede tener letras, números, puntos, guiones y guiones bajos (máximo 64).",
+	"settings_profile_error_username_taken": "Ese nombre de usuario ya está en uso.",
+	"settings_profile_error_email": "Escribe un correo válido.",
+	"settings_profile_error_email_taken": "Ese correo ya está en uso.",
+	"settings_profile_error_rename": "No se ha podido cambiar el nombre de usuario.",
+	"settings_profile_account": "Cuenta",
+	"settings_profile_role": "Rol",
+	"settings_profile_created": "Creada",
+	"settings_profile_last_login": "Último acceso",
+	"settings_role_admin": "Administrador",
+	"settings_role_user": "Usuario",
+	"settings_role_primary": "administrador principal",
+	"settings_rename_title": "¿Cambiar el nombre de usuario?",
+	"settings_rename_body": "Pasarás de «{from}» a «{to}». Tu carpeta personal se renombra con él:",
+	"settings_rename_assets": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivo se actualizará",
+				"countPlural=other": "{count} archivos se actualizarán"
+			}
+		}
+	],
+	"settings_rename_folders": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} carpeta se actualizará",
+				"countPlural=other": "{count} carpetas se actualizarán"
+			}
+		}
+	],
+	"settings_rename_note": "Tus fotos, álbumes y enlaces siguen igual; con muchas fotos puede tardar un poco.",
+	"settings_rename_confirm": "Cambiar nombre",
+	"settings_security_lead": "Tu contraseña y tu cuenta.",
+	"settings_password_title": "Cambiar contraseña",
+	"settings_password_lead": "Las demás sesiones siguen abiertas hasta que caduquen.",
+	"settings_password_current": "Contraseña actual",
+	"settings_password_new": "Nueva contraseña",
+	"settings_password_confirm": "Repite la nueva contraseña",
+	"settings_password_mismatch": "Las contraseñas no coinciden.",
+	"settings_password_rules": "Requisitos de la contraseña",
+	"settings_password_rule_length": "8 caracteres o más",
+	"settings_password_rule_upper": "Una mayúscula",
+	"settings_password_rule_lower": "Una minúscula",
+	"settings_password_rule_digit": "Un número",
+	"settings_password_rule_symbol": "Un símbolo",
+	"settings_password_rule_met": "(cumplido)",
+	"settings_password_rule_unmet": "(pendiente)",
+	"settings_password_submit": "Cambiar contraseña",
+	"settings_password_changed": "Contraseña cambiada",
+	"settings_password_error_current": "La contraseña actual no es correcta.",
+	"settings_password_error_weak": "La nueva contraseña no cumple los requisitos.",
+	"settings_delete_title": "Eliminar la cuenta",
+	"settings_delete_lead": "Borra tu cuenta, tus fotos, tus álbumes y tus enlaces compartidos. No se puede deshacer.",
+	"settings_delete_open": "Eliminar mi cuenta…",
+	"settings_delete_warning": "Se borrará todo lo tuyo de este servidor y se cerrará la sesión. Escribe tu contraseña para confirmar.",
+	"settings_delete_password": "Contraseña",
+	"settings_delete_confirm": "Eliminar definitivamente",
+	"settings_delete_done": "Tu cuenta se ha eliminado",
+	"settings_delete_error_password": "La contraseña no es correcta.",
+	"settings_delete_primary_admin": "Eres el administrador principal: transfiere antes ese rol a otro administrador para poder eliminar tu cuenta.",
+	"settings_appearance_lead": "Cómo se ve Photonne en este navegador.",
+	"settings_theme": "Tema",
+	"settings_theme_lead": "Se guarda en este navegador.",
+	"settings_theme_system": "Del sistema",
+	"settings_theme_system_hint": "Sigue al sistema operativo",
+	"settings_theme_light": "Claro",
+	"settings_theme_light_hint": "Siempre claro",
+	"settings_theme_dark": "Oscuro",
+	"settings_theme_dark_hint": "Siempre oscuro",
+	"settings_language_lead": "El idioma de la aplicación. Al cambiarlo, la página se recarga.",
+	"settings_storage_lead": "El espacio que ocupan tus fotos y vídeos.",
+	"settings_storage_usage": "Espacio usado",
+	"settings_storage_used_of": "{used} de {quota}",
+	"settings_storage_used": "{used} usados",
+	"settings_storage_percent": "{percent} de tu cuota",
+	"settings_storage_almost_full": "{percent} de tu cuota: casi lleno. Libera espacio o pide más a un administrador.",
+	"settings_storage_no_quota": "Sin límite de espacio.",
+	"settings_storage_breakdown": "Desglose",
+	"settings_storage_breakdown_lead": "Tu espacio personal y las bibliotecas externas de las que eres dueño.",
+	"settings_storage_source": "Origen",
+	"settings_storage_photos": "Fotos",
+	"settings_storage_videos": "Vídeos",
+	"settings_storage_size": "Tamaño",
+	"settings_storage_personal": "Espacio personal",
+	"settings_storage_total": "Total",
+	"settings_storage_quota_note": "La cuota la asigna un administrador y cuenta todo lo que es tuyo, sin la papelera.",
+	"settings_discovery_lead": "Elige qué carpetas compartidas aparecen en tus fotos, recuerdos, personas y búsquedas. Las ocultas siguen en Carpetas.",
+	"settings_discovery_folders": "Carpetas compartidas contigo",
+	"settings_discovery_folders_lead": "Nadie ha compartido carpetas contigo todavía.",
+	"settings_discovery_hidden_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} oculta de tus fotos",
+				"countPlural=other": "{count} ocultas de tus fotos"
+			}
+		}
+	],
+	"settings_discovery_empty": "Cuando alguien comparta una carpeta contigo, podrás elegir aquí si sus fotos se mezclan con las tuyas.",
+	"settings_discovery_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} elemento",
+				"countPlural=other": "{count} elementos"
+			}
+		}
+	],
+	"settings_discovery_state_shown": "En tus fotos",
+	"settings_discovery_state_hidden": "Oculta",
+	"settings_discovery_shown": "«{name}» vuelve a tus fotos",
+	"settings_discovery_hidden": "«{name}» ya no aparece en tus fotos"
 }

@@ -1,3 +1,38 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"notifications_mark_all": "Marcar todas como leídas",
+	"notifications_all_marked": "Todas las notificaciones están leídas",
+	"notifications_filter": "Filtrar notificaciones",
+	"notifications_filter_all": "Todas",
+	"notifications_filter_unread": "No leídas",
+	"notifications_empty": "No hay notificaciones.",
+	"notifications_empty_unread": "No hay notificaciones sin leer.",
+	"notifications_empty_hint": "Aquí aparecerán los avisos sobre tu biblioteca: tareas terminadas, visitas y subidas a tus enlaces compartidos…",
+	"notifications_unread": "sin leer",
+	"notifications_mark_read": "Marcar como leída",
+	"notifications_mark_read_one": "Marcar como leída: {title}",
+	"notifications_grouped": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} avisos agrupados",
+				"countPlural=other": "{count} avisos agrupados"
+			}
+		}
+	],
+	"notifications_pages": "Páginas",
+	"notifications_previous": "Anterior",
+	"notifications_next": "Siguiente",
+	"notifications_page": "Página {page} de {pages}",
+	"notifications_total": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} notificación en total",
+				"countPlural=other": "{count} notificaciones en total"
+			}
+		}
+	]
 }

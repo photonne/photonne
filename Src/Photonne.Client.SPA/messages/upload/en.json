@@ -1,3 +1,108 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"upload_title": "Upload",
+	"upload_subtitle": "Add photos and videos to your library. Original dates are kept, and what you already have isn't uploaded again.",
+	"upload_drop_title": "Drag photos, videos or folders here",
+	"upload_drop_hint": "Or pick them from your computer. JPEG, HEIC, RAW, MP4, MOV and more.",
+	"upload_drop_release": "Drop to upload",
+	"upload_pick_files": "Choose files",
+	"upload_pick_folder": "Choose folder",
+	"upload_queue_title": "Upload queue",
+	"upload_status_checking": "Checking…",
+	"upload_status_queued": "Queued",
+	"upload_status_uploading": "Uploading… {percent}%",
+	"upload_status_done": "Uploaded",
+	"upload_status_duplicate": "Already in your library",
+	"upload_status_cancelled": "Cancelled",
+	"upload_status_too_large": "Too large",
+	"upload_failure_too_large": "Over the server's size limit",
+	"upload_failure_quota": "No space: quota reached",
+	"upload_failure_password": "Wrong password",
+	"upload_failure_gone": "The link is no longer available",
+	"upload_failure_forbidden": "This link doesn't accept uploads",
+	"upload_failure_network": "Can't reach the server",
+	"upload_failure_server": "Server error",
+	"upload_retry": "Retry",
+	"upload_retry_one": "Retry {name}",
+	"upload_cancel": "Cancel",
+	"upload_cancel_one": "Cancel {name}",
+	"upload_remove": "Remove from the list",
+	"upload_remove_one": "Remove {name} from the list",
+	"upload_progress_of": "Progress of {name}",
+	"upload_overall_progress": "Overall progress",
+	"upload_retry_failed": "Retry failed",
+	"upload_cancel_all": "Cancel all",
+	"upload_clear_finished": "Clear finished",
+	"upload_view_photos": "View in Photos",
+	"upload_add_to_album": "Add to an album",
+	"upload_batch_done": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo or video uploaded",
+				"countPlural=other": "{count} photos and videos uploaded"
+			}
+		}
+	],
+	"upload_ignored": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} file skipped: not a photo or video",
+				"countPlural=other": "{count} files skipped: not photos or videos"
+			}
+		}
+	],
+	"upload_count_pending": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} pending",
+				"countPlural=other": "{count} pending"
+			}
+		}
+	],
+	"upload_count_done": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} uploaded",
+				"countPlural=other": "{count} uploaded"
+			}
+		}
+	],
+	"upload_count_duplicate": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} already there",
+				"countPlural=other": "{count} already there"
+			}
+		}
+	],
+	"upload_count_failed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} failed",
+				"countPlural=other": "{count} failed"
+			}
+		}
+	],
+	"upload_count_skipped": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} too large",
+				"countPlural=other": "{count} too large"
+			}
+		}
+	]
 }

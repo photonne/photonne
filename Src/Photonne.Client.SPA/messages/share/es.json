@@ -1,3 +1,58 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"share_title": "Álbum compartido",
+	"share_go_to_library": "Ir a tu biblioteca",
+	"share_password_title": "Enlace protegido",
+	"share_password_lead": "Escribe la contraseña que te han dado para ver el álbum.",
+	"share_password_label": "Contraseña",
+	"share_password_wrong": "La contraseña no es correcta.",
+	"share_password_submit": "Ver el álbum",
+	"share_expired_title": "Este enlace ha caducado",
+	"share_expired_body": "Pide a quien te lo envió un enlace nuevo.",
+	"share_max_views_title": "Este enlace ya no admite más visitas",
+	"share_max_views_body": "Ha llegado al máximo de visitas que permitía. Pide un enlace nuevo.",
+	"share_not_found_title": "Enlace no encontrado",
+	"share_not_found_body": "Puede que lo hayan revocado o que la dirección no esté completa.",
+	"share_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto o vídeo",
+				"countPlural=other": "{count} fotos y vídeos"
+			}
+		}
+	],
+	"share_expires": "Caduca el {date}",
+	"share_download_all": "Descargar todo",
+	"share_downloading": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Descargando {count} archivo…",
+				"countPlural=other": "Descargando {count} archivos…"
+			}
+		}
+	],
+	"share_download_one": "Descargar {name}",
+	"share_position": "{position} de {total}",
+	"share_empty": "Este álbum todavía está vacío.",
+	"share_upload_title": "¿Tienes fotos de esto?",
+	"share_upload_lead": "Añádelas al álbum: le llegarán a quien lo compartió.",
+	"share_upload_name": "Tu nombre (opcional)",
+	"share_upload_name_hint": "Para que sepan quién las ha subido.",
+	"share_upload_drop": "Arrastra aquí tus fotos y vídeos",
+	"share_upload_drop_hint": "O elígelos desde tu equipo.",
+	"share_upload_duplicate": "Ya estaba en el álbum",
+	"share_upload_thanks": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "¡Gracias! Tu archivo se ha añadido al álbum.",
+				"countPlural=other": "¡Gracias! Se han añadido {count} archivos al álbum."
+			}
+		}
+	]
 }

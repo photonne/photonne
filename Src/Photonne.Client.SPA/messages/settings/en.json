@@ -1,3 +1,140 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"settings_profile": "Profile",
+	"settings_security": "Security",
+	"settings_appearance": "Appearance and language",
+	"settings_storage": "Storage",
+	"settings_discovery": "Shared folders",
+	"settings_save": "Save changes",
+	"settings_saving": "Saving…",
+	"settings_saved": "Changes saved",
+	"settings_discard": "Discard",
+	"settings_error_forbidden": "This server doesn't allow this change (demo mode).",
+	"settings_password_show": "Show password",
+	"settings_password_hide": "Hide password",
+	"settings_profile_lead": "Your name, username and email.",
+	"settings_profile_details": "Personal details",
+	"settings_profile_first_name": "First name",
+	"settings_profile_last_name": "Last name",
+	"settings_profile_username": "Username",
+	"settings_profile_username_hint": "Letters, digits, dots, hyphens and underscores. It also names your personal folder.",
+	"settings_profile_email": "Email",
+	"settings_profile_error_username": "The username can only have letters, digits, dots, hyphens and underscores (64 at most).",
+	"settings_profile_error_username_taken": "That username is already taken.",
+	"settings_profile_error_email": "Enter a valid email.",
+	"settings_profile_error_email_taken": "That email is already in use.",
+	"settings_profile_error_rename": "Couldn't change the username.",
+	"settings_profile_account": "Account",
+	"settings_profile_role": "Role",
+	"settings_profile_created": "Created",
+	"settings_profile_last_login": "Last sign-in",
+	"settings_role_admin": "Administrator",
+	"settings_role_user": "User",
+	"settings_role_primary": "primary administrator",
+	"settings_rename_title": "Change the username?",
+	"settings_rename_body": "You'll go from “{from}” to “{to}”. Your personal folder is renamed with it:",
+	"settings_rename_assets": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} file will be updated",
+				"countPlural=other": "{count} files will be updated"
+			}
+		}
+	],
+	"settings_rename_folders": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} folder will be updated",
+				"countPlural=other": "{count} folders will be updated"
+			}
+		}
+	],
+	"settings_rename_note": "Your photos, albums and links stay as they are; with many photos it may take a moment.",
+	"settings_rename_confirm": "Change username",
+	"settings_security_lead": "Your password and your account.",
+	"settings_password_title": "Change password",
+	"settings_password_lead": "Other sessions stay open until they expire.",
+	"settings_password_current": "Current password",
+	"settings_password_new": "New password",
+	"settings_password_confirm": "Repeat the new password",
+	"settings_password_mismatch": "The passwords don't match.",
+	"settings_password_rules": "Password requirements",
+	"settings_password_rule_length": "8 characters or more",
+	"settings_password_rule_upper": "An uppercase letter",
+	"settings_password_rule_lower": "A lowercase letter",
+	"settings_password_rule_digit": "A digit",
+	"settings_password_rule_symbol": "A symbol",
+	"settings_password_rule_met": "(met)",
+	"settings_password_rule_unmet": "(missing)",
+	"settings_password_submit": "Change password",
+	"settings_password_changed": "Password changed",
+	"settings_password_error_current": "The current password is wrong.",
+	"settings_password_error_weak": "The new password doesn't meet the requirements.",
+	"settings_delete_title": "Delete account",
+	"settings_delete_lead": "Deletes your account, photos, albums and shared links. It can't be undone.",
+	"settings_delete_open": "Delete my account…",
+	"settings_delete_warning": "Everything of yours on this server will be deleted and you'll be signed out. Enter your password to confirm.",
+	"settings_delete_password": "Password",
+	"settings_delete_confirm": "Delete permanently",
+	"settings_delete_done": "Your account has been deleted",
+	"settings_delete_error_password": "The password is wrong.",
+	"settings_delete_primary_admin": "You're the primary administrator: hand that role to another administrator before deleting your account.",
+	"settings_appearance_lead": "How Photonne looks in this browser.",
+	"settings_theme": "Theme",
+	"settings_theme_lead": "Saved in this browser.",
+	"settings_theme_system": "System",
+	"settings_theme_system_hint": "Follows the operating system",
+	"settings_theme_light": "Light",
+	"settings_theme_light_hint": "Always light",
+	"settings_theme_dark": "Dark",
+	"settings_theme_dark_hint": "Always dark",
+	"settings_language_lead": "The app's language. Changing it reloads the page.",
+	"settings_storage_lead": "The space your photos and videos take.",
+	"settings_storage_usage": "Space used",
+	"settings_storage_used_of": "{used} of {quota}",
+	"settings_storage_used": "{used} used",
+	"settings_storage_percent": "{percent} of your quota",
+	"settings_storage_almost_full": "{percent} of your quota: nearly full. Free some space or ask an administrator for more.",
+	"settings_storage_no_quota": "No storage limit.",
+	"settings_storage_breakdown": "Breakdown",
+	"settings_storage_breakdown_lead": "Your personal space and the external libraries you own.",
+	"settings_storage_source": "Source",
+	"settings_storage_photos": "Photos",
+	"settings_storage_videos": "Videos",
+	"settings_storage_size": "Size",
+	"settings_storage_personal": "Personal space",
+	"settings_storage_total": "Total",
+	"settings_storage_quota_note": "An administrator sets the quota; it counts everything you own, except the trash.",
+	"settings_discovery_lead": "Choose which shared folders show up in your photos, memories, people and searches. Hidden ones stay in Folders.",
+	"settings_discovery_folders": "Folders shared with you",
+	"settings_discovery_folders_lead": "Nobody has shared folders with you yet.",
+	"settings_discovery_hidden_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} hidden from your photos",
+				"countPlural=other": "{count} hidden from your photos"
+			}
+		}
+	],
+	"settings_discovery_empty": "When someone shares a folder with you, you can choose here whether its photos mix with yours.",
+	"settings_discovery_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} item",
+				"countPlural=other": "{count} items"
+			}
+		}
+	],
+	"settings_discovery_state_shown": "In your photos",
+	"settings_discovery_state_hidden": "Hidden",
+	"settings_discovery_shown": "“{name}” is back in your photos",
+	"settings_discovery_hidden": "“{name}” no longer shows in your photos"
 }
