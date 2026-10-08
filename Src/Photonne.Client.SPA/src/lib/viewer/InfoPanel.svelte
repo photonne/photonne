@@ -3,25 +3,45 @@
 	import {
 		addAssetTags,
 		removeAssetTag,
-		updateAssetCaptureDate,
 		updateAssetDescription,
 		type AssetDetailResponse
 	} from '#lib/api/index.js';
-	import { getUserTagsOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import {
+		getApiAssetsByIdFacesOptions,
+		getApiPeopleByIdOptions,
+		getApiSearchPeopleByPersonIdAssetsOptions,
+		getAssetObjectsOptions,
+		getAssetScenesOptions,
+		getAssetTextOptions,
+		getSameDayAssetsOptions,
+		getUserTagsOptions
+	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
-	import { dateTime, formatBytes, fromDateTimeLocal, toDateTimeLocal } from '#lib/format.js';
+	import { dateTime, formatBytes } from '#lib/format.js';
+	import { labelHref } from '#lib/library/explore-links.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { hasName } from '#lib/people/people.js';
+	import { asUtc } from './capture-date.js';
+	import DateEditor from './DateEditor.svelte';
+	import { objectLabels, recognizedText, relatedItems, sceneLabels } from './extras.js';
+	import { samePeoplePersonId } from './faces.js';
+	import { mapHref, osmHref, photoPosition } from './location.js';
+	import MiniMap from './MiniMap.svelte';
+	import PanelSection from './PanelSection.svelte';
+	import RecognizedText from './RecognizedText.svelte';
+	import RelatedStrip from './RelatedStrip.svelte';
 
 	interface Props {
 		asset: AssetDetailResponse;
 		/** Something was saved: the host refreshes what depends on it. */
 		onchanged: (change: 'description' | 'date' | 'tags') => void;
+		/** Opens another photo (from the related strips). */
+		onopen: (assetId: string) => void;
 	}
 
-	let { asset, onchanged }: Props = $props();
+	let { asset, onchanged, onopen }: Props = $props();
 
 	let caption = $state('');
-	let date = $state('');
 	let newTag = $state('');
 	let tags = $state<string[]>([]);
 	let status = $state<'idle' | 'saved' | 'failed'>('idle');
@@ -29,12 +49,62 @@
 	// Reset the editable copies whenever another asset is shown.
 	$effect(() => {
 		caption = asset.caption ?? '';
-		date = toDateTimeLocal(asset.capturedAt);
 		tags = [...asset.userTags];
 		status = 'idle';
 	});
 
 	const knownTags = createQuery(() => ({ ...getUserTagsOptions(), enabled: asset.canEdit }));
+
+	// The extras never block the panel: a failure (or someone else's photo,
+	// a 404) just leaves their section out.
+	const quiet = { retry: false } as const;
+	const text = createQuery(() => ({
+		...getAssetTextOptions({ path: { assetId: asset.id } }),
+		...quiet
+	}));
+	const objects = createQuery(() => ({
+		...getAssetObjectsOptions({ path: { assetId: asset.id } }),
+		...quiet
+	}));
+	const scenes = createQuery(() => ({
+		...getAssetScenesOptions({ path: { assetId: asset.id } }),
+		...quiet
+	}));
+	const sameDay = createQuery(() => ({
+		...getSameDayAssetsOptions({ path: { assetId: asset.id }, query: { limit: 12 } }),
+		...quiet
+	}));
+	const faces = createQuery(() => ({
+		...getApiAssetsByIdFacesOptions({ path: { id: asset.id } }),
+		...quiet
+	}));
+	const personId = $derived(samePeoplePersonId(faces.data ?? []));
+	const person = createQuery(() => ({
+		...getApiPeopleByIdOptions({ path: { id: personId ?? '' } }),
+		enabled: personId !== null,
+		...quiet
+	}));
+	const samePerson = createQuery(() => ({
+		...getApiSearchPeopleByPersonIdAssetsOptions({
+			path: { personId: personId ?? '' },
+			query: { limit: 12 }
+		}),
+		enabled: personId !== null,
+		...quiet
+	}));
+
+	const ocr = $derived(recognizedText(text.data ?? []));
+	const objectChips = $derived(objectLabels(objects.data ?? []));
+	const sceneChips = $derived(sceneLabels(scenes.data ?? []));
+	const sameDayItems = $derived(relatedItems(sameDay.data?.items ?? [], asset.id));
+	const samePersonItems = $derived(
+		personId ? relatedItems(samePerson.data?.items ?? [], asset.id) : []
+	);
+	const samePersonLabel = $derived(
+		person.data && hasName(person.data)
+			? m.viewer_related_person({ name: person.data.name!.trim() })
+			: m.viewer_related_person_unnamed()
+	);
 
 	async function saved<T>(request: Promise<{ data?: T; error?: unknown }>) {
 		const { data } = await request;
@@ -49,17 +119,6 @@
 			updateAssetDescription({ path: { assetId: asset.id }, body: { caption: value || null } })
 		);
 		if (data) onchanged('description');
-	}
-
-	async function saveDate() {
-		if (date === toDateTimeLocal(asset.capturedAt)) return;
-		const data = await saved(
-			updateAssetCaptureDate({
-				path: { assetId: asset.id },
-				body: { dateTaken: fromDateTimeLocal(date), writeToFile: false }
-			})
-		);
-		if (data) onchanged('date');
 	}
 
 	async function addTag(event: SubmitEvent) {
@@ -101,16 +160,10 @@
 	const dimensions = $derived(
 		exif?.width && exif?.height ? `${exif.width} × ${exif.height}` : null
 	);
-	const mapUrl = $derived(
-		exif?.latitude != null && exif?.longitude != null
-			? `https://www.openstreetmap.org/?mlat=${exif.latitude}&mlon=${exif.longitude}#map=15/${exif.latitude}/${exif.longitude}`
-			: null
-	);
+	const position = $derived(photoPosition(exif));
 </script>
 
-<aside class="panel" aria-labelledby="info-title">
-	<h2 id="info-title">{m.info_title()}</h2>
-
+<div class="info">
 	<section>
 		<label for="info-caption">{m.info_description()}</label>
 		{#if asset.canEdit}
@@ -130,25 +183,19 @@
 	</section>
 
 	<section>
-		<label for="info-date">{m.info_date()}</label>
 		{#if asset.canEdit}
-			<div class="row">
-				<input id="info-date" type="datetime-local" bind:value={date} />
-				<button
-					type="button"
-					disabled={date === toDateTimeLocal(asset.capturedAt)}
-					onclick={saveDate}
-				>
-					{m.info_save()}
-				</button>
-			</div>
+			<DateEditor
+				{asset}
+				onchanged={() => onchanged('date')}
+				onstatus={(ok) => (status = ok ? 'saved' : 'failed')}
+			/>
 		{:else}
-			<p id="info-date">{dateTime(asset.capturedAt)}</p>
+			<h3>{m.info_date()}</h3>
+			<p>{dateTime(asUtc(asset.capturedAt))}</p>
 		{/if}
 	</section>
 
-	<section>
-		<h3>{m.info_tags()}</h3>
+	<PanelSection id="tags" title={m.info_tags()}>
 		<ul class="tags">
 			{#each tags as tag (tag)}
 				<li>
@@ -183,10 +230,51 @@
 				</datalist>
 			</form>
 		{/if}
-	</section>
+	</PanelSection>
 
-	<section>
-		<h3>{m.info_details()}</h3>
+	{#if objectChips.length || sceneChips.length}
+		<PanelSection id="content" title={m.viewer_content_title()}>
+			{#if objectChips.length}
+				<ul class="chips" aria-label={m.viewer_objects()}>
+					{#each objectChips as label (label)}
+						<li><a href={labelHref('objects', label)}>{label}</a></li>
+					{/each}
+				</ul>
+			{/if}
+			{#if sceneChips.length}
+				<ul class="chips scenes" aria-label={m.viewer_scenes()}>
+					{#each sceneChips as label (label)}
+						<li><a href={labelHref('scenes', label)}>{label}</a></li>
+					{/each}
+				</ul>
+			{/if}
+		</PanelSection>
+	{/if}
+
+	{#if ocr}
+		<RecognizedText text={ocr} />
+	{/if}
+
+	{#if position || exif?.placeName}
+		<PanelSection id="place" title={m.info_location()}>
+			{#if position}
+				<MiniMap lat={position.lat} lng={position.lng} />
+				<div class="place">
+					<a href={osmHref(position)} target="_blank" rel="noopener noreferrer"
+						>{exif?.placeName ?? `${position.lat}, ${position.lng}`}</a
+					>
+					<a class="map-link" href={mapHref(position)}>
+						<Icon name="place" size={16} />
+						{m.viewer_map_open()}
+					</a>
+				</div>
+			{:else}
+				<p>{exif?.placeName}</p>
+			{/if}
+		</PanelSection>
+	{/if}
+
+	<PanelSection id="details" title={m.info_details()}>
 		<dl>
 			<dt>{m.info_file()}</dt>
 			<dd>{asset.fileName}</dd>
@@ -202,44 +290,33 @@
 				{#if camera}<dd>{camera}</dd>{/if}
 				{#if exposure}<dd class="muted">{exposure}</dd>{/if}
 			{/if}
-			{#if exif?.placeName || mapUrl}
-				<dt>{m.info_location()}</dt>
-				<dd>
-					{#if mapUrl}
-						<a href={mapUrl} target="_blank" rel="noopener noreferrer"
-							>{exif?.placeName ?? `${exif?.latitude}, ${exif?.longitude}`}</a
-						>
-					{:else}
-						{exif?.placeName}
-					{/if}
-				</dd>
-			{/if}
 		</dl>
-	</section>
+	</PanelSection>
+
+	{#if samePersonItems.length || sameDayItems.length}
+		<PanelSection id="related" title={m.viewer_related_title()}>
+			{#if samePersonItems.length}
+				<h4>{samePersonLabel}</h4>
+				<RelatedStrip label={samePersonLabel} items={samePersonItems} {onopen} />
+			{/if}
+			{#if sameDayItems.length}
+				<h4>{m.viewer_related_day()}</h4>
+				<RelatedStrip label={m.viewer_related_day()} items={sameDayItems} {onopen} />
+			{/if}
+		</PanelSection>
+	{/if}
 
 	<p class="status" role="status">
 		{#if status === 'saved'}{m.info_saved()}{:else if status === 'failed'}{m.info_save_failed()}{/if}
 	</p>
-</aside>
+</div>
 
 <style>
-	.panel {
-		flex: none;
-		width: 340px;
-		height: 100%;
-		overflow-y: auto;
-		padding: var(--space-4);
-		background: var(--color-surface-raised);
-		color: var(--color-text);
+	.info {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		align-content: start;
 		gap: var(--space-4);
-	}
-
-	h2 {
-		margin: 0;
-		font-size: var(--font-size-lg);
 	}
 
 	h3,
@@ -247,6 +324,13 @@
 		display: block;
 		margin: 0 0 var(--space-1);
 		font-size: var(--font-size-sm);
+		font-weight: 600;
+		color: var(--color-text-muted);
+	}
+
+	h4 {
+		margin: var(--space-1) 0 0;
+		font-size: var(--font-size-xs);
 		font-weight: 600;
 		color: var(--color-text-muted);
 	}
@@ -275,22 +359,10 @@
 		min-width: 0;
 	}
 
-	.row button {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		cursor: pointer;
-	}
-
-	.row button:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-
-	.tags {
+	.tags,
+	.chips {
 		list-style: none;
-		margin: 0 0 var(--space-2);
+		margin: 0;
 		padding: 0;
 		display: flex;
 		flex-wrap: wrap;
@@ -321,6 +393,41 @@
 		cursor: pointer;
 	}
 
+	.chips a {
+		display: inline-block;
+		padding: 2px var(--space-2);
+		border: 1px solid var(--color-border);
+		border-radius: 999px;
+		color: var(--color-text);
+		font-size: var(--font-size-sm);
+		text-decoration: none;
+	}
+
+	.chips.scenes a {
+		border-style: dashed;
+	}
+
+	.chips a:hover,
+	.chips a:focus-visible {
+		border-color: var(--color-accent);
+		color: var(--color-accent);
+	}
+
+	.place {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-2);
+		font-size: var(--font-size-sm);
+	}
+
+	.map-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	}
+
 	dl {
 		margin: 0;
 		display: grid;
@@ -332,6 +439,10 @@
 		font-size: var(--font-size-sm);
 		font-weight: 600;
 		color: var(--color-text-muted);
+	}
+
+	dt:first-child {
+		margin-top: 0;
 	}
 
 	dd {
