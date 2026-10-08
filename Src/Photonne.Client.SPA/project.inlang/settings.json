@@ -19,7 +19,9 @@
 			"./messages/notifications/{locale}.json",
 			"./messages/settings/{locale}.json",
 			"./messages/share/{locale}.json",
-			"./messages/admin/{locale}.json"
+			"./messages/admin/{locale}.json",
+			"./messages/utilities/{locale}.json",
+			"./messages/admin-ops/{locale}.json"
 		]
 	},
 	"baseLocale": "es",

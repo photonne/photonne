@@ -1,4 +1,42 @@
-import type { Page, Route } from '@playwright/test';
+import type { Page, Request, Route } from '@playwright/test';
+import { readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+/** What an area's fake (e2e/fakes/*.ts) gets for each request. */
+export interface FakeContext {
+	route: Route;
+	request: Request;
+	method: string;
+	path: string;
+	/** The request carries the access token of the signed-in fake user. */
+	authorized: boolean;
+	json: (status: number, body?: unknown) => Promise<void>;
+	/** Shared by the fakes of one test, for state and for assertions. */
+	state: Record<string, unknown>;
+}
+
+/** An area's fake: handles the request and returns true, or returns false. */
+export type FakeHandler = (context: FakeContext) => boolean | Promise<boolean>;
+
+// Every e2e/fakes/*.ts default-exports a FakeHandler; they are tried in
+// file-name order before the 404 fallback, so each area fakes its own
+// endpoints in its own file.
+let handlers: Promise<FakeHandler[]> | null = null;
+
+function loadHandlers() {
+	const directory = join(dirname(fileURLToPath(import.meta.url)), 'fakes');
+	handlers ??= Promise.all(
+		readdirSync(directory)
+			.filter((file) => file.endsWith('.ts'))
+			.sort()
+			.map(
+				async (file) =>
+					(await import(pathToFileURL(join(directory, file)).href)).default as FakeHandler
+			)
+	);
+	return handlers;
+}
 
 /**
  * A stand-in for the Photonne API at the browser's network layer, so the e2e
@@ -11,6 +49,8 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 	const added: string[] = [];
 	const removed: string[] = [];
 	const restored: string[] = [];
+	const state: Record<string, unknown> = {};
+	const extra = await loadHandlers();
 	const json = (route: Route, status: number, body?: unknown) =>
 		route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body ?? {}) });
 
@@ -84,10 +124,22 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 						body: thumbnail(path.split('/')[3])
 					});
 				}
+				for (const handle of extra) {
+					const context: FakeContext = {
+						route,
+						request,
+						method: request.method(),
+						path,
+						authorized,
+						json: (status, body) => json(route, status, body),
+						state
+					};
+					if (await handle(context)) return;
+				}
 				return json(route, 404, { error: 'Not faked', code: 'not_found' });
 		}
 	});
-	return { descriptions, added, removed, restored };
+	return { descriptions, added, removed, restored, state };
 }
 
 const user = {

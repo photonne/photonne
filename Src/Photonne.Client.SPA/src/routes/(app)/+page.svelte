@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import { BatchActions } from '#lib/actions/batch-actions.svelte.js';
@@ -20,6 +18,7 @@
 	import type { GridAsset } from '#lib/timeline/types.js';
 	import AssetViewer, { type AssetChange } from '#lib/viewer/AssetViewer.svelte';
 	import { neighborsIn } from '#lib/viewer/neighbors.js';
+	import { ViewerRoute } from '#lib/viewer/viewer-route.svelte.js';
 
 	const queryClient = useQueryClient();
 	const buckets = createQuery(() => getTimelineBucketsOptions());
@@ -32,15 +31,13 @@
 		return item.isVideo ? m.grid_item_video({ date }) : m.grid_item_photo({ date });
 	}
 
-	// --- Viewer ----------------------------------------------------------
-	// The open asset lives in the URL (?asset=…): Back closes it, a link opens
-	// it, and the grid stays mounted underneath with its scroll intact.
+	// --- Viewer (its place in the URL: see ViewerRoute) -----------------
 
+	const viewer = new ViewerRoute();
 	let grid = $state<PhotoGrid<GridAsset>>();
-	let openedHere = false;
 	let pickingAlbumFor = $state<string | null>(null);
 
-	const openId = $derived(page.url.searchParams.get('asset'));
+	const openId = $derived(viewer.openId);
 	const neighbors = $derived(
 		openId ? neighborsIn(store.order, openId) : { previous: null, next: null }
 	);
@@ -53,27 +50,11 @@
 		if (following) store.load(following);
 	});
 
-	function viewerUrl(assetId: string | null) {
-		const url = new URL(page.url.href);
-		if (assetId) url.searchParams.set('asset', assetId);
-		else url.searchParams.delete('asset');
-		return url.pathname + url.search;
-	}
-
-	function openViewer(item: GridAsset) {
-		openedHere = true;
-		goto(viewerUrl(item.id), { reset: false });
-	}
-
-	function navigateViewer(assetId: string) {
-		goto(viewerUrl(assetId), { replace: true, reset: false });
-	}
+	const openViewer = (item: GridAsset) => viewer.open(item.id);
+	const navigateViewer = (assetId: string) => viewer.navigate(assetId);
 
 	async function closeViewer() {
-		const last = openId;
-		if (openedHere) history.back();
-		else await goto(viewerUrl(null), { replace: true, reset: false });
-		openedHere = false;
+		const last = await viewer.close();
 		await tick();
 		if (last) grid?.focusItem(last);
 	}

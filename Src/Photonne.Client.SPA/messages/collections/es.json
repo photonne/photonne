@@ -1,3 +1,4 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"favorites_empty": "Marca fotos como favoritas con el corazón y aparecerán aquí."
 }

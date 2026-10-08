@@ -82,5 +82,16 @@
 	"nav_notifications": "Notifications",
 	"nav_settings": "Settings",
 	"nav_upload": "Upload",
-	"page_pending": "This section arrives in a later phase."
+	"page_pending": "This section arrives in a later phase.",
+	"admin_nav": "Administration sections",
+	"admin_dashboard": "Dashboard",
+	"admin_users": "Users",
+	"admin_libraries": "External libraries",
+	"admin_tasks": "Tasks and queues",
+	"admin_maintenance": "Maintenance",
+	"admin_settings": "Server settings",
+	"admin_backup": "Backup",
+	"admin_shared_trash": "Shared trash",
+	"admin_system": "System",
+	"admin_only": "This section is for administrators only."
 }
