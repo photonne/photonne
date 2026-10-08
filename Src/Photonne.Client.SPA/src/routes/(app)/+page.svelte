@@ -1,20 +1,51 @@
 <script lang="ts">
-	import { createQuery } from '@tanstack/svelte-query';
-	import { getTimelineBucketsOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import {
+		getTimelineBucketItemsOptions,
+		getTimelineBucketsOptions
+	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import { longDate, monthTitle } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import { getLocale } from '#lib/paraglide/runtime.js';
+	import PhotoGrid from '#lib/timeline/PhotoGrid.svelte';
+	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
+	import { Selection } from '#lib/timeline/selection.svelte.js';
+	import { toGridAsset, type GridAsset } from '#lib/timeline/types.js';
 
-	// Provisional: the month skeleton only. Phase 2 replaces it with the
-	// justified, virtualized timeline.
+	const queryClient = useQueryClient();
 	const buckets = createQuery(() => getTimelineBucketsOptions());
 
-	const monthFormat = $derived(
-		new Intl.DateTimeFormat(getLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' })
+	// Months are loaded on demand as they approach the viewport; until then
+	// they are placeholders sized from their count (the bucket model).
+	const months = new SvelteMap<string, GridAsset[]>();
+	const requested = new SvelteSet<string>();
+	const selection = new Selection();
+
+	const sections = $derived(
+		(buckets.data ?? []).map((bucket) => ({
+			key: bucket.key,
+			count: bucket.count,
+			items: months.get(bucket.key) ?? null
+		}))
 	);
 
-	function monthLabel(key: string) {
-		const [year, month] = key.split('-').map(Number);
-		return monthFormat.format(new Date(Date.UTC(year, month - 1, 1)));
+	async function loadMonth(key: string) {
+		if (requested.has(key)) return;
+		requested.add(key);
+		try {
+			const items = await queryClient.fetchQuery(
+				getTimelineBucketItemsOptions({ path: { yearMonth: key } })
+			);
+			months.set(key, items.map(toGridAsset));
+		} catch {
+			// Retried the next time the month scrolls into reach.
+			requested.delete(key);
+		}
+	}
+
+	function itemLabel(item: GridAsset) {
+		const date = longDate(item.capturedAt);
+		return item.isVideo ? m.grid_item_video({ date }) : m.grid_item_photo({ date });
 	}
 </script>
 
@@ -22,59 +53,47 @@
 	<title>{m.photos_title()} · {m.app_name()}</title>
 </svelte:head>
 
+<h1 class="visually-hidden">{m.photos_title()}</h1>
+
 <div class="page">
-	<h1>{m.photos_title()}</h1>
+	<SelectionBar {selection} />
 
 	{#if buckets.isPending}
-		<p class="muted" role="status">{m.session_restoring()}</p>
+		<p class="status" role="status">{m.session_restoring()}</p>
 	{:else if buckets.isError}
-		<p class="muted" role="alert">{m.error_loading()}</p>
-	{:else if buckets.data.length === 0}
-		<p class="muted">{m.photos_empty()}</p>
+		<p class="status" role="alert">{m.error_loading()}</p>
+	{:else if sections.length === 0}
+		<p class="status">{m.photos_empty()}</p>
 	{:else}
-		<ul class="months">
-			{#each buckets.data as bucket (bucket.key)}
-				<li>
-					<span class="month">{monthLabel(bucket.key)}</span>
-					<span class="muted">{m.photos_month_items({ count: bucket.count })}</span>
-				</li>
-			{/each}
-		</ul>
+		<div class="grid">
+			<PhotoGrid
+				{sections}
+				{selection}
+				label={m.photos_title()}
+				sectionTitle={monthTitle}
+				{itemLabel}
+				onneedsection={loadMonth}
+				onopen={() => {}}
+			/>
+		</div>
 	{/if}
 </div>
 
 <style>
 	.page {
-		padding: var(--space-6);
-	}
-
-	h1 {
-		margin: 0 0 var(--space-4);
-		font-size: var(--font-size-xl);
-	}
-
-	.muted {
-		color: var(--color-text-muted);
-	}
-
-	.months {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: var(--space-2);
-		max-width: 480px;
-	}
-
-	.months li {
+		position: relative;
 		display: flex;
-		justify-content: space-between;
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
+		flex-direction: column;
+		height: 100%;
 	}
 
-	.month::first-letter {
-		text-transform: uppercase;
+	.grid {
+		flex: 1;
+		min-height: 0;
+	}
+
+	.status {
+		padding: var(--space-6);
+		color: var(--color-text-muted);
 	}
 </style>

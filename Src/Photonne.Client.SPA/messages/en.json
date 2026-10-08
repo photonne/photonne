@@ -21,7 +21,21 @@
 	"language": "Language",
 	"photos_title": "Photos",
 	"photos_empty": "No photos yet.",
-	"photos_month_items": "{count} items",
 	"error_loading": "Couldn't load. Try again.",
-	"skip_to_content": "Skip to content"
+	"skip_to_content": "Skip to content",
+	"grid_select_section": "Select {section}",
+	"grid_scrubber": "Jump to a date",
+	"grid_item_photo": "Photo, {date}",
+	"grid_item_video": "Video, {date}",
+	"selection_clear": "Clear selection",
+	"selection_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} selected",
+				"countPlural=other": "{count} selected"
+			}
+		}
+	]
 }

@@ -21,7 +21,21 @@
 	"language": "Idioma",
 	"photos_title": "Fotos",
 	"photos_empty": "Todavía no hay fotos.",
-	"photos_month_items": "{count} elementos",
 	"error_loading": "No se ha podido cargar. Inténtalo de nuevo.",
-	"skip_to_content": "Saltar al contenido"
+	"skip_to_content": "Saltar al contenido",
+	"grid_select_section": "Seleccionar {section}",
+	"grid_scrubber": "Saltar a una fecha",
+	"grid_item_photo": "Foto, {date}",
+	"grid_item_video": "Vídeo, {date}",
+	"selection_clear": "Quitar selección",
+	"selection_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} seleccionado",
+				"countPlural=other": "{count} seleccionados"
+			}
+		}
+	]
 }
