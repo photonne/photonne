@@ -1,4 +1,5 @@
 import type { NotificationItemResponse } from '#lib/api/index.js';
+import { legacyTarget } from '#lib/navigation/legacy.js';
 import { ICON_DELETE_SWEEP, ICON_ERROR, ICON_TASK_DONE, ICON_VISIBILITY } from '../icons.js';
 
 /** NotificationType on the server (Shared/Models/Notification.cs). */
@@ -32,16 +33,6 @@ export function notificationIcon(type: NotificationItemResponse['type']): {
 	}
 }
 
-// Action URLs are written by the server for the Blazor client; the few whose
-// page lives elsewhere in this app are mapped here. The shared trash
-// notification also reaches folder managers who aren't admins, so it leads
-// to their own view of it.
-const MOVED: Record<string, string> = {
-	'/shared-trash': '/trash?scope=shared',
-	'/admin/enrichment-failures': '/admin/tasks/failures',
-	'/admin/stats': '/admin'
-};
-
 /**
  * The app path a notification leads to, or null when it has none (or it
  * points outside the app: never follow those from a notification).
@@ -49,11 +40,8 @@ const MOVED: Record<string, string> = {
 export function notificationTarget(actionUrl: string | null | undefined): string | null {
 	if (!actionUrl || !actionUrl.startsWith('/') || actionUrl.startsWith('//')) return null;
 	if (actionUrl.startsWith('/\\')) return null;
-	const [path, rest = ''] = actionUrl.split(/(?=[?#])/, 2);
-	const target = MOVED[path] ?? path;
-	return target.includes('?') && rest.startsWith('?')
-		? `${target}&${rest.slice(1)}`
-		: target + rest;
+	// Written by the server for the previous web client: some pages moved.
+	return legacyTarget(new URL(actionUrl, 'http://app')) ?? actionUrl;
 }
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
