@@ -138,4 +138,13 @@ builder.Services.AddScoped<IDemoInfoService, DemoInfoService>();
 builder.Services.AddScoped<IShareService>(sp =>
     new ShareService(sp.GetRequiredService<HttpClient>()));
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// A session restored from localStorage predates the media cookie that the
+// thumbnails and the viewer need (login and refresh set it from then on).
+using (var scope = host.Services.CreateScope())
+{
+    await scope.ServiceProvider.GetRequiredService<IAuthService>().EnsureMediaSessionAsync();
+}
+
+await host.RunAsync();

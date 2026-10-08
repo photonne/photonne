@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -16,6 +17,7 @@ public class AssetDetailEndpoint : IEndpoint
             .CodeSample(
                 codeSample: "curl -X GET \"http://localhost:5000/api/assets/1\" -H \"Accept: application/json\"",
                 label: "cURL Example")
+            .RequireAuthorization()
             .WithName("GetAssetDetail")
             .WithTags("Assets")
             .WithDescription("Gets detailed information about an asset")
@@ -29,6 +31,7 @@ public class AssetDetailEndpoint : IEndpoint
 
     private async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AssetVisibilityService visibility,
         [FromRoute] Guid assetId,
         System.Security.Claims.ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -46,7 +49,7 @@ public class AssetDetailEndpoint : IEndpoint
                 .Include(a => a.Folder)
                 .FirstOrDefaultAsync(a => a.Id == assetId, cancellationToken);
 
-            if (asset == null)
+            if (asset == null || !await visibility.CanReadAsync(user, asset, cancellationToken))
             {
                 return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
             }

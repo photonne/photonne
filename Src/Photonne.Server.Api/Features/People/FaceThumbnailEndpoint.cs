@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -24,20 +26,23 @@ public class FaceThumbnailEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/faces/{id:guid}/thumbnail", Handle)
-            .WithTags("Faces");
+            .WithTags("Faces")
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] SettingsService settings,
         [FromServices] IConfiguration configuration,
+        [FromServices] AssetVisibilityService visibility,
+        ClaimsPrincipal user,
         Guid id,
         CancellationToken ct)
     {
         var face = await db.Faces.AsNoTracking()
             .Include(f => f.Asset).ThenInclude(a => a.Thumbnails)
             .FirstOrDefaultAsync(f => f.Id == id, ct);
-        if (face == null) return Results.NotFound();
+        if (face == null || !await visibility.CanReadAsync(user, face.Asset, ct)) return Results.NotFound();
 
         var thumbnailsRoot = configuration["ThumbnailsPath"] ?? "/data/thumbnails";
         var cacheDir = Path.Combine(thumbnailsRoot, "faces");
@@ -62,8 +67,7 @@ public class FaceThumbnailEndpoint : IEndpoint
             await image.SaveAsync(cachedPath, new JpegEncoder { Quality = 85 }, ct);
         }
 
-        var bytes = await File.ReadAllBytesAsync(cachedPath, ct);
-        return Results.File(bytes, "image/jpeg",
+        return Results.File(cachedPath, "image/jpeg",
             lastModified: File.GetLastWriteTimeUtc(cachedPath),
             entityTag: new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{id:N}\""));
     }

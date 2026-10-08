@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using ImageMagick;
 using Microsoft.AspNetCore.Mvc;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -12,6 +14,7 @@ public class AssetContentEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/{assetId}/content", Handle)
+            .RequireAuthorization()
             .WithName("GetAssetContent")
             .WithTags("Assets")
             .WithDescription("Gets the content of an asset (image or video). With download=true, " +
@@ -22,6 +25,8 @@ public class AssetContentEndpoint : IEndpoint
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] ILogger<AssetContentEndpoint> logger,
+        [FromServices] AssetVisibilityService visibility,
+        ClaimsPrincipal user,
         [FromRoute] Guid assetId,
         [FromQuery] bool? download,
         [FromQuery] string? format,
@@ -32,7 +37,7 @@ public class AssetContentEndpoint : IEndpoint
 
         var asset = await dbContext.Assets.FindAsync(new object[] { assetId }, cancellationToken);
 
-        if (asset == null)
+        if (asset == null || !await visibility.CanReadAsync(user, asset, cancellationToken))
         {
             return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
         }
@@ -43,7 +48,7 @@ public class AssetContentEndpoint : IEndpoint
         {
             logger.LogWarning("Asset {AssetId}: file not found at resolved path '{PhysicalPath}' (DB path: '{DbPath}')",
                 assetId, physicalPath, asset.FullPath);
-            return Results.NotFound(new { error = $"File not found at: {physicalPath}" });
+            return Results.NotFound(new { error = $"File of asset {assetId} not found" });
         }
 
         var extension = Path.GetExtension(physicalPath).ToLowerInvariant();

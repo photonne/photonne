@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -22,6 +23,7 @@ public class RefreshTokenEndpoint : IEndpoint
         [FromBody] RefreshTokenRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken) || string.IsNullOrWhiteSpace(request.DeviceId))
@@ -71,6 +73,7 @@ public class RefreshTokenEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var token = await authService.GenerateTokenAsync(tokenEntity.User);
+        MediaSessionCookie.Append(httpContext, token);
 
         return Results.Ok(new RefreshTokenResponse
         {

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -16,6 +17,7 @@ public class ThumbnailEndpoint : IEndpoint
             .CodeSample(
                 codeSample: "curl -X GET \"http://localhost:5000/api/assets/1/thumbnail?size=Medium\" -o thumbnail.jpg",
                 label: "cURL Example")
+            .RequireAuthorization()
             .WithName("GetThumbnail")
             .WithTags("Assets")
             .WithDescription("Gets a thumbnail for an asset")
@@ -31,6 +33,7 @@ public class ThumbnailEndpoint : IEndpoint
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] ThumbnailGeneratorService thumbnailService,
         [FromServices] SettingsService settingsService,
+        [FromServices] AssetVisibilityService visibility,
         HttpContext httpContext,
         [FromRoute] Guid assetId,
         [FromQuery] string size = "Medium",
@@ -42,7 +45,7 @@ public class ThumbnailEndpoint : IEndpoint
             var asset = await dbContext.Assets
                 .FirstOrDefaultAsync(a => a.Id == assetId, cancellationToken);
 
-            if (asset == null)
+            if (asset == null || !await visibility.CanReadAsync(httpContext.User, asset, cancellationToken))
             {
                 return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
             }
@@ -67,7 +70,7 @@ public class ThumbnailEndpoint : IEndpoint
                 
                 if (!File.Exists(physicalPath))
                 {
-                    return Results.NotFound(new { error = $"Asset file not found at path: {physicalPath}" });
+                    return Results.NotFound(new { error = $"File of asset {assetId} not found" });
                 }
 
                 // Generate thumbnails for all sizes (to ensure we have them all)
@@ -79,7 +82,7 @@ public class ThumbnailEndpoint : IEndpoint
                 catch (ThumbnailGenerationException ex)
                 {
                     Console.WriteLine($"[THUMBNAILS] {ex.Message}");
-                    return Results.NotFound(new { error = ex.Message });
+                    return Results.NotFound(new { error = $"Failed to generate thumbnail for asset {assetId}" });
                 }
 
                 if (generatedThumbnails.Any())
@@ -115,22 +118,22 @@ public class ThumbnailEndpoint : IEndpoint
             // Check if file exists
             if (!File.Exists(thumbnail.FilePath))
             {
-                return Results.NotFound(new { error = $"Thumbnail file not found at path: {thumbnail.FilePath}" });
+                return Results.NotFound(new { error = $"Thumbnail of asset {assetId} not found" });
             }
 
-            // Return file
-            var fileBytes = await File.ReadAllBytesAsync(thumbnail.FilePath, cancellationToken);
             var contentType = thumbnail.Format == "WebP" ? "image/webp" : "image/jpeg";
 
-            // Thumbnails are immutable (keyed by assetId + size) — cache aggressively
-            httpContext.Response.Headers.CacheControl = "public, max-age=2592000, immutable";
+            // Private: the photo belongs to a user, so a shared cache (reverse
+            // proxy, CDN) must never store it.
+            httpContext.Response.Headers.CacheControl = "private, max-age=2592000, immutable";
 
-            return Results.File(fileBytes, contentType, $"{asset.FileName}_thumb_{size}.jpg");
+            return Results.File(thumbnail.FilePath, contentType, $"{asset.FileName}_thumb_{size}.jpg");
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[THUMBNAIL] Asset {assetId}: {ex.Message}");
             return Results.Problem(
-                detail: ex.Message,
+                title: "Failed to serve thumbnail",
                 statusCode: StatusCodes.Status500InternalServerError
             );
         }

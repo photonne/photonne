@@ -14,6 +14,7 @@ public class MapPointsEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/map/points", Handle)
+            .RequireAuthorization()
             .WithName("GetMapPoints")
             .WithTags("Assets")
             .WithDescription("Gets all assets with GPS coordinates as raw points for client-side clustering");

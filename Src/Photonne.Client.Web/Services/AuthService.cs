@@ -90,12 +90,36 @@ public class AuthService : IAuthService
 
     public async Task LogoutAsync()
     {
+        try
+        {
+            // Drops the media cookie; best effort, the local session goes anyway.
+            await _httpClient.PostAsync("/api/auth/logout", null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Logout: could not clear the media cookie");
+        }
+
         await RemoveTokenAsync();
         await RemoveRefreshTokenAsync();
         await RemoveUserAsync();
         _currentUser = null;
         _getUserTask = null;
         OnAuthStateChanged?.Invoke();
+    }
+
+    public async Task EnsureMediaSessionAsync()
+    {
+        if (!await IsAuthenticatedAsync()) return;
+
+        try
+        {
+            await _httpClient.PostAsync("/api/auth/media-session", null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not create the media session");
+        }
     }
 
     public async Task<bool> IsAuthenticatedAsync()

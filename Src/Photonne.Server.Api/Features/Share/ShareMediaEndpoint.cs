@@ -16,8 +16,8 @@ public class ShareMediaEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/share/{token}/asset/{assetId:guid}/thumbnail", HandleAlbumAssetThumbnail).WithTags("Share");
-        app.MapGet("/api/share/{token}/asset/{assetId:guid}/content", HandleAlbumAssetContent).WithTags("Share");
+        app.MapGet("/api/share/{token}/asset/{assetId:guid}/thumbnail", HandleAlbumAssetThumbnail).WithTags("Share").AllowAnonymous();
+        app.MapGet("/api/share/{token}/asset/{assetId:guid}/content", HandleAlbumAssetContent).WithTags("Share").AllowAnonymous();
     }
 
     // ── Album asset ───────────────────────────────────────────────────────────

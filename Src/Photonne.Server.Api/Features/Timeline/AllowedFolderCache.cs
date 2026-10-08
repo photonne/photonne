@@ -57,7 +57,29 @@ public class AllowedFolderCache
         return _cache.GetOrCreateAsync(key, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = Ttl;
-            return await ComputeAsync(dbContext, userId, userRootPath, ct);
+            return await ComputeAsync(dbContext, userId, userRootPath, applyExclusions: true, ct);
+        })!;
+    }
+
+    /// <summary>
+    /// Every folder the user may read, including the ones they opted out of
+    /// their discovery surfaces. This is the authorization set — what decides
+    /// whether a thumbnail or original may be served — whereas
+    /// <see cref="GetAllowedFolderIdsAsync"/> is what the listings show. An
+    /// excluded shared folder stays browsable from Folders, so its media must
+    /// keep loading.
+    /// </summary>
+    public Task<HashSet<Guid>> GetReadableFolderIdsAsync(
+        ApplicationDbContext dbContext,
+        Guid userId,
+        string userRootPath,
+        CancellationToken ct)
+    {
+        var key = $"readable-folders:{userId}";
+        return _cache.GetOrCreateAsync(key, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = Ttl;
+            return await ComputeAsync(dbContext, userId, userRootPath, applyExclusions: false, ct);
         })!;
     }
 
@@ -90,6 +112,7 @@ public class AllowedFolderCache
     {
         _cache.Remove($"allowed-folders:{userId}");
         _cache.Remove($"excluded-folders:{userId}");
+        _cache.Remove($"readable-folders:{userId}");
     }
 
     private static async Task<ILookup<Guid, Guid>> ChildrenByParentAsync(
@@ -124,6 +147,7 @@ public class AllowedFolderCache
         ApplicationDbContext dbContext,
         Guid userId,
         string userRootPath,
+        bool applyExclusions,
         CancellationToken ct)
     {
         // Effective read access, mirroring the user-facing sharing model:
@@ -204,6 +228,8 @@ public class AllowedFolderCache
         // children were pulled into allowedIds above). Applied last, after
         // personal space and libraries — excluded roots are always shared
         // folders, so this never touches the user's own personal content.
+        if (!applyExclusions) return allowedIds;
+
         var excludedRootIds = await GetExcludedFolderIdsAsync(dbContext, userId, ct);
         if (excludedRootIds.Count > 0)
         {

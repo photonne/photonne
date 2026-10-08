@@ -8,6 +8,13 @@ public interface IAuthService
     Task<string?> GetTokenAsync();
     Task<UserDto?> GetCurrentUserAsync();
     Task<bool> TryRefreshTokenAsync();
+
+    /// <summary>
+    /// Asks the server for the HttpOnly media cookie that lets &lt;img&gt; and
+    /// &lt;video&gt; load thumbnails and originals. Login and refresh already set
+    /// it; this covers a session restored from localStorage.
+    /// </summary>
+    Task EnsureMediaSessionAsync();
     event Action? OnAuthStateChanged;
 }
 

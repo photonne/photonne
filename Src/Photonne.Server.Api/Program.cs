@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Photonne.Server.Api;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Services;
 using Scalar.AspNetCore;
-using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -149,6 +149,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                         context.Token = accessToken;
                     }
                 }
+                else if (string.IsNullOrEmpty(context.Request.Headers.Authorization)
+                         && MediaSessionCookie.IsMediaRequest(context.Request)
+                         && context.Request.Cookies.TryGetValue(MediaSessionCookie.Name, out var cookieToken))
+                {
+                    // <img>/<video> in the web clients can't send the header.
+                    context.Token = cookieToken;
+                }
 
                 return Task.CompletedTask;
             }
@@ -185,22 +192,22 @@ app.Use(async (context, next) =>
     {
         var problem = new ProblemDetails
         {
-            Status = StatusCodes.Status500InternalServerError
+            Status = StatusCodes.Status500InternalServerError,
+            Title = ex is DbUpdateException ? "Error de base de datos" : "Error interno del servidor"
         };
+        problem.Extensions["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier;
 
-        if (ex is DbUpdateException dbEx)
+        if (app.Environment.IsDevelopment())
         {
-            problem.Title = "Error de base de datos";
-            problem.Detail = BuildDbErrorDetail(dbEx);
+            problem.Detail = ex is DbUpdateException dbEx ? BuildDbErrorDetail(dbEx) : ex.Message;
+            problem.Extensions["stackTrace"] = ex.ToString();
         }
         else
         {
-            problem.Title = "Error interno del servidor";
-            problem.Detail = ex.Message;
+            // Exception text can carry file paths, SQL and connection details:
+            // it goes to the log, and the client gets the trace id to match it.
+            app.Logger.LogError(ex, "Unhandled exception (traceId {TraceId})", problem.Extensions["traceId"]);
         }
-
-        problem.Extensions["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier;
-        problem.Extensions["stackTrace"] = ex.ToString();
 
         context.Response.StatusCode = problem.Status.Value;
         context.Response.ContentType = "application/problem+json";
@@ -272,20 +279,6 @@ app.UseRateLimiter();
 
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
-
-// Configure static files for thumbnails
-var thumbnailsPath = app.Configuration["ThumbnailsPath"] ?? "/data/thumbnails";
-
-if (!Directory.Exists(thumbnailsPath))
-{
-    Directory.CreateDirectory(thumbnailsPath);
-}
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(thumbnailsPath),
-    RequestPath = "/thumbnails"
-});
 
 app.RegisterEndpoints();
 
