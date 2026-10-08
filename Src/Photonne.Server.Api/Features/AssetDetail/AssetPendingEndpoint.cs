@@ -1,10 +1,11 @@
 using System.Security.Claims;
 using ImageMagick;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
-using Photonne.Server.Api.Shared.Dtos;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -25,16 +26,19 @@ public class AssetPendingEndpoint : IEndpoint
             .WithName("GetPendingAssetContent")
             .WithTags("Assets")
             .WithDescription("Gets the original content of a pending asset (image or video)")
+            .Produces<Stream>(StatusCodes.Status200OK, "image/jpeg", "image/png", "image/webp", "image/gif",
+                "video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "application/octet-stream")
             .RequireAuthorization();
 
         app.MapGet("/api/assets/pending/thumbnail", HandleThumbnail)
             .WithName("GetPendingAssetThumbnail")
             .WithTags("Assets")
             .WithDescription("Gets a thumbnail for a pending asset (image or video)")
+            .Produces<Stream>(StatusCodes.Status200OK, "image/jpeg")
             .RequireAuthorization();
     }
 
-    private async Task<IResult> HandleDetail(
+    private async Task<Results<Ok<AssetDetailResponse>, BadRequest<ApiError>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>>> HandleDetail(
         [FromQuery] string path,
         [FromServices] SettingsService settingsService,
         [FromServices] ExifExtractorService exifService,
@@ -42,12 +46,12 @@ public class AssetPendingEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(path))
-            return Results.BadRequest("Path is required");
+            return TypedResults.BadRequest(new ApiError("Path is required", "path_required"));
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(path);
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         var assetsPath = settingsService.GetAssetsPath();
@@ -55,7 +59,7 @@ public class AssetPendingEndpoint : IEndpoint
         var normalizedAssetsPath = Path.GetFullPath(assetsPath);
 
         if (!normalizedPhysicalPath.StartsWith(normalizedAssetsPath, StringComparison.OrdinalIgnoreCase))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         // The file lives inside the managed library — treat it as already copied.
         // (The legacy "Pending" status existed for a per-user external source that
@@ -63,7 +67,7 @@ public class AssetPendingEndpoint : IEndpoint
         var syncStatus = AssetSyncStatus.Copied;
 
         if (!File.Exists(physicalPath))
-            return Results.NotFound("File not found");
+            return TypedResults.NotFound(new ApiError("File not found", "file_not_found"));
 
         var fileInfo = new FileInfo(physicalPath);
         var extension = Path.GetExtension(physicalPath).ToLowerInvariant();
@@ -109,22 +113,22 @@ public class AssetPendingEndpoint : IEndpoint
             } : null
         };
 
-        return Results.Ok(response);
+        return TypedResults.Ok(response);
     }
 
-    private async Task<IResult> HandleContent(
+    private async Task<Results<FileContentHttpResult, PhysicalFileHttpResult, BadRequest<ApiError>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>>> HandleContent(
         [FromQuery] string path,
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(path))
-            return Results.BadRequest("Path is required");
+            return TypedResults.BadRequest(new ApiError("Path is required", "path_required"));
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(path);
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         var assetsPath = settingsService.GetAssetsPath();
@@ -132,10 +136,10 @@ public class AssetPendingEndpoint : IEndpoint
         var normalizedAssetsPath = Path.GetFullPath(assetsPath);
 
         if (!normalizedPhysicalPath.StartsWith(normalizedAssetsPath, StringComparison.OrdinalIgnoreCase))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         if (!File.Exists(physicalPath))
-            return Results.NotFound("File not found");
+            return TypedResults.NotFound(new ApiError("File not found", "file_not_found"));
 
         var extension = Path.GetExtension(physicalPath).ToLowerInvariant();
         var type = GetAssetType(extension);
@@ -148,7 +152,7 @@ public class AssetPendingEndpoint : IEndpoint
             image.Format = MagickFormat.Jpeg;
             image.Quality = 90;
             var jpegBytes = image.ToByteArray();
-            return Results.File(jpegBytes, "image/jpeg");
+            return TypedResults.File(jpegBytes, "image/jpeg");
         }
 
         // Same for RAW: the browser needs something it can paint.
@@ -156,7 +160,7 @@ public class AssetPendingEndpoint : IEndpoint
         {
             try
             {
-                return Results.File(RawImageLoader.RenderJpeg(physicalPath), "image/jpeg");
+                return TypedResults.File(RawImageLoader.RenderJpeg(physicalPath), "image/jpeg");
             }
             catch (MagickException ex)
             {
@@ -166,10 +170,10 @@ public class AssetPendingEndpoint : IEndpoint
 
         var contentType = GetContentType(extension, type);
 
-        return Results.File(physicalPath, contentType, enableRangeProcessing: true);
+        return TypedResults.PhysicalFile(physicalPath, contentType, enableRangeProcessing: true);
     }
 
-    private async Task<IResult> HandleThumbnail(
+    private async Task<Results<FileContentHttpResult, BadRequest<ApiError>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>>> HandleThumbnail(
         [FromQuery] string path,
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
@@ -177,12 +181,12 @@ public class AssetPendingEndpoint : IEndpoint
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(path))
-            return Results.BadRequest("Path is required");
+            return TypedResults.BadRequest(new ApiError("Path is required", "path_required"));
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(path);
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         var assetsPath = settingsService.GetAssetsPath();
@@ -190,10 +194,10 @@ public class AssetPendingEndpoint : IEndpoint
         var normalizedAssetsPath = Path.GetFullPath(assetsPath);
 
         if (!normalizedPhysicalPath.StartsWith(normalizedAssetsPath, StringComparison.OrdinalIgnoreCase))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         if (!File.Exists(physicalPath))
-            return Results.NotFound("File not found");
+            return TypedResults.NotFound(new ApiError("File not found", "file_not_found"));
 
         var extension = Path.GetExtension(physicalPath).ToLowerInvariant();
         var type = GetAssetType(extension);
@@ -204,77 +208,66 @@ public class AssetPendingEndpoint : IEndpoint
             thumbnailSize = ThumbnailSize.Medium;
         }
 
-        try
+        byte[] thumbnailBytes;
+        string contentType;
+
+        if (type == AssetType.Image)
         {
-            byte[] thumbnailBytes;
-            string contentType;
-
-            if (type == AssetType.Image)
+            // Generar miniatura de imagen
+            var targetSize = thumbnailSize switch
             {
-                // Generar miniatura de imagen
-                var targetSize = thumbnailSize switch
-                {
-                    ThumbnailSize.Small => 220,
-                    ThumbnailSize.Medium => 640,
-                    ThumbnailSize.Large => 1280,
-                    _ => 640
-                };
+                ThumbnailSize.Small => 220,
+                ThumbnailSize.Medium => 640,
+                ThumbnailSize.Large => 1280,
+                _ => 640
+            };
 
-                var extension2 = Path.GetExtension(physicalPath).ToLowerInvariant();
-                if (MediaFileTypes.IsHeic(extension2) || MediaFileTypes.IsRaw(extension2))
-                {
-                    // SixLabors.ImageSharp no soporta HEIC ni RAW, usar Magick.NET
-                    using var magickImage = RawImageLoader.Load(physicalPath);
-                    magickImage.AutoOrient();
-                    magickImage.Thumbnail((uint)targetSize, (uint)targetSize);
-                    magickImage.Format = MagickFormat.Jpeg;
-                    magickImage.Quality = 85;
-                    thumbnailBytes = magickImage.ToByteArray();
-                }
-                else
-                {
-                    using var image = await Image.LoadAsync(physicalPath, cancellationToken);
-
-                    // Aplicar orientación EXIF si existe
-                    var orientation = GetImageOrientation(image);
-                    if (orientation != 0)
-                    {
-                        image.Mutate(x => x.AutoOrient());
-                    }
-
-                    // Calcular dimensiones manteniendo aspect ratio
-                    var (width, height) = CalculateThumbnailSize(image.Width, image.Height, targetSize);
-
-                    image.Mutate(x => x.Resize(new ResizeOptions
-                    {
-                        Size = new Size(width, height),
-                        Mode = ResizeMode.Max
-                    }));
-
-                    // Convertir a JPEG
-                    using var ms = new MemoryStream();
-                    await image.SaveAsync(ms, new JpegEncoder { Quality = 85 }, cancellationToken);
-                    thumbnailBytes = ms.ToArray();
-                }
-                contentType = "image/jpeg";
+            var extension2 = Path.GetExtension(physicalPath).ToLowerInvariant();
+            if (MediaFileTypes.IsHeic(extension2) || MediaFileTypes.IsRaw(extension2))
+            {
+                // SixLabors.ImageSharp no soporta HEIC ni RAW, usar Magick.NET
+                using var magickImage = RawImageLoader.Load(physicalPath);
+                magickImage.AutoOrient();
+                magickImage.Thumbnail((uint)targetSize, (uint)targetSize);
+                magickImage.Format = MagickFormat.Jpeg;
+                magickImage.Quality = 85;
+                thumbnailBytes = magickImage.ToByteArray();
             }
             else
             {
-                // Para videos, usar el primer frame (simplificado - en producción usar FFmpeg)
-                return Results.BadRequest("Video thumbnails for pending assets require FFmpeg and are not yet implemented");
-            }
+                using var image = await Image.LoadAsync(physicalPath, cancellationToken);
 
-            var fileName = Path.GetFileName(physicalPath);
-            return Results.File(thumbnailBytes, contentType, $"{fileName}_thumb_{size}.jpg");
+                // Aplicar orientación EXIF si existe
+                var orientation = GetImageOrientation(image);
+                if (orientation != 0)
+                {
+                    image.Mutate(x => x.AutoOrient());
+                }
+
+                // Calcular dimensiones manteniendo aspect ratio
+                var (width, height) = CalculateThumbnailSize(image.Width, image.Height, targetSize);
+
+                image.Mutate(x => x.Resize(new ResizeOptions
+                {
+                    Size = new Size(width, height),
+                    Mode = ResizeMode.Max
+                }));
+
+                // Convertir a JPEG
+                using var ms = new MemoryStream();
+                await image.SaveAsync(ms, new JpegEncoder { Quality = 85 }, cancellationToken);
+                thumbnailBytes = ms.ToArray();
+            }
+            contentType = "image/jpeg";
         }
-        catch (Exception ex)
+        else
         {
-            Console.WriteLine($"[ERROR] Error generating thumbnail for pending asset {path}: {ex.Message}");
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError
-            );
+            // Para videos, usar el primer frame (simplificado - en producción usar FFmpeg)
+            return TypedResults.BadRequest(new ApiError("Video thumbnails for pending assets require FFmpeg and are not yet implemented", "video_thumbnail_unsupported"));
         }
+
+        var fileName = Path.GetFileName(physicalPath);
+        return TypedResults.File(thumbnailBytes, contentType, $"{fileName}_thumb_{size}.jpg");
     }
 
     private int GetImageOrientation(Image image)

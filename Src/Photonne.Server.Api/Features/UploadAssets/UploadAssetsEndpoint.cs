@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -18,6 +20,8 @@ public class UploadAssetsEndpoint : IEndpoint
             .WithName("UploadAsset")
             .WithTags("Assets")
             .WithDescription("Uploads an asset to the internal storage and indexes it")
+            .Produces<ApiError>(StatusCodes.Status409Conflict)
+            .Produces<ApiError>(StatusCodes.Status413PayloadTooLarge)
             .RequireAuthorization()
             .RequireRateLimiting("demo-upload");
     }
@@ -25,7 +29,7 @@ public class UploadAssetsEndpoint : IEndpoint
     private const string DefaultDestinationFolder = "Uploads";
     private const string MobileBackupDestinationFolder = "MobileBackup";
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<UploadAssetResponse>, BadRequest<ApiError>, UnauthorizedHttpResult, JsonHttpResult<ApiError>>> Handle(
         [FromForm] IFormFile file,
         [FromForm] string? destination,
         [FromForm] string? deviceName,
@@ -40,15 +44,15 @@ public class UploadAssetsEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (file == null || file.Length == 0)
-            return Results.BadRequest("No file uploaded");
+            return TypedResults.BadRequest(new ApiError("No file uploaded", "no_file_uploaded"));
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var limitError = await CheckUploadLimitsAsync(
             dbContext, settingsService, userId, file.Length, cancellationToken);
@@ -83,7 +87,7 @@ public class UploadAssetsEndpoint : IEndpoint
             if (existingAsset != null)
             {
                 File.Delete(tempPath);
-                return Results.Ok(new { message = "Asset already exists", assetId = existingAsset.Id });
+                return TypedResults.Ok(new UploadAssetResponse("Asset already exists", existingAsset.Id));
             }
 
             // 4. Move to final destination (Managed Library)
@@ -156,25 +160,24 @@ public class UploadAssetsEndpoint : IEndpoint
             // fine to enqueue them eagerly here — the worker dispatch will short-circuit
             // for video or tiny assets.
 
-            return Results.Ok(new { message = "Asset uploaded successfully", assetId = asset.Id });
+            return TypedResults.Ok(new UploadAssetResponse("Asset uploaded successfully", asset.Id));
         }
         catch (Exception ex)
         {
-            // Log the full exception server-side; the client only gets the
-            // message via ProblemDetails, which is not enough to diagnose
-            // I/O or database failures after the fact.
+            // Log with the user and file name (the global handler doesn't know
+            // them), drop the temp file, and let the global handler answer 500.
             logger.LogError(ex, "Upload failed for user {Username}, file {FileName}", username, file.FileName);
             if (File.Exists(tempPath)) File.Delete(tempPath);
-            return Results.Problem(ex.Message);
+            throw;
         }
     }
 
     /// <summary>
     /// The global maximum upload size (ServerSettings.MaxUploadSizeMb, 0 = no
     /// limit) and the user's storage quota. Null when <paramref name="length"/>
-    /// more bytes fit; otherwise the problem response to return.
+    /// more bytes fit; otherwise the 413/409 response to return.
     /// </summary>
-    internal static async Task<IResult?> CheckUploadLimitsAsync(
+    internal static async Task<JsonHttpResult<ApiError>?> CheckUploadLimitsAsync(
         ApplicationDbContext dbContext,
         SettingsService settingsService,
         Guid userId,
@@ -188,8 +191,8 @@ public class UploadAssetsEndpoint : IEndpoint
             var maxBytes = (long)maxUploadMb * 1024L * 1024L;
             if (length > maxBytes)
             {
-                return Results.Problem(
-                    detail: $"El archivo supera el tamaño máximo permitido ({maxUploadMb} MB).",
+                return TypedResults.Json(
+                    new ApiError($"El archivo supera el tamaño máximo permitido ({maxUploadMb} MB).", "upload_too_large"),
                     statusCode: StatusCodes.Status413PayloadTooLarge);
             }
         }
@@ -202,8 +205,8 @@ public class UploadAssetsEndpoint : IEndpoint
                 .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
 
             if (usedBytes + length > dbUser.StorageQuotaBytes.Value)
-                return Results.Problem(
-                    detail: "Has alcanzado el límite de almacenamiento asignado.",
+                return TypedResults.Json(
+                    new ApiError("Has alcanzado el límite de almacenamiento asignado.", "storage_quota_exceeded"),
                     statusCode: StatusCodes.Status409Conflict);
         }
 
@@ -352,3 +355,5 @@ public class UploadAssetsEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }
+
+public sealed record UploadAssetResponse(string Message, Guid AssetId);

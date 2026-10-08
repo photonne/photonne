@@ -1,9 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -21,7 +22,7 @@ public class SearchEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<SearchResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -44,9 +45,9 @@ public class SearchEndpoint : IEndpoint
         var effectiveOffset = offset is > 0 ? Math.Min(offset.Value, 10_000) : 0;
 
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var hasPersonFilter = personIds is { Length: > 0 };
         var hasObjectFilter = objectLabels is { Length: > 0 };
@@ -55,7 +56,7 @@ public class SearchEndpoint : IEndpoint
 
         // Require at least one filter to avoid returning everything
         if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter && !hasTextFilter)
-            return Results.Ok(new SearchResponse());
+            return TypedResults.Ok(new SearchResponse());
 
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
             dbContext, userId, $"/assets/users/{username}", ct);
@@ -84,7 +85,7 @@ public class SearchEndpoint : IEndpoint
                 .ToListAsync(ct);
 
             if (validPersonIds.Count == 0)
-                return Results.Ok(new SearchResponse());
+                return TypedResults.Ok(new SearchResponse());
         }
 
         query = AssetQueryBuilder.Apply(query, new AssetFilter
@@ -133,7 +134,7 @@ public class SearchEndpoint : IEndpoint
             IsReadOnly = a.ExternalLibraryId.HasValue
         }).ToList();
 
-        return Results.Ok(new SearchResponse { Items = items, HasMore = hasMore });
+        return TypedResults.Ok(new SearchResponse { Items = items, HasMore = hasMore });
     }
 
     private static List<string> BuildTagList(Asset asset)

@@ -1,8 +1,11 @@
 using System.Security.Claims;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -17,11 +20,14 @@ public class SyncAssetEndpoint : IEndpoint
             .WithName("SyncAsset")
             .WithTags("Assets")
             .WithDescription("Copies a pending asset from the user's MobileBackup source area into the internal assets directory and indexes it inline.")
+            .Produces<ApiError>(StatusCodes.Status409Conflict)
+            .Produces<ApiError>(StatusCodes.Status413PayloadTooLarge)
+            .Produces<ApiError>(StatusCodes.Status500InternalServerError)
             .RequireAuthorization()
             .RequireRateLimiting("demo-upload");
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<SyncAssetResponse>, BadRequest<ApiError>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>, JsonHttpResult<ApiError>>> Handle(
         [FromQuery] string path,
         [FromQuery] string? deviceName,
         [FromServices] SettingsService settingsService,
@@ -33,216 +39,198 @@ public class SyncAssetEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(path))
-            return Results.BadRequest("Path is required");
+            return TypedResults.BadRequest(new ApiError("Path is required", "path_required"));
 
-        try
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
-            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return TypedResults.Unauthorized();
+        }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
+
+        // Source must live inside the authenticated user's personal subtree.
+        // Prevents one user from triggering /sync against another user's files.
+        var userConfiguredPath = settingsService.GetAssetsPath();
+        var userRoot = Path.Combine(userConfiguredPath, "users", username);
+        if (!IsPathInside(path, userRoot))
+            return TypedResults.Forbid();
+
+        if (!File.Exists(path))
+            return TypedResults.NotFound(new ApiError("Source file does not exist on disk", "file_not_found"));
+
+        var currentFileInfo = new FileInfo(path);
+
+        // Enforce global max upload size (ServerSettings.MaxUploadSizeMb). 0 = unlimited.
+        var maxUploadRaw = await settingsService.GetSettingAsync(
+            "ServerSettings.MaxUploadSizeMb", Guid.Empty, "0");
+        if (int.TryParse(maxUploadRaw, out var maxUploadMb) && maxUploadMb > 0)
+        {
+            var maxBytes = (long)maxUploadMb * 1024L * 1024L;
+            if (currentFileInfo.Length > maxBytes)
             {
-                return Results.Unauthorized();
+                return TypedResults.Json(
+                    new ApiError($"File exceeds the maximum allowed size ({maxUploadMb} MB).", "upload_too_large"),
+                    statusCode: StatusCodes.Status413PayloadTooLarge);
             }
-            var username = user.GetUsername();
-            if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        }
 
-            // Source must live inside the authenticated user's personal subtree.
-            // Prevents one user from triggering /sync against another user's files.
-            var userConfiguredPath = settingsService.GetAssetsPath();
-            var userRoot = Path.Combine(userConfiguredPath, "users", username);
-            if (!IsPathInside(path, userRoot))
-                return Results.Forbid();
+        // Enforce per-user storage quota.
+        var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (dbUser?.StorageQuotaBytes.HasValue == true)
+        {
+            var usedBytes = await dbContext.Assets
+                .Where(a => a.OwnerId == userId && a.DeletedAt == null)
+                .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
 
-            if (!File.Exists(path))
-                return Results.NotFound("Source file does not exist on disk");
+            if (usedBytes + currentFileInfo.Length > dbUser.StorageQuotaBytes.Value)
+                return TypedResults.Json(
+                    new ApiError("Storage quota exceeded.", "storage_quota_exceeded"),
+                    statusCode: StatusCodes.Status409Conflict);
+        }
 
-            var currentFileInfo = new FileInfo(path);
+        // Resolve and prepare the destination folder (mirrors /upload's MobileBackup branch).
+        // Optional per-device subfolder keeps multi-phone backups visually grouped.
+        var mobileBackupVirtual = $"/assets/users/{username}/MobileBackup";
+        var sanitizedDevice = DeviceFolderSanitizer.Sanitize(deviceName);
+        if (sanitizedDevice != null) mobileBackupVirtual += $"/{sanitizedDevice}";
+        var mobileBackupRoot = await settingsService.ResolvePhysicalPathAsync(mobileBackupVirtual);
 
-            // Enforce global max upload size (ServerSettings.MaxUploadSizeMb). 0 = unlimited.
-            var maxUploadRaw = await settingsService.GetSettingAsync(
-                "ServerSettings.MaxUploadSizeMb", Guid.Empty, "0");
-            if (int.TryParse(maxUploadRaw, out var maxUploadMb) && maxUploadMb > 0)
+        await EnsureFolderRecordAsync(dbContext, userId, mobileBackupVirtual, cancellationToken);
+
+        if (!Directory.Exists(mobileBackupRoot))
+        {
+            Directory.CreateDirectory(mobileBackupRoot);
+            Console.WriteLine($"[SYNC] Created MobileBackup directory: {mobileBackupRoot}");
+        }
+
+        Console.WriteLine($"[SYNC] Source: {path}");
+        Console.WriteLine($"[SYNC] Destination root: {mobileBackupRoot}");
+
+        var fileName = currentFileInfo.Name;
+        var relativePath = Path.GetRelativePath(userConfiguredPath, path);
+        var targetPath = Path.Combine(mobileBackupRoot, relativePath);
+        var targetDirectory = Path.GetDirectoryName(targetPath);
+        if (!string.IsNullOrEmpty(targetDirectory))
+        {
+            Directory.CreateDirectory(targetDirectory);
+        }
+
+        // No-op when the source is already inside the destination directory.
+        var normalizedPath = Path.GetFullPath(path);
+        var normalizedLibraryPath = Path.GetFullPath(mobileBackupRoot);
+        if (normalizedPath.StartsWith(normalizedLibraryPath, StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"[SYNC] File is already inside the destination directory: {path}");
+            return TypedResults.Ok(new SyncAssetResponse(
+                "File is already in the destination directory",
+                null,
+                await settingsService.VirtualizePathAsync(path)));
+        }
+
+        // Checksum-based dedup against the whole library.
+        var sourceChecksum = await hashService.CalculateFileHashAsync(path, cancellationToken);
+
+        var existingAsset = await dbContext.Assets
+            .FirstOrDefaultAsync(a => a.Checksum == sourceChecksum, cancellationToken);
+        if (existingAsset != null)
+        {
+            var existingPhysicalPath = await settingsService.ResolvePhysicalPathAsync(existingAsset.FullPath);
+            if (!string.IsNullOrEmpty(existingPhysicalPath) && File.Exists(existingPhysicalPath))
             {
-                var maxBytes = (long)maxUploadMb * 1024L * 1024L;
-                if (currentFileInfo.Length > maxBytes)
-                {
-                    return Results.Problem(
-                        detail: $"File exceeds the maximum allowed size ({maxUploadMb} MB).",
-                        statusCode: StatusCodes.Status413PayloadTooLarge);
-                }
+                Console.WriteLine($"[SYNC] Asset with same checksum already exists: {existingPhysicalPath}");
+                return TypedResults.Ok(new SyncAssetResponse(
+                    "Asset already exists (same content)",
+                    existingAsset.Id,
+                    existingAsset.FullPath));
             }
+        }
 
-            // Enforce per-user storage quota.
-            var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
-            if (dbUser?.StorageQuotaBytes.HasValue == true)
-            {
-                var usedBytes = await dbContext.Assets
-                    .Where(a => a.OwnerId == userId && a.DeletedAt == null)
-                    .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
-
-                if (usedBytes + currentFileInfo.Length > dbUser.StorageQuotaBytes.Value)
-                    return Results.Problem(
-                        detail: "Storage quota exceeded.",
-                        statusCode: StatusCodes.Status409Conflict);
-            }
-
-            // Resolve and prepare the destination folder (mirrors /upload's MobileBackup branch).
-            // Optional per-device subfolder keeps multi-phone backups visually grouped.
-            var mobileBackupVirtual = $"/assets/users/{username}/MobileBackup";
-            var sanitizedDevice = DeviceFolderSanitizer.Sanitize(deviceName);
-            if (sanitizedDevice != null) mobileBackupVirtual += $"/{sanitizedDevice}";
-            var mobileBackupRoot = await settingsService.ResolvePhysicalPathAsync(mobileBackupVirtual);
-
-            await EnsureFolderRecordAsync(dbContext, userId, mobileBackupVirtual, cancellationToken);
-
-            if (!Directory.Exists(mobileBackupRoot))
-            {
-                Directory.CreateDirectory(mobileBackupRoot);
-                Console.WriteLine($"[SYNC] Created MobileBackup directory: {mobileBackupRoot}");
-            }
-
-            Console.WriteLine($"[SYNC] Source: {path}");
-            Console.WriteLine($"[SYNC] Destination root: {mobileBackupRoot}");
-
-            var fileName = currentFileInfo.Name;
-            var relativePath = Path.GetRelativePath(userConfiguredPath, path);
-            var targetPath = Path.Combine(mobileBackupRoot, relativePath);
-            var targetDirectory = Path.GetDirectoryName(targetPath);
-            if (!string.IsNullOrEmpty(targetDirectory))
-            {
-                Directory.CreateDirectory(targetDirectory);
-            }
-
-            // No-op when the source is already inside the destination directory.
-            var normalizedPath = Path.GetFullPath(path);
-            var normalizedLibraryPath = Path.GetFullPath(mobileBackupRoot);
-            if (normalizedPath.StartsWith(normalizedLibraryPath, StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine($"[SYNC] File is already inside the destination directory: {path}");
-                return Results.Ok(new
-                {
-                    message = "File is already in the destination directory",
-                    targetPath = await settingsService.VirtualizePathAsync(path)
-                });
-            }
-
-            // Checksum-based dedup against the whole library.
-            var sourceChecksum = await hashService.CalculateFileHashAsync(path, cancellationToken);
-
-            var existingAsset = await dbContext.Assets
-                .FirstOrDefaultAsync(a => a.Checksum == sourceChecksum, cancellationToken);
-            if (existingAsset != null)
-            {
-                var existingPhysicalPath = await settingsService.ResolvePhysicalPathAsync(existingAsset.FullPath);
-                if (!string.IsNullOrEmpty(existingPhysicalPath) && File.Exists(existingPhysicalPath))
-                {
-                    Console.WriteLine($"[SYNC] Asset with same checksum already exists: {existingPhysicalPath}");
-                    return Results.Ok(new
-                    {
-                        message = "Asset already exists (same content)",
-                        assetId = existingAsset.Id,
-                        targetPath = existingAsset.FullPath
-                    });
-                }
-            }
-
-            // Handle filename collisions at the destination.
-            if (File.Exists(targetPath))
-            {
-                string existingChecksum;
-                try
-                {
-                    existingChecksum = await hashService.CalculateFileHashAsync(targetPath, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[SYNC] Warning: could not hash existing file {targetPath}: {ex.Message}");
-                    existingChecksum = string.Empty;
-                }
-
-                if (existingChecksum == sourceChecksum)
-                {
-                    Console.WriteLine($"[SYNC] File with same name and checksum already at destination: {targetPath}");
-                    return Results.Ok(new
-                    {
-                        message = "Asset already exists at destination",
-                        targetPath = await settingsService.VirtualizePathAsync(targetPath)
-                    });
-                }
-
-                // Different checksum → preserve both by giving the new copy a unique name.
-                targetPath = Path.Combine(mobileBackupRoot, $"{Guid.NewGuid()}_{fileName}");
-            }
-
-            // Pick the best available creation timestamp (EXIF DateTimeOriginal beats filesystem mtime).
-            var originalCreation = currentFileInfo.CreationTimeUtc;
-            var originalLastWrite = currentFileInfo.LastWriteTimeUtc;
+        // Handle filename collisions at the destination.
+        if (File.Exists(targetPath))
+        {
+            string existingChecksum;
             try
             {
-                var exif = await exifService.ExtractExifAsync(path, cancellationToken);
-                if (exif?.DateTimeOriginal != null)
-                {
-                    originalCreation = exif.DateTimeOriginal.Value;
-                    originalLastWrite = exif.DateTimeOriginal.Value;
-                }
+                existingChecksum = await hashService.CalculateFileHashAsync(targetPath, cancellationToken);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SYNC] Warning: could not extract EXIF from {path}: {ex.Message}");
+                Console.WriteLine($"[SYNC] Warning: could not hash existing file {targetPath}: {ex.Message}");
+                existingChecksum = string.Empty;
             }
 
-            Console.WriteLine($"[SYNC] Copying {path} → {targetPath}");
-            File.Copy(path, targetPath, overwrite: false);
-
-            if (!File.Exists(targetPath))
+            if (existingChecksum == sourceChecksum)
             {
-                throw new Exception($"File was not copied to {targetPath}");
+                Console.WriteLine($"[SYNC] File with same name and checksum already at destination: {targetPath}");
+                return TypedResults.Ok(new SyncAssetResponse(
+                    "Asset already exists at destination",
+                    null,
+                    await settingsService.VirtualizePathAsync(targetPath)));
             }
 
-            // Cryptographic verification: hash the destination and compare against the
-            // source hash already computed for dedup. This is the "100% backup" guarantee
-            // — silent corruption (cross-filesystem copy, disk error, truncated write)
-            // would have left the indexed Asset row pointing at a file that doesn't
-            // match its recorded checksum. If they differ we delete the bad copy and
-            // surface a 500 so the client retries instead of trusting partial data.
-            var targetChecksum = await hashService.CalculateFileHashAsync(targetPath, cancellationToken);
-            if (!string.Equals(targetChecksum, sourceChecksum, StringComparison.OrdinalIgnoreCase))
+            // Different checksum → preserve both by giving the new copy a unique name.
+            targetPath = Path.Combine(mobileBackupRoot, $"{Guid.NewGuid()}_{fileName}");
+        }
+
+        // Pick the best available creation timestamp (EXIF DateTimeOriginal beats filesystem mtime).
+        var originalCreation = currentFileInfo.CreationTimeUtc;
+        var originalLastWrite = currentFileInfo.LastWriteTimeUtc;
+        try
+        {
+            var exif = await exifService.ExtractExifAsync(path, cancellationToken);
+            if (exif?.DateTimeOriginal != null)
             {
-                Console.WriteLine(
-                    $"[SYNC ERROR] Checksum mismatch after copy: source={sourceChecksum} target={targetChecksum} path={targetPath}");
-                try { File.Delete(targetPath); } catch { /* best-effort cleanup */ }
-                return Results.Problem(
-                    detail: "Checksum mismatch between source and destination after copy.",
-                    statusCode: StatusCodes.Status500InternalServerError);
+                originalCreation = exif.DateTimeOriginal.Value;
+                originalLastWrite = exif.DateTimeOriginal.Value;
             }
-
-            File.SetCreationTimeUtc(targetPath, originalCreation);
-            File.SetLastWriteTimeUtc(targetPath, originalLastWrite);
-
-            // Inline indexing. If indexing aborted before any DB row was created the copy is a
-            // true orphan and we remove it. Phase B will replace inline indexing with the
-            // enrichment-task worker so partial failures are tracked per task.
-            var indexed = await indexingService.IndexFileAsync(targetPath, userId, cancellationToken);
-            if (indexed == null)
-            {
-                try { File.Delete(targetPath); } catch { /* best-effort cleanup */ }
-                return Results.Problem(
-                    detail: "Failed to index synced asset.",
-                    statusCode: StatusCodes.Status500InternalServerError);
-            }
-
-            return Results.Ok(new
-            {
-                message = "Asset synced and indexed",
-                assetId = indexed.Id,
-                targetPath = indexed.FullPath
-            });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SYNC ERROR] {ex.Message}");
-            Console.WriteLine($"[SYNC ERROR] {ex.StackTrace}");
-            return Results.Problem($"Failed to sync asset: {ex.Message}");
+            Console.WriteLine($"[SYNC] Warning: could not extract EXIF from {path}: {ex.Message}");
         }
+
+        Console.WriteLine($"[SYNC] Copying {path} → {targetPath}");
+        File.Copy(path, targetPath, overwrite: false);
+
+        if (!File.Exists(targetPath))
+        {
+            throw new Exception($"File was not copied to {targetPath}");
+        }
+
+        // Cryptographic verification: hash the destination and compare against the
+        // source hash already computed for dedup. This is the "100% backup" guarantee
+        // — silent corruption (cross-filesystem copy, disk error, truncated write)
+        // would have left the indexed Asset row pointing at a file that doesn't
+        // match its recorded checksum. If they differ we delete the bad copy and
+        // surface a 500 so the client retries instead of trusting partial data.
+        var targetChecksum = await hashService.CalculateFileHashAsync(targetPath, cancellationToken);
+        if (!string.Equals(targetChecksum, sourceChecksum, StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine(
+                $"[SYNC ERROR] Checksum mismatch after copy: source={sourceChecksum} target={targetChecksum} path={targetPath}");
+            try { File.Delete(targetPath); } catch { /* best-effort cleanup */ }
+            return TypedResults.Json(
+                new ApiError("Checksum mismatch between source and destination after copy.", "checksum_mismatch"),
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+
+        File.SetCreationTimeUtc(targetPath, originalCreation);
+        File.SetLastWriteTimeUtc(targetPath, originalLastWrite);
+
+        // Inline indexing. If indexing aborted before any DB row was created the copy is a
+        // true orphan and we remove it. Phase B will replace inline indexing with the
+        // enrichment-task worker so partial failures are tracked per task.
+        var indexed = await indexingService.IndexFileAsync(targetPath, userId, cancellationToken);
+        if (indexed == null)
+        {
+            try { File.Delete(targetPath); } catch { /* best-effort cleanup */ }
+            return TypedResults.Json(
+                new ApiError("Failed to index synced asset.", "indexing_failed"),
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+
+        return TypedResults.Ok(new SyncAssetResponse("Asset synced and indexed", indexed.Id, indexed.FullPath));
     }
 
     private static bool IsPathInside(string path, string root)
@@ -341,3 +329,12 @@ public class SyncAssetEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }
+
+/// <summary>
+/// <see cref="AssetId"/> is left out (not null) when the file was not indexed
+/// by this call, as the apps have always received it.
+/// </summary>
+public sealed record SyncAssetResponse(
+    string Message,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? AssetId,
+    string TargetPath);

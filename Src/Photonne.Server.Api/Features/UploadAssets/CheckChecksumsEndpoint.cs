@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 
 namespace Photonne.Server.Api.Features.UploadAssets;
@@ -21,7 +23,7 @@ public class CheckChecksumsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<CheckChecksumsResponse>, UnauthorizedHttpResult, BadRequest<ApiError>>> Handle(
         CheckChecksumsRequest request,
         ApplicationDbContext dbContext,
         ClaimsPrincipal user,
@@ -29,13 +31,13 @@ public class CheckChecksumsEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (request.Checksums == null || request.Checksums.Count == 0)
-            return Results.Ok(new CheckChecksumsResponse([]));
+            return TypedResults.Ok(new CheckChecksumsResponse([]));
 
         if (request.Checksums.Count > MaxChecksumsPerRequest)
-            return Results.BadRequest($"Too many checksums; maximum is {MaxChecksumsPerRequest} per request");
+            return TypedResults.BadRequest(new ApiError($"Too many checksums; maximum is {MaxChecksumsPerRequest} per request", "too_many_items"));
 
         var requested = request.Checksums
             .Where(c => !string.IsNullOrWhiteSpace(c))
@@ -43,7 +45,7 @@ public class CheckChecksumsEndpoint : IEndpoint
             .ToHashSet();
 
         if (requested.Count == 0)
-            return Results.Ok(new CheckChecksumsResponse([]));
+            return TypedResults.Ok(new CheckChecksumsResponse([]));
 
         var matching = await dbContext.Assets
             .Where(a => a.DeletedAt == null
@@ -57,6 +59,6 @@ public class CheckChecksumsEndpoint : IEndpoint
         foreach (var asset in matching)
             existing.TryAdd(asset.Checksum, asset.Id);
 
-        return Results.Ok(new CheckChecksumsResponse(existing));
+        return TypedResults.Ok(new CheckChecksumsResponse(existing));
     }
 }

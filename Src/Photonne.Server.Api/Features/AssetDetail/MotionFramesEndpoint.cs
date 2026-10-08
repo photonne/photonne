@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -33,12 +35,14 @@ public class MotionFramesEndpoint : IEndpoint
             .WithName("GetAssetMotionFrame")
             .WithTags("Assets")
             .WithDescription("Gets one preview frame of a motion photo's clip as JPEG")
+            .Produces<Stream>(StatusCodes.Status200OK, "image/jpeg")
             .RequireAuthorization();
 
         app.MapPost("/api/assets/{assetId:guid}/motion/frames/{index:int}/save", HandleSave)
             .WithName("SaveAssetMotionFrame")
             .WithTags("Assets")
             .WithDescription("Saves one frame of a motion photo's clip as a new photo next to the original")
+            .Produces<ApiError>(StatusCodes.Status403Forbidden)
             .RequireAuthorization();
     }
 
@@ -57,7 +61,7 @@ public class MotionFramesEndpoint : IEndpoint
             dbContext, user.GetUserId(), folderId, user.IsInRole("Admin"), ct);
     }
 
-    private static async Task<IResult> HandleList(
+    private static async Task<Results<Ok<MotionFramesResponse>, NotFound<ApiError>>> HandleList(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] MotionFrameService frameService,
@@ -65,12 +69,14 @@ public class MotionFramesEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         var frames = await LoadFramesAsync(dbContext, settingsService, frameService, assetId, cancellationToken);
-        return frames == null
-            ? Results.NotFound(new { error = $"Asset {assetId} has no motion clip" })
-            : Results.Ok(new MotionFramesResponse { FrameCount = frames.FrameCount });
+        if (frames == null)
+        {
+            return TypedResults.NotFound(new ApiError($"Asset {assetId} has no motion clip", "motion_clip_not_found"));
+        }
+        return TypedResults.Ok(new MotionFramesResponse { FrameCount = frames.FrameCount });
     }
 
-    private static async Task<IResult> HandleFrame(
+    private static async Task<Results<PhysicalFileHttpResult, NotFound<ApiError>>> HandleFrame(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] MotionFrameService frameService,
@@ -82,15 +88,15 @@ public class MotionFramesEndpoint : IEndpoint
         var frames = await LoadFramesAsync(dbContext, settingsService, frameService, assetId, cancellationToken);
         if (frames == null || index < 0 || index >= frames.FrameCount)
         {
-            return Results.NotFound(new { error = $"Asset {assetId} has no motion frame {index}" });
+            return TypedResults.NotFound(new ApiError($"Asset {assetId} has no motion frame {index}", "motion_frame_not_found"));
         }
 
         // The client steps back and forth over the same few dozen frames.
         httpContext.Response.Headers.CacheControl = "private, max-age=3600";
-        return Results.File(frames.FramePath(index), "image/jpeg");
+        return TypedResults.PhysicalFile(frames.FramePath(index), "image/jpeg");
     }
 
-    private static async Task<IResult> HandleSave(
+    private static async Task<Results<Ok<SaveMotionFrameResponse>, NotFound<ApiError>, JsonHttpResult<ApiError>>> HandleSave(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] MotionFrameService frameService,
@@ -110,13 +116,13 @@ public class MotionFramesEndpoint : IEndpoint
             .FirstOrDefaultAsync(a => a.Id == assetId, cancellationToken);
         if (source == null || source.DeletedAt != null)
         {
-            return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
+            return TypedResults.NotFound(new ApiError($"Asset with ID {assetId} not found", "asset_not_found"));
         }
 
         if (!await CanSaveFrameAsync(dbContext, source, user, cancellationToken))
         {
-            return Results.Problem(
-                detail: "No tienes permiso para añadir fotos a la carpeta de esta foto.",
+            return TypedResults.Json(
+                new ApiError("No tienes permiso para añadir fotos a la carpeta de esta foto.", "forbidden_folder"),
                 statusCode: StatusCodes.Status403Forbidden);
         }
 
@@ -126,7 +132,7 @@ public class MotionFramesEndpoint : IEndpoint
             : await frameService.ExtractFullFrameAsync(stillPath, index, cancellationToken);
         if (frame == null)
         {
-            return Results.NotFound(new { error = $"Asset {assetId} has no motion frame {index}" });
+            return TypedResults.NotFound(new ApiError($"Asset {assetId} has no motion frame {index}", "motion_frame_not_found"));
         }
 
         frame.Metadata.ExifProfile = BuildExif(source);
@@ -170,13 +176,13 @@ public class MotionFramesEndpoint : IEndpoint
             await enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.MediaRecognition, cancellationToken);
             await enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.Thumbnails, cancellationToken);
 
-            return Results.Ok(new SaveMotionFrameResponse { AssetId = asset.Id });
+            return TypedResults.Ok(new SaveMotionFrameResponse { AssetId = asset.Id });
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Saving frame {Index} of asset {AssetId} failed", index, assetId);
             if (File.Exists(targetPath)) File.Delete(targetPath);
-            return Results.Problem(ex.Message);
+            throw;
         }
     }
 

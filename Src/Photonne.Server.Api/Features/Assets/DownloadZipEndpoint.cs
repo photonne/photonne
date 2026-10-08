@@ -1,9 +1,11 @@
 using System.IO.Compression;
 using System.Security.Claims;
 using ImageMagick;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 
@@ -17,10 +19,11 @@ public class DownloadZipEndpoint : IEndpoint
             .WithTags("Assets")
             .WithName("DownloadAssetsZip")
             .WithDescription("Downloads selected assets as a ZIP file")
+            .Produces<Stream>(StatusCodes.Status200OK, "application/zip")
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> DownloadZip(
+    private static async Task<Results<FileStreamHttpResult, UnauthorizedHttpResult, BadRequest<ApiError>, ForbidHttpResult>> DownloadZip(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromBody] DownloadZipRequest request,
@@ -28,22 +31,22 @@ public class DownloadZipEndpoint : IEndpoint
         CancellationToken ct)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
-            return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
+            return TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "no_assets_selected"));
 
         if (!AssetDownloadFormats.TryParse(request.Format, out var format))
-            return Results.BadRequest(new { error = "format must be 'original' or 'jpeg'" });
+            return TypedResults.BadRequest(new ApiError("format must be 'original' or 'jpeg'", "invalid_format"));
 
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.DeletedAt == null)
             .ToListAsync(ct);
 
         if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         var zipName = !string.IsNullOrWhiteSpace(request.FileName)
             ? $"{request.FileName}.zip"
@@ -83,7 +86,7 @@ public class DownloadZipEndpoint : IEndpoint
         }
 
         memoryStream.Position = 0;
-        return Results.File(memoryStream, "application/zip", zipName);
+        return TypedResults.File(memoryStream, "application/zip", zipName);
     }
 
     /// <summary>

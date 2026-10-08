@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
@@ -19,7 +20,7 @@ public class MemoriesEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<TimelineResponse>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         [FromServices] SettingsService settingsService,
@@ -29,9 +30,9 @@ public class MemoriesEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         // "On this day" is a LOCAL-calendar concept: capture dates are stored as
         // the photo's local wall-clock, so compare against the user's local
@@ -58,7 +59,7 @@ public class MemoriesEndpoint : IEndpoint
                 .ToListAsync(ct);
 
             await TimelineQuery.HydrateTagsAsync(dbContext, testItems, ct);
-            return Results.Ok(testItems);
+            return TypedResults.Ok(testItems);
         }
 
         var items = await visible
@@ -72,6 +73,6 @@ public class MemoriesEndpoint : IEndpoint
             .ToListAsync(ct);
 
         await TimelineQuery.HydrateTagsAsync(dbContext, items, ct);
-        return Results.Ok(items);
+        return TypedResults.Ok(items);
     }
 }

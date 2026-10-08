@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -46,7 +48,7 @@ public class SharedTrashEndpoint : IEndpoint
             .WithDescription("Permanently deletes selected shared-folder deletions");
     }
 
-    private static async Task<IResult> ListSharedTrash(
+    private static async Task<Results<Ok<SharedTrashPageResponse>, UnauthorizedHttpResult>> ListSharedTrash(
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         [FromQuery] DateTime? cursor,
@@ -56,7 +58,7 @@ public class SharedTrashEndpoint : IEndpoint
         var size = pageSize is > 0 ? pageSize.Value : 150;
         if (size > 500) size = 500;
 
-        if (!TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
         var isAdmin = user.IsInRole("Admin");
 
         IQueryable<Asset> baseQuery = SharedTrashQuery(dbContext)
@@ -108,15 +110,10 @@ public class SharedTrashEndpoint : IEndpoint
         var items = assets.Select(ToItem).ToList();
         var nextCursor = hasMore ? assets.Last().DeletedAt : (DateTime?)null;
 
-        return Results.Ok(new
-        {
-            Items = items,
-            HasMore = hasMore,
-            NextCursor = nextCursor
-        });
+        return TypedResults.Ok(new SharedTrashPageResponse(items, hasMore, nextCursor));
     }
 
-    private static async Task<IResult> RestoreSharedTrash(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>> RestoreSharedTrash(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromBody] RestoreAssetsRequest request,
@@ -128,10 +125,10 @@ public class SharedTrashEndpoint : IEndpoint
 
         var username = user.GetUsername() ?? string.Empty;
         await AssetsEndpoint.RestoreAssetsInternalAsync(dbContext, settingsService, assets!, username, ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> PurgeSharedTrash(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>> PurgeSharedTrash(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromBody] PurgeAssetsRequest request,
@@ -142,21 +139,21 @@ public class SharedTrashEndpoint : IEndpoint
         if (error != null) return error;
 
         await AssetsEndpoint.DeleteAssetsPermanentlyAsync(dbContext, settingsService, assets!, ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     // Loads the requested shared-trash assets and verifies the caller may act on
     // every one of them. Returns a Forbid/BadRequest/NotFound result on failure.
-    private static async Task<(List<Asset>? assets, IResult? error)> LoadAuthorizedAsync(
+    private static async Task<(List<Asset>? assets, Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>? error)> LoadAuthorizedAsync(
         ApplicationDbContext dbContext,
         List<Guid> assetIds,
         ClaimsPrincipal user,
         CancellationToken ct,
         bool includeThumbnails = false)
     {
-        if (!TryGetUserId(user, out var userId)) return (null, Results.Unauthorized());
+        if (!TryGetUserId(user, out var userId)) return (null, TypedResults.Unauthorized());
         if (assetIds == null || assetIds.Count == 0)
-            return (null, Results.BadRequest(new { error = "Debes seleccionar al menos un asset." }));
+            return (null, TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "no_assets_selected")));
 
         var isAdmin = user.IsInRole("Admin");
 
@@ -167,13 +164,13 @@ public class SharedTrashEndpoint : IEndpoint
             .ToListAsync(ct);
 
         if (assets.Count == 0)
-            return (null, Results.NotFound(new { error = "Assets no encontrados." }));
+            return (null, TypedResults.NotFound(new ApiError("Assets no encontrados.", "assets_not_found")));
 
         foreach (var asset in assets)
         {
             if (!await CanActOnSharedTrashAsync(dbContext, asset, userId, isAdmin, ct))
             {
-                return (null, Results.Forbid());
+                return (null, TypedResults.Forbid());
             }
         }
 
@@ -227,6 +224,8 @@ public class SharedTrashEndpoint : IEndpoint
         return claim != null && Guid.TryParse(claim.Value, out userId);
     }
 }
+
+public sealed record SharedTrashPageResponse(List<SharedTrashItemResponse> Items, bool HasMore, DateTime? NextCursor);
 
 public class SharedTrashItemResponse
 {

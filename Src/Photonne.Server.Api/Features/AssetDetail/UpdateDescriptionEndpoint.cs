@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 
@@ -18,7 +20,7 @@ public class UpdateDescriptionEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<UpdateDescriptionResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] Guid assetId,
         [FromBody] UpdateDescriptionRequest request,
@@ -26,18 +28,18 @@ public class UpdateDescriptionEndpoint : IEndpoint
         CancellationToken ct)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var asset = await dbContext.Assets
             .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, ct);
 
         if (asset == null)
-            return Results.NotFound(new { error = "Asset no encontrado." });
+            return TypedResults.NotFound(new ApiError("Asset no encontrado.", "asset_not_found"));
 
         if (!AssetMetadataPermissions.IsInUserRoot(asset.FullPath, username))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         asset.Caption = string.IsNullOrWhiteSpace(request.Caption)
             ? null
@@ -45,7 +47,7 @@ public class UpdateDescriptionEndpoint : IEndpoint
 
         await dbContext.SaveChangesAsync(ct);
 
-        return Results.Ok(new { caption = asset.Caption });
+        return TypedResults.Ok(new UpdateDescriptionResponse(asset.Caption));
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
@@ -59,3 +61,5 @@ public class UpdateDescriptionRequest
 {
     public string? Caption { get; set; }
 }
+
+public sealed record UpdateDescriptionResponse(string? Caption);

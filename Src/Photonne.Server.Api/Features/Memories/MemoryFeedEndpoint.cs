@@ -1,9 +1,11 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 
@@ -43,7 +45,7 @@ public class MemoryFeedEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<MemoryResponse>>, UnauthorizedHttpResult, BadRequest<ApiError>>> Handle(
         [FromServices] ApplicationDbContext db,
         ClaimsPrincipal user,
         [FromQuery] string? kind,
@@ -53,7 +55,7 @@ public class MemoryFeedEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var take = Math.Clamp(limit.GetValueOrDefault(DefaultLimit), 1, MaxLimit);
 
@@ -64,7 +66,7 @@ public class MemoryFeedEndpoint : IEndpoint
         if (!string.IsNullOrWhiteSpace(kind))
         {
             if (!Enum.TryParse<MemoryKind>(kind, ignoreCase: true, out var parsed))
-                return Results.BadRequest(new { message = $"Unknown memory kind '{kind}'." });
+                return TypedResults.BadRequest(new ApiError($"Unknown memory kind '{kind}'.", "invalid_memory_kind"));
             query = query.Where(m => m.Kind == parsed);
         }
 
@@ -108,7 +110,7 @@ public class MemoryFeedEndpoint : IEndpoint
         if (personId is Guid viewed)
             await FillCompanionsAsync(db, userId, viewed, items, ct);
 
-        return Results.Ok(items);
+        return TypedResults.Ok(items);
     }
 
     /// <summary>Names the other person of each pair, seen from [viewed]'s page.</summary>
@@ -153,7 +155,7 @@ public class MemoryDetailEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<MemoryDetailResponse>, UnauthorizedHttpResult, NotFound<ApiError>>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] AssetVisibilityService visibility,
         ClaimsPrincipal user,
@@ -162,7 +164,7 @@ public class MemoryDetailEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var memory = await db.Memories
             .AsNoTracking()
@@ -185,7 +187,7 @@ public class MemoryDetailEndpoint : IEndpoint
 
         // 404 for both "no such memory" and "not yours" — a distinct 403 would
         // confirm the id exists to someone who shouldn't know that.
-        if (memory is null) return Results.NotFound();
+        if (memory is null) return TypedResults.NotFound(new ApiError($"Memory {id} not found", "memory_not_found"));
 
         // Ordered by Position, and re-gated: a memory generated last night may
         // point at an asset since deleted, archived, unshared, or sitting in a
@@ -205,6 +207,6 @@ public class MemoryDetailEndpoint : IEndpoint
             .ToListAsync(ct);
 
         await TimelineQuery.HydrateTagsAsync(db, memory.Assets, ct);
-        return Results.Ok(memory);
+        return TypedResults.Ok(memory);
     }
 }

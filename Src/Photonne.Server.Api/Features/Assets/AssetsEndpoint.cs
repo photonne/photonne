@@ -1,9 +1,11 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -39,7 +41,7 @@ public class AssetsEndpoint : IEndpoint
             .WithDescription("Permanently deletes all assets from the user's trash");
     }
 
-    private static async Task<IResult> DeleteAssets(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>> DeleteAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] INotificationService notifications,
@@ -49,14 +51,14 @@ public class AssetsEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
         {
-            return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
+            return TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "no_assets_selected"));
         }
 
         var assets = await dbContext.Assets
@@ -65,13 +67,17 @@ public class AssetsEndpoint : IEndpoint
 
         if (assets.Count == 0)
         {
-            return Results.NotFound(new { error = "Assets no encontrados." });
+            return TypedResults.NotFound(new ApiError("Assets no encontrados.", "assets_not_found"));
         }
 
         var authorized = await TrashOrDeleteAssetsAsync(
             dbContext, settingsService, notifications, assets, userId, username, user.IsInRole("Admin"), ct);
 
-        return authorized ? Results.NoContent() : Results.Forbid();
+        if (!authorized)
+        {
+            return TypedResults.Forbid();
+        }
+        return TypedResults.NoContent();
     }
 
     // Core delete flow shared by DeleteAssets and folder deletion. Partitions the
@@ -283,7 +289,7 @@ public class AssetsEndpoint : IEndpoint
         }
     }
 
-    private static async Task<IResult> RestoreAssets(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, ForbidHttpResult>> RestoreAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromBody] RestoreAssetsRequest request,
@@ -292,14 +298,14 @@ public class AssetsEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
         {
-            return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
+            return TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "no_assets_selected"));
         }
 
         var assets = await dbContext.Assets
@@ -308,15 +314,15 @@ public class AssetsEndpoint : IEndpoint
 
         if (assets.Any(a => a.DeletedAt == null || !IsAssetInUserRoot(a.FullPath, username)))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         await RestoreAssetsInternalAsync(dbContext, settingsService, assets, username, ct);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> RestoreAllTrash(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult>> RestoreAllTrash(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
@@ -324,10 +330,10 @@ public class AssetsEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var assets = await dbContext.Assets
             .Where(a => a.DeletedAt != null)
@@ -337,12 +343,12 @@ public class AssetsEndpoint : IEndpoint
 
         if (!assets.Any())
         {
-            return Results.NoContent();
+            return TypedResults.NoContent();
         }
 
         await RestoreAssetsInternalAsync(dbContext, settingsService, assets, username, ct);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     // internal: reused by SharedTrashEndpoint's restore.
@@ -395,7 +401,7 @@ public class AssetsEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(ct);
     }
 
-    private static async Task<IResult> PurgeAssets(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>> PurgeAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromBody] PurgeAssetsRequest request,
@@ -404,14 +410,14 @@ public class AssetsEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
         {
-            return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
+            return TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "no_assets_selected"));
         }
 
         var assets = await dbContext.Assets
@@ -421,20 +427,20 @@ public class AssetsEndpoint : IEndpoint
 
         if (!assets.Any())
         {
-            return Results.NotFound(new { error = "Assets no encontrados." });
+            return TypedResults.NotFound(new ApiError("Assets no encontrados.", "assets_not_found"));
         }
 
         if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         await DeleteAssetsPermanentlyAsync(dbContext, settingsService, assets, ct);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> EmptyTrash(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult>> EmptyTrash(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
@@ -442,10 +448,10 @@ public class AssetsEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var assets = await dbContext.Assets
             .Include(a => a.Thumbnails)
@@ -456,12 +462,12 @@ public class AssetsEndpoint : IEndpoint
 
         if (!assets.Any())
         {
-            return Results.NoContent();
+            return TypedResults.NoContent();
         }
 
         await DeleteAssetsPermanentlyAsync(dbContext, settingsService, assets, ct);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     // internal: reused by SharedTrashEndpoint's purge.

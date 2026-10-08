@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -30,7 +31,7 @@ public class MapAssetsEndpoint : IEndpoint
             });
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<List<MapClusterResponse>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         [FromServices] AllowedFolderCache allowedFolders,
@@ -42,136 +43,126 @@ public class MapAssetsEndpoint : IEndpoint
         [FromQuery] double? maxLng,
         CancellationToken cancellationToken)
     {
-        try
+        if (!TryGetUserId(user, out var userId))
         {
-            if (!TryGetUserId(user, out var userId))
+            return TypedResults.Unauthorized();
+        }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
+
+        var userRootPath = GetUserRootPath(username);
+
+        // Obtener assets GPS — cachear todos los del usuario, filtrar bounds en memoria
+        var cacheKey = $"map:assets:{userId}";
+        if (!cache.TryGetValue(cacheKey, out List<AssetLocation>? allAssets) || allAssets == null)
+        {
+            var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
+                dbContext, userId, userRootPath, cancellationToken);
+            var dbAssets = await dbContext.Assets
+                .Include(a => a.Exif)
+                .Include(a => a.Thumbnails)
+                .Where(a => a.DeletedAt == null &&
+                           !a.IsFileMissing &&
+                           a.Exif != null &&
+                           a.Exif.Latitude.HasValue &&
+                           a.Exif.Longitude.HasValue &&
+                           // Excluir (0,0) — GPS vacío/corrupto en EXIF
+                           (a.Exif.Latitude.Value > 0.0001 || a.Exif.Latitude.Value < -0.0001 ||
+                            a.Exif.Longitude.Value > 0.0001 || a.Exif.Longitude.Value < -0.0001) &&
+                           a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value))
+                .ToListAsync(cancellationToken);
+            allAssets = dbAssets.Select(a => new AssetLocation
             {
-                return Results.Unauthorized();
-            }
-            var username = user.GetUsername();
-            if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
-
-            var userRootPath = GetUserRootPath(username);
-
-            // Obtener assets GPS — cachear todos los del usuario, filtrar bounds en memoria
-            var cacheKey = $"map:assets:{userId}";
-            if (!cache.TryGetValue(cacheKey, out List<AssetLocation>? allAssets) || allAssets == null)
-            {
-                var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
-                    dbContext, userId, userRootPath, cancellationToken);
-                var dbAssets = await dbContext.Assets
-                    .Include(a => a.Exif)
-                    .Include(a => a.Thumbnails)
-                    .Where(a => a.DeletedAt == null &&
-                               !a.IsFileMissing &&
-                               a.Exif != null &&
-                               a.Exif.Latitude.HasValue &&
-                               a.Exif.Longitude.HasValue &&
-                               // Excluir (0,0) — GPS vacío/corrupto en EXIF
-                               (a.Exif.Latitude.Value > 0.0001 || a.Exif.Latitude.Value < -0.0001 ||
-                                a.Exif.Longitude.Value > 0.0001 || a.Exif.Longitude.Value < -0.0001) &&
-                               a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value))
-                    .ToListAsync(cancellationToken);
-                allAssets = dbAssets.Select(a => new AssetLocation
-                {
-                    Id = a.Id,
-                    // CapturedAt drives the date span shown on map clusters so
-                    // they match the timeline's EXIF-derived ordering.
-                    FileCreatedAt = a.CapturedAt,
-                    Latitude = a.Exif!.Latitude!.Value,
-                    Longitude = a.Exif.Longitude!.Value,
-                    HasThumbnails = a.Thumbnails.Any()
-                }).ToList();
-
-                cache.Set(cacheKey, allAssets, TimeSpan.FromMinutes(5));
-            }
-
-            // Filtrar por bounds en memoria (evita múltiples consultas a BD para distintos viewports)
-            var assets = allAssets;
-            if (minLat.HasValue && minLng.HasValue && maxLat.HasValue && maxLng.HasValue)
-            {
-                bool isGlobalView = Math.Abs(maxLng.Value - minLng.Value) > 350;
-                if (!isGlobalView)
-                {
-                    assets = allAssets.Where(a =>
-                        a.Latitude >= minLat.Value && a.Latitude <= maxLat.Value &&
-                        a.Longitude >= minLng.Value && a.Longitude <= maxLng.Value).ToList();
-                }
-            }
-
-            // Agrupar assets en clusters basados en zoom level
-            var currentZoom = zoom ?? 10;
-            var clusterDistance = GetClusterDistance(currentZoom);
-            
-            // Si el zoom es alto, reducimos el área de búsqueda de clustering para evitar que assets lejanos 
-            // "roben" assets que deberían estar en clusters separados y visibles al hacer zoom.
-            var clusters = CreateClusters(assets, clusterDistance);
-            
-            // Validación inicial: asegurar que no haya assets duplicados antes de procesar
-            clusters = ValidateNoDuplicateAssets(clusters);
-            
-            // Eliminar duplicados ANTES de separar para evitar crear más duplicados
-            clusters = DeduplicateClusters(clusters);
-            
-            // Separar clusters que se superponen visualmente
-            clusters = SeparateOverlappingClusters(clusters, currentZoom, clusterDistance);
-            
-            // Eliminar duplicados DESPUÉS de separar (por si la separación creó algún problema)
-            clusters = DeduplicateClusters(clusters);
-            
-            // Validación final: asegurar que no haya assets duplicados
-            clusters = ValidateNoDuplicateAssets(clusters);
-            
-            // Validación final agresiva: asegurar que no haya assets duplicados
-            var totalAssets = clusters.Sum(c => c.Count);
-            var uniqueAssets = clusters.SelectMany(c => c.AssetIds).Distinct().Count();
-            if (totalAssets != uniqueAssets)
-            {
-                // Hay duplicados, forzar limpieza agresiva
-                clusters = ForceDeduplicate(clusters);
-                
-                // Verificar nuevamente después de la limpieza
-                totalAssets = clusters.Sum(c => c.Count);
-                uniqueAssets = clusters.SelectMany(c => c.AssetIds).Distinct().Count();
-                if (totalAssets != uniqueAssets)
-                {
-                    // Si aún hay duplicados después de la limpieza, usar método más agresivo
-                    clusters = AggressiveDeduplicate(clusters);
-                }
-            }
-
-            // Usar los HasThumbnails ya cargados en memoria (evita segunda consulta a BD)
-            var assetThumbLookup = allAssets.ToDictionary(a => a.Id, a => a.HasThumbnails);
-
-            var response = clusters.Select(c =>
-            {
-                var firstAssetId = c.AssetIds.FirstOrDefault();
-                var clusterId = $"{c.Latitude:F6}_{c.Longitude:F6}_{c.Count}_{c.EarliestDate:yyyyMMddHHmmss}";
-
-                return new MapClusterResponse
-                {
-                    Id = clusterId,
-                    Latitude = c.Latitude,
-                    Longitude = c.Longitude,
-                    Count = c.Count,
-                    AssetIds = c.AssetIds,
-                    EarliestDate = c.EarliestDate,
-                    LatestDate = c.LatestDate,
-                    FirstAssetId = firstAssetId,
-                    HasThumbnail = firstAssetId != Guid.Empty &&
-                                   assetThumbLookup.TryGetValue(firstAssetId, out var hasThumbs) && hasThumbs
-                };
+                Id = a.Id,
+                // CapturedAt drives the date span shown on map clusters so
+                // they match the timeline's EXIF-derived ordering.
+                FileCreatedAt = a.CapturedAt,
+                Latitude = a.Exif!.Latitude!.Value,
+                Longitude = a.Exif.Longitude!.Value,
+                HasThumbnails = a.Thumbnails.Any()
             }).ToList();
 
-            return Results.Ok(response);
+            cache.Set(cacheKey, allAssets, TimeSpan.FromMinutes(5));
         }
-        catch (Exception ex)
+
+        // Filtrar por bounds en memoria (evita múltiples consultas a BD para distintos viewports)
+        var assets = allAssets;
+        if (minLat.HasValue && minLng.HasValue && maxLat.HasValue && maxLng.HasValue)
         {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError
-            );
+            bool isGlobalView = Math.Abs(maxLng.Value - minLng.Value) > 350;
+            if (!isGlobalView)
+            {
+                assets = allAssets.Where(a =>
+                    a.Latitude >= minLat.Value && a.Latitude <= maxLat.Value &&
+                    a.Longitude >= minLng.Value && a.Longitude <= maxLng.Value).ToList();
+            }
         }
+
+        // Agrupar assets en clusters basados en zoom level
+        var currentZoom = zoom ?? 10;
+        var clusterDistance = GetClusterDistance(currentZoom);
+        
+        // Si el zoom es alto, reducimos el área de búsqueda de clustering para evitar que assets lejanos 
+        // "roben" assets que deberían estar en clusters separados y visibles al hacer zoom.
+        var clusters = CreateClusters(assets, clusterDistance);
+        
+        // Validación inicial: asegurar que no haya assets duplicados antes de procesar
+        clusters = ValidateNoDuplicateAssets(clusters);
+        
+        // Eliminar duplicados ANTES de separar para evitar crear más duplicados
+        clusters = DeduplicateClusters(clusters);
+        
+        // Separar clusters que se superponen visualmente
+        clusters = SeparateOverlappingClusters(clusters, currentZoom, clusterDistance);
+        
+        // Eliminar duplicados DESPUÉS de separar (por si la separación creó algún problema)
+        clusters = DeduplicateClusters(clusters);
+        
+        // Validación final: asegurar que no haya assets duplicados
+        clusters = ValidateNoDuplicateAssets(clusters);
+        
+        // Validación final agresiva: asegurar que no haya assets duplicados
+        var totalAssets = clusters.Sum(c => c.Count);
+        var uniqueAssets = clusters.SelectMany(c => c.AssetIds).Distinct().Count();
+        if (totalAssets != uniqueAssets)
+        {
+            // Hay duplicados, forzar limpieza agresiva
+            clusters = ForceDeduplicate(clusters);
+            
+            // Verificar nuevamente después de la limpieza
+            totalAssets = clusters.Sum(c => c.Count);
+            uniqueAssets = clusters.SelectMany(c => c.AssetIds).Distinct().Count();
+            if (totalAssets != uniqueAssets)
+            {
+                // Si aún hay duplicados después de la limpieza, usar método más agresivo
+                clusters = AggressiveDeduplicate(clusters);
+            }
+        }
+
+        // Usar los HasThumbnails ya cargados en memoria (evita segunda consulta a BD)
+        var assetThumbLookup = allAssets.ToDictionary(a => a.Id, a => a.HasThumbnails);
+
+        var response = clusters.Select(c =>
+        {
+            var firstAssetId = c.AssetIds.FirstOrDefault();
+            var clusterId = $"{c.Latitude:F6}_{c.Longitude:F6}_{c.Count}_{c.EarliestDate:yyyyMMddHHmmss}";
+
+            return new MapClusterResponse
+            {
+                Id = clusterId,
+                Latitude = c.Latitude,
+                Longitude = c.Longitude,
+                Count = c.Count,
+                AssetIds = c.AssetIds,
+                EarliestDate = c.EarliestDate,
+                LatestDate = c.LatestDate,
+                FirstAssetId = firstAssetId,
+                HasThumbnail = firstAssetId != Guid.Empty &&
+                               assetThumbLookup.TryGetValue(firstAssetId, out var hasThumbs) && hasThumbs
+            };
+        }).ToList();
+
+        return TypedResults.Ok(response);
     }
 
     private bool TryGetUserId(ClaimsPrincipal user, out Guid userId)

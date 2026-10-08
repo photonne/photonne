@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -30,12 +32,14 @@ public class MotionPhotoEndpoint : IEndpoint
     {
         app.MapGet("/api/assets/{assetId:guid}/motion", Handle)
             .RequireAuthorization()
+            .Produces<Stream>(StatusCodes.Status200OK, "video/quicktime", "video/mp4")
+            .Produces(StatusCodes.Status304NotModified)
             .WithName("GetAssetMotion")
             .WithTags("Assets")
             .WithDescription("Gets the paired motion video for a Live Photo, if one exists");
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<PhysicalFileHttpResult, FileStreamHttpResult, StatusCodeHttpResult, NotFound<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] AssetVisibilityService visibility,
@@ -49,7 +53,7 @@ public class MotionPhotoEndpoint : IEndpoint
 
         if (asset == null || !await visibility.CanReadAsync(httpContext.User, asset, cancellationToken))
         {
-            return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
+            return TypedResults.NotFound(new ApiError($"Asset with ID {assetId} not found", "asset_not_found"));
         }
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
@@ -60,7 +64,7 @@ public class MotionPhotoEndpoint : IEndpoint
         if (motionPath != null)
         {
             var clipFile = new FileInfo(motionPath);
-            return Results.File(motionPath, "video/quicktime",
+            return TypedResults.PhysicalFile(motionPath, "video/quicktime",
                 lastModified: clipFile.LastWriteTimeUtc,
                 entityTag: MediaCaching.ETagFor(clipFile),
                 enableRangeProcessing: true);
@@ -75,7 +79,11 @@ public class MotionPhotoEndpoint : IEndpoint
         {
             var motionTag = MediaCaching.ETagFor(new FileInfo(physicalPath), "motion");
             if (MediaCaching.IsNotModified(httpContext.Request, motionTag))
-                return MediaCaching.NotModified(httpContext, motionTag);
+            {
+                // Same as MediaCaching.NotModified, as a typed result.
+                httpContext.Response.Headers.ETag = motionTag.ToString();
+                return TypedResults.StatusCode(StatusCodes.Status304NotModified);
+            }
 
             var clip = new MemoryStream();
             await using (var file = File.OpenRead(physicalPath))
@@ -84,9 +92,9 @@ public class MotionPhotoEndpoint : IEndpoint
                 await file.CopyToAsync(clip, cancellationToken);
             }
             clip.Position = 0;
-            return Results.Stream(clip, "video/mp4", entityTag: motionTag, enableRangeProcessing: true);
+            return TypedResults.Stream(clip, "video/mp4", entityTag: motionTag, enableRangeProcessing: true);
         }
 
-        return Results.NotFound(new { error = $"Asset {assetId} has no paired motion clip" });
+        return TypedResults.NotFound(new ApiError($"Asset {assetId} has no paired motion clip", "motion_clip_not_found"));
     }
 }

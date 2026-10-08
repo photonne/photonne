@@ -1,9 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -35,7 +36,7 @@ public class ArchiveEndpoint : IEndpoint
             .WithDescription("Unarchives all archived assets for the current user");
     }
 
-    private static async Task<IResult> GetArchived(
+    private static async Task<Results<Ok<TimelinePageResponse>, UnauthorizedHttpResult>> GetArchived(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -47,9 +48,9 @@ public class ArchiveEndpoint : IEndpoint
         if (pageSize > 500) pageSize = 500;
 
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var userRootPath = $"/assets/users/{username}";
         var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
@@ -101,7 +102,7 @@ public class ArchiveEndpoint : IEndpoint
 
         var nextCursor = hasMore ? assets.Last().CapturedAt : (DateTime?)null;
 
-        return Results.Ok(new
+        return TypedResults.Ok(new TimelinePageResponse
         {
             Items = items,
             HasMore = hasMore,
@@ -109,71 +110,71 @@ public class ArchiveEndpoint : IEndpoint
         });
     }
 
-    private static async Task<IResult> ArchiveAssets(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, ForbidHttpResult>> ArchiveAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromBody] ArchiveAssetsRequest request,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
-            return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
+            return TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "no_assets_selected"));
 
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.DeletedAt == null)
             .ToListAsync(ct);
 
         if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         foreach (var asset in assets)
             asset.IsArchived = true;
 
         await dbContext.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> UnarchiveAssets(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, ForbidHttpResult>> UnarchiveAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromBody] UnarchiveAssetsRequest request,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
-            return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
+            return TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "no_assets_selected"));
 
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.IsArchived)
             .ToListAsync(ct);
 
         if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         foreach (var asset in assets)
             asset.IsArchived = false;
 
         await dbContext.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> UnarchiveAll(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult>> UnarchiveAll(
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var assets = await dbContext.Assets
             .Where(a => a.IsArchived && a.DeletedAt == null)
@@ -182,13 +183,13 @@ public class ArchiveEndpoint : IEndpoint
         assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
 
         if (!assets.Any())
-            return Results.NoContent();
+            return TypedResults.NoContent();
 
         foreach (var asset in assets)
             asset.IsArchived = false;
 
         await dbContext.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)

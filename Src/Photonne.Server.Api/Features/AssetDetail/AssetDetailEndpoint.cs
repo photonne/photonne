@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -29,7 +31,7 @@ public class AssetDetailEndpoint : IEndpoint
             });
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<AssetDetailResponse>, NotFound<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AssetVisibilityService visibility,
         [FromRoute] Guid assetId,
@@ -49,7 +51,7 @@ public class AssetDetailEndpoint : IEndpoint
 
         if (asset == null || !await visibility.CanReadAsync(user, asset, cancellationToken))
         {
-            return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
+            return TypedResults.NotFound(new ApiError($"Asset with ID {assetId} not found", "asset_not_found"));
         }
 
         var response = new AssetDetailResponse
@@ -121,7 +123,7 @@ public class AssetDetailEndpoint : IEndpoint
             CanSaveMotionFrame = await MotionFramesEndpoint.CanSaveFrameAsync(dbContext, asset, user, cancellationToken)
         };
 
-        return Results.Ok(response);
+        return TypedResults.Ok(response);
     }
 
     private static List<string> BuildTagList(Asset asset)

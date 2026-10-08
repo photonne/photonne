@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
@@ -25,7 +26,7 @@ public class DownloadOptionsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<DownloadOptionsResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AssetVisibilityService visibility,
         [FromBody] DownloadOptionsRequest request,
@@ -34,10 +35,10 @@ public class DownloadOptionsEndpoint : IEndpoint
     {
         var claim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (claim == null || !Guid.TryParse(claim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
-            return Results.Ok(new DownloadOptionsResponse());
+            return TypedResults.Ok(new DownloadOptionsResponse());
 
         var scope = await visibility.GetScopeAsync(userId, ct);
         var fileNames = await dbContext.Assets
@@ -47,7 +48,7 @@ public class DownloadOptionsEndpoint : IEndpoint
             .Select(a => a.FileName)
             .ToListAsync(ct);
 
-        return Results.Ok(Summarize(fileNames));
+        return TypedResults.Ok(Summarize(fileNames));
     }
 
     internal static DownloadOptionsResponse Summarize(IReadOnlyCollection<string> fileNames)

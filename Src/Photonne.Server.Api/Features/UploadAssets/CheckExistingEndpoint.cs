@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -20,7 +21,7 @@ public class CheckExistingEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<CheckExistingResponse>, UnauthorizedHttpResult>> Handle(
         CheckExistingRequest request,
         ApplicationDbContext dbContext,
         ClaimsPrincipal user,
@@ -28,10 +29,10 @@ public class CheckExistingEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (request.Files == null || request.Files.Count == 0)
-            return Results.Ok(new CheckExistingResponse([]));
+            return TypedResults.Ok(new CheckExistingResponse([]));
 
         var requestedNames = request.Files.Select(f => f.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var requestedSizes = request.Files.ToDictionary(
@@ -53,6 +54,6 @@ public class CheckExistingEndpoint : IEndpoint
             .Select(a => $"{a.FileName}|{a.FileSize}")
             .ToHashSet();
 
-        return Results.Ok(new CheckExistingResponse(existingKeys));
+        return TypedResults.Ok(new CheckExistingResponse(existingKeys));
     }
 }
