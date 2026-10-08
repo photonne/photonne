@@ -41,4 +41,14 @@ public class DemoModeOptions
     /// Password for the shared demo account. Shown in the login UI.
     /// </summary>
     public string DemoPassword { get; set; } = "demo";
+
+    /// <summary>
+    /// Server-wide settings the operator pins for the demo (e.g.
+    /// <c>ServerSettings.MapTileApiKey</c>). The seeder writes them as global
+    /// settings on every boot and after every reset, since the reset wipes the
+    /// Settings table and visitors can't edit global settings themselves.
+    /// Set them as <c>DemoMode:Settings:&lt;key&gt;</c> in appsettings or as
+    /// <c>DemoMode__Settings__&lt;key&gt;</c> environment variables.
+    /// </summary>
+    public Dictionary<string, string> Settings { get; set; } = new();
 }

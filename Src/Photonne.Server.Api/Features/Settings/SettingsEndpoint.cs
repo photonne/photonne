@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.Ml;
@@ -50,6 +51,7 @@ public class SettingsEndpoint : IEndpoint
         [FromBody] SaveSettingRequest request,
         [FromServices] SettingsService settingsService,
         [FromServices] IMlConfigClient mlConfig,
+        [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -67,6 +69,15 @@ public class SettingsEndpoint : IEndpoint
         if (isGlobal && !user.IsInRole("Admin"))
         {
             return Results.Forbid();
+        }
+
+        // The public demo user is an Admin, but global settings (workers, ML,
+        // scheduler...) stay immutable so visitors don't break the demo for
+        // everyone else. Their own settings remain self-service. Values the demo
+        // needs (map key...) are pinned via DemoMode:Settings instead.
+        if (isGlobal && demoOptions.CurrentValue.Enabled)
+        {
+            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
         }
 
         var effectiveUserId = isGlobal ? Guid.Empty : userId;

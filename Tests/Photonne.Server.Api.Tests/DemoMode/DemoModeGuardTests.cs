@@ -23,6 +23,7 @@ public sealed class DemoModeGuardTests : IntegrationTestBase, IDisposable
     private sealed record LoginReq(string Username, string Password, string DeviceId);
     private sealed record LoginResp(string Token, string RefreshToken);
     private sealed record CreateUserReq(string Username, string Email, string Password);
+    private sealed record SaveSettingReq(string Key, string Value);
 
     private async Task<HttpClient> CreateAdminDemoClientAsync()
     {
@@ -83,6 +84,33 @@ public sealed class DemoModeGuardTests : IntegrationTestBase, IDisposable
         var client = await CreateAdminDemoClientAsync();
 
         var response = await client.GetAsync("/api/users");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SaveGlobalSetting_IsBlocked_InDemoMode()
+    {
+        // Admin role notwithstanding, server-wide settings stay immutable so a
+        // visitor can't break the demo for everyone else.
+        var client = await CreateAdminDemoClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/settings",
+            new SaveSettingReq("ServerSettings.MapTileApiKey", "visitor-key"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Contains("demoMode", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task SavePersonalSetting_IsAllowed_InDemoMode()
+    {
+        // Same endpoint, but a non-global key only touches the caller's own
+        // settings, which must stay self-service in the demo.
+        var client = await CreateAdminDemoClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/settings",
+            new SaveSettingReq("DemoTest.PersonalPreference", "on"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

@@ -17,6 +17,9 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   4. Create a handful of sample albums + mark some assets as favourites so the UI
 ///      feels alive on first visit.
 ///
+/// The operator-pinned settings (<see cref="DemoModeOptions.Settings"/>) are applied on
+/// every run, even when the assets are already seeded.
+///
 /// Exposed as a hosted service (auto-runs on startup) and as a reusable method
 /// (<see cref="SeedAsync"/>) used by <c>DemoResetService</c>.
 /// </summary>
@@ -108,6 +111,8 @@ public sealed class DemoSeederService : IHostedService
                 demoUser.Username, demoUser.Id);
         }
 
+        await ApplyPinnedSettingsAsync(settingsService, opts);
+
         // Skip if already seeded — idempotent guard.
         var hasAssets = await dbContext.Assets
             .AnyAsync(a => a.OwnerId == demoUser.Id && a.DeletedAt == null, cancellationToken);
@@ -169,6 +174,23 @@ public sealed class DemoSeederService : IHostedService
         // 4) Sample albums + favourites so the UI is not empty
         await CreateSampleAlbumsAsync(dbContext, demoUser.Id, indexedAssets, cancellationToken);
         await MarkSomeFavouritesAsync(dbContext, indexedAssets, cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes <see cref="DemoModeOptions.Settings"/> as global settings. Runs on every
+    /// seed so a value changed in the config wins on the next boot, and so the values
+    /// come back after <c>DemoResetService</c> wipes the Settings table.
+    /// </summary>
+    private async Task ApplyPinnedSettingsAsync(SettingsService settingsService, DemoModeOptions opts)
+    {
+        foreach (var (key, value) in opts.Settings)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                continue;
+
+            await settingsService.SetSettingAsync(key, value ?? "", Guid.Empty);
+            _logger.LogInformation("[DEMO] Applied pinned setting '{Key}'", key);
+        }
     }
 
     /// <summary>

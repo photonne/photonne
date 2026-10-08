@@ -12,6 +12,10 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   - Database backup: GET /api/admin/database/backup, POST /api/admin/database/restore
 ///   - External libraries: POST/PUT/DELETE /api/libraries, permissions, scan stream
 ///
+/// Global settings are blocked in <c>SettingsEndpoint</c> instead of here: the same
+/// POST /api/settings saves the user's own settings too, and telling them apart
+/// needs the key from the request body.
+///
 /// Read endpoints (GET /api/users, GET /api/libraries) stay allowed so pages still render.
 /// Self-service endpoints (/api/users/me, /api/users/me/change-password) are NOT blocked
 /// on purpose — the demo user should still be able to update its own profile.
@@ -33,13 +37,6 @@ public sealed class DemoModeGuardMiddleware
         // ── Backup / restore ───────────────────────────────────────────────
         new Rule("GET",    @"^/api/admin/database/backup/?$"),
         new Rule("POST",   @"^/api/admin/database/restore/?$"),
-
-        // ── Global settings ────────────────────────────────────────────────
-        // The demo user has Admin role so the admin panel renders, but global
-        // settings (workers, paths, retention, ML, scheduler...) must stay
-        // immutable so visitors don't break the demo for everyone else.
-        // GET /api/settings stays open so the admin pages can render values.
-        new Rule("POST",   @"^/api/settings/?$"),
 
         // ── External libraries ─────────────────────────────────────────────
         new Rule("POST",   @"^/api/libraries/?$"),
@@ -79,15 +76,7 @@ public sealed class DemoModeGuardMiddleware
                     "[DEMO] Blocking {Method} {Path} (demo mode restriction)",
                     method, path);
 
-                var problem = new ProblemDetails
-                {
-                    Status = StatusCodes.Status403Forbidden,
-                    Title = "Acción deshabilitada en la demo",
-                    Detail = "Esta acción está bloqueada en la demo pública de Photonne. "
-                           + "Despliega tu propia instancia para tener acceso completo."
-                };
-                problem.Extensions["demoMode"] = true;
-
+                var problem = CreateBlockedProblem();
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/problem+json";
                 await context.Response.WriteAsJsonAsync(problem);
@@ -96,6 +85,23 @@ public sealed class DemoModeGuardMiddleware
         }
 
         await _next(context);
+    }
+
+    /// <summary>
+    /// The 403 body every demo restriction returns; the <c>demoMode</c> extension lets
+    /// clients tell it apart from a regular permission error.
+    /// </summary>
+    public static ProblemDetails CreateBlockedProblem()
+    {
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status403Forbidden,
+            Title = "Acción deshabilitada en la demo",
+            Detail = "Esta acción está bloqueada en la demo pública de Photonne. "
+                   + "Despliega tu propia instancia para tener acceso completo."
+        };
+        problem.Extensions["demoMode"] = true;
+        return problem;
     }
 
     private sealed class Rule
