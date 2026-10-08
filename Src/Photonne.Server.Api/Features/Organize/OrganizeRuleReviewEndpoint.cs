@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.SmartAlbums;
@@ -27,7 +29,7 @@ public class OrganizeRuleReviewEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<OrganizeRuleReviewResponse>, UnauthorizedHttpResult, BadRequest<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SmartAlbumResolver resolver,
         ClaimsPrincipal user,
@@ -36,12 +38,12 @@ public class OrganizeRuleReviewEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.Rule is null)
-            return Results.BadRequest(new { error = "A rule is required." });
+            return TypedResults.BadRequest(new ApiError("A rule is required.", "rule_required"));
 
         IQueryable<Shared.Models.Asset> query;
         try
@@ -51,7 +53,7 @@ public class OrganizeRuleReviewEndpoint : IEndpoint
         }
         catch (SmartRuleException ex)
         {
-            return Results.BadRequest(new { error = ex.Message });
+            return TypedResults.BadRequest(new ApiError(ex.Message, "invalid_rule"));
         }
 
         var rows = await query
@@ -66,7 +68,7 @@ public class OrganizeRuleReviewEndpoint : IEndpoint
             .Select(g => new YearGroup(g.Key, g.Select(r => r.Id).ToList()))
             .ToList();
 
-        return Results.Ok(new OrganizeRuleReviewResponse { Groups = groups });
+        return TypedResults.Ok(new OrganizeRuleReviewResponse { Groups = groups });
     }
 
     public class OrganizeRuleReviewRequest

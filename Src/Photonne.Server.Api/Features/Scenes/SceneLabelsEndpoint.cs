@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -24,14 +25,14 @@ public class SceneLabelsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<SceneLabelDto>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext db,
         ClaimsPrincipal user,
         [FromQuery] string? q,
         [FromQuery] int? limit,
         CancellationToken ct)
     {
-        if (!TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var take = Math.Clamp(limit ?? 200, 1, 1000);
         // ILIKE '%' matches every label, so we can pass a plain non-null
@@ -93,7 +94,7 @@ public class SceneLabelsEndpoint : IEndpoint
             .Select(r => new SceneLabelDto(r.Label, r.AssetCount, r.CoverAssetId))
             .ToList();
 
-        return Results.Ok(labels);
+        return TypedResults.Ok(labels);
     }
 
     // Keyless row type returned by SqlQueryRaw. Property names match the SQL

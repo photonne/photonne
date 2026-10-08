@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -26,7 +27,7 @@ public class AssetYearBreakdownEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<AssetYearBreakdownResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         [FromBody] AssetYearBreakdownRequest request,
@@ -34,10 +35,10 @@ public class AssetYearBreakdownEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (request.AssetIds is null || request.AssetIds.Count == 0)
-            return Results.Ok(new AssetYearBreakdownResponse());
+            return TypedResults.Ok(new AssetYearBreakdownResponse());
 
         var rows = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.OwnerId == userId && a.DeletedAt == null)
@@ -52,7 +53,7 @@ public class AssetYearBreakdownEndpoint : IEndpoint
             .Select(g => new YearGroup(g.Key, g.Select(r => r.Id).ToList()))
             .ToList();
 
-        return Results.Ok(new AssetYearBreakdownResponse { Groups = groups });
+        return TypedResults.Ok(new AssetYearBreakdownResponse { Groups = groups });
     }
 
     public class AssetYearBreakdownRequest

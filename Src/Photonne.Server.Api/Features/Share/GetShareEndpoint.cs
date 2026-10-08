@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -14,12 +16,13 @@ public class GetShareEndpoint : IEndpoint
     {
         app.MapGet("/api/share/{token}", Handle)
             .AllowAnonymous()
+            .Produces<ApiError>(StatusCodes.Status410Gone)
             .WithName("GetShareLink")
             .WithTags("Share")
             .WithDescription("Returns public share info for a token (no authentication required)");
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<SharedContentResponse>, NotFound<ApiError>, JsonHttpResult<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] INotificationService notificationService,
         [FromRoute] string token,
@@ -31,24 +34,24 @@ public class GetShareEndpoint : IEndpoint
             .Include(l => l.Album).ThenInclude(a => a!.AlbumAssets).ThenInclude(aa => aa.Asset).ThenInclude(a => a.Thumbnails)
             .FirstOrDefaultAsync(l => l.Token == token, ct);
 
-        if (link == null) return Results.NotFound(new { error = "Share link not found" });
+        if (link == null) return TypedResults.NotFound(new ApiError("Share link not found", "share_link_not_found"));
 
         if (link.ExpiresAt.HasValue && link.ExpiresAt.Value < DateTime.UtcNow)
-            return Results.Json(new { error = "This link has expired" }, statusCode: 410);
+            return TypedResults.Json(new ApiError("This link has expired", "share_link_expired"), statusCode: StatusCodes.Status410Gone);
 
         // Password check — return 200 with requiresPassword so client shows the gate
         if (link.PasswordHash != null)
         {
             if (string.IsNullOrEmpty(pw))
-                return Results.Ok(new SharedContentResponse { Token = token, RequiresPassword = true });
+                return TypedResults.Ok(new SharedContentResponse { Token = token, RequiresPassword = true });
 
             if (!SharePasswordHasher.Verify(pw, link.PasswordHash))
-                return Results.Ok(new SharedContentResponse { Token = token, RequiresPassword = true, WrongPassword = true });
+                return TypedResults.Ok(new SharedContentResponse { Token = token, RequiresPassword = true, WrongPassword = true });
         }
 
         // MaxViews check
         if (link.MaxViews.HasValue && link.ViewCount >= link.MaxViews.Value)
-            return Results.Json(new { error = "This link has reached its maximum number of views" }, statusCode: 410);
+            return TypedResults.Json(new ApiError("This link has reached its maximum number of views", "share_link_max_views"), statusCode: StatusCodes.Status410Gone);
 
         // Increment view count
         link.ViewCount++;
@@ -88,7 +91,7 @@ public class GetShareEndpoint : IEndpoint
                     ContentUrl = $"/api/share/{token}/asset/{aa.Asset.Id}/content{pwSuffix}"
                 }).ToList();
 
-            return Results.Ok(new SharedContentResponse
+            return TypedResults.Ok(new SharedContentResponse
             {
                 Token = token,
 
@@ -106,7 +109,7 @@ public class GetShareEndpoint : IEndpoint
             });
         }
 
-        return Results.NotFound(new { error = "Shared content not found" });
+        return TypedResults.NotFound(new ApiError("Shared content not found", "shared_content_not_found"));
     }
 
     private static bool ShouldNotifyShareView(int viewCount)

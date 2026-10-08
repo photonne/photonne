@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 
@@ -19,7 +21,7 @@ public class ListSharesEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<ShareLinkResponse>>, UnauthorizedHttpResult, BadRequest<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromQuery] Guid? albumId,
@@ -29,10 +31,10 @@ public class ListSharesEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (albumId == null)
-            return Results.BadRequest(new { error = "albumId is required" });
+            return TypedResults.BadRequest(new ApiError("albumId is required", "album_id_required"));
 
         // Load all links for this asset/album, then filter expired ones in C#
         // to avoid Npgsql DateTime kind issues with timestamp-without-timezone columns
@@ -46,6 +48,6 @@ public class ListSharesEndpoint : IEndpoint
         var links = allLinks.Where(l => l.ExpiresAt == null || l.ExpiresAt > now).ToList();
 
         var publicBase = await CreateShareEndpoint.ResolvePublicBaseUrlAsync(settingsService, httpContext);
-        return Results.Ok(links.Select(l => CreateShareEndpoint.ToResponse(l, publicBase)));
+        return TypedResults.Ok(links.Select(l => CreateShareEndpoint.ToResponse(l, publicBase)).ToList());
     }
 }

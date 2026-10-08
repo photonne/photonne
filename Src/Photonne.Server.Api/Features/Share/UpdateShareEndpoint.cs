@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 
@@ -18,7 +20,7 @@ public class UpdateShareEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<UpdateShareResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] string token,
         [FromBody] UpdateShareRequest request,
@@ -27,12 +29,12 @@ public class UpdateShareEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var link = await dbContext.SharedLinks.FirstOrDefaultAsync(l => l.Token == token, ct);
-        if (link == null) return Results.NotFound();
+        if (link == null) return TypedResults.NotFound(new ApiError("Share link not found", "share_link_not_found"));
 
-        if (link.CreatedById != userId) return Results.Forbid();
+        if (link.CreatedById != userId) return TypedResults.Forbid();
 
         link.ExpiresAt = request.ExpiresAt;
         link.AllowDownload = request.AllowDownload;
@@ -51,7 +53,7 @@ public class UpdateShareEndpoint : IEndpoint
 
         await dbContext.SaveChangesAsync(ct);
 
-        return Results.Ok(new UpdateShareResponse
+        return TypedResults.Ok(new UpdateShareResponse
         {
             Token = link.Token,
             ExpiresAt = link.ExpiresAt,

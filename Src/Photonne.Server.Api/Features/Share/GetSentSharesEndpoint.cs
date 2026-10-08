@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -19,7 +20,7 @@ public class GetSentSharesEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<SentShareLinkDto>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
@@ -28,7 +29,7 @@ public class GetSentSharesEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var allLinks = await dbContext.SharedLinks
             .Include(l => l.Asset)
@@ -79,7 +80,7 @@ public class GetSentSharesEndpoint : IEndpoint
             };
         }).ToList();
 
-        return Results.Ok(result);
+        return TypedResults.Ok(result);
     }
 }
 

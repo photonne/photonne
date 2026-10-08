@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
@@ -34,7 +35,7 @@ public class OrganizeInboxEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<OrganizeInboxPageResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         [FromQuery] DateTime? cursor,
@@ -43,9 +44,9 @@ public class OrganizeInboxEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out _))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (pageSize <= 0) pageSize = 150;
         if (pageSize > 500) pageSize = 500;
@@ -73,7 +74,7 @@ public class OrganizeInboxEndpoint : IEndpoint
         // FileCreatedAt carries the CapturedAt value (see TimelineProjection).
         var nextCursor = hasMore ? items.Last().FileCreatedAt : (DateTime?)null;
 
-        return Results.Ok(new OrganizeInboxPageResponse
+        return TypedResults.Ok(new OrganizeInboxPageResponse
         {
             Items = items,
             HasMore = hasMore,

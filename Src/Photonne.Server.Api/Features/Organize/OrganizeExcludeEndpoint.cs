@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
@@ -9,6 +10,8 @@ using Photonne.Server.Api.Shared.Services;
 namespace Photonne.Server.Api.Features.Organize;
 
 public record OrganizeExcludeRequest(List<Guid> AssetIds, bool Excluded);
+
+public sealed record OrganizeExcludeResponse(int Updated);
 
 /// <summary>
 /// Marks assets as "never needs filing" — screenshots, memes, receipts — so the
@@ -42,7 +45,7 @@ public class OrganizeExcludeEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<OrganizeExcludeResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromBody] OrganizeExcludeRequest request,
         ClaimsPrincipal user,
@@ -50,12 +53,12 @@ public class OrganizeExcludeEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out _))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.AssetIds is not { Count: > 0 })
-            return Results.Ok(new { updated = 0 });
+            return TypedResults.Ok(new OrganizeExcludeResponse(0));
 
         // Scoped to the caller's own MobileBackup prefix: the flag only means
         // anything there, and this keeps a stray id from touching someone
@@ -71,10 +74,10 @@ public class OrganizeExcludeEndpoint : IEndpoint
                 s => s.SetProperty(a => a.ExcludedFromOrganize, request.Excluded),
                 cancellationToken);
 
-        return Results.Ok(new { updated });
+        return TypedResults.Ok(new OrganizeExcludeResponse(updated));
     }
 
-    private static async Task<IResult> HandleList(
+    private static async Task<Results<Ok<OrganizeInboxPageResponse>, UnauthorizedHttpResult>> HandleList(
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         [FromQuery] DateTime? cursor,
@@ -83,9 +86,9 @@ public class OrganizeExcludeEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out _))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (pageSize <= 0) pageSize = 150;
         if (pageSize > 500) pageSize = 500;
@@ -113,7 +116,7 @@ public class OrganizeExcludeEndpoint : IEndpoint
         // FileCreatedAt carries the CapturedAt value (see TimelineProjection).
         var nextCursor = hasMore ? items.Last().FileCreatedAt : (DateTime?)null;
 
-        return Results.Ok(new OrganizeInboxPageResponse
+        return TypedResults.Ok(new OrganizeInboxPageResponse
         {
             Items = items,
             HasMore = hasMore,

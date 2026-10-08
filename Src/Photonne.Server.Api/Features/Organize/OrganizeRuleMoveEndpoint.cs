@@ -1,9 +1,11 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.SmartAlbums;
@@ -31,7 +33,7 @@ public class OrganizeRuleMoveEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<OrganizeRuleMoveResponse>, UnauthorizedHttpResult, BadRequest<ApiError>, ForbidHttpResult, NotFound<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SmartAlbumResolver resolver,
         [FromServices] SettingsService settingsService,
@@ -42,20 +44,20 @@ public class OrganizeRuleMoveEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.Rule is null)
-            return Results.BadRequest(new { error = "A rule is required." });
+            return TypedResults.BadRequest(new ApiError("A rule is required.", "rule_required"));
 
         if (!await FoldersEndpoint.CanWriteFolderAsync(dbContext, userId, request.TargetFolderId, user.IsInRole("Admin"), cancellationToken))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         var targetFolder = await dbContext.Folders
             .FirstOrDefaultAsync(f => f.Id == request.TargetFolderId, cancellationToken);
         if (targetFolder is null)
-            return Results.NotFound(new { error = "Carpeta destino no encontrada." });
+            return TypedResults.NotFound(new ApiError("Carpeta destino no encontrada.", "target_folder_not_found"));
 
         List<Guid> ids;
         try
@@ -66,11 +68,11 @@ public class OrganizeRuleMoveEndpoint : IEndpoint
         }
         catch (SmartRuleException ex)
         {
-            return Results.BadRequest(new { error = ex.Message });
+            return TypedResults.BadRequest(new ApiError(ex.Message, "invalid_rule"));
         }
 
         if (ids.Count == 0)
-            return Results.Ok(new OrganizeRuleMoveResponse { Moved = 0 });
+            return TypedResults.Ok(new OrganizeRuleMoveResponse { Moved = 0 });
 
         // Re-load tracked (the pending base is AsNoTracking) so FolderAssetMover's
         // FolderId/path updates persist on SaveChanges.
@@ -82,7 +84,7 @@ public class OrganizeRuleMoveEndpoint : IEndpoint
             dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken,
             request.OrganizeByCaptureYear);
 
-        return Results.Ok(new OrganizeRuleMoveResponse { Moved = result.Moved, YearBreakdown = result.YearBreakdown });
+        return TypedResults.Ok(new OrganizeRuleMoveResponse { Moved = result.Moved, YearBreakdown = result.YearBreakdown });
     }
 
     public class OrganizeRuleMoveRequest

@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -30,7 +32,7 @@ public class FolderPermissionsEndpoint : IEndpoint
             .WithDescription("Removes folder permission for a user");
     }
 
-    private async Task<IResult> GetFolderPermissions(
+    private async Task<Results<Ok<List<FolderPermissionDto>>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> GetFolderPermissions(
         Guid folderId,
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
@@ -39,7 +41,7 @@ public class FolderPermissionsEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var currentUserId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         // Validate folder exists and user has access to manage it
@@ -50,7 +52,7 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         if (folder == null)
         {
-            return Results.NotFound(new { error = "Folder not found" });
+            return TypedResults.NotFound(new ApiError("Folder not found", "folder_not_found"));
         }
 
         // Must have CanManagePermissions — or be an admin: managing who can
@@ -62,7 +64,7 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         if (!hasAccess)
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         var permissions = folder.Permissions
@@ -91,10 +93,10 @@ public class FolderPermissionsEndpoint : IEndpoint
                 GrantedByUserId = p.GrantedByUserId
             }).ToList();
 
-        return Results.Ok(permissions);
+        return TypedResults.Ok(permissions);
     }
 
-    private async Task<IResult> SetFolderPermission(
+    private async Task<Results<Ok<FolderPermissionDto>, UnauthorizedHttpResult, NotFound<ApiError>, BadRequest<ApiError>, ForbidHttpResult>> SetFolderPermission(
         Guid folderId,
         [FromBody] SetFolderPermissionRequest request,
         [FromServices] ApplicationDbContext dbContext,
@@ -105,10 +107,10 @@ public class FolderPermissionsEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var currentUserId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var currentUsername = user.GetUsername();
-        if (string.IsNullOrEmpty(currentUsername)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(currentUsername)) return TypedResults.Unauthorized();
 
         // Validate folder exists
         var folder = await dbContext.Folders
@@ -117,7 +119,7 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         if (folder == null)
         {
-            return Results.NotFound(new { error = "Folder not found" });
+            return TypedResults.NotFound(new ApiError("Folder not found", "folder_not_found"));
         }
 
         // Los contenedores estructurales (/assets, /assets/users, /assets/shared)
@@ -126,7 +128,7 @@ public class FolderPermissionsEndpoint : IEndpoint
         // (/assets/shared/{nombre}) y su subárbol los hereda.
         if (VirtualPath.IsStructuralContainer(folder.Path))
         {
-            return Results.BadRequest(new { error = "No se pueden asignar permisos a un contenedor estructural. Comparte la carpeta concreta (p. ej. /assets/shared/{nombre})." });
+            return TypedResults.BadRequest(new ApiError("No se pueden asignar permisos a un contenedor estructural. Comparte la carpeta concreta (p. ej. /assets/shared/{nombre}).", "structural_container"));
         }
 
         // Must be owner, have CanManagePermissions, or be an admin (permission
@@ -138,13 +140,13 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         if (!hasAccess)
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         // No permitir modificar permisos del propietario
         if (request.UserId == currentUserId && isOwner)
         {
-            return Results.BadRequest(new { error = "No se pueden modificar los permisos del propietario de la carpeta." });
+            return TypedResults.BadRequest(new ApiError("No se pueden modificar los permisos del propietario de la carpeta.", "owner_permissions_immutable"));
         }
 
         // Validate target user exists
@@ -153,7 +155,7 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         if (targetUser == null)
         {
-            return Results.NotFound(new { error = $"User with ID {request.UserId} not found" });
+            return TypedResults.NotFound(new ApiError($"User with ID {request.UserId} not found", "user_not_found"));
         }
 
         // Check if permission already exists
@@ -217,10 +219,10 @@ public class FolderPermissionsEndpoint : IEndpoint
             GrantedByUserId = permission.GrantedByUserId
         };
 
-        return Results.Ok(response);
+        return TypedResults.Ok(response);
     }
 
-    private async Task<IResult> RemoveFolderPermission(
+    private async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult, BadRequest<ApiError>>> RemoveFolderPermission(
         Guid folderId,
         Guid userId,
         [FromServices] ApplicationDbContext dbContext,
@@ -231,10 +233,10 @@ public class FolderPermissionsEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var currentUserId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var currentUsername = user.GetUsername();
-        if (string.IsNullOrEmpty(currentUsername)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(currentUsername)) return TypedResults.Unauthorized();
 
         // Validate folder exists
         var folder = await dbContext.Folders
@@ -243,7 +245,7 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         if (folder == null)
         {
-            return Results.NotFound(new { error = "Folder not found" });
+            return TypedResults.NotFound(new ApiError("Folder not found", "folder_not_found"));
         }
 
         // Must be owner, have CanManagePermissions, or be an admin (permission
@@ -255,13 +257,13 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         if (!hasAccess)
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         // No permitir eliminar permisos del propietario
         if (userId == currentUserId && isOwner)
         {
-            return Results.BadRequest(new { error = "No se pueden eliminar los permisos del propietario de la carpeta." });
+            return TypedResults.BadRequest(new ApiError("No se pueden eliminar los permisos del propietario de la carpeta.", "owner_permissions_immutable"));
         }
 
         var permission = await dbContext.FolderPermissions
@@ -271,7 +273,7 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         if (permission == null)
         {
-            return Results.NotFound(new { error = "Permission not found" });
+            return TypedResults.NotFound(new ApiError("Permission not found", "permission_not_found"));
         }
 
         dbContext.FolderPermissions.Remove(permission);
@@ -281,7 +283,7 @@ public class FolderPermissionsEndpoint : IEndpoint
         // revoked user's cached folder set immediately.
         allowedFolders.Invalidate(userId);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
 

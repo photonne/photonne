@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 
@@ -28,7 +30,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
             .WithDescription("Removes album permission for a user");
     }
 
-    private async Task<IResult> GetAlbumPermissions(
+    private async Task<Results<Ok<List<AlbumPermissionDto>>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> GetAlbumPermissions(
         Guid albumId,
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
@@ -37,7 +39,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var currentUserId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         // Verificar que el usuario tenga acceso al álbum
@@ -48,7 +50,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
 
         if (album == null)
         {
-            return Results.NotFound(new { error = "Album not found" });
+            return TypedResults.NotFound(new ApiError("Album not found", "album_not_found"));
         }
 
         // Verificar permisos: debe ser el propietario o tener CanManagePermissions
@@ -57,7 +59,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
 
         if (!hasAccess)
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         var permissions = album.Permissions.Select(p => new AlbumPermissionDto
@@ -74,10 +76,10 @@ public class AlbumPermissionsEndpoint : IEndpoint
             GrantedByUserId = p.GrantedByUserId
         }).ToList();
 
-        return Results.Ok(permissions);
+        return TypedResults.Ok(permissions);
     }
 
-    private async Task<IResult> SetAlbumPermission(
+    private async Task<Results<Ok<AlbumPermissionDto>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult, BadRequest<ApiError>>> SetAlbumPermission(
         Guid albumId,
         [FromBody] SetAlbumPermissionRequest request,
         [FromServices] ApplicationDbContext dbContext,
@@ -87,7 +89,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var currentUserId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         // Validar que el álbum existe
@@ -97,7 +99,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
 
         if (album == null)
         {
-            return Results.NotFound(new { error = "Album not found" });
+            return TypedResults.NotFound(new ApiError("Album not found", "album_not_found"));
         }
 
         // Verificar permisos: debe ser el propietario o tener CanManagePermissions
@@ -106,7 +108,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
 
         if (!hasAccess)
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         // Validar que el usuario existe
@@ -115,13 +117,13 @@ public class AlbumPermissionsEndpoint : IEndpoint
 
         if (targetUser == null)
         {
-            return Results.NotFound(new { error = $"User with ID {request.UserId} not found" });
+            return TypedResults.NotFound(new ApiError($"User with ID {request.UserId} not found", "user_not_found"));
         }
 
         // No permitir modificar permisos del propietario
         if (request.UserId == album.OwnerId)
         {
-            return Results.BadRequest(new { error = "Cannot modify permissions for the album owner" });
+            return TypedResults.BadRequest(new ApiError("Cannot modify permissions for the album owner", "owner_permissions_immutable"));
         }
 
         // Buscar permiso existente
@@ -181,10 +183,10 @@ public class AlbumPermissionsEndpoint : IEndpoint
             GrantedByUserId = permission.GrantedByUserId
         };
 
-        return Results.Ok(response);
+        return TypedResults.Ok(response);
     }
 
-    private async Task<IResult> RemoveAlbumPermission(
+    private async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult, BadRequest<ApiError>>> RemoveAlbumPermission(
         Guid albumId,
         Guid userId,
         [FromServices] ApplicationDbContext dbContext,
@@ -194,7 +196,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var currentUserId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         // Validar que el álbum existe
@@ -204,7 +206,7 @@ public class AlbumPermissionsEndpoint : IEndpoint
 
         if (album == null)
         {
-            return Results.NotFound(new { error = "Album not found" });
+            return TypedResults.NotFound(new ApiError("Album not found", "album_not_found"));
         }
 
         // Verificar permisos: debe ser el propietario o tener CanManagePermissions
@@ -213,13 +215,13 @@ public class AlbumPermissionsEndpoint : IEndpoint
 
         if (!hasAccess)
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         // No permitir eliminar permisos del propietario
         if (userId == album.OwnerId)
         {
-            return Results.BadRequest(new { error = "Cannot remove permissions for the album owner" });
+            return TypedResults.BadRequest(new ApiError("Cannot remove permissions for the album owner", "owner_permissions_immutable"));
         }
 
         var permission = await dbContext.AlbumPermissions
@@ -229,13 +231,13 @@ public class AlbumPermissionsEndpoint : IEndpoint
 
         if (permission == null)
         {
-            return Results.NotFound(new { error = "Permission not found" });
+            return TypedResults.NotFound(new ApiError("Permission not found", "permission_not_found"));
         }
 
         dbContext.AlbumPermissions.Remove(permission);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
 
