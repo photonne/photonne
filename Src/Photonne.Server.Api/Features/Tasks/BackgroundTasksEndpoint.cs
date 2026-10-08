@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 
@@ -20,35 +22,33 @@ public class BackgroundTasksEndpoint : IEndpoint
         // List all active/recent tasks
         app.MapGet("/api/tasks", ([Microsoft.AspNetCore.Mvc.FromServices] BackgroundTaskManager manager) =>
         {
-            var tasks = manager.GetAll().Select(e => new
-            {
-                id = e.Id,
-                type = e.Type.ToString(),
-                status = e.Status,
-                percentage = e.Percentage,
-                lastMessage = e.LastMessage,
-                startedAt = e.StartedAt,
-                finishedAt = e.FinishedAt,
-                parameters = e.Parameters
-            });
-            return Results.Ok(tasks);
+            var tasks = manager.GetAll().Select(e => new BackgroundTaskResponse(
+                e.Id,
+                e.Type.ToString(),
+                e.Status,
+                e.Percentage,
+                e.LastMessage,
+                e.StartedAt,
+                e.FinishedAt,
+                e.Parameters)).ToList();
+            return TypedResults.Ok(tasks);
         })
         .WithName("GetBackgroundTasks")
         .WithTags("Tasks")
         .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         // Cancel a running task
-        app.MapDelete("/api/tasks/{id:guid}", (
+        app.MapDelete("/api/tasks/{id:guid}", Results<NoContent, NotFound<ApiError>, BadRequest<ApiError>> (
             Guid id,
             [Microsoft.AspNetCore.Mvc.FromServices] BackgroundTaskManager manager) =>
         {
             var entry = manager.Get(id);
-            if (entry == null) return Results.NotFound();
-            if (entry.IsFinished) return Results.BadRequest("Task already finished.");
+            if (entry == null) return TypedResults.NotFound(new ApiError($"Task {id} not found", "task_not_found"));
+            if (entry.IsFinished) return TypedResults.BadRequest(new ApiError("Task already finished.", "task_already_finished"));
 
             entry.Cts.Cancel();
             entry.Finish("Cancelled");
-            return Results.NoContent();
+            return TypedResults.NoContent();
         })
         .WithName("CancelBackgroundTask")
         .WithTags("Tasks")
@@ -88,3 +88,13 @@ public class BackgroundTasksEndpoint : IEndpoint
         }
     }
 }
+
+public sealed record BackgroundTaskResponse(
+    Guid Id,
+    string Type,
+    string Status,
+    double Percentage,
+    string LastMessage,
+    DateTime StartedAt,
+    DateTime? FinishedAt,
+    IReadOnlyDictionary<string, string> Parameters);

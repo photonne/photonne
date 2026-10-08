@@ -1,7 +1,9 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -77,7 +79,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         int Retrying,
         int Suppressed);
 
-    private async Task<IResult> HandleList(
+    private async Task<Results<Ok<AdminEnrichmentFailuresResponse>, BadRequest<ApiError>>> HandleList(
         [FromQuery] string? type,
         [FromQuery] string? kind,
         [FromQuery] string? cursor,
@@ -90,10 +92,9 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         {
             if (!Enum.TryParse<AssetEnrichmentType>(type, ignoreCase: true, out var value))
             {
-                return Results.BadRequest(new
-                {
-                    error = $"Unknown task type '{type}'. Valid: {string.Join(", ", Enum.GetNames<AssetEnrichmentType>())}"
-                });
+                return TypedResults.BadRequest(new ApiError(
+                    $"Unknown task type '{type}'. Valid: {string.Join(", ", Enum.GetNames<AssetEnrichmentType>())}",
+                    "invalid_task_type"));
             }
             parsedType = value;
         }
@@ -103,10 +104,9 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         {
             if (!Enum.TryParse<EnrichmentFailureKind>(kind, ignoreCase: true, out var value))
             {
-                return Results.BadRequest(new
-                {
-                    error = $"Unknown failure kind '{kind}'. Valid: {string.Join(", ", Enum.GetNames<EnrichmentFailureKind>())}"
-                });
+                return TypedResults.BadRequest(new ApiError(
+                    $"Unknown failure kind '{kind}'. Valid: {string.Join(", ", Enum.GetNames<EnrichmentFailureKind>())}",
+                    "invalid_failure_kind"));
             }
             parsedKind = value;
         }
@@ -184,11 +184,11 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
             ? FormatCursor(page[^1].CreatedAt, page[^1].Id)
             : null;
 
-        return Results.Ok(new AdminEnrichmentFailuresResponse(
+        return TypedResults.Ok(new AdminEnrichmentFailuresResponse(
             items, nextCursor, total, countsByType, countsByKind, retrying, suppressed));
     }
 
-    private async Task<IResult> HandleRetry(
+    private async Task<Results<Ok<EnrichmentTaskStatusResponse>, NotFound<ApiError>>> HandleRetry(
         Guid taskId,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IEnrichmentService enrichmentService,
@@ -196,17 +196,17 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
     {
         var exists = await dbContext.AssetEnrichmentTasks
             .AnyAsync(t => t.Id == taskId, cancellationToken);
-        if (!exists) return Results.NotFound();
+        if (!exists) return TypedResults.NotFound(new ApiError($"Enrichment task {taskId} not found", "enrichment_task_not_found"));
 
         var ok = await enrichmentService.ResetAndEnqueueAsync(taskId, cancellationToken);
-        if (!ok) return Results.NotFound();
+        if (!ok) return TypedResults.NotFound(new ApiError($"Enrichment task {taskId} not found", "enrichment_task_not_found"));
 
-        return Results.Ok(new { taskId, status = EnrichmentStatus.Pending.ToString() });
+        return TypedResults.Ok(new EnrichmentTaskStatusResponse(taskId, EnrichmentStatus.Pending.ToString()));
     }
 
     private sealed record RetryAllResponse(int Retried);
 
-    private async Task<IResult> HandleRetryAll(
+    private async Task<Results<Ok<RetryAllResponse>, BadRequest<ApiError>>> HandleRetryAll(
         [FromQuery] string? type,
         [FromQuery] string? kind,
         [FromServices] ApplicationDbContext dbContext,
@@ -217,7 +217,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         if (!string.IsNullOrWhiteSpace(type))
         {
             if (!Enum.TryParse<AssetEnrichmentType>(type, ignoreCase: true, out var value))
-                return Results.BadRequest(new { error = $"Unknown task type '{type}'." });
+                return TypedResults.BadRequest(new ApiError($"Unknown task type '{type}'.", "invalid_task_type"));
             parsedType = value;
         }
 
@@ -225,7 +225,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         if (!string.IsNullOrWhiteSpace(kind))
         {
             if (!Enum.TryParse<EnrichmentFailureKind>(kind, ignoreCase: true, out var value))
-                return Results.BadRequest(new { error = $"Unknown failure kind '{kind}'." });
+                return TypedResults.BadRequest(new ApiError($"Unknown failure kind '{kind}'.", "invalid_failure_kind"));
             parsedKind = value;
         }
 
@@ -242,31 +242,31 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
 
         var retried = await enrichmentService.ResetAndEnqueueManyAsync(ids, cancellationToken);
 
-        return Results.Ok(new RetryAllResponse(retried));
+        return TypedResults.Ok(new RetryAllResponse(retried));
     }
 
-    private async Task<IResult> HandleSuppress(
+    private async Task<Results<Ok<EnrichmentTaskStatusResponse>, NotFound<ApiError>, Conflict<ApiError>>> HandleSuppress(
         Guid taskId,
         [FromServices] ApplicationDbContext dbContext,
         CancellationToken cancellationToken)
     {
         var task = await dbContext.AssetEnrichmentTasks
             .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
-        if (task == null) return Results.NotFound();
+        if (task == null) return TypedResults.NotFound(new ApiError($"Enrichment task {taskId} not found", "enrichment_task_not_found"));
 
         if (task.Status == EnrichmentStatus.Suppressed)
-            return Results.Ok(new { taskId, status = task.Status.ToString() });
+            return TypedResults.Ok(new EnrichmentTaskStatusResponse(taskId, task.Status.ToString()));
 
         // Only settled rows can be dismissed: a Pending/Processing row belongs
         // to the worker and flipping it here would race its own state machine.
         if (task.Status is EnrichmentStatus.Pending or EnrichmentStatus.Processing)
-            return Results.Conflict(new { error = "Task is currently queued or running; cancel or let it finish first." });
+            return TypedResults.Conflict(new ApiError("Task is currently queued or running; cancel or let it finish first.", "enrichment_task_busy"));
 
         task.Status = EnrichmentStatus.Suppressed;
         task.NextRetryAt = null;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(new { taskId, status = task.Status.ToString() });
+        return TypedResults.Ok(new EnrichmentTaskStatusResponse(taskId, task.Status.ToString()));
     }
 
     private static string FormatCursor(DateTime createdAt, Guid id) =>
@@ -285,3 +285,5 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
         return true;
     }
 }
+
+public sealed record EnrichmentTaskStatusResponse(Guid TaskId, string Status);

@@ -48,7 +48,7 @@ public class AttributionsEndpoint : IEndpoint
                 });
             }
 
-            return Results.Ok(items);
+            return TypedResults.Ok(items);
         })
         .WithTags("Version")
         .WithName("GetAttributions")

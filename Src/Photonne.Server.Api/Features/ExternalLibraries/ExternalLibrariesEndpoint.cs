@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 
@@ -71,13 +73,13 @@ public class ExternalLibrariesEndpoint : IEndpoint
     }
 
     // GET /api/libraries
-    private static async Task<IResult> GetAll(
+    private static async Task<Results<Ok<List<ExternalLibraryDto>>, UnauthorizedHttpResult>> GetAll(
         [FromServices] ApplicationDbContext db,
         HttpContext ctx,
         CancellationToken ct)
     {
         var userId = GetUserId(ctx);
-        if (userId == null) return Results.Unauthorized();
+        if (userId == null) return TypedResults.Unauthorized();
 
         var libraries = await db.ExternalLibraries
             .Where(l => l.OwnerId == userId.Value
@@ -97,18 +99,18 @@ public class ExternalLibrariesEndpoint : IEndpoint
                 l.CreatedAt))
             .ToListAsync(ct);
 
-        return Results.Ok(libraries);
+        return TypedResults.Ok(libraries);
     }
 
     // GET /api/libraries/{id}
-    private static async Task<IResult> GetById(
+    private static async Task<Results<Ok<ExternalLibraryDto>, NotFound<ApiError>, UnauthorizedHttpResult>> GetById(
         Guid id,
         [FromServices] ApplicationDbContext db,
         HttpContext ctx,
         CancellationToken ct)
     {
         var userId = GetUserId(ctx);
-        if (userId == null) return Results.Unauthorized();
+        if (userId == null) return TypedResults.Unauthorized();
 
         var library = await db.ExternalLibraries
             .Where(l => l.Id == id
@@ -129,28 +131,30 @@ public class ExternalLibrariesEndpoint : IEndpoint
                 l.CreatedAt))
             .FirstOrDefaultAsync(ct);
 
-        return library is null ? Results.NotFound() : Results.Ok(library);
+        if (library is null) return TypedResults.NotFound(new ApiError($"External library {id} not found", "library_not_found"));
+        return TypedResults.Ok(library);
     }
 
     // POST /api/libraries
-    private static async Task<IResult> Create(
+    private static async Task<Results<Created<ExternalLibraryDto>, BadRequest<ApiError>, UnauthorizedHttpResult>> Create(
         [FromBody] CreateExternalLibraryRequest request,
         [FromServices] ApplicationDbContext db,
         HttpContext ctx,
         CancellationToken ct)
     {
         var userId = GetUserId(ctx);
-        if (userId == null) return Results.Unauthorized();
+        if (userId == null) return TypedResults.Unauthorized();
 
         if (!Directory.Exists(request.Path))
-            return Results.BadRequest($"Directory does not exist on the server: {request.Path}");
+            return TypedResults.BadRequest(new ApiError($"Directory does not exist on the server: {request.Path}", "directory_not_found"));
 
         if (!string.IsNullOrWhiteSpace(request.CronSchedule) &&
             Shared.Services.ExternalLibrarySchedulerService.ParseCronInterval(request.CronSchedule) == null)
         {
-            return Results.BadRequest(
+            return TypedResults.BadRequest(new ApiError(
                 "Unsupported cron expression. Supported values: @hourly, @daily, @weekly, @monthly " +
-                "(or their equivalent cron syntax).");
+                "(or their equivalent cron syntax).",
+                "invalid_cron_schedule"));
         }
 
         var library = new ExternalLibrary
@@ -165,7 +169,7 @@ public class ExternalLibrariesEndpoint : IEndpoint
         db.ExternalLibraries.Add(library);
         await db.SaveChangesAsync(ct);
 
-        return Results.Created($"/api/libraries/{library.Id}", new ExternalLibraryDto(
+        return TypedResults.Created($"/api/libraries/{library.Id}", new ExternalLibraryDto(
             library.Id, library.Name, library.Path, library.ImportSubfolders,
             library.CronSchedule, library.LastScannedAt, library.LastScanStatus.ToString(),
             library.LastScanAssetsFound, library.LastScanAssetsAdded, library.LastScanAssetsRemoved,
@@ -173,7 +177,7 @@ public class ExternalLibrariesEndpoint : IEndpoint
     }
 
     // PUT /api/libraries/{id}
-    private static async Task<IResult> Update(
+    private static async Task<Results<NoContent, BadRequest<ApiError>, NotFound<ApiError>, UnauthorizedHttpResult>> Update(
         Guid id,
         [FromBody] UpdateExternalLibraryRequest request,
         [FromServices] ApplicationDbContext db,
@@ -181,21 +185,22 @@ public class ExternalLibrariesEndpoint : IEndpoint
         CancellationToken ct)
     {
         var userId = GetUserId(ctx);
-        if (userId == null) return Results.Unauthorized();
+        if (userId == null) return TypedResults.Unauthorized();
 
         var library = await db.ExternalLibraries
             .FirstOrDefaultAsync(l => l.Id == id && l.OwnerId == userId.Value, ct);
 
-        if (library is null) return Results.NotFound();
+        if (library is null) return TypedResults.NotFound(new ApiError($"External library {id} not found", "library_not_found"));
 
         if (!Directory.Exists(request.Path))
-            return Results.BadRequest($"Directory does not exist on the server: {request.Path}");
+            return TypedResults.BadRequest(new ApiError($"Directory does not exist on the server: {request.Path}", "directory_not_found"));
 
         if (!string.IsNullOrWhiteSpace(request.CronSchedule) &&
             Shared.Services.ExternalLibrarySchedulerService.ParseCronInterval(request.CronSchedule) == null)
         {
-            return Results.BadRequest(
-                "Unsupported cron expression. Supported values: @hourly, @daily, @weekly, @monthly.");
+            return TypedResults.BadRequest(new ApiError(
+                "Unsupported cron expression. Supported values: @hourly, @daily, @weekly, @monthly.",
+                "invalid_cron_schedule"));
         }
 
         library.Name = request.Name.Trim();
@@ -204,29 +209,29 @@ public class ExternalLibrariesEndpoint : IEndpoint
         library.CronSchedule = string.IsNullOrWhiteSpace(request.CronSchedule) ? null : request.CronSchedule.Trim();
 
         await db.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     // DELETE /api/libraries/{id}
-    private static async Task<IResult> Delete(
+    private static async Task<Results<NoContent, NotFound<ApiError>, UnauthorizedHttpResult>> Delete(
         Guid id,
         [FromServices] ApplicationDbContext db,
         HttpContext ctx,
         CancellationToken ct)
     {
         var userId = GetUserId(ctx);
-        if (userId == null) return Results.Unauthorized();
+        if (userId == null) return TypedResults.Unauthorized();
 
         var library = await db.ExternalLibraries
             .FirstOrDefaultAsync(l => l.Id == id && l.OwnerId == userId.Value, ct);
 
-        if (library is null) return Results.NotFound();
+        if (library is null) return TypedResults.NotFound(new ApiError($"External library {id} not found", "library_not_found"));
 
         // De-link assets (FK is SetNull) — the library row deletion triggers this via EF
         db.ExternalLibraries.Remove(library);
         await db.SaveChangesAsync(ct);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     private static Guid? GetUserId(HttpContext ctx)

@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -43,9 +44,9 @@ public class VersionEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static IResult GetPublicVersion()
+    private static Ok<PublicVersionResponse> GetPublicVersion()
     {
-        return Results.Ok(new PublicVersionResponse
+        return TypedResults.Ok(new PublicVersionResponse
         {
             Version = ResolveCurrentVersion(),
             MinClientVersion = ResolveMinClientVersion()
@@ -71,20 +72,20 @@ public class VersionEndpoint : IEndpoint
         return plusIdx >= 0 ? raw[..plusIdx] : raw;
     }
 
-    private static async Task<IResult> GetLatestRelease(
+    private static async Task<Ok<LatestReleaseResponse>> GetLatestRelease(
         [FromServices] IMemoryCache cache,
         [FromServices] IHttpClientFactory httpClientFactory,
         CancellationToken ct)
     {
         var check = await CheckLatestReleaseAsync(cache, httpClientFactory, refresh: false, ct);
-        return Results.Ok(new LatestReleaseResponse
+        return TypedResults.Ok(new LatestReleaseResponse
         {
             LatestVersion = check.Release?.Version,
             ReleaseUrl = check.Release?.HtmlUrl
         });
     }
 
-    private static async Task<IResult> GetVersion(
+    private static async Task<Ok<VersionInfoResponse>> GetVersion(
         [FromServices] IMemoryCache cache,
         [FromServices] IHttpClientFactory httpClientFactory,
         [FromQuery] bool? refresh,
@@ -104,7 +105,7 @@ public class VersionEndpoint : IEndpoint
             isAhead = latest < cur;
         }
 
-        return Results.Ok(new VersionInfoResponse
+        return TypedResults.Ok(new VersionInfoResponse
         {
             CurrentVersion = currentVersion,
             LatestVersion = release?.Version,

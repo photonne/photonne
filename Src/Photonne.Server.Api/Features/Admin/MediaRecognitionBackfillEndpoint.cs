@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -58,7 +59,7 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
             CancellationToken ct) => GetPendingCountAsync(db, ct));
     }
 
-    private static async Task<IResult> RunAsync(
+    private static async Task<Ok<BackfillResponse>> RunAsync(
         ApplicationDbContext db,
         IEnrichmentService jobs,
         SettingsService settings,
@@ -101,7 +102,7 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
                     $"Encolados {enqueued} de {total} asset(s) para emparejar Live Photos. El procesador los irá completando en segundo plano.");
             }
 
-            return Results.Ok(new BackfillResponse(enqueued, total));
+            return TypedResults.Ok(new BackfillResponse(enqueued, total));
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -114,7 +115,7 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
         }
     }
 
-    private static async Task<IResult> GetPendingCountAsync(ApplicationDbContext db, CancellationToken ct)
+    private static async Task<Ok<MediaRecognitionPendingResponse>> GetPendingCountAsync(ApplicationDbContext db, CancellationToken ct)
     {
         var unprocessed = await BuildQuery(db, onlyMissing: true).CountAsync(ct);
 
@@ -127,7 +128,7 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
         var problems = EnrichmentFailureQueries.OpenProblems(db).AsNoTracking()
             .Where(j => j.TaskType == AssetEnrichmentType.MediaRecognition);
 
-        return Results.Ok(new MediaRecognitionPendingResponse(
+        return TypedResults.Ok(new MediaRecognitionPendingResponse(
             unprocessed,
             inQueue,
             Retrying: await problems.Retrying().CountAsync(ct),

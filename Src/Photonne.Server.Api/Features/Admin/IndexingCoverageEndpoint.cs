@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Features.Maintenance;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -31,18 +32,18 @@ public class IndexingCoverageEndpoint : IEndpoint
         bool UnindexedTruncated,
         int OfflineLibraries);
 
-    private async Task<IResult> Handle(
+    private async Task<Ok<IndexingCoverageResponse>> Handle(
         [FromServices] MaintenanceService maintenanceService,
         CancellationToken cancellationToken)
     {
         var last = await maintenanceService.GetLastIndexingCoverageAsync(cancellationToken);
         if (last == null)
         {
-            return Results.Ok(new IndexingCoverageResponse(
+            return TypedResults.Ok(new IndexingCoverageResponse(
                 false, null, 0, 0, 0, 0, Array.Empty<string>(), false, 0));
         }
 
-        return Results.Ok(new IndexingCoverageResponse(
+        return TypedResults.Ok(new IndexingCoverageResponse(
             true, last.VerifiedAtUtc, last.TotalFiles, last.Indexed, last.Unsupported,
             last.Unindexed, last.UnindexedPaths, last.UnindexedTruncated, last.OfflineLibraries));
     }

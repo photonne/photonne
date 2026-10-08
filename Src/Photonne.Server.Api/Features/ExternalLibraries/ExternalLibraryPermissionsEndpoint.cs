@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 
@@ -45,19 +47,19 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
     }
 
     // GET /api/libraries/{libraryId}/permissions
-    private static async Task<IResult> GetPermissions(
+    private static async Task<Results<Ok<List<ExternalLibraryPermissionDto>>, NotFound<ApiError>, UnauthorizedHttpResult>> GetPermissions(
         Guid libraryId,
         [FromServices] ApplicationDbContext db,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
         var adminId = GetUserId(user);
-        if (adminId == null) return Results.Unauthorized();
+        if (adminId == null) return TypedResults.Unauthorized();
 
         var library = await db.ExternalLibraries
             .FirstOrDefaultAsync(l => l.Id == libraryId && l.OwnerId == adminId.Value, ct);
 
-        if (library is null) return Results.NotFound();
+        if (library is null) return TypedResults.NotFound(new ApiError($"External library {libraryId} not found", "library_not_found"));
 
         var permissions = await db.ExternalLibraryPermissions
             .Where(p => p.ExternalLibraryId == libraryId)
@@ -72,11 +74,11 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
                 p.GrantedByUserId))
             .ToListAsync(ct);
 
-        return Results.Ok(permissions);
+        return TypedResults.Ok(permissions);
     }
 
     // POST /api/libraries/{libraryId}/permissions
-    private static async Task<IResult> SetPermission(
+    private static async Task<Results<Ok<ExternalLibraryPermissionDto>, BadRequest<ApiError>, NotFound<ApiError>, UnauthorizedHttpResult>> SetPermission(
         Guid libraryId,
         [FromBody] SetExternalLibraryPermissionRequest request,
         [FromServices] ApplicationDbContext db,
@@ -85,19 +87,19 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
         CancellationToken ct)
     {
         var adminId = GetUserId(user);
-        if (adminId == null) return Results.Unauthorized();
+        if (adminId == null) return TypedResults.Unauthorized();
 
         var library = await db.ExternalLibraries
             .FirstOrDefaultAsync(l => l.Id == libraryId && l.OwnerId == adminId.Value, ct);
 
-        if (library is null) return Results.NotFound();
+        if (library is null) return TypedResults.NotFound(new ApiError($"External library {libraryId} not found", "library_not_found"));
 
         var targetUser = await db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct);
         if (targetUser is null)
-            return Results.NotFound(new { error = $"User {request.UserId} not found" });
+            return TypedResults.NotFound(new ApiError($"User {request.UserId} not found", "user_not_found"));
 
         if (request.UserId == adminId.Value)
-            return Results.BadRequest(new { error = "Cannot set permissions for the library owner" });
+            return TypedResults.BadRequest(new ApiError("Cannot set permissions for the library owner", "cannot_target_owner"));
 
         var existing = await db.ExternalLibraryPermissions
             .FirstOrDefaultAsync(p => p.ExternalLibraryId == libraryId && p.UserId == request.UserId, ct);
@@ -129,7 +131,7 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
         // folder grants — drop the grantee's entry so timelines update now.
         allowedFolders.Invalidate(request.UserId);
 
-        return Results.Ok(new ExternalLibraryPermissionDto(
+        return TypedResults.Ok(new ExternalLibraryPermissionDto(
             permission.Id,
             permission.UserId,
             targetUser.Username,
@@ -140,7 +142,7 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
     }
 
     // DELETE /api/libraries/{libraryId}/permissions/{userId}
-    private static async Task<IResult> RemovePermission(
+    private static async Task<Results<NoContent, NotFound<ApiError>, UnauthorizedHttpResult>> RemovePermission(
         Guid libraryId,
         Guid userId,
         [FromServices] ApplicationDbContext db,
@@ -149,24 +151,24 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
         CancellationToken ct)
     {
         var adminId = GetUserId(user);
-        if (adminId == null) return Results.Unauthorized();
+        if (adminId == null) return TypedResults.Unauthorized();
 
         var library = await db.ExternalLibraries
             .FirstOrDefaultAsync(l => l.Id == libraryId && l.OwnerId == adminId.Value, ct);
 
-        if (library is null) return Results.NotFound();
+        if (library is null) return TypedResults.NotFound(new ApiError($"External library {libraryId} not found", "library_not_found"));
 
         var permission = await db.ExternalLibraryPermissions
             .FirstOrDefaultAsync(p => p.ExternalLibraryId == libraryId && p.UserId == userId, ct);
 
-        if (permission is null) return Results.NotFound();
+        if (permission is null) return TypedResults.NotFound(new ApiError($"Permission for user {userId} not found", "permission_not_found"));
 
         db.ExternalLibraryPermissions.Remove(permission);
         await db.SaveChangesAsync(ct);
 
         allowedFolders.Invalidate(userId);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     private static Guid? GetUserId(ClaimsPrincipal user)

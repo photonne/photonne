@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services.Geo;
@@ -21,22 +22,22 @@ public class GeocodeBackfillEndpoint : IEndpoint
             .WithTags("Admin")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
-        group.MapGet("/reverse-geocode/pending-count", async (
+        group.MapGet("/reverse-geocode/pending-count", async Task<Ok<ReverseGeocodePendingCountResponse>> (
             [FromServices] GeocodeBackfillRunner runner,
             [FromServices] ReverseGeocoder geocoder,
             CancellationToken ct) =>
         {
             var pending = await runner.PendingCountAsync(ct);
-            return Results.Ok(new
-            {
+            return TypedResults.Ok(new ReverseGeocodePendingCountResponse(
                 pending,
                 // Surfaced so the admin UI can explain a backfill that does
                 // nothing, instead of leaving it looking broken.
-                datasetAvailable = geocoder.IsAvailable,
-                cities = geocoder.IsAvailable ? geocoder.CityCount : 0,
-            });
+                DatasetAvailable: geocoder.IsAvailable,
+                Cities: geocoder.IsAvailable ? geocoder.CityCount : 0));
         })
         .WithName("GetReverseGeocodePendingCount")
         .WithDescription("How many geolocated assets still have no resolved place, and whether the dataset is present");
     }
 }
+
+public sealed record ReverseGeocodePendingCountResponse(int Pending, bool DatasetAvailable, int Cities);

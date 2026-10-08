@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -26,7 +28,7 @@ public class RetryAllEnrichmentTasksEndpoint : IEndpoint
             .RequireRateLimiting("demo-upload");
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<RetryAllEnrichmentTasksResponse>, NotFound<ApiError>, ForbidHttpResult, UnauthorizedHttpResult>> Handle(
         Guid id,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IEnrichmentService enrichmentService,
@@ -35,14 +37,14 @@ public class RetryAllEnrichmentTasksEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var ownerId = await dbContext.Assets
             .Where(a => a.Id == id && a.DeletedAt == null)
             .Select(a => (Guid?)a.OwnerId)
             .FirstOrDefaultAsync(cancellationToken);
-        if (ownerId == null) return Results.NotFound();
-        if (ownerId != userId) return Results.Forbid();
+        if (ownerId == null) return TypedResults.NotFound(new ApiError($"Asset {id} not found", "asset_not_found"));
+        if (ownerId != userId) return TypedResults.Forbid();
 
         var failedIds = await dbContext.AssetEnrichmentTasks
             .Where(t => t.AssetId == id && t.Status == EnrichmentStatus.Failed)
@@ -56,6 +58,8 @@ public class RetryAllEnrichmentTasksEndpoint : IEndpoint
                 retried++;
         }
 
-        return Results.Ok(new { assetId = id, retried });
+        return TypedResults.Ok(new RetryAllEnrichmentTasksResponse(id, retried));
     }
 }
+
+public sealed record RetryAllEnrichmentTasksResponse(Guid AssetId, int Retried);

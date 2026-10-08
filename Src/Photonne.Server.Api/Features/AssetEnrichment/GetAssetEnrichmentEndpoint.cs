@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 
@@ -38,7 +40,7 @@ public class GetAssetEnrichmentEndpoint : IEndpoint
         string FileName,
         IReadOnlyList<EnrichmentTaskDto> Tasks);
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<AssetEnrichmentResponse>, NotFound<ApiError>, ForbidHttpResult, UnauthorizedHttpResult>> Handle(
         Guid id,
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
@@ -46,15 +48,15 @@ public class GetAssetEnrichmentEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var asset = await dbContext.Assets
             .AsNoTracking()
             .Where(a => a.Id == id && a.DeletedAt == null)
             .Select(a => new { a.Id, a.FileName, a.OwnerId })
             .FirstOrDefaultAsync(cancellationToken);
-        if (asset == null) return Results.NotFound();
-        if (asset.OwnerId != userId) return Results.Forbid();
+        if (asset == null) return TypedResults.NotFound(new ApiError($"Asset {id} not found", "asset_not_found"));
+        if (asset.OwnerId != userId) return TypedResults.Forbid();
 
         var tasks = await dbContext.AssetEnrichmentTasks
             .AsNoTracking()
@@ -71,6 +73,6 @@ public class GetAssetEnrichmentEndpoint : IEndpoint
                 t.NextRetryAt))
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(new AssetEnrichmentResponse(asset.Id, asset.FileName, tasks));
+        return TypedResults.Ok(new AssetEnrichmentResponse(asset.Id, asset.FileName, tasks));
     }
 }

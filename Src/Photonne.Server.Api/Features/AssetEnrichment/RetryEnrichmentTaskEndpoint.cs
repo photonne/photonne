@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Admin;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -28,7 +30,7 @@ public class RetryEnrichmentTaskEndpoint : IEndpoint
             .RequireRateLimiting("demo-upload");
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<RetryEnrichmentTaskResponse>, BadRequest<ApiError>, NotFound<ApiError>, Conflict<ApiError>, ForbidHttpResult, UnauthorizedHttpResult>> Handle(
         Guid id,
         [FromQuery] string taskType,
         [FromServices] ApplicationDbContext dbContext,
@@ -39,14 +41,13 @@ public class RetryEnrichmentTaskEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (!Enum.TryParse<AssetEnrichmentType>(taskType, ignoreCase: true, out var parsedType))
         {
-            return Results.BadRequest(new
-            {
-                error = $"Unknown task type '{taskType}'. Valid: {string.Join(", ", Enum.GetNames<AssetEnrichmentType>())}"
-            });
+            return TypedResults.BadRequest(new ApiError(
+                $"Unknown task type '{taskType}'. Valid: {string.Join(", ", Enum.GetNames<AssetEnrichmentType>())}",
+                "invalid_task_type"));
         }
 
         // Same refusal as the admin backfill: a disabled model's worker
@@ -55,17 +56,17 @@ public class RetryEnrichmentTaskEndpoint : IEndpoint
         // the reason, is the only honest answer.
         if (!await enablement.IsEnabledAsync(parsedType))
         {
-            return Results.Json(
-                new { error = $"El análisis «{MlBackfillRunner.JobTypeLabel(parsedType)}» está desactivado en Ajustes." },
-                statusCode: StatusCodes.Status409Conflict);
+            return TypedResults.Conflict(new ApiError(
+                $"El análisis «{MlBackfillRunner.JobTypeLabel(parsedType)}» está desactivado en Ajustes.",
+                "ml_task_disabled"));
         }
 
         var ownerId = await dbContext.Assets
             .Where(a => a.Id == id && a.DeletedAt == null)
             .Select(a => (Guid?)a.OwnerId)
             .FirstOrDefaultAsync(cancellationToken);
-        if (ownerId == null) return Results.NotFound();
-        if (ownerId != userId) return Results.Forbid();
+        if (ownerId == null) return TypedResults.NotFound(new ApiError($"Asset {id} not found", "asset_not_found"));
+        if (ownerId != userId) return TypedResults.Forbid();
 
         var taskId = await dbContext.AssetEnrichmentTasks
             .Where(t => t.AssetId == id && t.TaskType == parsedType)
@@ -78,12 +79,14 @@ public class RetryEnrichmentTaskEndpoint : IEndpoint
             // No row yet for this type — create one in Pending and enqueue. Lets the
             // client ask for "run Exif on this asset" even if it was never enqueued.
             await enrichmentService.EnqueueAsync(id, parsedType, cancellationToken);
-            return Results.Ok(new { assetId = id, taskType = parsedType.ToString(), status = "Pending" });
+            return TypedResults.Ok(new RetryEnrichmentTaskResponse(id, parsedType.ToString(), "Pending"));
         }
 
         var ok = await enrichmentService.ResetAndEnqueueAsync(taskId.Value, cancellationToken);
-        if (!ok) return Results.NotFound();
+        if (!ok) return TypedResults.NotFound(new ApiError($"Enrichment task {taskId} not found", "enrichment_task_not_found"));
 
-        return Results.Ok(new { assetId = id, taskType = parsedType.ToString(), status = "Pending" });
+        return TypedResults.Ok(new RetryEnrichmentTaskResponse(id, parsedType.ToString(), "Pending"));
     }
 }
+
+public sealed record RetryEnrichmentTaskResponse(Guid AssetId, string TaskType, string Status);

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Client.Web.Models;
@@ -48,11 +49,11 @@ public class FaceRecognitionBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/face-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.FaceRecognition, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.FaceRecognition, ct));
     }
 }
 
@@ -85,6 +86,7 @@ public class FaceClusteringRunGlobalEndpoint : IEndpoint
             CancellationToken cancellationToken) =>
             StreamClustering(serviceProvider, backgroundTaskManager, http,
                 AdminEndpointHelpers.GetUserId(http), cancellationToken))
+            .Produces<string>(StatusCodes.Status200OK, "application/x-ndjson")
             .WithName("FaceClusteringStream")
             .WithDescription("Streams progress for the global face re-clustering pass, run as a background job.");
     }
@@ -204,7 +206,7 @@ public class FaceClusteringRunGlobalEndpoint : IEndpoint
         return BackgroundTaskStreaming.WriteNdjsonAsync(httpContext, entry, cancellationToken);
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Ok<GlobalReclusterResponse>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] FaceClusteringService clustering,
         [FromServices] INotificationService notifications,
@@ -240,7 +242,7 @@ public class FaceClusteringRunGlobalEndpoint : IEndpoint
                     "Reagrupación global de rostros completada",
                     $"Procesados {ownersProcessed} usuario(s); {personsCreated} persona(s) nuevas.");
 
-            return Results.Ok(new GlobalReclusterResponse(ownersProcessed, personsCreated));
+            return TypedResults.Ok(new GlobalReclusterResponse(ownersProcessed, personsCreated));
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
