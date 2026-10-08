@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick, untrack, type Snippet } from 'svelte';
+	import { onDestroy, tick, untrack, type Snippet } from 'svelte';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
@@ -63,6 +63,9 @@
 		untrack(() => store),
 		selection
 	);
+	// Whatever takes items out (a batch action, a drop on another folder…)
+	// takes them out of the selection too.
+	onDestroy(untrack(() => store).onremove((ids) => selection.set(ids, false)));
 	const viewer = new ViewerRoute();
 
 	let grid = $state<PhotoGrid<GridAsset>>();

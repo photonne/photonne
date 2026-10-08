@@ -12,7 +12,7 @@
 		type BackupLevel,
 		type BackupSummary
 	} from '#lib/admin/backup.js';
-	import ConfirmDialog from '#lib/admin/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { errorText } from '#lib/admin/errors.js';
 	import { count, localDateTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
@@ -249,6 +249,7 @@
 	{/if}
 
 	<ConfirmDialog
+		danger
 		open={confirming}
 		title={m.admin_backup_confirm_title()}
 		confirmLabel={m.admin_backup_confirm()}

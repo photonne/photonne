@@ -4,9 +4,10 @@ import { notificationIcon, notificationTarget, relativeTime } from './notificati
 describe('notificationTarget', () => {
 	it.each([
 		['/albums/abc', '/albums/abc'],
-		['/admin/enrichment-failures?type=Exif', '/admin/enrichment-failures?type=Exif'],
-		['/shared-trash', '/admin/shared-trash'],
-		['/shared-trash?x=1', '/admin/shared-trash?x=1']
+		['/admin/enrichment-failures?type=Exif', '/admin/tasks/failures?type=Exif'],
+		['/admin/stats', '/admin'],
+		['/shared-trash', '/trash?scope=shared'],
+		['/shared-trash?x=1', '/trash?scope=shared&x=1']
 	])('%s → %s', (url, target) => {
 		expect(notificationTarget(url)).toBe(target);
 	});

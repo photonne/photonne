@@ -15,6 +15,8 @@
 	let { open, title, onclose, children, actions, width = '440px' }: Props = $props();
 
 	let dialog = $state<HTMLDialogElement>();
+	// Several dialogs can share a page (one inside another's flow).
+	const titleId = $props.id();
 
 	// The native <dialog> in modal mode brings focus trapping, Escape, the
 	// backdrop and `inert` on the rest of the page for free.
@@ -33,7 +35,7 @@
 <dialog
 	bind:this={dialog}
 	style:width
-	aria-labelledby="dialog-title"
+	aria-labelledby={titleId}
 	oncancel={(event) => {
 		event.preventDefault();
 		onclose();
@@ -42,7 +44,7 @@
 >
 	{#if open}
 		<div class="content">
-			<h2 id="dialog-title">{title}</h2>
+			<h2 id={titleId}>{title}</h2>
 			<div class="body">{@render children()}</div>
 			{#if actions}
 				<div class="actions">{@render actions()}</div>

@@ -9,7 +9,7 @@
 		getCurrentUserQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
-	import ConfirmDialog from '#lib/admin/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { errorText } from '#lib/admin/errors.js';
 	import { count, localDate, localDateTime, relativeTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
@@ -429,7 +429,7 @@
 		confirmLabel={confirming?.kind === 'promote'
 			? m.admin_users_promote_confirm()
 			: m.admin_core_delete()}
-		tone={confirming?.kind === 'promote' ? 'primary' : 'danger'}
+		danger={confirming?.kind !== 'promote'}
 		{busy}
 		onconfirm={confirm}
 		onclose={() => (confirming = null)}

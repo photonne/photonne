@@ -54,7 +54,15 @@ async function orderedHandlers() {
  * A stand-in for the Photonne API at the browser's network layer, so the e2e
  * tests run against the built SPA without a server or database.
  */
-export async function fakeApi(page: Page, options: { signedIn?: boolean; offline?: boolean } = {}) {
+export async function fakeApi(
+	page: Page,
+	options: { signedIn?: boolean; offline?: boolean; role?: 'User' | 'Admin' } = {}
+) {
+	const me = {
+		...user,
+		role: options.role ?? 'User',
+		isPrimaryAdmin: options.role === 'Admin'
+	};
 	let signedIn = options.signedIn ?? false;
 	const favorites = new Set<string>();
 	const descriptions: string[] = [];
@@ -82,7 +90,7 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 				const body = request.postDataJSON();
 				if (body.username === 'ana' && body.password === 'secreto') {
 					signedIn = true;
-					return json(route, 200, { token: 'token-1', refreshToken: '', user });
+					return json(route, 200, { token: 'token-1', refreshToken: '', user: me });
 				}
 				return json(route, 401);
 			}
@@ -90,7 +98,7 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 				signedIn = false;
 				return route.fulfill({ status: 204 });
 			case 'GET /api/users/me':
-				return authorized ? json(route, 200, user) : json(route, 401);
+				return authorized ? json(route, 200, me) : json(route, 401);
 			case 'GET /api/assets/timeline/buckets':
 				return authorized ? json(route, 200, library.buckets) : json(route, 401);
 			default:

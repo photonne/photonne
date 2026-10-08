@@ -7,7 +7,7 @@
 		getExternalLibrariesQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
-	import ConfirmDialog from '#lib/admin/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { errorText } from '#lib/admin/errors.js';
 	import { count, localDateTime, percent, relativeTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
@@ -285,6 +285,7 @@
 	<LibraryPermissionsDialog library={sharing} onclose={() => (sharing = null)} />
 
 	<ConfirmDialog
+		danger
 		open={deleting !== null}
 		title={m.admin_libs_delete_title()}
 		confirmLabel={m.admin_core_delete()}

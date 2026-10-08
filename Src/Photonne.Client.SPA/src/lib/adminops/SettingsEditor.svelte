@@ -214,7 +214,7 @@
 
 	aside {
 		position: sticky;
-		top: calc(57px + var(--space-4));
+		top: calc(var(--admin-nav-height) + var(--space-4));
 	}
 
 	.groups {

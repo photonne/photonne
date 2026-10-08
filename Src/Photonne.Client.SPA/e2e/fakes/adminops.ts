@@ -1,4 +1,3 @@
-import type { Page } from '@playwright/test';
 import type {
 	AdminEnrichmentFailureDto,
 	BackgroundTaskResponse,
@@ -157,27 +156,6 @@ function failure(
 
 export function adminState(state: Record<string, unknown>) {
 	return (state.adminops ??= seed()) as AdminOpsState;
-}
-
-/** The signed-in fake user, made an administrator (registered after fakeApi, so it wins). */
-export async function asAdmin(page: Page) {
-	await page.route('**/api/users/me', (route) => {
-		if (route.request().headers()['authorization'] !== 'Bearer token-1') {
-			return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
-		}
-		return route.fulfill({
-			status: 200,
-			contentType: 'application/json',
-			body: JSON.stringify({
-				id: '00000000-0000-0000-0000-000000000001',
-				username: 'ana',
-				email: 'ana@photonne.test',
-				role: 'Admin',
-				isActive: true,
-				isPrimaryAdmin: true
-			})
-		});
-	});
 }
 
 /** A background task as the server registers it when a stream starts it. */

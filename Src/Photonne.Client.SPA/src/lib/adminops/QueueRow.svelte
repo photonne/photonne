@@ -7,7 +7,7 @@
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import ConfirmDialog from './ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ProgressBar from './ProgressBar.svelte';
 	import TaskRow from './TaskRow.svelte';
 	import type { BackfillKind, MaintenanceTask } from './catalog.js';

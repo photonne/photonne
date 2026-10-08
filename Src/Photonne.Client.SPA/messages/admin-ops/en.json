@@ -1,7 +1,6 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"ops_all": "All",
-	"ops_cancel": "Cancel",
 	"ops_clear_selection": "Clear selection",
 	"ops_col_actions": "Actions",
 	"ops_col_attempts": "Attempts",

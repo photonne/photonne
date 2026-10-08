@@ -33,9 +33,13 @@ export function notificationIcon(type: NotificationItemResponse['type']): {
 }
 
 // Action URLs are written by the server for the Blazor client; the few whose
-// page lives elsewhere in this app are mapped here.
+// page lives elsewhere in this app are mapped here. The shared trash
+// notification also reaches folder managers who aren't admins, so it leads
+// to their own view of it.
 const MOVED: Record<string, string> = {
-	'/shared-trash': '/admin/shared-trash'
+	'/shared-trash': '/trash?scope=shared',
+	'/admin/enrichment-failures': '/admin/tasks/failures',
+	'/admin/stats': '/admin'
 };
 
 /**
@@ -46,7 +50,10 @@ export function notificationTarget(actionUrl: string | null | undefined): string
 	if (!actionUrl || !actionUrl.startsWith('/') || actionUrl.startsWith('//')) return null;
 	if (actionUrl.startsWith('/\\')) return null;
 	const [path, rest = ''] = actionUrl.split(/(?=[?#])/, 2);
-	return (MOVED[path] ?? path) + rest;
+	const target = MOVED[path] ?? path;
+	return target.includes('?') && rest.startsWith('?')
+		? `${target}&${rest.slice(1)}`
+		: target + rest;
 }
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [

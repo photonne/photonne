@@ -25,7 +25,7 @@
 	import { PagedList } from '#lib/timeline/paged-list.svelte.js';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
 	import { invalidateFolders, toggleFolderPin } from './cache.js';
-	import ConfirmDialog from './ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import FolderCards from './FolderCards.svelte';
 	import FolderFormDialog from './FolderFormDialog.svelte';
 	import { moveAssets, onAssetsMoved } from './folder-moves.js';
@@ -55,24 +55,9 @@
 	});
 	list.start();
 
-	/**
-	 * The grid's selection, seen through the selection-actions snippet: photos
-	 * that leave by a drop on the tree must leave the selection too.
-	 */
-	let selectionRef: Selection | null = null;
-	function tap(selection: Selection) {
-		selectionRef = selection;
-		return '';
-	}
-
-	function takeOut(ids: readonly string[]) {
-		list.store.remove(ids);
-		selectionRef?.set(ids, false);
-	}
-
 	onDestroy(
 		onAssetsMoved((event) => {
-			if (event.from === folderId) takeOut(event.assetIds);
+			if (event.from === folderId) list.store.remove(event.assetIds);
 			else if (event.to === folderId) list.store.reload();
 			invalidateFolders(queryClient, folderId);
 		})
@@ -82,7 +67,8 @@
 	let creatingSub = $state(false);
 	let sharing = $state(false);
 	let confirmingDelete = $state(false);
-	let moving = $state(false);
+	/** The photos the folder picker is open for. */
+	let moving = $state<string[] | null>(null);
 	let busy = $state(false);
 
 	const canWrite = $derived(folder?.canWrite ?? false);
@@ -146,7 +132,7 @@
 			toasts.error(m.action_failed());
 			return;
 		}
-		takeOut(assetIds);
+		list.store.remove(assetIds);
 		invalidateFolders(queryClient, folderId);
 		toasts.show(m.folders_removed({ count: assetIds.length }));
 	}
@@ -164,14 +150,15 @@
 		invalidateFolders(queryClient);
 		toasts.show(m.folders_deleted({ name: folder.name }));
 		const parent = folder.parentFolderId;
-		await goto(appHref(parent ? `/folders/${parent}` : '/folders'), { replaceState: true });
+		await goto(appHref(parent ? `/folders/${parent}` : '/folders'), { replace: true });
 	}
 
 	function moveSelection(target: { id: string; name: string }, byYear: boolean) {
-		moving = false;
-		if (!folder || !selectionRef) return;
+		const assetIds = moving;
+		moving = null;
+		if (!folder || !assetIds?.length) return;
 		moveAssets(queryClient, {
-			assetIds: [...selectionRef.ids],
+			assetIds,
 			from: { id: folder.id, name: folder.name },
 			to: target,
 			byYear
@@ -288,14 +275,13 @@
 		{/snippet}
 
 		{#snippet selectionActions(selection: Selection, batch: BatchActions)}
-			{tap(selection)}
 			{#if canWrite && !isLibrary}
 				<button
 					type="button"
 					class="action"
 					title={m.folders_move()}
 					aria-label={m.folders_move()}
-					onclick={() => (moving = true)}
+					onclick={() => (moving = [...selection.ids])}
 				>
 					<Icon path={icons.moveToFolder} />
 				</button>
@@ -319,7 +305,7 @@
 	</CollectionView>
 {/if}
 
-<FolderPickerDialog open={moving} onclose={() => (moving = false)} onpick={moveSelection} />
+<FolderPickerDialog open={moving !== null} onclose={() => (moving = null)} onpick={moveSelection} />
 
 {#if (editing || creatingSub) && folder}
 	<FolderFormDialog
@@ -355,6 +341,7 @@
 {/if}
 
 <ConfirmDialog
+	danger
 	open={confirmingDelete}
 	title={m.folders_delete_title()}
 	message={m.folders_delete_message({ name: folder?.name ?? '', count: folder?.assetCount ?? 0 })}

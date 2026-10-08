@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { deletePhysicalDuplicates, detectDuplicatesStream } from '#lib/api/index.js';
 	import '#lib/adminops/adminops.css';
-	import ConfirmDialog from '#lib/adminops/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ProgressBar from '#lib/adminops/ProgressBar.svelte';
 	import {
 		autoSelect,
