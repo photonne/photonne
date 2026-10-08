@@ -1,3 +1,263 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"albums_back": "Back to Albums",
+	"albums_close": "Close",
+	"albums_cover_set": "Cover updated",
+	"albums_create": "Create",
+	"albums_created": "Album “{name}” created",
+	"albums_delete": "Delete album",
+	"albums_delete_message": "“{name}” will be deleted. The photos stay in your library.",
+	"albums_delete_title": "Delete the album?",
+	"albums_deleted": "Album “{name}” deleted",
+	"albums_edit": "Edit album",
+	"albums_edit_title": "Edit album",
+	"albums_empty_album": "This album is empty. Add photos from Photos with “Add to album”, or drag them onto a pinned album.",
+	"albums_empty_body": "Create an album and add photos, or a smart album that fills itself.",
+	"albums_empty_smart": "No photos match this album’s conditions.",
+	"albums_empty_title": "No albums yet",
+	"albums_error_rule": "The server doesn’t accept these conditions. Check them.",
+	"albums_error_rule_load": "The album’s conditions couldn’t be loaded.",
+	"albums_field_description": "Description (optional)",
+	"albums_field_name": "Name",
+	"albums_filters": "Filter albums",
+	"albums_items": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} item",
+				"countPlural=other": "{count} items"
+			}
+		}
+	],
+	"albums_kind": "Album type",
+	"albums_kind_all": "All types",
+	"albums_kind_manual": "Regular",
+	"albums_kind_smart": "Smart",
+	"albums_leave": "Leave album",
+	"albums_leave_message": "You’ll stop seeing “{name}”. To get back in, its owner has to invite you again.",
+	"albums_leave_title": "Leave the album?",
+	"albums_left": "You left “{name}”",
+	"albums_level": "Access",
+	"albums_level_contribute": "Can add",
+	"albums_level_custom": "Custom",
+	"albums_level_edit": "Can edit and delete",
+	"albums_level_for": "Access for {name}",
+	"albums_level_hint": "Each level includes the ones before it. “Manage” lets them share with others.",
+	"albums_level_manage": "Can manage and share",
+	"albums_level_view": "Can view",
+	"albums_link_active": "Public link active",
+	"albums_link_allow_download": "Allow downloads",
+	"albums_link_allow_upload": "Allow uploads",
+	"albums_link_allow_upload_hint": "Anyone with the link can add photos to this album.",
+	"albums_link_copied": "Link copied",
+	"albums_link_copy": "Copy",
+	"albums_link_copy_failed": "Couldn’t copy. Select the link and copy it yourself.",
+	"albums_link_create": "Create link",
+	"albums_link_created": "Link created",
+	"albums_link_created_copied": "Link created and copied",
+	"albums_link_edit": "Edit",
+	"albums_link_error_password": "Enter the password.",
+	"albums_link_error_past": "That date has already passed.",
+	"albums_link_error_views": "The view limit must be a whole number above zero.",
+	"albums_link_expired": "Expired",
+	"albums_link_expiry": "Expiry",
+	"albums_link_expiry_date": "Valid until",
+	"albums_link_expiry_day": "1 day",
+	"albums_link_expiry_month": "1 month",
+	"albums_link_expiry_never": "Never",
+	"albums_link_expiry_week": "1 week",
+	"albums_link_has_password": "Password",
+	"albums_link_max_views": "View limit",
+	"albums_link_new": "New link",
+	"albums_link_no_download": "No downloads",
+	"albums_link_no_expiry": "No expiry",
+	"albums_link_password": "Password",
+	"albums_link_password_change": "Change it",
+	"albums_link_password_keep": "Keep the current one",
+	"albums_link_password_none": "No password",
+	"albums_link_password_remove": "Remove the password",
+	"albums_link_password_set": "With a password",
+	"albums_link_revoke": "Revoke",
+	"albums_link_revoke_message": "Anyone who has it will no longer be able to open it. This can’t be undone.",
+	"albums_link_revoke_title": "Revoke the link?",
+	"albums_link_revoked": "Link revoked",
+	"albums_link_unlimited": "Unlimited",
+	"albums_link_until": "Until {date}",
+	"albums_link_updated": "Link updated",
+	"albums_link_uploads": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} upload",
+				"countPlural=other": "{count} uploads"
+			}
+		}
+	],
+	"albums_link_url": "Public link",
+	"albums_link_used_up": "No views left",
+	"albums_link_views": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} view",
+				"countPlural=other": "{count} views"
+			}
+		}
+	],
+	"albums_link_views_of": "{count} of {max} views",
+	"albums_links_intro": "Anyone with the link can see the album without an account. You only see the links you created.",
+	"albums_links_list": "Public links",
+	"albums_links_none": "No active links.",
+	"albums_more": "More actions",
+	"albums_new": "New album",
+	"albums_new_smart": "Smart album",
+	"albums_new_smart_title": "New smart album",
+	"albums_new_title": "New album",
+	"albums_no_match": "No albums match the filter.",
+	"albums_not_found": "This album doesn’t exist or you don’t have access.",
+	"albums_order": "Photo order",
+	"albums_order_album": "Album order",
+	"albums_order_newest": "Newest first",
+	"albums_order_oldest": "Oldest first",
+	"albums_people_add": "Choose someone…",
+	"albums_people_list": "People with access",
+	"albums_people_no_more": "Nobody else to share with",
+	"albums_people_none": "Not shared with anyone yet.",
+	"albums_picker_filter": "Search {label}",
+	"albums_picker_more": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} more: type to narrow",
+				"countPlural=other": "{count} more: type to narrow"
+			}
+		}
+	],
+	"albums_picker_none": "No results",
+	"albums_picker_remove": "Remove {name}",
+	"albums_picker_selected": "Selected",
+	"albums_pin": "Pin to sidebar",
+	"albums_pin_named": "Pin “{name}”",
+	"albums_pinned": "“{name}” pinned",
+	"albums_remove": "Remove from album",
+	"albums_removed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} removed from the album",
+				"countPlural=other": "{count} removed from the album"
+			}
+		}
+	],
+	"albums_rule_add": "Add condition",
+	"albums_rule_all": "all conditions",
+	"albums_rule_any": "any condition",
+	"albums_rule_counting": "Counting…",
+	"albums_rule_date": "Dates",
+	"albums_rule_empty": "Add at least one condition to choose which photos go in.",
+	"albums_rule_favorite": "Favorites",
+	"albums_rule_folder": "Folders",
+	"albums_rule_from": "From",
+	"albums_rule_is_favorite": "Are favorites",
+	"albums_rule_labels_match": "With",
+	"albums_rule_match": "Photos must match",
+	"albums_rule_match_all_labels": "all of them",
+	"albums_rule_match_all_people": "all of them together",
+	"albums_rule_match_any_label": "any of them",
+	"albums_rule_match_any_person": "any of them",
+	"albums_rule_matches": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo matches",
+				"countPlural=other": "{count} photos match"
+			}
+		}
+	],
+	"albums_rule_media": "Media type",
+	"albums_rule_missing_folder": "Deleted folder",
+	"albums_rule_not_favorite": "Aren’t favorites",
+	"albums_rule_object": "Detected objects",
+	"albums_rule_ocr": "Text in the photo",
+	"albums_rule_ocr_placeholder": "Text shown in the image…",
+	"albums_rule_owner_only": "Only the album’s creator can change its conditions.",
+	"albums_rule_people_match": "Shows",
+	"albums_rule_person": "People",
+	"albums_rule_photos": "Photos",
+	"albums_rule_preserved": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "The rule has {count} more condition not shown here; it’s kept when saving.",
+				"countPlural=other": "The rule has {count} more conditions not shown here; they’re kept when saving."
+			}
+		}
+	],
+	"albums_rule_preview": "Preview",
+	"albums_rule_preview_error": "The preview couldn’t be computed.",
+	"albums_rule_preview_none": "Complete a condition to see which photos would go in.",
+	"albums_rule_remove": "Remove the {condition} condition",
+	"albums_rule_scene": "Scenes",
+	"albums_rule_subfolders": "Include subfolders",
+	"albums_rule_tag": "Photo kind",
+	"albums_rule_text": "Name, path or tag",
+	"albums_rule_text_placeholder": "Part of the name, path or a tag…",
+	"albums_rule_title": "Conditions",
+	"albums_rule_to": "To",
+	"albums_rule_unnamed": "Unnamed",
+	"albums_rule_videos": "Videos",
+	"albums_save": "Save",
+	"albums_saved": "Changes saved",
+	"albums_scope": "Which albums",
+	"albums_scope_all": "All",
+	"albums_scope_mine": "Mine",
+	"albums_scope_shared": "Shared with me",
+	"albums_search": "Search albums",
+	"albums_section_all": "Albums",
+	"albums_set_cover": "Use as cover",
+	"albums_share": "Share",
+	"albums_share_links": "Public links",
+	"albums_share_people": "Share with people",
+	"albums_share_submit": "Share",
+	"albums_share_title": "Share “{name}”",
+	"albums_shared": "Shared",
+	"albums_shared_with": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Shared with {count} person",
+				"countPlural=other": "Shared with {count} people"
+			}
+		}
+	],
+	"albums_shared_with_user": "Shared with {name}",
+	"albums_shared_with_you": "Shared with you",
+	"albums_smart": "Smart",
+	"albums_smart_hint": "Smart album: its conditions fill it",
+	"albums_sort": "Sort by",
+	"albums_sort_ascending": "Ascending",
+	"albums_sort_count": "Number of items",
+	"albums_sort_created": "Date created",
+	"albums_sort_descending": "Descending",
+	"albums_sort_name": "Name",
+	"albums_sort_updated": "Last modified",
+	"albums_tag_burst": "Burst",
+	"albums_tag_hdr": "HDR",
+	"albums_tag_live": "Live Photo",
+	"albums_tag_panorama": "Panorama",
+	"albums_tag_portrait": "Portrait",
+	"albums_tag_screenshot": "Screenshot",
+	"albums_unpin": "Unpin from sidebar",
+	"albums_unpin_named": "Unpin “{name}”",
+	"albums_unpinned": "“{name}” unpinned",
+	"albums_unshare_user": "Stop sharing with {name}",
+	"albums_unshared_with_user": "No longer shared with {name}"
 }
