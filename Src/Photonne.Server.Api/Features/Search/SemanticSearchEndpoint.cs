@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -46,31 +47,33 @@ public class SemanticSearchEndpoint : IEndpoint
             .WithName("SemanticSearchAssets")
             .WithTags("Assets")
             .WithDescription("Multilingual CLIP-based natural-language asset search")
+            .Produces<ApiError>(StatusCodes.Status503ServiceUnavailable)
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<SemanticSearchResponse>, BadRequest<ApiError>, UnauthorizedHttpResult, JsonHttpResult<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AssetVisibilityService visibility,
         [FromServices] IEmbeddingClient embeddingClient,
         [FromServices] IOptions<EmbeddingOptions> embeddingOptions,
         [FromServices] SettingsService settings,
+        [FromServices] ILogger<SemanticSearchEndpoint> logger,
         ClaimsPrincipal user,
         [FromQuery] string? q,
         [FromQuery] int? limit,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(q))
-            return Results.Ok(new SemanticSearchResponse());
+            return TypedResults.Ok(new SemanticSearchResponse());
 
         var query = q.Trim();
         if (query.Length is < 2 or > 200)
-            return Results.BadRequest(new { error = "query must be 2-200 chars" });
+            return TypedResults.BadRequest(new ApiError("query must be 2-200 chars", "invalid_query"));
 
         var effectiveLimit = limit is > 0 ? Math.Min(limit.Value, 200) : 50;
 
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var options = embeddingOptions.Value;
 
@@ -104,10 +107,11 @@ public class SemanticSearchEndpoint : IEndpoint
             catch (Exception ex)
             {
                 // The embedding service can be 503 if the operator hasn't
-                // dropped CLIP models in /app/models. Surface it cleanly.
-                return Results.Problem(
-                    title: "Semantic search unavailable",
-                    detail: ex.Message,
+                // dropped CLIP models in /app/models. Surface it cleanly; the
+                // reason goes to the log, not to the client.
+                logger.LogWarning(ex, "Semantic search unavailable: the query could not be encoded");
+                return TypedResults.Json(
+                    new ApiError("Semantic search unavailable", "semantic_search_unavailable"),
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
@@ -158,7 +162,7 @@ public class SemanticSearchEndpoint : IEndpoint
             })
             .ToList();
 
-        return Results.Ok(new SemanticSearchResponse { Items = items });
+        return TypedResults.Ok(new SemanticSearchResponse { Items = items });
     }
 
     private static TimelineResponse ToTimelineDto(Asset a) => new()

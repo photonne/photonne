@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 
 namespace Photonne.Server.Api.Features.UploadAssets;
@@ -16,7 +18,7 @@ public class ExistsByChecksumEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<ExistsByChecksumResponse>, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound>> Handle(
         string checksum,
         ApplicationDbContext dbContext,
         ClaimsPrincipal user,
@@ -24,10 +26,10 @@ public class ExistsByChecksumEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (string.IsNullOrWhiteSpace(checksum))
-            return Results.BadRequest("Checksum is required");
+            return TypedResults.BadRequest(new ApiError("Checksum is required", "checksum_required"));
 
         var asset = await dbContext.Assets
             .Where(a => a.DeletedAt == null && a.Checksum == checksum)
@@ -35,8 +37,10 @@ public class ExistsByChecksumEndpoint : IEndpoint
             .FirstOrDefaultAsync(cancellationToken);
 
         if (asset == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
-        return Results.Ok(new { assetId = asset.Id });
+        return TypedResults.Ok(new ExistsByChecksumResponse(asset.Id));
     }
 }
+
+public sealed record ExistsByChecksumResponse(Guid AssetId);

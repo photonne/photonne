@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 
 namespace Photonne.Server.Api.Features.Favorites;
@@ -17,7 +19,7 @@ public class FavoriteToggleEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<FavoriteToggleResponse>, NotFound<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] Guid assetId,
         ClaimsPrincipal user,
@@ -27,11 +29,13 @@ public class FavoriteToggleEndpoint : IEndpoint
             .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, cancellationToken);
 
         if (asset == null)
-            return Results.NotFound(new { error = $"Asset {assetId} not found" });
+            return TypedResults.NotFound(new ApiError($"Asset {assetId} not found", "asset_not_found"));
 
         asset.IsFavorite = !asset.IsFavorite;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(new { isFavorite = asset.IsFavorite });
+        return TypedResults.Ok(new FavoriteToggleResponse(asset.IsFavorite));
     }
 }
+
+public sealed record FavoriteToggleResponse(bool IsFavorite);

@@ -1,11 +1,12 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
-using Photonne.Server.Api.Features.Timeline;
-using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Favorites;
@@ -21,7 +22,7 @@ public class FavoritesEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<TimelinePageResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -34,9 +35,9 @@ public class FavoritesEndpoint : IEndpoint
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var userRootPath = $"/assets/users/{username}";
         var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
@@ -87,7 +88,7 @@ public class FavoritesEndpoint : IEndpoint
 
         var nextCursor = hasMore ? assets.Last().CapturedAt : (DateTime?)null;
 
-        return Results.Ok(new
+        return TypedResults.Ok(new TimelinePageResponse
         {
             Items = items,
             HasMore = hasMore,

@@ -1,8 +1,11 @@
 using System.Security.Claims;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -11,6 +14,14 @@ namespace Photonne.Server.Api.Features.UploadAssets;
 
 public record MotionClipsMissingRequest(List<Guid> AssetIds);
 public record MotionClipsMissingResponse(List<Guid> Missing);
+
+/// <summary>
+/// <see cref="AssetId"/> is the new clip's asset; it is left out (not null)
+/// when the still already had its clip, as the apps have always received it.
+/// </summary>
+public record MotionClipAttachResponse(
+    string Message,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? AssetId);
 
 /// <summary>
 /// The motion half of an iOS Live Photo. PhotoKit keeps the still and its clip
@@ -33,6 +44,8 @@ public class MotionClipEndpoints : IEndpoint
             .WithName("AttachMotionClip")
             .WithTags("Assets")
             .WithDescription("Stores the paired motion clip of an uploaded Live Photo still next to it")
+            .Produces<ApiError>(StatusCodes.Status409Conflict)
+            .Produces<ApiError>(StatusCodes.Status413PayloadTooLarge)
             .RequireAuthorization()
             .RequireRateLimiting("demo-upload");
 
@@ -43,7 +56,7 @@ public class MotionClipEndpoints : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> HandleAttach(
+    private static async Task<Results<Ok<MotionClipAttachResponse>, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult, JsonHttpResult<ApiError>>> HandleAttach(
         [FromRoute] Guid assetId,
         [FromForm] IFormFile file,
         [FromServices] ApplicationDbContext dbContext,
@@ -55,29 +68,29 @@ public class MotionClipEndpoints : IEndpoint
         CancellationToken cancellationToken)
     {
         if (file == null || file.Length == 0)
-            return Results.BadRequest("No file uploaded");
+            return TypedResults.BadRequest(new ApiError("No file uploaded", "no_file_uploaded"));
 
         var userId = user.GetUserId();
         var still = await dbContext.Assets
             .Include(a => a.Tags)
             .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, cancellationToken);
         if (still == null)
-            return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
+            return TypedResults.NotFound(new ApiError($"Asset with ID {assetId} not found", "asset_not_found"));
         if (still.OwnerId != userId || still.ExternalLibraryId.HasValue)
-            return Results.Forbid();
+            return TypedResults.Forbid();
         if (still.Type != AssetType.Image)
-            return Results.BadRequest("Only a still photo can carry a motion clip");
+            return TypedResults.BadRequest(new ApiError("Only a still photo can carry a motion clip", "not_a_still_photo"));
 
         var stillPath = await settingsService.ResolvePhysicalPathAsync(still.FullPath);
         if (!File.Exists(stillPath))
-            return Results.NotFound(new { error = $"Asset {assetId} has no file on disk" });
+            return TypedResults.NotFound(new ApiError($"Asset {assetId} has no file on disk", "file_not_found"));
 
         // Idempotent: a retry, or a still whose clip arrived another way, is
         // already paired. Only the tag may be missing.
         if (MotionFrameService.ResolveSiblingClipPath(stillPath) != null)
         {
             await TagLivePhotoAsync(dbContext, still, cancellationToken);
-            return Results.Ok(new { message = "Motion clip already present" });
+            return TypedResults.Ok(new MotionClipAttachResponse("Motion clip already present", null));
         }
 
         var limitError = await UploadAssetsEndpoint.CheckUploadLimitsAsync(
@@ -134,7 +147,7 @@ public class MotionClipEndpoints : IEndpoint
             await enrichmentService.EnqueueAsync(clip.Id, AssetEnrichmentType.MediaRecognition, cancellationToken);
             await enrichmentService.EnqueueAsync(clip.Id, AssetEnrichmentType.Thumbnails, cancellationToken);
 
-            return Results.Ok(new { message = "Motion clip stored", assetId = clip.Id });
+            return TypedResults.Ok(new MotionClipAttachResponse("Motion clip stored", clip.Id));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -142,7 +155,7 @@ public class MotionClipEndpoints : IEndpoint
             // A clip on disk without its row would read as "already present"
             // on the retry and never get indexed.
             if (stored && File.Exists(targetPath)) File.Delete(targetPath);
-            return Results.Problem(ex.Message);
+            throw;
         }
         finally
         {
@@ -150,16 +163,16 @@ public class MotionClipEndpoints : IEndpoint
         }
     }
 
-    private static async Task<IResult> HandleMissing(
+    private static async Task<Results<Ok<MotionClipsMissingResponse>, BadRequest<ApiError>>> HandleMissing(
         MotionClipsMissingRequest request,
         ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         if (request.AssetIds == null || request.AssetIds.Count == 0)
-            return Results.Ok(new MotionClipsMissingResponse([]));
+            return TypedResults.Ok(new MotionClipsMissingResponse([]));
         if (request.AssetIds.Count > MaxAssetIdsPerRequest)
-            return Results.BadRequest($"Too many asset ids; maximum is {MaxAssetIdsPerRequest} per request");
+            return TypedResults.BadRequest(new ApiError($"Too many asset ids; maximum is {MaxAssetIdsPerRequest} per request", "too_many_items"));
 
         var userId = user.GetUserId();
         var requested = request.AssetIds.ToHashSet();
@@ -177,7 +190,7 @@ public class MotionClipEndpoints : IEndpoint
             .Select(a => a.Id)
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(new MotionClipsMissingResponse(missing));
+        return TypedResults.Ok(new MotionClipsMissingResponse(missing));
     }
 
     /// <summary>

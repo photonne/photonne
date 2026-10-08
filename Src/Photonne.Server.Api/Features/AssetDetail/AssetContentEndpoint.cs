@@ -1,7 +1,9 @@
 using ImageMagick;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -15,13 +17,17 @@ public class AssetContentEndpoint : IEndpoint
     {
         app.MapGet("/api/assets/{assetId}/content", Handle)
             .RequireAuthorization()
+            .Produces<Stream>(StatusCodes.Status200OK, "image/jpeg", "image/png", "image/webp", "image/gif",
+                "image/heic", "image/heif", "image/x-adobe-dng", "video/mp4", "video/quicktime",
+                "video/x-msvideo", "video/x-matroska", "application/octet-stream")
+            .Produces(StatusCodes.Status304NotModified)
             .WithName("GetAssetContent")
             .WithTags("Assets")
             .WithDescription("Gets the content of an asset (image or video). With download=true, " +
                              "format=original|jpeg chooses what a RAW or HEIC/HEIF is downloaded as");
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<FileContentHttpResult, PhysicalFileHttpResult, StatusCodeHttpResult, BadRequest<ApiError>, NotFound<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] ILogger<AssetContentEndpoint> logger,
@@ -33,13 +39,13 @@ public class AssetContentEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (!AssetDownloadFormats.TryParse(format, out var downloadFormat))
-            return Results.BadRequest(new { error = "format must be 'original' or 'jpeg'" });
+            return TypedResults.BadRequest(new ApiError("format must be 'original' or 'jpeg'", "invalid_format"));
 
         var asset = await dbContext.Assets.FindAsync(new object[] { assetId }, cancellationToken);
 
         if (asset == null || !await visibility.CanReadAsync(httpContext.User, asset, cancellationToken))
         {
-            return Results.NotFound(new { error = $"Asset with ID {assetId} not found" });
+            return TypedResults.NotFound(new ApiError($"Asset with ID {assetId} not found", "asset_not_found"));
         }
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
@@ -48,7 +54,7 @@ public class AssetContentEndpoint : IEndpoint
         {
             logger.LogWarning("Asset {AssetId}: file not found at resolved path '{PhysicalPath}' (DB path: '{DbPath}')",
                 assetId, physicalPath, asset.FullPath);
-            return Results.NotFound(new { error = $"File of asset {assetId} not found" });
+            return TypedResults.NotFound(new ApiError($"File of asset {assetId} not found", "file_not_found"));
         }
 
         var extension = Path.GetExtension(physicalPath).ToLowerInvariant();
@@ -68,16 +74,20 @@ public class AssetContentEndpoint : IEndpoint
             // The render is the expensive part: answer a revalidation before it.
             var jpegTag = MediaCaching.ETagFor(file, "jpeg");
             if (MediaCaching.IsNotModified(httpContext.Request, jpegTag))
-                return MediaCaching.NotModified(httpContext, jpegTag);
+            {
+                // Same as MediaCaching.NotModified, as a typed result.
+                httpContext.Response.Headers.ETag = jpegTag.ToString();
+                return TypedResults.StatusCode(StatusCodes.Status304NotModified);
+            }
 
             try
             {
                 var jpegBytes = RawImageLoader.RenderJpeg(physicalPath);
                 return download == true
-                    ? Results.File(jpegBytes, "image/jpeg",
+                    ? TypedResults.File(jpegBytes, "image/jpeg",
                         fileDownloadName: AssetDownloadFormats.JpegFileName(asset.FileName),
                         entityTag: jpegTag)
-                    : Results.File(jpegBytes, "image/jpeg", entityTag: jpegTag);
+                    : TypedResults.File(jpegBytes, "image/jpeg", entityTag: jpegTag);
             }
             catch (MagickException ex)
             {
@@ -91,10 +101,10 @@ public class AssetContentEndpoint : IEndpoint
         var etag = MediaCaching.ETagFor(file);
 
         if (download == true)
-            return Results.File(physicalPath, contentType, fileDownloadName: asset.FileName,
+            return TypedResults.PhysicalFile(physicalPath, contentType, fileDownloadName: asset.FileName,
                 lastModified: file.LastWriteTimeUtc, entityTag: etag);
 
-        return Results.File(physicalPath, contentType,
+        return TypedResults.PhysicalFile(physicalPath, contentType,
             lastModified: file.LastWriteTimeUtc, entityTag: etag, enableRangeProcessing: true);
     }
 

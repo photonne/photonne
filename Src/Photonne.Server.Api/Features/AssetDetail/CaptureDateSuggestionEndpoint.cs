@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 
@@ -25,7 +27,7 @@ public class CaptureDateSuggestionEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<CaptureDateSuggestionResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] ExifExtractorService exifExtractor,
         [FromServices] CaptureDateInferenceService inference,
@@ -35,21 +37,21 @@ public class CaptureDateSuggestionEndpoint : IEndpoint
         CancellationToken ct)
     {
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var asset = await dbContext.Assets
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, ct);
 
         if (asset == null)
-            return Results.NotFound(new { error = "Asset no encontrado." });
+            return TypedResults.NotFound(new ApiError("Asset no encontrado.", "asset_not_found"));
 
         // Same ownership rule as the edit-date endpoint: suggestions only make
         // sense where the user could apply them.
         if (!asset.FullPath.Replace('\\', '/')
                 .Contains($"/users/{username}/", StringComparison.OrdinalIgnoreCase))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         // EXIF candidate — re-read from disk (tolerant to missing files).
@@ -80,7 +82,7 @@ public class CaptureDateSuggestionEndpoint : IEndpoint
         // Inference candidate — file name first, folder path second.
         var inferred = await inference.TryInferAsync(asset.FileName, asset.FullPath, ct);
 
-        return Results.Ok(new CaptureDateSuggestionResponse
+        return TypedResults.Ok(new CaptureDateSuggestionResponse
         {
             CurrentDate = asset.CapturedAt,
             CurrentSource = asset.CapturedAtSource.ToString(),

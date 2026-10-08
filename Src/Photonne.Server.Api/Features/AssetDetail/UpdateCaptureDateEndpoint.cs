@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -25,7 +27,7 @@ public class UpdateCaptureDateEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<UpdateCaptureDateResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] ExifWriterService exifWriter,
         [FromServices] SettingsService settingsService,
@@ -36,19 +38,19 @@ public class UpdateCaptureDateEndpoint : IEndpoint
         CancellationToken ct)
     {
         if (!TryGetUserId(user, out _))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var asset = await dbContext.Assets
             .Include(a => a.Exif)
             .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, ct);
 
         if (asset == null)
-            return Results.NotFound(new { error = "Asset no encontrado." });
+            return TypedResults.NotFound(new ApiError("Asset no encontrado.", "asset_not_found"));
 
         if (!AssetMetadataPermissions.IsInUserRoot(asset.FullPath, username))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         // The client builds the picked wall-clock as an Instant at UTC, so
         // UtcDateTime recovers that exact wall-clock (e.g. 2025-07-09 05:36).
@@ -106,13 +108,7 @@ public class UpdateCaptureDateEndpoint : IEndpoint
 
         await dbContext.SaveChangesAsync(ct);
 
-        return Results.Ok(new
-        {
-            dateTaken = dateLocal,
-            capturedAt = dateLocal,
-            fileWritten,
-            reason
-        });
+        return TypedResults.Ok(new UpdateCaptureDateResponse(dateLocal, dateLocal, fileWritten, reason));
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
@@ -130,3 +126,5 @@ public class UpdateCaptureDateRequest
     /// <summary>When true, also write the date into the physical file's EXIF.</summary>
     public bool WriteToFile { get; set; }
 }
+
+public sealed record UpdateCaptureDateResponse(DateTime DateTaken, DateTime CapturedAt, bool FileWritten, string? Reason);
