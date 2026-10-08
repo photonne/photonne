@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -25,14 +26,14 @@ public class AdminStatsEndpoint : IEndpoint
             .WithDescription("Gets the library's monthly growth for the admin dashboard");
     }
 
-    private static async Task<IResult> GetGrowth(
+    private static async Task<Ok<List<MonthlyGrowthPoint>>> GetGrowth(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         CancellationToken ct)
     {
         const string cacheKey = "admin:stats:growth";
         if (cache.TryGetValue(cacheKey, out List<MonthlyGrowthPoint>? cached))
-            return Results.Ok(cached);
+            return TypedResults.Ok(cached!);
 
         var buckets = await dbContext.Assets
             .AsNoTracking()
@@ -50,17 +51,17 @@ public class AdminStatsEndpoint : IEndpoint
             .ToListAsync(ct);
 
         cache.Set(cacheKey, buckets, TimeSpan.FromMinutes(15));
-        return Results.Ok(buckets);
+        return TypedResults.Ok(buckets);
     }
 
-    private static async Task<IResult> GetStats(
+    private static async Task<Ok<AdminStatsResponse>> GetStats(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         CancellationToken ct)
     {
         const string cacheKey = "admin:stats";
         if (cache.TryGetValue(cacheKey, out AdminStatsResponse? cached))
-            return Results.Ok(cached);
+            return TypedResults.Ok(cached!);
 
         var assetStats = await dbContext.Assets
             .AsNoTracking()
@@ -136,7 +137,7 @@ public class AdminStatsEndpoint : IEndpoint
         };
 
         cache.Set(cacheKey, response, TimeSpan.FromMinutes(15));
-        return Results.Ok(response);
+        return TypedResults.Ok(response);
     }
 
     private static string BuildDisplayName(string username, string? firstName, string? lastName, string? email)

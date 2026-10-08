@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
@@ -20,12 +21,12 @@ public class DemoInfoEndpoint : IEndpoint
             .AllowAnonymous();
     }
 
-    private static IResult GetDemoInfo(
+    private static Ok<DemoInfoResponse> GetDemoInfo(
         IOptions<DemoModeOptions> options,
         DemoResetService resetService)
     {
         var opts = options.Value;
-        return Results.Ok(new DemoInfoResponse
+        return TypedResults.Ok(new DemoInfoResponse
         {
             Enabled = opts.Enabled,
             DemoUsername = opts.Enabled ? opts.DemoUsername : null,

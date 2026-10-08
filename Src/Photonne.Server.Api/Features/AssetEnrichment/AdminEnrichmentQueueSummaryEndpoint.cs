@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -40,7 +41,7 @@ public class AdminEnrichmentQueueSummaryEndpoint : IEndpoint
 
     private sealed record QueueSummaryResponse(IReadOnlyDictionary<string, QueueCounts> Types);
 
-    private static async Task<IResult> Handle(
+    private static async Task<Ok<QueueSummaryResponse>> Handle(
         [FromServices] ApplicationDbContext db,
         CancellationToken ct)
     {
@@ -71,6 +72,6 @@ public class AdminEnrichmentQueueSummaryEndpoint : IEndpoint
                     Failed: problems.Where(p => p.TaskType == type && p.Permanent).Sum(p => p.Count));
             });
 
-        return Results.Ok(new QueueSummaryResponse(types));
+        return TypedResults.Ok(new QueueSummaryResponse(types));
     }
 }

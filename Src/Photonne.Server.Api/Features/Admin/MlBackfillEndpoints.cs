@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -73,7 +75,23 @@ internal static class MlBackfillRunner
     public const int MinBackfillBatchSize = 1;
     public const int MaxBackfillBatchSize = 5000;
 
+    /// <summary>Untyped form kept for callers outside this feature that still
+    /// compose it with other <see cref="IResult"/>s (People's per-user backfill).
+    /// New code should call <see cref="RunTypedAsync"/>.</summary>
     public static async Task<IResult> RunAsync(
+        ApplicationDbContext db,
+        IEnrichmentService mlJobs,
+        SettingsService settings,
+        AssetEnrichmentType jobType,
+        BackfillRequest? body,
+        CancellationToken ct,
+        Guid? ownerScope = null,
+        INotificationService? notifications = null,
+        Guid? triggeredBy = null,
+        MlEnablement? enablement = null)
+        => await RunTypedAsync(db, mlJobs, settings, jobType, body, ct, ownerScope, notifications, triggeredBy, enablement);
+
+    public static async Task<Results<Ok<BackfillResponse>, Conflict<ApiError>>> RunTypedAsync(
         ApplicationDbContext db,
         IEnrichmentService mlJobs,
         SettingsService settings,
@@ -91,9 +109,9 @@ internal static class MlBackfillRunner
         // queue that fills, drains, and leaves exactly as much to do as before.
         if (enablement is not null && !await enablement.IsEnabledAsync(jobType))
         {
-            return Results.Json(
-                new { error = $"El análisis «{JobTypeLabel(jobType)}» está desactivado en Ajustes. Actívalo antes de lanzar el backfill." },
-                statusCode: StatusCodes.Status409Conflict);
+            return TypedResults.Conflict(new ApiError(
+                $"El análisis «{JobTypeLabel(jobType)}» está desactivado en Ajustes. Actívalo antes de lanzar el backfill.",
+                "ml_task_disabled"));
         }
 
         // "Encolar todo" is one request, not a client-side loop over batches:
@@ -122,7 +140,7 @@ internal static class MlBackfillRunner
                     $"Encolados {result.Enqueued} de {result.Total} asset(s) pendientes para {label}. El procesador ML los irá completando en segundo plano.");
             }
 
-            return Results.Ok(result);
+            return TypedResults.Ok(result);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -187,6 +205,15 @@ internal static class MlBackfillRunner
         AssetEnrichmentType jobType,
         CancellationToken ct,
         Guid? ownerScope = null)
+        => await GetPendingCountTypedAsync(db, jobType, ct, ownerScope);
+
+    /// <summary>Typed form of <see cref="GetPendingCountAsync"/>; the untyped one
+    /// stays for callers outside this feature (People's per-user count).</summary>
+    public static async Task<Ok<PendingCountResponse>> GetPendingCountTypedAsync(
+        ApplicationDbContext db,
+        AssetEnrichmentType jobType,
+        CancellationToken ct,
+        Guid? ownerScope = null)
     {
         var unprocessed = await BuildQuery(db, jobType, onlyMissing: true, ownerScope).CountAsync(ct);
 
@@ -241,7 +268,7 @@ internal static class MlBackfillRunner
         var minuteAgo = DateTime.UtcNow.AddMinutes(-1);
         var completedLastMinute = await completedRows.CountAsync(j => j.CompletedAt >= minuteAgo, ct);
 
-        return Results.Ok(new PendingCountResponse(
+        return TypedResults.Ok(new PendingCountResponse(
             unprocessed, inQueue, completed, retrying, failed,
             processing, lastCompletedAt, completedLastMinute));
     }
@@ -250,7 +277,7 @@ internal static class MlBackfillRunner
     /// completion. Cheaper than fetching 5 per-type counts client-side and
     /// summing them (which double-counts), and matches what the dashboard's
     /// "N assets sin analizar" headline actually means.</summary>
-    public static async Task<IResult> GetAnyMlMissingCountAsync(
+    public static async Task<Ok<MlPendingTotalResponse>> GetAnyMlMissingCountAsync(
         ApplicationDbContext db,
         CancellationToken ct)
     {
@@ -262,7 +289,7 @@ internal static class MlBackfillRunner
                      || a.TextRecognitionCompletedAt == null
                      || a.ImageEmbeddingCompletedAt == null)
             .CountAsync(ct);
-        return Results.Ok(new MlPendingTotalResponse(count));
+        return TypedResults.Ok(new MlPendingTotalResponse(count));
     }
 
     /// <summary>Empties the queue for the given task type: the
@@ -279,7 +306,7 @@ internal static class MlBackfillRunner
     /// the client can say "quedan 3 en curso" rather than appear to do nothing.
     /// Permanently failed rows stay put: they belong to the failures registry,
     /// which is where they get retried or suppressed one by one.</summary>
-    public static async Task<IResult> CancelQueueAsync(
+    public static async Task<Ok<CancelQueueResponse>> CancelQueueAsync(
         ApplicationDbContext db,
         AssetEnrichmentType jobType,
         CancellationToken ct)
@@ -294,7 +321,7 @@ internal static class MlBackfillRunner
             .AsNoTracking()
             .CountAsync(j => j.TaskType == jobType && j.Status == EnrichmentStatus.Processing, ct);
 
-        return Results.Ok(new CancelQueueResponse(deleted, stillProcessing));
+        return TypedResults.Ok(new CancelQueueResponse(deleted, stillProcessing));
     }
 
     private static IQueryable<Asset> BuildQuery(
@@ -368,11 +395,11 @@ public class ObjectDetectionBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.ObjectDetection, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.ObjectDetection, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/object-detection/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.ObjectDetection, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.ObjectDetection, ct));
     }
 }
 
@@ -394,11 +421,11 @@ public class SceneClassificationBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.SceneClassification, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.SceneClassification, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/scene-classification/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.SceneClassification, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.SceneClassification, ct));
     }
 }
 
@@ -420,11 +447,11 @@ public class TextRecognitionBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.TextRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.TextRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/text-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.TextRecognition, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.TextRecognition, ct));
     }
 }
 
@@ -448,11 +475,11 @@ public class ImageEmbeddingBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.ImageEmbedding, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.ImageEmbedding, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/image-embedding/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.ImageEmbedding, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.ImageEmbedding, ct));
     }
 }
 
@@ -489,15 +516,14 @@ public class MlOverviewEndpoint : IEndpoint
         // Single handler for the five `/{kind}/queue` cancel routes —
         // saves duplicating the per-feature endpoint class for an
         // action that doesn't otherwise vary across task types.
-        group.MapDelete("/{kind}/queue", (
+        group.MapDelete("/{kind}/queue", async Task<Results<Ok<CancelQueueResponse>, NotFound>> (
             string kind,
             [FromServices] ApplicationDbContext db,
             CancellationToken ct) =>
         {
             if (!KindRoutes.TryGetValue(kind, out var jobType))
-                return Task.FromResult<IResult>(Results.NotFound());
-            return MlBackfillRunner.CancelQueueAsync(db, jobType, ct)
-                .ContinueWith(t => t.Result);
+                return TypedResults.NotFound();
+            return await MlBackfillRunner.CancelQueueAsync(db, jobType, ct);
         });
     }
 }

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Organize;
@@ -57,7 +58,7 @@ public class ListPendingEnrichmentEndpoint : IEndpoint
         int InFlightAssets,
         int FailedAssets);
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<PendingEnrichmentResponse>, UnauthorizedHttpResult>> Handle(
         [FromQuery] int pageSize,
         [FromQuery] DateTime? cursor,
         [FromServices] ApplicationDbContext dbContext,
@@ -66,9 +67,9 @@ public class ListPendingEnrichmentEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var capped = Math.Clamp(pageSize <= 0 ? 50 : pageSize, 1, 200);
         var prefix = OrganizeQuery.MobileBackupPrefix(username);
@@ -118,7 +119,7 @@ public class ListPendingEnrichmentEndpoint : IEndpoint
 
         if (pageAssets.Count == 0)
         {
-            return Results.Ok(new PendingEnrichmentResponse(
+            return TypedResults.Ok(new PendingEnrichmentResponse(
                 Array.Empty<PendingAssetDto>(), null, totalAssets, inFlightAssets, failedAssets));
         }
 
@@ -154,7 +155,7 @@ public class ListPendingEnrichmentEndpoint : IEndpoint
 
         var nextCursor = hasMore ? pageAssets[^1].FileCreatedAt : (DateTime?)null;
 
-        return Results.Ok(new PendingEnrichmentResponse(
+        return TypedResults.Ok(new PendingEnrichmentResponse(
             items, nextCursor, totalAssets, inFlightAssets, failedAssets));
     }
 }

@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Client.Web.Models;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -74,15 +76,16 @@ public class MaintenanceEndpoint : IEndpoint
             HandleStream(kind, dryRun ?? false, serviceProvider, backgroundTaskManager, httpContext,
                 Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty,
                 cancellationToken))
+            .Produces<string>(StatusCodes.Status200OK, "application/x-ndjson")
             .WithName("MaintenanceTaskStream")
             .WithDescription("Streams progress for a maintenance task (orphan-thumbnails, missing-files, recalculate-sizes, empty-trash, purge-missing, interpolate-locations, reverse-geocode, detect-trips, generate-memories) run as a background job.");
     }
 
-    private static async Task<IResult> RunSync(MaintenanceService svc, string kind, bool dryRun, CancellationToken ct)
+    private static async Task<Results<Ok<MaintenanceTaskResult>, NotFound<ApiError>>> RunSync(MaintenanceService svc, string kind, bool dryRun, CancellationToken ct)
     {
         var task = svc.Run(kind, dryRun, onProgress: null, ct);
-        if (task == null) return Results.NotFound($"Unknown maintenance task '{kind}'.");
-        return Results.Ok(await task);
+        if (task == null) return TypedResults.NotFound(new ApiError($"Unknown maintenance task '{kind}'.", "unknown_maintenance_task"));
+        return TypedResults.Ok(await task);
     }
 
     private Task HandleStream(

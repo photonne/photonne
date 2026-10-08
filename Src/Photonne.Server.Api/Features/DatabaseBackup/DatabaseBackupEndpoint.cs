@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -26,6 +28,7 @@ public class DatabaseBackupEndpoint : IEndpoint
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         group.MapGet("backup", ExportBackup)
+            .Produces<Stream>(StatusCodes.Status200OK, "application/json")
             .WithName("ExportDatabaseBackup")
             .WithDescription("Exports the database as a JSON backup. ?level=config (only settings/users/folders/ext-libs/permissions), essential (config + library), full (config + library + ML).");
 
@@ -37,7 +40,7 @@ public class DatabaseBackupEndpoint : IEndpoint
             .WithMetadata(new RequestFormLimitsAttribute { MultipartBodyLengthLimit = long.MaxValue });
     }
 
-    private static async Task<IResult> ExportBackup(
+    private static async Task<FileContentHttpResult> ExportBackup(
         [FromServices] DatabaseBackupService backupService,
         [FromServices] INotificationService notifications,
         [FromQuery] string? level,
@@ -58,7 +61,7 @@ public class DatabaseBackupEndpoint : IEndpoint
                     "Backup generado",
                     $"Se ha generado el backup ({label}, {FormatBytes(json.LongLength)}).");
 
-            return Results.File(json, "application/json", fileName);
+            return TypedResults.File(json, "application/json", fileName);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -79,7 +82,7 @@ public class DatabaseBackupEndpoint : IEndpoint
             _           => (BackupSelection.Essential,  "essential"),
         };
 
-    private static async Task<IResult> RestoreBackup(
+    private static async Task<Results<Ok<RestoreBackupResponse>, BadRequest<ApiError>>> RestoreBackup(
         [FromServices] DatabaseBackupService backupService,
         [FromServices] INotificationService notifications,
         IFormFile file,
@@ -89,10 +92,10 @@ public class DatabaseBackupEndpoint : IEndpoint
         var triggeredBy = GetUserId(http);
 
         if (file == null || file.Length == 0)
-            return Results.BadRequest(new { error = "No se ha proporcionado ningún archivo de copia de seguridad." });
+            return TypedResults.BadRequest(new ApiError("No se ha proporcionado ningún archivo de copia de seguridad.", "backup_file_missing"));
 
         if (!file.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-            return Results.BadRequest(new { error = "El archivo debe ser un backup JSON válido (.json)." });
+            return TypedResults.BadRequest(new ApiError("El archivo debe ser un backup JSON válido (.json).", "invalid_backup_file"));
 
         BackupDocument? document;
         try
@@ -106,11 +109,11 @@ public class DatabaseBackupEndpoint : IEndpoint
                 await notifications.CreateAsync(triggeredBy, NotificationType.JobFailed,
                     "Restauración fallida",
                     $"El archivo de backup no es válido: {Truncate(ex.Message, 200)}");
-            return Results.BadRequest(new { error = $"El archivo no es un backup JSON válido: {ex.Message}" });
+            return TypedResults.BadRequest(new ApiError($"El archivo no es un backup JSON válido: {ex.Message}", "invalid_backup_file"));
         }
 
         if (document == null)
-            return Results.BadRequest(new { error = "No se pudo leer el archivo de copia de seguridad." });
+            return TypedResults.BadRequest(new ApiError("No se pudo leer el archivo de copia de seguridad.", "invalid_backup_file"));
 
         try
         {
@@ -134,25 +137,21 @@ public class DatabaseBackupEndpoint : IEndpoint
                 "Restauración completada",
                 $"Restauradas {document.Users.Count} cuenta(s), {document.Assets.Count} asset(s) y {document.Albums.Count} álbum(es).");
 
-        return Results.Ok(new
-        {
-            message = "Base de datos restaurada correctamente.",
-            stats = new
-            {
-                users             = document.Users.Count,
-                assets            = document.Assets.Count,
-                albums            = document.Albums.Count,
-                folders           = document.Folders.Count,
-                externalLibraries = document.ExternalLibraries.Count,
-                people            = document.People.Count,
-                faces             = document.Faces.Count,
-                embeddings        = document.AssetEmbeddings.Count,
-                ocrLines          = document.AssetRecognizedTextLines.Count,
-                includesConfig    = true,
-                includesLibrary   = includesLibrary,
-                includesMlData    = includesMlData,
-            }
-        });
+        return TypedResults.Ok(new RestoreBackupResponse(
+            "Base de datos restaurada correctamente.",
+            new RestoreBackupStats(
+                Users:             document.Users.Count,
+                Assets:            document.Assets.Count,
+                Albums:            document.Albums.Count,
+                Folders:           document.Folders.Count,
+                ExternalLibraries: document.ExternalLibraries.Count,
+                People:            document.People.Count,
+                Faces:             document.Faces.Count,
+                Embeddings:        document.AssetEmbeddings.Count,
+                OcrLines:          document.AssetRecognizedTextLines.Count,
+                IncludesConfig:    true,
+                IncludesLibrary:   includesLibrary,
+                IncludesMlData:    includesMlData)));
     }
 
     private static Guid GetUserId(HttpContext http)
@@ -169,3 +168,19 @@ public class DatabaseBackupEndpoint : IEndpoint
         return $"{bytes} B";
     }
 }
+
+public sealed record RestoreBackupResponse(string Message, RestoreBackupStats Stats);
+
+public sealed record RestoreBackupStats(
+    int Users,
+    int Assets,
+    int Albums,
+    int Folders,
+    int ExternalLibraries,
+    int People,
+    int Faces,
+    int Embeddings,
+    int OcrLines,
+    bool IncludesConfig,
+    bool IncludesLibrary,
+    bool IncludesMlData);

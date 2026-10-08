@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -60,7 +61,7 @@ public class TrashCleanupEndpoint : IEndpoint
 
     // ─── Stats ────────────────────────────────────────────────────────────────
 
-    private static async Task<IResult> GetStats(
+    private static async Task<Ok<TrashStatsResponse>> GetStats(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         CancellationToken ct)
@@ -120,7 +121,7 @@ public class TrashCleanupEndpoint : IEndpoint
             });
         }
 
-        return Results.Ok(new TrashStatsResponse
+        return TypedResults.Ok(new TrashStatsResponse
         {
             TotalItems  = trashedAssets.Count,
             TotalBytes  = trashedAssets.Sum(a => a.FileSize),
@@ -137,7 +138,7 @@ public class TrashCleanupEndpoint : IEndpoint
 
     // ─── Cleanup expired ──────────────────────────────────────────────────────
 
-    private static async Task<IResult> CleanupExpired(
+    private static async Task<Ok<TrashCleanupResult>> CleanupExpired(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] INotificationService notifications,
@@ -160,7 +161,7 @@ public class TrashCleanupEndpoint : IEndpoint
         }
     }
 
-    private static async Task<IResult> DoCleanupAsync(
+    private static async Task<Ok<TrashCleanupResult>> DoCleanupAsync(
         ApplicationDbContext dbContext,
         SettingsService settingsService,
         INotificationService notifications,
@@ -172,7 +173,7 @@ public class TrashCleanupEndpoint : IEndpoint
             await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
                 "Limpieza de papelera completada", outcome.Message);
 
-        return Results.Ok(new TrashCleanupResult
+        return TypedResults.Ok(new TrashCleanupResult
         {
             Success = true,
             Message = outcome.Message,
