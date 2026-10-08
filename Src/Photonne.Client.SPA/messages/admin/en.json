@@ -1,3 +1,468 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"admin_core_cancel": "Cancel",
+	"admin_core_save": "Save",
+	"admin_core_back": "Back",
+	"admin_core_edit": "Edit",
+	"admin_core_delete": "Delete",
+	"admin_core_close": "Close",
+	"admin_core_refresh": "Refresh",
+	"admin_core_actions": "Actions",
+	"admin_core_role_admin": "Administrator",
+	"admin_core_role_user": "User",
+	"admin_core_show_password": "Show password",
+	"admin_core_password_rule_length": "8 characters or more",
+	"admin_core_password_rule_upper": "an uppercase letter",
+	"admin_core_password_rule_lower": "a lowercase letter",
+	"admin_core_password_rule_digit": "a number",
+	"admin_core_password_rule_symbol": "a symbol",
+	"admin_core_rule_met": "(met)",
+	"admin_core_rule_unmet": "(missing)",
+	"admin_core_error_generic": "The operation couldn't be completed. Please try again.",
+	"admin_core_error_user_exists": "A user with that name or email already exists.",
+	"admin_core_error_email_exists": "That email is already used by another account.",
+	"admin_core_error_primary_protected": "The primary administrator is protected: it can't be deleted, deactivated or given another role.",
+	"admin_core_error_user_not_found": "The user no longer exists.",
+	"admin_core_error_target_not_admin": "It can only be handed over to an administrator.",
+	"admin_core_error_target_inactive": "It can only be handed over to an active user.",
+	"admin_core_error_directory_not_found": "That folder doesn't exist on the server.",
+	"admin_core_error_invalid_cron": "The server doesn't support that schedule.",
+	"admin_core_error_library_not_found": "The library no longer exists.",
+	"admin_core_error_invalid_backup": "The file is not a valid Photonne backup.",
+	"admin_dash_title": "Administration",
+	"admin_dash_description": "The server at a glance, with a way into every section.",
+	"admin_dash_stats_failed": "The server statistics couldn't be loaded.",
+	"admin_dash_totals": "Totals",
+	"admin_dash_status": "Server status",
+	"admin_dash_photos": "Photos",
+	"admin_dash_videos": "Videos",
+	"admin_dash_users": "Users",
+	"admin_dash_storage": "Storage",
+	"admin_dash_version": "Version",
+	"admin_dash_update": "Update",
+	"admin_dash_update_available": "v{version} available",
+	"admin_dash_version_ahead": "Ahead of the latest release (v{version})",
+	"admin_dash_version_unchecked": "Couldn't be checked",
+	"admin_dash_up_to_date": "You're up to date",
+	"admin_dash_ml_queue": "AI queue",
+	"admin_dash_ml_pending": "photos waiting to be processed",
+	"admin_dash_ml_done": "all processed",
+	"admin_dash_trash": "Trash",
+	"admin_dash_trash_expired": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} expired",
+				"countPlural=other": "{n} expired"
+			}
+		}
+	],
+	"admin_dash_trash_size": "{size} in the trash",
+	"admin_dash_coverage": "Indexing coverage",
+	"admin_dash_coverage_unindexed": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} file not indexed",
+				"countPlural=other": "{n} files not indexed"
+			}
+		}
+	],
+	"admin_dash_coverage_complete": "everything indexed",
+	"admin_dash_coverage_never_short": "not verified yet",
+	"admin_dash_growth": "Library growth",
+	"admin_dash_growth_sub": "Photos and videos by capture month, last 24 months.",
+	"admin_dash_growth_aria": "{label}: {total} items in the period. Use the arrow keys to go through the months.",
+	"admin_dash_growth_readout": "{photos} photos, {videos} videos",
+	"admin_dash_growth_hint": "Hover or use the arrow keys to see each month",
+	"admin_dash_split": "Breakdown",
+	"admin_dash_split_items": "By number of items",
+	"admin_dash_split_storage": "By space used",
+	"admin_dash_top_users": "Who uses the most",
+	"admin_dash_no_usage": "No usage data.",
+	"admin_dash_coverage_title": "Indexing coverage",
+	"admin_dash_coverage_unavailable": "The server doesn't report coverage.",
+	"admin_dash_coverage_never": "Not verified yet. Run the “Indexing coverage” task in Tasks and queues.",
+	"admin_dash_coverage_total": "Files on disk",
+	"admin_dash_coverage_indexed": "Indexed",
+	"admin_dash_coverage_unsupported": "Unsupported",
+	"admin_dash_coverage_unindexed_label": "Not indexed",
+	"admin_dash_coverage_summary_complete": "All {count} indexable files are indexed.",
+	"admin_dash_coverage_summary_partial": "{indexed} of {total} indexable files are indexed.",
+	"admin_dash_coverage_offline": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} external library was offline when verified.",
+				"countPlural=other": "{count} external libraries were offline when verified."
+			}
+		}
+	],
+	"admin_dash_coverage_verified": "Verified on {date}",
+	"admin_dash_coverage_show_list": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Show the file not indexed",
+				"countPlural=other": "Show the {n} files not indexed"
+			}
+		}
+	],
+	"admin_dash_coverage_hide_list": "Hide the list",
+	"admin_dash_coverage_truncated": "Showing the first {count}.",
+	"admin_dash_usage_title": "Usage per user",
+	"admin_dash_share": "Share of total",
+	"admin_dash_links": "Quick links",
+	"admin_dash_link_users": "Create accounts, roles, quotas and passwords.",
+	"admin_dash_link_libraries": "Server folders indexed without moving them.",
+	"admin_dash_link_tasks": "Indexing, thumbnails, metadata and AI.",
+	"admin_dash_link_maintenance": "Trash cleanup and system jobs.",
+	"admin_dash_link_settings": "Server and AI configuration.",
+	"admin_dash_link_backup": "Export and restore the database.",
+	"admin_dash_link_shared_trash": "What was deleted from shared folders.",
+	"admin_dash_link_system": "Version, credits and server details.",
+	"admin_users_description": "Accounts, roles, storage quotas and access to the server.",
+	"admin_users_new": "New user",
+	"admin_users_search": "Search by name, username or email",
+	"admin_users_filter": "Filter users",
+	"admin_users_filter_all": "All",
+	"admin_users_filter_admins": "Administrators",
+	"admin_users_filter_users": "Users",
+	"admin_users_filter_inactive": "Inactive",
+	"admin_users_col_user": "User",
+	"admin_users_col_role": "Role",
+	"admin_users_col_status": "Status",
+	"admin_users_col_storage": "Storage",
+	"admin_users_col_last_login": "Last sign-in",
+	"admin_users_col_created": "Created",
+	"admin_users_you": "You",
+	"admin_users_primary": "Primary",
+	"admin_users_primary_hint": "Primary administrator: can't be deleted, deactivated or demoted.",
+	"admin_users_active": "Active",
+	"admin_users_inactive": "Inactive",
+	"admin_users_never": "Never",
+	"admin_users_no_quota": "no limit",
+	"admin_users_quota_used": "Quota used by {name}",
+	"admin_users_edit_named": "Edit {name}",
+	"admin_users_reset": "Reset password",
+	"admin_users_reset_named": "Reset {name}'s password",
+	"admin_users_activate": "Activate",
+	"admin_users_deactivate": "Deactivate",
+	"admin_users_activate_named": "Activate {name}",
+	"admin_users_deactivate_named": "Deactivate {name}",
+	"admin_users_promote": "Hand over the primary administrator role",
+	"admin_users_promote_named": "Make {name} the primary administrator",
+	"admin_users_delete_named": "Delete {name}",
+	"admin_users_no_match": "No user matches the search.",
+	"admin_users_empty": "There are no users yet.",
+	"admin_users_summary": [
+		{
+			"declarations": ["input shown", "input total", "local totalPlural = total: plural"],
+			"selectors": ["totalPlural"],
+			"match": {
+				"totalPlural=one": "{shown} of {total} user",
+				"totalPlural=other": "{shown} of {total} users"
+			}
+		}
+	],
+	"admin_users_created": "“{name}” created",
+	"admin_users_updated": "Changes to “{name}” saved",
+	"admin_users_activated": "“{name}” can sign in again",
+	"admin_users_deactivated": "“{name}” can no longer sign in",
+	"admin_users_deleted": "“{name}” deleted",
+	"admin_users_promoted": "“{name}” is now the primary administrator",
+	"admin_users_reset_done": "“{name}”'s password has been changed",
+	"admin_users_delete_title": "Delete user",
+	"admin_users_delete_body": "Delete the account of “{name}”?",
+	"admin_users_delete_note": "Their account and their data in Photonne (albums, settings…) are removed; the files stay on the server disk. This cannot be undone.",
+	"admin_users_promote_title": "Hand over the primary administrator",
+	"admin_users_promote_body": "Hand over the primary administrator role to “{name}”?",
+	"admin_users_promote_note": "You lose the primary administrator protection: another administrator could delete, deactivate or demote you. Only the new primary administrator can hand it back.",
+	"admin_users_promote_confirm": "Hand over",
+	"admin_user_create_title": "New user",
+	"admin_user_edit_title": "Edit user",
+	"admin_user_create": "Create user",
+	"admin_user_section_account": "Account",
+	"admin_user_section_personal": "Personal details",
+	"admin_user_section_access": "Permissions and storage",
+	"admin_user_username": "Username",
+	"admin_user_username_hint": "Letters, numbers, dots, hyphens and underscores; up to 64 characters.",
+	"admin_user_username_rename_hint": "Changing it renames their folder on the server; you'll see what changes before confirming.",
+	"admin_user_username_invalid": "Use only letters, numbers, dots, hyphens and underscores (up to 64).",
+	"admin_user_email": "Email",
+	"admin_user_email_invalid": "Enter a valid email.",
+	"admin_user_password": "Password",
+	"admin_user_password_weak": "The password doesn't meet every rule.",
+	"admin_user_first_name": "First name",
+	"admin_user_last_name": "Last name",
+	"admin_user_role": "Role",
+	"admin_user_active": "Active account (can sign in)",
+	"admin_user_quota": "Storage quota",
+	"admin_user_quota_unlimited": "Unlimited",
+	"admin_user_quota_custom": "Custom…",
+	"admin_user_quota_custom_gb": "Quota (GB)",
+	"admin_user_primary_locked": "This is the primary administrator: their role and status are protected.",
+	"admin_user_self_locked": "You can't change your own role or deactivate your own account.",
+	"admin_user_rename_title": "Confirm the rename",
+	"admin_user_rename_warning": "Their folder on the server is renamed and every reference updated. It is atomic: it either completes or nothing changes.",
+	"admin_user_rename_folder": "Folder",
+	"admin_user_rename_folder_missing": "not on disk yet",
+	"admin_user_rename_assets": "Photos and videos to update",
+	"admin_user_rename_folders": "Folders to update",
+	"admin_user_rename_slow": "There are many records: it may take a few seconds.",
+	"admin_user_rename_confirm": "Rename and save",
+	"admin_reset_title": "Reset password",
+	"admin_reset_intro": "Enter the new password for “{name}” and pass it on to them.",
+	"admin_reset_new": "New password",
+	"admin_reset_confirm": "Repeat the password",
+	"admin_reset_mismatch": "The passwords don't match.",
+	"admin_reset_submit": "Reset",
+	"admin_libs_description": "Server folders that Photonne indexes without moving or changing the files.",
+	"admin_libs_new": "New library",
+	"admin_libs_empty_title": "No external libraries",
+	"admin_libs_empty_body": "Add a server folder to index its photos and videos without moving them.",
+	"admin_libs_access": "Who can see it",
+	"admin_libs_access_named": "Who can see “{name}”",
+	"admin_libs_edit_named": "Edit “{name}”",
+	"admin_libs_delete_named": "Delete “{name}”",
+	"admin_libs_assets": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} item",
+				"countPlural=other": "{n} items"
+			}
+		}
+	],
+	"admin_libs_with_subfolders": "With subfolders",
+	"admin_libs_last_scan": "Last scan:",
+	"admin_libs_last_failed": "The last scan failed:",
+	"admin_libs_last_counts": "{found} found · {added} new · {removed} gone",
+	"admin_libs_never_scanned": "Never scanned",
+	"admin_libs_scan": "Scan",
+	"admin_libs_scan_busy": "A scan is already running",
+	"admin_libs_scan_cancel": "Stop",
+	"admin_libs_scanning": "Scanning…",
+	"admin_libs_scan_resumed": "Scan in progress",
+	"admin_libs_scan_progress": "Scan progress of “{name}”",
+	"admin_libs_scan_found": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} found",
+				"countPlural=other": "{n} found"
+			}
+		}
+	],
+	"admin_libs_scan_indexed": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} indexed",
+				"countPlural=other": "{n} indexed"
+			}
+		}
+	],
+	"admin_libs_scan_missing": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} gone",
+				"countPlural=other": "{n} gone"
+			}
+		}
+	],
+	"admin_libs_scan_done": [
+		{
+			"declarations": ["input name", "input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "“{name}” scanned: {n} indexed",
+				"countPlural=other": "“{name}” scanned: {n} indexed"
+			}
+		}
+	],
+	"admin_libs_scan_cancelled": "The scan of “{name}” was stopped",
+	"admin_libs_scan_failed": "The scan of “{name}” failed: {error}",
+	"admin_libs_scan_lost": "Lost the connection to the scan of “{name}”; it carries on on the server.",
+	"admin_libs_created": "“{name}” created",
+	"admin_libs_updated": "Changes to “{name}” saved",
+	"admin_libs_deleted": "“{name}” deleted",
+	"admin_libs_delete_title": "Delete library",
+	"admin_libs_delete_body": "Delete the library “{name}”?",
+	"admin_libs_delete_note": "Its photos and videos leave Photonne, but the files stay on disk as they are.",
+	"admin_libs_create_title": "New external library",
+	"admin_libs_edit_title": "Edit external library",
+	"admin_libs_create": "Create library",
+	"admin_libs_name": "Name",
+	"admin_libs_name_missing": "Give it a name.",
+	"admin_libs_path": "Path on the server",
+	"admin_libs_path_hint": "Absolute path of a folder the server can read.",
+	"admin_libs_path_invalid": "Enter an absolute path (starting with /).",
+	"admin_libs_subfolders": "Include subfolders",
+	"admin_libs_schedule": "Automatic scan",
+	"admin_libs_schedule_hint": "Looks for new and missing files this often.",
+	"admin_libs_schedule_manual": "Manual only",
+	"admin_libs_schedule_hourly": "Every hour",
+	"admin_libs_schedule_daily": "Every day",
+	"admin_libs_schedule_weekly": "Every week",
+	"admin_libs_schedule_monthly": "Every month",
+	"admin_libs_schedule_custom": "Custom: {cron}",
+	"admin_libs_scan_after_create": "Scan it once created",
+	"admin_libs_access_title": "Access to “{name}”",
+	"admin_libs_access_intro": "You always see it. Choose which other users can see its photos and videos.",
+	"admin_libs_access_list": "Users with access",
+	"admin_libs_access_since": "since {date}",
+	"admin_libs_access_revoke": "Remove access for {name}",
+	"admin_libs_access_none": "No other user has access yet.",
+	"admin_libs_access_add": "Give access to",
+	"admin_libs_access_pick": "Choose a user",
+	"admin_libs_access_everyone": "Everyone has access",
+	"admin_libs_access_grant": "Give access",
+	"admin_libs_access_granted": "{name} can now see “{library}”",
+	"admin_libs_access_revoked": "{name} can no longer see “{library}”",
+	"admin_backup_description": "Export the database to a file or restore it from a backup.",
+	"admin_backup_media_note": "Backups hold Photonne’s data (users, folders, albums, metadata…), not the photo and video files: keep those safe separately.",
+	"admin_backup_export_title": "Export",
+	"admin_backup_level": "What to include",
+	"admin_backup_level_config": "Settings only",
+	"admin_backup_level_config_text": "Settings, users, folder structure, external libraries and permissions. To move the installation to another machine without the library.",
+	"admin_backup_level_essential": "Essential",
+	"admin_backup_level_essential_text": "The above plus albums, photos and videos, EXIF, tags and shared links. No AI data: it is recomputed after restoring.",
+	"admin_backup_level_full": "Full (with AI)",
+	"admin_backup_level_full_text": "Everything, including faces, people, embeddings, recognised text, objects and scenes. The file is much larger.",
+	"admin_backup_export": "Download backup",
+	"admin_backup_exporting": "Generating…",
+	"admin_backup_exported": "Backup downloaded ({size})",
+	"admin_backup_export_failed": "The backup couldn't be generated.",
+	"admin_backup_restore_title": "Restore",
+	"admin_backup_restore_warning": "Restoring erases the whole current database and replaces it with the file’s. Whatever the backup doesn’t include ends up empty.",
+	"admin_backup_drop_label": "Backup file",
+	"admin_backup_drop": "Drop a .json backup file here",
+	"admin_backup_choose": "Choose file",
+	"admin_backup_clear": "Remove the file",
+	"admin_backup_reading": "Reading the file…",
+	"admin_backup_created_at": "made on {date}",
+	"admin_backup_config_warning": "This is a settings-only backup: the library (photos, albums, AI data) will be empty. Meant for a new installation.",
+	"admin_backup_essential_note": "Essential backup: face, text, object and scene recognition will run again afterwards.",
+	"admin_backup_restore": "Restore backup…",
+	"admin_backup_restoring": "Restoring…",
+	"admin_backup_restored": "Database restored",
+	"admin_backup_restore_failed": "The backup couldn't be restored.",
+	"admin_backup_confirm_title": "Restore the database",
+	"admin_backup_confirm_body": "You are about to replace all the server data with that of “{name}”:",
+	"admin_backup_confirm_check": "I understand the current data is erased and cannot be recovered.",
+	"admin_backup_confirm": "Restore",
+	"admin_backup_result_config": "The library is now empty: scan the folders again from Tasks and queues to index the files.",
+	"admin_backup_result_essential": "The AI jobs will run again to rebuild faces, text, objects and scenes.",
+	"admin_backup_result_session": "If your account changed with the backup, you will need to sign in again.",
+	"admin_backup_count_users": "Users",
+	"admin_backup_count_folders": "Folders",
+	"admin_backup_count_libraries": "External libraries",
+	"admin_backup_count_assets": "Photos and videos",
+	"admin_backup_count_albums": "Albums",
+	"admin_backup_count_people": "People",
+	"admin_backup_count_faces": "Faces",
+	"admin_backup_count_embeddings": "Embeddings",
+	"admin_backup_count_ocr": "Text lines",
+	"admin_strash_description": "What users deleted from shared folders, grouped by deletion date. Put it back where it was or delete it for good.",
+	"admin_strash_empty": "The shared trash is empty.",
+	"admin_strash_filter": "Filter by who deleted it",
+	"admin_strash_summary": [
+		{
+			"declarations": ["input size", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} item · {size}",
+				"countPlural=other": "{count} items · {size}"
+			}
+		}
+	],
+	"admin_strash_everyone": "Everyone",
+	"admin_strash_unknown": "Unknown",
+	"admin_strash_restore": "Restore",
+	"admin_strash_purge": "Delete forever",
+	"admin_strash_restored": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} restored to its folder",
+				"countPlural=other": "{count} restored to their folders"
+			}
+		}
+	],
+	"admin_strash_purged": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} deleted forever",
+				"countPlural=other": "{count} deleted forever"
+			}
+		}
+	],
+	"admin_strash_purge_title": "Delete forever",
+	"admin_strash_purge_body": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} file will be removed from disk. This cannot be undone.",
+				"countPlural=other": "{count} files will be removed from disk. This cannot be undone."
+			}
+		}
+	],
+	"admin_sys_description": "Server version, releases, demo mode and third-party data credits.",
+	"admin_sys_version_title": "Installed version",
+	"admin_sys_update": "A new version is out: v{version}.",
+	"admin_sys_ahead": "This server is ahead of the latest published release (v{version}).",
+	"admin_sys_check_error": "The latest version couldn't be checked: {error}",
+	"admin_sys_latest": "You have the latest version.",
+	"admin_sys_no_releases": "There are no published releases yet.",
+	"admin_sys_checked": "Checked {when}",
+	"admin_sys_check": "Check now",
+	"admin_sys_checking": "Checking…",
+	"admin_sys_check_failed": "The version couldn't be checked.",
+	"admin_sys_release_title": "Latest release",
+	"admin_sys_release_version": "Version",
+	"admin_sys_release_date": "Published",
+	"admin_sys_release_notes": "What's new",
+	"admin_sys_release_open": "View on GitHub",
+	"admin_sys_release_none": "No release information.",
+	"admin_sys_server_title": "Server",
+	"admin_sys_server_version": "API version",
+	"admin_sys_server_min_app": "Minimum app version",
+	"admin_sys_server_any": "Any",
+	"admin_sys_server_cpus": "Processors",
+	"admin_sys_server_address": "Address",
+	"admin_sys_demo_title": "Demo mode",
+	"admin_sys_demo_on": "This server is a demo: it is reset regularly and blocks dangerous changes.",
+	"admin_sys_demo_off": "Off. This is a regular installation.",
+	"admin_sys_demo_user": "Demo user",
+	"admin_sys_demo_password": "Demo password",
+	"admin_sys_demo_interval": "Reset",
+	"admin_sys_demo_hours": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "every hour",
+				"countPlural=other": "every {count} hours"
+			}
+		}
+	],
+	"admin_sys_demo_next": "Next reset",
+	"admin_sys_credits_title": "Credits",
+	"admin_sys_credits_intro": "Third-party data bundled with the server and their licences.",
+	"admin_sys_credits_dataset": "data from {date}",
+	"admin_sys_credits_none": "The server bundles no third-party data."
 }

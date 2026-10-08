@@ -1,0 +1,358 @@
+/*
+ * Building blocks shared by the admin pages (buttons, cards, form fields,
+ * tables, badges, notices), on the design tokens of app.css. Everything is
+ * scoped under .admin-page (AdminPage.svelte) so nothing leaks elsewhere.
+ */
+
+.admin-page {
+	--admin-success: #1b7f3b;
+	--admin-warning: #a15c00;
+	--admin-info: var(--color-accent);
+	--admin-chart-photos: #2563eb;
+	--admin-chart-videos: #d97706;
+}
+
+/* Dark like app.css: the system's, unless <html data-theme> pins one. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .admin-page {
+		--admin-success: #7bd88f;
+		--admin-warning: #f6b35a;
+		--admin-chart-photos: #60a5fa;
+		--admin-chart-videos: #fbbf24;
+	}
+}
+
+:root[data-theme='dark'] .admin-page {
+	--admin-success: #7bd88f;
+	--admin-warning: #f6b35a;
+	--admin-chart-photos: #60a5fa;
+	--admin-chart-videos: #fbbf24;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+
+.admin-page .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	min-height: 36px;
+	padding: var(--space-2) var(--space-4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	background: var(--color-surface-raised);
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+	font-weight: 500;
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background var(--duration-fast);
+}
+
+.admin-page .btn:hover:not(:disabled) {
+	background: var(--color-surface);
+}
+
+.admin-page .btn.primary {
+	border-color: var(--color-accent);
+	background: var(--color-accent);
+	color: var(--color-accent-text);
+	font-weight: 600;
+}
+
+.admin-page .btn.primary:hover:not(:disabled) {
+	background: var(--color-accent);
+	filter: brightness(1.08);
+}
+
+.admin-page .btn.danger {
+	border-color: var(--color-danger);
+	color: var(--color-danger);
+}
+
+.admin-page .btn.danger.solid {
+	background: var(--color-danger);
+	color: #fff;
+}
+
+.admin-page .btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+/* A square icon-only button; its name goes in aria-label (and title). */
+.admin-page .icon-btn {
+	display: inline-grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--color-text-muted);
+	cursor: pointer;
+}
+
+.admin-page .icon-btn:hover:not(:disabled) {
+	background: var(--color-surface);
+	color: var(--color-text);
+}
+
+.admin-page .icon-btn.danger:hover:not(:disabled) {
+	color: var(--color-danger);
+}
+
+.admin-page .icon-btn:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────── */
+
+.admin-page .card {
+	min-width: 0;
+	padding: var(--space-4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background: var(--color-surface-raised);
+}
+
+.admin-page .card > h2,
+.admin-page .card-title {
+	margin: 0 0 var(--space-3);
+	font-size: var(--font-size-md);
+	font-weight: 600;
+}
+
+.admin-page .muted {
+	color: var(--color-text-muted);
+}
+
+.admin-page .small {
+	font-size: var(--font-size-sm);
+}
+
+.admin-page .num {
+	font-variant-numeric: tabular-nums;
+}
+
+/* ── Form fields ─────────────────────────────────────────────────────── */
+
+.admin-page .field {
+	display: grid;
+	gap: var(--space-1);
+	min-width: 0;
+}
+
+.admin-page .field > span,
+.admin-page .field > label,
+.admin-page .label {
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+}
+
+.admin-page .field input:not([type='checkbox']):not([type='radio']),
+.admin-page .field select,
+.admin-page .input {
+	width: 100%;
+	min-height: 36px;
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	background: var(--color-bg);
+}
+
+.admin-page .field input[aria-invalid='true'] {
+	border-color: var(--color-danger);
+}
+
+.admin-page .hint {
+	margin: 0;
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+}
+
+.admin-page .field-error {
+	margin: 0;
+	font-size: var(--font-size-xs);
+	color: var(--color-danger);
+}
+
+.admin-page .check {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+}
+
+.admin-page .check input {
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	accent-color: var(--color-accent);
+}
+
+.admin-page .form {
+	display: grid;
+	gap: var(--space-4);
+}
+
+.admin-page .form-row {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: var(--space-3);
+}
+
+.admin-page fieldset {
+	display: grid;
+	gap: var(--space-3);
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+
+.admin-page legend {
+	padding: 0;
+	margin-bottom: var(--space-2);
+	font-size: var(--font-size-xs);
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-text-muted);
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────── */
+
+.admin-page .badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 1px var(--space-2);
+	border: 1px solid currentColor;
+	border-radius: 999px;
+	font-size: var(--font-size-xs);
+	font-weight: 600;
+	line-height: 1.5;
+	white-space: nowrap;
+	color: var(--color-text-muted);
+}
+
+.admin-page .badge.accent {
+	color: var(--color-accent);
+}
+
+.admin-page .badge.success {
+	color: var(--admin-success);
+}
+
+.admin-page .badge.warning {
+	color: var(--admin-warning);
+}
+
+.admin-page .badge.danger {
+	color: var(--color-danger);
+}
+
+/* ── Notices ─────────────────────────────────────────────────────────── */
+
+.admin-page .notice {
+	display: flex;
+	gap: var(--space-3);
+	align-items: flex-start;
+	margin: 0;
+	padding: var(--space-3) var(--space-4);
+	border: 1px solid var(--color-border);
+	border-left: 4px solid var(--admin-info);
+	border-radius: var(--radius-sm);
+	background: var(--color-surface);
+	font-size: var(--font-size-sm);
+}
+
+.admin-page .notice.warning {
+	border-left-color: var(--admin-warning);
+}
+
+.admin-page .notice.danger {
+	border-left-color: var(--color-danger);
+}
+
+.admin-page .notice.success {
+	border-left-color: var(--admin-success);
+}
+
+.admin-page .notice > svg {
+	flex: none;
+	margin-top: 1px;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────── */
+
+.admin-page .table-wrap {
+	overflow-x: auto;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background: var(--color-surface-raised);
+}
+
+.admin-page table.data {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size-sm);
+}
+
+.admin-page table.data th,
+.admin-page table.data td {
+	padding: var(--space-2) var(--space-3);
+	border-bottom: 1px solid var(--color-border);
+	text-align: left;
+	vertical-align: middle;
+}
+
+.admin-page table.data tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.admin-page table.data th {
+	position: sticky;
+	top: 0;
+	background: var(--color-surface);
+	font-size: var(--font-size-xs);
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: var(--color-text-muted);
+	white-space: nowrap;
+}
+
+.admin-page table.data tbody tr:hover {
+	background: var(--color-surface);
+}
+
+/* ── Progress ────────────────────────────────────────────────────────── */
+
+.admin-page .bar {
+	height: 6px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--color-placeholder);
+}
+
+.admin-page .bar > span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--color-accent);
+	transition: width var(--duration-normal);
+}
+
+.admin-page .bar.warning > span {
+	background: var(--admin-warning);
+}
+
+.admin-page .bar.danger > span {
+	background: var(--color-danger);
+}
