@@ -80,4 +80,20 @@ internal static class TimelineProjection
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .OrderBy(t => t)
         .ToList();
+
+    /// <summary>
+    /// In-memory counterpart of the thumbnail-derived fields of
+    /// <see cref="ToResponse"/> (dominant colour, oriented aspect ratio,
+    /// thumbnail version), for the endpoints that build a
+    /// <see cref="TimelineResponse"/> from loaded entities. The asset's
+    /// Thumbnails must be loaded.
+    /// </summary>
+    public static TimelineResponse WithThumbnailShape(this TimelineResponse response, Asset asset)
+    {
+        var small = asset.Thumbnails.FirstOrDefault(t => t.Size == ThumbnailSize.Small);
+        response.DominantColor = small?.DominantColor;
+        response.AspectRatio = small is { Height: > 0 } ? (double)small.Width / small.Height : null;
+        response.ThumbnailsGeneratedAt = small?.CreatedAt;
+        return response;
+    }
 }

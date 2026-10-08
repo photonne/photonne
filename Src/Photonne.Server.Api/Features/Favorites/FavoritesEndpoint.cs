@@ -84,7 +84,7 @@ public class FavoritesEndpoint : IEndpoint
             IsFavorite = true,
             Tags = BuildTagList(asset),
             IsReadOnly = asset.ExternalLibraryId.HasValue
-        }).ToList();
+        }.WithThumbnailShape(asset)).ToList();
 
         var nextCursor = hasMore ? assets.Last().CapturedAt : (DateTime?)null;
 

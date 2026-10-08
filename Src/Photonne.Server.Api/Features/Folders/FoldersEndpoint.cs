@@ -571,7 +571,7 @@ public class FoldersEndpoint : IEndpoint
             IsFavorite = asset.IsFavorite,
             DeletedAt = asset.DeletedAt,
             IsReadOnly = asset.ExternalLibraryId.HasValue
-        }).ToList();
+        }.WithThumbnailShape(asset)).ToList();
 
         // Stitch detected/user tags (e.g. "LivePhoto") onto the page so the
         // viewer opened from a folder shows the Live Photo affordance too.

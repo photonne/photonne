@@ -204,4 +204,28 @@ public sealed class TimelineBucketsTests : IntegrationTestBase
         Assert.Equal(0.75, shaped.AspectRatio!.Value, precision: 3);
         Assert.Null(Assert.Single(items!, i => i.Id == noThumbs).AspectRatio);
     }
+
+    private sealed record ShapedPage(List<ShapedItem> Items);
+
+    [Fact]
+    public async Task Favorites_CarryTheThumbnailShapeToo()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        var portrait = await CreateAssetAsync(alice, "portrait.jpg", folderId, new DateTime(2026, 3, 10, 12, 0, 0, DateTimeKind.Utc));
+        await WithDbContextAsync(async db =>
+        {
+            var asset = await db.Assets.FindAsync(portrait);
+            asset!.IsFavorite = true;
+            db.AssetThumbnails.Add(new AssetThumbnail
+            {
+                AssetId = portrait, Size = ThumbnailSize.Small, Width = 165, Height = 220, FilePath = "/tmp/x.jpg"
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var page = await client.GetFromJsonAsync<ShapedPage>("/api/assets/favorites?pageSize=50");
+
+        Assert.Equal(0.75, Assert.Single(page!.Items).AspectRatio!.Value, precision: 3);
+    }
 }

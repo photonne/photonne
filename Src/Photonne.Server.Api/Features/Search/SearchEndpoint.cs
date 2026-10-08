@@ -132,7 +132,7 @@ public class SearchEndpoint : IEndpoint
             IsFavorite = a.IsFavorite,
             IsFileMissing = a.IsFileMissing,
             IsReadOnly = a.ExternalLibraryId.HasValue
-        }).ToList();
+        }.WithThumbnailShape(a)).ToList();
 
         return TypedResults.Ok(new SearchResponse { Items = items, HasMore = hasMore });
     }

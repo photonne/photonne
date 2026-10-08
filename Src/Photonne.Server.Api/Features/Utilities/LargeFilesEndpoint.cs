@@ -75,7 +75,7 @@ public class LargeFilesEndpoint : IEndpoint
             IsFavorite = a.IsFavorite,
             IsArchived = a.IsArchived,
             IsReadOnly = a.ExternalLibraryId.HasValue
-        }).ToList();
+        }.WithThumbnailShape(a)).ToList();
 
         return TypedResults.Ok(result);
     }
