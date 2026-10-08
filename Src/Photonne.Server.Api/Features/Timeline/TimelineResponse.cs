@@ -30,6 +30,10 @@ public class TimelineResponse
     // as ?v= and the response is cached as immutable; a regeneration changes
     // it, so the client asks for the new bytes. Null without thumbnails.
     public DateTime? ThumbnailsGeneratedAt { get; set; }
+    // Width / height as displayed, from the Small thumbnail (EXIF orientation
+    // already applied). Width and Height above are the file's stored pixels,
+    // so a rotated phone photo reads as landscape there. Null without thumbnails.
+    public double? AspectRatio { get; set; }
     public bool IsReadOnly { get; set; }
 }
 

@@ -16202,6 +16202,7 @@
           "isFileMissing",
           "dominantColor",
           "thumbnailsGeneratedAt",
+          "aspectRatio",
           "isReadOnly"
         ],
         "type": "object",
@@ -16298,6 +16299,13 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "aspectRatio": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           },
           "isReadOnly": {
             "type": "boolean"
