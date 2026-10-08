@@ -51,3 +51,16 @@ test('offers a retry when the server is unreachable', async ({ page }) => {
 	).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Reintentar' })).toBeVisible();
 });
+
+test('a proxy saying the server is down also offers a retry, not the login', async ({ page }) => {
+	await fakeApi(page, { signedIn: true });
+	// Registered after the fake, so it wins: nginx & co. answer 502 while the server is down.
+	await page.route('**/api/auth/refresh', (route) => route.fulfill({ status: 502, body: '' }));
+
+	await page.goto('/');
+
+	await expect(page.getByRole('button', { name: 'Reintentar' })).toBeVisible();
+	await page.unroute('**/api/auth/refresh');
+	await page.getByRole('button', { name: 'Reintentar' }).click();
+	await expect(page.getByRole('heading', { name: 'Fotos' })).toBeVisible();
+});

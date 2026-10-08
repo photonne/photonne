@@ -52,7 +52,7 @@ export class Session {
 		if (data) {
 			this.user = data;
 			this.status = 'signedIn';
-		} else if (!response) {
+		} else if (unreachable(response)) {
 			this.status = 'unreachable';
 		} else {
 			this.#signOutLocally();
@@ -104,9 +104,9 @@ export class Session {
 			this.#accessToken = data.token;
 			return data.token;
 		}
-		// No response: the server couldn't be reached. The session may well
-		// still be valid, so it is kept; the request that needed it fails alone.
-		if (response) this.#signOutLocally();
+		// The server couldn't be reached. The session may well still be valid,
+		// so it is kept; the request that needed it fails alone.
+		if (!unreachable(response)) this.#signOutLocally();
 		return null;
 	}
 
@@ -118,3 +118,11 @@ export class Session {
 }
 
 export const session = new Session();
+
+/**
+ * No answer from the server: no response at all, or a reverse proxy in front
+ * of it saying it is down (Bad Gateway, Service Unavailable, Gateway Timeout).
+ */
+function unreachable(response: Response | undefined) {
+	return !response || [502, 503, 504].includes(response.status);
+}
