@@ -7,8 +7,11 @@
 	import { dropOnAlbum, dropOnFolder, isAssetDrag } from '#lib/actions/drag-assets.js';
 	import {
 		getAllAlbumsOptions,
-		getAllFoldersOptions
+		getAllFoldersOptions,
+		getUnreadNotificationsCountOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import DropZone from '#lib/account/upload/DropZone.svelte';
+	import { uploads } from '#lib/account/upload/uploads.svelte.js';
 	import { session } from '#lib/auth/session.svelte.js';
 	import { appHref as href } from '#lib/navigation/href.js';
 	import { navigation } from '#lib/navigation/sections.js';
@@ -22,6 +25,12 @@
 
 	const albums = createQuery(() => getAllAlbumsOptions());
 	const folders = createQuery(() => getAllFoldersOptions());
+	// Polled lightly so new notifications show up without a reload.
+	const unread = createQuery(() => ({
+		...getUnreadNotificationsCountOptions(),
+		refetchInterval: 60_000
+	}));
+	const unreadCount = $derived(unread.data?.count ?? 0);
 
 	const pinned = $derived([
 		...(albums.data ?? [])
@@ -54,6 +63,9 @@
 
 <a class="skip-link" href="#content">{m.skip_to_content()}</a>
 
+<!-- Files dropped anywhere in the app go to the upload queue. -->
+<DropZone mode="window" onfiles={(files) => uploads.add(files)} />
+
 <div class="shell">
 	<header class="topbar">
 		<a class="brand" href={href('/')}>{m.app_name()}</a>
@@ -69,8 +81,17 @@
 		</form>
 
 		<div class="tools">
-			<a class="icon" href={href('/notifications')} aria-label={m.nav_notifications()}>
+			<a
+				class="icon bell"
+				href={href('/notifications')}
+				aria-label={unreadCount
+					? m.nav_notifications_unread({ count: unreadCount })
+					: m.nav_notifications()}
+			>
 				<Icon name="notifications" />
+				{#if unreadCount}<span class="badge" aria-hidden="true"
+						>{unreadCount > 99 ? '99+' : unreadCount}</span
+					>{/if}
 			</a>
 			<details class="account">
 				<summary aria-label={m.account_menu()}>
@@ -237,6 +258,25 @@
 
 	.icon:hover {
 		background: var(--color-surface);
+	}
+
+	.bell {
+		position: relative;
+	}
+
+	.badge {
+		position: absolute;
+		top: 4px;
+		right: 2px;
+		min-width: 18px;
+		padding: 0 5px;
+		border-radius: 9px;
+		background: var(--color-danger);
+		color: #fff;
+		font-size: 11px;
+		font-weight: 700;
+		line-height: 18px;
+		text-align: center;
 	}
 
 	.account {

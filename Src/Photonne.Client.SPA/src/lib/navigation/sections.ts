@@ -38,6 +38,7 @@ export const navigation: NavSection[] = [
 	{
 		label: m.nav_section_manage,
 		items: [
+			{ path: '/upload', label: m.nav_upload, icon: 'upload' },
 			{ path: '/organize', label: m.nav_organize, icon: 'inbox' },
 			{ path: '/utilities', label: m.nav_utilities, icon: 'build' }
 		]

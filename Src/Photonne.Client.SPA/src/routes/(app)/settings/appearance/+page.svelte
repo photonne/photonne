@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getTheme, setTheme, type Theme } from '#lib/account/settings/theme-choice.js';
+	import { getTheme, setTheme, type Theme } from '#lib/theme.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale, type Locale } from '#lib/paraglide/runtime.js';
 

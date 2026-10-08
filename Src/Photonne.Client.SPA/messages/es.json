@@ -93,5 +93,15 @@
 	"admin_backup": "Copia de seguridad",
 	"admin_shared_trash": "Papelera compartida",
 	"admin_system": "Sistema",
-	"admin_only": "Esta sección es solo para administradores."
+	"admin_only": "Esta sección es solo para administradores.",
+	"nav_notifications_unread": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Notificaciones: {count} sin leer",
+				"countPlural=other": "Notificaciones: {count} sin leer"
+			}
+		}
+	]
 }
