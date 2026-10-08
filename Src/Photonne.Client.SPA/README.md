@@ -1,6 +1,6 @@
 # Photonne.Client.SPA
 
-Cliente web de Photonne: SvelteKit (Svelte 5) en modo SPA, TypeScript estricto. Sustituirá a `Photonne.Client.Web` (Blazor); la decisión está en [ADR-004](../../docs/ADR-004-client-spa-sveltekit.md) y el avance, en [roadmap-spa.md](../../docs/roadmap-spa.md).
+Cliente web de Photonne: SvelteKit (Svelte 5) en modo SPA, TypeScript estricto. Sustituye al antiguo `Photonne.Client.Web` (Blazor); la decisión está en [ADR-004](../../docs/ADR-004-client-spa-sveltekit.md) y el avance, en [roadmap-spa.md](../../docs/roadmap-spa.md).
 
 ## Desarrollo
 
@@ -39,4 +39,11 @@ Si ya hay un Chromium instalado y no quieres descargar el de Playwright: `CHROMI
 - **Datos**: [TanStack Query](https://tanstack.com/query) para caché, reintentos e invalidación.
 - **i18n**: [Paraglide](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) con `messages/es.json` (base) y `messages/en.json`. El idioma sale de la preferencia del usuario, después del navegador y por último del español. Los plugins de inlang se cargan desde `node_modules`, no desde una CDN, para que el build funcione sin red.
 - **Estilos**: CSS con ámbito de Svelte sobre los tokens de `src/app.css` (modo claro y oscuro con `prefers-color-scheme`).
-- **Rutas**: `src/routes/login` es pública; todo lo de `src/routes/(app)` exige sesión y se pinta dentro de `AppShell`.
+- **Rutas**: `src/routes/login` y `src/routes/share` (enlaces públicos) son públicas; todo lo de `src/routes/(app)` exige sesión y se pinta dentro de `AppShell`. Las direcciones de la web anterior (`/fotos`, `/albumes`…) redirigen a las nuevas (`src/lib/navigation/legacy.ts`).
+- **Rejilla**: `src/lib/timeline` — distribución justificada virtualizada por bloques, scrubber, selección con ratón y teclado; la misma rejilla sirve la línea de tiempo y cada colección (`CollectionView`).
+- **PWA**: `static/manifest.webmanifest` y `src/service-worker/` (guarda la build y el shell para abrir sin conexión; nunca la API ni la media).
+- **Tests e2e**: la API se simula por área en `e2e/fakes/*.ts`; responde primero el área del fichero de test (ver `e2e/fakes/README.md`).
+
+## Producción
+
+El servidor (`Photonne.Server.Api`) sirve el build desde `wwwroot`: la imagen Docker lo compila en una etapa de Node. Los archivos de `/_app/immutable` se cachean para siempre (llevan hash en el nombre) y el resto se revalida; las rutas de la app devuelven `index.html` y `/share/{token}` añade etiquetas Open Graph. La CSP permite los scripts en línea de `index.html` por hash.

@@ -8,7 +8,8 @@ Cliente nativo de Photonne para Android, iOS y Desktop, construido con
 > álbumes, carpetas, mapa, búsqueda, personas, favoritos, archivo, papelera,
 > notificaciones, subida, copia de seguridad del dispositivo, compartir y
 > detalle de asset, además de administración del servidor. El cliente web
-> (`Photonne.Client.Web`) queda reservado como panel de administración.
+> (`Photonne.Client.SPA`) ofrece lo mismo en el navegador, salvo la copia de
+> seguridad del dispositivo.
 
 ## Layout
 
@@ -190,8 +191,7 @@ campo cuando aún no hay URL guardada:
 
 El cliente añade automáticamente `Authorization: Bearer <jwt>` en cada
 petición, y reintenta una sola vez tras un `401` llamando a
-`/api/auth/refresh` (replica el patrón de
-`Src/Photonne.Client.Web/Services/AuthRefreshHandler.cs`).
+`/api/auth/refresh`.
 
 ## Android: build de release
 
