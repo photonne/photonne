@@ -74,11 +74,7 @@ public class AssetContentEndpoint : IEndpoint
             // The render is the expensive part: answer a revalidation before it.
             var jpegTag = MediaCaching.ETagFor(file, "jpeg");
             if (MediaCaching.IsNotModified(httpContext.Request, jpegTag))
-            {
-                // Same as MediaCaching.NotModified, as a typed result.
-                httpContext.Response.Headers.ETag = jpegTag.ToString();
-                return TypedResults.StatusCode(StatusCodes.Status304NotModified);
-            }
+                return MediaCaching.NotModified(httpContext, jpegTag);
 
             try
             {

@@ -79,11 +79,7 @@ public class MotionPhotoEndpoint : IEndpoint
         {
             var motionTag = MediaCaching.ETagFor(new FileInfo(physicalPath), "motion");
             if (MediaCaching.IsNotModified(httpContext.Request, motionTag))
-            {
-                // Same as MediaCaching.NotModified, as a typed result.
-                httpContext.Response.Headers.ETag = motionTag.ToString();
-                return TypedResults.StatusCode(StatusCodes.Status304NotModified);
-            }
+                return MediaCaching.NotModified(httpContext, motionTag);
 
             var clip = new MemoryStream();
             await using (var file = File.OpenRead(physicalPath))

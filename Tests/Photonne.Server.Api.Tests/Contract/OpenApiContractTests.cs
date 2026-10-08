@@ -23,7 +23,7 @@ public class OpenApiContractTests
     /// allowed to go down: convert an endpoint to TypedResults (or declare
     /// <c>.Produces&lt;T&gt;()</c>) and lower this number.
     /// </summary>
-    private const int UntypedOperationsBaseline = 213;
+    private const int UntypedOperationsBaseline = 0;
 
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 

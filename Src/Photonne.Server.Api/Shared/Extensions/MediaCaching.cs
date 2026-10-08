@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Net.Http.Headers;
 
 namespace Photonne.Server.Api.Shared.Extensions;
@@ -45,9 +46,9 @@ public static class MediaCaching
         return ifNoneMatch.Any(candidate => candidate.Equals(EntityTagHeaderValue.Any) || candidate.Compare(etag, useStrongComparison: false));
     }
 
-    public static IResult NotModified(HttpContext context, EntityTagHeaderValue etag)
+    public static StatusCodeHttpResult NotModified(HttpContext context, EntityTagHeaderValue etag)
     {
         context.Response.Headers.ETag = etag.ToString();
-        return Results.StatusCode(StatusCodes.Status304NotModified);
+        return TypedResults.StatusCode(StatusCodes.Status304NotModified);
     }
 }
