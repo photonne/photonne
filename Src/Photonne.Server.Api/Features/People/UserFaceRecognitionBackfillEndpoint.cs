@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+using Photonne.Server.Api.Shared.Dtos;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Features.Admin;
@@ -23,10 +25,7 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
             .WithTags("People")
             .RequireAuthorization();
 
-        // MlBackfillRunner (Admin feature) still answers IResult; the explicit
-        // return type keeps these lambdas compiling whether or not it gets typed,
-        // and Produces documents the success body.
-        group.MapPost("/backfill", async Task<IResult> (
+        group.MapPost("/backfill", async Task<Results<Ok<BackfillResponse>, Conflict<ApiError>, UnauthorizedHttpResult>> (
             [FromServices] ApplicationDbContext db,
             [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
@@ -37,11 +36,16 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
         {
             if (!ListPeopleEndpoint.TryGetUserId(user, out var userId))
                 return TypedResults.Unauthorized();
-            return await MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, ownerScope: userId, enablement: enablement);
-        })
-        .Produces<BackfillResponse>(StatusCodes.Status200OK);
+            var result = await MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, ownerScope: userId, enablement: enablement);
+            return result.Result switch
+            {
+                Ok<BackfillResponse> ok => ok,
+                Conflict<ApiError> conflict => conflict,
+                _ => throw new InvalidOperationException("Unexpected backfill result")
+            };
+        });
 
-        group.MapGet("/pending-count", async Task<IResult> (
+        group.MapGet("/pending-count", async Task<Results<Ok<PendingCountResponse>, UnauthorizedHttpResult>> (
             [FromServices] ApplicationDbContext db,
             ClaimsPrincipal user,
             CancellationToken ct) =>
@@ -49,7 +53,6 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
             if (!ListPeopleEndpoint.TryGetUserId(user, out var userId))
                 return TypedResults.Unauthorized();
             return await MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.FaceRecognition, ct, ownerScope: userId);
-        })
-        .Produces<PendingCountResponse>(StatusCodes.Status200OK);
+        });
     }
 }

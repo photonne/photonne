@@ -75,23 +75,7 @@ internal static class MlBackfillRunner
     public const int MinBackfillBatchSize = 1;
     public const int MaxBackfillBatchSize = 5000;
 
-    /// <summary>Untyped form kept for callers outside this feature that still
-    /// compose it with other <see cref="IResult"/>s (People's per-user backfill).
-    /// New code should call <see cref="RunTypedAsync"/>.</summary>
-    public static async Task<IResult> RunAsync(
-        ApplicationDbContext db,
-        IEnrichmentService mlJobs,
-        SettingsService settings,
-        AssetEnrichmentType jobType,
-        BackfillRequest? body,
-        CancellationToken ct,
-        Guid? ownerScope = null,
-        INotificationService? notifications = null,
-        Guid? triggeredBy = null,
-        MlEnablement? enablement = null)
-        => await RunTypedAsync(db, mlJobs, settings, jobType, body, ct, ownerScope, notifications, triggeredBy, enablement);
-
-    public static async Task<Results<Ok<BackfillResponse>, Conflict<ApiError>>> RunTypedAsync(
+    public static async Task<Results<Ok<BackfillResponse>, Conflict<ApiError>>> RunAsync(
         ApplicationDbContext db,
         IEnrichmentService mlJobs,
         SettingsService settings,
@@ -200,16 +184,7 @@ internal static class MlBackfillRunner
     /// the admin UI so the operator can tell "all done" from "all in queue".
     /// When <paramref name="ownerScope"/> is set, both numbers are restricted to
     /// assets owned by that user.</summary>
-    public static async Task<IResult> GetPendingCountAsync(
-        ApplicationDbContext db,
-        AssetEnrichmentType jobType,
-        CancellationToken ct,
-        Guid? ownerScope = null)
-        => await GetPendingCountTypedAsync(db, jobType, ct, ownerScope);
-
-    /// <summary>Typed form of <see cref="GetPendingCountAsync"/>; the untyped one
-    /// stays for callers outside this feature (People's per-user count).</summary>
-    public static async Task<Ok<PendingCountResponse>> GetPendingCountTypedAsync(
+    public static async Task<Ok<PendingCountResponse>> GetPendingCountAsync(
         ApplicationDbContext db,
         AssetEnrichmentType jobType,
         CancellationToken ct,
@@ -395,11 +370,11 @@ public class ObjectDetectionBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.ObjectDetection, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.ObjectDetection, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/object-detection/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.ObjectDetection, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.ObjectDetection, ct));
     }
 }
 
@@ -421,11 +396,11 @@ public class SceneClassificationBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.SceneClassification, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.SceneClassification, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/scene-classification/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.SceneClassification, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.SceneClassification, ct));
     }
 }
 
@@ -447,11 +422,11 @@ public class TextRecognitionBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.TextRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.TextRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/text-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.TextRecognition, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.TextRecognition, ct));
     }
 }
 
@@ -475,11 +450,11 @@ public class ImageEmbeddingBackfillEndpoint : IEndpoint
             [FromServices] MlEnablement enablement,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunTypedAsync(db, mlJobs, settings, AssetEnrichmentType.ImageEmbedding, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.ImageEmbedding, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http), enablement: enablement));
 
         group.MapGet("/image-embedding/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountTypedAsync(db, AssetEnrichmentType.ImageEmbedding, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.ImageEmbedding, ct));
     }
 }
 
