@@ -28,6 +28,12 @@ data class LatestReleaseResponse(
  * servidor sabe qué lleva dentro: una imagen cuyo build no pudo descargar
  * GeoNames no debe acreditar datos que no tiene.
  */
+/** `GET /api/admin/demo-info`: whether the server is the public demo. */
+@Serializable
+data class DemoInfo(
+    val enabled: Boolean = false,
+)
+
 @Serializable
 data class Attribution(
     val name: String,

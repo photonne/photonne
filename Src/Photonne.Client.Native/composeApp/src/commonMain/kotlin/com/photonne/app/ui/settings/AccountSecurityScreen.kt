@@ -23,7 +23,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.photonne.app.ui.main.FormPageScaffold
+import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.account_delete_button
+import com.photonne.app.resources.account_delete_confirm
+import com.photonne.app.resources.account_delete_dialog_message
+import com.photonne.app.resources.account_delete_dialog_title
+import com.photonne.app.resources.account_delete_password
+import com.photonne.app.resources.account_delete_section
+import com.photonne.app.resources.account_delete_summary
 import com.photonne.app.resources.account_security_changed
 import com.photonne.app.resources.account_security_confirm
 import com.photonne.app.resources.account_security_current
@@ -124,6 +133,57 @@ fun AccountSecurityScreen(
                 enabled = state.canSave,
                 isLoading = state.isSubmitting,
                 onClick = viewModel::submit
+            )
+
+            // Borrar la cuenta desde la app: lo exigen las tiendas a toda app
+            // donde se pueden crear cuentas.
+            com.photonne.app.ui.admin.SettingSectionHeader(stringResource(Res.string.account_delete_section))
+            Text(
+                stringResource(Res.string.account_delete_summary),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            androidx.compose.material3.OutlinedButton(
+                onClick = viewModel::openDeleteAccount,
+                enabled = !state.isSubmitting,
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
+                modifier = Modifier.fillMaxWidth().actionButtonHeight()
+            ) {
+                Text(stringResource(Res.string.account_delete_button))
+            }
+        }
+    }
+
+    state.deleteAccount?.let { dialog ->
+        var deletePasswordVisible by remember { androidx.compose.runtime.mutableStateOf(false) }
+        ConfirmActionDialog(
+            title = stringResource(Res.string.account_delete_dialog_title),
+            message = stringResource(Res.string.account_delete_dialog_message),
+            confirmLabel = stringResource(Res.string.account_delete_confirm),
+            isDestructive = true,
+            isSubmitting = dialog.isDeleting,
+            errorMessage = dialog.error?.userMessage,
+            confirmEnabled = dialog.canConfirm,
+            onDismiss = viewModel::dismissDeleteAccount,
+            onConfirm = viewModel::confirmDeleteAccount
+        ) {
+            OutlinedTextField(
+                value = dialog.password,
+                onValueChange = viewModel::onDeletePasswordChange,
+                label = { Text(stringResource(Res.string.account_delete_password)) },
+                singleLine = true,
+                enabled = !dialog.isDeleting,
+                visualTransformation = if (deletePasswordVisible) VisualTransformation.None
+                else PasswordVisualTransformation(),
+                trailingIcon = { VisibilityToggle(deletePasswordVisible) { deletePasswordVisible = it } },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { viewModel.confirmDeleteAccount() }),
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

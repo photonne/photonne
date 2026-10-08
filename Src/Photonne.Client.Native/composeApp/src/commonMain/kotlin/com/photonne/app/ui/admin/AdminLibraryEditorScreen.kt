@@ -87,11 +87,12 @@ fun AdminLibraryEditorScreen(
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            value = path,
+            value = com.photonne.app.ui.demo.demoRedacted(path),
             onValueChange = { path = it },
             label = { Text(stringResource(Res.string.admin_libraries_field_path)) },
             singleLine = true,
-            enabled = !isSubmitting,
+            // En la demo se ve enmascarada: editar la máscara no tiene sentido.
+            enabled = !isSubmitting && !com.photonne.app.ui.demo.LocalDemoMode.current,
             keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth()
         )

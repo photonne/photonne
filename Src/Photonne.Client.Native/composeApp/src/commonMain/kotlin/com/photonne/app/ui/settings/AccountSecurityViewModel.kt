@@ -3,6 +3,7 @@ package com.photonne.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.account.AccountRepository
+import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ data class AccountSecurityUiState(
     val isSubmitting: Boolean = false,
     val error: UiError? = null,
     val successMessage: String? = null,
+    val deleteAccount: DeleteAccountUiState? = null,
 ) {
     val mismatch: Boolean
         get() = newPassword.isNotEmpty() && confirmPassword.isNotEmpty() &&
@@ -37,8 +39,18 @@ data class AccountSecurityUiState(
     }
 }
 
+/** The "Eliminar cuenta" dialog: open while non-null. */
+data class DeleteAccountUiState(
+    val password: String = "",
+    val isDeleting: Boolean = false,
+    val error: UiError? = null,
+) {
+    val canConfirm: Boolean get() = !isDeleting && password.isNotEmpty()
+}
+
 class AccountSecurityViewModel(
     private val repository: AccountRepository,
+    private val authRepository: AuthRepository,
     private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
@@ -64,6 +76,43 @@ class AccountSecurityViewModel(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    fun openDeleteAccount() {
+        _state.update { it.copy(deleteAccount = DeleteAccountUiState()) }
+    }
+
+    fun dismissDeleteAccount() {
+        _state.update { if (it.deleteAccount?.isDeleting == true) it else it.copy(deleteAccount = null) }
+    }
+
+    fun onDeletePasswordChange(value: String) {
+        _state.update { s -> s.copy(deleteAccount = s.deleteAccount?.copy(password = value, error = null)) }
+    }
+
+    /** Deletes the account on the server and, on success, signs out: the
+     *  session belongs to a user that no longer exists. */
+    fun confirmDeleteAccount() {
+        val dialog = _state.value.deleteAccount ?: return
+        if (!dialog.canConfirm) return
+        _state.update { it.copy(deleteAccount = dialog.copy(isDeleting = true, error = null)) }
+        viewModelScope.launch {
+            runCatching { repository.deleteAccount(dialog.password) }
+                .onSuccess {
+                    _state.value = AccountSecurityUiState()
+                    authRepository.logout()
+                }
+                .onFailure { error ->
+                    _state.update { s ->
+                        s.copy(
+                            deleteAccount = s.deleteAccount?.copy(
+                                isDeleting = false,
+                                error = errorFactory.from(error, "No se pudo eliminar la cuenta")
+                            )
+                        )
+                    }
+                }
+        }
     }
 
     fun submit() {

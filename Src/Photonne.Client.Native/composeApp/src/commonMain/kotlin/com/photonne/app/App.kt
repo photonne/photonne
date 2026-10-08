@@ -589,6 +589,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         runCatching { photonneApi.getAttributions() }
             .onSuccess { attributions = it }
     }
+    // La demo pública bloquea los ajustes del servidor y oculta sus datos
+    // reales (clave del mapa, URL, rutas): ver ui/demo/DemoMode.kt.
+    var isDemo by remember { mutableStateOf(false) }
+    LaunchedEffect(apiBaseUrl) {
+        runCatching { photonneApi.getDemoInfo() }
+            .onSuccess { isDemo = it.enabled }
+    }
     // La primera carga de las pantallas principales corre en el init de su
     // ViewModel contra la URL pública, antes de que el probe de reachability
     // decida LAN↔público. Desde dentro de la LAN de casa esa petición hace
@@ -1509,7 +1516,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         LocalSharedTransitionScope provides this,
         LocalCurrentDetailAssetId provides appState.currentDetailAssetId,
         com.photonne.app.ui.grid.LocalViewerReturn provides appState.viewerReturnState,
-        LocalSnackbarController provides snackbarController
+        LocalSnackbarController provides snackbarController,
+        com.photonne.app.ui.demo.LocalDemoMode provides isDemo
     ) {
     Box(modifier = Modifier.fillMaxSize()) {
         MainScaffold(

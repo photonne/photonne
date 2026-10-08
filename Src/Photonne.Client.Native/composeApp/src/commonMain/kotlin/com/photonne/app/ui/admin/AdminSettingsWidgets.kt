@@ -77,7 +77,12 @@ import com.photonne.app.resources.admin_settings_device_ocr_warning
 import com.photonne.app.resources.admin_settings_increase
 import com.photonne.app.resources.admin_settings_load_failed
 import com.photonne.app.resources.admin_settings_range_format
+import com.photonne.app.resources.admin_settings_demo_locked
 import com.photonne.app.resources.admin_settings_saved
+import com.photonne.app.ui.demo.LocalDemoMode
+import com.photonne.app.ui.demo.demoRedacted
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.photonne.app.resources.error_banner_retry
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.theme.EmptyState
@@ -98,6 +103,9 @@ import org.jetbrains.compose.resources.stringResource
  * on the system gesture alike. [footer] is for what lives on the same page
  * but isn't part of this form's Save (the device's own connection, the trash
  * usage): it goes under the button, after a divider.
+ *
+ * In the public demo the whole form is read-only: the server refuses global
+ * settings there, so every field is disabled and Save gives way to a notice.
  */
 @Composable
 fun AdminSettingsForm(
@@ -117,11 +125,12 @@ fun AdminSettingsForm(
         onShown = onSavedShown
     )
 
+    val isDemo = LocalDemoMode.current
     FormPageScaffold(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        hasUnsavedChanges = state.isDirty
+        hasUnsavedChanges = state.isDirty && !isDemo
     ) { page ->
         when {
             state.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -135,21 +144,47 @@ fun AdminSettingsForm(
                 onAction = onRetry
             )
             else -> page {
-                content()
+                if (isDemo) DemoLockedNotice()
+
+                CompositionLocalProvider(LocalSettingsLocked provides isDemo) {
+                    content()
+                }
 
                 ErrorBanner(error = state.error, onDismiss = onDismissError)
 
-                Spacer(Modifier.height(Spacing.sm))
-                PrimaryActionButton(
-                    label = stringResource(Res.string.action_save),
-                    enabled = state.canSave,
-                    isLoading = state.isSubmitting,
-                    onClick = onSave
-                )
+                if (!isDemo) {
+                    Spacer(Modifier.height(Spacing.sm))
+                    PrimaryActionButton(
+                        label = stringResource(Res.string.action_save),
+                        enabled = state.canSave,
+                        isLoading = state.isSubmitting,
+                        onClick = onSave
+                    )
+                }
 
                 footer?.invoke(this)
             }
         }
+    }
+}
+
+/** Set by [AdminSettingsForm] in the demo: every setting widget below it is disabled. */
+private val LocalSettingsLocked = staticCompositionLocalOf { false }
+
+@Composable
+private fun DemoLockedNotice() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Text(
+            stringResource(Res.string.admin_settings_demo_locked),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.md)
+        )
     }
 }
 
@@ -181,6 +216,8 @@ private fun SettingTile(
     onClick: (() -> Unit)? = null,
     trailing: @Composable () -> Unit
 ) {
+    @Suppress("NAME_SHADOWING")
+    val enabled = enabled && !LocalSettingsLocked.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -248,6 +285,8 @@ fun SettingSwitch(
     icon: ImageVector? = null,
     onChange: (Boolean) -> Unit
 ) {
+    @Suppress("NAME_SHADOWING")
+    val enabled = enabled && !LocalSettingsLocked.current
     SettingTile(
         label = label,
         description = description,
@@ -279,6 +318,8 @@ fun SettingNumberField(
     range: IntRange? = null,
     onChange: (String) -> Unit
 ) {
+    @Suppress("NAME_SHADOWING")
+    val enabled = enabled && !LocalSettingsLocked.current
     val isError = range != null && (value.toIntOrNull()?.let { it !in range } ?: true)
     val rangeHint = range?.let {
         stringResource(Res.string.admin_settings_range_format, it.first, it.last)
@@ -303,7 +344,8 @@ fun SettingNumberField(
 }
 
 /** Free text (a URL, a model id): too long for a tile's trailing slot, so the
- *  field gets the card's full width under its label. */
+ *  field gets the card's full width under its label. [sensitive] values
+ *  (keys, the server's URL) are masked in the demo. */
 @Composable
 fun SettingTextField(
     label: String,
@@ -311,8 +353,11 @@ fun SettingTextField(
     enabled: Boolean = true,
     supporting: String? = null,
     placeholder: String? = null,
+    sensitive: Boolean = false,
     onChange: (String) -> Unit
 ) {
+    @Suppress("NAME_SHADOWING")
+    val enabled = enabled && !LocalSettingsLocked.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -331,7 +376,7 @@ fun SettingTextField(
                 color = MaterialTheme.colorScheme.onSurface
             )
             OutlinedTextField(
-                value = value,
+                value = if (sensitive) demoRedacted(value) else value,
                 onValueChange = onChange,
                 singleLine = true,
                 enabled = enabled,
@@ -412,6 +457,8 @@ fun SettingDropdown(
     isError: Boolean = false,
     onChange: (String) -> Unit
 ) {
+    @Suppress("NAME_SHADOWING")
+    val enabled = enabled && !LocalSettingsLocked.current
     var expanded by remember { mutableStateOf(false) }
     val display = options.firstOrNull { it.first.equals(value, ignoreCase = true) }?.second ?: value
     SettingTile(
@@ -600,6 +647,8 @@ fun SettingSlider(
     isError: Boolean = false,
     valueFormat: (Float) -> String = { formatFraction(it) }
 ) {
+    @Suppress("NAME_SHADOWING")
+    val enabled = enabled && !LocalSettingsLocked.current
     val clamped = value.coerceIn(range.start, range.endInclusive)
     Card(
         modifier = Modifier.fillMaxWidth(),

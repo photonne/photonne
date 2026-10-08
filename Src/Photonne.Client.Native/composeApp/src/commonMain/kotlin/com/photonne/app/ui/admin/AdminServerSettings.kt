@@ -84,7 +84,8 @@ fun AdminServerSettingsScreen(
             label = stringResource(Res.string.admin_settings_server_public_url),
             value = serverState.get("ServerSettings.PublicUrl"),
             placeholder = URL_PLACEHOLDER,
-            supporting = stringResource(Res.string.admin_settings_server_public_url_hint)
+            supporting = stringResource(Res.string.admin_settings_server_public_url_hint),
+            sensitive = true
         ) { viewModel.set("ServerSettings.PublicUrl", it) }
         SettingNumberField(
             stringResource(Res.string.admin_settings_server_max_upload),
@@ -101,7 +102,8 @@ fun AdminServerSettingsScreen(
         SettingTextField(
             label = stringResource(Res.string.admin_settings_server_map_key),
             value = serverState.get(AdminServerSettingsViewModel.MAP_TILE_KEY),
-            supporting = stringResource(Res.string.admin_settings_server_map_key_hint)
+            supporting = stringResource(Res.string.admin_settings_server_map_key_hint),
+            sensitive = true
         ) { viewModel.set(AdminServerSettingsViewModel.MAP_TILE_KEY, it) }
     }
 }

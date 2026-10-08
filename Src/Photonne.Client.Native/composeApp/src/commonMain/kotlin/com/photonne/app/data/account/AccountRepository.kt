@@ -6,6 +6,7 @@ import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.RememberedCredentialsStore
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.ChangePasswordRequest
+import com.photonne.app.data.models.DeleteAccountRequest
 import com.photonne.app.data.models.RenamePreviewDto
 import com.photonne.app.data.models.StorageInfoDto
 import com.photonne.app.data.models.UpdateProfileRequest
@@ -74,4 +75,17 @@ class AccountRepository(
     }
 
     suspend fun getStorageInfo(): StorageInfoDto = api.getStorageInfo()
+
+    /**
+     * Deletes the signed-in account on the server. The caller signs out
+     * afterwards; the remembered credentials go now so the login screen
+     * doesn't offer an account that no longer exists.
+     */
+    suspend fun deleteAccount(password: String) {
+        val username = (authStateHolder.state.value as? AuthState.Authenticated)?.user?.username
+        api.deleteMyAccount(DeleteAccountRequest(password = password))
+        if (rememberedCredentials.get()?.username == username) {
+            rememberedCredentials.clear()
+        }
+    }
 }

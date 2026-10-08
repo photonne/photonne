@@ -742,6 +742,13 @@
     <string name="account_security_min_length">Mínimo %1$d caracteres</string>
     <string name="account_security_submit">Cambiar contraseña</string>
     <string name="account_security_changed">Contraseña cambiada</string>
+    <string name="account_delete_section">Eliminar cuenta</string>
+    <string name="account_delete_summary">Borra tu cuenta de este servidor: tu perfil, tus álbumes y tus ajustes. Las fotos ya subidas siguen en el servidor hasta que el administrador las elimine.</string>
+    <string name="account_delete_button">Eliminar mi cuenta</string>
+    <string name="account_delete_dialog_title">¿Eliminar tu cuenta?</string>
+    <string name="account_delete_dialog_message">No se puede deshacer. Se cerrará la sesión en este dispositivo. Escribe tu contraseña para confirmar.</string>
+    <string name="account_delete_password">Contraseña</string>
+    <string name="account_delete_confirm">Eliminar cuenta</string>
     <string name="appearance_title">Tema</string>
     <string name="appearance_system">Seguir al sistema</string>
     <string name="appearance_light">Claro</string>
@@ -1662,6 +1669,7 @@
     <string name="admin_shared_trash_purged_format">%1$d elemento(s) eliminados definitivamente</string>
     <string name="admin_settings_save_failed">No se pudieron guardar los ajustes</string>
     <string name="admin_settings_saved">Ajustes guardados</string>
+    <string name="admin_settings_demo_locked">Solo lectura en la demo: los ajustes del servidor no se pueden cambiar y sus datos privados aparecen ocultos.</string>
     <string name="admin_users_error_load">No se pudieron cargar los usuarios</string>
     <string name="admin_users_created_format">Usuario «%1$s» creado</string>
     <string name="admin_users_error_create">No se pudo crear el usuario</string>

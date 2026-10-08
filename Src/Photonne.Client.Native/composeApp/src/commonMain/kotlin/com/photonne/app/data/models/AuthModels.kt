@@ -84,6 +84,11 @@ data class ChangePasswordRequest(
 )
 
 @Serializable
+data class DeleteAccountRequest(
+    val password: String
+)
+
+@Serializable
 data class ChangePasswordResponse(val message: String)
 
 /** Storage usage shown in the account settings → storage page. */

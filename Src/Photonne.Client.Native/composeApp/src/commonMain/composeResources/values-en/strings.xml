@@ -735,6 +735,13 @@
     <string name="account_security_min_length">Minimum %1$d characters</string>
     <string name="account_security_submit">Change password</string>
     <string name="account_security_changed">Password changed</string>
+    <string name="account_delete_section">Delete account</string>
+    <string name="account_delete_summary">Deletes your account from this server: your profile, albums and settings. Photos you already uploaded stay on the server until the administrator removes them.</string>
+    <string name="account_delete_button">Delete my account</string>
+    <string name="account_delete_dialog_title">Delete your account?</string>
+    <string name="account_delete_dialog_message">This can\'t be undone. You will be signed out on this device. Enter your password to confirm.</string>
+    <string name="account_delete_password">Password</string>
+    <string name="account_delete_confirm">Delete account</string>
     <string name="appearance_title">Theme</string>
     <string name="appearance_system">Follow system</string>
     <string name="appearance_light">Light</string>
@@ -1550,6 +1557,7 @@
     <string name="admin_shared_trash_purged_format">%1$d item(s) permanently deleted</string>
     <string name="admin_settings_save_failed">Couldn\'t save the settings</string>
     <string name="admin_settings_saved">Settings saved</string>
+    <string name="admin_settings_demo_locked">Read-only in the demo: server settings can\'t be changed and their private data is hidden.</string>
     <string name="admin_users_error_load">Couldn\'t load the users</string>
     <string name="admin_users_created_format">User “%1$s” created</string>
     <string name="admin_users_error_create">Couldn\'t create the user</string>

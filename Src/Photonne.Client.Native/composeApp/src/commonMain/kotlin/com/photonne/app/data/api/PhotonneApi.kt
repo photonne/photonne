@@ -461,6 +461,7 @@ interface PhotonneApi {
     suspend fun getMemories(): List<TimelineItem>
     /** Third-party datasets this server bundles, and their licences. Public. */
     suspend fun getAttributions(): List<Attribution>
+    suspend fun getDemoInfo(): com.photonne.app.data.models.DemoInfo
     /** The generated Recuerdos feed, best first. [kind] filters to one MemoryKind. */
     /** [personId]: only the people memories that person is in (their page). */
     suspend fun getMemoryFeed(kind: String? = null, limit: Int = 50, personId: String? = null): List<Memory>
@@ -790,6 +791,7 @@ interface PhotonneApi {
         request: com.photonne.app.data.models.ChangePasswordRequest
     ): com.photonne.app.data.models.ChangePasswordResponse
     suspend fun getStorageInfo(): com.photonne.app.data.models.StorageInfoDto
+    suspend fun deleteMyAccount(request: com.photonne.app.data.models.DeleteAccountRequest)
     suspend fun previewMyRename(newUsername: String): com.photonne.app.data.models.RenamePreviewDto
 
     // Administration ---------------------------------------------------------
@@ -1198,6 +1200,14 @@ class PhotonneApiClient(
         val response: HttpResponse = client.get("$baseUrl/api/attributions")
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Attributions fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getDemoInfo(): com.photonne.app.data.models.DemoInfo {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/demo-info")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Demo info fetch failed (${response.status.value})")
         }
         return response.body()
     }
@@ -2566,6 +2576,18 @@ class PhotonneApiClient(
             throw response.apiException("Password change failed")
         }
         return response.body()
+    }
+
+    override suspend fun deleteMyAccount(
+        request: com.photonne.app.data.models.DeleteAccountRequest
+    ) {
+        val response: HttpResponse = client.post("$baseUrl/api/users/me/delete-account") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.NoContent) {
+            throw response.apiException("Account deletion failed")
+        }
     }
 
     override suspend fun previewMyRename(

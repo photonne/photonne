@@ -29,6 +29,9 @@ import org.jetbrains.compose.resources.stringResource
  * [errorMessage] es lo que antes obligaba a media docena de pantallas a
  * escribir su propio `AlertDialog`: un borrado que falla tiene que contarlo
  * SIN cerrarse, para poder reintentar sin volver a navegar hasta la acción.
+ *
+ * [content] va bajo el mensaje para lo que la confirmación necesita pedir
+ * (la contraseña al borrar la cuenta); [confirmEnabled] lo valida.
  */
 @Composable
 fun ConfirmActionDialog(
@@ -39,7 +42,9 @@ fun ConfirmActionDialog(
     isSubmitting: Boolean,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-    errorMessage: String? = null
+    errorMessage: String? = null,
+    confirmEnabled: Boolean = true,
+    content: (@Composable () -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
@@ -47,6 +52,10 @@ fun ConfirmActionDialog(
         text = {
             Column {
                 Text(message)
+                if (content != null) {
+                    Spacer(Modifier.height(Spacing.sm))
+                    content()
+                }
                 if (errorMessage != null) {
                     Spacer(Modifier.height(Spacing.sm))
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
@@ -54,7 +63,7 @@ fun ConfirmActionDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !isSubmitting) {
+            TextButton(onClick = onConfirm, enabled = !isSubmitting && confirmEnabled) {
                 // Progreso visible mientras se envía: antes el diálogo se
                 // quedaba mudo con los botones deshabilitados.
                 if (isSubmitting) {

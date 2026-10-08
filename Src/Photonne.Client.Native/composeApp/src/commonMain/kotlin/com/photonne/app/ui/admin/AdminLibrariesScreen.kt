@@ -184,7 +184,7 @@ private fun LibraryCard(
         ) {
             Text(library.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                library.path,
+                com.photonne.app.ui.demo.demoRedacted(library.path),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
