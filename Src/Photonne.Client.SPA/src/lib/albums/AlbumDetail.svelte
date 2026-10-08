@@ -178,8 +178,8 @@
 
 	const available = $derived(
 		ownsPhotos
-			? (['favorite', 'album', 'download', 'trash'] as const)
-			: (['album', 'download'] as const)
+			? (['favorite', 'album', 'share', 'download', 'trash'] as const)
+			: (['album', 'share', 'download'] as const)
 	);
 </script>
 

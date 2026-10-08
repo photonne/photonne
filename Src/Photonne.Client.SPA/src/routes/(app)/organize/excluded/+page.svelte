@@ -73,7 +73,11 @@
 			<Icon path={moveToInboxPath} />
 			{m.organize_put_back_action()}
 		</button>
-		<BatchActionBar actions={batch} {selection} available={['favorite', 'album', 'download']} />
+		<BatchActionBar
+			actions={batch}
+			{selection}
+			available={['favorite', 'album', 'share', 'download']}
+		/>
 	{/snippet}
 </CollectionView>
 
