@@ -28,10 +28,23 @@
 		onneedsection: (key: string) => void;
 		onopen: (item: T) => void;
 		label: string;
+		/** Month headers; off for a single unnamed section (an album). */
+		headers?: boolean;
+		/** Scrolled near the end: load the next page, if the host pages. */
+		onnearend?: () => void;
 	}
 
-	let { sections, selection, sectionTitle, itemLabel, onneedsection, onopen, label }: Props =
-		$props();
+	let {
+		sections,
+		selection,
+		sectionTitle,
+		itemLabel,
+		onneedsection,
+		onopen,
+		label,
+		headers = true,
+		onnearend
+	}: Props = $props();
 
 	const HEADER_HEIGHT = 52;
 	const SECTION_GAP = 16;
@@ -51,7 +64,7 @@
 			containerWidth,
 			targetRowHeight: containerWidth < 600 ? 120 : containerWidth < 1100 ? 170 : 210,
 			spacing: SPACING,
-			headerHeight: HEADER_HEIGHT,
+			headerHeight: headers ? HEADER_HEIGHT : 0,
 			sectionGap: SECTION_GAP
 		};
 	});
@@ -77,6 +90,12 @@
 	$effect(() => {
 		for (const block of visible) {
 			if (block.kind === 'placeholder') untrack(() => onneedsection(block.key));
+		}
+	});
+
+	$effect(() => {
+		if (onnearend && viewportHeight > 0 && scrollTop + viewportHeight * 2 >= layout.totalHeight) {
+			untrack(() => onnearend());
 		}
 	});
 
@@ -230,7 +249,7 @@
 			{onkeydown}
 		>
 			{#each visible as block (block.kind === 'row' ? `r:${block.cells[0].item.id}` : `${block.kind}:${block.key}`)}
-				{#if block.kind === 'header'}
+				{#if block.kind === 'header' && headers}
 					{@const state = selection.stateOf(itemsBySection.get(block.key) ?? [])}
 					<div class="header" style:top="{block.top + PADDING}px" style:height="{block.height}px">
 						<h2>{sectionTitle(block.key)}</h2>
@@ -248,6 +267,8 @@
 							</button>
 						{/if}
 					</div>
+				{:else if block.kind === 'header'}
+					<!-- headers off -->
 				{:else if block.kind === 'placeholder'}
 					<div
 						class="placeholder"

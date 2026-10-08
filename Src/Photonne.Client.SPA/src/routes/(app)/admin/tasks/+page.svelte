@@ -3,4 +3,4 @@
 	import { m } from '#lib/paraglide/messages.js';
 </script>
 
-<PendingPage title={m.admin_dashboard()} />
+<PendingPage title={m.admin_tasks()} />

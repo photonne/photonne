@@ -82,5 +82,16 @@
 	"nav_notifications": "Notificaciones",
 	"nav_settings": "Ajustes",
 	"nav_upload": "Subir",
-	"page_pending": "Esta sección llega en una fase posterior."
+	"page_pending": "Esta sección llega en una fase posterior.",
+	"admin_nav": "Secciones de administración",
+	"admin_dashboard": "Panel",
+	"admin_users": "Usuarios",
+	"admin_libraries": "Bibliotecas externas",
+	"admin_tasks": "Tareas y colas",
+	"admin_maintenance": "Mantenimiento",
+	"admin_settings": "Ajustes del servidor",
+	"admin_backup": "Copia de seguridad",
+	"admin_shared_trash": "Papelera compartida",
+	"admin_system": "Sistema",
+	"admin_only": "Esta sección es solo para administradores."
 }
