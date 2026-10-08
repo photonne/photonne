@@ -37,5 +37,28 @@
 				"countPlural=other": "{count} seleccionados"
 			}
 		}
-	]
+	],
+	"viewer_title": "Visor",
+	"viewer_close": "Cerrar",
+	"viewer_previous": "Anterior",
+	"viewer_next": "Siguiente",
+	"viewer_info": "Información",
+	"viewer_favorite_add": "Añadir a favoritos",
+	"viewer_favorite_remove": "Quitar de favoritos",
+	"viewer_download": "Descargar original",
+	"info_title": "Información",
+	"info_description": "Descripción",
+	"info_description_placeholder": "Añade una descripción",
+	"info_date": "Fecha y hora",
+	"info_save": "Guardar",
+	"info_tags": "Etiquetas",
+	"info_tag_add": "Añadir etiqueta",
+	"info_tag_remove": "Quitar la etiqueta {tag}",
+	"info_details": "Detalles",
+	"info_file": "Archivo",
+	"info_folder": "Carpeta",
+	"info_camera": "Cámara",
+	"info_location": "Ubicación",
+	"info_saved": "Guardado",
+	"info_save_failed": "No se ha podido guardar"
 }

@@ -37,5 +37,28 @@
 				"countPlural=other": "{count} selected"
 			}
 		}
-	]
+	],
+	"viewer_title": "Viewer",
+	"viewer_close": "Close",
+	"viewer_previous": "Previous",
+	"viewer_next": "Next",
+	"viewer_info": "Info",
+	"viewer_favorite_add": "Add to favorites",
+	"viewer_favorite_remove": "Remove from favorites",
+	"viewer_download": "Download original",
+	"info_title": "Info",
+	"info_description": "Description",
+	"info_description_placeholder": "Add a description",
+	"info_date": "Date and time",
+	"info_save": "Save",
+	"info_tags": "Tags",
+	"info_tag_add": "Add a tag",
+	"info_tag_remove": "Remove the tag {tag}",
+	"info_details": "Details",
+	"info_file": "File",
+	"info_folder": "Folder",
+	"info_camera": "Camera",
+	"info_location": "Location",
+	"info_saved": "Saved",
+	"info_save_failed": "Couldn't save"
 }

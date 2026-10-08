@@ -13,7 +13,7 @@
 	$effect(() => {
 		if (session.status === 'signedOut') {
 			const returnTo = page.url.pathname + page.url.search;
-			goto(resolve('/login') + `?returnTo=${encodeURIComponent(returnTo)}`, { replaceState: true });
+			goto(resolve('/login') + `?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
 		}
 	});
 </script>

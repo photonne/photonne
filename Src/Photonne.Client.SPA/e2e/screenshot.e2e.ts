@@ -19,3 +19,12 @@ test('timeline', async ({ page }) => {
 	await page.waitForTimeout(800);
 	await page.screenshot({ path: 'test-results/timeline-scrolled.png' });
 });
+
+test('viewer', async ({ page }) => {
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/?asset=2026-09-1');
+	await page.getByRole('dialog').waitFor();
+	await page.keyboard.press('i');
+	await page.waitForTimeout(800);
+	await page.screenshot({ path: 'test-results/viewer.png' });
+});
