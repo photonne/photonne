@@ -1,0 +1,117 @@
+# Releases with release-please (config in release-please-config.json).
+#
+# On every push to main release-please keeps ONE release PR open
+# ("chore: release X.Y.Z") that accumulates the changelog and bumps the
+# version from the Conventional Commits (feat -> minor, fix -> patch,
+# `!` / BREAKING CHANGE -> major) in Src/Directory.Build.props, version.txt
+# and CHANGELOG.md. Nothing is published while that PR stays open.
+#
+# Merging it is the "publish" button: release-please tags the merge commit
+# and creates the GitHub Release as a DRAFT, then this workflow builds the
+# versioned Docker images and the desktop installers from that tag and only
+# then publishes the release. So the servers' update check and the desktop
+# app (which read releases/latest) never see a release whose images or
+# installers don't exist yet.
+#
+# Opening the release PR needs either "Allow GitHub Actions to create and
+# approve pull requests" (Organization settings -> Actions -> General, then the
+# same box in the repo settings) or a RELEASE_PLEASE_TOKEN secret: a
+# fine-grained PAT on this repo with Contents + Pull requests read/write. With
+# the token the release PR also runs the PR checks like any other PR.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag: ${{ steps.rp.outputs.tag_name }}
+      pr: ${{ steps.rp.outputs.pr }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+
+  # iOS doesn't read Directory.Build.props, so MARKETING_VERSION and
+  # CURRENT_PROJECT_VERSION (= the semver version: App Store Connect compares
+  # up to three integers field by field) are synced into the release PR.
+  # release-please rewrites the PR branch on every push, so this re-applies.
+  sync-ios-version:
+    needs: release-please
+    if: needs.release-please.outputs.pr != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+
+      - name: Sync version into project.pbxproj
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Src/Directory.Build.props | head -n1)
+          pbx=Src/Photonne.Client.Native/iosApp/iosApp.xcodeproj/project.pbxproj
+          sed -i -E "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $version;/g; s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = $version;/g" "$pbx"
+          if git diff --quiet; then
+            echo "project.pbxproj already at $version"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: sync iOS version to $version"
+          git push
+
+  api:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/api-image.yml
+    with:
+      release: true
+      ref: ${{ needs.release-please.outputs.tag }}
+    secrets: inherit
+
+  ml:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/ml-image.yml
+    with:
+      release: true
+      ref: ${{ needs.release-please.outputs.tag }}
+
+  # A release created with GITHUB_TOKEN doesn't fire `release: published` in
+  # other workflows, so the desktop installers are built from here (uploaded
+  # to the draft release).
+  desktop:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/desktop-release.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag }}
+
+  publish:
+    needs: [release-please, api, ml, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest

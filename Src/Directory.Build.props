@@ -6,7 +6,7 @@
     <Version>1.192.1</Version>
 
     <!-- Compatibilidad entre el servidor y las apps nativas, que se actualizan
-         por separado. Se suben A MANO, nunca con el hook:
+         por separado. Se suben A MANO (release-please solo toca <Version>):
          - PhotonneMinClientVersion: la app más antigua que este servidor
            atiende bien. Súbelo a la versión del commit que rompe el contrato
            de la API (quita o cambia un endpoint o un campo que las apps usan).

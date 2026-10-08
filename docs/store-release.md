@@ -19,7 +19,7 @@ de las tiendas, y lo que queda fuera del código.
 | Apple: exención de cifrado (`ITSAppUsesNonExemptEncryption`) | `Info.plist` |
 | Apple: tokens en el Keychain | `PlatformModule.ios.kt` |
 | Apple: bundle ID `com.photonne.app`, igual que Android (fijo tras el primer build) | `project.pbxproj` |
-| Apple: número de build = versión semver (`1.162.2`), crece solo en cada commit | `.githooks/post-commit` |
+| Apple: número de build = versión semver (`1.162.2`), sube con cada release de release-please | `.github/workflows/release.yml` |
 | Ambas: el asistente de login no trae ninguna URL prerrellenada en release (`Config.xcconfig` no está enlazado al proyecto, así que `PhotonneApiBaseUrl` sale vacío) | `build.gradle.kts`, `Info.plist` |
 
 ## Decisiones tomadas (2026-10-02)
@@ -222,9 +222,9 @@ Connect apuntando a él.
 El flujo de cada versión, una vez montadas las pistas: primero a la prueba
 interna para probarla en el móvil sin esperar a nadie, y de ahí a la cerrada.
 
-1. **Generar el AAB** desde un commit con versión nueva (el hook sube la
-   versión en cada commit y `versionCode` sale de ella), como en el paso 3 de
-   la prueba cerrada:
+1. **Generar el AAB** desde la etiqueta de una release nueva (`git checkout
+   vX.Y.Z`: la versión solo sube al publicar una release y `versionCode` sale
+   de ella), como en el paso 3 de la prueba cerrada:
    ```sh
    cd Src/Photonne.Client.Native
    ./gradlew :composeApp:bundleRelease
