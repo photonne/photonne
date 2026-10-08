@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,7 @@ public class TimelineIndexEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<List<TimelineIndexItemResponse>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -26,34 +27,27 @@ public class TimelineIndexEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
-        try
-        {
-            var userRootPath = $"/assets/users/{username}";
-            var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
-                dbContext, userId, userRootPath, cancellationToken);
+        var userRootPath = $"/assets/users/{username}";
+        var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, cancellationToken);
 
-            // Group by date (UTC day), return descending. Grouping key is
-            // CapturedAt (the timeline sort key) so the scrubber positions
-            // match the asset order shown in the timeline.
-            var index = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
-                .GroupBy(a => a.CapturedAt.Date)
-                .Select(g => new TimelineIndexItemResponse
-                {
-                    Date = g.Key,
-                    Count = g.Count()
-                })
-                .OrderByDescending(x => x.Date)
-                .ToListAsync(cancellationToken);
+        // Group by date (UTC day), return descending. Grouping key is
+        // CapturedAt (the timeline sort key) so the scrubber positions
+        // match the asset order shown in the timeline.
+        var index = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
+            .GroupBy(a => a.CapturedAt.Date)
+            .Select(g => new TimelineIndexItemResponse
+            {
+                Date = g.Key,
+                Count = g.Count()
+            })
+            .OrderByDescending(x => x.Date)
+            .ToListAsync(cancellationToken);
 
-            return Results.Ok(index);
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
-        }
+        return TypedResults.Ok(index);
     }
 }

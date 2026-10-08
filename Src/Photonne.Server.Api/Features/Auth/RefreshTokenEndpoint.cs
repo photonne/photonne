@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -19,7 +21,7 @@ public class RefreshTokenEndpoint : IEndpoint
             .WithDescription("Refreshes JWT using a refresh token");
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<RefreshTokenResponse>, BadRequest<ApiError>, UnauthorizedHttpResult>> Handle(
         [FromBody] RefreshTokenRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
@@ -33,7 +35,7 @@ public class RefreshTokenEndpoint : IEndpoint
 
         if (string.IsNullOrWhiteSpace(presentedToken) || string.IsNullOrWhiteSpace(request.DeviceId))
         {
-            return Results.BadRequest(new { error = "RefreshToken and DeviceId are required" });
+            return TypedResults.BadRequest(new ApiError("RefreshToken and DeviceId are required", "refresh_token_required"));
         }
 
         var deviceId = request.DeviceId.Trim();
@@ -44,14 +46,14 @@ public class RefreshTokenEndpoint : IEndpoint
 
         if (tokenEntity == null || tokenEntity.User == null)
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         if (tokenEntity.RevokedAt.HasValue || tokenEntity.ExpiresAt <= DateTime.UtcNow || !tokenEntity.User.IsActive)
         {
             dbContext.RefreshTokens.Remove(tokenEntity);
             await dbContext.SaveChangesAsync(cancellationToken);
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         // Eliminar tokens previos del mismo dispositivo
@@ -84,7 +86,7 @@ public class RefreshTokenEndpoint : IEndpoint
             RefreshTokenCookie.Append(httpContext, newRefreshToken, refreshEntity.ExpiresAt);
         }
 
-        return Results.Ok(new RefreshTokenResponse
+        return TypedResults.Ok(new RefreshTokenResponse
         {
             Token = token,
             RefreshToken = fromCookie ? string.Empty : newRefreshToken

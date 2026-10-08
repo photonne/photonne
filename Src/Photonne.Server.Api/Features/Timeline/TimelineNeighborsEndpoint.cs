@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+using Photonne.Server.Api.Shared.Dtos;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +24,7 @@ public class TimelineNeighborsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<TimelineNeighborsResponse>, NotFound<ApiError>, UnauthorizedHttpResult>> Handle(
         [FromRoute] Guid assetId,
         [FromQuery] int before,
         [FromQuery] int after,
@@ -38,15 +40,15 @@ public class TimelineNeighborsEndpoint : IEndpoint
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var target = await dbContext.Assets
             .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, ct);
 
         if (target == null)
-            return Results.NotFound();
+            return TypedResults.NotFound(new ApiError($"Asset {assetId} not found", "asset_not_found"));
 
         // ── Permission check — shared with every timeline endpoint. Using the
         // cache also fixes a divergence: this inline copy never included
@@ -114,7 +116,7 @@ public class TimelineNeighborsEndpoint : IEndpoint
         items.Add(targetItem);
         items.AddRange(afterItems);
 
-        return Results.Ok(new TimelineNeighborsResponse
+        return TypedResults.Ok(new TimelineNeighborsResponse
         {
             Items = items,
             CurrentIndex = beforeItems.Count,

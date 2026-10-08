@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public class TimelineEndpoint : IEndpoint
         });
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<TimelinePageResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -40,69 +41,59 @@ public class TimelineEndpoint : IEndpoint
         if (pageSize <= 0) pageSize = 150;
         if (pageSize > 500) pageSize = 500;
 
-        try
+        if (!TryGetUserId(user, out var userId))
         {
-            if (!TryGetUserId(user, out var userId))
-            {
-                return Results.Unauthorized();
-            }
-            var username = user.GetUsername();
-            if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
-
-            var userRootPath = $"/assets/users/{username}";
-            var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
-                dbContext, userId, userRootPath, cancellationToken);
-
-            var query = TimelineQuery.VisibleAssets(dbContext, allowedFolderIds);
-
-            // Apply cursor (exclusive upper bound on CapturedAt — the timeline
-            // sort key, not the filesystem mtime).
-            if (cursor.HasValue)
-            {
-                var cursorUtc = cursor.Value.ToUniversalTime();
-                query = query.Where(a => a.CapturedAt < cursorUtc);
-            }
-
-            if (from.HasValue)
-            {
-                var fromUtc = from.Value.ToUniversalTime();
-                query = query.Where(a => a.CapturedAt >= fromUtc);
-            }
-
-            // Fetch one extra item to determine hasMore. The projection itself
-            // is shared with /api/assets/recent — see TimelineProjection.
-            var page = await query
-                .OrderByDescending(a => a.CapturedAt)
-                .ThenByDescending(a => a.FileModifiedAt)
-                .Take(pageSize + 1)
-                .Select(TimelineProjection.ToResponse)
-                .ToListAsync(cancellationToken);
-
-            var hasMore = page.Count > pageSize;
-            var items = hasMore ? page.Take(pageSize).ToList() : page;
-
-            // Tags travel separately from the main projection so we don't pay
-            // the asset×thumbnail×tag×userTag cartesian fan-out up front. Two
-            // small "WHERE AssetId IN (…)" queries are cheap and let EF stay
-            // on the indexed projection above.
-            await TimelineQuery.HydrateTagsAsync(dbContext, items, cancellationToken);
-
-            var nextCursor = hasMore ? items.Last().FileCreatedAt : (DateTime?)null;
-
-            return Results.Ok(new TimelinePageResponse
-            {
-                Items = items,
-                HasMore = hasMore,
-                NextCursor = nextCursor
-            });
+            return TypedResults.Unauthorized();
         }
-        catch (Exception ex)
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
+
+        var userRootPath = $"/assets/users/{username}";
+        var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, cancellationToken);
+
+        var query = TimelineQuery.VisibleAssets(dbContext, allowedFolderIds);
+
+        // Apply cursor (exclusive upper bound on CapturedAt — the timeline
+        // sort key, not the filesystem mtime).
+        if (cursor.HasValue)
         {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError
-            );
+            var cursorUtc = cursor.Value.ToUniversalTime();
+            query = query.Where(a => a.CapturedAt < cursorUtc);
         }
+
+        if (from.HasValue)
+        {
+            var fromUtc = from.Value.ToUniversalTime();
+            query = query.Where(a => a.CapturedAt >= fromUtc);
+        }
+
+        // Fetch one extra item to determine hasMore. The projection itself
+        // is shared with /api/assets/recent — see TimelineProjection.
+        var page = await query
+            .OrderByDescending(a => a.CapturedAt)
+            .ThenByDescending(a => a.FileModifiedAt)
+            .Take(pageSize + 1)
+            .Select(TimelineProjection.ToResponse)
+            .ToListAsync(cancellationToken);
+
+        var hasMore = page.Count > pageSize;
+        var items = hasMore ? page.Take(pageSize).ToList() : page;
+
+        // Tags travel separately from the main projection so we don't pay
+        // the asset×thumbnail×tag×userTag cartesian fan-out up front. Two
+        // small "WHERE AssetId IN (…)" queries are cheap and let EF stay
+        // on the indexed projection above.
+        await TimelineQuery.HydrateTagsAsync(dbContext, items, cancellationToken);
+
+        var nextCursor = hasMore ? items.Last().FileCreatedAt : (DateTime?)null;
+
+        return TypedResults.Ok(new TimelinePageResponse
+        {
+            Items = items,
+            HasMore = hasMore,
+            NextCursor = nextCursor
+        });
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)

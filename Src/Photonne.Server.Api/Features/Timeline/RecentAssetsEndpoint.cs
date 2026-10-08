@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,7 @@ public class RecentAssetsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<TimelineResponse>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -40,10 +41,10 @@ public class RecentAssetsEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var take = limit.GetValueOrDefault(10);
         if (take <= 0) take = 10;
@@ -60,6 +61,6 @@ public class RecentAssetsEndpoint : IEndpoint
             .Select(TimelineProjection.ToResponse)
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(items);
+        return TypedResults.Ok(items);
     }
 }

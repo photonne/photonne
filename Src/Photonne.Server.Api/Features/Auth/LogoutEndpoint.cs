@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
@@ -23,7 +24,7 @@ public class LogoutEndpoint : IEndpoint
             .AllowAnonymous();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<NoContent> Handle(
         [FromServices] ApplicationDbContext dbContext,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -38,6 +39,6 @@ public class LogoutEndpoint : IEndpoint
 
         RefreshTokenCookie.Delete(httpContext);
         MediaSessionCookie.Delete(httpContext);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +34,7 @@ public class TimelineYearsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<TimelineYearResponse>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -46,73 +47,66 @@ public class TimelineYearsEndpoint : IEndpoint
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
-        try
-        {
-            var userRootPath = $"/assets/users/{username}";
-            var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
-                dbContext, userId, userRootPath, cancellationToken);
+        var userRootPath = $"/assets/users/{username}";
+        var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, cancellationToken);
 
-            // ── Phase 1: id + capture date of every visible asset, timeline
-            // order (newest first). Two columns keep the row size tiny. ──────
-            var all = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
-                .OrderByDescending(a => a.CapturedAt)
-                .ThenByDescending(a => a.FileModifiedAt)
-                .Select(a => new { a.Id, a.CapturedAt })
-                .ToListAsync(cancellationToken);
+        // ── Phase 1: id + capture date of every visible asset, timeline
+        // order (newest first). Two columns keep the row size tiny. ──────
+        var all = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
+            .OrderByDescending(a => a.CapturedAt)
+            .ThenByDescending(a => a.FileModifiedAt)
+            .Select(a => new { a.Id, a.CapturedAt })
+            .ToListAsync(cancellationToken);
 
-            // GroupBy preserves the newest-first element order within each
-            // group; years are emitted newest-first as well.
-            var yearShapes = all
-                .GroupBy(x => x.CapturedAt.Year)
-                .OrderByDescending(g => g.Key)
-                .Select(g =>
-                {
-                    var rows = g.ToList();
-                    var step = (int)Math.Ceiling(rows.Count / (double)sampleSize);
-                    var ids = rows
-                        .Where((_, i) => i % step == 0)
-                        .Take(sampleSize)
-                        .Select(r => r.Id)
-                        .ToList();
-                    return (Year: g.Key, Count: rows.Count, Ids: ids);
-                })
-                .ToList();
-
-            // ── Phase 2: hydrate the picked ids through the shared
-            // projection and stitch them back in sampled order. ─────────────
-            var sampledIds = yearShapes.SelectMany(y => y.Ids).ToList();
-            var byId = new Dictionary<Guid, TimelineResponse>();
-            if (sampledIds.Count > 0)
+        // GroupBy preserves the newest-first element order within each
+        // group; years are emitted newest-first as well.
+        var yearShapes = all
+            .GroupBy(x => x.CapturedAt.Year)
+            .OrderByDescending(g => g.Key)
+            .Select(g =>
             {
-                var items = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
-                    .Where(a => sampledIds.Contains(a.Id))
-                    .Select(TimelineProjection.ToResponse)
-                    .ToListAsync(cancellationToken);
-                await TimelineQuery.HydrateTagsAsync(dbContext, items, cancellationToken);
-                byId = items.ToDictionary(i => i.Id);
-            }
+                var rows = g.ToList();
+                var step = (int)Math.Ceiling(rows.Count / (double)sampleSize);
+                var ids = rows
+                    .Where((_, i) => i % step == 0)
+                    .Take(sampleSize)
+                    .Select(r => r.Id)
+                    .ToList();
+                return (Year: g.Key, Count: rows.Count, Ids: ids);
+            })
+            .ToList();
 
-            var response = yearShapes
-                .Select(y => new TimelineYearResponse
-                {
-                    Year = y.Year,
-                    Count = y.Count,
-                    Items = y.Ids
-                        .Where(byId.ContainsKey)
-                        .Select(id => byId[id])
-                        .ToList()
-                })
-                .ToList();
-
-            return Results.Ok(response);
-        }
-        catch (Exception ex)
+        // ── Phase 2: hydrate the picked ids through the shared
+        // projection and stitch them back in sampled order. ─────────────
+        var sampledIds = yearShapes.SelectMany(y => y.Ids).ToList();
+        var byId = new Dictionary<Guid, TimelineResponse>();
+        if (sampledIds.Count > 0)
         {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+            var items = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
+                .Where(a => sampledIds.Contains(a.Id))
+                .Select(TimelineProjection.ToResponse)
+                .ToListAsync(cancellationToken);
+            await TimelineQuery.HydrateTagsAsync(dbContext, items, cancellationToken);
+            byId = items.ToDictionary(i => i.Id);
         }
+
+        var response = yearShapes
+            .Select(y => new TimelineYearResponse
+            {
+                Year = y.Year,
+                Count = y.Count,
+                Items = y.Ids
+                    .Where(byId.ContainsKey)
+                    .Select(id => byId[id])
+                    .ToList()
+            })
+            .ToList();
+
+        return TypedResults.Ok(response);
     }
 }
