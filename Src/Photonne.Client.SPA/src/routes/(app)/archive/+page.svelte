@@ -7,7 +7,7 @@
 	import { LibraryActions } from '#lib/library/library-actions.svelte.js';
 	import ToolButton from '#lib/library/ToolButton.svelte';
 	import { leaveViewerThen } from '#lib/library/viewer-flow.js';
-	import ViewerExtras from '#lib/library/ViewerExtras.svelte';
+	import ViewerExtraButtons from '#lib/library/ViewerExtraButtons.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
 	import { PagedList } from '#lib/timeline/paged-list.svelte.js';
@@ -76,19 +76,19 @@
 			available={['favorite', 'album', 'folder', 'download', 'trash']}
 		/>
 	{/snippet}
+	{#snippet viewerExtra()}
+		<ViewerExtraButtons
+			actions={[
+				{
+					label: m.archive_unarchive(),
+					icon: { path: icons.unarchive },
+					disabled: actions.busy,
+					run: () => leaveViewerThen(viewer, list.store.order, (ids) => actions.unarchive(ids))
+				}
+			]}
+		/>
+	{/snippet}
 </CollectionView>
-
-<ViewerExtras
-	openId={viewer.openId}
-	actions={[
-		{
-			label: m.archive_unarchive(),
-			icon: { path: icons.unarchive },
-			disabled: actions.busy,
-			run: () => leaveViewerThen(viewer, list.store.order, (ids) => actions.unarchive(ids))
-		}
-	]}
-/>
 
 <ConfirmDialog
 	open={confirmingAll}
