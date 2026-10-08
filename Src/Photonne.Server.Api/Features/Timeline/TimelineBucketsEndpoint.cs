@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,7 @@ public class TimelineBucketsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<TimelineBucketResponse>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -35,39 +36,32 @@ public class TimelineBucketsEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
-        try
-        {
-            var userRootPath = $"/assets/users/{username}";
-            var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
-                dbContext, userId, userRootPath, cancellationToken);
+        var userRootPath = $"/assets/users/{username}";
+        var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, cancellationToken);
 
-            // Grouping key is CapturedAt's calendar month — the exact same
-            // expression TimelineBucketItemsEndpoint filters by, so a bucket's
-            // count always equals its content size.
-            var buckets = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
-                .GroupBy(a => new { a.CapturedAt.Year, a.CapturedAt.Month })
-                .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
-                .OrderByDescending(x => x.Year)
-                .ThenByDescending(x => x.Month)
-                .ToListAsync(cancellationToken);
+        // Grouping key is CapturedAt's calendar month — the exact same
+        // expression TimelineBucketItemsEndpoint filters by, so a bucket's
+        // count always equals its content size.
+        var buckets = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
+            .GroupBy(a => new { a.CapturedAt.Year, a.CapturedAt.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
+            .OrderByDescending(x => x.Year)
+            .ThenByDescending(x => x.Month)
+            .ToListAsync(cancellationToken);
 
-            var response = buckets
-                .Select(b => new TimelineBucketResponse
-                {
-                    Key = $"{b.Year:D4}-{b.Month:D2}",
-                    Count = b.Count
-                })
-                .ToList();
+        var response = buckets
+            .Select(b => new TimelineBucketResponse
+            {
+                Key = $"{b.Year:D4}-{b.Month:D2}",
+                Count = b.Count
+            })
+            .ToList();
 
-            return Results.Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
-        }
+        return TypedResults.Ok(response);
     }
 }

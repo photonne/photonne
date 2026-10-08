@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -23,7 +25,7 @@ public class LoginEndpoint : IEndpoint
         login.RequireRateLimiting("demo-login");
     }
 
-    private async Task<IResult> Handle(
+    private async Task<Results<Ok<LoginResponse>, BadRequest<ApiError>, UnauthorizedHttpResult>> Handle(
         [FromBody] LoginRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
@@ -32,12 +34,12 @@ public class LoginEndpoint : IEndpoint
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return Results.BadRequest(new { error = "Username and password are required" });
+            return TypedResults.BadRequest(new ApiError("Username and password are required", "credentials_required"));
         }
 
         if (string.IsNullOrWhiteSpace(request.DeviceId))
         {
-            return Results.BadRequest(new { error = "DeviceId is required" });
+            return TypedResults.BadRequest(new ApiError("DeviceId is required", "device_id_required"));
         }
         var deviceId = request.DeviceId.Trim();
 
@@ -47,12 +49,12 @@ public class LoginEndpoint : IEndpoint
 
         if (user == null || !user.IsActive)
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         if (!authService.VerifyPassword(request.Password, user.PasswordHash))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         // Actualizar último login
@@ -88,7 +90,7 @@ public class LoginEndpoint : IEndpoint
             RefreshTokenCookie.Append(httpContext, refreshToken, refreshEntity.ExpiresAt);
         }
 
-        return Results.Ok(new LoginResponse
+        return TypedResults.Ok(new LoginResponse
         {
             Token = token,
             RefreshToken = request.RefreshTokenInCookie ? string.Empty : refreshToken,

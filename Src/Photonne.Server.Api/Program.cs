@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Photonne.Server.Api;
 using Photonne.Server.Api.Shared.Authorization;
+using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Services;
 using Scalar.AspNetCore;
 
@@ -101,9 +102,7 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-//builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
+builder.Services.AddPhotonneOpenApi();
 
 // Configurar JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
@@ -178,9 +177,12 @@ await app.EnsureFFmpegAsync();
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
-    app.MapOpenApi();
     app.MapScalarApiReference();
 }
+
+// The OpenAPI document is the contract the clients are generated from, so it
+// is served in every environment (JSON only; the Scalar UI stays dev-only).
+app.MapOpenApi();
 
 app.Use(async (context, next) =>
 {

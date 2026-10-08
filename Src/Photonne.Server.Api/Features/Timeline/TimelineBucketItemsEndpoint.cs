@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+using Photonne.Server.Api.Shared.Dtos;
 using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -28,7 +30,7 @@ public class TimelineBucketItemsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<TimelineResponse>>, BadRequest<ApiError>, UnauthorizedHttpResult>> Handle(
         [FromRoute] string yearMonth,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
@@ -38,42 +40,35 @@ public class TimelineBucketItemsEndpoint : IEndpoint
         if (!DateTime.TryParseExact(yearMonth, "yyyy-MM", CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out var parsed))
         {
-            return Results.BadRequest(new { detail = "Expected a bucket key in 'yyyy-MM' format." });
+            return TypedResults.BadRequest(new ApiError("Expected a bucket key in 'yyyy-MM' format.", "invalid_bucket_key"));
         }
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
-        try
-        {
-            var userRootPath = $"/assets/users/{username}";
-            var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
-                dbContext, userId, userRootPath, cancellationToken);
+        var userRootPath = $"/assets/users/{username}";
+        var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, cancellationToken);
 
-            // Half-open month range on CapturedAt. Equivalent to the
-            // Year/Month GroupBy in TimelineBucketsEndpoint (both see the
-            // stored UTC instant), but range-shaped so Postgres can walk the
-            // CapturedAt index instead of computing date parts per row.
-            var monthStart = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
-            var monthEnd = monthStart.AddMonths(1);
+        // Half-open month range on CapturedAt. Equivalent to the
+        // Year/Month GroupBy in TimelineBucketsEndpoint (both see the
+        // stored UTC instant), but range-shaped so Postgres can walk the
+        // CapturedAt index instead of computing date parts per row.
+        var monthStart = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+        var monthEnd = monthStart.AddMonths(1);
 
-            var items = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
-                .Where(a => a.CapturedAt >= monthStart && a.CapturedAt < monthEnd)
-                .OrderByDescending(a => a.CapturedAt)
-                .ThenByDescending(a => a.FileModifiedAt)
-                .Select(TimelineProjection.ToResponse)
-                .ToListAsync(cancellationToken);
+        var items = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
+            .Where(a => a.CapturedAt >= monthStart && a.CapturedAt < monthEnd)
+            .OrderByDescending(a => a.CapturedAt)
+            .ThenByDescending(a => a.FileModifiedAt)
+            .Select(TimelineProjection.ToResponse)
+            .ToListAsync(cancellationToken);
 
-            await TimelineQuery.HydrateTagsAsync(dbContext, items, cancellationToken);
+        await TimelineQuery.HydrateTagsAsync(dbContext, items, cancellationToken);
 
-            return Results.Ok(items);
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
-        }
+        return TypedResults.Ok(items);
     }
 }

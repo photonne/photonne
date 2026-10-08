@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Interfaces;
 
@@ -12,14 +13,14 @@ public class MediaSessionEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/auth/media-session", (HttpContext httpContext) =>
+        app.MapPost("/api/auth/media-session", Results<NoContent, UnauthorizedHttpResult> (HttpContext httpContext) =>
             {
                 var header = httpContext.Request.Headers.Authorization.ToString();
                 if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                    return Results.Unauthorized();
+                    return TypedResults.Unauthorized();
 
                 MediaSessionCookie.Append(httpContext, header["Bearer ".Length..].Trim());
-                return Results.NoContent();
+                return TypedResults.NoContent();
             })
             .WithName("CreateMediaSession")
             .WithTags("Authentication")
