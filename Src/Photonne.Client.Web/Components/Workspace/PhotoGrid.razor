@@ -36,17 +36,17 @@
                 }
             </div>
         }
-        @foreach (var section in _sections)
+        @foreach (var month in _sections)
         {
-            <section class="pg-month" data-bucket="@section.Key" @key="section.Key">
+            <section class="pg-month" data-bucket="@month.Key" @key="month.Key">
                 <div class="pg-month-header">
-                    @if (Selection != null && section.Items != null)
+                    @if (Selection != null && month.Items != null)
                     {
-                        var (any, all) = Selection.StateOf(_idsBySection.GetValueOrDefault(section.Key) ?? new List<Guid>());
+                        var (any, all) = Selection.StateOf(_idsBySection.GetValueOrDefault(month.Key) ?? new List<Guid>());
                         <button type="button"
                                 class="pg-month-check @(all ? "all" : any ? "partial" : "")"
                                 aria-label="Seleccionar mes"
-                                @onclick="() => ToggleMonth(section, all)">
+                                @onclick="() => ToggleMonth(month, all)">
                             <svg viewBox="0 0 24 24">
                                 <circle cx="12" cy="12" r="10" fill="@(any ? "var(--mud-palette-primary)" : "none")" stroke="currentColor" stroke-width="2"/>
                                 @if (all)
@@ -60,19 +60,19 @@
                             </svg>
                         </button>
                     }
-                    <span class="pg-month-title">@FormatMonth(section.Key)</span>
-                    <span class="pg-month-count">@section.Count</span>
+                    <span class="pg-month-title">@FormatMonth(month.Key)</span>
+                    <span class="pg-month-count">@month.Count</span>
                 </div>
                 <div class="pg-month-body"
-                     style="content-visibility:auto;contain-intrinsic-size:auto @(Px(section.ContentHeight))">
-                    @if (section.Layout != null && section.Items != null)
+                     style="content-visibility:auto;contain-intrinsic-size:auto @(Px(month.ContentHeight))">
+                    @if (month.Layout != null && month.Items != null)
                     {
-                        @foreach (var row in section.Layout.Rows)
+                        @foreach (var row in month.Layout.Rows)
                         {
                             <div class="pg-row" style="height:@(Px(row.Height))">
                                 @for (var i = row.StartIndex; i < row.StartIndex + row.Count; i++)
                                 {
-                                    var item = section.Items[i];
+                                    var item = month.Items[i];
                                     <PhotoCell @key="item.Id"
                                                Item="item"
                                                Width="CellWidth(item, row.Height)"
@@ -88,7 +88,7 @@
                     }
                     else
                     {
-                        <div class="pg-skeleton" style="height:@(Px(section.ContentHeight))"></div>
+                        <div class="pg-skeleton" style="height:@(Px(month.ContentHeight))"></div>
                     }
                 </div>
             </section>
