@@ -43,8 +43,10 @@
 	color-scheme: light;
 }
 
+/* Dark tokens: by default follow the system; the user's choice (Ajustes →
+   Apariencia) pins one with data-theme on <html> (see src/lib/theme.ts). */
 @media (prefers-color-scheme: dark) {
-	:root {
+	:root:not([data-theme='light']) {
 		--color-bg: #111214;
 		--color-surface: #1b1c1f;
 		--color-surface-raised: #232428;
@@ -59,6 +61,22 @@
 		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 		color-scheme: dark;
 	}
+}
+
+:root[data-theme='dark'] {
+	--color-bg: #111214;
+	--color-surface: #1b1c1f;
+	--color-surface-raised: #232428;
+	--color-border: #2f3136;
+	--color-text: #e8e8ea;
+	--color-text-muted: #a0a3a8;
+	--color-accent: #60a5fa;
+	--color-accent-text: #0b1220;
+	--color-danger: #ef9a9a;
+	--color-focus: #93c5fd;
+	--color-placeholder: #26282c;
+	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
+	color-scheme: dark;
 }
 
 *,
