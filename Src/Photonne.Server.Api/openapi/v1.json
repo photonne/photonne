@@ -10876,6 +10876,12 @@
         }
       },
       "AdminStatsResponse": {
+        "required": [
+          "totalPhotos",
+          "totalVideos",
+          "totalBytes",
+          "users"
+        ],
         "type": "object",
         "properties": {
           "totalPhotos": {
@@ -10899,6 +10905,15 @@
         }
       },
       "AdminUserUsage": {
+        "required": [
+          "userId",
+          "displayName",
+          "email",
+          "photos",
+          "videos",
+          "photoBytes",
+          "videoBytes"
+        ],
         "type": "object",
         "properties": {
           "userId": {
@@ -10944,6 +10959,18 @@
         }
       },
       "AlbumPermissionDto": {
+        "required": [
+          "id",
+          "userId",
+          "username",
+          "email",
+          "canRead",
+          "canWrite",
+          "canDelete",
+          "canManagePermissions",
+          "grantedAt",
+          "grantedByUserId"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10986,6 +11013,11 @@
         }
       },
       "AlbumPinResponse": {
+        "required": [
+          "albumId",
+          "isPinned",
+          "pinnedAt"
+        ],
         "type": "object",
         "properties": {
           "albumId": {
@@ -11005,6 +11037,27 @@
         }
       },
       "AlbumResponse": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "createdAt",
+          "updatedAt",
+          "assetCount",
+          "coverThumbnailUrl",
+          "previewThumbnailUrls",
+          "isOwner",
+          "isShared",
+          "sharedWithCount",
+          "canRead",
+          "canWrite",
+          "canDelete",
+          "canManagePermissions",
+          "hasActiveShareLink",
+          "isPinned",
+          "pinnedAt",
+          "kind"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -11112,6 +11165,38 @@
         }
       },
       "AssetDetailResponse": {
+        "required": [
+          "id",
+          "fileName",
+          "fullPath",
+          "fileSize",
+          "fileCreatedAt",
+          "fileModifiedAt",
+          "capturedAt",
+          "extension",
+          "scannedAt",
+          "type",
+          "checksum",
+          "hasExif",
+          "hasThumbnails",
+          "folderId",
+          "folderPath",
+          "exif",
+          "thumbnails",
+          "tags",
+          "userTags",
+          "autoTags",
+          "syncStatus",
+          "isFavorite",
+          "isArchived",
+          "isFileMissing",
+          "caption",
+          "aiDescription",
+          "isReadOnly",
+          "isOwner",
+          "canEdit",
+          "canSaveMotionFrame"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -11297,6 +11382,9 @@
         }
       },
       "AssetYearBreakdownResponse": {
+        "required": [
+          "groups"
+        ],
         "type": "object",
         "properties": {
           "groups": {
@@ -11330,6 +11418,14 @@
         }
       },
       "AttributionResponse": {
+        "required": [
+          "name",
+          "license",
+          "licenseUrl",
+          "sourceUrl",
+          "notice",
+          "datasetDate"
+        ],
         "type": "object",
         "properties": {
           "name": {
@@ -11387,7 +11483,8 @@
       "BackfillResponse": {
         "required": [
           "enqueued",
-          "total"
+          "total",
+          "elapsedMs"
         ],
         "type": "object",
         "properties": {
@@ -11469,7 +11566,8 @@
       },
       "CancelQueueResponse": {
         "required": [
-          "deleted"
+          "deleted",
+          "stillProcessing"
         ],
         "type": "object",
         "properties": {
@@ -11485,6 +11583,14 @@
         }
       },
       "CaptureDateSuggestionResponse": {
+        "required": [
+          "currentDate",
+          "currentSource",
+          "exifDate",
+          "inferredDate",
+          "inferredOrigin",
+          "fileDate"
+        ],
         "type": "object",
         "properties": {
           "currentDate": {
@@ -11809,6 +11915,13 @@
         }
       },
       "DemoInfoResponse": {
+        "required": [
+          "enabled",
+          "demoUsername",
+          "demoPassword",
+          "resetIntervalHours",
+          "nextResetAt"
+        ],
         "type": "object",
         "properties": {
           "enabled": {
@@ -11909,6 +12022,11 @@
         }
       },
       "DownloadOptionsResponse": {
+        "required": [
+          "total",
+          "convertibleCount",
+          "extensions"
+        ],
         "type": "object",
         "properties": {
           "total": {
@@ -11981,6 +12099,13 @@
         }
       },
       "DuplicatesProgressUpdate": {
+        "required": [
+          "message",
+          "percentage",
+          "statistics",
+          "isCompleted",
+          "foundGroup"
+        ],
         "type": "object",
         "properties": {
           "message": {
@@ -12464,6 +12589,18 @@
         }
       },
       "FolderPermissionDto": {
+        "required": [
+          "id",
+          "userId",
+          "username",
+          "email",
+          "canRead",
+          "canWrite",
+          "canDelete",
+          "canManagePermissions",
+          "grantedAt",
+          "grantedByUserId"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12506,6 +12643,11 @@
         }
       },
       "FolderPinResponse": {
+        "required": [
+          "folderId",
+          "isPinned",
+          "pinnedAt"
+        ],
         "type": "object",
         "properties": {
           "folderId": {
@@ -12525,6 +12667,26 @@
         }
       },
       "FolderResponse": {
+        "required": [
+          "id",
+          "path",
+          "name",
+          "parentFolderId",
+          "createdAt",
+          "assetCount",
+          "firstAssetId",
+          "previewAssetIds",
+          "isShared",
+          "isOwner",
+          "canWrite",
+          "canDelete",
+          "sharedWithCount",
+          "externalLibraryId",
+          "excludedFromDiscovery",
+          "isPinned",
+          "pinnedAt",
+          "subFolders"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12687,6 +12849,13 @@
         }
       },
       "IndexProgressUpdate": {
+        "required": [
+          "message",
+          "percentage",
+          "statistics",
+          "isCompleted",
+          "taskId"
+        ],
         "type": "object",
         "properties": {
           "message": {
@@ -12788,6 +12957,10 @@
         }
       },
       "LatestReleaseResponse": {
+        "required": [
+          "latestVersion",
+          "releaseUrl"
+        ],
         "type": "object",
         "properties": {
           "latestVersion": {
@@ -12822,6 +12995,11 @@
         }
       },
       "LoginResponse": {
+        "required": [
+          "token",
+          "refreshToken",
+          "user"
+        ],
         "type": "object",
         "properties": {
           "token": {
@@ -12836,6 +13014,12 @@
         }
       },
       "MaintenanceTaskResult": {
+        "required": [
+          "success",
+          "message",
+          "processed",
+          "affected"
+        ],
         "type": "object",
         "properties": {
           "success": {
@@ -12855,6 +13039,17 @@
         }
       },
       "MapClusterResponse": {
+        "required": [
+          "id",
+          "latitude",
+          "longitude",
+          "count",
+          "assetIds",
+          "earliestDate",
+          "latestDate",
+          "firstAssetId",
+          "hasThumbnail"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12900,6 +13095,13 @@
         }
       },
       "MapPointResponse": {
+        "required": [
+          "id",
+          "latitude",
+          "longitude",
+          "hasThumbnail",
+          "date"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12926,7 +13128,10 @@
       "MediaRecognitionPendingResponse": {
         "required": [
           "unprocessed",
-          "inQueue"
+          "inQueue",
+          "completed",
+          "retrying",
+          "failed"
         ],
         "type": "object",
         "properties": {
@@ -12956,6 +13161,22 @@
         }
       },
       "MemoryDetailResponse": {
+        "required": [
+          "assets",
+          "id",
+          "kind",
+          "title",
+          "subtitle",
+          "themeKey",
+          "groupTitle",
+          "cardLabel",
+          "coverAssetId",
+          "assetCount",
+          "companionPersonId",
+          "companionName",
+          "windowStart",
+          "windowEnd"
+        ],
         "type": "object",
         "properties": {
           "assets": {
@@ -13027,6 +13248,21 @@
         }
       },
       "MemoryResponse": {
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "subtitle",
+          "themeKey",
+          "groupTitle",
+          "cardLabel",
+          "coverAssetId",
+          "assetCount",
+          "companionPersonId",
+          "companionName",
+          "windowStart",
+          "windowEnd"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13117,6 +13353,13 @@
         }
       },
       "MetadataProgressUpdate": {
+        "required": [
+          "message",
+          "percentage",
+          "statistics",
+          "isCompleted",
+          "taskId"
+        ],
         "type": "object",
         "properties": {
           "message": {
@@ -13161,6 +13404,12 @@
         }
       },
       "MonthlyGrowthPoint": {
+        "required": [
+          "year",
+          "month",
+          "photos",
+          "videos"
+        ],
         "type": "object",
         "properties": {
           "year": {
@@ -13183,8 +13432,7 @@
       },
       "MotionClipAttachResponse": {
         "required": [
-          "message",
-          "assetId"
+          "message"
         ],
         "type": "object",
         "properties": {
@@ -13231,6 +13479,9 @@
         }
       },
       "MotionFramesResponse": {
+        "required": [
+          "frameCount"
+        ],
         "type": "object",
         "properties": {
           "frameCount": {
@@ -13266,6 +13517,10 @@
         }
       },
       "MoveFolderAssetsResponse": {
+        "required": [
+          "moved",
+          "yearBreakdown"
+        ],
         "type": "object",
         "properties": {
           "moved": {
@@ -13487,6 +13742,11 @@
         }
       },
       "OrganizeInboxPageResponse": {
+        "required": [
+          "items",
+          "hasMore",
+          "nextCursor"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -13530,6 +13790,10 @@
         }
       },
       "OrganizeRuleMoveResponse": {
+        "required": [
+          "moved",
+          "yearBreakdown"
+        ],
         "type": "object",
         "properties": {
           "moved": {
@@ -13567,6 +13831,11 @@
         }
       },
       "OrganizeRulePreviewResponse": {
+        "required": [
+          "count",
+          "sampleAssetIds",
+          "yearBreakdown"
+        ],
         "type": "object",
         "properties": {
           "count": {
@@ -13604,6 +13873,9 @@
         }
       },
       "OrganizeRuleReviewResponse": {
+        "required": [
+          "groups"
+        ],
         "type": "object",
         "properties": {
           "groups": {
@@ -13615,6 +13887,16 @@
         }
       },
       "OrganizeSuggestionResponse": {
+        "required": [
+          "kind",
+          "key",
+          "title",
+          "from",
+          "to",
+          "count",
+          "coverAssetId",
+          "assetIds"
+        ],
         "type": "object",
         "properties": {
           "kind": {
@@ -13705,7 +13987,12 @@
         "required": [
           "unprocessed",
           "inQueue",
-          "completed"
+          "completed",
+          "retrying",
+          "failed",
+          "processing",
+          "lastCompletedAt",
+          "completedLastMinute"
         ],
         "type": "object",
         "properties": {
@@ -14007,6 +14294,10 @@
         }
       },
       "PhysicalDeleteResult": {
+        "required": [
+          "deleted",
+          "errors"
+        ],
         "type": "object",
         "properties": {
           "deleted": {
@@ -14022,6 +14313,17 @@
         }
       },
       "PhysicalDuplicateFile": {
+        "required": [
+          "physicalPath",
+          "virtualPath",
+          "fileName",
+          "directory",
+          "fileSize",
+          "fileModifiedAt",
+          "isIndexed",
+          "assetId",
+          "ownerUsername"
+        ],
         "type": "object",
         "properties": {
           "physicalPath": {
@@ -14114,6 +14416,10 @@
         }
       },
       "PreviewResponse": {
+        "required": [
+          "count",
+          "sampleAssetIds"
+        ],
         "type": "object",
         "properties": {
           "count": {
@@ -14187,6 +14493,10 @@
         }
       },
       "PublicVersionResponse": {
+        "required": [
+          "version",
+          "minClientVersion"
+        ],
         "type": "object",
         "properties": {
           "version": {
@@ -14335,6 +14645,10 @@
         }
       },
       "RefreshTokenResponse": {
+        "required": [
+          "token",
+          "refreshToken"
+        ],
         "type": "object",
         "properties": {
           "token": {
@@ -14376,6 +14690,20 @@
         }
       },
       "RenamePreviewDto": {
+        "required": [
+          "isValid",
+          "isNoChange",
+          "errorMessage",
+          "currentUsername",
+          "newUsername",
+          "currentVirtualPath",
+          "newVirtualPath",
+          "currentPhysicalPath",
+          "newPhysicalPath",
+          "folderExistsOnDisk",
+          "assetsToUpdate",
+          "foldersToUpdate"
+        ],
         "type": "object",
         "properties": {
           "isValid": {
@@ -14622,6 +14950,9 @@
         }
       },
       "SaveMotionFrameResponse": {
+        "required": [
+          "assetId"
+        ],
         "type": "object",
         "properties": {
           "assetId": {
@@ -14659,7 +14990,9 @@
           "assetsFound",
           "assetsIndexed",
           "assetsMarkedMissing",
-          "isCompleted"
+          "isCompleted",
+          "error",
+          "taskId"
         ],
         "type": "object",
         "properties": {
@@ -14724,6 +15057,10 @@
         }
       },
       "SearchResponse": {
+        "required": [
+          "items",
+          "hasMore"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -14738,6 +15075,10 @@
         }
       },
       "SemanticSearchItem": {
+        "required": [
+          "score",
+          "asset"
+        ],
         "type": "object",
         "properties": {
           "score": {
@@ -14750,6 +15091,9 @@
         }
       },
       "SemanticSearchResponse": {
+        "required": [
+          "items"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -14761,6 +15105,25 @@
         }
       },
       "SentShareLinkDto": {
+        "required": [
+          "token",
+          "createdAt",
+          "expiresAt",
+          "hasPassword",
+          "allowDownload",
+          "maxViews",
+          "viewCount",
+          "allowUpload",
+          "uploadCount",
+          "assetId",
+          "assetFileName",
+          "assetType",
+          "assetThumbnailUrl",
+          "albumId",
+          "albumName",
+          "albumCoverUrl",
+          "shareUrl"
+        ],
         "type": "object",
         "properties": {
           "token": {
@@ -14945,6 +15308,11 @@
         }
       },
       "ShareableUserDto": {
+        "required": [
+          "id",
+          "username",
+          "email"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -14984,6 +15352,17 @@
         }
       },
       "SharedAssetDto": {
+        "required": [
+          "id",
+          "fileName",
+          "type",
+          "fileCreatedAt",
+          "fileSize",
+          "width",
+          "height",
+          "thumbnailUrl",
+          "contentUrl"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15027,6 +15406,16 @@
         }
       },
       "SharedContentResponse": {
+        "required": [
+          "token",
+          "requiresPassword",
+          "wrongPassword",
+          "allowDownload",
+          "allowUpload",
+          "album",
+          "assets",
+          "expiresAt"
+        ],
         "type": "object",
         "properties": {
           "token": {
@@ -15073,6 +15462,21 @@
         }
       },
       "SharedTrashItemResponse": {
+        "required": [
+          "id",
+          "fileName",
+          "fullPath",
+          "fileSize",
+          "type",
+          "extension",
+          "hasThumbnails",
+          "width",
+          "height",
+          "deletedAt",
+          "deletedByUsername",
+          "deletedFromPath",
+          "deletedFromFolderName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15166,6 +15570,19 @@
         }
       },
       "ShareLinkResponse": {
+        "required": [
+          "token",
+          "albumId",
+          "createdAt",
+          "expiresAt",
+          "hasPassword",
+          "allowDownload",
+          "maxViews",
+          "viewCount",
+          "allowUpload",
+          "uploadCount",
+          "shareUrl"
+        ],
         "type": "object",
         "properties": {
           "token": {
@@ -15230,6 +15647,11 @@
         }
       },
       "SmartAlbumRuleResponse": {
+        "required": [
+          "rule",
+          "people",
+          "folders"
+        ],
         "type": "object",
         "properties": {
           "rule": {
@@ -15250,6 +15672,12 @@
         }
       },
       "SmartRuleFolderRef": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "isShared"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15393,6 +15821,11 @@
         }
       },
       "SmartRulePersonRef": {
+        "required": [
+          "id",
+          "name",
+          "coverFaceId"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15415,6 +15848,19 @@
         }
       },
       "StorageInfoDto": {
+        "required": [
+          "usedBytes",
+          "quotaBytes",
+          "photos",
+          "videos",
+          "photoBytes",
+          "videoBytes",
+          "personalPhotos",
+          "personalVideos",
+          "personalPhotoBytes",
+          "personalVideoBytes",
+          "libraries"
+        ],
         "type": "object",
         "properties": {
           "usedBytes": {
@@ -15469,6 +15915,14 @@
         }
       },
       "StorageLibraryUsage": {
+        "required": [
+          "id",
+          "name",
+          "photos",
+          "videos",
+          "photoBytes",
+          "videoBytes"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15503,7 +15957,6 @@
       "SyncAssetResponse": {
         "required": [
           "message",
-          "assetId",
           "targetPath"
         ],
         "type": "object",
@@ -15524,6 +15977,13 @@
         }
       },
       "ThumbnailInfoResponse": {
+        "required": [
+          "id",
+          "size",
+          "width",
+          "height",
+          "assetId"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15573,6 +16033,13 @@
         }
       },
       "ThumbnailProgressUpdate": {
+        "required": [
+          "message",
+          "percentage",
+          "statistics",
+          "isCompleted",
+          "taskId"
+        ],
         "type": "object",
         "properties": {
           "message": {
@@ -15605,6 +16072,10 @@
         }
       },
       "TimelineBucketResponse": {
+        "required": [
+          "key",
+          "count"
+        ],
         "type": "object",
         "properties": {
           "key": {
@@ -15617,6 +16088,10 @@
         }
       },
       "TimelineIndexItemResponse": {
+        "required": [
+          "date",
+          "count"
+        ],
         "type": "object",
         "properties": {
           "date": {
@@ -15630,6 +16105,11 @@
         }
       },
       "TimelineNeighborItem": {
+        "required": [
+          "id",
+          "fullPath",
+          "fileCreatedAt"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15646,6 +16126,12 @@
         }
       },
       "TimelineNeighborsResponse": {
+        "required": [
+          "items",
+          "currentIndex",
+          "hasMoreBefore",
+          "hasMoreAfter"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -15667,6 +16153,11 @@
         }
       },
       "TimelinePageResponse": {
+        "required": [
+          "items",
+          "hasMore",
+          "nextCursor"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -15688,6 +16179,31 @@
         }
       },
       "TimelineResponse": {
+        "required": [
+          "id",
+          "fileName",
+          "fullPath",
+          "fileSize",
+          "fileCreatedAt",
+          "fileModifiedAt",
+          "extension",
+          "scannedAt",
+          "type",
+          "checksum",
+          "hasExif",
+          "hasThumbnails",
+          "syncStatus",
+          "width",
+          "height",
+          "deletedAt",
+          "tags",
+          "isFavorite",
+          "isArchived",
+          "isFileMissing",
+          "dominantColor",
+          "thumbnailsGeneratedAt",
+          "isReadOnly"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15789,6 +16305,11 @@
         }
       },
       "TimelineYearResponse": {
+        "required": [
+          "year",
+          "count",
+          "items"
+        ],
         "type": "object",
         "properties": {
           "year": {
@@ -15808,6 +16329,11 @@
         }
       },
       "TrashCleanupResult": {
+        "required": [
+          "success",
+          "message",
+          "deleted"
+        ],
         "type": "object",
         "properties": {
           "success": {
@@ -15849,6 +16375,16 @@
         }
       },
       "TrashStatsResponse": {
+        "required": [
+          "totalItems",
+          "totalBytes",
+          "expiredItems",
+          "retentionDays",
+          "maxQuotaMb",
+          "overQuotaUsers",
+          "overQuotaBytes",
+          "perUser"
+        ],
         "type": "object",
         "properties": {
           "totalItems": {
@@ -15888,6 +16424,14 @@
         }
       },
       "TrashUserStat": {
+        "required": [
+          "userId",
+          "username",
+          "items",
+          "bytes",
+          "expiredItems",
+          "overQuota"
+        ],
         "type": "object",
         "properties": {
           "userId": {
@@ -15951,6 +16495,16 @@
         }
       },
       "UnsupportedFileResponse": {
+        "required": [
+          "id",
+          "fileName",
+          "fullPath",
+          "fileSize",
+          "extension",
+          "fileCreatedAt",
+          "discoveredAt",
+          "canDelete"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15984,6 +16538,11 @@
         }
       },
       "UnsupportedFilesPageResponse": {
+        "required": [
+          "items",
+          "hasMore",
+          "nextCursor"
+        ],
         "type": "object",
         "properties": {
           "items": {
@@ -16195,6 +16754,14 @@
         }
       },
       "UpdateShareResponse": {
+        "required": [
+          "token",
+          "expiresAt",
+          "hasPassword",
+          "allowDownload",
+          "maxViews",
+          "allowUpload"
+        ],
         "type": "object",
         "properties": {
           "token": {
@@ -16344,6 +16911,11 @@
         }
       },
       "UserDuplicateGroupResponse": {
+        "required": [
+          "hash",
+          "totalSize",
+          "assets"
+        ],
         "type": "object",
         "properties": {
           "hash": {
@@ -16373,6 +16945,14 @@
         }
       },
       "UtilitiesSummaryResponse": {
+        "required": [
+          "duplicateGroups",
+          "duplicateAssets",
+          "duplicateRecoverableBytes",
+          "largeFilesCount",
+          "largeFilesBytes",
+          "unsupportedCount"
+        ],
         "type": "object",
         "properties": {
           "duplicateGroups": {
@@ -16402,6 +16982,17 @@
         }
       },
       "VersionInfoResponse": {
+        "required": [
+          "currentVersion",
+          "latestVersion",
+          "latestReleaseUrl",
+          "releaseNotes",
+          "publishedAt",
+          "hasUpdate",
+          "isAhead",
+          "checkError",
+          "checkedAt"
+        ],
         "type": "object",
         "properties": {
           "currentVersion": {
