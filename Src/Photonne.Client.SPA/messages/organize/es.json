@@ -1,3 +1,146 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"organize_lead": "Lo que sube el backup automático espera aquí hasta que lo guardes en una carpeta.",
+	"organize_pending": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} pendiente",
+				"countPlural=other": "{count} pendientes"
+			}
+		}
+	],
+	"organize_range": "{from} – {to}",
+	"organize_sections": "Secciones de organizar",
+	"organize_tab_inbox": "Bandeja",
+	"organize_tab_rules": "Por reglas",
+	"organize_tab_excluded": "Apartadas",
+	"organize_inbox_empty": "Todo organizado: no hay nada pendiente de guardar.",
+	"organize_excluded_empty": "No has apartado nada.",
+	"organize_excluded_hint": "Fotos que no necesitan carpeta (capturas, memes…). No cuentan como pendientes; puedes devolverlas a la bandeja.",
+	"organize_suggestions": "Sugerencias",
+	"organize_kind_trip": "Viaje",
+	"organize_kind_person": "Persona",
+	"organize_kind_scene": "Escena",
+	"organize_kind_month": "Mes",
+	"organize_photo_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto",
+				"countPlural=other": "{count} fotos"
+			}
+		}
+	],
+	"organize_review_and_move": "Revisar y mover",
+	"organize_review_suggestion": "Revisar y mover «{title}»",
+	"organize_dismiss": "Descartar",
+	"organize_dismiss_suggestion": "Descartar «{title}» (se apartan de la bandeja)",
+	"organize_move": "Mover a una carpeta",
+	"organize_choose_destination": "Elegir destino",
+	"organize_cancel": "Cancelar",
+	"organize_moved": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} movida a «{folder}»",
+				"countPlural=other": "{count} movidas a «{folder}»"
+			}
+		}
+	],
+	"organize_set_aside_action": "Apartar de la bandeja",
+	"organize_set_aside": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} apartada",
+				"countPlural=other": "{count} apartadas"
+			}
+		}
+	],
+	"organize_put_back_action": "Devolver a la bandeja",
+	"organize_put_back": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} devuelta a la bandeja",
+				"countPlural=other": "{count} devueltas a la bandeja"
+			}
+		}
+	],
+	"organize_undo": "Deshacer",
+	"organize_failed": "No se ha podido completar la acción.",
+	"organize_review_count": "Se moverán {kept} de {total}. Desmarca las que no quieras mover.",
+	"organize_review_group": "Mover todas las de {group}",
+	"organize_review_item": "Foto {index} de {group}",
+	"organize_rule_title": "Condiciones",
+	"organize_rule_hint": "Mueve de una vez todo lo pendiente que cumpla las condiciones.",
+	"organize_rule_match": "Cumplir",
+	"organize_rule_all": "todas las condiciones",
+	"organize_rule_any": "cualquier condición",
+	"organize_rule_add": "Añadir condición…",
+	"organize_rule_empty": "Añade al menos una condición.",
+	"organize_rule_negate": "Excluir las que la cumplen",
+	"organize_rule_remove": "Quitar la condición {condition}",
+	"organize_rule_date": "Fechas",
+	"organize_rule_folder": "Carpeta",
+	"organize_rule_person": "Personas",
+	"organize_rule_media": "Tipo",
+	"organize_rule_favorite": "Favorito",
+	"organize_rule_tag": "Etiqueta automática",
+	"organize_rule_object": "Objetos",
+	"organize_rule_scene": "Escenas",
+	"organize_rule_text": "Nombre, ruta o etiqueta",
+	"organize_rule_ocr": "Texto en la imagen",
+	"organize_rule_pick": "Elegir…",
+	"organize_rule_picked": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} elegida",
+				"countPlural=other": "{count} elegidas"
+			}
+		}
+	],
+	"organize_rule_subfolders": "Incluir subcarpetas",
+	"organize_rule_match_values": "Cómo combinar los valores",
+	"organize_rule_match_any": "cualquiera de ellas",
+	"organize_rule_match_all": "todas a la vez",
+	"organize_rule_photos": "Fotos",
+	"organize_rule_videos": "Vídeos",
+	"organize_rule_favorite_yes": "Es favorita",
+	"organize_rule_favorite_no": "No es favorita",
+	"organize_tag_live": "Live Photo",
+	"organize_tag_burst": "Ráfaga",
+	"organize_tag_panorama": "Panorámica",
+	"organize_tag_screenshot": "Captura de pantalla",
+	"organize_tag_hdr": "HDR",
+	"organize_tag_portrait": "Retrato",
+	"organize_rule_preview": "Coincidencias",
+	"organize_rule_preview_empty": "Completa una condición para ver qué coincide.",
+	"organize_rule_matches": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto pendiente coincide",
+				"countPlural=other": "{count} fotos pendientes coinciden"
+			}
+		}
+	],
+	"organize_rule_years": "Por año",
+	"organize_rule_sample": "Muestra",
+	"organize_rule_destination": "Destino",
+	"organize_rule_folder_target": "Carpeta de destino",
+	"organize_rule_folder_choose": "Elige una carpeta…",
+	"organize_rule_by_year": "Organizar en subcarpetas por año",
+	"organize_rule_review_title": "Revisar antes de mover a «{folder}»",
+	"organize_rule_nothing": "Ya no queda nada pendiente que cumpla la regla.",
+	"organize_rule_invalid": "El servidor no acepta esta regla."
 }
