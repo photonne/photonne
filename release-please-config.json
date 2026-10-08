@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-component-in-tag": false,
+  "include-v-in-tag": true,
+  "pull-request-title-pattern": "chore: release ${version}",
+  "pull-request-header": "Al hacer merge de esta PR se publica la release: se crea la etiqueta, se construyen las imágenes Docker versionadas (`:latest` incluido) y los instaladores de escritorio, y la release se hace pública cuando todo está listo.",
+  "draft": true,
+  "force-tag-creation": true,
+  "changelog-sections": [
+    { "type": "feat", "section": "Novedades" },
+    { "type": "fix", "section": "Correcciones" },
+    { "type": "perf", "section": "Rendimiento" },
+    { "type": "revert", "section": "Reversiones" },
+    { "type": "refactor", "section": "Otros cambios" },
+    { "type": "docs", "section": "Documentación", "hidden": true },
+    { "type": "style", "section": "Otros cambios", "hidden": true },
+    { "type": "test", "section": "Otros cambios", "hidden": true },
+    { "type": "build", "section": "Otros cambios", "hidden": true },
+    { "type": "ci", "section": "Otros cambios", "hidden": true },
+    { "type": "chore", "section": "Otros cambios", "hidden": true }
+  ],
+  "packages": {
+    ".": {
+      "extra-files": [
+        {
+          "type": "xml",
+          "path": "Src/Directory.Build.props",
+          "xpath": "//Project/PropertyGroup/Version"
+        }
+      ]
+    }
+  }
+}

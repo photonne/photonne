@@ -229,11 +229,11 @@ fijar la configuración compartida.
 No edites las versiones a mano. `versionName`/`versionCode` (Android) y el
 `packageVersion` (Desktop) se leen en configuración de Gradle desde
 `../Directory.Build.props` (`<Version>`); iOS (`MARKETING_VERSION` /
-`CURRENT_PROJECT_VERSION` en `iosApp.xcodeproj/project.pbxproj`) lo sincroniza
-el hook `post-commit` del repo. Ese hook incrementa la versión en cada commit
-según el tipo del Conventional Commit — ver [Versionado en el README
-raíz](../../README.md#versionado). `CURRENT_PROJECT_VERSION` usa el mismo
-esquema que `versionCode`: `major*10000 + minor*100 + patch`.
+`CURRENT_PROJECT_VERSION` en `iosApp.xcodeproj/project.pbxproj`, ambos = la
+versión semver) lo sincroniza `release.yml` en la PR de release. La versión
+solo cambia al publicar una release con release-please — ver [Versionado en el
+README raíz](../../README.md#versionado). Los builds para las tiendas salen de
+la etiqueta de una release (`git checkout vX.Y.Z`).
 
 ## Generación del cliente del API desde OpenAPI
 

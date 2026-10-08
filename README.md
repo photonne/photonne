@@ -100,14 +100,6 @@ git clone https://github.com/photonne/photonne.git
 cd photonne
 ```
 
-> **Activa los git hooks del repo (una vez por clon):**
-> ```bash
-> ./scripts/setup-hooks.sh
-> ```
-> Fija `core.hooksPath` a `.githooks/`, que incluye el auto-bump de versión en
-> cada commit. Es config local de git y **no se clona**, por eso hay que
-> ejecutarlo una vez en cada máquina. Ver [Versionado](#versionado).
-
 ### 2. Configurar las variables de entorno
 
 ```bash
@@ -403,13 +395,15 @@ varios minutos en función de tu conexión (la imagen ML lleva los modelos YOLO,
 CLIP y Places365 baked-in para que el primer arranque no dependa de descargas
 externas).
 
-Cada push a `main` que termina de publicar sus imágenes crea también la
+Las releases se publican a mano (ver [Versionado](#versionado)): `:latest`
+solo apunta a versiones publicadas, nunca a cada push. Cada release crea la
 [release de GitHub](https://github.com/photonne/photonne/releases) `v<versión>`
 (con sus notas y los instaladores de escritorio), que es la que consulta el
 aviso de actualización del panel de administración. Además de `:latest`, cada
 imagen lleva la etiqueta de su versión (`:1.158.1`) y la del menor (`:1.158`):
 fíjala en `docker-compose.yml` si quieres actualizar solo cuando tú decidas o
-volver a una versión anterior.
+volver a una versión anterior. Para probar lo último de `main` sin esperar a
+una release están las etiquetas `:edge` (y `:edge-gpu` para ML).
 
 ### Compilando localmente
 
@@ -425,33 +419,53 @@ los wheels nativos de PyPI, también CPU-only.
 
 ## Versionado
 
-La versión de la app se incrementa **automáticamente en cada commit**, derivada
-del tipo del [Conventional Commit](https://www.conventionalcommits.org/), y se
-pliega en ese mismo commit (vía `git commit --amend`) mediante el hook
-`.githooks/post-commit` (activar con `./scripts/setup-hooks.sh`).
+La versión la gestiona [release-please](https://github.com/googleapis/release-please)
+a partir de los [Conventional Commits](https://www.conventionalcommits.org/).
+Los commits **no** tocan la versión: en cada push a `main` release-please
+mantiene abierta **una única** PR de release (`chore: release X.Y.Z`) que va
+acumulando el changelog y calcula la siguiente versión:
 
-| Commit | Bump (semver) |
+| Commits desde la última release | Bump (semver) |
 |---|---|
-| `feat: ...` / `feat(scope): ...` | minor |
-| `<tipo>!: ...` o footer `BREAKING CHANGE:` | major |
-| `fix: ...` y cualquier otro tipo | patch |
+| algún `<tipo>!: ...` o footer `BREAKING CHANGE:` | major |
+| algún `feat: ...` / `feat(scope): ...` | minor |
+| solo `fix:`, `perf:`, `refactor:`, `revert:` | patch |
 
-La fuente de verdad es `Src/Directory.Build.props` (`<Version>`), que cascada
-al servidor .NET, el cliente web, Android (`versionName`/`versionCode`), Desktop
-y la constante `PhotonneVersion`. iOS no deriva de ahí, así que el hook también
-sincroniza `MARKETING_VERSION` y `CURRENT_PROJECT_VERSION` en el
-`project.pbxproj`. No re-bumpea en `--amend` manual, merges ni rebases. Más
-detalle en [`.githooks/README.md`](.githooks/README.md).
+`docs:`, `chore:`, `ci:`, `test:`, `build:` y `style:` por sí solos no abren
+release.
+
+**Publicar una versión = hacer merge de esa PR.** Al hacerlo, release-please
+etiqueta el commit y crea la release como borrador; `release.yml` construye las
+imágenes versionadas (`:X.Y.Z`, `:X.Y`, `:latest`) y los instaladores de
+escritorio desde esa etiqueta y, cuando todo está subido, publica la release.
+
+La PR actualiza `Src/Directory.Build.props` (`<Version>`, fuente de verdad que
+cascada al servidor .NET, el cliente web, Android `versionName`/`versionCode`,
+Desktop y la constante `PhotonneVersion`), `version.txt` y `CHANGELOG.md`. iOS
+no deriva de ahí, así que el workflow sincroniza también `MARKETING_VERSION` y
+`CURRENT_PROJECT_VERSION` en el `project.pbxproj` dentro de la misma PR. No
+edites la versión a mano.
+
+Para que el workflow pueda abrir la PR hace falta activar *Allow GitHub
+Actions to create and approve pull requests* (primero en los ajustes de la
+organización, luego en los del repo) o crear el secret `RELEASE_PLEASE_TOKEN`
+con un PAT fine-grained del repo (Contents y Pull requests en lectura/escritura).
+
+Los mínimos de compatibilidad `PhotonneMinClientVersion` y
+`PhotonneMinServerVersion` del mismo `Directory.Build.props` se siguen subiendo
+a mano (ver el comentario del fichero).
 
 ## CI/CD
 
-GitHub Actions publica automáticamente las dos imágenes Docker en cada push a
-`main`, construyendo ambas arquitecturas en paralelo:
+| Workflow | Cuándo | Qué publica |
+|---|---|---|
+| `api-image.yml` | push a `main` que toca el servidor/cliente web | `ghcr.io/photonne/photonne:edge` y `:sha-<commit>` |
+| `ml-image.yml` | push a `main` que toca `Src/Photonne.MlService` | `ghcr.io/photonne/photonne-ml:edge`, `:edge-gpu` y `:sha-<commit>[-gpu]` |
+| `release.yml` | cada push a `main` (mantiene la PR de release); merge de esa PR | `:X.Y.Z`, `:X.Y`, `:latest` (+ `-gpu`) de ambas imágenes, instaladores de escritorio y la release de GitHub |
+| `native-build.yml` | cambios en `Src/Photonne.Client.Native` | solo compila y prueba |
 
-- **Registros**: `ghcr.io/photonne/photonne` (API) y `ghcr.io/photonne/photonne-ml` (servicio ML).
-- **Plataformas**: `linux/amd64` (nativo en el runner) + `linux/arm64` (vía emulación QEMU).
-- **Tags**: `latest` (rama `main`) y `sha-<commit>` por cada build.
-- **Workflow**: `.github/workflows/docker-image.yml`.
+Las imágenes Docker se construyen para `linux/amd64` y `linux/arm64`, cada
+arquitectura en su runner nativo; la variante GPU de ML solo para `amd64`.
 
 ## Licencia
 
