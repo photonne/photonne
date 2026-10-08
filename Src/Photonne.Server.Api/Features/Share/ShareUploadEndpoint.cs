@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Features.UploadAssets;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -25,13 +27,17 @@ public class ShareUploadEndpoint : IEndpoint
         app.MapPost("/api/share/{token}/upload", Handle)
             .AllowAnonymous()
             .DisableAntiforgery()
+            .Produces<ApiError>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiError>(StatusCodes.Status409Conflict)
+            .Produces<ApiError>(StatusCodes.Status410Gone)
+            .Produces<ApiError>(StatusCodes.Status413PayloadTooLarge)
             .WithName("ShareUpload")
             .WithTags("Share")
             .WithDescription("Uploads a photo to a shared album through a photo-request link (no authentication required)")
             .RequireRateLimiting("share-upload");
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<ShareUploadResponse>, BadRequest<ApiError>, NotFound<ApiError>, JsonHttpResult<ApiError>, ForbidHttpResult, ProblemHttpResult>> Handle(
         [FromRoute] string token,
         [FromForm] IFormFile file,
         [FromForm] string? uploaderName,
@@ -48,29 +54,29 @@ public class ShareUploadEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (file == null || file.Length == 0)
-            return Results.BadRequest(new { error = "No file uploaded" });
+            return TypedResults.BadRequest(new ApiError("No file uploaded", "file_required"));
 
         var link = await dbContext.SharedLinks
             .Include(l => l.Album)
             .Include(l => l.CreatedBy)
             .FirstOrDefaultAsync(l => l.Token == token && l.AlbumId != null, cancellationToken);
 
-        if (link == null) return Results.NotFound(new { error = "Share link not found" });
+        if (link == null) return TypedResults.NotFound(new ApiError("Share link not found", "share_link_not_found"));
 
         if (link.ExpiresAt.HasValue && link.ExpiresAt.Value < DateTime.UtcNow)
-            return Results.Json(new { error = "This link has expired" }, statusCode: 410);
+            return TypedResults.Json(new ApiError("This link has expired", "share_link_expired"), statusCode: StatusCodes.Status410Gone);
 
         if (link.MaxViews.HasValue && link.ViewCount >= link.MaxViews.Value)
-            return Results.Json(new { error = "This link has reached its maximum number of views" }, statusCode: 410);
+            return TypedResults.Json(new ApiError("This link has reached its maximum number of views", "share_link_max_views"), statusCode: StatusCodes.Status410Gone);
 
         if (link.PasswordHash != null && !SharePasswordHasher.Verify(pw ?? string.Empty, link.PasswordHash))
-            return Results.Json(new { error = "Invalid password" }, statusCode: 401);
+            return TypedResults.Json(new ApiError("Invalid password", "invalid_password"), statusCode: StatusCodes.Status401Unauthorized);
 
-        if (!link.AllowUpload) return Results.Forbid();
+        if (!link.AllowUpload) return TypedResults.Forbid();
 
         var owner = link.CreatedBy;
         if (owner == null || string.IsNullOrEmpty(owner.Username))
-            return Results.Problem("Link owner not found");
+            return TypedResults.Problem("Link owner not found");
 
         // Mismos límites que la subida autenticada, cargados contra el DUEÑO del
         // enlace: las fotos de los invitados cuentan en su cuota, no en la de nadie.
@@ -81,8 +87,8 @@ public class ShareUploadEndpoint : IEndpoint
             var maxBytes = (long)maxUploadMb * 1024L * 1024L;
             if (file.Length > maxBytes)
             {
-                return Results.Problem(
-                    detail: $"El archivo supera el tamaño máximo permitido ({maxUploadMb} MB).",
+                return TypedResults.Json(
+                    new ApiError($"El archivo supera el tamaño máximo permitido ({maxUploadMb} MB).", "file_too_large"),
                     statusCode: StatusCodes.Status413PayloadTooLarge);
             }
         }
@@ -94,8 +100,8 @@ public class ShareUploadEndpoint : IEndpoint
                 .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
 
             if (usedBytes + file.Length > owner.StorageQuotaBytes.Value)
-                return Results.Problem(
-                    detail: "El propietario del álbum ha alcanzado su límite de almacenamiento.",
+                return TypedResults.Json(
+                    new ApiError("El propietario del álbum ha alcanzado su límite de almacenamiento.", "storage_quota_exceeded"),
                     statusCode: StatusCodes.Status409Conflict);
         }
 
@@ -137,7 +143,7 @@ public class ShareUploadEndpoint : IEndpoint
                 if (existingAsset.OwnerId == owner.Id && existingAsset.DeletedAt == null)
                     await AddToAlbumAsync(dbContext, cache, link, existingAsset.Id, owner.Id, cancellationToken);
 
-                return Results.Ok(new { message = "Asset already exists" });
+                return TypedResults.Ok(new ShareUploadResponse("Asset already exists"));
             }
 
             var finalFileName = file.FileName;
@@ -204,13 +210,13 @@ public class ShareUploadEndpoint : IEndpoint
                     $"/albums/{link.AlbumId}");
             }
 
-            return Results.Ok(new { message = "Asset uploaded successfully" });
+            return TypedResults.Ok(new ShareUploadResponse("Asset uploaded successfully"));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Guest upload failed for share {Token}, file {FileName}", token, file.FileName);
             if (File.Exists(tempPath)) File.Delete(tempPath);
-            return Results.Problem("Upload failed");
+            throw;
         }
     }
 
@@ -263,3 +269,5 @@ public class ShareUploadEndpoint : IEndpoint
         => uploadCount is 1 or 5 or 10 or 25 or 50 or 100
            || (uploadCount > 100 && uploadCount % 100 == 0);
 }
+
+public sealed record ShareUploadResponse(string Message);

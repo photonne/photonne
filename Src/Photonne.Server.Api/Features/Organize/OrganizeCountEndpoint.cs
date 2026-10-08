@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -30,16 +31,16 @@ public class OrganizeCountEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<OrganizeInboxCountResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out _))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var pending = OrganizeQuery.Pending(dbContext, username);
 
@@ -63,12 +64,12 @@ public class OrganizeCountEndpoint : IEndpoint
 
         // An empty inbox groups to nothing, which is the good case — report a
         // zero count rather than letting the client read a missing body.
-        return Results.Ok(new
-        {
-            count = summary?.count ?? 0,
-            oldest = summary?.oldest,
-            newest = summary?.newest,
-            excludedCount,
-        });
+        return TypedResults.Ok(new OrganizeInboxCountResponse(
+            summary?.count ?? 0,
+            summary?.oldest,
+            summary?.newest,
+            excludedCount));
     }
 }
+
+public sealed record OrganizeInboxCountResponse(int Count, DateTime? Oldest, DateTime? Newest, int ExcludedCount);

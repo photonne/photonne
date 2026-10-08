@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -31,7 +33,7 @@ public class AssetTagsEndpoint : IEndpoint
             .WithDescription("Gets user tags, optionally filtered by query.");
     }
 
-    private static async Task<IResult> AddTagsAsync(
+    private static async Task<Results<Ok<AssetTagsResponse>, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>> AddTagsAsync(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] Guid assetId,
         [FromBody] AddTagsRequest request,
@@ -40,14 +42,14 @@ public class AssetTagsEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (request.Tags == null || request.Tags.Count == 0)
         {
-            return Results.BadRequest(new { error = "Debes proporcionar al menos una etiqueta." });
+            return TypedResults.BadRequest(new ApiError("Debes proporcionar al menos una etiqueta.", "tags_required"));
         }
 
         var asset = await dbContext.Assets
@@ -58,12 +60,12 @@ public class AssetTagsEndpoint : IEndpoint
 
         if (asset == null)
         {
-            return Results.NotFound(new { error = "Asset no encontrado." });
+            return TypedResults.NotFound(new ApiError("Asset no encontrado.", "asset_not_found"));
         }
 
         if (!AssetMetadataPermissions.IsInUserRoot(asset.FullPath, username))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         var normalizedInputs = request.Tags
@@ -74,7 +76,7 @@ public class AssetTagsEndpoint : IEndpoint
 
         if (normalizedInputs.Count == 0)
         {
-            return Results.BadRequest(new { error = "Las etiquetas no pueden estar vacías." });
+            return TypedResults.BadRequest(new ApiError("Las etiquetas no pueden estar vacías.", "tags_empty"));
         }
 
         var existingTags = await dbContext.UserTags
@@ -110,10 +112,10 @@ public class AssetTagsEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(ct);
 
         var tags = BuildTagList(asset);
-        return Results.Ok(new { tags });
+        return TypedResults.Ok(new AssetTagsResponse(tags));
     }
 
-    private static async Task<IResult> RemoveTagAsync(
+    private static async Task<Results<Ok<AssetTagsResponse>, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>> RemoveTagAsync(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] Guid assetId,
         [FromRoute] string tag,
@@ -122,10 +124,10 @@ public class AssetTagsEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var asset = await dbContext.Assets
             .Include(a => a.UserTags)
@@ -135,24 +137,24 @@ public class AssetTagsEndpoint : IEndpoint
 
         if (asset == null)
         {
-            return Results.NotFound(new { error = "Asset no encontrado." });
+            return TypedResults.NotFound(new ApiError("Asset no encontrado.", "asset_not_found"));
         }
 
         if (!AssetMetadataPermissions.IsInUserRoot(asset.FullPath, username))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         var normalized = NormalizeTag(tag);
         if (string.IsNullOrWhiteSpace(normalized))
         {
-            return Results.BadRequest(new { error = "Etiqueta inválida." });
+            return TypedResults.BadRequest(new ApiError("Etiqueta inválida.", "invalid_tag"));
         }
 
         var link = asset.UserTags.FirstOrDefault(ut => ut.UserTag.NormalizedName == normalized);
         if (link == null)
         {
-            return Results.NotFound(new { error = "Etiqueta no encontrada en el asset." });
+            return TypedResults.NotFound(new ApiError("Etiqueta no encontrada en el asset.", "tag_not_found"));
         }
 
         asset.UserTags.Remove(link);
@@ -169,10 +171,10 @@ public class AssetTagsEndpoint : IEndpoint
         }
 
         var tags = BuildTagList(asset);
-        return Results.Ok(new { tags });
+        return TypedResults.Ok(new AssetTagsResponse(tags));
     }
 
-    private static async Task<IResult> GetTagsAsync(
+    private static async Task<Results<Ok<List<string>>, UnauthorizedHttpResult>> GetTagsAsync(
         [FromServices] ApplicationDbContext dbContext,
         [FromQuery] string? query,
         ClaimsPrincipal user,
@@ -180,7 +182,7 @@ public class AssetTagsEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         var normalizedQuery = NormalizeTag(query ?? string.Empty);
@@ -204,7 +206,7 @@ public class AssetTagsEndpoint : IEndpoint
             .Select(t => t.Name)
             .ToListAsync(ct);
 
-        return Results.Ok(tags);
+        return TypedResults.Ok(tags);
     }
 
     private static List<string> BuildTagList(Asset asset)
@@ -251,3 +253,5 @@ public class AddTagsRequest
 {
     public List<string> Tags { get; set; } = new();
 }
+
+public sealed record AssetTagsResponse(List<string> Tags);

@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services.SmartAlbums;
 
@@ -28,7 +30,7 @@ public sealed class AlbumPreviewEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<PreviewResponse>, UnauthorizedHttpResult, BadRequest<ApiError>>> Handle(
         [FromServices] SmartAlbumResolver resolver,
         ClaimsPrincipal user,
         [FromBody] PreviewRequest request,
@@ -36,10 +38,10 @@ public sealed class AlbumPreviewEndpoint : IEndpoint
     {
         var claim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(claim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (request.Rule is null)
-            return Results.BadRequest(new { error = "A rule is required." });
+            return TypedResults.BadRequest(new ApiError("A rule is required.", "rule_required"));
 
         IQueryable<Shared.Models.Asset> query;
         try
@@ -48,7 +50,7 @@ public sealed class AlbumPreviewEndpoint : IEndpoint
         }
         catch (SmartRuleException ex)
         {
-            return Results.BadRequest(new { error = ex.Message });
+            return TypedResults.BadRequest(new ApiError(ex.Message, "invalid_rule"));
         }
 
         var sampleSize = request.SampleSize is > 0
@@ -64,7 +66,7 @@ public sealed class AlbumPreviewEndpoint : IEndpoint
             .Select(a => a.Id)
             .ToListAsync(ct);
 
-        return Results.Ok(new PreviewResponse { Count = count, SampleAssetIds = sample });
+        return TypedResults.Ok(new PreviewResponse { Count = count, SampleAssetIds = sample });
     }
 
     public sealed class PreviewRequest

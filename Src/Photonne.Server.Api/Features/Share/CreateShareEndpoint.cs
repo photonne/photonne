@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -19,7 +21,7 @@ public class CreateShareEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<ShareLinkResponse>, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromBody] CreateShareRequest request,
@@ -29,10 +31,10 @@ public class CreateShareEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (request.AlbumId == null)
-            return Results.BadRequest(new { error = "AlbumId is required" });
+            return TypedResults.BadRequest(new ApiError("AlbumId is required", "album_id_required"));
 
         // Verify ownership / access
         if (request.AlbumId.HasValue)
@@ -40,10 +42,10 @@ public class CreateShareEndpoint : IEndpoint
             var album = await dbContext.Albums
                 .Include(a => a.Permissions)
                 .FirstOrDefaultAsync(a => a.Id == request.AlbumId, ct);
-            if (album == null) return Results.NotFound(new { error = "Album not found" });
+            if (album == null) return TypedResults.NotFound(new ApiError("Album not found", "album_not_found"));
             var canShare = album.OwnerId == userId ||
                            album.Permissions.Any(p => p.UserId == userId && p.CanWrite);
-            if (!canShare) return Results.Forbid();
+            if (!canShare) return TypedResults.Forbid();
         }
 
         var link = new SharedLink
@@ -64,7 +66,7 @@ public class CreateShareEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(ct);
 
         var publicBase = await ResolvePublicBaseUrlAsync(settingsService, httpContext);
-        return Results.Ok(ToResponse(link, publicBase));
+        return TypedResults.Ok(ToResponse(link, publicBase));
     }
 
     /// <summary>

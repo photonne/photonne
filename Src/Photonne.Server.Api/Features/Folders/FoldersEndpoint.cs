@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Features.Assets;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Models;
@@ -121,620 +123,573 @@ public class FoldersEndpoint : IEndpoint
     private static DateTime? PinnedAtOrNull(Dictionary<Guid, DateTime> pins, Guid folderId) =>
         pins.TryGetValue(folderId, out var pinnedAt) ? pinnedAt : null;
 
-    private async Task<IResult> GetLibraryRootFolder(
+    private async Task<Results<Ok<FolderResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> GetLibraryRootFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] Guid libraryId,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        try
+        if (!TryGetUserId(user, out var userId))
+            return TypedResults.Unauthorized();
+
+        var library = await dbContext.ExternalLibraries
+            .FirstOrDefaultAsync(l => l.Id == libraryId, cancellationToken);
+
+        if (library == null)
+            return TypedResults.NotFound(new ApiError($"Library {libraryId} not found", "library_not_found"));
+
+        var hasAccess = await dbContext.ExternalLibraryPermissions
+            .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == libraryId && p.CanRead, cancellationToken);
+        if (!hasAccess)
+            return TypedResults.Forbid();
+
+        // Find root folder: ExternalLibraryId matches and parent does NOT belong to this library
+        var rootFolder = await dbContext.Folders
+            .Include(f => f.Assets)
+            .Include(f => f.SubFolders)
+                .ThenInclude(sf => sf.Assets)
+            .Where(f => f.ExternalLibraryId == libraryId &&
+                        (f.ParentFolderId == null ||
+                         !dbContext.Folders.Any(p => p.Id == f.ParentFolderId && p.ExternalLibraryId == libraryId)))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (rootFolder == null)
+            return TypedResults.NotFound(new ApiError("Library has not been scanned yet or has no indexed folders.", "library_not_scanned"));
+
+        // Compute recursive asset counts for subfolders (single batch query)
+        var libRecursiveCounts = new Dictionary<Guid, int>();
+        if (rootFolder.SubFolders.Count > 0)
         {
-            if (!TryGetUserId(user, out var userId))
-                return Results.Unauthorized();
+            var rootNormPath = NormalizeVirtualPath(rootFolder.Path);
+            var allDescendants = await dbContext.Folders
+                .Where(f => EF.Functions.Like(f.Path, rootNormPath + "/%"))
+                .Select(f => new { f.Id, f.Path, AssetCount = f.Assets.Count(a => a.DeletedAt == null) })
+                .ToListAsync(cancellationToken);
 
-            var library = await dbContext.ExternalLibraries
-                .FirstOrDefaultAsync(l => l.Id == libraryId, cancellationToken);
-
-            if (library == null)
-                return Results.NotFound(new { error = $"Library {libraryId} not found" });
-
-            var hasAccess = await dbContext.ExternalLibraryPermissions
-                .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == libraryId && p.CanRead, cancellationToken);
-            if (!hasAccess)
-                return Results.Forbid();
-
-            // Find root folder: ExternalLibraryId matches and parent does NOT belong to this library
-            var rootFolder = await dbContext.Folders
-                .Include(f => f.Assets)
-                .Include(f => f.SubFolders)
-                    .ThenInclude(sf => sf.Assets)
-                .Where(f => f.ExternalLibraryId == libraryId &&
-                            (f.ParentFolderId == null ||
-                             !dbContext.Folders.Any(p => p.Id == f.ParentFolderId && p.ExternalLibraryId == libraryId)))
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (rootFolder == null)
-                return Results.NotFound(new { error = "Library has not been scanned yet or has no indexed folders." });
-
-            // Compute recursive asset counts for subfolders (single batch query)
-            var libRecursiveCounts = new Dictionary<Guid, int>();
-            if (rootFolder.SubFolders.Count > 0)
+            foreach (var sf in rootFolder.SubFolders)
             {
-                var rootNormPath = NormalizeVirtualPath(rootFolder.Path);
-                var allDescendants = await dbContext.Folders
-                    .Where(f => EF.Functions.Like(f.Path, rootNormPath + "/%"))
-                    .Select(f => new { f.Id, f.Path, AssetCount = f.Assets.Count(a => a.DeletedAt == null) })
-                    .ToListAsync(cancellationToken);
-
-                foreach (var sf in rootFolder.SubFolders)
-                {
-                    var sfNormPath = NormalizeVirtualPath(sf.Path);
-                    var sfPrefix = sfNormPath + "/";
-                    var directCount = sf.Assets.Count(a => a.DeletedAt == null);
-                    var descendantCount = allDescendants
-                        .Where(d => d.Id != sf.Id && d.Path.StartsWith(sfPrefix, StringComparison.OrdinalIgnoreCase))
-                        .Sum(d => d.AssetCount);
-                    libRecursiveCounts[sf.Id] = directCount + descendantCount;
-                }
+                var sfNormPath = NormalizeVirtualPath(sf.Path);
+                var sfPrefix = sfNormPath + "/";
+                var directCount = sf.Assets.Count(a => a.DeletedAt == null);
+                var descendantCount = allDescendants
+                    .Where(d => d.Id != sf.Id && d.Path.StartsWith(sfPrefix, StringComparison.OrdinalIgnoreCase))
+                    .Sum(d => d.AssetCount);
+                libRecursiveCounts[sf.Id] = directCount + descendantCount;
             }
+        }
 
-            // Same flags as every other folder response. A library is a
-            // read-only mirror, so these are normally false; clients also gate
-            // on ExternalLibraryId.
-            var isAdmin = user.IsInRole("Admin");
-            var libAccess = new Dictionary<Guid, (bool CanWrite, bool CanDelete)>();
-            foreach (var f in rootFolder.SubFolders.Prepend(rootFolder))
+        // Same flags as every other folder response. A library is a
+        // read-only mirror, so these are normally false; clients also gate
+        // on ExternalLibraryId.
+        var isAdmin = user.IsInRole("Admin");
+        var libAccess = new Dictionary<Guid, (bool CanWrite, bool CanDelete)>();
+        foreach (var f in rootFolder.SubFolders.Prepend(rootFolder))
+        {
+            libAccess[f.Id] = (
+                await CanWriteFolderAsync(dbContext, userId, f.Id, isAdmin, cancellationToken),
+                await CanDeleteFolderAsync(dbContext, userId, f.Id, isAdmin, cancellationToken));
+        }
+
+        var libPins = await GetPinsAsync(dbContext, userId, cancellationToken);
+
+        var response = new FolderResponse
+        {
+            Id = rootFolder.Id,
+            Path = rootFolder.Path,
+            Name = rootFolder.Name,
+            ParentFolderId = rootFolder.ParentFolderId,
+            CreatedAt = rootFolder.CreatedAt,
+            AssetCount = rootFolder.Assets.Count(a => a.DeletedAt == null),
+            FirstAssetId = rootFolder.Assets
+                .Where(a => a.DeletedAt == null)
+                .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                .FirstOrDefault()?.Id,
+            PreviewAssetIds = rootFolder.Assets
+                .Where(a => a.DeletedAt == null)
+                .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                .Take(4).Select(a => a.Id).ToList(),
+            IsOwner = false,
+            CanWrite = libAccess[rootFolder.Id].CanWrite,
+            CanDelete = libAccess[rootFolder.Id].CanDelete,
+            IsShared = false,
+            ExternalLibraryId = rootFolder.ExternalLibraryId,
+            IsPinned = libPins.ContainsKey(rootFolder.Id),
+            PinnedAt = PinnedAtOrNull(libPins, rootFolder.Id),
+            SubFolders = rootFolder.SubFolders.Select(sf => new FolderResponse
             {
-                libAccess[f.Id] = (
-                    await CanWriteFolderAsync(dbContext, userId, f.Id, isAdmin, cancellationToken),
-                    await CanDeleteFolderAsync(dbContext, userId, f.Id, isAdmin, cancellationToken));
-            }
-
-            var libPins = await GetPinsAsync(dbContext, userId, cancellationToken);
-
-            var response = new FolderResponse
-            {
-                Id = rootFolder.Id,
-                Path = rootFolder.Path,
-                Name = rootFolder.Name,
-                ParentFolderId = rootFolder.ParentFolderId,
-                CreatedAt = rootFolder.CreatedAt,
-                AssetCount = rootFolder.Assets.Count(a => a.DeletedAt == null),
-                FirstAssetId = rootFolder.Assets
+                Id = sf.Id,
+                Path = sf.Path,
+                Name = sf.Name,
+                ParentFolderId = sf.ParentFolderId,
+                CreatedAt = sf.CreatedAt,
+                AssetCount = libRecursiveCounts.GetValueOrDefault(sf.Id, sf.Assets.Count(a => a.DeletedAt == null)),
+                FirstAssetId = sf.Assets
                     .Where(a => a.DeletedAt == null)
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .FirstOrDefault()?.Id,
-                PreviewAssetIds = rootFolder.Assets
+                PreviewAssetIds = sf.Assets
                     .Where(a => a.DeletedAt == null)
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
                 IsOwner = false,
-                CanWrite = libAccess[rootFolder.Id].CanWrite,
-                CanDelete = libAccess[rootFolder.Id].CanDelete,
+                CanWrite = libAccess.GetValueOrDefault(sf.Id).CanWrite,
+                CanDelete = libAccess.GetValueOrDefault(sf.Id).CanDelete,
                 IsShared = false,
-                ExternalLibraryId = rootFolder.ExternalLibraryId,
-                IsPinned = libPins.ContainsKey(rootFolder.Id),
-                PinnedAt = PinnedAtOrNull(libPins, rootFolder.Id),
-                SubFolders = rootFolder.SubFolders.Select(sf => new FolderResponse
-                {
-                    Id = sf.Id,
-                    Path = sf.Path,
-                    Name = sf.Name,
-                    ParentFolderId = sf.ParentFolderId,
-                    CreatedAt = sf.CreatedAt,
-                    AssetCount = libRecursiveCounts.GetValueOrDefault(sf.Id, sf.Assets.Count(a => a.DeletedAt == null)),
-                    FirstAssetId = sf.Assets
-                        .Where(a => a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                        .FirstOrDefault()?.Id,
-                    PreviewAssetIds = sf.Assets
-                        .Where(a => a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                        .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = false,
-                    CanWrite = libAccess.GetValueOrDefault(sf.Id).CanWrite,
-                    CanDelete = libAccess.GetValueOrDefault(sf.Id).CanDelete,
-                    IsShared = false,
-                    ExternalLibraryId = sf.ExternalLibraryId,
-                    IsPinned = libPins.ContainsKey(sf.Id),
-                    PinnedAt = PinnedAtOrNull(libPins, sf.Id)
-                }).ToList()
-            };
+                ExternalLibraryId = sf.ExternalLibraryId,
+                IsPinned = libPins.ContainsKey(sf.Id),
+                PinnedAt = PinnedAtOrNull(libPins, sf.Id)
+            }).ToList()
+        };
 
-            return Results.Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
-        }
+        return TypedResults.Ok(response);
     }
 
-    private async Task<IResult> GetAllFolders(
+    private async Task<Results<Ok<List<FolderResponse>>, UnauthorizedHttpResult>> GetAllFolders(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        try
+        if (!TryGetUserId(user, out var userId))
         {
-            if (!TryGetUserId(user, out var userId))
-            {
-                return Results.Unauthorized();
-            }
-
-            var isAdmin = user.IsInRole("Admin");
-            var cacheKey = $"folders:list:{userId}";
-            if (cache.TryGetValue(cacheKey, out List<FolderResponse>? cachedFolders) && cachedFolders != null)
-                return Results.Ok(cachedFolders);
-
-            var folders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
-
-            var folderIds = folders.Select(f => f.Id).ToList();
-            var sharedCounts = await dbContext.FolderPermissions
-                .Include(p => p.Folder)
-                .Where(p => folderIds.Contains(p.FolderId) && p.CanRead)
-                .ToListAsync(cancellationToken);
-
-            var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
-
-            var folderSharedCounts = sharedCounts
-                .GroupBy(p => p.FolderId)
-                .Select(g =>
-                {
-                    var samplePath = g.First().Folder.Path;
-                    var hasOwner = TryGetUserIdFromPath(samplePath, usernameToIdMap, out var ownerId);
-                    // Carpetas personales: excluir al dueño por ruta.
-                    // Carpetas compartidas: excluir al creador (permiso auto-concedido).
-                    var count = hasOwner
-                        ? g.Count(p => p.UserId != ownerId)
-                        : g.Count(p => p.GrantedByUserId != p.UserId);
-                    return new { FolderId = g.Key, Count = count };
-                })
-                .ToDictionary(x => x.FolderId, x => x.Count);
-
-            var permissions = await dbContext.FolderPermissions
-                .Where(p => p.UserId == userId)
-                .ToListAsync(cancellationToken);
-
-            var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
-            var pins = await GetPinsAsync(dbContext, userId, cancellationToken);
-
-            // Write/Delete access is inherited down a shared subtree (a grant
-            // lives on the share root). Walk each folder's parent chain in-memory
-            // against the user's grants — mirrors CanWriteFolderAsync /
-            // CanDeleteFolderAsync without a per-folder round-trip.
-            var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
-            var deletableGrantIds = permissions.Where(p => p.CanDelete).Select(p => p.FolderId).ToHashSet();
-            var folderById = folders.ToDictionary(f => f.Id);
-
-            var response = folders.Select(f =>
-            {
-                var userPerm = permissions.FirstOrDefault(p => p.FolderId == f.Id);
-                return new FolderResponse
-                {
-                    Id = f.Id,
-                    Path = f.Path,
-                    Name = f.Name,
-                    ParentFolderId = f.ParentFolderId,
-                    CreatedAt = f.CreatedAt,
-                    AssetCount = f.Assets.Count(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
-                    FirstAssetId = f.Assets
-                        .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                        .FirstOrDefault()?.Id,
-                    PreviewAssetIds = f.Assets
-                        .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                        .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
-                        || (isAdmin && IsInSharedSpace(f.Path))
-                        || (userPerm?.CanManagePermissions ?? false),
-                    CanWrite = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, writableGrantIds, folderById),
-                    CanDelete = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, deletableGrantIds, folderById),
-                    IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
-                    SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
-                    ExternalLibraryId = f.ExternalLibraryId,
-                    ExcludedFromDiscovery = excludedFolderIds.Contains(f.Id),
-                    IsPinned = pins.ContainsKey(f.Id),
-                    PinnedAt = PinnedAtOrNull(pins, f.Id)
-                };
-            }).ToList();
-
-            ApplyRecursiveCounts(response);
-
-            cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
-            return Results.Ok(response);
+            return TypedResults.Unauthorized();
         }
-        catch (Exception ex)
+
+        var isAdmin = user.IsInRole("Admin");
+        var cacheKey = $"folders:list:{userId}";
+        if (cache.TryGetValue(cacheKey, out List<FolderResponse>? cachedFolders) && cachedFolders != null)
+            return TypedResults.Ok(cachedFolders);
+
+        var folders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
+
+        var folderIds = folders.Select(f => f.Id).ToList();
+        var sharedCounts = await dbContext.FolderPermissions
+            .Include(p => p.Folder)
+            .Where(p => folderIds.Contains(p.FolderId) && p.CanRead)
+            .ToListAsync(cancellationToken);
+
+        var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
+
+        var folderSharedCounts = sharedCounts
+            .GroupBy(p => p.FolderId)
+            .Select(g =>
+            {
+                var samplePath = g.First().Folder.Path;
+                var hasOwner = TryGetUserIdFromPath(samplePath, usernameToIdMap, out var ownerId);
+                // Carpetas personales: excluir al dueño por ruta.
+                // Carpetas compartidas: excluir al creador (permiso auto-concedido).
+                var count = hasOwner
+                    ? g.Count(p => p.UserId != ownerId)
+                    : g.Count(p => p.GrantedByUserId != p.UserId);
+                return new { FolderId = g.Key, Count = count };
+            })
+            .ToDictionary(x => x.FolderId, x => x.Count);
+
+        var permissions = await dbContext.FolderPermissions
+            .Where(p => p.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
+        var pins = await GetPinsAsync(dbContext, userId, cancellationToken);
+
+        // Write/Delete access is inherited down a shared subtree (a grant
+        // lives on the share root). Walk each folder's parent chain in-memory
+        // against the user's grants — mirrors CanWriteFolderAsync /
+        // CanDeleteFolderAsync without a per-folder round-trip.
+        var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
+        var deletableGrantIds = permissions.Where(p => p.CanDelete).Select(p => p.FolderId).ToHashSet();
+        var folderById = folders.ToDictionary(f => f.Id);
+
+        var response = folders.Select(f =>
         {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError
-            );
-        }
-    }
-
-    private async Task<IResult> GetFolderById(
-        [FromServices] ApplicationDbContext dbContext,
-        [FromRoute] Guid folderId,
-        ClaimsPrincipal user,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            if (!TryGetUserId(user, out var userId))
+            var userPerm = permissions.FirstOrDefault(p => p.FolderId == f.Id);
+            return new FolderResponse
             {
-                return Results.Unauthorized();
-            }
-
-            var folder = await dbContext.Folders
-                .Include(f => f.Assets)
-                .Include(f => f.SubFolders)
-                    .ThenInclude(sf => sf.Assets)
-                .FirstOrDefaultAsync(f => f.Id == folderId, cancellationToken);
-
-            if (folder == null)
-            {
-                return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
-            }
-
-            var isAdmin = user.IsInRole("Admin");
-            if (!await CanReadFolderAsync(dbContext, userId, folderId, isAdmin, cancellationToken))
-            {
-                return Results.Forbid();
-            }
-
-            var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
-            var ownerIdFromPath = TryGetUserIdFromPath(folder.Path, usernameToIdMap, out var parsedOwnerId)
-                ? parsedOwnerId
-                : (Guid?)null;
-
-            var sharedCount = await dbContext.FolderPermissions
-                .CountAsync(p => p.FolderId == folderId && p.CanRead &&
-                                 // Carpetas personales: excluir dueño por ruta
-                                 (!ownerIdFromPath.HasValue || p.UserId != ownerIdFromPath.Value) &&
-                                 // Carpetas compartidas: excluir al creador (permiso auto-concedido)
-                                 (ownerIdFromPath.HasValue || p.GrantedByUserId != p.UserId),
-                    cancellationToken);
-
-            var userPermission = await dbContext.FolderPermissions
-                .FirstOrDefaultAsync(p => p.FolderId == folderId && p.UserId == userId, cancellationToken);
-
-            var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
-            var pins = await GetPinsAsync(dbContext, userId, cancellationToken);
-
-            var subfolderIds = folder.SubFolders.Select(sf => sf.Id).ToList();
-            var subfolderUserPerms = subfolderIds.Count > 0
-                ? await dbContext.FolderPermissions
-                    .Where(p => p.UserId == userId && subfolderIds.Contains(p.FolderId))
-                    .ToDictionaryAsync(p => p.FolderId, p => p, cancellationToken)
-                : new Dictionary<Guid, FolderPermission>();
-
-            // Compute recursive asset counts for each subfolder.
-            // Batch approach: fetch all descendant folders of this folder, group by
-            // which immediate subfolder they belong to, and sum asset counts.
-            var recursiveCounts = new Dictionary<Guid, int>();
-            if (folder.SubFolders.Count > 0)
-            {
-                var isBin = IsBinPath(folder.Path);
-                var parentNormPath = NormalizeVirtualPath(folder.Path);
-
-                // Get all descendant folders (any depth) under this folder
-                var allDescendantFolders = await dbContext.Folders
-                    .Where(f => EF.Functions.Like(f.Path, parentNormPath + "/%"))
-                    .Select(f => new { f.Id, f.Path, AssetCount = f.Assets.Count(a => isBin ? a.DeletedAt != null : a.DeletedAt == null) })
-                    .ToListAsync(cancellationToken);
-
-                // Map each descendant to its immediate subfolder
-                foreach (var sf in folder.SubFolders)
-                {
-                    var sfNormPath = NormalizeVirtualPath(sf.Path);
-                    var sfPrefix = sfNormPath + "/";
-                    var directCount = sf.Assets.Count(a => isBin ? a.DeletedAt != null : a.DeletedAt == null);
-                    var descendantCount = allDescendantFolders
-                        .Where(d => d.Id != sf.Id && d.Path.StartsWith(sfPrefix, StringComparison.OrdinalIgnoreCase))
-                        .Sum(d => d.AssetCount);
-                    recursiveCounts[sf.Id] = directCount + descendantCount;
-                }
-            }
-
-            // Write/Delete flags for the folder and each subfolder, from the same
-            // helpers that gate the mutating endpoints — the detail screen used
-            // to receive them unset and guess from IsOwner.
-            var canWrite = await CanWriteFolderAsync(dbContext, userId, folder.Id, isAdmin, cancellationToken);
-            var canDelete = await CanDeleteFolderAsync(dbContext, userId, folder.Id, isAdmin, cancellationToken);
-            var subfolderAccess = new Dictionary<Guid, (bool CanWrite, bool CanDelete)>();
-            foreach (var sf in folder.SubFolders)
-            {
-                subfolderAccess[sf.Id] = (
-                    await CanWriteFolderAsync(dbContext, userId, sf.Id, isAdmin, cancellationToken),
-                    await CanDeleteFolderAsync(dbContext, userId, sf.Id, isAdmin, cancellationToken));
-            }
-
-            var response = new FolderResponse
-            {
-                Id = folder.Id,
-                Path = folder.Path,
-                Name = folder.Name,
-                ParentFolderId = folder.ParentFolderId,
-                CreatedAt = folder.CreatedAt,
-                AssetCount = folder.Assets.Count(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null),
-                FirstAssetId = folder.Assets
-                    .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                Id = f.Id,
+                Path = f.Path,
+                Name = f.Name,
+                ParentFolderId = f.ParentFolderId,
+                CreatedAt = f.CreatedAt,
+                AssetCount = f.Assets.Count(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
+                FirstAssetId = f.Assets
+                    .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .FirstOrDefault()?.Id,
-                PreviewAssetIds = folder.Assets
-                    .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                PreviewAssetIds = f.Assets
+                    .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
-                IsOwner = ownerIdFromPath == userId
-                    || (isAdmin && IsInSharedSpace(folder.Path))
-                    || (userPermission?.CanManagePermissions ?? false),
-                CanWrite = canWrite,
-                CanDelete = canDelete,
-                IsShared = folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
-                SharedWithCount = sharedCount,
-                ExternalLibraryId = folder.ExternalLibraryId,
-                ExcludedFromDiscovery = excludedFolderIds.Contains(folder.Id),
-                IsPinned = pins.ContainsKey(folder.Id),
-                PinnedAt = PinnedAtOrNull(pins, folder.Id),
-                SubFolders = folder.SubFolders.Select(sf => new FolderResponse
-                {
-                    Id = sf.Id,
-                    Path = sf.Path,
-                    Name = sf.Name,
-                    ParentFolderId = sf.ParentFolderId,
-                    CreatedAt = sf.CreatedAt,
-                    AssetCount = recursiveCounts.GetValueOrDefault(sf.Id, sf.Assets.Count(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)),
-                    FirstAssetId = sf.Assets
-                        .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                        .FirstOrDefault()?.Id,
-                    PreviewAssetIds = sf.Assets
-                        .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                        .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = OwnsByPath(sf.Path, usernameToIdMap, userId)
-                        || (isAdmin && IsInSharedSpace(sf.Path))
-                        || (subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? false),
-                    CanWrite = subfolderAccess.GetValueOrDefault(sf.Id).CanWrite,
-                    CanDelete = subfolderAccess.GetValueOrDefault(sf.Id).CanDelete,
-                    IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
-                    ExternalLibraryId = sf.ExternalLibraryId,
-                    ExcludedFromDiscovery = excludedFolderIds.Contains(sf.Id),
-                    IsPinned = pins.ContainsKey(sf.Id),
-                    PinnedAt = PinnedAtOrNull(pins, sf.Id)
-                }).ToList()
+                IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
+                    || (isAdmin && IsInSharedSpace(f.Path))
+                    || (userPerm?.CanManagePermissions ?? false),
+                CanWrite = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, writableGrantIds, folderById),
+                CanDelete = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, deletableGrantIds, folderById),
+                IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
+                SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
+                ExternalLibraryId = f.ExternalLibraryId,
+                ExcludedFromDiscovery = excludedFolderIds.Contains(f.Id),
+                IsPinned = pins.ContainsKey(f.Id),
+                PinnedAt = PinnedAtOrNull(pins, f.Id)
             };
+        }).ToList();
 
-            return Results.Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError
-            );
-        }
+        ApplyRecursiveCounts(response);
+
+        cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+        return TypedResults.Ok(response);
     }
 
-    private async Task<IResult> GetFolderAssets(
+    private async Task<Results<Ok<FolderResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> GetFolderById(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] Guid folderId,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        try
+        if (!TryGetUserId(user, out var userId))
         {
-            if (!TryGetUserId(user, out var userId))
-            {
-                return Results.Unauthorized();
-            }
+            return TypedResults.Unauthorized();
+        }
 
-            var folder = await dbContext.Folders
-                .FirstOrDefaultAsync(f => f.Id == folderId, cancellationToken);
+        var folder = await dbContext.Folders
+            .Include(f => f.Assets)
+            .Include(f => f.SubFolders)
+                .ThenInclude(sf => sf.Assets)
+            .FirstOrDefaultAsync(f => f.Id == folderId, cancellationToken);
 
-            if (folder == null)
-            {
-                return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
-            }
+        if (folder == null)
+        {
+            return TypedResults.NotFound(new ApiError($"Folder with ID {folderId} not found", "folder_not_found"));
+        }
 
-            if (!await CanReadFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
-            {
-                return Results.Forbid();
-            }
+        var isAdmin = user.IsInRole("Admin");
+        if (!await CanReadFolderAsync(dbContext, userId, folderId, isAdmin, cancellationToken))
+        {
+            return TypedResults.Forbid();
+        }
 
-            var normalizedFolderPath = NormalizeVirtualPath(folder.Path);
-            var unassignedAssets = await dbContext.Assets
-                .Where(a => a.FolderId == null)
-                .Where(a => EF.Functions.Like(a.FullPath, normalizedFolderPath + "/%"))
-                .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+        var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
+        var ownerIdFromPath = TryGetUserIdFromPath(folder.Path, usernameToIdMap, out var parsedOwnerId)
+            ? parsedOwnerId
+            : (Guid?)null;
+
+        var sharedCount = await dbContext.FolderPermissions
+            .CountAsync(p => p.FolderId == folderId && p.CanRead &&
+                             // Carpetas personales: excluir dueño por ruta
+                             (!ownerIdFromPath.HasValue || p.UserId != ownerIdFromPath.Value) &&
+                             // Carpetas compartidas: excluir al creador (permiso auto-concedido)
+                             (ownerIdFromPath.HasValue || p.GrantedByUserId != p.UserId),
+                cancellationToken);
+
+        var userPermission = await dbContext.FolderPermissions
+            .FirstOrDefaultAsync(p => p.FolderId == folderId && p.UserId == userId, cancellationToken);
+
+        var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
+        var pins = await GetPinsAsync(dbContext, userId, cancellationToken);
+
+        var subfolderIds = folder.SubFolders.Select(sf => sf.Id).ToList();
+        var subfolderUserPerms = subfolderIds.Count > 0
+            ? await dbContext.FolderPermissions
+                .Where(p => p.UserId == userId && subfolderIds.Contains(p.FolderId))
+                .ToDictionaryAsync(p => p.FolderId, p => p, cancellationToken)
+            : new Dictionary<Guid, FolderPermission>();
+
+        // Compute recursive asset counts for each subfolder.
+        // Batch approach: fetch all descendant folders of this folder, group by
+        // which immediate subfolder they belong to, and sum asset counts.
+        var recursiveCounts = new Dictionary<Guid, int>();
+        if (folder.SubFolders.Count > 0)
+        {
+            var isBin = IsBinPath(folder.Path);
+            var parentNormPath = NormalizeVirtualPath(folder.Path);
+
+            // Get all descendant folders (any depth) under this folder
+            var allDescendantFolders = await dbContext.Folders
+                .Where(f => EF.Functions.Like(f.Path, parentNormPath + "/%"))
+                .Select(f => new { f.Id, f.Path, AssetCount = f.Assets.Count(a => isBin ? a.DeletedAt != null : a.DeletedAt == null) })
                 .ToListAsync(cancellationToken);
 
-            if (unassignedAssets.Any())
+            // Map each descendant to its immediate subfolder
+            foreach (var sf in folder.SubFolders)
             {
-                var assetsToAssign = unassignedAssets
-                    .Where(a => string.Equals(GetVirtualDirectory(a.FullPath), normalizedFolderPath, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                if (assetsToAssign.Any())
-                {
-                    foreach (var asset in assetsToAssign)
-                    {
-                        asset.FolderId = folderId;
-                    }
-
-                    await dbContext.SaveChangesAsync(cancellationToken);
-                }
+                var sfNormPath = NormalizeVirtualPath(sf.Path);
+                var sfPrefix = sfNormPath + "/";
+                var directCount = sf.Assets.Count(a => isBin ? a.DeletedAt != null : a.DeletedAt == null);
+                var descendantCount = allDescendantFolders
+                    .Where(d => d.Id != sf.Id && d.Path.StartsWith(sfPrefix, StringComparison.OrdinalIgnoreCase))
+                    .Sum(d => d.AssetCount);
+                recursiveCounts[sf.Id] = directCount + descendantCount;
             }
-
-            var assets = await dbContext.Assets
-                .Include(a => a.Exif)
-                .Include(a => a.Thumbnails)
-                .Where(a => a.FolderId == folderId)
-                .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                // Hide the motion (.mov) half of a Live Photo, mirroring
-                // TimelineQuery.VisibleAssets: the clip is served through the
-                // still's /motion endpoint, never as its own folder entry.
-                .Where(a => !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))
-                .OrderByDescending(a => a.ScannedAt)
-                .ThenByDescending(a => a.FileModifiedAt)
-                .ToListAsync(cancellationToken);
-
-            var response = assets.Select(asset => new TimelineResponse
-            {
-                Id = asset.Id,
-                FileName = asset.FileName,
-                FullPath = asset.FullPath,
-                FileSize = asset.FileSize,
-                FileCreatedAt = asset.CapturedAt,
-                FileModifiedAt = asset.FileModifiedAt,
-                Extension = asset.Extension,
-                ScannedAt = asset.ScannedAt,
-                Type = asset.Type.ToString(),
-                Checksum = asset.Checksum,
-                HasExif = asset.Exif != null,
-                HasThumbnails = asset.Thumbnails.Any(),
-                IsFavorite = asset.IsFavorite,
-                DeletedAt = asset.DeletedAt,
-                IsReadOnly = asset.ExternalLibraryId.HasValue
-            }).ToList();
-
-            // Stitch detected/user tags (e.g. "LivePhoto") onto the page so the
-            // viewer opened from a folder shows the Live Photo affordance too.
-            await TimelineQuery.HydrateTagsAsync(dbContext, response, cancellationToken);
-
-            return Results.Ok(response);
         }
-        catch (Exception ex)
+
+        // Write/Delete flags for the folder and each subfolder, from the same
+        // helpers that gate the mutating endpoints — the detail screen used
+        // to receive them unset and guess from IsOwner.
+        var canWrite = await CanWriteFolderAsync(dbContext, userId, folder.Id, isAdmin, cancellationToken);
+        var canDelete = await CanDeleteFolderAsync(dbContext, userId, folder.Id, isAdmin, cancellationToken);
+        var subfolderAccess = new Dictionary<Guid, (bool CanWrite, bool CanDelete)>();
+        foreach (var sf in folder.SubFolders)
         {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError
-            );
+            subfolderAccess[sf.Id] = (
+                await CanWriteFolderAsync(dbContext, userId, sf.Id, isAdmin, cancellationToken),
+                await CanDeleteFolderAsync(dbContext, userId, sf.Id, isAdmin, cancellationToken));
         }
+
+        var response = new FolderResponse
+        {
+            Id = folder.Id,
+            Path = folder.Path,
+            Name = folder.Name,
+            ParentFolderId = folder.ParentFolderId,
+            CreatedAt = folder.CreatedAt,
+            AssetCount = folder.Assets.Count(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null),
+            FirstAssetId = folder.Assets
+                .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                .FirstOrDefault()?.Id,
+            PreviewAssetIds = folder.Assets
+                .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                .Take(4).Select(a => a.Id).ToList(),
+            IsOwner = ownerIdFromPath == userId
+                || (isAdmin && IsInSharedSpace(folder.Path))
+                || (userPermission?.CanManagePermissions ?? false),
+            CanWrite = canWrite,
+            CanDelete = canDelete,
+            IsShared = folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
+            SharedWithCount = sharedCount,
+            ExternalLibraryId = folder.ExternalLibraryId,
+            ExcludedFromDiscovery = excludedFolderIds.Contains(folder.Id),
+            IsPinned = pins.ContainsKey(folder.Id),
+            PinnedAt = PinnedAtOrNull(pins, folder.Id),
+            SubFolders = folder.SubFolders.Select(sf => new FolderResponse
+            {
+                Id = sf.Id,
+                Path = sf.Path,
+                Name = sf.Name,
+                ParentFolderId = sf.ParentFolderId,
+                CreatedAt = sf.CreatedAt,
+                AssetCount = recursiveCounts.GetValueOrDefault(sf.Id, sf.Assets.Count(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)),
+                FirstAssetId = sf.Assets
+                    .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                    .FirstOrDefault()?.Id,
+                PreviewAssetIds = sf.Assets
+                    .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                    .Take(4).Select(a => a.Id).ToList(),
+                IsOwner = OwnsByPath(sf.Path, usernameToIdMap, userId)
+                    || (isAdmin && IsInSharedSpace(sf.Path))
+                    || (subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? false),
+                CanWrite = subfolderAccess.GetValueOrDefault(sf.Id).CanWrite,
+                CanDelete = subfolderAccess.GetValueOrDefault(sf.Id).CanDelete,
+                IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
+                ExternalLibraryId = sf.ExternalLibraryId,
+                ExcludedFromDiscovery = excludedFolderIds.Contains(sf.Id),
+                IsPinned = pins.ContainsKey(sf.Id),
+                PinnedAt = PinnedAtOrNull(pins, sf.Id)
+            }).ToList()
+        };
+
+        return TypedResults.Ok(response);
     }
 
-    private async Task<IResult> GetFolderTree(
+    private async Task<Results<Ok<List<TimelineResponse>>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> GetFolderAssets(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromRoute] Guid folderId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(user, out var userId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        var folder = await dbContext.Folders
+            .FirstOrDefaultAsync(f => f.Id == folderId, cancellationToken);
+
+        if (folder == null)
+        {
+            return TypedResults.NotFound(new ApiError($"Folder with ID {folderId} not found", "folder_not_found"));
+        }
+
+        if (!await CanReadFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
+        {
+            return TypedResults.Forbid();
+        }
+
+        var normalizedFolderPath = NormalizeVirtualPath(folder.Path);
+        var unassignedAssets = await dbContext.Assets
+            .Where(a => a.FolderId == null)
+            .Where(a => EF.Functions.Like(a.FullPath, normalizedFolderPath + "/%"))
+            .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+
+        if (unassignedAssets.Any())
+        {
+            var assetsToAssign = unassignedAssets
+                .Where(a => string.Equals(GetVirtualDirectory(a.FullPath), normalizedFolderPath, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (assetsToAssign.Any())
+            {
+                foreach (var asset in assetsToAssign)
+                {
+                    asset.FolderId = folderId;
+                }
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        var assets = await dbContext.Assets
+            .Include(a => a.Exif)
+            .Include(a => a.Thumbnails)
+            .Where(a => a.FolderId == folderId)
+            .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+            // Hide the motion (.mov) half of a Live Photo, mirroring
+            // TimelineQuery.VisibleAssets: the clip is served through the
+            // still's /motion endpoint, never as its own folder entry.
+            .Where(a => !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))
+            .OrderByDescending(a => a.ScannedAt)
+            .ThenByDescending(a => a.FileModifiedAt)
+            .ToListAsync(cancellationToken);
+
+        var response = assets.Select(asset => new TimelineResponse
+        {
+            Id = asset.Id,
+            FileName = asset.FileName,
+            FullPath = asset.FullPath,
+            FileSize = asset.FileSize,
+            FileCreatedAt = asset.CapturedAt,
+            FileModifiedAt = asset.FileModifiedAt,
+            Extension = asset.Extension,
+            ScannedAt = asset.ScannedAt,
+            Type = asset.Type.ToString(),
+            Checksum = asset.Checksum,
+            HasExif = asset.Exif != null,
+            HasThumbnails = asset.Thumbnails.Any(),
+            IsFavorite = asset.IsFavorite,
+            DeletedAt = asset.DeletedAt,
+            IsReadOnly = asset.ExternalLibraryId.HasValue
+        }).ToList();
+
+        // Stitch detected/user tags (e.g. "LivePhoto") onto the page so the
+        // viewer opened from a folder shows the Live Photo affordance too.
+        await TimelineQuery.HydrateTagsAsync(dbContext, response, cancellationToken);
+
+        return TypedResults.Ok(response);
+    }
+
+    private async Task<Results<Ok<List<FolderResponse>>, UnauthorizedHttpResult>> GetFolderTree(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        try
+        if (!TryGetUserId(user, out var userId))
         {
-            if (!TryGetUserId(user, out var userId))
-            {
-                return Results.Unauthorized();
-            }
-
-            var isAdmin = user.IsInRole("Admin");
-            var treeCacheKey = $"folders:tree:{userId}";
-            if (cache.TryGetValue(treeCacheKey, out List<FolderResponse>? cachedTree) && cachedTree != null)
-                return Results.Ok(cachedTree);
-
-            var allFolders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
-
-            var folderIds = allFolders.Select(f => f.Id).ToList();
-            var sharedCounts = await dbContext.FolderPermissions
-                .Include(p => p.Folder)
-                .Where(p => folderIds.Contains(p.FolderId) && p.CanRead)
-                .ToListAsync(cancellationToken);
-
-            var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
-
-            var folderSharedCounts = sharedCounts
-                .GroupBy(p => p.FolderId)
-                .Select(g =>
-                {
-                    var samplePath = g.First().Folder.Path;
-                    var hasOwner = TryGetUserIdFromPath(samplePath, usernameToIdMap, out var ownerId);
-                    // Carpetas personales: excluir al dueño por ruta.
-                    // Carpetas compartidas: excluir al creador (permiso auto-concedido).
-                    var count = hasOwner
-                        ? g.Count(p => p.UserId != ownerId)
-                        : g.Count(p => p.GrantedByUserId != p.UserId);
-                    return new { FolderId = g.Key, Count = count };
-                })
-                .ToDictionary(x => x.FolderId, x => x.Count);
-
-            var permissions = await dbContext.FolderPermissions
-                .Where(p => p.UserId == userId)
-                .ToListAsync(cancellationToken);
-
-            // Write/Delete access is inherited down a shared subtree (grant on
-            // the share root). Walk the parent chain in-memory — see the flat
-            // list handler above.
-            var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
-            var deletableGrantIds = permissions.Where(p => p.CanDelete).Select(p => p.FolderId).ToHashSet();
-            var folderByIdForWrite = allFolders.ToDictionary(f => f.Id);
-            var treePins = await GetPinsAsync(dbContext, userId, cancellationToken);
-
-            // Build tree structure
-            var folderDict = allFolders.ToDictionary(f => f.Id, f =>
-            {
-                var userPerm = permissions.FirstOrDefault(p => p.FolderId == f.Id);
-                return new FolderResponse
-                {
-                    Id = f.Id,
-                    Path = f.Path,
-                    Name = f.Name,
-                    ParentFolderId = f.ParentFolderId,
-                    CreatedAt = f.CreatedAt,
-                    AssetCount = f.Assets.Count(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
-                    FirstAssetId = f.Assets
-                        .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                        .FirstOrDefault()?.Id,
-                    PreviewAssetIds = f.Assets
-                        .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                        .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
-                        || (isAdmin && IsInSharedSpace(f.Path))
-                        || (userPerm?.CanManagePermissions ?? false),
-                    CanWrite = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, writableGrantIds, folderByIdForWrite),
-                    CanDelete = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, deletableGrantIds, folderByIdForWrite),
-                    IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
-                    SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
-                    IsPinned = treePins.ContainsKey(f.Id),
-                    PinnedAt = PinnedAtOrNull(treePins, f.Id),
-                    SubFolders = new List<FolderResponse>()
-                };
-            });
-
-            var rootFolders = new List<FolderResponse>();
-
-            foreach (var folder in folderDict.Values)
-            {
-                if (folder.ParentFolderId.HasValue && folderDict.ContainsKey(folder.ParentFolderId.Value))
-                {
-                    folderDict[folder.ParentFolderId.Value].SubFolders.Add(folder);
-                }
-                else
-                {
-                    rootFolders.Add(folder);
-                }
-            }
-
-            foreach (var root in rootFolders)
-            {
-                UpdateTotalAssetCount(root);
-            }
-
-            cache.Set(treeCacheKey, rootFolders, TimeSpan.FromMinutes(5));
-            return Results.Ok(rootFolders);
+            return TypedResults.Unauthorized();
         }
-        catch (Exception ex)
+
+        var isAdmin = user.IsInRole("Admin");
+        var treeCacheKey = $"folders:tree:{userId}";
+        if (cache.TryGetValue(treeCacheKey, out List<FolderResponse>? cachedTree) && cachedTree != null)
+            return TypedResults.Ok(cachedTree);
+
+        var allFolders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
+
+        var folderIds = allFolders.Select(f => f.Id).ToList();
+        var sharedCounts = await dbContext.FolderPermissions
+            .Include(p => p.Folder)
+            .Where(p => folderIds.Contains(p.FolderId) && p.CanRead)
+            .ToListAsync(cancellationToken);
+
+        var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
+
+        var folderSharedCounts = sharedCounts
+            .GroupBy(p => p.FolderId)
+            .Select(g =>
+            {
+                var samplePath = g.First().Folder.Path;
+                var hasOwner = TryGetUserIdFromPath(samplePath, usernameToIdMap, out var ownerId);
+                // Carpetas personales: excluir al dueño por ruta.
+                // Carpetas compartidas: excluir al creador (permiso auto-concedido).
+                var count = hasOwner
+                    ? g.Count(p => p.UserId != ownerId)
+                    : g.Count(p => p.GrantedByUserId != p.UserId);
+                return new { FolderId = g.Key, Count = count };
+            })
+            .ToDictionary(x => x.FolderId, x => x.Count);
+
+        var permissions = await dbContext.FolderPermissions
+            .Where(p => p.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        // Write/Delete access is inherited down a shared subtree (grant on
+        // the share root). Walk the parent chain in-memory — see the flat
+        // list handler above.
+        var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
+        var deletableGrantIds = permissions.Where(p => p.CanDelete).Select(p => p.FolderId).ToHashSet();
+        var folderByIdForWrite = allFolders.ToDictionary(f => f.Id);
+        var treePins = await GetPinsAsync(dbContext, userId, cancellationToken);
+
+        // Build tree structure
+        var folderDict = allFolders.ToDictionary(f => f.Id, f =>
         {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError
-            );
+            var userPerm = permissions.FirstOrDefault(p => p.FolderId == f.Id);
+            return new FolderResponse
+            {
+                Id = f.Id,
+                Path = f.Path,
+                Name = f.Name,
+                ParentFolderId = f.ParentFolderId,
+                CreatedAt = f.CreatedAt,
+                AssetCount = f.Assets.Count(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
+                FirstAssetId = f.Assets
+                    .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                    .FirstOrDefault()?.Id,
+                PreviewAssetIds = f.Assets
+                    .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                    .Take(4).Select(a => a.Id).ToList(),
+                IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
+                    || (isAdmin && IsInSharedSpace(f.Path))
+                    || (userPerm?.CanManagePermissions ?? false),
+                CanWrite = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, writableGrantIds, folderByIdForWrite),
+                CanDelete = HasFolderAccessInMemory(f, usernameToIdMap, userId, isAdmin, deletableGrantIds, folderByIdForWrite),
+                IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
+                SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
+                IsPinned = treePins.ContainsKey(f.Id),
+                PinnedAt = PinnedAtOrNull(treePins, f.Id),
+                SubFolders = new List<FolderResponse>()
+            };
+        });
+
+        var rootFolders = new List<FolderResponse>();
+
+        foreach (var folder in folderDict.Values)
+        {
+            if (folder.ParentFolderId.HasValue && folderDict.ContainsKey(folder.ParentFolderId.Value))
+            {
+                folderDict[folder.ParentFolderId.Value].SubFolders.Add(folder);
+            }
+            else
+            {
+                rootFolders.Add(folder);
+            }
         }
+
+        foreach (var root in rootFolders)
+        {
+            UpdateTotalAssetCount(root);
+        }
+
+        cache.Set(treeCacheKey, rootFolders, TimeSpan.FromMinutes(5));
+        return TypedResults.Ok(rootFolders);
     }
 
-    private async Task<IResult> CreateFolder(
+    private async Task<Results<Ok<FolderResponse>, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound<ApiError>, ForbidHttpResult>> CreateFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] IMemoryCache cache,
@@ -744,14 +699,14 @@ public class FoldersEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            return Results.BadRequest(new { error = "El nombre de la carpeta es obligatorio." });
+            return TypedResults.BadRequest(new ApiError("El nombre de la carpeta es obligatorio.", "folder_name_required"));
         }
 
         Folder? parentFolder = null;
@@ -762,12 +717,12 @@ public class FoldersEndpoint : IEndpoint
 
             if (parentFolder == null)
             {
-                return Results.NotFound(new { error = "Carpeta padre no encontrada." });
+                return TypedResults.NotFound(new ApiError("Carpeta padre no encontrada.", "parent_folder_not_found"));
             }
 
             if (!await CanWriteFolderAsync(dbContext, userId, parentFolder.Id, user.IsInRole("Admin"), cancellationToken))
             {
-                return Results.Forbid();
+                return TypedResults.Forbid();
             }
         }
 
@@ -790,7 +745,7 @@ public class FoldersEndpoint : IEndpoint
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(normalizedPath);
         if (Directory.Exists(physicalPath))
         {
-            return Results.BadRequest(new { error = "Ya existe una carpeta con ese nombre en la ruta destino." });
+            return TypedResults.BadRequest(new ApiError("Ya existe una carpeta con ese nombre en la ruta destino.", "folder_already_exists"));
         }
 
         Directory.CreateDirectory(physicalPath);
@@ -828,7 +783,7 @@ public class FoldersEndpoint : IEndpoint
             IsShared = normalizedPath.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase)
         };
 
-        return Results.Ok(response);
+        return TypedResults.Ok(response);
     }
 
     /// <summary>
@@ -879,7 +834,7 @@ public class FoldersEndpoint : IEndpoint
         return folder;
     }
 
-    private async Task<IResult> UpdateFolder(
+    private async Task<Results<Ok<FolderResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult, BadRequest<ApiError>>> UpdateFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] IMemoryCache cache,
@@ -890,10 +845,10 @@ public class FoldersEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var folder = await dbContext.Folders
             .Include(f => f.SubFolders)
@@ -901,12 +856,12 @@ public class FoldersEndpoint : IEndpoint
 
         if (folder == null)
         {
-            return Results.NotFound(new { error = "Carpeta no encontrada." });
+            return TypedResults.NotFound(new ApiError("Carpeta no encontrada.", "folder_not_found"));
         }
 
         if (!await CanWriteFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         var newName = string.IsNullOrWhiteSpace(request.Name) ? folder.Name : request.Name.Trim();
@@ -916,7 +871,7 @@ public class FoldersEndpoint : IEndpoint
         {
             if (request.ParentFolderId.Value == folderId)
             {
-                return Results.BadRequest(new { error = "La carpeta no puede ser su propio padre." });
+                return TypedResults.BadRequest(new ApiError("La carpeta no puede ser su propio padre.", "invalid_parent_folder"));
             }
 
             newParent = await dbContext.Folders
@@ -924,17 +879,17 @@ public class FoldersEndpoint : IEndpoint
 
             if (newParent == null)
             {
-                return Results.NotFound(new { error = "Carpeta padre no encontrada." });
+                return TypedResults.NotFound(new ApiError("Carpeta padre no encontrada.", "parent_folder_not_found"));
             }
 
             if (IsDescendantFolder(newParent, folderId, dbContext))
             {
-                return Results.BadRequest(new { error = "No puedes mover una carpeta dentro de su propia subcarpeta." });
+                return TypedResults.BadRequest(new ApiError("No puedes mover una carpeta dentro de su propia subcarpeta.", "invalid_parent_folder"));
             }
 
             if (!await CanWriteFolderAsync(dbContext, userId, newParent.Id, user.IsInRole("Admin"), cancellationToken))
             {
-                return Results.Forbid();
+                return TypedResults.Forbid();
             }
         }
 
@@ -954,12 +909,12 @@ public class FoldersEndpoint : IEndpoint
                 .FirstOrDefaultAsync(f => f.Path == newNormalizedPath && f.Id != folderId, cancellationToken);
             if (existingFolder != null)
             {
-                return Results.BadRequest(new { error = "Ya existe una carpeta con ese nombre en la ruta destino." });
+                return TypedResults.BadRequest(new ApiError("Ya existe una carpeta con ese nombre en la ruta destino.", "folder_already_exists"));
             }
 
             if (Directory.Exists(newPhysicalPath))
             {
-                return Results.BadRequest(new { error = "La carpeta destino ya existe." });
+                return TypedResults.BadRequest(new ApiError("La carpeta destino ya existe.", "folder_already_exists"));
             }
 
             if (Directory.Exists(oldPhysicalPath))
@@ -996,10 +951,10 @@ public class FoldersEndpoint : IEndpoint
         };
         response.IsPinned = response.PinnedAt.HasValue;
 
-        return Results.Ok(response);
+        return TypedResults.Ok(response);
     }
 
-    private async Task<IResult> DeleteFolder(
+    private async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> DeleteFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] INotificationService notifications,
@@ -1010,22 +965,22 @@ public class FoldersEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var folder = await dbContext.Folders
             .FirstOrDefaultAsync(f => f.Id == folderId, cancellationToken);
 
         if (folder == null)
         {
-            return Results.NotFound(new { error = "Carpeta no encontrada." });
+            return TypedResults.NotFound(new ApiError("Carpeta no encontrada.", "folder_not_found"));
         }
 
         if (!await CanDeleteFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         var folderIdsToDelete = await GetFolderSubtreeIdsAsync(dbContext, folderId, cancellationToken);
@@ -1050,7 +1005,7 @@ public class FoldersEndpoint : IEndpoint
                     user.IsInRole("Admin"), cancellationToken);
                 if (!authorized)
                 {
-                    return Results.Forbid();
+                    return TypedResults.Forbid();
                 }
 
                 // The subtree folders are about to be removed, so a restore that
@@ -1095,10 +1050,10 @@ public class FoldersEndpoint : IEndpoint
             }
         }
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
-    private async Task<IResult> PinFolder(
+    private async Task<Results<Ok<FolderPinResponse>, UnauthorizedHttpResult, NotFound<ApiError>>> PinFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         [FromRoute] Guid folderId,
@@ -1106,12 +1061,12 @@ public class FoldersEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         // Anyone who can read the folder may pin it; one they can't read is a
         // 404, not a 403, so pinning doesn't leak which ids exist.
         if (!await CanReadFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
-            return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
+            return TypedResults.NotFound(new ApiError($"Folder with ID {folderId} not found", "folder_not_found"));
 
         var existing = await dbContext.FolderPins
             .FirstOrDefaultAsync(p => p.UserId == userId && p.FolderId == folderId, cancellationToken);
@@ -1134,10 +1089,10 @@ public class FoldersEndpoint : IEndpoint
             cache.Remove($"folders:tree:{userId}");
         }
 
-        return Results.Ok(new FolderPinResponse { FolderId = folderId, IsPinned = true, PinnedAt = existing.PinnedAt });
+        return TypedResults.Ok(new FolderPinResponse { FolderId = folderId, IsPinned = true, PinnedAt = existing.PinnedAt });
     }
 
-    private async Task<IResult> UnpinFolder(
+    private async Task<Results<Ok<FolderPinResponse>, UnauthorizedHttpResult, NotFound<ApiError>>> UnpinFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         [FromRoute] Guid folderId,
@@ -1145,10 +1100,10 @@ public class FoldersEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (!await CanReadFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
-            return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
+            return TypedResults.NotFound(new ApiError($"Folder with ID {folderId} not found", "folder_not_found"));
 
         var removed = await dbContext.FolderPins
             .Where(p => p.UserId == userId && p.FolderId == folderId)
@@ -1159,10 +1114,10 @@ public class FoldersEndpoint : IEndpoint
             cache.Remove($"folders:tree:{userId}");
         }
 
-        return Results.Ok(new FolderPinResponse { FolderId = folderId, IsPinned = false, PinnedAt = null });
+        return TypedResults.Ok(new FolderPinResponse { FolderId = folderId, IsPinned = false, PinnedAt = null });
     }
 
-    private async Task<IResult> SetFolderDiscoveryVisibility(
+    private async Task<Results<Ok<FolderDiscoveryVisibilityResponse>, UnauthorizedHttpResult, NotFound<ApiError>, BadRequest<ApiError>>> SetFolderDiscoveryVisibility(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] AllowedFolderCache allowedFolders,
@@ -1174,7 +1129,7 @@ public class FoldersEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         var folder = await dbContext.Folders
@@ -1183,14 +1138,14 @@ public class FoldersEndpoint : IEndpoint
 
         if (folder == null)
         {
-            return Results.NotFound(new { error = "Carpeta no encontrada." });
+            return TypedResults.NotFound(new ApiError("Carpeta no encontrada.", "folder_not_found"));
         }
 
         // Only shared folders can be opted out — personal space is always the
         // user's own content and libraries have their own visibility model.
         if (!IsInSharedSpace(folder.Path))
         {
-            return Results.BadRequest(new { error = "Solo las carpetas compartidas pueden excluirse de tus fotos." });
+            return TypedResults.BadRequest(new ApiError("Solo las carpetas compartidas pueden excluirse de tus fotos.", "not_shared_folder"));
         }
 
         var excluded = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
@@ -1208,10 +1163,10 @@ public class FoldersEndpoint : IEndpoint
             cache.Remove($"folders:tree:{userId}");
         }
 
-        return Results.Ok(new { folderId, excludedFromDiscovery = !request.Included });
+        return TypedResults.Ok(new FolderDiscoveryVisibilityResponse(folderId, !request.Included));
     }
 
-    private async Task<IResult> MoveFolderAssets(
+    private async Task<Results<Ok<MoveFolderAssetsResponse>, UnauthorizedHttpResult, BadRequest<ApiError>, ForbidHttpResult, NotFound<ApiError>>> MoveFolderAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] IMemoryCache cache,
@@ -1221,18 +1176,18 @@ public class FoldersEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
         {
-            return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
+            return TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "asset_ids_required"));
         }
 
         if ((request.SourceFolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, request.SourceFolderId.Value, user.IsInRole("Admin"), cancellationToken)) ||
             !await CanWriteFolderAsync(dbContext, userId, request.TargetFolderId, user.IsInRole("Admin"), cancellationToken))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         var assetsQuery = dbContext.Assets
@@ -1252,7 +1207,7 @@ public class FoldersEndpoint : IEndpoint
             {
                 if (asset.FolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, asset.FolderId.Value, user.IsInRole("Admin"), cancellationToken))
                 {
-                    return Results.Forbid();
+                    return TypedResults.Forbid();
                 }
             }
         }
@@ -1262,15 +1217,15 @@ public class FoldersEndpoint : IEndpoint
 
         if (targetFolder == null)
         {
-            return Results.NotFound(new { error = "Carpeta destino no encontrada." });
+            return TypedResults.NotFound(new ApiError("Carpeta destino no encontrada.", "target_folder_not_found"));
         }
 
         var result = await FolderAssetMover.MoveAsync(dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken, request.OrganizeByCaptureYear);
 
-        return Results.Ok(new MoveFolderAssetsResponse { Moved = result.Moved, YearBreakdown = result.YearBreakdown });
+        return TypedResults.Ok(new MoveFolderAssetsResponse { Moved = result.Moved, YearBreakdown = result.YearBreakdown });
     }
 
-    private async Task<IResult> RemoveFolderAssets(
+    private async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, ForbidHttpResult>> RemoveFolderAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         [FromBody] RemoveFolderAssetsRequest request,
@@ -1279,17 +1234,17 @@ public class FoldersEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
         {
-            return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
+            return TypedResults.BadRequest(new ApiError("Debes seleccionar al menos un asset.", "asset_ids_required"));
         }
 
         if (!await CanWriteFolderAsync(dbContext, userId, request.FolderId, user.IsInRole("Admin"), cancellationToken))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         var assets = await dbContext.Assets
@@ -1305,7 +1260,7 @@ public class FoldersEndpoint : IEndpoint
         cache.Remove($"folders:list:{userId}");
         cache.Remove($"folders:tree:{userId}");
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     internal static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
@@ -1992,3 +1947,5 @@ public class RemoveFolderAssetsRequest
     public Guid FolderId { get; set; }
     public List<Guid> AssetIds { get; set; } = new();
 }
+
+public sealed record FolderDiscoveryVisibilityResponse(Guid FolderId, bool ExcludedFromDiscovery);

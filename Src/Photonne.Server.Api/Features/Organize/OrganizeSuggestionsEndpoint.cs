@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -88,16 +89,16 @@ public class OrganizeSuggestionsEndpoint : IEndpoint
 
     private sealed record Pending(Guid Id, DateTime CapturedAt, Guid? PlaceId, string? PlaceName);
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<OrganizeSuggestionResponse>>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out _))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var pendingQuery = OrganizeQuery.Pending(dbContext, username);
         // Subquery, not a materialized id list: passing tens of thousands of
@@ -114,7 +115,7 @@ public class OrganizeSuggestionsEndpoint : IEndpoint
                 a.Exif != null && a.Exif.Place != null ? a.Exif.Place.Name : null))
             .ToListAsync(cancellationToken);
 
-        if (pending.Count == 0) return Results.Ok(new List<OrganizeSuggestionResponse>());
+        if (pending.Count == 0) return TypedResults.Ok(new List<OrganizeSuggestionResponse>());
 
         var byId = pending.ToDictionary(p => p.Id);
         var claimed = new HashSet<Guid>();
@@ -202,7 +203,7 @@ public class OrganizeSuggestionsEndpoint : IEndpoint
             Add(suggestions, claimed, "month", $"month:{key}", key, items);
         }
 
-        return Results.Ok(suggestions);
+        return TypedResults.Ok(suggestions);
     }
 
     private static void Add(

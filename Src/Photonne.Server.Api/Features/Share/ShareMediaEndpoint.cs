@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -17,13 +18,16 @@ public class ShareMediaEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/share/{token}/asset/{assetId:guid}/thumbnail", HandleAlbumAssetThumbnail).WithTags("Share").AllowAnonymous();
-        app.MapGet("/api/share/{token}/asset/{assetId:guid}/content", HandleAlbumAssetContent).WithTags("Share").AllowAnonymous();
+        app.MapGet("/api/share/{token}/asset/{assetId:guid}/thumbnail", HandleAlbumAssetThumbnail).WithTags("Share").AllowAnonymous()
+            .Produces<Stream>(StatusCodes.Status200OK, "image/jpeg", "image/webp");
+        app.MapGet("/api/share/{token}/asset/{assetId:guid}/content", HandleAlbumAssetContent).WithTags("Share").AllowAnonymous()
+            .Produces<Stream>(StatusCodes.Status200OK, "image/jpeg", "image/png", "image/webp", "image/gif",
+                "video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "application/octet-stream");
     }
 
     // ── Album asset ───────────────────────────────────────────────────────────
 
-    private static async Task<IResult> HandleAlbumAssetThumbnail(
+    private static async Task<Results<PhysicalFileHttpResult, NotFound, ForbidHttpResult>> HandleAlbumAssetThumbnail(
         [FromServices] ApplicationDbContext db,
         [FromServices] ThumbnailGeneratorService thumbnailService,
         [FromServices] SettingsService settings,
@@ -37,16 +41,16 @@ public class ShareMediaEndpoint : IEndpoint
             .Include(l => l.Album).ThenInclude(a => a!.AlbumAssets)
             .FirstOrDefaultAsync(l => l.Token == token && l.AlbumId != null, ct);
 
-        if (!IsValidLink(link, pw)) return Results.NotFound();
-        if (link!.Album!.AlbumAssets.All(aa => aa.AssetId != assetId)) return Results.Forbid();
+        if (!IsValidLink(link, pw)) return TypedResults.NotFound();
+        if (link!.Album!.AlbumAssets.All(aa => aa.AssetId != assetId)) return TypedResults.Forbid();
 
         var asset = await db.Assets.Include(a => a.Thumbnails).FirstOrDefaultAsync(a => a.Id == assetId, ct);
-        if (asset == null) return Results.NotFound();
+        if (asset == null) return TypedResults.NotFound();
 
         return await ServeThumbnail(db, thumbnailService, settings, asset, size, ct);
     }
 
-    private static async Task<IResult> HandleAlbumAssetContent(
+    private static async Task<Results<PhysicalFileHttpResult, FileContentHttpResult, NotFound, ForbidHttpResult>> HandleAlbumAssetContent(
         [FromServices] ApplicationDbContext db,
         [FromServices] SettingsService settings,
         [FromRoute] string token,
@@ -59,12 +63,12 @@ public class ShareMediaEndpoint : IEndpoint
             .Include(l => l.Album).ThenInclude(a => a!.AlbumAssets)
             .FirstOrDefaultAsync(l => l.Token == token && l.AlbumId != null, ct);
 
-        if (!IsValidLink(link, pw)) return Results.NotFound();
-        if (link!.Album!.AlbumAssets.All(aa => aa.AssetId != assetId)) return Results.Forbid();
-        if (download == true && !link.AllowDownload) return Results.Forbid();
+        if (!IsValidLink(link, pw)) return TypedResults.NotFound();
+        if (link!.Album!.AlbumAssets.All(aa => aa.AssetId != assetId)) return TypedResults.Forbid();
+        if (download == true && !link.AllowDownload) return TypedResults.Forbid();
 
         var asset = await db.Assets.FirstOrDefaultAsync(a => a.Id == assetId, ct);
-        if (asset == null) return Results.NotFound();
+        if (asset == null) return TypedResults.NotFound();
 
         return await ServeContent(settings, asset, download, ct);
     }
@@ -80,7 +84,7 @@ public class ShareMediaEndpoint : IEndpoint
         return true;
     }
 
-    private static async Task<IResult> ServeThumbnail(
+    private static async Task<Results<PhysicalFileHttpResult, NotFound, ForbidHttpResult>> ServeThumbnail(
         ApplicationDbContext db,
         ThumbnailGeneratorService thumbnailService,
         SettingsService settings,
@@ -97,7 +101,7 @@ public class ShareMediaEndpoint : IEndpoint
         if (thumbnail == null || !File.Exists(thumbnail.FilePath))
         {
             var physicalPath = await settings.ResolvePhysicalPathAsync(asset.FullPath);
-            if (!File.Exists(physicalPath)) return Results.NotFound();
+            if (!File.Exists(physicalPath)) return TypedResults.NotFound();
 
             List<AssetThumbnail> generated;
             try
@@ -109,7 +113,7 @@ public class ShareMediaEndpoint : IEndpoint
                 // On-demand path: a missing thumbnail is a 404 for the viewer,
                 // the reason goes to the log for the admin.
                 Console.WriteLine($"[SHARE] {ex.Message}");
-                return Results.NotFound();
+                return TypedResults.NotFound();
             }
             if (generated.Any())
             {
@@ -119,23 +123,23 @@ public class ShareMediaEndpoint : IEndpoint
             }
         }
 
-        if (thumbnail == null || !File.Exists(thumbnail.FilePath)) return Results.NotFound();
+        if (thumbnail == null || !File.Exists(thumbnail.FilePath)) return TypedResults.NotFound();
 
         var contentType = thumbnail.Format == "WebP" ? "image/webp" : "image/jpeg";
         var file = new FileInfo(thumbnail.FilePath);
-        return Results.File(thumbnail.FilePath, contentType,
+        return TypedResults.PhysicalFile(thumbnail.FilePath, contentType,
             lastModified: file.LastWriteTimeUtc,
             entityTag: MediaCaching.ETagFor(file));
     }
 
-    private static async Task<IResult> ServeContent(
+    private static async Task<Results<PhysicalFileHttpResult, FileContentHttpResult, NotFound, ForbidHttpResult>> ServeContent(
         SettingsService settings,
         Asset asset,
         bool? download,
         CancellationToken ct)
     {
         var physicalPath = await settings.ResolvePhysicalPathAsync(asset.FullPath);
-        if (!File.Exists(physicalPath)) return Results.NotFound();
+        if (!File.Exists(physicalPath)) return TypedResults.NotFound();
 
         var converted = TryServeAsJpeg(physicalPath, asset.FileName, download);
         if (converted != null) return converted;
@@ -155,9 +159,9 @@ public class ShareMediaEndpoint : IEndpoint
         };
 
         if (download == true)
-            return Results.File(physicalPath, contentType, fileDownloadName: asset.FileName);
+            return TypedResults.PhysicalFile(physicalPath, contentType, fileDownloadName: asset.FileName);
 
-        return Results.File(physicalPath, contentType, enableRangeProcessing: true);
+        return TypedResults.PhysicalFile(physicalPath, contentType, enableRangeProcessing: true);
     }
 
     /// <summary>
@@ -167,7 +171,7 @@ public class ShareMediaEndpoint : IEndpoint
     /// to download. Null when the file is served as it is, which includes a
     /// file that could not be converted.
     /// </summary>
-    internal static IResult? TryServeAsJpeg(string physicalPath, string fileName, bool? download)
+    internal static FileContentHttpResult? TryServeAsJpeg(string physicalPath, string fileName, bool? download)
     {
         var ext = Path.GetExtension(physicalPath).ToLowerInvariant();
         var isHeic = MediaFileTypes.IsHeic(ext);
@@ -178,9 +182,9 @@ public class ShareMediaEndpoint : IEndpoint
         {
             var jpegBytes = RawImageLoader.RenderJpeg(physicalPath);
             return download == true
-                ? Results.File(jpegBytes, "image/jpeg",
+                ? TypedResults.File(jpegBytes, "image/jpeg",
                     fileDownloadName: Path.GetFileNameWithoutExtension(fileName) + ".jpg")
-                : Results.File(jpegBytes, "image/jpeg");
+                : TypedResults.File(jpegBytes, "image/jpeg");
         }
         catch (ImageMagick.MagickException ex)
         {
