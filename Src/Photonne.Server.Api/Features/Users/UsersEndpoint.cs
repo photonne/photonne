@@ -1,9 +1,11 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Photonne.Server.Api.Features.Auth;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -44,21 +46,25 @@ public class UsersEndpoint : IEndpoint
 
         group.MapPost("", CreateUser)
             .WithName("CreateUser")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .WithDescription("Creates a new user (Admin only)")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         group.MapPut("{id:guid}", UpdateUser)
             .WithName("UpdateUser")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .WithDescription("Updates a user (Admin only)")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         group.MapDelete("{id:guid}", DeleteUser)
             .WithName("DeleteUser")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .WithDescription("Deletes a user (Admin only)")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         group.MapPost("{id:guid}/reset-password", ResetPassword)
             .WithName("ResetPassword")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .WithDescription("Resets a user's password (Admin only)")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
@@ -73,14 +79,17 @@ public class UsersEndpoint : IEndpoint
 
         group.MapPut("me", UpdateProfile)
             .WithName("UpdateProfile")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .WithDescription("Updates the current user's own profile");
 
         group.MapPost("me/change-password", ChangePassword)
             .WithName("ChangePassword")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .WithDescription("Changes the current user's password");
 
         group.MapPost("me/delete-account", DeleteMyAccount)
             .WithName("DeleteMyAccount")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .WithDescription("Deletes the current user's own account after confirming the password");
 
         group.MapGet("me/rename-preview", PreviewMyRename)
@@ -93,7 +102,7 @@ public class UsersEndpoint : IEndpoint
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
     }
 
-    private async Task<IResult> GetAllUsers(
+    private async Task<Ok<List<UserDto>>> GetAllUsers(
         [FromServices] ApplicationDbContext dbContext,
         CancellationToken cancellationToken)
     {
@@ -114,10 +123,10 @@ public class UsersEndpoint : IEndpoint
             })
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(users);
+        return TypedResults.Ok(users);
     }
 
-    private async Task<IResult> GetUser(
+    private async Task<Results<Ok<UserDto>, NotFound>> GetUser(
         Guid id,
         [FromServices] ApplicationDbContext dbContext,
         CancellationToken cancellationToken)
@@ -140,12 +149,12 @@ public class UsersEndpoint : IEndpoint
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         if (user == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
-        return Results.Ok(user);
+        return TypedResults.Ok(user);
     }
 
-    private async Task<IResult> GetCurrentUser(
+    private async Task<Results<Ok<UserDto>, UnauthorizedHttpResult, NotFound>> GetCurrentUser(
         ClaimsPrincipal user,
         [FromServices] ApplicationDbContext dbContext,
         CancellationToken cancellationToken)
@@ -153,7 +162,7 @@ public class UsersEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         var currentUser = await dbContext.Users
@@ -174,12 +183,12 @@ public class UsersEndpoint : IEndpoint
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
         if (currentUser == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
-        return Results.Ok(currentUser);
+        return TypedResults.Ok(currentUser);
     }
 
-    private async Task<IResult> GetShareableUsers(
+    private async Task<Ok<List<ShareableUserDto>>> GetShareableUsers(
         [FromServices] ApplicationDbContext dbContext,
         CancellationToken cancellationToken)
     {
@@ -193,10 +202,10 @@ public class UsersEndpoint : IEndpoint
             })
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(users);
+        return TypedResults.Ok(users);
     }
 
-    private async Task<IResult> CreateUser(
+    private async Task<Results<Created<UserDto>, BadRequest<ApiError>, ProblemHttpResult>> CreateUser(
         [FromBody] CreateUserRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
@@ -208,32 +217,32 @@ public class UsersEndpoint : IEndpoint
         // with one and deleting it), never another admin.
         var isDemo = demoOptions.CurrentValue.Enabled;
         if (isDemo && request.Role != null && request.Role != DemoManageableRole)
-            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+            return TypedResults.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (string.IsNullOrWhiteSpace(request.Username) ||
             string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Password))
         {
-            return Results.BadRequest(new { error = "Username, email and password are required" });
+            return TypedResults.BadRequest(new ApiError("Username, email and password are required", "invalid_request"));
         }
 
         // Validar formato del username (chars compatibles con filesystem)
         var usernameValidation = UserStorageService.ValidateUsername(request.Username);
         if (!usernameValidation.IsValid)
         {
-            return Results.BadRequest(new { error = usernameValidation.Error });
+            return TypedResults.BadRequest(new ApiError(usernameValidation.Error!, "invalid_username"));
         }
 
         // Validar contraseña
         var passwordValidation = authService.ValidatePassword(request.Password);
         if (!passwordValidation.IsValid)
         {
-            return Results.BadRequest(new { error = passwordValidation.ErrorMessage });
+            return TypedResults.BadRequest(new ApiError(passwordValidation.ErrorMessage!, "invalid_password"));
         }
 
         if (await dbContext.Users.AnyAsync(u => u.Username == request.Username || u.Email == request.Email, cancellationToken))
         {
-            return Results.BadRequest(new { error = "Username or email already exists" });
+            return TypedResults.BadRequest(new ApiError("Username or email already exists", "user_already_exists"));
         }
 
         // Read global defaults; explicit request values always take precedence
@@ -261,7 +270,7 @@ public class UsersEndpoint : IEndpoint
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Results.Created($"/api/users/{user.Id}", new UserDto
+        return TypedResults.Created($"/api/users/{user.Id}", new UserDto
         {
             Id = user.Id,
             Username = user.Username,
@@ -277,7 +286,7 @@ public class UsersEndpoint : IEndpoint
         });
     }
 
-    private async Task<IResult> UpdateUser(
+    private async Task<Results<Ok<UserDto>, NotFound, BadRequest<ApiError>, ProblemHttpResult>> UpdateUser(
         Guid id,
         [FromBody] UpdateUserRequest request,
         [FromServices] ApplicationDbContext dbContext,
@@ -287,18 +296,18 @@ public class UsersEndpoint : IEndpoint
     {
         var user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
         if (demoOptions.CurrentValue.Enabled
             && (user.Role != DemoManageableRole || (request.Role != null && request.Role != DemoManageableRole)))
-            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+            return TypedResults.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (user.IsPrimaryAdmin)
         {
             if (request.Role != null && request.Role != "Admin")
-                return Results.BadRequest(new { error = "No se puede cambiar el rol del administrador principal." });
+                return TypedResults.BadRequest(new ApiError("No se puede cambiar el rol del administrador principal.", "primary_admin_protected"));
             if (request.IsActive.HasValue && !request.IsActive.Value)
-                return Results.BadRequest(new { error = "No se puede desactivar el administrador principal." });
+                return TypedResults.BadRequest(new ApiError("No se puede desactivar el administrador principal.", "primary_admin_protected"));
         }
 
         // Username rename: triggers a storage migration (carpeta física + Asset.FullPath +
@@ -308,11 +317,11 @@ public class UsersEndpoint : IEndpoint
         {
             var usernameValidation = UserStorageService.ValidateUsername(request.Username);
             if (!usernameValidation.IsValid)
-                return Results.BadRequest(new { error = usernameValidation.Error });
+                return TypedResults.BadRequest(new ApiError(usernameValidation.Error!, "invalid_username"));
 
             var renameResult = await userStorage.RenameAsync(id, request.Username, cancellationToken);
             if (!renameResult.Succeeded)
-                return Results.BadRequest(new { error = renameResult.ErrorMessage ?? "No se pudo renombrar el usuario" });
+                return TypedResults.BadRequest(new ApiError(renameResult.ErrorMessage ?? "No se pudo renombrar el usuario", "rename_failed"));
 
             // RenameAsync already persisted Username + path rewrites; reload the
             // entity so subsequent edits in this method work against fresh data.
@@ -322,7 +331,7 @@ public class UsersEndpoint : IEndpoint
         if (!string.IsNullOrEmpty(request.Email) && request.Email != user.Email)
         {
             if (await dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != id, cancellationToken))
-                return Results.BadRequest(new { error = "Email already exists" });
+                return TypedResults.BadRequest(new ApiError("Email already exists", "email_already_exists"));
             user.Email = request.Email;
         }
 
@@ -334,7 +343,7 @@ public class UsersEndpoint : IEndpoint
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(new UserDto
+        return TypedResults.Ok(new UserDto
         {
             Id = user.Id,
             Username = user.Username,
@@ -350,7 +359,7 @@ public class UsersEndpoint : IEndpoint
         });
     }
 
-    private async Task<IResult> DeleteUser(
+    private async Task<Results<NoContent, NotFound, BadRequest<ApiError>, ProblemHttpResult>> DeleteUser(
         Guid id,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IOptionsMonitor<DemoModeOptions> demoOptions,
@@ -358,17 +367,17 @@ public class UsersEndpoint : IEndpoint
     {
         var user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
         if (demoOptions.CurrentValue.Enabled && user.Role != DemoManageableRole)
-            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+            return TypedResults.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (user.IsPrimaryAdmin)
-            return Results.BadRequest(new { error = "El administrador principal del sistema no puede ser eliminado." });
+            return TypedResults.BadRequest(new ApiError("El administrador principal del sistema no puede ser eliminado.", "primary_admin_protected"));
 
         await RemoveUserAsync(dbContext, user, cancellationToken);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     /// <summary>
@@ -376,7 +385,7 @@ public class UsersEndpoint : IEndpoint
     /// accounts can be created. Same scope as the admin delete: the user's rows go
     /// away (their assets stay on disk, ownerless), and the password confirms intent.
     /// </summary>
-    private async Task<IResult> DeleteMyAccount(
+    private async Task<Results<NoContent, UnauthorizedHttpResult, NotFound, BadRequest<ApiError>, ProblemHttpResult>> DeleteMyAccount(
         [FromBody] DeleteAccountRequest request,
         ClaimsPrincipal user,
         [FromServices] ApplicationDbContext dbContext,
@@ -386,26 +395,26 @@ public class UsersEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
         if (dbUser == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
         // The shared demo admin must survive for the next visitor; accounts created
         // inside the demo can delete themselves.
         if (demoOptions.CurrentValue.Enabled && dbUser.Role != DemoManageableRole)
-            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+            return TypedResults.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (dbUser.IsPrimaryAdmin)
-            return Results.BadRequest(new { error = "El administrador principal no puede eliminar su cuenta. Transfiere antes ese rol a otro administrador." });
+            return TypedResults.BadRequest(new ApiError("El administrador principal no puede eliminar su cuenta. Transfiere antes ese rol a otro administrador.", "primary_admin_protected"));
 
         if (string.IsNullOrEmpty(request.Password) || !authService.VerifyPassword(request.Password, dbUser.PasswordHash))
-            return Results.BadRequest(new { error = "La contraseña no es correcta" });
+            return TypedResults.BadRequest(new ApiError("La contraseña no es correcta", "invalid_password"));
 
         await RemoveUserAsync(dbContext, dbUser, cancellationToken);
 
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     /// <summary>
@@ -423,7 +432,7 @@ public class UsersEndpoint : IEndpoint
         await transaction.CommitAsync(cancellationToken);
     }
 
-    private async Task<IResult> ResetPassword(
+    private async Task<Results<Ok<UserMessageResponse>, BadRequest<ApiError>, NotFound, ProblemHttpResult>> ResetPassword(
         Guid id,
         [FromBody] ResetPasswordRequest request,
         [FromServices] ApplicationDbContext dbContext,
@@ -433,27 +442,27 @@ public class UsersEndpoint : IEndpoint
     {
         if (string.IsNullOrWhiteSpace(request.NewPassword))
         {
-            return Results.BadRequest(new { error = "New password is required" });
+            return TypedResults.BadRequest(new ApiError("New password is required", "password_required"));
         }
 
         // Validar contraseña
         var passwordValidation = authService.ValidatePassword(request.NewPassword);
         if (!passwordValidation.IsValid)
         {
-            return Results.BadRequest(new { error = passwordValidation.ErrorMessage });
+            return TypedResults.BadRequest(new ApiError(passwordValidation.ErrorMessage!, "invalid_password"));
         }
 
         var user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
         if (demoOptions.CurrentValue.Enabled && user.Role != DemoManageableRole)
-            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+            return TypedResults.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         user.PasswordHash = authService.HashPassword(request.NewPassword);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(new { message = "Password reset successfully" });
+        return TypedResults.Ok(new UserMessageResponse("Password reset successfully"));
     }
 
     /// <summary>
@@ -463,7 +472,7 @@ public class UsersEndpoint : IEndpoint
     /// — without this endpoint they would be stuck since the primary flag
     /// blocks delete/demote/deactivate.
     /// </summary>
-    private async Task<IResult> PromoteToPrimaryAdmin(
+    private async Task<Results<Ok<PromoteToPrimaryAdminResponse>, UnauthorizedHttpResult, ForbidHttpResult, BadRequest<ApiError>, NotFound<ApiError>>> PromoteToPrimaryAdmin(
         Guid id,
         ClaimsPrincipal caller,
         [FromServices] ApplicationDbContext dbContext,
@@ -471,29 +480,29 @@ public class UsersEndpoint : IEndpoint
     {
         var callerIdClaim = caller.FindFirst(ClaimTypes.NameIdentifier);
         if (callerIdClaim == null || !Guid.TryParse(callerIdClaim.Value, out var callerId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var currentPrimary = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == callerId, cancellationToken);
         if (currentPrimary == null)
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         if (!currentPrimary.IsPrimaryAdmin)
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         if (currentPrimary.Id == id)
-            return Results.BadRequest(new { error = "Ya eres el administrador principal." });
+            return TypedResults.BadRequest(new ApiError("Ya eres el administrador principal.", "already_primary_admin"));
 
         var target = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         if (target == null)
-            return Results.NotFound(new { error = "Usuario no encontrado." });
+            return TypedResults.NotFound(new ApiError("Usuario no encontrado.", "user_not_found"));
 
         if (target.Role != "Admin")
-            return Results.BadRequest(new { error = "El usuario destino debe tener el rol Admin." });
+            return TypedResults.BadRequest(new ApiError("El usuario destino debe tener el rol Admin.", "target_not_admin"));
 
         if (!target.IsActive)
-            return Results.BadRequest(new { error = "El usuario destino debe estar activo." });
+            return TypedResults.BadRequest(new ApiError("El usuario destino debe estar activo.", "target_inactive"));
 
         // Both flag flips inside a single transaction so we never end up with
         // zero primary admins (or two) if anything fails between the writes.
@@ -511,26 +520,24 @@ public class UsersEndpoint : IEndpoint
             throw;
         }
 
-        return Results.Ok(new
-        {
-            message = $"'{target.Username}' es ahora el administrador principal.",
-            previousPrimaryUserId = currentPrimary.Id,
-            newPrimaryUserId = target.Id
-        });
+        return TypedResults.Ok(new PromoteToPrimaryAdminResponse(
+            $"'{target.Username}' es ahora el administrador principal.",
+            currentPrimary.Id,
+            target.Id));
     }
 
-    private async Task<IResult> GetStorageInfo(
+    private async Task<Results<Ok<StorageInfoDto>, UnauthorizedHttpResult, NotFound>> GetStorageInfo(
         ClaimsPrincipal user,
         [FromServices] ApplicationDbContext dbContext,
         CancellationToken cancellationToken)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
         if (dbUser == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
         // Group by (type, library) so we can return both the personal subset
         // (ExternalLibraryId == null) and per-library usage in one query.
@@ -579,7 +586,7 @@ public class UsersEndpoint : IEndpoint
             .OrderByDescending(l => l.PhotoBytes + l.VideoBytes)
             .ToList();
 
-        return Results.Ok(new StorageInfoDto
+        return TypedResults.Ok(new StorageInfoDto
         {
             UsedBytes = breakdown.Sum(b => b.Bytes),
             QuotaBytes = dbUser.StorageQuotaBytes,
@@ -595,7 +602,7 @@ public class UsersEndpoint : IEndpoint
         });
     }
 
-    private async Task<IResult> UpdateProfile(
+    private async Task<Results<Ok<UserDto>, UnauthorizedHttpResult, NotFound, ProblemHttpResult, BadRequest<ApiError>>> UpdateProfile(
         [FromBody] UpdateProfileRequest request,
         ClaimsPrincipal user,
         [FromServices] ApplicationDbContext dbContext,
@@ -605,27 +612,27 @@ public class UsersEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
         if (dbUser == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
         // Renaming the shared demo account (or changing its email) would lock every
         // other visitor out of the published credentials until the next reset.
         if (demoOptions.CurrentValue.Enabled && dbUser.Role != DemoManageableRole)
-            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+            return TypedResults.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (!string.IsNullOrWhiteSpace(request.Username) && request.Username.Trim() != dbUser.Username)
         {
             var newUsername = request.Username.Trim();
             var validation = UserStorageService.ValidateUsername(newUsername);
             if (!validation.IsValid)
-                return Results.BadRequest(new { error = validation.Error });
+                return TypedResults.BadRequest(new ApiError(validation.Error!, "invalid_username"));
 
             var renameResult = await userStorage.RenameAsync(userId, newUsername, cancellationToken);
             if (!renameResult.Succeeded)
-                return Results.BadRequest(new { error = renameResult.ErrorMessage ?? "No se pudo renombrar el usuario" });
+                return TypedResults.BadRequest(new ApiError(renameResult.ErrorMessage ?? "No se pudo renombrar el usuario", "rename_failed"));
 
             dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken) ?? dbUser;
         }
@@ -633,7 +640,7 @@ public class UsersEndpoint : IEndpoint
         if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != dbUser.Email)
         {
             if (await dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId, cancellationToken))
-                return Results.BadRequest(new { error = "El email ya está en uso" });
+                return TypedResults.BadRequest(new ApiError("El email ya está en uso", "email_already_exists"));
             dbUser.Email = request.Email.Trim();
         }
 
@@ -642,7 +649,7 @@ public class UsersEndpoint : IEndpoint
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(new UserDto
+        return TypedResults.Ok(new UserDto
         {
             Id = dbUser.Id,
             Username = dbUser.Username,
@@ -658,7 +665,7 @@ public class UsersEndpoint : IEndpoint
         });
     }
 
-    private async Task<IResult> ChangePassword(
+    private async Task<Results<Ok<UserMessageResponse>, BadRequest<ApiError>, UnauthorizedHttpResult, NotFound, ProblemHttpResult>> ChangePassword(
         [FromBody] ChangePasswordRequest request,
         ClaimsPrincipal user,
         [FromServices] ApplicationDbContext dbContext,
@@ -667,34 +674,34 @@ public class UsersEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
-            return Results.BadRequest(new { error = "Todos los campos son obligatorios" });
+            return TypedResults.BadRequest(new ApiError("Todos los campos son obligatorios", "invalid_request"));
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
         if (dbUser == null)
-            return Results.NotFound();
+            return TypedResults.NotFound();
 
         // Same as the profile: the demo account's password is published on the login page.
         if (demoOptions.CurrentValue.Enabled && dbUser.Role != DemoManageableRole)
-            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+            return TypedResults.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
 
         if (!authService.VerifyPassword(request.CurrentPassword, dbUser.PasswordHash))
-            return Results.BadRequest(new { error = "La contraseña actual no es correcta" });
+            return TypedResults.BadRequest(new ApiError("La contraseña actual no es correcta", "invalid_current_password"));
 
         var validation = authService.ValidatePassword(request.NewPassword);
         if (!validation.IsValid)
-            return Results.BadRequest(new { error = validation.ErrorMessage });
+            return TypedResults.BadRequest(new ApiError(validation.ErrorMessage!, "invalid_password"));
 
         dbUser.PasswordHash = authService.HashPassword(request.NewPassword);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(new { message = "Contraseña cambiada correctamente" });
+        return TypedResults.Ok(new UserMessageResponse("Contraseña cambiada correctamente"));
     }
 
-    private async Task<IResult> PreviewMyRename(
+    private async Task<Results<Ok<RenamePreviewDto>, BadRequest<ApiError>, NotFound<ApiError>, UnauthorizedHttpResult>> PreviewMyRename(
         [FromQuery] string newUsername,
         ClaimsPrincipal user,
         [FromServices] UserStorageService userStorage,
@@ -702,12 +709,19 @@ public class UsersEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
-        return await BuildRenamePreviewResultAsync(userStorage, userId, newUsername, cancellationToken);
+        // Results<...> doesn't widen implicitly, so re-wrap the inner result.
+        return (await BuildRenamePreviewResultAsync(userStorage, userId, newUsername, cancellationToken)).Result switch
+        {
+            Ok<RenamePreviewDto> ok => ok,
+            BadRequest<ApiError> badRequest => badRequest,
+            NotFound<ApiError> notFound => notFound,
+            var other => throw new InvalidOperationException($"Unexpected result {other.GetType().Name}")
+        };
     }
 
-    private async Task<IResult> PreviewUserRename(
+    private async Task<Results<Ok<RenamePreviewDto>, BadRequest<ApiError>, NotFound<ApiError>>> PreviewUserRename(
         Guid id,
         [FromQuery] string newUsername,
         [FromServices] UserStorageService userStorage,
@@ -716,19 +730,19 @@ public class UsersEndpoint : IEndpoint
         return await BuildRenamePreviewResultAsync(userStorage, id, newUsername, cancellationToken);
     }
 
-    private static async Task<IResult> BuildRenamePreviewResultAsync(
+    private static async Task<Results<Ok<RenamePreviewDto>, BadRequest<ApiError>, NotFound<ApiError>>> BuildRenamePreviewResultAsync(
         UserStorageService userStorage,
         Guid userId,
         string newUsername,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(newUsername))
-            return Results.BadRequest(new { error = "newUsername es obligatorio" });
+            return TypedResults.BadRequest(new ApiError("newUsername es obligatorio", "new_username_required"));
 
         try
         {
             var preview = await userStorage.PreviewRenameAsync(userId, newUsername.Trim(), ct);
-            return Results.Ok(new RenamePreviewDto
+            return TypedResults.Ok(new RenamePreviewDto
             {
                 IsValid = preview.IsValid,
                 IsNoChange = preview.IsNoChange,
@@ -744,9 +758,11 @@ public class UsersEndpoint : IEndpoint
                 FoldersToUpdate = preview.FoldersToUpdate
             });
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            return Results.NotFound(new { error = ex.Message });
+            // PreviewRenameAsync throws this only for an unknown user id; answer with
+            // its text instead of forwarding whatever message the exception carries.
+            return TypedResults.NotFound(new ApiError("Usuario no encontrado", "user_not_found"));
         }
     }
 }
@@ -851,3 +867,10 @@ public class ChangePasswordRequest
     public string CurrentPassword { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
 }
+
+public sealed record UserMessageResponse(string Message);
+
+public sealed record PromoteToPrimaryAdminResponse(
+    string Message,
+    Guid PreviousPrimaryUserId,
+    Guid NewPrimaryUserId);

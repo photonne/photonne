@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Shared.Data;
@@ -21,13 +22,13 @@ public class UtilityFolderTreeEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<FolderResponse>>, UnauthorizedHttpResult>> Handle(
         ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         if (!FoldersEndpoint.TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
         var allFolders = await FoldersEndpoint.GetFoldersForUserAsync(
@@ -108,6 +109,6 @@ public class UtilityFolderTreeEndpoint : IEndpoint
         foreach (var root in rootFolders)
             FoldersEndpoint.UpdateTotalAssetCount(root);
 
-        return Results.Ok(rootFolders);
+        return TypedResults.Ok(rootFolders);
     }
 }

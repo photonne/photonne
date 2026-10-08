@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Features.Timeline;
@@ -20,12 +22,13 @@ public class UnsupportedFileContentEndpoint : IEndpoint
     {
         app.MapGet("/api/unsupported-files/{id:guid}/content", Handle)
             .RequireAuthorization()
+            .Produces<Stream>(StatusCodes.Status200OK, "application/octet-stream")
             .WithName("GetUnsupportedFileContent")
             .WithTags("Assets")
             .WithDescription("Downloads the original bytes of an unsupported file");
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<PhysicalFileHttpResult, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         [FromServices] SettingsService settingsService,
@@ -35,28 +38,28 @@ public class UnsupportedFileContentEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var file = await dbContext.UnsupportedFiles
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         if (file == null)
-            return Results.NotFound(new { error = $"Unsupported file {id} not found" });
+            return TypedResults.NotFound(new ApiError($"Unsupported file {id} not found", "unsupported_file_not_found"));
 
         // Access scoping — same folders the listing exposes.
         var userRootPath = $"/assets/users/{username}";
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
             dbContext, userId, userRootPath, cancellationToken);
         if (!file.FolderId.HasValue || !allowedFolderIds.Contains(file.FolderId.Value))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(file.FullPath);
         if (!File.Exists(physicalPath))
-            return Results.NotFound(new { error = "File not found" });
+            return TypedResults.NotFound(new ApiError("File not found", "file_not_found"));
 
-        return Results.File(physicalPath, "application/octet-stream",
+        return TypedResults.PhysicalFile(physicalPath, "application/octet-stream",
             fileDownloadName: file.FileName, enableRangeProcessing: true);
     }
 }

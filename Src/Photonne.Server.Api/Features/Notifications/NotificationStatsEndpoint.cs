@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -23,7 +24,7 @@ public class NotificationStatsEndpoint : IEndpoint
             .WithDescription("Deletes notifications older than the configured retention period (or all read ones if retention = 0)");
     }
 
-    private static async Task<IResult> GetStats(
+    private static async Task<Ok<NotificationStatsResponse>> GetStats(
         [FromServices] ApplicationDbContext db,
         CancellationToken ct)
     {
@@ -33,10 +34,10 @@ public class NotificationStatsEndpoint : IEndpoint
             ? await db.Notifications.MinAsync(n => (DateTime?)n.CreatedAt, ct)
             : null;
 
-        return Results.Ok(new NotificationStatsResponse(total, unread, oldest));
+        return TypedResults.Ok(new NotificationStatsResponse(total, unread, oldest));
     }
 
-    private static async Task<IResult> Purge(
+    private static async Task<Ok<PurgeNotificationsResponse>> Purge(
         [FromServices] ApplicationDbContext db,
         [FromServices] SettingsService settings,
         CancellationToken ct)
@@ -60,8 +61,10 @@ public class NotificationStatsEndpoint : IEndpoint
                 .ExecuteDeleteAsync(ct);
         }
 
-        return Results.Ok(new { Deleted = deleted });
+        return TypedResults.Ok(new PurgeNotificationsResponse(deleted));
     }
 }
 
 public sealed record NotificationStatsResponse(int Total, int Unread, DateTime? OldestAt);
+
+public sealed record PurgeNotificationsResponse(int Deleted);

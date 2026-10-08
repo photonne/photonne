@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -33,7 +35,7 @@ public class ListPeopleEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<PeoplePageResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] FaceClusteringQueue clusteringQueue,
         [FromQuery] bool? includeHidden,
@@ -46,7 +48,7 @@ public class ListPeopleEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         // Lazy per-user clustering: users with shared-only access (e.g. an
         // external library someone else owns) never get a Person row from
@@ -113,7 +115,7 @@ public class ListPeopleEndpoint : IEndpoint
                                     && !uf.Face.Asset.IsFileMissing)))
             .ToListAsync(ct);
 
-        return Results.Ok(new { total, items = page });
+        return TypedResults.Ok(new PeoplePageResponse(total, page));
     }
 
     internal static bool TryGetUserId(ClaimsPrincipal user, out Guid id)
@@ -133,13 +135,13 @@ public class GetPersonEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<PersonDto>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var p = await db.People
             .Where(x => x.Id == id && x.OwnerId == userId)
@@ -153,7 +155,8 @@ public class GetPersonEndpoint : IEndpoint
                                     && !uf.Face.Asset.IsFileMissing)))
             .FirstOrDefaultAsync(ct);
 
-        return p == null ? Results.NotFound() : Results.Ok(p);
+        if (p == null) return TypedResults.NotFound();
+        return TypedResults.Ok(p);
     }
 }
 
@@ -166,22 +169,22 @@ public class RenamePersonEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         [FromBody] RenamePersonRequest body,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var p = await db.People.FirstOrDefaultAsync(x => x.Id == id && x.OwnerId == userId, ct);
-        if (p == null) return Results.NotFound();
+        if (p == null) return TypedResults.NotFound();
 
         p.Name = string.IsNullOrWhiteSpace(body.Name) ? null : body.Name.Trim();
         p.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
 
@@ -194,19 +197,19 @@ public class HidePersonEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
         var p = await db.People.FirstOrDefaultAsync(x => x.Id == id && x.OwnerId == userId, ct);
-        if (p == null) return Results.NotFound();
+        if (p == null) return TypedResults.NotFound();
         p.IsHidden = true;
         p.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
 
@@ -219,19 +222,19 @@ public class UnhidePersonEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
         var p = await db.People.FirstOrDefaultAsync(x => x.Id == id && x.OwnerId == userId, ct);
-        if (p == null) return Results.NotFound();
+        if (p == null) return TypedResults.NotFound();
         p.IsHidden = false;
         p.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
 
@@ -244,7 +247,7 @@ public class MergePeopleEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, BadRequest<ApiError>, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] FaceClusteringService clustering,
         Guid id,
@@ -252,14 +255,14 @@ public class MergePeopleEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
-        if (id == otherId) return Results.BadRequest(new { error = "Cannot merge a person with itself" });
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
+        if (id == otherId) return TypedResults.BadRequest(new ApiError("Cannot merge a person with itself", "merge_same_person"));
 
         var pair = await db.People.Where(p => p.OwnerId == userId && (p.Id == id || p.Id == otherId)).ToListAsync(ct);
-        if (pair.Count != 2) return Results.NotFound();
+        if (pair.Count != 2) return TypedResults.NotFound();
 
         await clustering.MergeAsync(userId, targetPersonId: id, sourcePersonId: otherId, ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
 
@@ -272,17 +275,17 @@ public class SetCoverFaceEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         Guid faceId,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var person = await db.People.FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
-        if (person == null) return Results.NotFound();
+        if (person == null) return TypedResults.NotFound();
 
         // The cover must be a face the current user has confirmed for this
         // Person — UserFaceAssignment rather than Face.PersonId is the source
@@ -292,11 +295,13 @@ public class SetCoverFaceEndpoint : IEndpoint
                                        && uf.UserId == userId
                                        && uf.PersonId == id
                                        && !uf.IsRejected, ct);
-        if (assignment == null) return Results.NotFound();
+        if (assignment == null) return TypedResults.NotFound();
 
         person.CoverFaceId = faceId;
         person.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
+
+public sealed record PeoplePageResponse(int Total, List<PersonDto> Items);

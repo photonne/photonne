@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
@@ -27,10 +28,11 @@ public class FaceThumbnailEndpoint : IEndpoint
     {
         app.MapGet("/api/faces/{id:guid}/thumbnail", Handle)
             .WithTags("Faces")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .Produces<Stream>(StatusCodes.Status200OK, "image/jpeg");
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<PhysicalFileHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] SettingsService settings,
         [FromServices] IConfiguration configuration,
@@ -42,7 +44,7 @@ public class FaceThumbnailEndpoint : IEndpoint
         var face = await db.Faces.AsNoTracking()
             .Include(f => f.Asset).ThenInclude(a => a.Thumbnails)
             .FirstOrDefaultAsync(f => f.Id == id, ct);
-        if (face == null || !await visibility.CanReadAsync(user, face.Asset, ct)) return Results.NotFound();
+        if (face == null || !await visibility.CanReadAsync(user, face.Asset, ct)) return TypedResults.NotFound();
 
         var thumbnailsRoot = configuration["ThumbnailsPath"] ?? "/data/thumbnails";
         var cacheDir = Path.Combine(thumbnailsRoot, "faces");
@@ -53,12 +55,12 @@ public class FaceThumbnailEndpoint : IEndpoint
         {
             var sourcePath = await ResolveSourceImageAsync(face, settings);
             if (sourcePath == null || !File.Exists(sourcePath))
-                return Results.NotFound();
+                return TypedResults.NotFound();
 
             using var image = await Image.LoadAsync(sourcePath, ct);
             var cropRect = ComputeCropRect(face, image.Width, image.Height);
             if (cropRect.Width <= 1 || cropRect.Height <= 1)
-                return Results.NotFound();
+                return TypedResults.NotFound();
 
             image.Mutate(x => x
                 .Crop(cropRect)
@@ -67,7 +69,7 @@ public class FaceThumbnailEndpoint : IEndpoint
             await image.SaveAsync(cachedPath, new JpegEncoder { Quality = 85 }, ct);
         }
 
-        return Results.File(cachedPath, "image/jpeg",
+        return TypedResults.PhysicalFile(cachedPath, "image/jpeg",
             lastModified: File.GetLastWriteTimeUtc(cachedPath),
             entityTag: new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{id:N}\""));
     }

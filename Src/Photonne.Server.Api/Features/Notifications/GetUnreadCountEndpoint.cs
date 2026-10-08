@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
@@ -15,15 +16,17 @@ public class GetUnreadCountEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<UnreadCountResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] INotificationService notificationService,
         HttpContext httpContext,
         CancellationToken ct)
     {
         if (!Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         var count = await notificationService.GetUnreadCountAsync(userId);
-        return Results.Ok(new { Count = count });
+        return TypedResults.Ok(new UnreadCountResponse(count));
     }
 }
+
+public sealed record UnreadCountResponse(int Count);

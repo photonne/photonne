@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -26,7 +27,7 @@ public class PersonAssetsSearchEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<PersonAssetsPageResponse>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid personId,
         [FromQuery] int? limit,
@@ -34,11 +35,11 @@ public class PersonAssetsSearchEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var person = await db.People.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == personId && p.OwnerId == userId, ct);
-        if (person == null) return Results.NotFound();
+        if (person == null) return TypedResults.NotFound();
 
         // Distinct asset ids that contain at least one face the current user
         // has confirmed for this Person. Identity is per-user (UserFaceAssignment);
@@ -78,6 +79,8 @@ public class PersonAssetsSearchEndpoint : IEndpoint
                     .FirstOrDefault()))
             .ToListAsync(ct);
 
-        return Results.Ok(new { total, items = page });
+        return TypedResults.Ok(new PersonAssetsPageResponse(total, page));
     }
 }
+
+public sealed record PersonAssetsPageResponse(int Total, List<PersonAssetDto> Items);

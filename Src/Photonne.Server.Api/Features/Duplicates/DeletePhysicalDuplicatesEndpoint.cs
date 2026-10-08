@@ -85,7 +85,7 @@ public class DeletePhysicalDuplicatesEndpoint : IEndpoint
                     }
                 }
 
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
         .WithName("DeletePhysicalDuplicates")
         .WithTags("Assets")

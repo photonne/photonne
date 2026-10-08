@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Features.Timeline;
@@ -19,16 +20,16 @@ public class MyDuplicatesEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<UserDuplicateGroupResponse>>, UnauthorizedHttpResult>> Handle(
         ApplicationDbContext dbContext,
         AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var userRootPath = $"/assets/users/{username}";
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
@@ -57,7 +58,7 @@ public class MyDuplicatesEndpoint : IEndpoint
             .OrderByDescending(g => g.TotalSize)
             .ToList();
 
-        return Results.Ok(groups);
+        return TypedResults.Ok(groups);
     }
 
     private static TimelineResponse MapToResponse(Shared.Models.Asset a) => new()

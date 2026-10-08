@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -23,7 +24,7 @@ public class ListFacesForPersonEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<PersonFacesPageResponse>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         [FromQuery] int? limit,
@@ -31,11 +32,11 @@ public class ListFacesForPersonEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var person = await db.People.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
-        if (person == null) return Results.NotFound();
+        if (person == null) return TypedResults.NotFound();
 
         // Per-user identity lives in UserFaceAssignment. Pull faces this user
         // has confirmed for the given Person whose underlying asset is still
@@ -57,6 +58,8 @@ public class ListFacesForPersonEndpoint : IEndpoint
             .Select(uf => new PersonFaceItem(uf.FaceId, uf.Face.AssetId, uf.Face.Confidence, uf.IsManuallyAssigned))
             .ToListAsync(ct);
 
-        return Results.Ok(new { total, items });
+        return TypedResults.Ok(new PersonFacesPageResponse(total, items));
     }
 }
+
+public sealed record PersonFacesPageResponse(int Total, List<PersonFaceItem> Items);

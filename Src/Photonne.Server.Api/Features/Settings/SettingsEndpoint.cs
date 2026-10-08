@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.Ml;
@@ -21,6 +23,7 @@ public class SettingsEndpoint : IEndpoint
 
         group.MapPost("", SaveSetting)
             .WithName("SaveSetting")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .WithDescription("Saves or updates a setting");
 
         var adminGroup = app.MapGroup("/api/settings")
@@ -32,22 +35,22 @@ public class SettingsEndpoint : IEndpoint
             .WithDescription("Gets server hardware information (processor count, etc.)");
     }
 
-    private async Task<IResult> GetSetting(
+    private async Task<Results<Ok<SettingValueResponse>, UnauthorizedHttpResult>> GetSetting(
         [FromQuery] string key,
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user)
     {
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         var effectiveUserId = IsGlobalKey(key) ? Guid.Empty : userId;
         var value = await settingsService.GetSettingAsync(key, effectiveUserId);
-        return Results.Ok(new { key, value });
+        return TypedResults.Ok(new SettingValueResponse(key, value));
     }
 
-    private async Task<IResult> SaveSetting(
+    private async Task<Results<Ok<SaveSettingResponse>, BadRequest<ApiError>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> SaveSetting(
         [FromBody] SaveSettingRequest request,
         [FromServices] SettingsService settingsService,
         [FromServices] IMlConfigClient mlConfig,
@@ -56,11 +59,11 @@ public class SettingsEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Key))
-            return Results.BadRequest("Key is required");
+            return TypedResults.BadRequest(new ApiError("Key is required", "key_required"));
 
         if (!TryGetUserId(user, out var userId))
         {
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         }
 
         var isGlobal = IsGlobalKey(request.Key);
@@ -68,7 +71,7 @@ public class SettingsEndpoint : IEndpoint
         // owning user's own (non-global) settings are self-service.
         if (isGlobal && !user.IsInRole("Admin"))
         {
-            return Results.Forbid();
+            return TypedResults.Forbid();
         }
 
         // The public demo user is an Admin, but global settings (workers, ML,
@@ -77,7 +80,7 @@ public class SettingsEndpoint : IEndpoint
         // needs (map key...) are pinned via DemoMode:Settings instead.
         if (isGlobal && demoOptions.CurrentValue.Enabled)
         {
-            return Results.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
+            return TypedResults.Problem(DemoModeGuardMiddleware.CreateBlockedProblem());
         }
 
         var effectiveUserId = isGlobal ? Guid.Empty : userId;
@@ -93,7 +96,7 @@ public class SettingsEndpoint : IEndpoint
             await mlConfig.SetProviderAsync(task, spec, cancellationToken);
         }
 
-        return Results.Ok(new { message = "Setting saved successfully" });
+        return TypedResults.Ok(new SaveSettingResponse("Setting saved successfully"));
     }
 
     /// <summary>
@@ -125,8 +128,8 @@ public class SettingsEndpoint : IEndpoint
         key.StartsWith("TextRecognition.", StringComparison.Ordinal) ||
         key.StartsWith("Embedding.", StringComparison.Ordinal);
 
-    private static IResult GetServerInfo() =>
-        Results.Ok(new { processorCount = Environment.ProcessorCount });
+    private static Ok<ServerInfoResponse> GetServerInfo() =>
+        TypedResults.Ok(new ServerInfoResponse(Environment.ProcessorCount));
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
     {
@@ -140,3 +143,9 @@ public class SaveSettingRequest
     public string Key { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
 }
+
+public sealed record SettingValueResponse(string Key, string Value);
+
+public sealed record SaveSettingResponse(string Message);
+
+public sealed record ServerInfoResponse(int ProcessorCount);

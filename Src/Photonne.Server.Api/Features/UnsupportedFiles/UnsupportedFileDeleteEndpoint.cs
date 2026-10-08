@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Assets;
 using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -25,10 +27,11 @@ public class UnsupportedFileDeleteEndpoint : IEndpoint
             .WithName("DeleteUnsupportedFile")
             .WithTags("Assets")
             .WithDescription("Permanently deletes an unsupported file from disk")
+            .ProducesProblem(StatusCodes.Status500InternalServerError)
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult, ProblemHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         [FromServices] SettingsService settingsService,
@@ -38,14 +41,14 @@ public class UnsupportedFileDeleteEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var file = await dbContext.UnsupportedFiles
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         if (file == null)
-            return Results.NotFound(new { error = $"Unsupported file {id} not found" });
+            return TypedResults.NotFound(new ApiError($"Unsupported file {id} not found", "unsupported_file_not_found"));
 
         // Access scoping — same folders the listing exposes — before the
         // stricter delete rule, so a file the caller can't even see is a 403
@@ -54,11 +57,11 @@ public class UnsupportedFileDeleteEndpoint : IEndpoint
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
             dbContext, userId, userRootPath, cancellationToken);
         if (!file.FolderId.HasValue || !allowedFolderIds.Contains(file.FolderId.Value))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         if (!await CanDeleteAsync(dbContext, file, userId, username, user.IsInRole("Admin"),
                 new Dictionary<Guid, bool>(), cancellationToken))
-            return Results.Forbid();
+            return TypedResults.Forbid();
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(file.FullPath);
         try
@@ -69,15 +72,17 @@ public class UnsupportedFileDeleteEndpoint : IEndpoint
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Keep the row: the file is still there.
-            return Results.Problem(
-                detail: $"No se pudo borrar el archivo del disco: {ex.Message}",
+            // Keep the row: the file is still there. The exception text stays in
+            // the log; the client only gets the human reason.
+            Console.WriteLine($"[UNSUPPORTED-FILES] Could not delete {physicalPath}: {ex.Message}");
+            return TypedResults.Problem(
+                detail: "No se pudo borrar el archivo del disco",
                 statusCode: StatusCodes.Status500InternalServerError);
         }
 
         dbContext.UnsupportedFiles.Remove(file);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 
     /// <summary>

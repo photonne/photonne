@@ -23,7 +23,10 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
             .WithTags("People")
             .RequireAuthorization();
 
-        group.MapPost("/backfill", (
+        // MlBackfillRunner (Admin feature) still answers IResult; the explicit
+        // return type keeps these lambdas compiling whether or not it gets typed,
+        // and Produces documents the success body.
+        group.MapPost("/backfill", async Task<IResult> (
             [FromServices] ApplicationDbContext db,
             [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
@@ -33,18 +36,20 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
             CancellationToken ct) =>
         {
             if (!ListPeopleEndpoint.TryGetUserId(user, out var userId))
-                return Task.FromResult(Results.Unauthorized());
-            return MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, ownerScope: userId, enablement: enablement);
-        });
+                return TypedResults.Unauthorized();
+            return await MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, ownerScope: userId, enablement: enablement);
+        })
+        .Produces<BackfillResponse>(StatusCodes.Status200OK);
 
-        group.MapGet("/pending-count", (
+        group.MapGet("/pending-count", async Task<IResult> (
             [FromServices] ApplicationDbContext db,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
             if (!ListPeopleEndpoint.TryGetUserId(user, out var userId))
-                return Task.FromResult(Results.Unauthorized());
-            return MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.FaceRecognition, ct, ownerScope: userId);
-        });
+                return TypedResults.Unauthorized();
+            return await MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.FaceRecognition, ct, ownerScope: userId);
+        })
+        .Produces<PendingCountResponse>(StatusCodes.Status200OK);
     }
 }

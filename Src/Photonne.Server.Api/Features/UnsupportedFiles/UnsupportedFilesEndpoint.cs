@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -47,7 +48,7 @@ public class UnsupportedFilesEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<UnsupportedFilesPageResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -57,9 +58,9 @@ public class UnsupportedFilesEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (pageSize <= 0) pageSize = 150;
         if (pageSize > 500) pageSize = 500;
@@ -107,7 +108,7 @@ public class UnsupportedFilesEndpoint : IEndpoint
             });
         }
 
-        return Results.Ok(new UnsupportedFilesPageResponse
+        return TypedResults.Ok(new UnsupportedFilesPageResponse
         {
             Items = items,
             HasMore = hasMore,

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
@@ -22,17 +23,17 @@ public class ReclusterPeopleEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<ReclusterResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] FaceClusteringService clustering,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         // Force a full pass: online attach + batch (ignoring the per-user
         // cooldown). The user explicitly asked us to do work, so the cooldown
         // — meant for the implicit per-detection trigger — shouldn't gate it.
         var created = await clustering.ForceRunForUserAsync(userId, ct);
-        return Results.Ok(new ReclusterResponse(created));
+        return TypedResults.Ok(new ReclusterResponse(created));
     }
 }

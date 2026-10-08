@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Notifications;
@@ -15,7 +17,7 @@ public class GetNotificationsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<NotificationsPageResponse>, UnauthorizedHttpResult>> Handle(
         [FromServices] INotificationService notificationService,
         [FromQuery] int page,
         [FromQuery] int pageSize,
@@ -24,7 +26,7 @@ public class GetNotificationsEndpoint : IEndpoint
         CancellationToken ct)
     {
         if (!Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         page = page <= 0 ? 1 : page;
         pageSize = pageSize is <= 0 or > 100 ? 20 : pageSize;
@@ -32,10 +34,8 @@ public class GetNotificationsEndpoint : IEndpoint
         var (items, total) = await notificationService.GetPagedAsync(userId, page, pageSize, unreadOnly);
         var unreadCount = await notificationService.GetUnreadCountAsync(userId);
 
-        return Results.Ok(new
-        {
-            Items = items.Select(n => new
-            {
+        return TypedResults.Ok(new NotificationsPageResponse(
+            Items: items.Select(n => new NotificationItemResponse(
                 n.Id,
                 n.Type,
                 n.Title,
@@ -44,13 +44,30 @@ public class GetNotificationsEndpoint : IEndpoint
                 n.CreatedAt,
                 n.ActionUrl,
                 n.GroupKey,
-                n.GroupCount
-            }),
-            TotalCount = total,
-            Page = page,
-            PageSize = pageSize,
-            TotalPages = (int)Math.Ceiling((double)total / pageSize),
-            UnreadCount = unreadCount
-        });
+                n.GroupCount)).ToList(),
+            TotalCount: total,
+            Page: page,
+            PageSize: pageSize,
+            TotalPages: (int)Math.Ceiling((double)total / pageSize),
+            UnreadCount: unreadCount));
     }
 }
+
+public sealed record NotificationItemResponse(
+    Guid Id,
+    NotificationType Type,
+    string Title,
+    string Message,
+    bool IsRead,
+    DateTime CreatedAt,
+    string? ActionUrl,
+    string? GroupKey,
+    int GroupCount);
+
+public sealed record NotificationsPageResponse(
+    List<NotificationItemResponse> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages,
+    int UnreadCount);
