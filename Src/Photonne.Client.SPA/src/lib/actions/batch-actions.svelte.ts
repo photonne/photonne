@@ -2,17 +2,16 @@ import {
 	addAssetsToAlbumBatch,
 	archiveAssets,
 	deleteAssets,
-	downloadAssetsZip,
 	moveFolderAssets,
 	restoreAssets,
 	toggleFavorite,
 	unarchiveAssets
 } from '#lib/api/index.js';
 import { toasts } from '#lib/components/toasts.svelte.js';
-import { fileStamp } from '#lib/format.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { GridHost } from '#lib/timeline/grid-host.js';
 import type { Selection } from '#lib/timeline/selection.svelte.js';
+import { AssetDownloader } from './asset-downloader.svelte.js';
 
 /**
  * Actions on the selected photos, shared by every grid (see GridHost).
@@ -21,6 +20,15 @@ import type { Selection } from '#lib/timeline/selection.svelte.js';
  */
 export class BatchActions {
 	busy = $state(false);
+	/** Downloads, with the "original or JPEG?" question (DownloadFormatDialog). */
+	readonly downloader = new AssetDownloader();
+	/**
+	 * The photos the share dialog is open for. The host renders
+	 * ShareAssetsDialog, not the bar: the dialog outlives the selection (it
+	 * clears once the link exists) and the viewer opens it too.
+	 */
+	sharing = $state<string[] | null>(null);
+	#sharingSelection = false;
 	#host: GridHost;
 	#selection: Selection;
 
@@ -133,20 +141,24 @@ export class BatchActions {
 		});
 	}
 
-	downloadZip(ids?: readonly string[]) {
-		return this.#run(async () => {
-			const assetIds = this.#targets(ids);
-			toasts.show(m.action_zip_preparing());
-			const { data, error } = await downloadAssetsZip({ body: { assetIds }, parseAs: 'blob' });
-			if (error || !(data instanceof Blob)) throw error;
-			saveBlob(data, `photonne-${fileStamp()}.zip`);
-		});
+	/** Opens the share dialog for `ids` (the viewer's photo) or the selection. */
+	share(ids?: readonly string[]) {
+		const assetIds = this.#targets(ids);
+		if (assetIds.length === 0) return;
+		this.#sharingSelection = !ids;
+		this.sharing = assetIds;
 	}
-}
 
-function saveBlob(blob: Blob, fileName: string) {
-	const url = URL.createObjectURL(blob);
-	const link = Object.assign(document.createElement('a'), { href: url, download: fileName });
-	link.click();
-	setTimeout(() => URL.revokeObjectURL(url), 60_000);
+	closeShare() {
+		this.sharing = null;
+	}
+
+	/** The link exists: a selection that was shared is done with. */
+	shared() {
+		if (this.#sharingSelection) this.#selection.clear();
+	}
+
+	download(ids?: readonly string[]) {
+		return this.downloader.start(this.#targets(ids));
+	}
 }

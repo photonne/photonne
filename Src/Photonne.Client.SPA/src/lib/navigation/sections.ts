@@ -30,6 +30,7 @@ export const navigation: NavSection[] = [
 		items: [
 			{ path: '/albums', label: m.nav_albums, icon: 'album' },
 			{ path: '/folders', label: m.nav_folders, icon: 'folder' },
+			{ path: '/links', label: m.links_nav, icon: 'link' },
 			{ path: '/favorites', label: m.nav_favorites, icon: 'favoriteOutline' },
 			{ path: '/archive', label: m.nav_archive, icon: 'archive' },
 			{ path: '/trash', label: m.nav_trash, icon: 'delete' }

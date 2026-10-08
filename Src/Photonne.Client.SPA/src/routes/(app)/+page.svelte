@@ -4,6 +4,7 @@
 	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import { BatchActions } from '#lib/actions/batch-actions.svelte.js';
+	import ShareAssetsDialog from '#lib/actions/ShareAssetsDialog.svelte';
 	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import {
 		getAssetDetailQueryKey,
@@ -148,6 +149,12 @@
 		}}
 	/>
 {/if}
+
+<ShareAssetsDialog
+	assetIds={batch.sharing}
+	onclose={() => batch.closeShare()}
+	oncreated={() => batch.shared()}
+/>
 
 <style>
 	.page {
