@@ -1,6 +1,7 @@
 <script lang="ts">
-	import PendingPage from '#lib/components/PendingPage.svelte';
-	import { m } from '#lib/paraglide/messages.js';
-</script>
+	import { goto } from '$app/navigation';
+	import { appHref } from '#lib/navigation/href.js';
 
-<PendingPage title={m.nav_settings()} />
+	// /settings opens on the first section; each section has its own URL.
+	goto(appHref('/settings/profile'), { replace: true });
+</script>

@@ -1,0 +1,180 @@
+/*
+ * Form building blocks shared by the settings pages (imported by the
+ * settings layout). Everything is scoped under .settings-page so nothing
+ * leaks into the rest of the app.
+ */
+
+.settings-page {
+	display: grid;
+	gap: var(--space-6);
+	max-width: 760px;
+}
+
+.settings-page h1 {
+	margin: 0;
+	font-size: var(--font-size-xl);
+}
+
+.settings-page .lead {
+	margin: calc(-1 * var(--space-4)) 0 0;
+	color: var(--color-text-muted);
+}
+
+.settings-page .card {
+	display: grid;
+	gap: var(--space-4);
+	padding: var(--space-6);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	background: var(--color-surface-raised);
+}
+
+.settings-page .card.danger {
+	border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border));
+}
+
+.settings-page .card > header h2 {
+	margin: 0;
+	font-size: var(--font-size-lg);
+}
+
+.settings-page .card > header p {
+	margin: var(--space-1) 0 0;
+	color: var(--color-text-muted);
+	font-size: var(--font-size-sm);
+}
+
+.settings-page .fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+	gap: var(--space-4);
+}
+
+.settings-page .field {
+	display: grid;
+	gap: var(--space-1);
+	font-size: var(--font-size-sm);
+	align-content: start;
+}
+
+.settings-page .field > span:first-child {
+	color: var(--color-text-muted);
+	font-weight: 500;
+}
+
+.settings-page input:not([type='radio'], [type='checkbox']),
+.settings-page select {
+	width: 100%;
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	background: var(--color-bg);
+	font-size: var(--font-size-md);
+}
+
+.settings-page input[aria-invalid='true'] {
+	border-color: var(--color-danger);
+}
+
+.settings-page .error {
+	margin: 0;
+	color: var(--color-danger);
+	font-size: var(--font-size-sm);
+}
+
+.settings-page .hint {
+	margin: 0;
+	color: var(--color-text-muted);
+	font-size: var(--font-size-sm);
+}
+
+.settings-page .actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2);
+}
+
+.settings-page .button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	background: var(--color-surface-raised);
+	cursor: pointer;
+}
+
+.settings-page .button:hover:not(:disabled) {
+	background: var(--color-surface);
+}
+
+.settings-page .button.primary {
+	border-color: var(--color-accent);
+	background: var(--color-accent);
+	color: var(--color-accent-text);
+	font-weight: 600;
+}
+
+.settings-page .button.danger {
+	border-color: var(--color-danger);
+	background: transparent;
+	color: var(--color-danger);
+	font-weight: 600;
+}
+
+.settings-page .button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.settings-page dl.facts {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: var(--space-2) var(--space-6);
+	margin: 0;
+	font-size: var(--font-size-sm);
+}
+
+.settings-page dl.facts dt {
+	color: var(--color-text-muted);
+}
+
+.settings-page dl.facts dd {
+	margin: 0;
+}
+
+.settings-page .choices {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+	gap: var(--space-3);
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.settings-page .choice {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	cursor: pointer;
+}
+
+.settings-page .choice:has(input:checked) {
+	border-color: var(--color-accent);
+	background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+	font-weight: 600;
+}
+
+.settings-page .choice:has(input:focus-visible) {
+	outline: 2px solid var(--color-focus);
+	outline-offset: 2px;
+}
+
+.settings-page .choice input {
+	accent-color: var(--color-accent);
+}

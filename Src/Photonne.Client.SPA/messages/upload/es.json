@@ -1,3 +1,108 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"upload_title": "Subir",
+	"upload_subtitle": "Añade fotos y vídeos a tu biblioteca. Se conservan las fechas originales y lo que ya tienes no se vuelve a subir.",
+	"upload_drop_title": "Arrastra aquí fotos, vídeos o carpetas",
+	"upload_drop_hint": "O elígelos desde tu equipo. JPEG, HEIC, RAW, MP4, MOV y más.",
+	"upload_drop_release": "Suelta para subir",
+	"upload_pick_files": "Elegir archivos",
+	"upload_pick_folder": "Elegir carpeta",
+	"upload_queue_title": "Cola de subida",
+	"upload_status_checking": "Comprobando…",
+	"upload_status_queued": "En cola",
+	"upload_status_uploading": "Subiendo… {percent} %",
+	"upload_status_done": "Subida",
+	"upload_status_duplicate": "Ya estaba en tu biblioteca",
+	"upload_status_cancelled": "Cancelada",
+	"upload_status_too_large": "Demasiado grande",
+	"upload_failure_too_large": "Supera el tamaño máximo del servidor",
+	"upload_failure_quota": "Sin espacio: cuota agotada",
+	"upload_failure_password": "Contraseña incorrecta",
+	"upload_failure_gone": "El enlace ya no está disponible",
+	"upload_failure_forbidden": "Este enlace no admite subidas",
+	"upload_failure_network": "Sin conexión con el servidor",
+	"upload_failure_server": "Error del servidor",
+	"upload_retry": "Reintentar",
+	"upload_retry_one": "Reintentar {name}",
+	"upload_cancel": "Cancelar",
+	"upload_cancel_one": "Cancelar {name}",
+	"upload_remove": "Quitar de la lista",
+	"upload_remove_one": "Quitar {name} de la lista",
+	"upload_progress_of": "Progreso de {name}",
+	"upload_overall_progress": "Progreso total",
+	"upload_retry_failed": "Reintentar fallidas",
+	"upload_cancel_all": "Cancelar todo",
+	"upload_clear_finished": "Limpiar terminadas",
+	"upload_view_photos": "Ver en Fotos",
+	"upload_add_to_album": "Añadir a un álbum",
+	"upload_batch_done": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto o vídeo subido",
+				"countPlural=other": "{count} fotos y vídeos subidos"
+			}
+		}
+	],
+	"upload_ignored": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} archivo ignorado: no es una foto ni un vídeo",
+				"countPlural=other": "{count} archivos ignorados: no son fotos ni vídeos"
+			}
+		}
+	],
+	"upload_count_pending": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} pendiente",
+				"countPlural=other": "{count} pendientes"
+			}
+		}
+	],
+	"upload_count_done": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} subida",
+				"countPlural=other": "{count} subidas"
+			}
+		}
+	],
+	"upload_count_duplicate": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} ya existía",
+				"countPlural=other": "{count} ya existían"
+			}
+		}
+	],
+	"upload_count_failed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} con error",
+				"countPlural=other": "{count} con error"
+			}
+		}
+	],
+	"upload_count_skipped": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} demasiado grande",
+				"countPlural=other": "{count} demasiado grandes"
+			}
+		}
+	]
 }
