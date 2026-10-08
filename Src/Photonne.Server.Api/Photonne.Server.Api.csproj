@@ -24,7 +24,6 @@
         <PackageReference Include="ErrorOr" Version="2.1.1" />
         <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.17.1" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.12" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
@@ -37,10 +36,6 @@
         <PackageReference Include="MetadataExtractor" Version="2.9.3" />
         <PackageReference Include="Xabe.FFmpeg" Version="6.0.2" />
         <PackageReference Include="Xabe.FFmpeg.Downloader" Version="6.0.2" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Photonne.Client.Web\Photonne.Client.Web.csproj" />
     </ItemGroup>
 
     <ItemGroup>

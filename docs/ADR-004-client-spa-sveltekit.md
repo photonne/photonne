@@ -2,7 +2,7 @@
 
 - **Estado**: Aceptado
 - **Fecha**: 2026-10-08
-- **Sustituye a**: [ADR-002](../Src/Photonne.Client.Web/docs/ADR-002-pwa-admin-console.md) y [ADR-003](../Src/Photonne.Client.Web/docs/ADR-003-user-workspace.md)
+- **Sustituye a**: [ADR-002](ADR-002-pwa-admin-console.md) y [ADR-003](ADR-003-user-workspace.md)
 
 ## Contexto
 
