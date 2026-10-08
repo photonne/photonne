@@ -1,0 +1,9 @@
+{
+	"//": "Only for the API client generator (openapi-ts.config.ts), which can't resolve SvelteKit's `$app/tsconfig`.",
+	"compilerOptions": {
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"target": "es2022",
+		"strict": true
+	}
+}
