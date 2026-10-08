@@ -4,6 +4,7 @@
 	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import { BatchActions } from '#lib/actions/batch-actions.svelte.js';
+	import DownloadFormatDialog from '#lib/actions/DownloadFormatDialog.svelte';
 	import ShareAssetsDialog from '#lib/actions/ShareAssetsDialog.svelte';
 	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import {
@@ -83,8 +84,9 @@
 				...item,
 				isFavorite: detail?.isFavorite ?? !item.isFavorite
 			}));
-		} else if (change === 'date') {
-			// The photo may now belong to another month: rebuild the skeleton.
+		} else if (change === 'date' || change === 'added') {
+			// The photo may now belong to another month, or a new one (a saved
+			// Live Photo frame) joined it: rebuild the skeleton.
 			store.reload();
 		}
 	}
@@ -135,6 +137,8 @@
 		onnavigate={navigateViewer}
 		onclose={closeViewer}
 		onchanged={assetChanged}
+		onshare={() => openId && batch.share([openId])}
+		ondownload={() => openId && batch.download([openId])}
 		ontrash={() => removeFromViewer((ids) => batch.trash(ids))}
 		onarchive={() => removeFromViewer((ids) => batch.archive(ids))}
 		onaddtoalbum={() => (pickingAlbumFor = openId)}
@@ -155,6 +159,7 @@
 	onclose={() => batch.closeShare()}
 	oncreated={() => batch.shared()}
 />
+<DownloadFormatDialog downloader={batch.downloader} />
 
 <style>
 	.page {

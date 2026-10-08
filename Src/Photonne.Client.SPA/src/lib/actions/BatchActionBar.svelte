@@ -1,10 +1,10 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import Icon, { type IconName } from '#lib/components/Icon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
 	import AlbumPickerDialog from './AlbumPickerDialog.svelte';
 	import type { BatchActions } from './batch-actions.svelte.js';
-	import DownloadFormatDialog from './DownloadFormatDialog.svelte';
 	import FolderPickerDialog from './FolderPickerDialog.svelte';
 
 	type Action = 'favorite' | 'album' | 'folder' | 'share' | 'download' | 'archive' | 'trash';
@@ -47,6 +47,8 @@
 	// Shortcuts while photos are selected and no dialog or text field has focus.
 	function onkeydown(event: KeyboardEvent) {
 		if (!selection.active || picking || actions.sharing || event.defaultPrevented) return;
+		// The viewer over the grid has its own keys (f, s, Delete) for the photo shown.
+		if (page.url.searchParams.has('asset')) return;
 		const target = event.target as HTMLElement;
 		if (target.closest('input, textarea, select, dialog, [role="dialog"]')) return;
 		if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -88,7 +90,6 @@
 		actions.addToAlbum(album);
 	}}
 />
-<DownloadFormatDialog downloader={actions.downloader} />
 <FolderPickerDialog
 	open={picking === 'folder'}
 	onclose={() => (picking = null)}

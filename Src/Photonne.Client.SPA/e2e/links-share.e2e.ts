@@ -103,3 +103,15 @@ test('a failed link removes the album it had just created', async ({ page }) => 
 	await expect.poll(() => calls(links.log, 'DELETE /api/albums/shared-1').length).toBe(1);
 	await expect(page.getByRole('toolbar')).toBeVisible();
 });
+
+test('shares the photo open in the viewer', async ({ page }) => {
+	const { links } = await openTimeline(page);
+	await cells(page).nth(1).click();
+	await expect(page).toHaveURL(/asset=/);
+
+	await page.getByRole('button', { name: 'Compartir', exact: true }).click();
+	const dialog = page.getByRole('dialog', { name: 'Compartir 1 foto' });
+	await dialog.getByRole('button', { name: 'Crear enlace' }).click();
+	await expect(page.getByRole('dialog', { name: 'Enlace listo' })).toBeVisible();
+	expect(calls(links.log, 'POST /api/share')).toHaveLength(1);
+});

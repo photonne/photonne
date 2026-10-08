@@ -4,6 +4,7 @@
 	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import { BatchActions } from '#lib/actions/batch-actions.svelte.js';
+	import DownloadFormatDialog from '#lib/actions/DownloadFormatDialog.svelte';
 	import ShareAssetsDialog from '#lib/actions/ShareAssetsDialog.svelte';
 	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import { getAssetDetailQueryKey } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
@@ -105,7 +106,7 @@
 				...item,
 				isFavorite: detail?.isFavorite ?? !item.isFavorite
 			}));
-		} else if (change === 'date') {
+		} else if (change === 'date' || change === 'added') {
 			store.reload();
 		}
 	}
@@ -162,6 +163,8 @@
 		onnavigate={(id) => viewer.navigate(id)}
 		onclose={close}
 		onchanged={changed}
+		onshare={() => viewer.openId && batch.share([viewer.openId])}
+		ondownload={() => viewer.openId && batch.download([viewer.openId])}
 		ontrash={viewerActions.includes('trash')
 			? () => removeFromViewer((ids) => batch.trash(ids))
 			: undefined}
@@ -192,6 +195,7 @@
 	onclose={() => batch.closeShare()}
 	oncreated={() => batch.shared()}
 />
+<DownloadFormatDialog downloader={batch.downloader} />
 
 <style>
 	.page {

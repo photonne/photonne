@@ -61,6 +61,8 @@
 		onarchive?: () => void;
 		onaddtoalbum?: () => void;
 		onshare?: () => void;
+		/** Download through the host (format choice); a plain link to the original otherwise. */
+		ondownload?: () => void;
 		/** A page's own buttons for the open photo (restore in the trash…), before the standard ones. */
 		actions?: Snippet;
 	}
@@ -78,6 +80,7 @@
 		onarchive,
 		onaddtoalbum,
 		onshare,
+		ondownload,
 		actions
 	}: Props = $props();
 
@@ -487,14 +490,25 @@
 							<Icon name="delete" />
 						</button>
 					{/if}
-					<a
-						class="icon"
-						href="/api/assets/{assetId}/content?download=true"
-						download
-						aria-label={m.viewer_download()}
-					>
-						<Icon name="download" />
-					</a>
+					{#if ondownload}
+						<button
+							type="button"
+							class="icon"
+							aria-label={m.viewer_download()}
+							onclick={ondownload}
+						>
+							<Icon name="download" />
+						</button>
+					{:else}
+						<a
+							class="icon"
+							href="/api/assets/{assetId}/content?download=true"
+							download
+							aria-label={m.viewer_download()}
+						>
+							<Icon name="download" />
+						</a>
+					{/if}
 					<button
 						type="button"
 						class="icon"
