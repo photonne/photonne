@@ -1,0 +1,93 @@
+name: API contract
+
+# The published apps can't be forced to update, so the API is a public
+# contract (docs/api-compatibilidad.md). Two jobs guard it on every PR that
+# touches the server:
+#
+# - snapshot: the committed Src/Photonne.Server.Api/openapi/v1.json must be
+#   what the code generates (OpenApiContractTests), and every endpoint must
+#   declare its authorization (EndpointAuthorizationTests).
+# - breaking: oasdiff compares the PR's contract with the base branch's. A
+#   breaking change only passes if the same PR raises PhotonneMinClientVersion
+#   in Src/Directory.Build.props, which makes the older apps tell their users
+#   to update.
+
+on:
+  pull_request:
+    paths:
+      - 'Src/Photonne.Server.Api/**'
+      - 'Src/Directory.Build.props'
+      - 'Tests/Photonne.Server.Api.Tests/**'
+      - 'global.json'
+      - '.github/oasdiff-severity.txt'
+      - '.github/workflows/api-contract.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: api-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # Integration tests: Testcontainers starts Postgres on the runner's Docker.
+      - name: Contract and authorization tests
+        run: >-
+          dotnet test Tests/Photonne.Server.Api.Tests
+          --filter "FullyQualifiedName~Contract|FullyQualifiedName~Security"
+
+  breaking:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Compare with the base branch
+        env:
+          BASE_REF: origin/${{ github.base_ref || 'main' }}
+          SPEC: Src/Photonne.Server.Api/openapi/v1.json
+          PROPS: Src/Directory.Build.props
+        run: |
+          mkdir -p /tmp/contract
+          if ! git show "$BASE_REF:$SPEC" > /tmp/contract/base.json 2>/dev/null; then
+            echo "The base branch has no committed contract yet: nothing to compare."
+            exit 0
+          fi
+          cp "$SPEC" /tmp/contract/head.json
+          cp .github/oasdiff-severity.txt /tmp/contract/severity.txt
+
+          status=0
+          docker run --rm -v /tmp/contract:/specs tufin/oasdiff:v1.32.1 \
+            breaking /specs/base.json /specs/head.json \
+            --severity-levels /specs/severity.txt --fail-on ERR || status=$?
+
+          if [ "$status" -eq 0 ]; then
+            echo "No breaking changes."
+            exit 0
+          fi
+          if [ "$status" -ne 1 ]; then
+            echo "::error::oasdiff failed (exit $status)."
+            exit "$status"
+          fi
+
+          min_client() { sed -n 's:.*<PhotonneMinClientVersion>\(.*\)</PhotonneMinClientVersion>.*:\1:p' | head -n1; }
+          base_min=$(git show "$BASE_REF:$PROPS" | min_client)
+          head_min=$(min_client < "$PROPS")
+          if [ "$base_min" != "$head_min" ]; then
+            echo "::warning::Breaking API changes, accepted because PhotonneMinClientVersion goes from $base_min to $head_min: apps older than $head_min will ask their users to update."
+            exit 0
+          fi
+
+          echo "::error::Breaking API changes (above). Published apps would break. Make the change additive (see docs/api-compatibilidad.md), or, if it can't be, raise PhotonneMinClientVersion in $PROPS in this PR."
+          exit 1
