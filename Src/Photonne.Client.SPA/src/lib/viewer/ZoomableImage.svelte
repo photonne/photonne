@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { clampPan, fitSize, IDENTITY, zoomAt, type ZoomState } from './zoom.js';
 
 	interface Props {
@@ -9,9 +10,15 @@
 		alt: string;
 		/** Exposed so the viewer can route keys (+, -, 0) and know when to pan. */
 		zoom?: ZoomState;
+		/**
+		 * Drawn over the image (face boxes…) in the image's own box, so
+		 * percentages of it stay on the same pixels through zoom and pan.
+		 * Gets the zoom scale, to keep strokes the same width on screen.
+		 */
+		overlay?: Snippet<[number]>;
 	}
 
-	let { previewSrc, fullSrc, alt, zoom = $bindable(IDENTITY) }: Props = $props();
+	let { previewSrc, fullSrc, alt, zoom = $bindable(IDENTITY), overlay }: Props = $props();
 
 	let stageWidth = $state(0);
 	let stageHeight = $state(0);
@@ -128,6 +135,16 @@
 		style:height="{fitted.height}px"
 		style:transform="translate({zoom.x}px, {zoom.y}px) scale({zoom.scale})"
 	/>
+	{#if overlay && natural.width > 0}
+		<div
+			class="overlay"
+			style:width="{fitted.width}px"
+			style:height="{fitted.height}px"
+			style:transform="translate({zoom.x}px, {zoom.y}px) scale({zoom.scale})"
+		>
+			{@render overlay(zoom.scale)}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -149,13 +166,26 @@
 		cursor: grabbing;
 	}
 
+	/* The image and its overlay share one cell, both centred. */
+	img,
+	.overlay {
+		grid-area: 1 / 1;
+	}
+
 	img {
 		max-width: none;
 		user-select: none;
 		transition: transform var(--duration-fast) ease-out;
 	}
 
-	.dragging img {
+	.overlay {
+		position: relative;
+		pointer-events: none;
+		transition: transform var(--duration-fast) ease-out;
+	}
+
+	.dragging img,
+	.dragging .overlay {
 		transition: none;
 	}
 </style>
