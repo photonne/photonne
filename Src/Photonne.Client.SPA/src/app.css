@@ -1,0 +1,113 @@
+/*
+ * Design tokens. Components use these variables, never raw values, so light
+ * and dark (and a future theme setting) are one place to change.
+ */
+:root {
+	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+	--font-size-xs: 0.75rem;
+	--font-size-sm: 0.875rem;
+	--font-size-md: 1rem;
+	--font-size-lg: 1.25rem;
+	--font-size-xl: 1.75rem;
+
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-6: 1.5rem;
+	--space-8: 2rem;
+
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 16px;
+
+	--duration-fast: 120ms;
+	--duration-normal: 200ms;
+
+	--color-bg: #ffffff;
+	--color-surface: #f4f5f7;
+	--color-surface-raised: #ffffff;
+	--color-border: #dfe1e6;
+	--color-text: #1d1d1f;
+	--color-text-muted: #5f6368;
+	--color-accent: #2563eb;
+	--color-accent-text: #ffffff;
+	--color-danger: #c62828;
+	--color-focus: #2563eb;
+	--color-placeholder: #e8eaed;
+	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
+
+	--header-height: 56px;
+	--sidebar-width: 232px;
+
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-bg: #111214;
+		--color-surface: #1b1c1f;
+		--color-surface-raised: #232428;
+		--color-border: #2f3136;
+		--color-text: #e8e8ea;
+		--color-text-muted: #a0a3a8;
+		--color-accent: #60a5fa;
+		--color-accent-text: #0b1220;
+		--color-danger: #ef9a9a;
+		--color-focus: #93c5fd;
+		--color-placeholder: #26282c;
+		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
+		color-scheme: dark;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+}
+
+body {
+	background: var(--color-bg);
+	color: var(--color-text);
+	font: var(--font-size-md) / 1.5 var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+
+:focus-visible {
+	outline: 2px solid var(--color-focus);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--duration-fast: 0ms;
+		--duration-normal: 0ms;
+	}
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}

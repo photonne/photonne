@@ -1,0 +1,68 @@
+name: SPA
+
+# Lint, type check, unit/component tests, end-to-end tests (API faked) and a
+# production build of Src/Photonne.Client.SPA on every PR that touches it or
+# the API contract it is generated from.
+
+on:
+  pull_request:
+    paths:
+      - 'Src/Photonne.Client.SPA/**'
+      - 'Src/Photonne.Server.Api/openapi/v1.json'
+      - '.github/workflows/spa.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Src/Photonne.Client.SPA/**'
+      - 'Src/Photonne.Server.Api/openapi/v1.json'
+      - '.github/workflows/spa.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: spa-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: Src/Photonne.Client.SPA
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Src/Photonne.Client.SPA/package-lock.json
+
+      # Also generates the API client and the i18n messages (prepare script).
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run check
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Unit and component tests
+        run: npm run test:unit -- --run
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: Src/Photonne.Client.SPA/test-results
+          retention-days: 7

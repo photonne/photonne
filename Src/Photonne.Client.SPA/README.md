@@ -1,54 +1,42 @@
-# sv
+# Photonne.Client.SPA
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Cliente web de Photonne: SvelteKit (Svelte 5) en modo SPA, TypeScript estricto. Sustituirá a `Photonne.Client.Web` (Blazor); la decisión está en [ADR-004](../../docs/ADR-004-client-spa-sveltekit.md) y el avance, en [roadmap-spa.md](../../docs/roadmap-spa.md).
 
-## Creating a project
+## Desarrollo
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+Necesita Node 22 y la API en marcha (por defecto en `http://localhost:5030`).
 
 ```sh
-# recreate this project
-npx sv@1.1.1 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" playwright="demo:no" sveltekit-adapter="adapter:static" --install npm Photonne.Client.SPA
+npm install        # instala y genera el cliente de la API y los mensajes i18n
+npm run dev        # http://localhost:5173, con /api redirigido a la API
 ```
 
-## Adding features
+Otra URL para la API: `PHOTONNE_API_URL=http://192.168.1.10:8080 npm run dev`.
 
-Add features to your project with `sv add`:
+El servidor de Vite hace de proxy de `/api`, así que el navegador ve un único origen. Las cookies de sesión (`SameSite=Strict`, `Path=/api`) funcionan igual que en producción, donde el propio servidor sirve el build.
 
-```sh
-npx sv add
-```
+| Comando                | Qué hace                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `npm run check`        | Comprobación de tipos (svelte-check)                                                  |
+| `npm run lint`         | Prettier y ESLint                                                                     |
+| `npm run format`       | Formatea con Prettier                                                                 |
+| `npm run test:unit`    | Vitest: tests de Node (`*.spec.ts`) y de componentes en Chromium (`*.svelte.spec.ts`) |
+| `npm run test:e2e`     | Playwright contra el build de producción, con la API simulada (`e2e/fake-api.ts`)     |
+| `npm run build`        | Build estático en `build/`                                                            |
+| `npm run api:generate` | Regenera el cliente de la API                                                         |
 
-For example, to add Tailwind CSS:
+Si ya hay un Chromium instalado y no quieres descargar el de Playwright: `CHROMIUM_PATH=/ruta/a/chrome npm run test:e2e`.
 
-```sh
-npx sv add tailwindcss
-```
+## Cómo está montado
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
+- **Cliente de la API**: se genera con [`@hey-api/openapi-ts`](https://heyapi.dev) a partir del contrato versionado del servidor (`../Photonne.Server.Api/openapi/v1.json`) en `src/lib/api/generated`. No se sube al repo: lo crean `npm install` y `npm run api:generate`. Incluye tipos, una función por operación y opciones para TanStack Query.
+- **Sesión** (`src/lib/auth/session.svelte.ts`):
+  - El access token vive solo en memoria.
+  - El refresh token va en una cookie HttpOnly (`refreshTokenInCookie`) que JavaScript no puede leer.
+  - Al cargar la página, la sesión se restaura con un refresh.
+  - Un 401 provoca un único refresh compartido y repite la petición (`src/lib/api/auth-fetch.ts`).
+  - Las fotos y los vídeos cargan con la cookie de media que ponen login y refresh.
+- **Datos**: [TanStack Query](https://tanstack.com/query) para caché, reintentos e invalidación.
+- **i18n**: [Paraglide](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) con `messages/es.json` (base) y `messages/en.json`. El idioma sale de la preferencia del usuario, después del navegador y por último del español. Los plugins de inlang se cargan desde `node_modules`, no desde una CDN, para que el build funcione sin red.
+- **Estilos**: CSS con ámbito de Svelte sobre los tokens de `src/app.css` (modo claro y oscuro con `prefers-color-scheme`).
+- **Rutas**: `src/routes/login` es pública; todo lo de `src/routes/(app)` exige sesión y se pinta dentro de `AppShell`.
