@@ -1,6 +1,6 @@
-import type { Page, Request, Route } from '@playwright/test';
+import { test, type Page, type Request, type Route } from '@playwright/test';
 import { readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /** What an area's fake (e2e/fakes/*.ts) gets for each request. */
@@ -19,10 +19,12 @@ export interface FakeContext {
 /** An area's fake: handles the request and returns true, or returns false. */
 export type FakeHandler = (context: FakeContext) => boolean | Promise<boolean>;
 
-// Every e2e/fakes/*.ts default-exports a FakeHandler; they are tried in
-// file-name order before the 404 fallback, so each area fakes its own
-// endpoints in its own file.
-let handlers: Promise<FakeHandler[]> | null = null;
+// Every e2e/fakes/*.ts default-exports a FakeHandler; they are tried before
+// the 404 fallback, so each area fakes its own endpoints in its own file.
+// The area under test goes first (`albums-folders.e2e.ts` -> fakes/albums.ts),
+// then the rest in file-name order: an area may fake a shared endpoint (people,
+// labels, settings…) with its own data without changing what others see.
+let handlers: Promise<{ area: string; handle: FakeHandler }[]> | null = null;
 
 function loadHandlers() {
 	const directory = join(dirname(fileURLToPath(import.meta.url)), 'fakes');
@@ -30,12 +32,22 @@ function loadHandlers() {
 		readdirSync(directory)
 			.filter((file) => file.endsWith('.ts'))
 			.sort()
-			.map(
-				async (file) =>
-					(await import(pathToFileURL(join(directory, file)).href)).default as FakeHandler
-			)
+			.map(async (file) => ({
+				area: file.replace(/\.ts$/, ''),
+				handle: (await import(pathToFileURL(join(directory, file)).href)).default as FakeHandler
+			}))
 	);
 	return handlers;
+}
+
+/** The fakes in the order to try them for the running test file. */
+async function orderedHandlers() {
+	const all = await loadHandlers();
+	const area = basename(test.info().file).split(/[-.]/)[0];
+	return [
+		...all.filter((handler) => handler.area === area),
+		...all.filter((handler) => handler.area !== area)
+	].map((handler) => handler.handle);
 }
 
 /**
@@ -50,7 +62,7 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 	const removed: string[] = [];
 	const restored: string[] = [];
 	const state: Record<string, unknown> = {};
-	const extra = await loadHandlers();
+	const extra = await orderedHandlers();
 	const json = (route: Route, status: number, body?: unknown) =>
 		route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body ?? {}) });
 
