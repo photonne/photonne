@@ -8,6 +8,9 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 	let signedIn = options.signedIn ?? false;
 	const favorites = new Set<string>();
 	const descriptions: string[] = [];
+	const added: string[] = [];
+	const removed: string[] = [];
+	const restored: string[] = [];
 	const json = (route: Route, status: number, body?: unknown) =>
 		route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body ?? {}) });
 
@@ -55,6 +58,21 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 						: json(route, 401);
 				}
 				if (path === '/api/tags') return json(route, 200, ['familia', 'viaje']);
+				if (path === '/api/albums' && request.method() === 'GET') return json(route, 200, albums);
+				if (path === '/api/folders' && request.method() === 'GET') return json(route, 200, folders);
+				if (path === '/api/folders/tree') return json(route, 200, folders);
+				if (/^\/api\/albums\/[^/]+\/assets\/batch$/.test(path)) {
+					added.push(...request.postDataJSON().assetIds);
+					return json(route, 200, { added: request.postDataJSON().assetIds.length, skipped: 0 });
+				}
+				if (path === '/api/assets/delete' || path === '/api/assets/archive') {
+					removed.push(...request.postDataJSON().assetIds);
+					return route.fulfill({ status: 204 });
+				}
+				if (path === '/api/assets/restore' || path === '/api/assets/unarchive') {
+					restored.push(...request.postDataJSON().assetIds);
+					return route.fulfill({ status: 204 });
+				}
 				if (path.startsWith('/api/assets/timeline/buckets/')) {
 					const key = path.split('/').at(-1)!;
 					return authorized ? json(route, 200, library.items(key)) : json(route, 401);
@@ -69,7 +87,7 @@ export async function fakeApi(page: Page, options: { signedIn?: boolean; offline
 				return json(route, 404, { error: 'Not faked', code: 'not_found' });
 		}
 	});
-	return { descriptions };
+	return { descriptions, added, removed, restored };
 }
 
 const user = {
@@ -172,3 +190,50 @@ function detail(id: string, favorites: Set<string>) {
 		canSaveMotionFrame: false
 	};
 }
+
+const albums = [
+	{
+		id: 'album-1',
+		name: 'Vacaciones',
+		description: null,
+		createdAt: '2026-01-01T00:00:00Z',
+		updatedAt: '2026-01-01T00:00:00Z',
+		assetCount: 12,
+		coverThumbnailUrl: null,
+		previewThumbnailUrls: [],
+		isOwner: true,
+		isShared: false,
+		sharedWithCount: 0,
+		canRead: true,
+		canWrite: true,
+		canDelete: true,
+		canManagePermissions: true,
+		hasActiveShareLink: false,
+		isPinned: true,
+		pinnedAt: '2026-01-01T00:00:00Z',
+		kind: 'Manual'
+	}
+];
+
+const folders = [
+	{
+		id: 'folder-1',
+		path: '/assets/users/ana/Camera',
+		name: 'Camera',
+		parentFolderId: null,
+		createdAt: '2026-01-01T00:00:00Z',
+		assetCount: 40,
+		firstAssetId: null,
+		previewAssetIds: [],
+		isShared: false,
+		isOwner: true,
+		canWrite: true,
+		canDelete: true,
+		sharedWithCount: 0,
+		externalLibraryId: null,
+		excludedFromDiscovery: false,
+		isPinned: false,
+		pinnedAt: null,
+		subFolders: []
+	}
+];

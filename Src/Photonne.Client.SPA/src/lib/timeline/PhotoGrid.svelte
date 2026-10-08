@@ -1,5 +1,6 @@
 <script lang="ts" generics="T extends GridAsset">
 	import { tick, untrack } from 'svelte';
+	import { startAssetDrag } from '#lib/actions/drag-assets.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { thumbnailSizeFor, thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -276,6 +277,9 @@
 								tabindex={cellTabIndex(item.id)}
 								aria-label={itemLabel(item)}
 								aria-pressed={selection.active ? selected : undefined}
+								draggable="true"
+								ondragstart={(event) =>
+									startAssetDrag(event, selected ? [...selection.ids] : [item.id])}
 								onclick={(event) => onCellClick(event, item)}
 								onfocus={() => (focusedId = item.id)}
 							>

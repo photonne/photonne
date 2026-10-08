@@ -27,6 +27,10 @@
 		onchanged: (assetId: string, change: AssetChange) => void;
 		/** Large-thumbnail versions of the neighbours, to preload them. */
 		neighborVersion?: (assetId: string) => string | null | undefined;
+		/** Offered only when the host passes them (not every surface can). */
+		ontrash?: () => void;
+		onarchive?: () => void;
+		onaddtoalbum?: () => void;
 	}
 
 	let {
@@ -37,7 +41,10 @@
 		onnavigate,
 		onclose,
 		onchanged,
-		neighborVersion = () => null
+		neighborVersion = () => null,
+		ontrash,
+		onarchive,
+		onaddtoalbum
 	}: Props = $props();
 
 	const INFO_KEY = 'photonne.viewer.info';
@@ -136,7 +143,8 @@
 			'+': () => image?.zoomBy(1.5),
 			'=': () => image?.zoomBy(1.5),
 			'-': () => image?.zoomBy(1 / 1.5),
-			'0': () => image?.reset()
+			'0': () => image?.reset(),
+			Delete: () => ontrash?.()
 		};
 		const action = actions[event.key];
 		if (action) {
@@ -214,6 +222,26 @@
 				>
 					<Icon name={asset?.isFavorite ? 'favorite' : 'favoriteOutline'} />
 				</button>
+				{#if onaddtoalbum}
+					<button
+						type="button"
+						class="icon"
+						aria-label={m.action_add_to_album()}
+						onclick={onaddtoalbum}
+					>
+						<Icon name="albumAdd" />
+					</button>
+				{/if}
+				{#if onarchive}
+					<button type="button" class="icon" aria-label={m.action_archive()} onclick={onarchive}>
+						<Icon name="archive" />
+					</button>
+				{/if}
+				{#if ontrash}
+					<button type="button" class="icon" aria-label={m.action_trash()} onclick={ontrash}>
+						<Icon name="delete" />
+					</button>
+				{/if}
 				<a
 					class="icon"
 					href="/api/assets/{assetId}/content?download=true"
