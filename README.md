@@ -32,7 +32,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 
 **Clientes**
 - **Apps nativas** — Android, iOS y escritorio (Kotlin Multiplatform + Compose). Fuente principal para el consumo de la biblioteca
-- **Panel de administración web** — PWA Blazor reservada a administradores: usuarios, bibliotecas, tareas, estadísticas y ajustes del servidor
+- **Web** — tu biblioteca completa en el navegador, instalable como PWA y pensada para escritorio (selección, arrastrar y soltar, atajos), con la administración del servidor: usuarios, bibliotecas, tareas, estadísticas y ajustes
 
 **Técnico**
 - **Indexación automática** — Escanea directorios para indexar todos los assets (foto y vídeo)
@@ -46,7 +46,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 |---|---|
 | Backend | ASP.NET Core 10, EF Core, PostgreSQL |
 | Apps nativas | Kotlin Multiplatform + Compose Multiplatform (Android, iOS, Desktop) |
-| Panel de admin | Blazor WebAssembly (PWA), MudBlazor 9 |
+| Web | SvelteKit (SPA, PWA), Svelte 5, TypeScript, TanStack Query |
 | Imágenes | ImageSharp, Magick.NET |
 | Video | FFmpeg (vía Xabe.FFmpeg) |
 | EXIF | MetadataExtractor |
@@ -59,7 +59,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 Photonne.sln
 └── Src/
     ├── Photonne.Server.Api/      # API REST ASP.NET Core 10
-    ├── Photonne.Client.Web/      # Panel de administración (Blazor WASM PWA)
+    ├── Photonne.Client.SPA/      # Cliente web (SvelteKit en modo SPA, PWA)
     ├── Photonne.Client.Native/   # Apps nativas (Android, iOS, Desktop) en KMP + Compose
     └── Photonne.MlService/       # Servicio ML en Python (FastAPI)
 ```
@@ -72,22 +72,22 @@ Photonne.sln
 - Autenticación JWT + Refresh Tokens, gestión de usuarios y permisos
 - Migraciones de base de datos (EF Core + PostgreSQL)
 
-**`Client.Web`** — Panel de administración (Blazor WASM PWA):
-- Reservado a usuarios con rol `Admin`; los no administradores se redirigen a un aviso para usar la app nativa.
-- Páginas: Panel (dashboard), Usuarios, Bibliotecas externas, Estadísticas, Tareas/Colas, Mantenimiento, Copia de seguridad, Ajustes del servidor, Sistema, Utilidades y Notificaciones.
-- Layout: `MainLayout`, `NavMenu`, `LoginLayout`; servicios con interfaces + implementaciones (AuthService usa `IJSRuntime`/`localStorage`).
-- PWA: `manifest.webmanifest` («Photonne Admin»), `service-worker.js` con cache del app shell.
-- Decisión técnica documentada en [`Src/Photonne.Client.Web/docs/ADR-002-pwa-admin-console.md`](Src/Photonne.Client.Web/docs/ADR-002-pwa-admin-console.md).
+**`Client.SPA`** — Cliente web (SvelteKit + Svelte 5, TypeScript, PWA):
+- Todo lo que ofrece la app nativa salvo la copia de seguridad del dispositivo, más la administración del servidor; pensado para escritorio (selección con ratón y teclado, arrastrar y soltar, atajos).
+- Lo sirve el propio servidor desde `/` (la imagen lo compila en una etapa de Node y lo copia a `wwwroot`).
+- Cliente de API generado del contrato OpenAPI (`Src/Photonne.Server.Api/openapi/v1.json`); i18n en español e inglés.
+- Decisión técnica documentada en [`docs/ADR-004-client-spa-sveltekit.md`](docs/ADR-004-client-spa-sveltekit.md); desarrollo y tests en [`Src/Photonne.Client.SPA/README.md`](Src/Photonne.Client.SPA/README.md).
 
 **`Client.Native`** — Apps nativas (fuente principal de consumo):
 - Kotlin Multiplatform + Compose Multiplatform.
 - Targets Android, iOS y Desktop JVM con UI compartida.
-- Cliente Ktor con refresh-on-401 que replica `AuthRefreshHandler` del web.
+- Cliente Ktor con refresh-on-401.
 - Decisión técnica documentada en [`Src/Photonne.Client.Native/docs/ADR-001-kotlin-multiplatform.md`](Src/Photonne.Client.Native/docs/ADR-001-kotlin-multiplatform.md).
 
 ## Requisitos
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Node.js 22](https://nodejs.org/) (solo para desarrollar el cliente web)
 - [Docker](https://www.docker.com/) y Docker Compose
 - FFmpeg (descargado automáticamente si no está disponible)
 
@@ -143,10 +143,15 @@ El archivo `docker-compose.override.yml` se aplica automáticamente en desarroll
 
 ### 6. Cliente web
 
+Con la API en marcha (por defecto en `http://localhost:5030`; otra con `PHOTONNE_API_URL`):
+
 ```bash
-cd Src/Photonne.Client.Web
-dotnet run
+cd Src/Photonne.Client.SPA
+npm install
+npm run dev
 ```
+
+El servidor de desarrollo de Vite hace de proxy de `/api`, así que el navegador ve un único origen como en producción.
 
 ## Configuración
 
