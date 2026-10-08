@@ -18,6 +18,7 @@
 	import { invalidatePeople } from './cache.js';
 	import { icons } from './icons.js';
 	import { displayName } from './people.js';
+	import PersonCompanions from './PersonCompanions.svelte';
 	import PersonTabs from './PersonTabs.svelte';
 	import PersonToolbar from './PersonToolbar.svelte';
 
@@ -74,6 +75,7 @@
 	{/snippet}
 	{#snippet header()}
 		<PersonTabs {person} current="photos" />
+		<PersonCompanions personId={person.id} />
 	{/snippet}
 	{#snippet selectionActions(selection, batch)}
 		<button

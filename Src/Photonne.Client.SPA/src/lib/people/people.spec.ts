@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	companions,
 	defaultMergeTarget,
 	displayName,
 	faceThumbnailUrl,
@@ -94,5 +95,16 @@ describe('nextOffset', () => {
 describe('faceThumbnailUrl', () => {
 	it('points at the face crop', () => {
 		expect(faceThumbnailUrl('f1')).toBe('/api/faces/f1/thumbnail');
+	});
+});
+
+describe('companions', () => {
+	it('keeps the people-together memories in the server order', () => {
+		const memories = [
+			{ id: 'a', kind: 'PeopleTogether' },
+			{ id: 'b', kind: 'PersonThroughYears' },
+			{ id: 'c', kind: 'PeopleTogether' }
+		];
+		expect(companions(memories).map((memory) => memory.id)).toEqual(['a', 'c']);
 	});
 });

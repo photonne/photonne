@@ -135,6 +135,7 @@ function seed(): AlbumsState {
 				canWrite: false,
 				canDelete: false,
 				canManagePermissions: false,
+				createdAt: '2025-04-12T00:00:00Z',
 				updatedAt: '2026-05-01T00:00:00Z',
 				assetCount: 3
 			})
@@ -319,6 +320,8 @@ const handle: FakeHandler = async (context) => {
 			}
 			if (method === 'DELETE') {
 				log();
+				if (!found.isOwner && !found.canDelete)
+					return json(403, { error: 'Forbidden', code: 'forbidden' }).then(() => true);
 				s.albums = s.albums.filter((a) => a.id !== id);
 				return noContent();
 			}

@@ -1,7 +1,12 @@
 <script lang="ts">
 	import '#lib/account/settings/settings.css';
 	import { page } from '$app/state';
-	import { ICON_FOLDER_SHARED, ICON_PALETTE, ICON_STORAGE } from '#lib/account/icons.js';
+	import {
+		ICON_AUTO_AWESOME,
+		ICON_FOLDER_SHARED,
+		ICON_PALETTE,
+		ICON_STORAGE
+	} from '#lib/account/icons.js';
 	import Icon, { type IconName } from '#lib/components/Icon.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -14,7 +19,8 @@
 		{ path: '/settings/security', label: m.settings_security, icon: 'lock' },
 		{ path: '/settings/appearance', label: m.settings_appearance, iconPath: ICON_PALETTE },
 		{ path: '/settings/storage', label: m.settings_storage, iconPath: ICON_STORAGE },
-		{ path: '/settings/shared-folders', label: m.settings_discovery, iconPath: ICON_FOLDER_SHARED }
+		{ path: '/settings/shared-folders', label: m.settings_discovery, iconPath: ICON_FOLDER_SHARED },
+		{ path: '/settings/analysis', label: m.settings_analysis, iconPath: ICON_AUTO_AWESOME }
 	];
 </script>
 

@@ -82,5 +82,76 @@
 				"countPlural=other": "{name}, {count} items"
 			}
 		}
-	]
+	],
+	"folders_filters": "Filter folders",
+	"folders_search": "Search folders",
+	"folders_scope": "Which folders",
+	"folders_scope_all": "All",
+	"folders_scope_personal": "Personal",
+	"folders_scope_shared": "Shared",
+	"folders_scope_external": "External",
+	"folders_sort": "Sort by",
+	"folders_sort_name": "Name",
+	"folders_sort_count": "Number of items",
+	"folders_sort_ascending": "Ascending order",
+	"folders_sort_descending": "Descending order",
+	"folders_results": "Folders found",
+	"folders_no_match": "No folder matches the filter.",
+	"folders_select_named": "Select “{name}”",
+	"folders_bulk_move": "Move",
+	"folders_bulk_delete": "Delete",
+	"folders_bulk_cannot_move": "Some of the selected folders can't be moved",
+	"folders_bulk_cannot_delete": "Some of the selected folders can't be deleted",
+	"folders_bulk_move_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Move {count} folder",
+				"countPlural=other": "Move {count} folders"
+			}
+		}
+	],
+	"folders_bulk_moved": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} folder moved to “{parent}”",
+				"countPlural=other": "{count} folders moved to “{parent}”"
+			}
+		}
+	],
+	"folders_bulk_delete_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Delete {count} folder?",
+				"countPlural=other": "Delete {count} folders?"
+			}
+		}
+	],
+	"folders_bulk_delete_message": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "The selected folder, its subfolders and its photos will go to the trash.",
+				"countPlural=other": "The {count} selected folders, their subfolders and their photos will go to the trash."
+			}
+		}
+	],
+	"folders_bulk_deleted": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} folder deleted",
+				"countPlural=other": "{count} folders deleted"
+			}
+		}
+	],
+	"folders_bulk_nested": "Subfolders of another selected folder go with it.",
+	"folders_bulk_partial": "Done with {done} of {total}. The ones that failed stay selected."
 }

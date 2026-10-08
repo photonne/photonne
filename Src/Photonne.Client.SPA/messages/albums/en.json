@@ -259,5 +259,76 @@
 	"albums_unpin_named": "Unpin “{name}”",
 	"albums_unpinned": "“{name}” unpinned",
 	"albums_unshare_user": "Stop sharing with {name}",
-	"albums_unshared_with_user": "No longer shared with {name}"
+	"albums_unshared_with_user": "No longer shared with {name}",
+	"albums_select_named": "Select “{name}”",
+	"albums_view": "View",
+	"albums_view_grid": "Grid",
+	"albums_view_list": "List",
+	"albums_group_by_year": "Group by year",
+	"albums_year_section": "Albums created in {year}",
+	"albums_bulk_delete": "Delete",
+	"albums_bulk_leave": "Leave",
+	"albums_bulk_cannot_delete": "Some of the selected albums can't be deleted",
+	"albums_bulk_cannot_leave": "You can only leave albums others shared with you",
+	"albums_bulk_delete_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Delete {count} album?",
+				"countPlural=other": "Delete {count} albums?"
+			}
+		}
+	],
+	"albums_bulk_delete_message": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "The selected album will be deleted. Its photos stay in your library.",
+				"countPlural=other": "The {count} selected albums will be deleted. Their photos stay in your library."
+			}
+		}
+	],
+	"albums_bulk_leave_title": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Leave {count} album?",
+				"countPlural=other": "Leave {count} albums?"
+			}
+		}
+	],
+	"albums_bulk_leave_message": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "You'll stop seeing the selected album. To come back, its owner will have to invite you again.",
+				"countPlural=other": "You'll stop seeing the {count} selected albums. To come back, their owners will have to invite you again."
+			}
+		}
+	],
+	"albums_bulk_deleted": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} album deleted",
+				"countPlural=other": "{count} albums deleted"
+			}
+		}
+	],
+	"albums_bulk_left": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Left {count} album",
+				"countPlural=other": "Left {count} albums"
+			}
+		}
+	],
+	"albums_bulk_partial": "Done with {done} of {total}. The ones that failed stay selected."
 }

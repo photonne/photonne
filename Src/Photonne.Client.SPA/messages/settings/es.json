@@ -136,5 +136,61 @@
 	"settings_discovery_state_shown": "En tus fotos",
 	"settings_discovery_state_hidden": "Oculta",
 	"settings_discovery_shown": "«{name}» vuelve a tus fotos",
-	"settings_discovery_hidden": "«{name}» ya no aparece en tus fotos"
+	"settings_discovery_hidden": "«{name}» ya no aparece en tus fotos",
+	"settings_analysis": "Análisis de fotos",
+	"settings_analysis_lead": "Tus fotos cuyo análisis (metadatos, miniaturas, caras, objetos, texto, búsqueda con IA…) sigue en marcha o ha fallado.",
+	"settings_analysis_summary": "Estado",
+	"settings_analysis_in_flight": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto procesándose",
+				"countPlural=other": "{count} fotos procesándose"
+			}
+		}
+	],
+	"settings_analysis_failed": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} con errores",
+				"countPlural=other": "{count} con errores"
+			}
+		}
+	],
+	"settings_analysis_refresh": "Actualizar",
+	"settings_analysis_retry_everything": "Reintentar todo lo fallido",
+	"settings_analysis_retry_everything_hint": "Vuelve a poner en cola las tareas fallidas de las fotos de esta lista.",
+	"settings_analysis_empty": "Todo está analizado. No hay nada pendiente ni con errores.",
+	"settings_analysis_list": "Fotos pendientes o con errores",
+	"settings_analysis_counts": "Pendientes: {pending} · En curso: {processing} · Fallidas: {failed}",
+	"settings_analysis_failed_tasks": "Tareas fallidas de {name}",
+	"settings_analysis_retry_task": "Reintentar {task}",
+	"settings_analysis_retry_all": "Reintentar fallidas",
+	"settings_analysis_retrying": "Reintentando…",
+	"settings_analysis_retried": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} tarea vuelve a la cola",
+				"countPlural=other": "{count} tareas vuelven a la cola"
+			}
+		}
+	],
+	"settings_analysis_retried_task": "{task} de «{name}» vuelve a la cola",
+	"settings_analysis_retried_assets": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Reintentando {count} foto",
+				"countPlural=other": "Reintentando {count} fotos"
+			}
+		}
+	],
+	"settings_analysis_retry_failed": "No se ha podido reintentar. Vuelve a probar más tarde.",
+	"settings_analysis_more": "Cargar más"
 }

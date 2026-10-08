@@ -17,6 +17,8 @@
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
 	import { TimelineStore } from '#lib/timeline/timeline-store.svelte.js';
+	import TimelineTools from '#lib/timeline/TimelineTools.svelte';
+	import { TimelineView } from '#lib/timeline/timeline-view.svelte.js';
 	import type { GridAsset } from '#lib/timeline/types.js';
 	import AssetViewer, { type AssetChange } from '#lib/viewer/AssetViewer.svelte';
 	import { neighborsIn } from '#lib/viewer/neighbors.js';
@@ -31,6 +33,36 @@
 	function itemLabel(item: GridAsset) {
 		const date = longDate(item.capturedAt);
 		return item.isVideo ? m.grid_item_video({ date }) : m.grid_item_photo({ date });
+	}
+
+	// --- Zoom and "go to a date" ------------------------------------------
+
+	const view = new TimelineView(() => store.sections);
+
+	// The year view's sampled photos aren't the timeline's: they can't be
+	// selected, and opening one goes to its month instead of the viewer.
+	$effect(() => {
+		if (view.yearView) selection.clear();
+	});
+
+	function yearItemLabel(item: GridAsset) {
+		return m.timeline_year_item({
+			month: monthTitle(item.capturedAt.slice(0, 7)),
+			date: longDate(item.capturedAt)
+		});
+	}
+
+	async function openMonthOf(item: GridAsset) {
+		view.setZoom('small');
+		await tick();
+		await jumpTo(item.capturedAt.slice(0, 7));
+		await tick();
+		grid?.focusItem(item.id);
+	}
+
+	async function jumpTo(monthKey: string) {
+		const shown = grid?.scrollToSection(monthKey);
+		if (shown && shown.length === 7) await store.load(shown);
 	}
 
 	// --- Viewer (its place in the URL: see ViewerRoute) -----------------
@@ -112,15 +144,27 @@
 	{:else if store.sections.length === 0}
 		<p class="status">{m.photos_empty()}</p>
 	{:else}
-		<div class="grid">
+		<TimelineTools
+			{view}
+			months={buckets.data ?? []}
+			current={() => grid?.currentSection() ?? null}
+			onjump={jumpTo}
+			paused={!!openId}
+		/>
+		<div class="grid" bind:clientWidth={view.width}>
 			<PhotoGrid
-				sections={store.sections}
+				sections={view.sections}
 				{selection}
 				label={m.photos_title()}
-				sectionTitle={monthTitle}
-				{itemLabel}
+				sectionTitle={view.sectionTitle}
+				sectionSubtitle={view.sectionSubtitle}
+				itemLabel={view.yearView ? yearItemLabel : itemLabel}
 				onneedsection={(key) => store.load(key)}
-				onopen={openViewer}
+				onopen={view.yearView ? openMonthOf : openViewer}
+				zoom={view.zoom}
+				onzoom={(direction) => view.step(direction)}
+				reflowKey={view.yearView ? 'years' : 'months'}
+				selectable={!view.yearView}
 				bind:this={grid}
 			/>
 		</div>

@@ -2,12 +2,17 @@
 	import { tick, untrack } from 'svelte';
 	import { startAssetDrag } from '#lib/actions/drag-assets.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import { dayTitle } from '#lib/format.js';
 	import { thumbnailSizeFor, thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import {
+		anchorAfterReflow,
 		blocksInRange,
 		buildGridLayout,
+		nearestSection,
 		sectionAt,
+		type GridBlock,
+		type GridLayout,
 		type GridOptions,
 		type GridSection
 	} from './grid-model.js';
@@ -16,6 +21,7 @@
 	import { spreadMarkers, yearMarkers } from './scrubber.js';
 	import type { Selection } from './selection.svelte.js';
 	import type { GridAsset } from './types.js';
+	import { DEFAULT_ZOOM, groupingOf, rowHeightFor, WheelZoom, type ZoomLevel } from './zoom.js';
 
 	interface Props {
 		sections: readonly GridSection<T>[];
@@ -32,6 +38,19 @@
 		headers?: boolean;
 		/** Scrolled near the end: load the next page, if the host pages. */
 		onnearend?: () => void;
+		/** Thumbnail size and grouping (zoom.ts); the medium month grid by default. */
+		zoom?: ZoomLevel;
+		/** Ctrl/Cmd + wheel over the grid asks for a step; without it the browser zooms. */
+		onzoom?: (direction: 1 | -1) => void;
+		/**
+		 * Changes when the host regroups the same photos under other sections
+		 * (months ↔ years), so the view anchors on a photo instead of a section.
+		 */
+		reflowKey?: string;
+		/** Off for a sampled overview where cells only navigate (the year view). */
+		selectable?: boolean;
+		/** Muted text after a section's title (a year's photo count). */
+		sectionSubtitle?: (key: string) => string;
 	}
 
 	let {
@@ -43,10 +62,16 @@
 		onopen,
 		label,
 		headers = true,
-		onnearend
+		onnearend,
+		zoom = DEFAULT_ZOOM,
+		onzoom,
+		reflowKey = '',
+		selectable = true,
+		sectionSubtitle
 	}: Props = $props();
 
 	const HEADER_HEIGHT = 52;
+	const SUBHEADER_HEIGHT = 36;
 	const SECTION_GAP = 16;
 	const SPACING = 4;
 	const PADDING = 16;
@@ -58,18 +83,25 @@
 	let outerWidth = $state(0);
 	let focusedId = $state<string | null>(null);
 
+	const byDay = $derived(headers && groupingOf(zoom) === 'day');
+
 	const options: GridOptions = $derived.by(() => {
 		const containerWidth = Math.max(0, outerWidth - PADDING * 2 - SCRUBBER_WIDTH);
 		return {
 			containerWidth,
-			targetRowHeight: containerWidth < 600 ? 120 : containerWidth < 1100 ? 170 : 210,
+			targetRowHeight: rowHeightFor(zoom, containerWidth),
 			spacing: SPACING,
 			headerHeight: headers ? HEADER_HEIGHT : 0,
+			subheaderHeight: SUBHEADER_HEIGHT,
 			sectionGap: SECTION_GAP
 		};
 	});
 
-	const layout = $derived(buildGridLayout(sections, options));
+	// Capture dates are UTC wall-clock instants (see format.ts), so the day is
+	// the ISO date as written.
+	const dayOf = (item: T) => item.capturedAt.slice(0, 10);
+
+	const layout = $derived(buildGridLayout(sections, options, byDay ? dayOf : undefined));
 	const visible = $derived(
 		blocksInRange(layout, scrollTop - viewportHeight, scrollTop + viewportHeight * 2)
 	);
@@ -110,20 +142,97 @@
 		anchor = key === null ? null : { key, offset: y - layout.sectionTops.get(key)! };
 	}
 
+	// A reflow (zoom, regrouping, resize) moves every row, so section offsets
+	// mean nothing: the photo under the pointer (Ctrl + wheel) or at the top
+	// keeps its place on screen instead.
+	const shape = $derived(
+		`${options.targetRowHeight}|${options.containerWidth}|${byDay}|${reflowKey}`
+	);
+	let previous: { layout: GridLayout<T>; shape: string } | null = null;
+	let pointerAnchor: { screenY: number; x: number } | null = null;
+
 	$effect(() => {
-		const tops = layout.sectionTops;
+		const current = layout;
+		const currentShape = shape;
 		untrack(() => {
-			if (!scroller || !anchor || scrollTop <= 0) return;
-			const top = tops.get(anchor.key);
+			const before = previous;
+			previous = { layout: current, shape: currentShape };
+			if (!scroller) return;
+			if (before && before.shape !== currentShape) {
+				reflow(before.layout, current);
+				return;
+			}
+			if (!anchor || scrollTop <= 0) return;
+			const top = current.sectionTops.get(anchor.key);
 			if (top === undefined) return;
 			const target = top + anchor.offset + PADDING;
 			if (Math.abs(target - scroller.scrollTop) > 1) scroller.scrollTop = target;
 		});
 	});
 
+	function reflow(before: GridLayout<T>, after: GridLayout<T>) {
+		const pointer = pointerAnchor;
+		pointerAnchor = null;
+		// At the very top the view stays at the top, unless the pointer chose a photo.
+		if (!pointer && scrollTop <= 0) return;
+		// `scrollTop` (state) still holds the offset the old layout was seen at;
+		// the element's own may already be clamped to the new, shorter canvas.
+		const screenY = pointer?.screenY ?? 0;
+		const y = scrollTop - PADDING + screenY;
+		const target = anchorAfterReflow(before, after, y, pointer?.x);
+		if (target === null) return;
+		const top = Math.max(0, target + PADDING - screenY);
+		scroller!.scrollTop = top;
+		scrollTop = scroller!.scrollTop;
+		rememberAnchor();
+	}
+
 	function onscroll() {
 		scrollTop = scroller!.scrollTop;
 		rememberAnchor();
+	}
+
+	// Ctrl/Cmd + wheel (and a trackpad pinch, which browsers report the same
+	// way) zooms the grid. Registered by hand: it must be non-passive to keep
+	// the browser from zooming the whole page.
+	const wheelZoom = new WheelZoom();
+
+	$effect(() => {
+		const element = scroller;
+		if (!element || !onzoom) return;
+		const onwheel = (event: WheelEvent) => {
+			if (!event.ctrlKey && !event.metaKey) return;
+			event.preventDefault();
+			const step = wheelZoom.push(event.deltaY, event.timeStamp);
+			if (step === 0) return;
+			const box = element.getBoundingClientRect();
+			pointerAnchor = {
+				screenY: event.clientY - box.top,
+				x: event.clientX - box.left - PADDING
+			};
+			onzoom?.(step);
+		};
+		element.addEventListener('wheel', onwheel, { passive: false });
+		return () => element.removeEventListener('wheel', onwheel);
+	});
+
+	/**
+	 * Scrolls to the section for `target` (`yyyy-MM`, or `yyyy` for a year),
+	 * or the nearest older one; its photos load as it comes into view.
+	 * Returns the section shown.
+	 */
+	export function scrollToSection(target: string) {
+		const key = nearestSection([...layout.sectionTops.keys()], target);
+		if (key === null || !scroller) return null;
+		scroller.scrollTop = layout.sectionTops.get(key)! + PADDING;
+		scrollTop = scroller.scrollTop;
+		rememberAnchor();
+		return key;
+	}
+
+	/** The section at the top of the view. */
+	export function currentSection() {
+		return sectionAt(layout, Math.max(0, scrollTop - PADDING));
 	}
 
 	function seek(fraction: number) {
@@ -149,7 +258,8 @@
 
 	function onCellClick(event: MouseEvent, item: T) {
 		focusedId = item.id;
-		if (event.shiftKey) selection.selectRange(item.id, order);
+		if (!selectable) onopen(item);
+		else if (event.shiftKey) selection.selectRange(item.id, order);
 		else if (event.ctrlKey || event.metaKey || selection.active) selection.toggle(item.id);
 		else onopen(item);
 	}
@@ -174,8 +284,7 @@
 		if (painting) selection.set([item.id], painting.selected);
 	}
 
-	function toggleSection(key: string) {
-		const ids = itemsBySection.get(key) ?? [];
+	function toggleIds(ids: readonly string[]) {
 		selection.set(ids, selection.stateOf(ids) !== 'all');
 	}
 
@@ -194,11 +303,12 @@
 			event.preventDefault();
 			const next = moveFocus(layout.rows, focusedId, direction);
 			if (next === null) return;
-			if (event.shiftKey) selection.selectRange(next, order);
+			if (event.shiftKey && selectable) selection.selectRange(next, order);
 			await focusItem(next);
 			return;
 		}
 
+		if (!selectable) return;
 		if (event.key === 'Escape' && selection.active) {
 			event.preventDefault();
 			selection.clear();
@@ -228,12 +338,33 @@
 		scroller.querySelector<HTMLElement>(`[data-id="${id}"]`)?.focus({ preventScroll: true });
 	}
 
+	function blockKey(block: GridBlock<T>) {
+		if (block.kind === 'row') return `r:${block.cells[0].item.id}`;
+		if (block.kind === 'subheader') return `d:${block.group}`;
+		return `${block.kind}:${block.key}`;
+	}
+
 	function cellTabIndex(id: string) {
 		// Roving tabindex: one cell in the tab order, the arrows do the rest.
 		if (focusedId !== null) return id === focusedId ? 0 : -1;
 		return id === order[0] ? 0 : -1;
 	}
 </script>
+
+{#snippet groupCheck(ids: readonly string[], title: string)}
+	{@const state = selection.stateOf(ids)}
+	<button
+		type="button"
+		class="section-check"
+		class:on={state === 'all'}
+		class:some={state === 'some'}
+		aria-pressed={state === 'all' ? 'true' : state === 'some' ? 'mixed' : 'false'}
+		aria-label={m.grid_select_section({ section: title })}
+		onclick={() => toggleIds(ids)}
+	>
+		<Icon name="check" size={16} />
+	</button>
+{/snippet}
 
 <div class="frame" bind:clientWidth={outerWidth}>
 	<div
@@ -251,27 +382,33 @@
 			style:width="{options.containerWidth}px"
 			{onkeydown}
 		>
-			{#each visible as block (block.kind === 'row' ? `r:${block.cells[0].item.id}` : `${block.kind}:${block.key}`)}
+			{#each visible as block (blockKey(block))}
 				{#if block.kind === 'header' && headers}
-					{@const state = selection.stateOf(itemsBySection.get(block.key) ?? [])}
+					{@const ids = itemsBySection.get(block.key) ?? []}
+					{@const subtitle = sectionSubtitle?.(block.key)}
 					<div class="header" style:top="{block.top + PADDING}px" style:height="{block.height}px">
-						<h2>{sectionTitle(block.key)}</h2>
-						{#if (itemsBySection.get(block.key)?.length ?? 0) > 0}
-							<button
-								type="button"
-								class="section-check"
-								class:on={state === 'all'}
-								class:some={state === 'some'}
-								aria-pressed={state === 'all' ? 'true' : state === 'some' ? 'mixed' : 'false'}
-								aria-label={m.grid_select_section({ section: sectionTitle(block.key) })}
-								onclick={() => toggleSection(block.key)}
-							>
-								<Icon name="check" size={16} />
-							</button>
+						<h2>
+							{sectionTitle(block.key)}
+							{#if subtitle}<span class="subtitle">{subtitle}</span>{/if}
+						</h2>
+						{#if selectable && ids.length > 0}
+							{@render groupCheck(ids, sectionTitle(block.key))}
 						{/if}
 					</div>
 				{:else if block.kind === 'header'}
 					<!-- headers off -->
+				{:else if block.kind === 'subheader'}
+					{@const ids = layout.groups.get(block.group) ?? []}
+					<div
+						class="header day"
+						style:top="{block.top + PADDING}px"
+						style:height="{block.height}px"
+					>
+						<h3>{dayTitle(block.group)}</h3>
+						{#if selectable && ids.length > 0}
+							{@render groupCheck(ids, dayTitle(block.group))}
+						{/if}
+					</div>
 				{:else if block.kind === 'placeholder'}
 					<div
 						class="placeholder"
@@ -316,15 +453,17 @@
 									onload={(event) => event.currentTarget.classList.add('loaded')}
 								/>
 							</button>
-							<button
-								type="button"
-								class="check"
-								tabindex="-1"
-								aria-hidden="true"
-								onpointerdown={(event) => onCheckPointerDown(event, item)}
-							>
-								<Icon name="check" size={16} />
-							</button>
+							{#if selectable}
+								<button
+									type="button"
+									class="check"
+									tabindex="-1"
+									aria-hidden="true"
+									onpointerdown={(event) => onCheckPointerDown(event, item)}
+								>
+									<Icon name="check" size={16} />
+								</button>
+							{/if}
 							<span class="badges" aria-hidden="true">
 								{#if item.isFavorite}<Icon name="favorite" size={16} />{/if}
 								{#if item.isLivePhoto}<Icon name="livePhoto" size={16} />{/if}
@@ -383,14 +522,29 @@
 		gap: var(--space-2);
 	}
 
-	.header h2 {
+	.header h2,
+	.header h3 {
 		margin: 0;
 		font-size: var(--font-size-md);
 		font-weight: 600;
 	}
 
-	.header h2::first-letter {
+	.header h3 {
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+		color: var(--color-text-muted);
+	}
+
+	.header h2::first-letter,
+	.header h3::first-letter {
 		text-transform: uppercase;
+	}
+
+	.subtitle {
+		margin-left: var(--space-2);
+		font-size: var(--font-size-sm);
+		font-weight: 400;
+		color: var(--color-text-muted);
 	}
 
 	.section-check {
