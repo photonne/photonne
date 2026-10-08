@@ -12,7 +12,7 @@
 		getReverseGeocodePendingCountQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import '#lib/adminops/adminops.css';
-	import ConfirmDialog from '#lib/adminops/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import JobRow from '#lib/adminops/JobRow.svelte';
 	import QueueRow from '#lib/adminops/QueueRow.svelte';
 	import TaskStatus from '#lib/adminops/TaskStatus.svelte';

@@ -23,7 +23,7 @@
 	import { isSmart } from './album-list.js';
 	import AlbumFormDialog from './AlbumFormDialog.svelte';
 	import { invalidateAlbums, toggleAlbumPin } from './cache.js';
-	import ConfirmDialog from './ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { icons } from './icons.js';
 	import { orderItems, type ItemOrder } from './item-order.js';
 	import MenuButton, { type MenuItem } from './MenuButton.svelte';
@@ -165,7 +165,7 @@
 				? m.albums_deleted({ name: album.name })
 				: m.albums_left({ name: album.name })
 		);
-		await goto(appHref('/albums'), { replaceState: true });
+		await goto(appHref('/albums'), { replace: true });
 	}
 
 	function saved() {
@@ -320,6 +320,7 @@
 {/if}
 
 <ConfirmDialog
+	danger
 	open={confirming !== null}
 	title={confirming === 'leave' ? m.albums_leave_title() : m.albums_delete_title()}
 	message={confirming === 'leave'

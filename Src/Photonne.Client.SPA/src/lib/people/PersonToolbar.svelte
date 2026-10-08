@@ -82,7 +82,7 @@
 	preferred={person.id}
 	onclose={() => (merging = null)}
 	onmerged={(target) => {
-		if (target.id !== person.id) goto(appHref(`/people/${target.id}`), { replaceState: true });
+		if (target.id !== person.id) goto(appHref(`/people/${target.id}`), { replace: true });
 	}}
 />
 

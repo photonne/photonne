@@ -8,7 +8,7 @@
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { formatBytes } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import ConfirmDialog from './ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { toastError } from './feedback.svelte.js';
 	import { count } from './time.js';
 

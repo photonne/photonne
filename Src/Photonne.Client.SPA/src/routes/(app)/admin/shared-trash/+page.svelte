@@ -5,7 +5,7 @@
 		restoreSharedTrash,
 		type SharedTrashItemResponse
 	} from '#lib/api/index.js';
-	import ConfirmDialog from '#lib/admin/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { errorText } from '#lib/admin/errors.js';
 	import { adminIcons } from '#lib/admin/icons.js';
 	import { deleters, sharedTrashAsset } from '#lib/admin/shared-trash.js';
@@ -208,6 +208,7 @@
 	</CollectionView>
 
 	<ConfirmDialog
+		danger
 		open={purging !== null}
 		title={m.admin_strash_purge_title()}
 		confirmLabel={m.admin_strash_purge()}

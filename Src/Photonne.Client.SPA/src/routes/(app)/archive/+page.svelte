@@ -2,7 +2,7 @@
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import { getArchived, unarchiveAll } from '#lib/api/index.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
-	import ConfirmDialog from '#lib/library/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { icons } from '#lib/library/icons.js';
 	import { LibraryActions } from '#lib/library/library-actions.svelte.js';
 	import ToolButton from '#lib/library/ToolButton.svelte';
@@ -91,6 +91,7 @@
 </CollectionView>
 
 <ConfirmDialog
+	closeOnConfirm
 	open={confirmingAll}
 	title={m.archive_unarchive_all()}
 	message={m.archive_unarchive_all_confirm()}

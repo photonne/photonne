@@ -13,7 +13,7 @@
 		getBackgroundTasksQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import '#lib/adminops/adminops.css';
-	import ConfirmDialog from '#lib/adminops/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ProgressBar from '#lib/adminops/ProgressBar.svelte';
 	import { Clock, toastError } from '#lib/adminops/feedback.svelte.js';
 	import { icons } from '#lib/adminops/icons.js';

@@ -3,7 +3,7 @@
 	import type { BatchActions } from '#lib/actions/batch-actions.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
-	import ConfirmDialog from './ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { icons } from './icons.js';
 	import type { LibraryActions } from './library-actions.svelte.js';
 	import ToolButton from './ToolButton.svelte';
@@ -71,6 +71,7 @@
 />
 
 <ConfirmDialog
+	closeOnConfirm
 	open={confirming}
 	danger
 	title={m.trash_purge()}

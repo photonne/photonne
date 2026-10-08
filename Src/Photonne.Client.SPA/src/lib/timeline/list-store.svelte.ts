@@ -12,6 +12,7 @@ export class ListStore implements GridHost {
 	items = $state<GridAsset[]>([]);
 	#grouping: 'month' | 'none';
 	#reload: () => void;
+	#removed: ((ids: readonly string[]) => void)[] = [];
 
 	constructor(options: { grouping: 'month' | 'none'; reload: () => void }) {
 		this.#grouping = options.grouping;
@@ -35,6 +36,15 @@ export class ListStore implements GridHost {
 	remove(ids: readonly string[]) {
 		const gone = Object.fromEntries(ids.map((id) => [id, true]));
 		this.items = this.items.filter((item) => !gone[item.id]);
+		for (const listener of this.#removed) listener(ids);
+	}
+
+	/** Runs after items are taken out (so a selection can drop them). */
+	onremove(listener: (ids: readonly string[]) => void) {
+		this.#removed.push(listener);
+		return () => {
+			this.#removed = this.#removed.filter((other) => other !== listener);
+		};
 	}
 
 	update(ids: readonly string[], change: (item: GridAsset) => GridAsset) {

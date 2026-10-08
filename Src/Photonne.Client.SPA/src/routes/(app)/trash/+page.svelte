@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { emptyTrash, getSharedTrash, getTrashedAssets, restoreAllTrash } from '#lib/api/index.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
-	import ConfirmDialog from '#lib/library/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { icons } from '#lib/library/icons.js';
 	import { LibraryActions } from '#lib/library/library-actions.svelte.js';
 	import { sharedTrashToTimeline } from '#lib/library/pages.js';
@@ -181,6 +181,7 @@
 {/key}
 
 <ConfirmDialog
+	closeOnConfirm
 	open={confirming === 'restoreAll'}
 	title={m.trash_restore_all()}
 	message={m.trash_restore_all_confirm()}
@@ -189,6 +190,7 @@
 	onconfirm={() => bulk(() => restoreAllTrash(), m.trash_restored_all())}
 />
 <ConfirmDialog
+	closeOnConfirm
 	open={confirming === 'empty'}
 	danger
 	title={m.trash_empty_action()}
@@ -198,6 +200,7 @@
 	onconfirm={() => bulk(() => emptyTrash(), m.trash_emptied())}
 />
 <ConfirmDialog
+	closeOnConfirm
 	open={confirming === 'purgeOpen'}
 	danger
 	title={m.trash_purge()}

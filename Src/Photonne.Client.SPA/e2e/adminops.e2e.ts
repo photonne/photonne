@@ -1,14 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fakeApi } from './fake-api';
-import { adminState, asAdmin } from './fakes/adminops';
+import { adminState } from './fakes/adminops';
 
 test.use({ locale: 'es-ES', viewport: { width: 1280, height: 900 } });
 
 const settingsNav = (page: Page) => page.getByRole('navigation', { name: 'Secciones de ajustes' });
 
 async function open(page: Page, path: string) {
-	const api = await fakeApi(page, { signedIn: true });
-	await asAdmin(page);
+	const api = await fakeApi(page, { signedIn: true, role: 'Admin' });
 	await page.goto(path);
 	return adminState(api.state);
 }
@@ -259,9 +258,8 @@ test.describe('server settings', () => {
 	});
 
 	test('is read-only in the demo', async ({ page }) => {
-		const api = await fakeApi(page, { signedIn: true });
+		const api = await fakeApi(page, { signedIn: true, role: 'Admin' });
 		adminState(api.state).demo = true;
-		await asAdmin(page);
 		await page.goto('/admin/settings/server');
 
 		await expect(page.getByText(/Solo lectura en la demo/)).toBeVisible();

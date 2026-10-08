@@ -43,8 +43,8 @@
 
 	nav {
 		position: sticky;
-		top: 57px;
-		max-height: calc(100vh - var(--header-height) - 57px);
+		top: var(--admin-nav-height);
+		max-height: calc(100vh - var(--header-height) - var(--admin-nav-height));
 		overflow-y: auto;
 		padding: var(--space-4) var(--space-2) var(--space-6) var(--space-4);
 		border-right: 1px solid var(--color-border);

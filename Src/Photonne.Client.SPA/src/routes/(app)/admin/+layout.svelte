@@ -42,6 +42,8 @@
 
 <style>
 	.admin {
+		/* Pages under it pin their own sticky bars right below the tabs. */
+		--admin-nav-height: 57px;
 		display: flex;
 		flex-direction: column;
 		min-height: 100%;
@@ -51,7 +53,10 @@
 		position: sticky;
 		top: 0;
 		z-index: 2;
+		box-sizing: border-box;
+		height: var(--admin-nav-height);
 		display: flex;
+		align-items: center;
 		gap: var(--space-1);
 		overflow-x: auto;
 		padding: var(--space-2) var(--space-4);
