@@ -519,6 +519,10 @@ const handle: FakeHandler = async (context) => {
 	// Settings
 	if (method === 'GET' && path === '/api/settings') {
 		const key = query.get('key') ?? '';
+		// The trash settings belong to the library fake.
+		const trashKey =
+			key.startsWith('TrashSettings.') || key.startsWith('NightlyTaskSettings.Trash');
+		if (trashKey && !(key in state.settings)) return false;
 		await json(200, { key, value: state.settings[key] ?? '' });
 		return true;
 	}

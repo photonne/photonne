@@ -72,11 +72,13 @@
 	}
 </script>
 
+<!-- An area zone on the page claims its drags first (preventDefault): the
+     window zone leaves those alone so a drop is never queued twice. -->
 <svelte:window
-	ondragenter={(event) => mode === 'window' && enter(event)}
-	ondragover={(event) => mode === 'window' && overHandler(event)}
+	ondragenter={(event) => mode === 'window' && !event.defaultPrevented && enter(event)}
+	ondragover={(event) => mode === 'window' && !event.defaultPrevented && overHandler(event)}
 	ondragleave={(event) => mode === 'window' && leave(event)}
-	ondrop={(event) => mode === 'window' && drop(event)}
+	ondrop={(event) => mode === 'window' && !event.defaultPrevented && drop(event)}
 />
 
 {#if mode === 'window'}
