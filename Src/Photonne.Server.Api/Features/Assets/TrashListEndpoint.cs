@@ -95,7 +95,7 @@ public class TrashListEndpoint : IEndpoint
             IsArchived = asset.IsArchived,
             Tags = BuildTagList(asset),
             IsReadOnly = asset.ExternalLibraryId.HasValue
-        }).ToList();
+        }.WithThumbnailShape(asset)).ToList();
 
         var nextCursor = hasMore ? assets.Last().DeletedAt : (DateTime?)null;
 

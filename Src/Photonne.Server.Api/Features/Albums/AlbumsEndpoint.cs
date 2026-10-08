@@ -476,7 +476,21 @@ public class AlbumsEndpoint : IEndpoint
                     HasThumbnails = a.Thumbnails.Any(),
                     IsFavorite = a.IsFavorite,
                     SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
-                    IsReadOnly = a.ExternalLibraryId.HasValue
+                    IsReadOnly = a.ExternalLibraryId.HasValue,
+                    Width = a.Exif != null ? a.Exif.Width : null,
+                    Height = a.Exif != null ? a.Exif.Height : null,
+                    DominantColor = a.Thumbnails
+                        .Where(t => t.Size == ThumbnailSize.Small)
+                        .Select(t => t.DominantColor)
+                        .FirstOrDefault(),
+                    AspectRatio = a.Thumbnails
+                        .Where(t => t.Size == ThumbnailSize.Small && t.Height > 0)
+                        .Select(t => (double?)t.Width / t.Height)
+                        .FirstOrDefault(),
+                    ThumbnailsGeneratedAt = a.Thumbnails
+                        .Where(t => t.Size == ThumbnailSize.Small)
+                        .Select(t => (DateTime?)t.CreatedAt)
+                        .FirstOrDefault()
                 })
                 .ToListAsync(cancellationToken);
 
@@ -511,7 +525,7 @@ public class AlbumsEndpoint : IEndpoint
             SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
             DeletedAt = aa.Asset.DeletedAt,
             IsReadOnly = aa.Asset.ExternalLibraryId.HasValue
-        }).ToList();
+        }.WithThumbnailShape(aa.Asset)).ToList();
 
         return TypedResults.Ok(response);
     }

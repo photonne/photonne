@@ -98,7 +98,7 @@ public class ArchiveEndpoint : IEndpoint
             IsArchived = true,
             Tags = BuildTagList(asset),
             IsReadOnly = asset.ExternalLibraryId.HasValue
-        }).ToList();
+        }.WithThumbnailShape(asset)).ToList();
 
         var nextCursor = hasMore ? assets.Last().CapturedAt : (DateTime?)null;
 
