@@ -4,12 +4,11 @@ using Photonne.Server.Api.Shared.Interfaces;
 namespace Photonne.Server.Api.Features.Auth;
 
 /// <summary>
-/// Manages the <see cref="MediaSessionCookie"/> for web clients. Login and
-/// refresh already set it; <c>media-session</c> sets it from the bearer token
-/// a client already holds (a session that predates the cookie), and
-/// <c>logout</c> drops it so thumbnails stop loading once the user signs out.
+/// Sets the <see cref="MediaSessionCookie"/> from the bearer token a web
+/// client already holds — a session that predates the cookie. Login and
+/// refresh set it on their own; <see cref="LogoutEndpoint"/> drops it.
 /// </summary>
-public class MediaSessionEndpoints : IEndpoint
+public class MediaSessionEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -26,15 +25,5 @@ public class MediaSessionEndpoints : IEndpoint
             .WithTags("Authentication")
             .WithDescription("Sets the HttpOnly cookie that lets <img> and <video> load media with the caller's bearer token")
             .RequireAuthorization();
-
-        app.MapPost("/api/auth/logout", (HttpContext httpContext) =>
-            {
-                MediaSessionCookie.Delete(httpContext);
-                return Results.NoContent();
-            })
-            .WithName("Logout")
-            .WithTags("Authentication")
-            .WithDescription("Clears the media session cookie")
-            .AllowAnonymous();
     }
 }
