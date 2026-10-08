@@ -55,10 +55,18 @@
 	}
 
 	onMount(() => {
+		// The user's theme (data-theme on <html>, see lib/theme.ts) wins over
+		// the system's; both can change while the map is open.
+		const root = document.documentElement;
 		const scheme = matchMedia('(prefers-color-scheme: dark)');
-		theme = scheme.matches ? 'dark' : 'light';
-		const onScheme = () => (theme = scheme.matches ? 'dark' : 'light');
+		const onScheme = () => {
+			const chosen = root.dataset.theme;
+			theme = chosen === 'dark' || chosen === 'light' ? chosen : scheme.matches ? 'dark' : 'light';
+		};
+		onScheme();
 		scheme.addEventListener('change', onScheme);
+		const chosenTheme = new MutationObserver(onScheme);
+		chosenTheme.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
 
 		const instance = L.map(container!, {
 			zoomControl: false,
@@ -85,6 +93,7 @@
 		return () => {
 			resize.disconnect();
 			scheme.removeEventListener('change', onScheme);
+			chosenTheme.disconnect();
 			instance.remove();
 			markers.clear();
 		};

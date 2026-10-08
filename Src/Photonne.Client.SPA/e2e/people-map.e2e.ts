@@ -95,7 +95,15 @@ test('tiles follow the colour scheme', async ({ page }) => {
 	await expect(marker(page, /^24 fotos, /)).toBeVisible();
 	expect(tiles.some((url) => url.includes('/dark_all/'))).toBe(true);
 
-	const before = tiles.length;
+	// The user's own theme wins over the system's.
+	let before = tiles.length;
+	await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+	await expect
+		.poll(() => tiles.slice(before).some((url) => url.includes('/light_all/')))
+		.toBe(true);
+	await page.evaluate(() => delete document.documentElement.dataset.theme);
+
+	before = tiles.length;
 	await page.emulateMedia({ colorScheme: 'light' });
 	await expect
 		.poll(() => tiles.slice(before).some((url) => url.includes('/light_all/')))
