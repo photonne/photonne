@@ -1,3 +1,468 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"admin_core_cancel": "Cancelar",
+	"admin_core_save": "Guardar",
+	"admin_core_back": "Atrás",
+	"admin_core_edit": "Editar",
+	"admin_core_delete": "Eliminar",
+	"admin_core_close": "Cerrar",
+	"admin_core_refresh": "Actualizar",
+	"admin_core_actions": "Acciones",
+	"admin_core_role_admin": "Administrador",
+	"admin_core_role_user": "Usuario",
+	"admin_core_show_password": "Mostrar la contraseña",
+	"admin_core_password_rule_length": "8 caracteres o más",
+	"admin_core_password_rule_upper": "una mayúscula",
+	"admin_core_password_rule_lower": "una minúscula",
+	"admin_core_password_rule_digit": "un número",
+	"admin_core_password_rule_symbol": "un símbolo",
+	"admin_core_rule_met": "(cumplido)",
+	"admin_core_rule_unmet": "(pendiente)",
+	"admin_core_error_generic": "No se ha podido completar la operación. Inténtalo de nuevo.",
+	"admin_core_error_user_exists": "Ya existe un usuario con ese nombre o correo.",
+	"admin_core_error_email_exists": "Ese correo ya lo usa otra cuenta.",
+	"admin_core_error_primary_protected": "El administrador principal está protegido: no se puede eliminar, desactivar ni cambiar de rol.",
+	"admin_core_error_user_not_found": "El usuario ya no existe.",
+	"admin_core_error_target_not_admin": "Solo se puede transferir a un administrador.",
+	"admin_core_error_target_inactive": "Solo se puede transferir a un usuario activo.",
+	"admin_core_error_directory_not_found": "Esa carpeta no existe en el servidor.",
+	"admin_core_error_invalid_cron": "El servidor no admite esa programación.",
+	"admin_core_error_library_not_found": "La biblioteca ya no existe.",
+	"admin_core_error_invalid_backup": "El archivo no es una copia de seguridad válida de Photonne.",
+	"admin_dash_title": "Panel de administración",
+	"admin_dash_description": "El estado del servidor de un vistazo, con acceso a cada sección.",
+	"admin_dash_stats_failed": "No se han podido cargar las estadísticas del servidor.",
+	"admin_dash_totals": "Totales",
+	"admin_dash_status": "Estado del servidor",
+	"admin_dash_photos": "Fotos",
+	"admin_dash_videos": "Vídeos",
+	"admin_dash_users": "Usuarios",
+	"admin_dash_storage": "Almacenamiento",
+	"admin_dash_version": "Versión",
+	"admin_dash_update": "Actualización",
+	"admin_dash_update_available": "Disponible la v{version}",
+	"admin_dash_version_ahead": "Por delante de la última release (v{version})",
+	"admin_dash_version_unchecked": "No se ha podido comprobar",
+	"admin_dash_up_to_date": "Estás al día",
+	"admin_dash_ml_queue": "Cola de IA",
+	"admin_dash_ml_pending": "fotos pendientes de procesar",
+	"admin_dash_ml_done": "todo procesado",
+	"admin_dash_trash": "Papelera",
+	"admin_dash_trash_expired": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} caducado",
+				"countPlural=other": "{n} caducados"
+			}
+		}
+	],
+	"admin_dash_trash_size": "{size} en la papelera",
+	"admin_dash_coverage": "Cobertura de indexación",
+	"admin_dash_coverage_unindexed": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} archivo sin indexar",
+				"countPlural=other": "{n} archivos sin indexar"
+			}
+		}
+	],
+	"admin_dash_coverage_complete": "todo indexado",
+	"admin_dash_coverage_never_short": "sin verificar",
+	"admin_dash_growth": "Crecimiento de la biblioteca",
+	"admin_dash_growth_sub": "Fotos y vídeos por mes de captura, últimos 24 meses.",
+	"admin_dash_growth_aria": "{label}: {total} elementos en el periodo. Usa las flechas para recorrer los meses.",
+	"admin_dash_growth_readout": "{photos} fotos, {videos} vídeos",
+	"admin_dash_growth_hint": "Pasa el ratón o usa las flechas para ver cada mes",
+	"admin_dash_split": "Distribución",
+	"admin_dash_split_items": "Por número de elementos",
+	"admin_dash_split_storage": "Por espacio ocupado",
+	"admin_dash_top_users": "Quién ocupa más",
+	"admin_dash_no_usage": "Sin datos de uso.",
+	"admin_dash_coverage_title": "Cobertura de indexación",
+	"admin_dash_coverage_unavailable": "El servidor no informa de la cobertura.",
+	"admin_dash_coverage_never": "Aún sin verificar. Lanza la tarea «Cobertura de indexación» en Tareas y colas.",
+	"admin_dash_coverage_total": "Archivos en disco",
+	"admin_dash_coverage_indexed": "Indexados",
+	"admin_dash_coverage_unsupported": "No soportados",
+	"admin_dash_coverage_unindexed_label": "Sin indexar",
+	"admin_dash_coverage_summary_complete": "Los {count} archivos indexables están indexados.",
+	"admin_dash_coverage_summary_partial": "{indexed} de {total} archivos indexables están indexados.",
+	"admin_dash_coverage_offline": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} biblioteca externa no estaba accesible al verificar.",
+				"countPlural=other": "{count} bibliotecas externas no estaban accesibles al verificar."
+			}
+		}
+	],
+	"admin_dash_coverage_verified": "Verificado el {date}",
+	"admin_dash_coverage_show_list": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Ver el archivo sin indexar",
+				"countPlural=other": "Ver los {n} archivos sin indexar"
+			}
+		}
+	],
+	"admin_dash_coverage_hide_list": "Ocultar la lista",
+	"admin_dash_coverage_truncated": "Se muestran los primeros {count}.",
+	"admin_dash_usage_title": "Uso por usuario",
+	"admin_dash_share": "Parte del total",
+	"admin_dash_links": "Accesos rápidos",
+	"admin_dash_link_users": "Crear cuentas, roles, cuotas y contraseñas.",
+	"admin_dash_link_libraries": "Carpetas del servidor indexadas sin moverlas.",
+	"admin_dash_link_tasks": "Indexación, miniaturas, metadatos e IA.",
+	"admin_dash_link_maintenance": "Limpieza de la papelera y tareas del sistema.",
+	"admin_dash_link_settings": "Configuración del servidor y de la IA.",
+	"admin_dash_link_backup": "Exportar y restaurar la base de datos.",
+	"admin_dash_link_shared_trash": "Lo borrado de las carpetas compartidas.",
+	"admin_dash_link_system": "Versión, créditos y datos del servidor.",
+	"admin_users_description": "Cuentas, roles, cuotas de almacenamiento y acceso al servidor.",
+	"admin_users_new": "Nuevo usuario",
+	"admin_users_search": "Buscar por nombre, usuario o correo",
+	"admin_users_filter": "Filtrar usuarios",
+	"admin_users_filter_all": "Todos",
+	"admin_users_filter_admins": "Administradores",
+	"admin_users_filter_users": "Usuarios",
+	"admin_users_filter_inactive": "Inactivos",
+	"admin_users_col_user": "Usuario",
+	"admin_users_col_role": "Rol",
+	"admin_users_col_status": "Estado",
+	"admin_users_col_storage": "Almacenamiento",
+	"admin_users_col_last_login": "Último acceso",
+	"admin_users_col_created": "Alta",
+	"admin_users_you": "Tú",
+	"admin_users_primary": "Principal",
+	"admin_users_primary_hint": "Administrador principal: no se puede eliminar, desactivar ni degradar.",
+	"admin_users_active": "Activo",
+	"admin_users_inactive": "Inactivo",
+	"admin_users_never": "Nunca",
+	"admin_users_no_quota": "sin límite",
+	"admin_users_quota_used": "Cuota usada por {name}",
+	"admin_users_edit_named": "Editar a {name}",
+	"admin_users_reset": "Restablecer contraseña",
+	"admin_users_reset_named": "Restablecer la contraseña de {name}",
+	"admin_users_activate": "Activar",
+	"admin_users_deactivate": "Desactivar",
+	"admin_users_activate_named": "Activar a {name}",
+	"admin_users_deactivate_named": "Desactivar a {name}",
+	"admin_users_promote": "Transferir el rol de administrador principal",
+	"admin_users_promote_named": "Hacer a {name} administrador principal",
+	"admin_users_delete_named": "Eliminar a {name}",
+	"admin_users_no_match": "Ningún usuario coincide con la búsqueda.",
+	"admin_users_empty": "Todavía no hay usuarios.",
+	"admin_users_summary": [
+		{
+			"declarations": ["input shown", "input total", "local totalPlural = total: plural"],
+			"selectors": ["totalPlural"],
+			"match": {
+				"totalPlural=one": "{shown} de {total} usuario",
+				"totalPlural=other": "{shown} de {total} usuarios"
+			}
+		}
+	],
+	"admin_users_created": "Se ha creado «{name}»",
+	"admin_users_updated": "Se han guardado los cambios de «{name}»",
+	"admin_users_activated": "«{name}» puede volver a entrar",
+	"admin_users_deactivated": "«{name}» ya no puede entrar",
+	"admin_users_deleted": "Se ha eliminado «{name}»",
+	"admin_users_promoted": "«{name}» es ahora el administrador principal",
+	"admin_users_reset_done": "Se ha cambiado la contraseña de «{name}»",
+	"admin_users_delete_title": "Eliminar usuario",
+	"admin_users_delete_body": "¿Eliminar la cuenta de «{name}»?",
+	"admin_users_delete_note": "Se borran su cuenta y sus datos en Photonne (álbumes, ajustes…); los archivos se quedan en el disco del servidor. No se puede deshacer.",
+	"admin_users_promote_title": "Transferir el administrador principal",
+	"admin_users_promote_body": "¿Transferir el rol de administrador principal a «{name}»?",
+	"admin_users_promote_note": "Perderás la protección del administrador principal: otro administrador podrá eliminarte, desactivarte o quitarte el rol. Solo el nuevo administrador principal podrá devolvértelo.",
+	"admin_users_promote_confirm": "Transferir",
+	"admin_user_create_title": "Nuevo usuario",
+	"admin_user_edit_title": "Editar usuario",
+	"admin_user_create": "Crear usuario",
+	"admin_user_section_account": "Cuenta",
+	"admin_user_section_personal": "Datos personales",
+	"admin_user_section_access": "Permisos y almacenamiento",
+	"admin_user_username": "Nombre de usuario",
+	"admin_user_username_hint": "Letras, números, puntos, guiones y guiones bajos; hasta 64 caracteres.",
+	"admin_user_username_rename_hint": "Cambiarlo renombra su carpeta en el servidor; verás qué cambia antes de confirmar.",
+	"admin_user_username_invalid": "Usa solo letras, números, puntos, guiones y guiones bajos (hasta 64).",
+	"admin_user_email": "Correo electrónico",
+	"admin_user_email_invalid": "Escribe un correo válido.",
+	"admin_user_password": "Contraseña",
+	"admin_user_password_weak": "La contraseña no cumple todas las reglas.",
+	"admin_user_first_name": "Nombre",
+	"admin_user_last_name": "Apellidos",
+	"admin_user_role": "Rol",
+	"admin_user_active": "Cuenta activa (puede iniciar sesión)",
+	"admin_user_quota": "Cuota de almacenamiento",
+	"admin_user_quota_unlimited": "Sin límite",
+	"admin_user_quota_custom": "Personalizada…",
+	"admin_user_quota_custom_gb": "Cuota (GB)",
+	"admin_user_primary_locked": "Es el administrador principal: su rol y su estado están protegidos.",
+	"admin_user_self_locked": "No puedes cambiar tu propio rol ni desactivar tu cuenta.",
+	"admin_user_rename_title": "Confirmar el cambio de nombre",
+	"admin_user_rename_warning": "Se renombrará su carpeta en el servidor y se actualizarán todas las referencias. Es atómico: o se completa entero o no cambia nada.",
+	"admin_user_rename_folder": "Carpeta",
+	"admin_user_rename_folder_missing": "aún no existe en disco",
+	"admin_user_rename_assets": "Fotos y vídeos a actualizar",
+	"admin_user_rename_folders": "Carpetas a actualizar",
+	"admin_user_rename_slow": "Hay muchos registros: puede tardar unos segundos.",
+	"admin_user_rename_confirm": "Renombrar y guardar",
+	"admin_reset_title": "Restablecer contraseña",
+	"admin_reset_intro": "Escribe la nueva contraseña de «{name}» y házsela llegar.",
+	"admin_reset_new": "Nueva contraseña",
+	"admin_reset_confirm": "Repite la contraseña",
+	"admin_reset_mismatch": "Las contraseñas no coinciden.",
+	"admin_reset_submit": "Restablecer",
+	"admin_libs_description": "Carpetas del servidor que Photonne indexa sin mover ni modificar los archivos.",
+	"admin_libs_new": "Nueva biblioteca",
+	"admin_libs_empty_title": "Sin bibliotecas externas",
+	"admin_libs_empty_body": "Añade una carpeta del servidor para indexar sus fotos y vídeos sin moverlos.",
+	"admin_libs_access": "Quién puede verla",
+	"admin_libs_access_named": "Quién puede ver «{name}»",
+	"admin_libs_edit_named": "Editar «{name}»",
+	"admin_libs_delete_named": "Eliminar «{name}»",
+	"admin_libs_assets": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} elemento",
+				"countPlural=other": "{n} elementos"
+			}
+		}
+	],
+	"admin_libs_with_subfolders": "Con subcarpetas",
+	"admin_libs_last_scan": "Último escaneo:",
+	"admin_libs_last_failed": "Falló el último escaneo:",
+	"admin_libs_last_counts": "{found} encontrados · {added} nuevos · {removed} desaparecidos",
+	"admin_libs_never_scanned": "Nunca escaneada",
+	"admin_libs_scan": "Escanear",
+	"admin_libs_scan_busy": "Ya hay un escaneo en curso",
+	"admin_libs_scan_cancel": "Detener",
+	"admin_libs_scanning": "Escaneando…",
+	"admin_libs_scan_resumed": "Escaneo en curso",
+	"admin_libs_scan_progress": "Progreso del escaneo de «{name}»",
+	"admin_libs_scan_found": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} encontrado",
+				"countPlural=other": "{n} encontrados"
+			}
+		}
+	],
+	"admin_libs_scan_indexed": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} indexado",
+				"countPlural=other": "{n} indexados"
+			}
+		}
+	],
+	"admin_libs_scan_missing": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} desaparecido",
+				"countPlural=other": "{n} desaparecidos"
+			}
+		}
+	],
+	"admin_libs_scan_done": [
+		{
+			"declarations": ["input name", "input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "«{name}» escaneada: {n} indexado",
+				"countPlural=other": "«{name}» escaneada: {n} indexados"
+			}
+		}
+	],
+	"admin_libs_scan_cancelled": "Se ha detenido el escaneo de «{name}»",
+	"admin_libs_scan_failed": "El escaneo de «{name}» ha fallado: {error}",
+	"admin_libs_scan_lost": "Se ha perdido la conexión con el escaneo de «{name}»; sigue en el servidor.",
+	"admin_libs_created": "Se ha creado «{name}»",
+	"admin_libs_updated": "Se han guardado los cambios de «{name}»",
+	"admin_libs_deleted": "Se ha eliminado «{name}»",
+	"admin_libs_delete_title": "Eliminar biblioteca",
+	"admin_libs_delete_body": "¿Eliminar la biblioteca «{name}»?",
+	"admin_libs_delete_note": "Sus fotos y vídeos desaparecen de Photonne, pero los archivos se quedan en el disco tal cual.",
+	"admin_libs_create_title": "Nueva biblioteca externa",
+	"admin_libs_edit_title": "Editar biblioteca externa",
+	"admin_libs_create": "Crear biblioteca",
+	"admin_libs_name": "Nombre",
+	"admin_libs_name_missing": "Ponle un nombre.",
+	"admin_libs_path": "Ruta en el servidor",
+	"admin_libs_path_hint": "Ruta absoluta de una carpeta que el servidor pueda leer.",
+	"admin_libs_path_invalid": "Escribe una ruta absoluta (empieza por /).",
+	"admin_libs_subfolders": "Incluir las subcarpetas",
+	"admin_libs_schedule": "Escaneo automático",
+	"admin_libs_schedule_hint": "Busca archivos nuevos y desaparecidos con esta frecuencia.",
+	"admin_libs_schedule_manual": "Solo manual",
+	"admin_libs_schedule_hourly": "Cada hora",
+	"admin_libs_schedule_daily": "Cada día",
+	"admin_libs_schedule_weekly": "Cada semana",
+	"admin_libs_schedule_monthly": "Cada mes",
+	"admin_libs_schedule_custom": "Personalizado: {cron}",
+	"admin_libs_scan_after_create": "Escanearla al crearla",
+	"admin_libs_access_title": "Acceso a «{name}»",
+	"admin_libs_access_intro": "Tú la ves siempre. Elige qué otros usuarios pueden ver sus fotos y vídeos.",
+	"admin_libs_access_list": "Usuarios con acceso",
+	"admin_libs_access_since": "desde el {date}",
+	"admin_libs_access_revoke": "Quitar el acceso a {name}",
+	"admin_libs_access_none": "Ningún otro usuario tiene acceso todavía.",
+	"admin_libs_access_add": "Dar acceso a",
+	"admin_libs_access_pick": "Elige un usuario",
+	"admin_libs_access_everyone": "Todos tienen acceso",
+	"admin_libs_access_grant": "Dar acceso",
+	"admin_libs_access_granted": "{name} ya puede ver «{library}»",
+	"admin_libs_access_revoked": "{name} ya no puede ver «{library}»",
+	"admin_backup_description": "Exporta la base de datos a un archivo o restáurala desde una copia.",
+	"admin_backup_media_note": "Las copias guardan los datos de Photonne (usuarios, carpetas, álbumes, metadatos…), no los archivos de fotos y vídeos: guárdalos aparte.",
+	"admin_backup_export_title": "Exportar",
+	"admin_backup_level": "Qué incluir",
+	"admin_backup_level_config": "Solo configuración",
+	"admin_backup_level_config_text": "Ajustes, usuarios, estructura de carpetas, bibliotecas externas y permisos. Para llevar la instalación a otra máquina sin la biblioteca.",
+	"admin_backup_level_essential": "Esencial",
+	"admin_backup_level_essential_text": "Lo anterior más álbumes, fotos y vídeos, EXIF, etiquetas y enlaces compartidos. Sin datos de IA: se recalculan al restaurar.",
+	"admin_backup_level_full": "Completa (con IA)",
+	"admin_backup_level_full_text": "Todo, también caras, personas, embeddings, texto reconocido, objetos y escenas. El archivo es bastante mayor.",
+	"admin_backup_export": "Descargar copia",
+	"admin_backup_exporting": "Generando…",
+	"admin_backup_exported": "Copia descargada ({size})",
+	"admin_backup_export_failed": "No se ha podido generar la copia de seguridad.",
+	"admin_backup_restore_title": "Restaurar",
+	"admin_backup_restore_warning": "Restaurar borra toda la base de datos actual y la sustituye por la del archivo. Lo que la copia no incluya quedará vacío.",
+	"admin_backup_drop_label": "Archivo de copia de seguridad",
+	"admin_backup_drop": "Arrastra aquí un archivo .json de copia de seguridad",
+	"admin_backup_choose": "Elegir archivo",
+	"admin_backup_clear": "Quitar el archivo",
+	"admin_backup_reading": "Leyendo el archivo…",
+	"admin_backup_created_at": "creada el {date}",
+	"admin_backup_config_warning": "Es una copia solo de configuración: la biblioteca (fotos, álbumes, datos de IA) quedará vacía. Pensada para una instalación nueva.",
+	"admin_backup_essential_note": "Copia esencial: el reconocimiento de caras, texto, objetos y escenas se volverá a ejecutar después.",
+	"admin_backup_restore": "Restaurar copia…",
+	"admin_backup_restoring": "Restaurando…",
+	"admin_backup_restored": "Base de datos restaurada",
+	"admin_backup_restore_failed": "No se ha podido restaurar la copia.",
+	"admin_backup_confirm_title": "Restaurar la base de datos",
+	"admin_backup_confirm_body": "Vas a sustituir todos los datos del servidor por los de «{name}»:",
+	"admin_backup_confirm_check": "Entiendo que los datos actuales se borran y no se pueden recuperar.",
+	"admin_backup_confirm": "Restaurar",
+	"admin_backup_result_config": "La biblioteca ha quedado vacía: vuelve a escanear las carpetas desde Tareas y colas para indexar los archivos.",
+	"admin_backup_result_essential": "Los procesos de IA se volverán a ejecutar para regenerar caras, texto, objetos y escenas.",
+	"admin_backup_result_session": "Si tu cuenta ha cambiado con la copia, tendrás que volver a iniciar sesión.",
+	"admin_backup_count_users": "Usuarios",
+	"admin_backup_count_folders": "Carpetas",
+	"admin_backup_count_libraries": "Bibliotecas externas",
+	"admin_backup_count_assets": "Fotos y vídeos",
+	"admin_backup_count_albums": "Álbumes",
+	"admin_backup_count_people": "Personas",
+	"admin_backup_count_faces": "Caras",
+	"admin_backup_count_embeddings": "Embeddings",
+	"admin_backup_count_ocr": "Líneas de texto",
+	"admin_strash_description": "Lo que los usuarios han borrado de carpetas compartidas, agrupado por fecha de borrado. Devuélvelo a su sitio o elimínalo para siempre.",
+	"admin_strash_empty": "La papelera compartida está vacía.",
+	"admin_strash_filter": "Filtrar por quién lo borró",
+	"admin_strash_summary": [
+		{
+			"declarations": ["input size", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} elemento · {size}",
+				"countPlural=other": "{count} elementos · {size}"
+			}
+		}
+	],
+	"admin_strash_everyone": "Todos",
+	"admin_strash_unknown": "Desconocido",
+	"admin_strash_restore": "Restaurar",
+	"admin_strash_purge": "Eliminar para siempre",
+	"admin_strash_restored": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} restaurado a su carpeta",
+				"countPlural=other": "{count} restaurados a su carpeta"
+			}
+		}
+	],
+	"admin_strash_purged": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} eliminado para siempre",
+				"countPlural=other": "{count} eliminados para siempre"
+			}
+		}
+	],
+	"admin_strash_purge_title": "Eliminar para siempre",
+	"admin_strash_purge_body": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Se borrará {count} archivo del disco. No se puede deshacer.",
+				"countPlural=other": "Se borrarán {count} archivos del disco. No se puede deshacer."
+			}
+		}
+	],
+	"admin_sys_description": "Versión del servidor, novedades, modo demo y créditos de los datos de terceros.",
+	"admin_sys_version_title": "Versión instalada",
+	"admin_sys_update": "Hay una versión nueva: v{version}.",
+	"admin_sys_ahead": "Este servidor va por delante de la última release publicada (v{version}).",
+	"admin_sys_check_error": "No se ha podido comprobar la última versión: {error}",
+	"admin_sys_latest": "Tienes la versión más reciente.",
+	"admin_sys_no_releases": "Todavía no hay releases publicadas.",
+	"admin_sys_checked": "Comprobado {when}",
+	"admin_sys_check": "Comprobar ahora",
+	"admin_sys_checking": "Comprobando…",
+	"admin_sys_check_failed": "No se ha podido comprobar la versión.",
+	"admin_sys_release_title": "Última release",
+	"admin_sys_release_version": "Versión",
+	"admin_sys_release_date": "Publicada",
+	"admin_sys_release_notes": "Novedades",
+	"admin_sys_release_open": "Ver en GitHub",
+	"admin_sys_release_none": "Sin información de releases.",
+	"admin_sys_server_title": "Servidor",
+	"admin_sys_server_version": "Versión de la API",
+	"admin_sys_server_min_app": "Versión mínima de la app",
+	"admin_sys_server_any": "Cualquiera",
+	"admin_sys_server_cpus": "Procesadores",
+	"admin_sys_server_address": "Dirección",
+	"admin_sys_demo_title": "Modo demo",
+	"admin_sys_demo_on": "Este servidor es una demo: se restablece periódicamente y bloquea los cambios peligrosos.",
+	"admin_sys_demo_off": "Desactivado. Es una instalación normal.",
+	"admin_sys_demo_user": "Usuario de la demo",
+	"admin_sys_demo_password": "Contraseña de la demo",
+	"admin_sys_demo_interval": "Se restablece",
+	"admin_sys_demo_hours": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "cada hora",
+				"countPlural=other": "cada {count} horas"
+			}
+		}
+	],
+	"admin_sys_demo_next": "Próximo restablecimiento",
+	"admin_sys_credits_title": "Créditos",
+	"admin_sys_credits_intro": "Datos de terceros que incluye el servidor y sus licencias.",
+	"admin_sys_credits_dataset": "datos del {date}",
+	"admin_sys_credits_none": "El servidor no incluye datos de terceros."
 }
