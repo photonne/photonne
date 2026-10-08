@@ -21,7 +21,10 @@
 			"./messages/share/{locale}.json",
 			"./messages/admin/{locale}.json",
 			"./messages/utilities/{locale}.json",
-			"./messages/admin-ops/{locale}.json"
+			"./messages/admin-ops/{locale}.json",
+			"./messages/viewer/{locale}.json",
+			"./messages/timeline/{locale}.json",
+			"./messages/links/{locale}.json"
 		]
 	},
 	"baseLocale": "es",
