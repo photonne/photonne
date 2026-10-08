@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Dtos;
@@ -20,7 +21,7 @@ public class LargeFilesEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<TimelineResponse>>, UnauthorizedHttpResult>> Handle(
         ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -28,9 +29,9 @@ public class LargeFilesEndpoint : IEndpoint
         CancellationToken cancellationToken)
     {
         if (!TryGetUserId(user, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         if (count <= 0) count = 50;
         if (count > 200) count = 200;
@@ -76,7 +77,7 @@ public class LargeFilesEndpoint : IEndpoint
             IsReadOnly = a.ExternalLibraryId.HasValue
         }).ToList();
 
-        return Results.Ok(result);
+        return TypedResults.Ok(result);
     }
 
     private static List<string> BuildTagList(Shared.Models.Asset asset)

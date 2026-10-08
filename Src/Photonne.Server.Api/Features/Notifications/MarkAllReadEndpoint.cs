@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
@@ -15,15 +16,15 @@ public class MarkAllReadEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult>> Handle(
         [FromServices] INotificationService notificationService,
         HttpContext httpContext,
         CancellationToken ct)
     {
         if (!Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
 
         await notificationService.MarkAllAsReadAsync(userId);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }

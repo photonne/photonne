@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
@@ -82,18 +84,18 @@ public class ListFacesForAssetEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<List<FaceDto>>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] AssetVisibilityService visibility,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var asset = await db.Assets.AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == id && a.DeletedAt == null && !a.IsFileMissing, ct);
-        if (asset == null) return Results.NotFound();
+        if (asset == null) return TypedResults.NotFound();
 
         // Visibility short-circuit: owner skips the lookup.
         if (asset.OwnerId != userId)
@@ -102,7 +104,7 @@ public class ListFacesForAssetEndpoint : IEndpoint
             var folderOk = asset.FolderId.HasValue && scope.AllowedFolderIds.Contains(asset.FolderId.Value);
             var libOk = asset.ExternalLibraryId.HasValue && scope.AllowedExternalLibraryIds.Contains(asset.ExternalLibraryId.Value);
             var albumOk = scope.AlbumVisibleAssetIds.Contains(asset.Id);
-            if (!folderOk && !libOk && !albumOk) return Results.NotFound();
+            if (!folderOk && !libOk && !albumOk) return TypedResults.NotFound();
         }
 
         // LEFT JOIN Face with the user's assignment row (if any). Faces with
@@ -126,7 +128,7 @@ public class ListFacesForAssetEndpoint : IEndpoint
                 uf == null ? null : uf.SuggestedDistance))
             .ToListAsync(ct);
 
-        return Results.Ok(faces);
+        return TypedResults.Ok(faces);
     }
 }
 
@@ -142,7 +144,7 @@ public class AssignFaceEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<FaceAssignmentResponse>, UnauthorizedHttpResult, NotFound, BadRequest<ApiError>>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] AssetVisibilityService visibility,
         [FromServices] FaceClusteringService clustering,
@@ -151,10 +153,10 @@ public class AssignFaceEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var assignment = await FaceEndpointHelpers.LoadOrCreateAssignmentAsync(db, visibility, id, userId, ct);
-        if (assignment == null) return Results.NotFound();
+        if (assignment == null) return TypedResults.NotFound();
 
         Guid? targetPersonId = body.PersonId;
 
@@ -176,11 +178,11 @@ public class AssignFaceEndpoint : IEndpoint
         else if (targetPersonId != null)
         {
             var p = await db.People.FirstOrDefaultAsync(p => p.Id == targetPersonId && p.OwnerId == userId, ct);
-            if (p == null) return Results.NotFound();
+            if (p == null) return TypedResults.NotFound();
         }
         else
         {
-            return Results.BadRequest(new { error = "Provide PersonId or NewPersonName" });
+            return TypedResults.BadRequest(new ApiError("Provide PersonId or NewPersonName", "person_target_required"));
         }
 
         assignment.PersonId = targetPersonId;
@@ -193,7 +195,7 @@ public class AssignFaceEndpoint : IEndpoint
 
         await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
 
-        return Results.Ok(new { Id = id, PersonId = targetPersonId });
+        return TypedResults.Ok(new FaceAssignmentResponse(id, targetPersonId));
     }
 }
 
@@ -210,7 +212,7 @@ public class RejectFaceEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] AssetVisibilityService visibility,
         [FromServices] FaceClusteringService clustering,
@@ -218,10 +220,10 @@ public class RejectFaceEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var assignment = await FaceEndpointHelpers.LoadOrCreateAssignmentAsync(db, visibility, id, userId, ct);
-        if (assignment == null) return Results.NotFound();
+        if (assignment == null) return TypedResults.NotFound();
 
         assignment.IsRejected = true;
         assignment.PersonId = null;
@@ -233,7 +235,7 @@ public class RejectFaceEndpoint : IEndpoint
 
         await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
         await clustering.CleanupEmptyPersonsAsync(userId, ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
 
@@ -251,7 +253,7 @@ public class UnassignFaceEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] AssetVisibilityService visibility,
         [FromServices] FaceClusteringService clustering,
@@ -259,10 +261,10 @@ public class UnassignFaceEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var assignment = await FaceEndpointHelpers.LoadOrCreateAssignmentAsync(db, visibility, id, userId, ct);
-        if (assignment == null) return Results.NotFound();
+        if (assignment == null) return TypedResults.NotFound();
 
         assignment.PersonId = null;
         assignment.IsManuallyAssigned = true;
@@ -274,7 +276,7 @@ public class UnassignFaceEndpoint : IEndpoint
 
         await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
         await clustering.CleanupEmptyPersonsAsync(userId, ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
 
@@ -291,22 +293,22 @@ public class AcceptFaceSuggestionEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<FaceAssignmentResponse>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] FaceClusteringService clustering,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var assignment = await db.UserFaceAssignments
             .FirstOrDefaultAsync(uf => uf.FaceId == id && uf.UserId == userId, ct);
-        if (assignment == null || assignment.SuggestedPersonId == null) return Results.NotFound();
+        if (assignment == null || assignment.SuggestedPersonId == null) return TypedResults.NotFound();
 
         var personOk = await db.People
             .AnyAsync(p => p.Id == assignment.SuggestedPersonId && p.OwnerId == userId, ct);
-        if (!personOk) return Results.NotFound();
+        if (!personOk) return TypedResults.NotFound();
 
         var personId = assignment.SuggestedPersonId.Value;
         assignment.PersonId = personId;
@@ -318,7 +320,7 @@ public class AcceptFaceSuggestionEndpoint : IEndpoint
         await db.SaveChangesAsync(ct);
 
         await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
-        return Results.Ok(new { Id = id, PersonId = personId });
+        return TypedResults.Ok(new FaceAssignmentResponse(id, personId));
     }
 }
 
@@ -335,22 +337,24 @@ public class DismissFaceSuggestionEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var assignment = await db.UserFaceAssignments
             .FirstOrDefaultAsync(uf => uf.FaceId == id && uf.UserId == userId, ct);
-        if (assignment == null) return Results.NoContent();
+        if (assignment == null) return TypedResults.NoContent();
 
         assignment.SuggestedPersonId = null;
         assignment.SuggestedDistance = null;
         assignment.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        return Results.NoContent();
+        return TypedResults.NoContent();
     }
 }
+
+public sealed record FaceAssignmentResponse(Guid Id, Guid? PersonId);

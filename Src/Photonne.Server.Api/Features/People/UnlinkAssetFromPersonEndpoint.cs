@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -22,7 +23,7 @@ public class UnlinkAssetFromPersonEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<UnlinkAssetResponse>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] FaceClusteringService clustering,
         Guid personId,
@@ -30,11 +31,11 @@ public class UnlinkAssetFromPersonEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var person = await db.People.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == personId && p.OwnerId == userId, ct);
-        if (person == null) return Results.NotFound();
+        if (person == null) return TypedResults.NotFound();
 
         // Operate on the user's per-face assignments, not the shared Face row.
         // Other users keep their identity for the same face.
@@ -44,7 +45,7 @@ public class UnlinkAssetFromPersonEndpoint : IEndpoint
                          && uf.Face.AssetId == assetId)
             .ToListAsync(ct);
 
-        if (assignments.Count == 0) return Results.Ok(new UnlinkAssetResponse(0));
+        if (assignments.Count == 0) return TypedResults.Ok(new UnlinkAssetResponse(0));
 
         var now = DateTime.UtcNow;
         foreach (var uf in assignments)
@@ -59,6 +60,6 @@ public class UnlinkAssetFromPersonEndpoint : IEndpoint
         await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
         await clustering.CleanupEmptyPersonsAsync(userId, ct);
 
-        return Results.Ok(new UnlinkAssetResponse(assignments.Count));
+        return TypedResults.Ok(new UnlinkAssetResponse(assignments.Count));
     }
 }

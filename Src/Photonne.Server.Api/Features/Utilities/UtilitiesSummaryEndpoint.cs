@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
@@ -46,7 +47,7 @@ public class UtilitiesSummaryEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<UtilitiesSummaryResponse>, UnauthorizedHttpResult>> Handle(
         ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
@@ -54,9 +55,9 @@ public class UtilitiesSummaryEndpoint : IEndpoint
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+            return TypedResults.Unauthorized();
         var username = user.GetUsername();
-        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(username)) return TypedResults.Unauthorized();
 
         var userRootPath = $"/assets/users/{username}";
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
@@ -91,7 +92,7 @@ public class UtilitiesSummaryEndpoint : IEndpoint
             .AsNoTracking()
             .CountAsync(u => u.FolderId.HasValue && allowedFolderIds.Contains(u.FolderId.Value), cancellationToken);
 
-        return Results.Ok(new UtilitiesSummaryResponse
+        return TypedResults.Ok(new UtilitiesSummaryResponse
         {
             DuplicateGroups = duplicateGroups.Count,
             DuplicateAssets = duplicateGroups.Sum(g => g.Count),

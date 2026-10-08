@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -26,7 +27,7 @@ public class ListPersonSuggestionsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<PersonSuggestionsPageResponse>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         [FromQuery] int? limit,
@@ -34,11 +35,11 @@ public class ListPersonSuggestionsEndpoint : IEndpoint
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var person = await db.People.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
-        if (person == null) return Results.NotFound();
+        if (person == null) return TypedResults.NotFound();
 
         // Suggestions are per-user (UserFaceAssignment.SuggestedPersonId).
         // Underlying asset must be live; visibility is implicit because the
@@ -62,7 +63,7 @@ public class ListPersonSuggestionsEndpoint : IEndpoint
             .Select(uf => new PersonSuggestionItem(uf.FaceId, uf.Face.AssetId, uf.Face.Confidence, uf.SuggestedDistance))
             .ToListAsync(ct);
 
-        return Results.Ok(new { total, items });
+        return TypedResults.Ok(new PersonSuggestionsPageResponse(total, items));
     }
 }
 
@@ -78,18 +79,18 @@ public class AcceptAllSuggestionsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<BulkSuggestionResult>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] Photonne.Server.Api.Shared.Services.FaceRecognition.FaceClusteringService clustering,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var person = await db.People
             .FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
-        if (person == null) return Results.NotFound();
+        if (person == null) return TypedResults.NotFound();
 
         // Accept = manual assignment, scoped to this user's UserFaceAssignment
         // rows. ExecuteUpdate runs in one round trip and sidesteps EF tracking —
@@ -110,7 +111,7 @@ public class AcceptAllSuggestionsEndpoint : IEndpoint
                 .SetProperty(uf => uf.UpdatedAt, now), ct);
 
         if (affected > 0) await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
-        return Results.Ok(new BulkSuggestionResult(affected));
+        return TypedResults.Ok(new BulkSuggestionResult(affected));
     }
 }
 
@@ -126,17 +127,17 @@ public class DismissAllSuggestionsEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private static async Task<IResult> Handle(
+    private static async Task<Results<Ok<BulkSuggestionResult>, UnauthorizedHttpResult, NotFound>> Handle(
         [FromServices] ApplicationDbContext db,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
         var person = await db.People
             .FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
-        if (person == null) return Results.NotFound();
+        if (person == null) return TypedResults.NotFound();
 
         var now = DateTime.UtcNow;
         var affected = await db.UserFaceAssignments
@@ -149,6 +150,8 @@ public class DismissAllSuggestionsEndpoint : IEndpoint
                 .SetProperty(uf => uf.SuggestedDistance, (float?)null)
                 .SetProperty(uf => uf.UpdatedAt, now), ct);
 
-        return Results.Ok(new BulkSuggestionResult(affected));
+        return TypedResults.Ok(new BulkSuggestionResult(affected));
     }
 }
+
+public sealed record PersonSuggestionsPageResponse(int Total, List<PersonSuggestionItem> Items);
