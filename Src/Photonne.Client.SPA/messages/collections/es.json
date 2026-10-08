@@ -1,4 +1,136 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"favorites_empty": "Marca fotos como favoritas con el corazón y aparecerán aquí."
+	"favorites_empty": "Marca fotos como favoritas con el corazón y aparecerán aquí.",
+	"library_breadcrumb": "Ruta de navegación",
+	"archive_empty": "No hay nada archivado. Lo que archives sale del timeline y se guarda aquí.",
+	"archive_hint": "Las fotos archivadas no aparecen en el timeline ni en los recuerdos, pero siguen en tus álbumes y carpetas.",
+	"archive_unarchive": "Desarchivar",
+	"archive_unarchive_all": "Desarchivar todo",
+	"archive_unarchive_all_confirm": "Todas las fotos y vídeos archivados volverán al timeline.",
+	"archive_unarchived": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} desarchivada",
+				"countPlural=other": "{count} desarchivadas"
+			}
+		}
+	],
+	"archive_unarchived_all": "Todo desarchivado",
+	"trash_empty": "La papelera está vacía.",
+	"trash_shared_empty": "No hay nada borrado de las carpetas compartidas que administras.",
+	"trash_restore": "Restaurar",
+	"trash_restore_all": "Restaurar todo",
+	"trash_restore_all_confirm": "Todo lo que hay en la papelera volverá a su sitio.",
+	"trash_restored": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} restaurada",
+				"countPlural=other": "{count} restauradas"
+			}
+		}
+	],
+	"trash_restored_all": "Papelera restaurada",
+	"trash_purge": "Eliminar definitivamente",
+	"trash_purge_action": "Eliminar",
+	"trash_purge_confirm": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Se eliminará {count} elemento para siempre, también el archivo. No se puede deshacer.",
+				"countPlural=other": "Se eliminarán {count} elementos para siempre, también sus archivos. No se puede deshacer."
+			}
+		}
+	],
+	"trash_purged": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} eliminada definitivamente",
+				"countPlural=other": "{count} eliminadas definitivamente"
+			}
+		}
+	],
+	"trash_empty_action": "Vaciar papelera",
+	"trash_empty_confirm": "Se eliminará todo el contenido de la papelera para siempre, también los archivos. No se puede deshacer.",
+	"trash_emptied": "Papelera vaciada",
+	"trash_scope": "Papelera",
+	"trash_scope_personal": "Mía",
+	"trash_scope_shared": "Carpetas compartidas",
+	"trash_shared_hint": "Fotos borradas de las carpetas compartidas que administras. Al restaurarlas vuelven a su carpeta.",
+	"trash_policy_disabled": "La papelera está desactivada en este servidor: lo que borres se elimina definitivamente.",
+	"trash_policy_retention": [
+		{
+			"declarations": ["input days", "local daysPlural = days: plural"],
+			"selectors": ["daysPlural"],
+			"match": {
+				"daysPlural=one": "Lo que llega a la papelera se elimina definitivamente al cabo de {days} día.",
+				"daysPlural=other": "Lo que llega a la papelera se elimina definitivamente al cabo de {days} días."
+			}
+		}
+	],
+	"trash_policy_keep_until_emptied": "Lo que llega a la papelera se queda aquí hasta que lo restaures o la vacíes.",
+	"trash_policy_quota": "Si ocupa más de {size}, se eliminan primero los elementos más antiguos.",
+	"memories_block_today": "Un día como hoy",
+	"memories_block_month": "Este mes en otros años",
+	"memories_block_years": "A lo largo de los años",
+	"memories_empty": "Todavía no hay recuerdos.",
+	"memories_empty_hint": "Photonne los prepara cada noche a partir de tus fotos: un día como hoy en otros años, este mes y las personas a lo largo del tiempo.",
+	"memories_on_this_day": "Un día como hoy",
+	"memories_on_this_day_empty": "No hay fotos de un día como hoy en años anteriores.",
+	"memories_photo_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} foto",
+				"countPlural=other": "{count} fotos"
+			}
+		}
+	],
+	"memories_missing": "Este recuerdo ya no existe.",
+	"memories_no_photos": "Este recuerdo ya no tiene fotos.",
+	"memories_play": "Reproducir",
+	"memories_story_play": "Reanudar",
+	"memories_story_pause": "Pausar",
+	"memories_story_replay": "Volver a ver",
+	"memories_story_position": "{index} de {count}",
+	"explore_empty": "Aún no hay nada que explorar.",
+	"explore_empty_hint": "Las escenas, los objetos y los temas aparecen cuando el servidor analiza tus fotos; las etiquetas, cuando las añades desde el visor.",
+	"explore_see_all": "Ver todo",
+	"explore_scenes": "Escenas",
+	"explore_objects": "Objetos",
+	"explore_tags": "Tus etiquetas",
+	"explore_scenes_empty": "Aún no hay escenas reconocidas.",
+	"explore_objects_empty": "Aún no hay objetos reconocidos.",
+	"explore_label_search": "Buscar en {kind}",
+	"explore_label_no_match": "Nada coincide con la búsqueda.",
+	"explore_label_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} etiqueta",
+				"countPlural=other": "{count} etiquetas"
+			}
+		}
+	],
+	"explore_label_no_photos": "No hay fotos con esta etiqueta.",
+	"explore_sort": "Ordenar",
+	"explore_sort_count": "Más fotos",
+	"explore_sort_name": "Nombre",
+	"explore_tag_note": "Incluye también fotos cuyo nombre, carpeta, descripción o texto contienen la palabra.",
+	"explore_text": "Texto en las fotos",
+	"explore_text_label": "Buscar texto en las fotos",
+	"explore_text_placeholder": "Texto en las fotos: carteles, documentos…",
+	"explore_text_submit": "Buscar",
+	"explore_text_title": "«{query}»",
+	"explore_text_hint": "Encuentra fotos por el texto que aparece en ellas: carteles, tickets, documentos o capturas de pantalla.",
+	"explore_text_no_photos": "Ninguna foto contiene ese texto.",
+	"explore_theme_missing": "Este tema ya no está entre tus recuerdos."
 }

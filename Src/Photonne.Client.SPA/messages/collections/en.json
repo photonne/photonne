@@ -1,4 +1,136 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"favorites_empty": "Mark photos as favorites with the heart and they show up here."
+	"favorites_empty": "Mark photos as favorites with the heart and they show up here.",
+	"library_breadcrumb": "Breadcrumb",
+	"archive_empty": "Nothing is archived. What you archive leaves the timeline and is kept here.",
+	"archive_hint": "Archived photos stay out of the timeline and memories, but remain in your albums and folders.",
+	"archive_unarchive": "Unarchive",
+	"archive_unarchive_all": "Unarchive all",
+	"archive_unarchive_all_confirm": "Every archived photo and video will go back to the timeline.",
+	"archive_unarchived": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} unarchived",
+				"countPlural=other": "{count} unarchived"
+			}
+		}
+	],
+	"archive_unarchived_all": "Everything unarchived",
+	"trash_empty": "The trash is empty.",
+	"trash_shared_empty": "Nothing has been deleted from the shared folders you manage.",
+	"trash_restore": "Restore",
+	"trash_restore_all": "Restore all",
+	"trash_restore_all_confirm": "Everything in the trash will go back where it was.",
+	"trash_restored": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} restored",
+				"countPlural=other": "{count} restored"
+			}
+		}
+	],
+	"trash_restored_all": "Trash restored",
+	"trash_purge": "Delete permanently",
+	"trash_purge_action": "Delete",
+	"trash_purge_confirm": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} item will be deleted forever, file included. This cannot be undone.",
+				"countPlural=other": "{count} items will be deleted forever, files included. This cannot be undone."
+			}
+		}
+	],
+	"trash_purged": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} permanently deleted",
+				"countPlural=other": "{count} permanently deleted"
+			}
+		}
+	],
+	"trash_empty_action": "Empty trash",
+	"trash_empty_confirm": "Everything in the trash will be deleted forever, files included. This cannot be undone.",
+	"trash_emptied": "Trash emptied",
+	"trash_scope": "Trash",
+	"trash_scope_personal": "Mine",
+	"trash_scope_shared": "Shared folders",
+	"trash_shared_hint": "Photos deleted from the shared folders you manage. Restoring them puts them back in their folder.",
+	"trash_policy_disabled": "The trash is turned off on this server: what you delete is deleted permanently.",
+	"trash_policy_retention": [
+		{
+			"declarations": ["input days", "local daysPlural = days: plural"],
+			"selectors": ["daysPlural"],
+			"match": {
+				"daysPlural=one": "Items are deleted permanently {days} day after they reach the trash.",
+				"daysPlural=other": "Items are deleted permanently {days} days after they reach the trash."
+			}
+		}
+	],
+	"trash_policy_keep_until_emptied": "Items stay in the trash until you restore them or empty it.",
+	"trash_policy_quota": "Above {size}, the oldest items are deleted first.",
+	"memories_block_today": "On this day",
+	"memories_block_month": "This month in other years",
+	"memories_block_years": "Through the years",
+	"memories_empty": "No memories yet.",
+	"memories_empty_hint": "Photonne prepares them every night from your photos: this day in other years, this month and people through time.",
+	"memories_on_this_day": "On this day",
+	"memories_on_this_day_empty": "No photos from this day in earlier years.",
+	"memories_photo_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} photo",
+				"countPlural=other": "{count} photos"
+			}
+		}
+	],
+	"memories_missing": "This memory no longer exists.",
+	"memories_no_photos": "This memory has no photos left.",
+	"memories_play": "Play",
+	"memories_story_play": "Resume",
+	"memories_story_pause": "Pause",
+	"memories_story_replay": "Watch again",
+	"memories_story_position": "{index} of {count}",
+	"explore_empty": "Nothing to explore yet.",
+	"explore_empty_hint": "Scenes, objects and themes show up once the server has analysed your photos; tags, when you add them from the viewer.",
+	"explore_see_all": "See all",
+	"explore_scenes": "Scenes",
+	"explore_objects": "Objects",
+	"explore_tags": "Your tags",
+	"explore_scenes_empty": "No scenes recognised yet.",
+	"explore_objects_empty": "No objects recognised yet.",
+	"explore_label_search": "Search {kind}",
+	"explore_label_no_match": "Nothing matches the search.",
+	"explore_label_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} label",
+				"countPlural=other": "{count} labels"
+			}
+		}
+	],
+	"explore_label_no_photos": "No photos with this label.",
+	"explore_sort": "Sort",
+	"explore_sort_count": "Most photos",
+	"explore_sort_name": "Name",
+	"explore_tag_note": "Also includes photos whose name, folder, description or text contain the word.",
+	"explore_text": "Text in photos",
+	"explore_text_label": "Search text in photos",
+	"explore_text_placeholder": "Text in photos: signs, documents…",
+	"explore_text_submit": "Search",
+	"explore_text_title": "“{query}”",
+	"explore_text_hint": "Find photos by the text in them: signs, receipts, documents or screenshots.",
+	"explore_text_no_photos": "No photo contains that text.",
+	"explore_theme_missing": "This theme is no longer among your memories."
 }
