@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Features.Share;
 using Photonne.Server.Api.Shared.Dtos;
+using Photonne.Server.Api.Shared.Services.SmartAlbums;
 
 namespace Photonne.Server.Api.Shared.Extensions;
 
@@ -81,6 +83,7 @@ public static partial class SpaHosting
         HttpContext context,
         IWebHostEnvironment environment,
         ApplicationDbContext dbContext,
+        SmartAlbumResolver smartResolver,
         CancellationToken ct)
     {
         var html = ReadIndex(environment);
@@ -88,27 +91,21 @@ public static partial class SpaHosting
 
         var link = await dbContext.SharedLinks
             .AsNoTracking()
-            .Where(l => l.Token == token && l.Album != null)
-            .Select(l => new
-            {
-                l.PasswordHash,
-                l.ExpiresAt,
-                l.MaxViews,
-                l.ViewCount,
-                l.Album!.Name,
-                l.Album.Description,
-                Count = l.Album.AlbumAssets.Count,
-                CoverId = l.Album.AlbumAssets
-                    .OrderBy(aa => aa.Order).ThenBy(aa => aa.AddedAt)
-                    .Select(aa => (Guid?)aa.AssetId)
-                    .FirstOrDefault()
-            })
-            .FirstOrDefaultAsync(ct);
+            .Include(l => l.Album)
+            .FirstOrDefaultAsync(l => l.Token == token && l.Album != null, ct);
 
         var open = link is not null
                    && link.PasswordHash is null
                    && (link.ExpiresAt is null || link.ExpiresAt > DateTime.UtcNow)
                    && (link.MaxViews is null || link.ViewCount < link.MaxViews);
+
+        // The cover: the album's first photo, manual or smart (the page shows the same).
+        Guid? coverId = null;
+        if (open)
+        {
+            var assets = await SharedAlbumAssets.QueryAsync(dbContext, smartResolver, link!.Album!, ct);
+            coverId = await assets.Select(a => (Guid?)a.Id).FirstOrDefaultAsync(ct);
+        }
 
         if (open)
         {
@@ -116,18 +113,18 @@ public static partial class SpaHosting
             var tags = new StringBuilder();
             tags.Append(Meta("og:type", "website"));
             tags.Append(Meta("og:site_name", "Photonne"));
-            tags.Append(Meta("og:title", link!.Name));
+            tags.Append(Meta("og:title", link!.Album!.Name));
             tags.Append(Meta("og:url", $"{origin}/share/{Uri.EscapeDataString(token)}"));
-            if (!string.IsNullOrWhiteSpace(link.Description))
-                tags.Append(Meta("og:description", link.Description));
-            if (link.CoverId is { } cover)
+            if (!string.IsNullOrWhiteSpace(link.Album.Description))
+                tags.Append(Meta("og:description", link.Album.Description));
+            if (coverId is { } cover)
             {
                 tags.Append(Meta("og:image",
                     $"{origin}/api/share/{Uri.EscapeDataString(token)}/asset/{cover}/thumbnail?size=Large"));
                 tags.Append("<meta name=\"twitter:card\" content=\"summary_large_image\" />");
             }
             html = html.Replace("</head>", $"{tags}</head>", StringComparison.Ordinal);
-            html = TitleTag().Replace(html, $"<title>{WebUtility.HtmlEncode(link.Name)} · Photonne</title>", 1);
+            html = TitleTag().Replace(html, $"<title>{WebUtility.HtmlEncode(link.Album.Name)} · Photonne</title>", 1);
         }
 
         context.Response.Headers[HeaderNames.CacheControl] = "no-cache";

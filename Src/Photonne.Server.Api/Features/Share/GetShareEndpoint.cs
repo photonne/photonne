@@ -6,6 +6,7 @@ using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
+using Photonne.Server.Api.Shared.Services.SmartAlbums;
 
 namespace Photonne.Server.Api.Features.Share;
 
@@ -25,13 +26,13 @@ public class GetShareEndpoint : IEndpoint
     private static async Task<Results<Ok<SharedContentResponse>, NotFound<ApiError>, JsonHttpResult<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] INotificationService notificationService,
+        [FromServices] SmartAlbumResolver smartResolver,
         [FromRoute] string token,
         [FromQuery] string? pw,
         CancellationToken ct)
     {
         var link = await dbContext.SharedLinks
-            .Include(l => l.Album).ThenInclude(a => a!.AlbumAssets).ThenInclude(aa => aa.Asset).ThenInclude(a => a.Exif)
-            .Include(l => l.Album).ThenInclude(a => a!.AlbumAssets).ThenInclude(aa => aa.Asset).ThenInclude(a => a.Thumbnails)
+            .Include(l => l.Album)
             .FirstOrDefaultAsync(l => l.Token == token, ct);
 
         if (link == null) return TypedResults.NotFound(new ApiError("Share link not found", "share_link_not_found"));
@@ -76,19 +77,31 @@ public class GetShareEndpoint : IEndpoint
         if (link.AlbumId.HasValue && link.Album != null)
         {
             var album = link.Album;
-            var assets = album.AlbumAssets
-                .OrderBy(aa => aa.Order).ThenBy(aa => aa.AddedAt)
-                .Select(aa => new SharedAssetDto
+            // Manual or smart: the same photos the album shows in the app.
+            var rows = await (await SharedAlbumAssets.QueryAsync(dbContext, smartResolver, album, ct))
+                .Select(a => new
                 {
-                    Id = aa.Asset.Id,
-                    FileName = aa.Asset.FileName,
-                    Type = aa.Asset.Type.ToString(),
-                    FileCreatedAt = aa.Asset.FileCreatedAt,
-                    FileSize = aa.Asset.FileSize,
-                    Width = aa.Asset.Exif?.Width,
-                    Height = aa.Asset.Exif?.Height,
-                    ThumbnailUrl = $"/api/share/{token}/asset/{aa.Asset.Id}/thumbnail{pwSuffix}",
-                    ContentUrl = $"/api/share/{token}/asset/{aa.Asset.Id}/content{pwSuffix}"
+                    a.Id,
+                    a.FileName,
+                    a.Type,
+                    a.FileCreatedAt,
+                    a.FileSize,
+                    Width = a.Exif != null ? a.Exif.Width : null,
+                    Height = a.Exif != null ? a.Exif.Height : null
+                })
+                .ToListAsync(ct);
+            var assets = rows
+                .Select(a => new SharedAssetDto
+                {
+                    Id = a.Id,
+                    FileName = a.FileName,
+                    Type = a.Type.ToString(),
+                    FileCreatedAt = a.FileCreatedAt,
+                    FileSize = a.FileSize,
+                    Width = a.Width,
+                    Height = a.Height,
+                    ThumbnailUrl = $"/api/share/{token}/asset/{a.Id}/thumbnail{pwSuffix}",
+                    ContentUrl = $"/api/share/{token}/asset/{a.Id}/content{pwSuffix}"
                 }).ToList();
 
             return TypedResults.Ok(new SharedContentResponse
