@@ -140,6 +140,60 @@
 	cursor: not-allowed;
 }
 
+/* A destructive action that isn't the confirmation itself (revoke, remove). */
+.btn.ghost.danger,
+.btn.outline.danger {
+	background: transparent;
+	color: var(--color-danger);
+	font-weight: 500;
+}
+
+.btn.outline.danger {
+	border-color: var(--color-danger);
+}
+
+.btn.ghost.danger:hover:not(:disabled),
+.btn.outline.danger:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+	box-shadow: none;
+}
+
+/* ── Pills: read-only labels (status, kind, counts) ──────────────────── */
+
+.pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 22px;
+	padding: 0 var(--space-2);
+	border-radius: 999px;
+	background: var(--color-surface);
+	color: var(--color-text);
+	font-size: var(--font-size-xs);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.pill.accent {
+	background: var(--color-accent-soft);
+	color: var(--color-accent);
+}
+
+.pill.success {
+	background: color-mix(in srgb, var(--color-success) 10%, transparent);
+	color: var(--color-success);
+}
+
+.pill.warning {
+	background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+	color: var(--color-warning);
+}
+
+.pill.danger {
+	background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+	color: var(--color-danger);
+}
+
 /* ── Chips and segmented choices ─────────────────────────────────────── */
 
 .chip {
