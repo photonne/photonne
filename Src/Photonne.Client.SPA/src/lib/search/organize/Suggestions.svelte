@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { OrganizeSuggestionResponse } from '#lib/api/index.js';
+	import Icon from '#lib/components/Icon.svelte';
+	import SectionTitle from '#lib/library/SectionTitle.svelte';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { suggestionRange, suggestionTitle } from './suggestion.js';
@@ -22,7 +24,7 @@
 </script>
 
 <section class="suggestions" aria-labelledby="organize-suggestions">
-	<h2 id="organize-suggestions">{m.organize_suggestions()}</h2>
+	<SectionTitle id="organize-suggestions" title={m.organize_suggestions()} />
 	<ul>
 		{#each suggestions as suggestion (suggestion.key)}
 			{@const title = suggestionTitle(suggestion)}
@@ -31,7 +33,7 @@
 					{#if suggestion.coverAssetId}
 						<img src={thumbnailUrl(suggestion.coverAssetId, 'Small')} alt="" loading="lazy" />
 					{:else}
-						<span class="cover" aria-hidden="true"></span>
+						<span class="cover" aria-hidden="true"><Icon name="photos" /></span>
 					{/if}
 					<div class="text">
 						<h3>{title}</h3>
@@ -47,7 +49,7 @@
 					<div class="buttons">
 						<button
 							type="button"
-							class="primary"
+							class="btn sm primary"
 							disabled={busy}
 							aria-label={m.organize_review_suggestion({ title })}
 							onclick={() => onreview(suggestion)}
@@ -56,6 +58,7 @@
 						</button>
 						<button
 							type="button"
+							class="btn sm ghost"
 							disabled={busy}
 							aria-label={m.organize_dismiss_suggestion({ title })}
 							onclick={() => ondismiss(suggestion)}
@@ -71,12 +74,9 @@
 
 <style>
 	.suggestions {
-		padding: 0 var(--space-4) var(--space-2);
-	}
-
-	h2 {
-		margin: 0 0 var(--space-2);
-		font-size: var(--font-size-md);
+		display: grid;
+		gap: var(--space-2);
+		padding: var(--space-3) var(--page-gutter) var(--space-2);
 	}
 
 	ul {
@@ -88,11 +88,17 @@
 		overflow-x: auto;
 	}
 
+	li {
+		display: flex;
+	}
+
+	/* The buttons sit at the card's foot, so they line up across cards
+	   whatever the text above them takes. */
 	article {
 		display: grid;
 		grid-template-columns: 64px 1fr;
-		grid-template-rows: auto auto;
-		gap: var(--space-2) var(--space-3);
+		grid-template-rows: auto 1fr;
+		gap: var(--space-3);
 		width: 300px;
 		padding: var(--space-3);
 		border: 1px solid var(--color-border);
@@ -106,7 +112,13 @@
 		height: 64px;
 		border-radius: var(--radius-sm);
 		object-fit: cover;
-		background: var(--color-placeholder);
+		background: var(--color-brand-tile);
+	}
+
+	.cover {
+		display: grid;
+		place-items: center;
+		color: var(--color-accent);
 	}
 
 	.text {
@@ -129,28 +141,8 @@
 
 	.buttons {
 		grid-column: 1 / -1;
+		align-self: end;
 		display: flex;
 		gap: var(--space-2);
-	}
-
-	button {
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
-	button.primary {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
-	}
-
-	button:disabled {
-		opacity: 0.5;
-		cursor: progress;
 	}
 </style>

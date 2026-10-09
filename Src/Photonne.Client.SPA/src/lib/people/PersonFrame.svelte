@@ -3,6 +3,9 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { PersonDto } from '#lib/api/index.js';
 	import { getApiPeopleByIdOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { displayName } from './people.js';
@@ -31,21 +34,25 @@
 </svelte:head>
 
 {#if person.isPending}
-	<p class="status" role="status">{m.session_restoring()}</p>
+	<Skeleton variant={tab === 'photos' ? 'grid' : 'cards'} />
 {:else if person.isError || !person.data}
-	<div class="status">
-		<p role="alert">{m.people_not_found()}</p>
-		<a href={appHref('/people')}>{m.people_back()}</a>
+	<div role="alert">
+		<EmptyState icon="person" title={m.people_not_found()}>
+			{#snippet action()}
+				<a class="btn" href={appHref('/people')}>{m.people_back()}</a>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<!-- Another person (after a merge) is another page: fresh state, fresh lists. -->
 	{#key id}
 		{#if header}
 			<div class="page">
-				<header class="head">
-					<h1 class:unnamed={!person.data.name}>{name}</h1>
-					<div class="toolbar"><PersonToolbar person={person.data} /></div>
-				</header>
+				<PageHeader title={name}>
+					{#snippet actions()}
+						<PersonToolbar person={person.data} />
+					{/snippet}
+				</PageHeader>
 				<PersonTabs person={person.data} current={tab} />
 				<div class="body">{@render children(person.data)}</div>
 			</div>
@@ -63,28 +70,6 @@
 		height: 100%;
 	}
 
-	.head {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-4) var(--space-4) 0;
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-	}
-
-	h1.unnamed {
-		color: var(--color-text-muted);
-	}
-
-	.toolbar {
-		margin-left: auto;
-		display: flex;
-		gap: var(--space-2);
-	}
-
 	/* Scrolls on its own so the header stays. Not positioned: a selection
 	   bar inside overlays the title row, as on the photo grid, instead of
 	   the content under the pointer. */
@@ -92,14 +77,5 @@
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
-	}
-
-	.status {
-		padding: var(--space-6);
-		color: var(--color-text-muted);
-	}
-
-	.status p {
-		margin: 0 0 var(--space-2);
 	}
 </style>

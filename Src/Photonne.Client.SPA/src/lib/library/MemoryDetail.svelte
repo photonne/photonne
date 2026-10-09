@@ -56,7 +56,7 @@
 		/>
 	{/snippet}
 	{#snippet header()}
-		<PageCrumbs href={parent.href} label={parent.label} />
+		<PageCrumbs href={parent.href} label={parent.label} inset />
 		{#if memory}
 			<p class="facts">
 				<!-- The server's subtitle is usually the date already ("8 de octubre de 2024"). -->
@@ -82,7 +82,7 @@
 		flex-wrap: wrap;
 		gap: var(--space-1) var(--space-3);
 		margin: var(--space-1) 0 0;
-		padding: 0 var(--space-4);
+		padding: 0 var(--page-gutter) var(--space-2);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}

@@ -2,6 +2,7 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { getMemoryFeedOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import MemoryCard from '#lib/library/MemoryCard.svelte';
+	import SectionTitle from '#lib/library/SectionTitle.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { companions } from './people.js';
@@ -16,7 +17,7 @@
 
 {#if pairs.length}
 	<section aria-labelledby={id}>
-		<h2 {id}>{m.people_together()}</h2>
+		<SectionTitle {id} title={m.people_together()} />
 		<ul class="row">
 			{#each pairs as pair (pair.id)}
 				<li>
@@ -35,14 +36,7 @@
 
 <style>
 	section {
-		padding: var(--space-3) var(--space-4) 0;
-	}
-
-	h2 {
-		margin: 0;
-		font-size: var(--font-size-sm);
-		font-weight: 600;
-		color: var(--color-text-muted);
+		padding: var(--space-3) var(--page-gutter) 0;
 	}
 
 	/* One scrolling row, like Explorar's. */
@@ -52,7 +46,7 @@
 		grid-auto-columns: 128px;
 		gap: var(--space-3);
 		margin: 0;
-		padding: var(--space-2) 0 var(--space-1);
+		padding: var(--space-2) 0;
 		overflow-x: auto;
 		overscroll-behavior-x: contain;
 		scroll-snap-type: x proximity;

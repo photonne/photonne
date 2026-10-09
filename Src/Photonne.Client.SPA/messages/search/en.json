@@ -39,5 +39,26 @@
 	"search_discover_scenes": "Scenes",
 	"search_discover_objects": "Objects",
 	"search_discover_hint": "Search by file name, path, tag or date, or turn on semantic search and describe it in your own words.",
-	"search_results": "Results"
+	"search_results": "Results",
+	"search_result_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} result",
+				"countPlural=other": "{count} results"
+			}
+		}
+	],
+	"search_result_count_more": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "More than {count} result",
+				"countPlural=other": "More than {count} results"
+			}
+		}
+	],
+	"search_discover_empty": "Search your library"
 }

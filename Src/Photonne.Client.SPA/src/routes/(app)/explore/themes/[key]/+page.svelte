@@ -5,7 +5,9 @@
 	import MemoryCard from '#lib/library/MemoryCard.svelte';
 	import { memoryFeedOptions } from '#lib/library/memory-feed.js';
 	import PageCrumbs from '#lib/library/PageCrumbs.svelte';
-	import PageHeader from '#lib/library/PageHeader.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -21,15 +23,22 @@
 </svelte:head>
 
 <div class="page">
-	<PageHeader {title} />
-	<PageCrumbs href={appHref('/explore')} label={m.nav_explore()} />
+	<PageHeader {title} count={row ? m.explore_theme_count({ count: row.memories.length }) : null}>
+		{#snippet toolbar()}
+			<PageCrumbs href={appHref('/explore')} label={m.nav_explore()} />
+		{/snippet}
+	</PageHeader>
 
 	{#if feed.isPending}
-		<p class="status" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="cards" count={6} />
 	{:else if feed.isError}
-		<p class="status" role="alert">{m.error_loading()}</p>
+		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if !row}
-		<p class="status">{m.explore_theme_missing()}</p>
+		<EmptyState icon="explore" title={m.explore_theme_missing()}>
+			{#snippet action()}
+				<a class="btn" href={appHref('/explore')}>{m.nav_explore()}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="cards" role="list">
 			{#each row.memories as memory (memory.id)}
@@ -56,12 +65,7 @@
 		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 		gap: var(--space-4);
 		margin: 0;
-		padding: var(--space-4);
+		padding: var(--space-2) var(--page-gutter);
 		list-style: none;
-	}
-
-	.status {
-		padding: var(--space-6) var(--space-4);
-		color: var(--color-text-muted);
 	}
 </style>

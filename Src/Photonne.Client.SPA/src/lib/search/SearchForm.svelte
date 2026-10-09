@@ -155,7 +155,7 @@
 
 <div class="search-form">
 	<form role="search" onsubmit={submit}>
-		<div class="field">
+		<div class="query">
 			<Icon name="search" size={20} />
 			<input
 				type="search"
@@ -178,7 +178,7 @@
 			/>
 			<span>{m.search_semantic()}</span>
 		</label>
-		<button type="submit" class="primary">{m.search_submit()}</button>
+		<button type="submit" class="btn primary">{m.search_submit()}</button>
 	</form>
 
 	<div class="filters" role="group" aria-label={m.search_filters()}>
@@ -260,7 +260,7 @@
 						placeholder={m.search_filter_ocr_placeholder()}
 						bind:value={ocrText}
 					/>
-					<button type="submit">{m.search_apply()}</button>
+					<button type="submit" class="btn">{m.search_apply()}</button>
 				</form>
 			{/snippet}
 		</FilterMenu>
@@ -319,10 +319,11 @@
 	{#if chips.length > 0 && !filtersOff}
 		<ul class="chips" aria-label={m.search_active_filters()}>
 			{#each chips as chip (chip.key)}
-				<li>
+				<li class="chip active">
 					<span>{chip.label}</span>
 					<button
 						type="button"
+						class="remove"
 						aria-label={m.search_remove_filter({ filter: chip.label })}
 						onclick={() => onsearch(chip.remove())}
 					>
@@ -331,8 +332,12 @@
 				</li>
 			{/each}
 			{#if chips.length > 1}
-				<li class="clear">
-					<button type="button" onclick={() => onsearch({ ...emptySearch, q: query.q })}>
+				<li>
+					<button
+						type="button"
+						class="btn ghost sm"
+						onclick={() => onsearch({ ...emptySearch, q: query.q })}
+					>
 						{m.search_clear_filters()}
 					</button>
 				</li>
@@ -345,7 +350,6 @@
 	.search-form {
 		display: grid;
 		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4) var(--space-2);
 	}
 
 	form[role='search'] {
@@ -355,52 +359,48 @@
 		gap: var(--space-3);
 	}
 
-	.field {
+	.query {
+		position: relative;
 		flex: 1 1 320px;
 		display: flex;
-		align-items: center;
-		gap: var(--space-2);
 		max-width: 720px;
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-bg);
 		color: var(--color-text-muted);
 	}
 
-	.field:focus-within {
-		outline: 2px solid var(--color-focus);
-		outline-offset: 1px;
+	.query :global(svg) {
+		position: absolute;
+		top: 50%;
+		left: var(--space-3);
+		transform: translateY(-50%);
+		pointer-events: none;
 	}
 
-	.field input {
+	.query input {
 		flex: 1;
 		min-width: 0;
-		padding: var(--space-2) 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
+		min-height: var(--control-h-lg);
+		padding-left: calc(var(--space-3) + 20px + var(--space-2));
 		font-size: var(--font-size-md);
-		outline: none;
 	}
 
 	.switch {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
+		min-height: var(--control-h);
 		font-size: var(--font-size-sm);
 		cursor: pointer;
 	}
 
+	/* A switch: a checkbox drawn as a track and thumb. The off track keeps
+	   3:1 against the page (WCAG 1.4.11). */
 	.switch input {
 		appearance: none;
 		position: relative;
 		width: 36px;
 		height: 20px;
-		margin: 0;
 		border-radius: 999px;
-		background: var(--color-border);
-		cursor: pointer;
+		background: var(--color-border-strong);
 		transition: background var(--duration-fast);
 	}
 
@@ -424,17 +424,8 @@
 		transform: translateX(16px);
 	}
 
-	button {
-		cursor: pointer;
-	}
-
-	.primary {
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--color-accent);
-		border-radius: var(--radius-sm);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
+	form[role='search'] .btn {
+		min-height: var(--control-h-lg);
 	}
 
 	.filters {
@@ -460,22 +451,11 @@
 	.inline input,
 	.folders input {
 		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
 	}
 
 	.inline {
 		display: flex;
 		gap: var(--space-2);
-	}
-
-	.inline button {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
 	}
 
 	.folders {
@@ -502,14 +482,16 @@
 		border-radius: var(--radius-sm);
 		background: transparent;
 		text-align: left;
+		cursor: pointer;
 	}
 
 	.folders li button:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.folders li button[aria-pressed='true'] {
-		background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+		background: var(--color-accent-soft);
+		font-weight: 600;
 	}
 
 	.folders .path {
@@ -519,6 +501,7 @@
 		white-space: nowrap;
 		color: var(--color-text-muted);
 		font-size: var(--font-size-xs);
+		font-weight: 400;
 	}
 
 	.note {
@@ -530,47 +513,33 @@
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
+		align-items: center;
 		gap: var(--space-2);
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
 
-	.chips li {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: 2px 4px 2px var(--space-3);
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-		font-size: var(--font-size-sm);
+	/* An applied filter: an active .chip with its remove button inside. */
+	.chips .chip {
+		padding-right: 2px;
+		cursor: default;
 	}
 
-	.chips li button {
+	.remove {
 		display: grid;
 		place-items: center;
-		width: 22px;
-		height: 22px;
+		width: 24px;
+		height: 24px;
 		padding: 0;
 		border: 0;
 		border-radius: 50%;
 		background: transparent;
+		color: inherit;
+		cursor: pointer;
 	}
 
-	.chips li button:hover {
-		background: var(--color-surface);
-	}
-
-	.chips li.clear {
-		padding: 0;
-		background: transparent;
-	}
-
-	.chips li.clear button {
-		width: auto;
-		height: auto;
-		padding: 2px var(--space-2);
-		border-radius: var(--radius-sm);
-		color: var(--color-accent);
+	.remove:hover {
+		background: var(--color-hover);
 	}
 </style>

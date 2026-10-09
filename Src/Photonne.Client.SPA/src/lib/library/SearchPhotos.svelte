@@ -47,7 +47,7 @@
 	onnearend={() => list.more()}
 >
 	{#snippet header()}
-		<PageCrumbs href={crumb.href} label={crumb.label} />
+		<PageCrumbs href={crumb.href} label={crumb.label} inset />
 		{@render children?.()}
 	{/snippet}
 </CollectionView>

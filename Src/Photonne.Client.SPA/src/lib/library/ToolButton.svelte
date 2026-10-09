@@ -24,10 +24,11 @@
 	const iconProps = $derived(typeof icon === 'string' ? { name: icon } : icon);
 </script>
 
+<!-- The shared .btn / .icon-btn (lib/styles/ui.css). -->
 {#if variant === 'icon'}
 	<button
 		type="button"
-		class="icon"
+		class="icon-btn"
 		class:danger
 		title={label}
 		aria-label={label}
@@ -37,56 +38,14 @@
 		<Icon {...iconProps} />
 	</button>
 {:else}
-	<button type="button" class="text" class:danger {disabled} {onclick}>
+	<button type="button" class="btn" class:danger {disabled} {onclick}>
 		<Icon {...iconProps} size={18} />
 		<span>{label}</span>
 	</button>
 {/if}
 
 <style>
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.icon:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.text {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-size: var(--font-size-sm);
-		white-space: nowrap;
-		cursor: pointer;
-	}
-
-	.text:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.danger {
+	.icon-btn.danger:not(:disabled) {
 		color: var(--color-danger);
-	}
-
-	.text.danger {
-		border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
-	}
-
-	button:disabled {
-		opacity: 0.45;
-		cursor: default;
 	}
 </style>

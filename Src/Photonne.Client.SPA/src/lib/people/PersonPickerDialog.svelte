@@ -109,10 +109,6 @@
 
 	input {
 		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
 	}
 
 	ul {
@@ -141,7 +137,7 @@
 
 	li button:hover,
 	li button:focus-visible {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.name {
@@ -179,7 +175,7 @@
 		width: 36px;
 		height: 36px;
 		border-radius: 50%;
-		background: var(--color-surface);
+		background: var(--color-accent-soft);
 		font-size: var(--font-size-lg);
 	}
 </style>

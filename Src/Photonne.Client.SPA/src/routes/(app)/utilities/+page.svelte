@@ -2,6 +2,7 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { getUtilitiesSummaryOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { formatBytes } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -68,8 +69,7 @@
 </svelte:head>
 
 <div class="page">
-	<h1>{m.nav_utilities()}</h1>
-	<p class="lead">{m.utilities_lead()}</p>
+	<PageHeader title={m.nav_utilities()} subtitle={m.utilities_lead()} />
 
 	<ul>
 		{#each cards as card (card.path)}
@@ -92,17 +92,7 @@
 
 <style>
 	.page {
-		padding: var(--space-4);
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-	}
-
-	.lead {
-		margin: var(--space-1) 0 var(--space-6);
-		color: var(--color-text-muted);
+		padding-bottom: var(--space-8);
 	}
 
 	ul {
@@ -111,7 +101,7 @@
 		gap: var(--space-3);
 		max-width: 1100px;
 		margin: 0;
-		padding: 0;
+		padding: var(--space-2) var(--page-gutter);
 		list-style: none;
 	}
 
@@ -130,7 +120,13 @@
 	}
 
 	a:hover {
-		border-color: var(--color-accent);
+		border-color: var(--color-border-strong);
+		background: var(--color-surface);
+	}
+
+	a > :global(svg) {
+		flex: none;
+		color: var(--color-text-muted);
 	}
 
 	.icon {
@@ -145,7 +141,7 @@
 	}
 
 	.icon.attention {
-		background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+		background: var(--color-accent-soft);
 		color: var(--color-accent);
 	}
 

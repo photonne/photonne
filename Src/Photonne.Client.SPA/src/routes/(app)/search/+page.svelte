@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import SearchDiscover from '#lib/search/SearchDiscover.svelte';
@@ -37,10 +38,15 @@
 </svelte:head>
 
 <div class="search">
-	<header>
-		<h1>{m.nav_search()}</h1>
+	<!-- One h1: "Buscar" until there is a search, then the results' own
+	     ("Resultados", with their count). The form stays mounted between both,
+	     so typing and an open filter menu survive the first search. -->
+	{#if !hasCriteria(query)}
+		<PageHeader title={m.nav_search()} />
+	{/if}
+	<div class="bar" class:solo={hasCriteria(query)}>
 		<SearchForm {query} onsearch={search} autofocus={!hasCriteria(query)} />
-	</header>
+	</div>
 
 	<div class="body">
 		{#if hasCriteria(query)}
@@ -65,14 +71,13 @@
 		height: 100%;
 	}
 
-	header {
+	.bar {
+		padding: 0 var(--page-gutter) var(--space-3);
 		border-bottom: 1px solid var(--color-border);
 	}
 
-	h1 {
-		margin: 0;
-		padding: var(--space-4) var(--space-4) 0;
-		font-size: var(--font-size-xl);
+	.bar.solo {
+		padding-top: var(--space-4);
 	}
 
 	.body {

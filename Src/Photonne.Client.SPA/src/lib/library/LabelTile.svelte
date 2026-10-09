@@ -2,6 +2,8 @@
 	import { thumbnailSizeFor, thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
+	import Icon from '#lib/components/Icon.svelte';
+	import { icons } from './icons.js';
 	import { displayLabel } from './labels.js';
 
 	interface Props {
@@ -21,6 +23,8 @@
 <a class="tile" {href}>
 	{#if cover}
 		<img src={cover} alt="" loading="lazy" decoding="async" />
+	{:else}
+		<span class="mark" aria-hidden="true"><Icon path={icons.label} size={28} /></span>
 	{/if}
 	<span class="text">
 		<span class="label">{displayLabel(label, getLocale())}</span>
@@ -62,9 +66,18 @@
 		background: linear-gradient(to top, rgb(0 0 0 / 0.7), rgb(0 0 0 / 0) 55%);
 	}
 
-	/* Without a cover the tile is a plain swatch: dark text reads better. */
+	/* Without a cover: a tinted tile with the label's mark, dark text. */
 	.tile:not(:has(img)) {
+		background: var(--color-brand-tile);
 		color: var(--color-text);
+	}
+
+	.mark {
+		position: absolute;
+		inset: 0 0 var(--space-8);
+		display: grid;
+		place-items: center;
+		color: var(--color-accent);
 	}
 
 	.tile:not(:has(img))::after {

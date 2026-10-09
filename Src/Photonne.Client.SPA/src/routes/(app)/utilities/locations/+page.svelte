@@ -1,9 +1,11 @@
 <script lang="ts">
-	import '#lib/search/ui.css';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { getMyFolderTreeOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
+	import SearchField from '#lib/library/SearchField.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { unfoldLessPath, unfoldMorePath } from '#lib/search/icons.js';
 	import FolderRows from '#lib/search/utilities/FolderRows.svelte';
@@ -25,12 +27,20 @@
 </script>
 
 <div class="page">
-	<UtilityHeader title={m.utilities_locations()} lead={m.utilities_locations_lead()}>
-		{#snippet toolbar()}
+	<UtilityHeader
+		title={m.utilities_locations()}
+		lead={m.utilities_locations_lead()}
+		count={roots.length
+			? `${m.utilities_folder_count({ count: countFolders(roots) })} · ${m.utilities_photos({
+					count: totalAssets(roots)
+				})}`
+			: null}
+	>
+		{#snippet actions()}
 			<button
 				type="button"
-				class="ui-button"
-				disabled={!!filter.trim()}
+				class="btn"
+				disabled={!roots.length || !!filter.trim()}
 				onclick={() => {
 					for (const id of branchIds(roots)) expanded.add(id);
 				}}
@@ -40,7 +50,7 @@
 			</button>
 			<button
 				type="button"
-				class="ui-button"
+				class="btn"
 				disabled={!!filter.trim() || expanded.size === 0}
 				onclick={() => expanded.clear()}
 			>
@@ -48,32 +58,23 @@
 				{m.utilities_collapse_all()}
 			</button>
 		{/snippet}
+		{#snippet tools()}
+			{#if roots.length}
+				<SearchField bind:value={filter} label={m.utilities_filter_folders()} width="320px" />
+			{/if}
+		{/snippet}
 	</UtilityHeader>
 
 	{#if tree.isPending}
-		<p class="ui-status" role="status">{m.utilities_loading()}</p>
+		<Skeleton variant="rows" count={8} />
 	{:else if tree.isError}
-		<p class="ui-status" role="alert">{m.error_loading()}</p>
+		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if roots.length === 0}
-		<p class="ui-status">{m.utilities_locations_empty()}</p>
+		<EmptyState icon="folder" title={m.utilities_locations_empty()} />
 	{:else}
-		<div class="bar">
-			<input
-				type="search"
-				class="ui-field"
-				aria-label={m.utilities_filter_folders()}
-				placeholder={m.utilities_filter_folders()}
-				bind:value={filter}
-			/>
-			<span class="totals">
-				{m.utilities_folder_count({ count: countFolders(roots) })} · {m.utilities_photos({
-					count: totalAssets(roots)
-				})}
-			</span>
-		</div>
 		<div class="tree">
 			{#if shown.length === 0}
-				<p class="ui-status">{m.search_filter_nothing()}</p>
+				<EmptyState compact icon="search" title={m.search_filter_nothing()} />
 			{:else}
 				<FolderRows folders={shown} {expanded} forceOpen={!!filter.trim()} />
 			{/if}
@@ -86,25 +87,7 @@
 		padding-bottom: var(--space-8);
 	}
 
-	.bar {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-3);
-		padding: 0 var(--space-4) var(--space-3);
-	}
-
-	.bar input {
-		flex: 0 1 360px;
-	}
-
-	.totals {
-		margin-left: auto;
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-
 	.tree {
-		padding: 0 var(--space-4);
+		padding: 0 var(--page-gutter);
 	}
 </style>

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import '#lib/search/ui.css';
 	import { tick } from 'svelte';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import {
@@ -12,11 +11,13 @@
 	import { getUtilitiesSummaryQueryKey } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { dateTime, formatBytes } from '#lib/format.js';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import { magicPath } from '#lib/search/icons.js';
+	import { duplicatesPath, magicPath } from '#lib/search/icons.js';
 	import { directoryOf } from '#lib/search/text.js';
 	import {
 		keepInAll,
@@ -105,26 +106,30 @@
 
 <div class="page">
 	<UtilityHeader title={m.utilities_duplicates()} lead={m.utilities_duplicates_lead()}>
-		{#snippet toolbar()}
+		{#snippet tools()}
 			{#if all.length > 0}
-				<button type="button" class="ui-button" onclick={() => (marked = keepInAll(all, oldest))}>
+				<button type="button" class="btn" onclick={() => (marked = keepInAll(all, oldest))}>
 					<Icon path={magicPath} size={18} />
 					{m.utilities_keep_oldest()}
 				</button>
-				<button type="button" class="ui-button" onclick={() => (marked = keepInAll(all, largest))}>
+				<button type="button" class="btn" onclick={() => (marked = keepInAll(all, largest))}>
 					{m.utilities_keep_largest()}
 				</button>
 				<button
 					type="button"
-					class="ui-button"
+					class="btn"
 					disabled={marked.size === 0}
 					onclick={() => (marked = new Set())}
 				>
 					{m.utilities_unmark_all()}
 				</button>
+			{/if}
+		{/snippet}
+		{#snippet actions()}
+			{#if all.length > 0}
 				<button
 					type="button"
-					class="ui-button danger"
+					class="btn danger"
 					disabled={marked.size === 0 || busy}
 					onclick={() => (confirming = true)}
 				>
@@ -136,11 +141,11 @@
 	</UtilityHeader>
 
 	{#if groups === null && !failed}
-		<p class="ui-status" role="status">{m.utilities_loading()}</p>
+		<Skeleton variant="cards" count={8} />
 	{:else if failed}
-		<p class="ui-status" role="alert">{m.error_loading()}</p>
+		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if all.length === 0}
-		<p class="ui-status">{m.utilities_duplicates_empty()}</p>
+		<EmptyState iconPath={duplicatesPath} title={m.utilities_duplicates_empty()} />
 	{:else}
 		<p class="summary" aria-live="polite">
 			{m.utilities_duplicates_summary({ count: all.length, size: formatBytes(recoverable) })}
@@ -212,7 +217,7 @@
 										</label>
 										<button
 											type="button"
-											class="ui-button"
+											class="btn sm"
 											aria-label={m.utilities_keep_only_copy({ copy: copyLabel(asset) })}
 											onclick={() => (marked = keepOnly(marked, group, asset.id))}
 										>
@@ -267,7 +272,7 @@
 
 	.summary {
 		margin: 0;
-		padding: 0 var(--space-4) var(--space-3);
+		padding: 0 var(--page-gutter) var(--space-3);
 		color: var(--color-text-muted);
 	}
 
@@ -279,16 +284,17 @@
 		display: grid;
 		gap: var(--space-3);
 		margin: 0;
-		padding: 0 var(--space-4);
+		padding: 0 var(--page-gutter);
 		list-style: none;
 	}
 
 	.groups > li {
 		content-visibility: auto;
 		contain-intrinsic-size: auto 280px;
-		padding: var(--space-3);
+		padding: var(--space-4);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
+		background: var(--color-surface-raised);
 	}
 
 	h2 {

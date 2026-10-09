@@ -15,6 +15,8 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import AssetViewer from '#lib/viewer/AssetViewer.svelte';
@@ -151,11 +153,11 @@
 </script>
 
 {#if suggestions.isPending}
-	<p class="status" role="status">{m.session_restoring()}</p>
+	<Skeleton variant="cards" count={12} />
 {:else if suggestions.isError}
-	<p class="status" role="alert">{m.error_loading()}</p>
+	<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 {:else if items.length === 0}
-	<p class="status">{m.people_suggestions_empty()}</p>
+	<EmptyState icon="check" title={m.people_suggestions_empty()} />
 {:else}
 	<div class="intro">
 		<div>
@@ -163,10 +165,10 @@
 			<p class="hint">{m.people_suggestions_hint()}</p>
 		</div>
 		<div class="bulk">
-			<button type="button" onclick={() => (confirming = 'dismiss')}>
+			<button type="button" class="btn" onclick={() => (confirming = 'dismiss')}>
 				{m.people_suggestions_dismiss_all()}
 			</button>
-			<button type="button" class="primary" onclick={() => (confirming = 'accept')}>
+			<button type="button" class="btn primary" onclick={() => (confirming = 'accept')}>
 				{m.people_suggestions_accept_all()}
 			</button>
 		</div>
@@ -203,7 +205,7 @@
 					<div class="answers">
 						<button
 							type="button"
-							class="no"
+							class="btn sm no"
 							title={m.people_suggestion_dismiss({ name })}
 							aria-label={m.people_suggestion_dismiss({ name })}
 							onclick={() => answer(face.id, false)}
@@ -212,7 +214,7 @@
 						</button>
 						<button
 							type="button"
-							class="yes"
+							class="btn sm yes"
 							title={m.people_suggestion_accept({ name })}
 							aria-label={m.people_suggestion_accept({ name })}
 							onclick={() => answer(face.id, true)}
@@ -275,17 +277,12 @@
 {/if}
 
 <style>
-	.status {
-		padding: var(--space-6) var(--space-4);
-		margin: 0;
-		color: var(--color-text-muted);
-	}
-
 	.intro {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-4);
-		padding: var(--space-3) var(--space-4);
+		gap: var(--space-3) var(--space-4);
+		padding: var(--space-3) var(--page-gutter);
 	}
 
 	.intro p {
@@ -303,44 +300,19 @@
 		gap: var(--space-2);
 	}
 
-	.bulk button {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		white-space: nowrap;
-		cursor: pointer;
-	}
-
-	.bulk button:hover {
-		background: var(--color-surface);
-	}
-
-	.bulk .primary {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
-	}
-
-	.bulk .primary:hover {
-		background: var(--color-accent);
-		filter: brightness(1.08);
-	}
-
 	.grid {
 		list-style: none;
 		margin: 0;
-		padding: 0 var(--space-4) var(--space-8);
+		padding: 0 var(--page-gutter) var(--space-8);
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
 		gap: var(--space-3);
 	}
 
 	.card {
 		display: grid;
-		gap: var(--space-1);
-		padding: var(--space-1);
+		gap: var(--space-2);
+		padding: var(--space-2);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		background: var(--color-surface-raised);
@@ -356,7 +328,7 @@
 		aspect-ratio: 1;
 		padding: 0;
 		border: 0;
-		border-radius: var(--radius-sm);
+		border-radius: 50%;
 		overflow: hidden;
 		background: var(--color-placeholder);
 		cursor: zoom-in;
@@ -371,18 +343,11 @@
 	.answers {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: var(--space-1);
+		gap: var(--space-2);
 	}
 
-	.answers button {
-		display: grid;
-		place-items: center;
-		height: 32px;
+	.answers .btn {
 		padding: 0;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		cursor: pointer;
 	}
 
 	.answers .no:hover {
@@ -392,8 +357,7 @@
 
 	.answers .yes:hover {
 		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
+		background: var(--color-accent-soft);
 	}
 
 	.confirm {

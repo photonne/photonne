@@ -150,7 +150,7 @@
 					</label>
 					<button
 						type="button"
-						class="remove"
+						class="icon-btn sm"
 						aria-label={m.organize_rule_remove({ condition: label })}
 						onclick={() => (conditions = conditions.filter((c) => c.key !== condition.key))}
 					>
@@ -289,15 +289,6 @@
 		gap: var(--space-2);
 	}
 
-	select,
-	input[type='text'],
-	input[type='date'] {
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-	}
-
 	.empty {
 		margin: 0;
 		color: var(--color-text-muted);
@@ -337,22 +328,6 @@
 		margin-left: auto;
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
-	}
-
-	.remove {
-		display: grid;
-		place-items: center;
-		width: 32px;
-		height: 32px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.remove:hover {
-		background: var(--color-surface);
 	}
 
 	.control {

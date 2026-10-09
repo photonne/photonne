@@ -26,6 +26,6 @@
 
 <style>
 	.form {
-		padding: var(--space-2) var(--space-4) 0;
+		padding: var(--space-2) var(--page-gutter);
 	}
 </style>

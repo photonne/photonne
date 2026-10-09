@@ -3,6 +3,10 @@
 	import type { PersonDto } from '#lib/api/index.js';
 	import { getApiPeopleInfiniteOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
+	import SearchField from '#lib/library/SearchField.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { setPeopleHidden } from '#lib/people/actions.js';
@@ -133,7 +137,7 @@
 		{#snippet actions()}
 			<button
 				type="button"
-				class="action"
+				class="icon-btn"
 				disabled={selection.size !== 1 || busy}
 				title={m.people_action_rename()}
 				aria-label={m.people_action_rename()}
@@ -143,7 +147,7 @@
 			</button>
 			<button
 				type="button"
-				class="action"
+				class="icon-btn"
 				disabled={selection.size < 2 || busy}
 				title={m.people_action_merge()}
 				aria-label={m.people_action_merge()}
@@ -153,7 +157,7 @@
 			</button>
 			<button
 				type="button"
-				class="action"
+				class="icon-btn"
 				disabled={busy}
 				title={allHidden ? m.people_action_unhide() : m.people_action_hide()}
 				aria-label={allHidden ? m.people_action_unhide() : m.people_action_hide()}
@@ -164,51 +168,55 @@
 		{/snippet}
 	</SelectionBar>
 
-	<header class="head">
-		<h1>{m.nav_people()}</h1>
-		{#if people.isSuccess}
-			<span class="total">{m.people_count({ count: total })}</span>
-		{/if}
-		<button type="button" class="tool" onclick={() => (recognitionOpen = true)}>
-			<Icon path={icons.face} size={18} />
-			{m.people_recognition()}
-		</button>
-	</header>
-
-	<div class="filters">
-		<label class="search">
-			<Icon name="search" size={18} />
-			<input
-				type="search"
-				placeholder={m.people_search()}
-				aria-label={m.people_search()}
-				bind:value={search}
-			/>
-		</label>
-		<label class="field">
-			<span>{m.people_sort()}</span>
-			<select bind:value={sort}>
-				{#each PEOPLE_SORTS as option (option)}
-					<option value={option}>{sortLabels[option]()}</option>
-				{/each}
-			</select>
-		</label>
-		<label class="check">
-			<input type="checkbox" bind:checked={showHidden} />
-			{m.people_show_hidden()}
-		</label>
-		<p class="hint">{m.people_selection_hint()}</p>
-	</div>
+	<PageHeader
+		title={m.nav_people()}
+		count={people.isSuccess ? m.people_count({ count: total }) : null}
+		subtitle={m.people_selection_hint()}
+	>
+		{#snippet actions()}
+			<button type="button" class="btn" onclick={() => (recognitionOpen = true)}>
+				<Icon path={icons.face} size={18} />
+				{m.people_recognition()}
+			</button>
+		{/snippet}
+		{#snippet toolbar()}
+			<SearchField bind:value={search} label={m.people_search()} />
+			<label class="sort">
+				<span>{m.people_sort()}</span>
+				<select bind:value={sort}>
+					{#each PEOPLE_SORTS as option (option)}
+						<option value={option}>{sortLabels[option]()}</option>
+					{/each}
+				</select>
+			</label>
+			<label class="chip toggle" class:active={showHidden}>
+				<input type="checkbox" bind:checked={showHidden} />
+				<Icon path={showHidden ? icons.visibility : icons.visibilityOff} size={16} />
+				{m.people_show_hidden()}
+			</label>
+		{/snippet}
+	</PageHeader>
 
 	<div class="scroll">
 		{#if people.isPending}
-			<p class="status" role="status">{m.session_restoring()}</p>
+			<div class="loading"><Skeleton variant="cards" round count={16} /></div>
 		{:else if people.isError}
-			<p class="status" role="alert">{m.error_loading()}</p>
+			<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 		{:else if items.length === 0}
-			<p class="status">
-				{debounced ? m.people_search_empty({ query: debounced }) : m.people_empty()}
-			</p>
+			{#if debounced}
+				<EmptyState icon="search" title={m.people_search_empty({ query: debounced })} />
+			{:else if showHidden}
+				<EmptyState icon="people" title={m.people_empty_title()} />
+			{:else}
+				<EmptyState icon="people" title={m.people_empty_title()} hint={m.people_empty_hint()}>
+					{#snippet action()}
+						<button type="button" class="btn primary" onclick={() => (recognitionOpen = true)}>
+							<Icon path={icons.face} size={18} />
+							{m.people_recognition()}
+						</button>
+					{/snippet}
+				</EmptyState>
+			{/if}
 		{:else}
 			<ul class="grid" aria-label={m.people_grid()} {@attach gridKeys}>
 				{#each items as person (person.id)}
@@ -222,12 +230,7 @@
 							onclick={(event) => onCardClick(event, person)}
 						>
 							<span class="photo">
-								<PersonAvatar
-									faceId={person.coverFaceId}
-									name={person.name}
-									size="100%"
-									shape="rounded"
-								/>
+								<PersonAvatar faceId={person.coverFaceId} name={person.name} size="100%" />
 								{#if person.pendingSuggestionsCount > 0}
 									<span
 										class="badge"
@@ -300,109 +303,48 @@
 		padding: var(--space-2) 0 var(--space-8);
 	}
 
-	.head {
+	.sort {
 		display: flex;
-		align-items: baseline;
-		gap: var(--space-3);
-		padding: var(--space-4) var(--space-4) 0;
+		align-items: center;
+		gap: var(--space-2);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
 	}
 
-	h1 {
+	/* A .chip that toggles. The checkbox covers it invisibly, as .segmented's
+	   radios do: clicks, keys and assistive tech reach the real input. */
+	.toggle {
+		position: relative;
+		min-height: var(--control-h);
+		padding: 0 var(--space-4) 0 var(--space-3);
+		border-color: var(--color-border-strong);
+	}
+
+	.toggle input {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
 		margin: 0;
-		font-size: var(--font-size-xl);
+		opacity: 0;
 	}
 
-	.total {
-		color: var(--color-text-muted);
-	}
-
-	.tool {
-		margin-left: auto;
-		align-self: center;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.tool:hover {
-		background: var(--color-surface);
-	}
-
-	.filters {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-2) var(--space-4);
-		padding: var(--space-4);
-	}
-
-	.search {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		width: min(320px, 100%);
-		padding: 0 var(--space-3);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-	}
-
-	.search:focus-within {
+	.toggle:has(input:focus-visible) {
 		outline: 2px solid var(--color-focus);
+		outline-offset: 2px;
 	}
 
-	.search input {
-		flex: 1;
-		min-width: 0;
-		padding: var(--space-2) 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
-		outline: none;
-	}
-
-	.field {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-
-	select {
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-	}
-
-	.check {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-size: var(--font-size-sm);
-	}
-
-	.hint {
-		margin: 0 0 0 auto;
-		color: var(--color-text-muted);
-		font-size: var(--font-size-xs);
-	}
-
-	.status {
-		padding: var(--space-6);
-		color: var(--color-text-muted);
+	/* The placeholder takes the people grid's columns (Skeleton's cards are
+	   album-sized). */
+	.loading :global(.skeleton) {
+		grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+		padding-top: var(--space-2);
 	}
 
 	.grid {
 		list-style: none;
 		margin: 0;
-		padding: 0 var(--space-4);
+		padding: 0 var(--page-gutter);
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
 		gap: var(--space-4) var(--space-3);
@@ -414,30 +356,33 @@
 
 	.card a {
 		display: grid;
+		justify-items: center;
 		gap: 2px;
-		padding: var(--space-1);
+		padding: var(--space-2) var(--space-1);
 		border-radius: var(--radius-lg);
 		color: inherit;
+		text-align: center;
 		text-decoration: none;
 	}
 
-	.card a:hover .photo {
-		filter: brightness(1.05);
+	.card a:hover {
+		background: var(--color-hover);
 	}
 
 	.photo {
 		position: relative;
 		display: block;
+		width: min(100%, 120px);
 		aspect-ratio: 1;
-		margin-bottom: var(--space-1);
-		border-radius: var(--radius-md);
+		margin-bottom: var(--space-2);
+		border-radius: 50%;
 		transition: transform var(--duration-fast);
 	}
 
 	.selected .photo {
 		transform: scale(0.92);
 		outline: 3px solid var(--color-accent);
-		outline-offset: 2px;
+		outline-offset: 3px;
 	}
 
 	.hidden .photo :global(.avatar) {
@@ -445,6 +390,7 @@
 	}
 
 	.name {
+		max-width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -463,30 +409,32 @@
 
 	.badge {
 		position: absolute;
-		top: var(--space-1);
-		right: var(--space-1);
-		min-width: 22px;
+		top: 4%;
+		right: 4%;
+		min-width: 24px;
 		padding: 0 var(--space-1);
-		border-radius: 11px;
+		border: 2px solid var(--color-bg);
+		border-radius: 12px;
 		background: var(--color-accent);
 		color: var(--color-accent-text);
 		font-size: var(--font-size-xs);
 		font-weight: 700;
-		line-height: 22px;
+		line-height: 20px;
 		text-align: center;
 	}
 
 	.hidden-mark {
 		position: absolute;
-		bottom: var(--space-1);
-		right: var(--space-1);
+		bottom: 4%;
+		right: 4%;
 		display: grid;
 		place-items: center;
-		width: 26px;
-		height: 26px;
+		width: 28px;
+		height: 28px;
+		border: 2px solid var(--color-bg);
 		border-radius: 50%;
-		background: rgb(0 0 0 / 0.6);
-		color: #fff;
+		background: var(--color-surface-raised);
+		color: var(--color-text);
 	}
 
 	.pick {
@@ -498,9 +446,9 @@
 		width: 26px;
 		height: 26px;
 		padding: 0;
-		border: 2px solid #fff;
+		border: 2px solid var(--color-border-strong);
 		border-radius: 50%;
-		background: rgb(0 0 0 / 0.35);
+		background: var(--color-surface-raised);
 		color: transparent;
 		opacity: 0;
 		cursor: pointer;
@@ -522,26 +470,5 @@
 
 	.sentinel {
 		height: 1px;
-	}
-
-	.action {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.action:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.action:disabled {
-		opacity: 0.35;
-		cursor: default;
 	}
 </style>

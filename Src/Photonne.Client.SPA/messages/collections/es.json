@@ -132,5 +132,15 @@
 	"explore_text_title": "«{query}»",
 	"explore_text_hint": "Encuentra fotos por el texto que aparece en ellas: carteles, tickets, documentos o capturas de pantalla.",
 	"explore_text_no_photos": "Ninguna foto contiene ese texto.",
-	"explore_theme_missing": "Este tema ya no está entre tus recuerdos."
+	"explore_theme_missing": "Este tema ya no está entre tus recuerdos.",
+	"explore_theme_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} recuerdo",
+				"countPlural=other": "{count} recuerdos"
+			}
+		}
+	]
 }

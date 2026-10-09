@@ -11,6 +11,7 @@
 	import TrashSelectionActions from '#lib/library/TrashSelectionActions.svelte';
 	import { leaveViewerThen } from '#lib/library/viewer-flow.js';
 	import ViewerExtraButtons from '#lib/library/ViewerExtraButtons.svelte';
+	import Tabs from '#lib/components/ui/Tabs.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
@@ -126,29 +127,26 @@
 			{/if}
 		{/snippet}
 		{#snippet header()}
-			<div class="header">
-				{#if showScopes}
-					<nav class="scopes" aria-label={m.trash_scope()}>
-						<a
-							href={appHref('/trash')}
-							aria-current={scope === 'personal' ? 'page' : undefined}
-							data-sveltekit-replacestate
-						>
-							{m.trash_scope_personal()}
-						</a>
-						<a
-							href={`${appHref('/trash')}?scope=shared`}
-							aria-current={scope === 'shared' ? 'page' : undefined}
-							data-sveltekit-replacestate
-						>
-							{m.trash_scope_shared()}
-						</a>
-					</nav>
-				{/if}
-				<p class="policy" role="note">
-					{scope === 'shared' ? m.trash_shared_hint() : retentionText()}
-				</p>
-			</div>
+			{#if showScopes}
+				<Tabs
+					label={m.trash_scope()}
+					tabs={[
+						{
+							href: appHref('/trash'),
+							label: m.trash_scope_personal(),
+							current: scope === 'personal'
+						},
+						{
+							href: `${appHref('/trash')}?scope=shared`,
+							label: m.trash_scope_shared(),
+							current: scope === 'shared'
+						}
+					]}
+				/>
+			{/if}
+			<p class="policy" role="note">
+				{scope === 'shared' ? m.trash_shared_hint() : retentionText()}
+			</p>
 		{/snippet}
 		{#snippet selectionActions(selection, batch)}
 			<TrashSelectionActions
@@ -211,37 +209,10 @@
 />
 
 <style>
-	.header {
-		display: grid;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4) 0;
-	}
-
-	.scopes {
-		display: flex;
-		gap: var(--space-1);
-	}
-
-	.scopes a {
-		padding: var(--space-1) var(--space-3);
-		border-radius: 999px;
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-		text-decoration: none;
-	}
-
-	.scopes a:hover {
-		background: var(--color-surface);
-	}
-
-	.scopes a[aria-current='page'] {
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-weight: 600;
-	}
-
 	.policy {
+		max-width: 80ch;
 		margin: 0;
+		padding: var(--space-2) var(--page-gutter);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}

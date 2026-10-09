@@ -132,5 +132,15 @@
 	"explore_text_title": "“{query}”",
 	"explore_text_hint": "Find photos by the text in them: signs, receipts, documents or screenshots.",
 	"explore_text_no_photos": "No photo contains that text.",
-	"explore_theme_missing": "This theme is no longer among your memories."
+	"explore_theme_missing": "This theme is no longer among your memories.",
+	"explore_theme_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} memory",
+				"countPlural=other": "{count} memories"
+			}
+		}
+	]
 }

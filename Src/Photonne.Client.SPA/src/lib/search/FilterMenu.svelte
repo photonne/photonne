@@ -57,8 +57,8 @@
 <div class="menu" bind:this={root} {onkeydown} {onfocusout}>
 	<button
 		type="button"
-		class="trigger"
-		class:on={count > 0}
+		class="chip trigger"
+		class:active={count > 0}
 		aria-label={name ? `${name}: ${label}` : undefined}
 		aria-expanded={open}
 		aria-controls="{id}-panel"
@@ -91,32 +91,20 @@
 		position: relative;
 	}
 
+	/* A .chip that opens a panel; .active once the filter holds something. */
 	.trigger {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: transparent;
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-		white-space: nowrap;
+		min-height: var(--control-h-sm);
+		padding-right: var(--space-2);
 	}
 
-	.trigger:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.trigger.on {
-		border-color: var(--color-accent);
-		color: var(--color-accent);
-		font-weight: 600;
+	.trigger[aria-expanded='true'] {
+		background: var(--color-hover);
 	}
 
 	.trigger:disabled {
-		opacity: 0.5;
-		cursor: default;
+		color: var(--color-text-muted);
+		background: transparent;
+		cursor: not-allowed;
 	}
 
 	.count {

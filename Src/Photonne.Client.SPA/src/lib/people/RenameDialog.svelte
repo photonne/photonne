@@ -42,12 +42,12 @@
 
 <Dialog open={person !== null} title={m.people_rename_title()} {onclose}>
 	<form id="person-rename" onsubmit={save}>
-		<label>
+		<label class="field">
 			<span>{m.people_rename_label()}</span>
 			<!-- svelte-ignore a11y_autofocus -->
 			<input bind:value={name} maxlength="200" autocomplete="off" autofocus />
+			<span class="hint">{m.people_rename_hint()}</span>
 		</label>
-		<p class="hint">{m.people_rename_hint()}</p>
 	</form>
 	{#snippet actions()}
 		<button type="button" onclick={onclose}>{m.people_cancel()}</button>
@@ -56,26 +56,3 @@
 		</button>
 	{/snippet}
 </Dialog>
-
-<style>
-	label {
-		display: grid;
-		gap: var(--space-1);
-		font-size: var(--font-size-sm);
-		color: var(--color-text-muted);
-	}
-
-	input {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-		font-size: var(--font-size-md);
-	}
-
-	.hint {
-		margin: var(--space-2) 0 0;
-		font-size: var(--font-size-sm);
-		color: var(--color-text-muted);
-	}
-</style>

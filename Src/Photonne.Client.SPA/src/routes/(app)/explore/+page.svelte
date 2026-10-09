@@ -12,9 +12,12 @@
 	import { themeRows } from '#lib/library/memories.js';
 	import MemoryCard from '#lib/library/MemoryCard.svelte';
 	import { memoryFeedOptions } from '#lib/library/memory-feed.js';
-	import PageHeader from '#lib/library/PageHeader.svelte';
+	import SectionTitle from '#lib/library/SectionTitle.svelte';
 	import TextSearchForm from '#lib/library/TextSearchForm.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -40,20 +43,18 @@
 </svelte:head>
 
 <div class="page">
-	<PageHeader title={m.nav_explore()} />
-	<div class="text">
-		<TextSearchForm />
-	</div>
+	<PageHeader title={m.nav_explore()}>
+		{#snippet toolbar()}
+			<TextSearchForm />
+		{/snippet}
+	</PageHeader>
 
 	{#if pending}
-		<p class="status" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="cards" count={12} />
 	{:else if failed}
-		<p class="status" role="alert">{m.error_loading()}</p>
+		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if empty}
-		<div class="status">
-			<p class="lead">{m.explore_empty()}</p>
-			<p>{m.explore_empty_hint()}</p>
-		</div>
+		<EmptyState icon="explore" title={m.explore_empty()} hint={m.explore_empty_hint()} />
 	{:else}
 		{#each themes as row (row.key)}
 			<ExploreRow
@@ -116,11 +117,11 @@
 
 		{#if tags.data?.length}
 			<section class="tags" aria-labelledby="explore-tags">
-				<h2 id="explore-tags">{m.explore_tags()}</h2>
+				<SectionTitle id="explore-tags" title={m.explore_tags()} />
 				<ul role="list">
 					{#each tags.data as tag (tag)}
 						<li>
-							<a href={tagHref(tag)}>
+							<a class="chip" href={tagHref(tag)}>
 								<Icon path={icons.label} size={16} />
 								{tag}
 							</a>
@@ -137,33 +138,11 @@
 		padding-bottom: var(--space-8);
 	}
 
-	.text {
-		padding: var(--space-3) var(--space-4) 0;
-	}
-
-	.status {
-		padding: var(--space-6) var(--space-4);
-		color: var(--color-text-muted);
-	}
-
-	.status p {
-		margin: 0 0 var(--space-2);
-		max-width: 60ch;
-	}
-
-	.status .lead {
-		color: var(--color-text);
-		font-size: var(--font-size-lg);
-	}
-
 	.tags {
-		margin-top: var(--space-6);
-		padding: 0 var(--space-4);
-	}
-
-	.tags h2 {
-		margin: 0 0 var(--space-3);
-		font-size: var(--font-size-md);
+		display: grid;
+		gap: var(--space-2);
+		margin-top: var(--space-4);
+		padding: 0 var(--page-gutter);
 	}
 
 	.tags ul {
@@ -173,22 +152,6 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-	}
-
-	.tags a {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		color: inherit;
-		font-size: var(--font-size-sm);
-		text-decoration: none;
-	}
-
-	.tags a:hover {
-		background: var(--color-surface);
 	}
 
 	.tags a :global(svg) {

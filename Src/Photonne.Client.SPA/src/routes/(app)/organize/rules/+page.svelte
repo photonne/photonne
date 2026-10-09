@@ -10,6 +10,7 @@
 	} from '#lib/api/index.js';
 	import { getFolderTreeOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import OrganizeNav from '#lib/search/organize/OrganizeNav.svelte';
@@ -132,7 +133,7 @@
 </svelte:head>
 
 <div class="page">
-	<h1>{m.nav_organize()}</h1>
+	<PageHeader title={m.nav_organize()} />
 	<OrganizeNav />
 
 	<div class="layout">
@@ -170,7 +171,7 @@
 
 			<h2>{m.organize_rule_destination()}</h2>
 			<label class="field">
-				{m.organize_rule_folder_target()}
+				<span>{m.organize_rule_folder_target()}</span>
 				<select bind:value={targetId}>
 					<option value="">{m.organize_rule_folder_choose()}</option>
 					{#each targets as { folder, depth } (folder.id)}
@@ -182,7 +183,7 @@
 				<input type="checkbox" bind:checked={byYear} />
 				{m.organize_rule_by_year()}
 			</label>
-			<button type="button" class="primary" disabled={!canMove} onclick={openReview}>
+			<button type="button" class="btn primary" disabled={!canMove} onclick={openReview}>
 				{m.organize_review_and_move()}
 			</button>
 		</aside>
@@ -204,15 +205,10 @@
 		padding-bottom: var(--space-8);
 	}
 
-	h1 {
-		margin: 0;
-		padding: var(--space-4) var(--space-4) 0;
-		font-size: var(--font-size-xl);
-	}
-
 	h2 {
 		margin: 0;
 		font-size: var(--font-size-md);
+		font-weight: 650;
 	}
 
 	.layout {
@@ -220,7 +216,7 @@
 		grid-template-columns: minmax(0, 1fr) 340px;
 		align-items: start;
 		gap: var(--space-6);
-		padding: var(--space-2) var(--space-4);
+		padding: var(--space-4) var(--page-gutter);
 	}
 
 	@media (max-width: 1100px) {
@@ -244,9 +240,14 @@
 		background: var(--color-surface);
 	}
 
+	.side h2:not(:first-child) {
+		margin-top: var(--space-2);
+	}
+
 	.hint {
 		margin: 0;
 		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
 	}
 
 	.count {
@@ -267,6 +268,7 @@
 
 	.years li {
 		padding: 2px var(--space-2);
+		border: 1px solid var(--color-border);
 		border-radius: 999px;
 		background: var(--color-surface-raised);
 		font-size: var(--font-size-sm);
@@ -286,23 +288,8 @@
 		width: 100%;
 		aspect-ratio: 1;
 		object-fit: cover;
-		border-radius: 4px;
-		background: var(--color-placeholder);
-	}
-
-	.field {
-		display: grid;
-		gap: var(--space-1);
-		font-size: var(--font-size-sm);
-		color: var(--color-text-muted);
-	}
-
-	select {
-		padding: var(--space-2);
-		border: 1px solid var(--color-border);
 		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-		color: var(--color-text);
+		background: var(--color-placeholder);
 	}
 
 	.check {
@@ -312,18 +299,7 @@
 		font-size: var(--font-size-sm);
 	}
 
-	.primary {
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--color-accent);
-		border-radius: var(--radius-sm);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.primary:disabled {
-		opacity: 0.5;
-		cursor: default;
+	.side .btn {
+		justify-self: start;
 	}
 </style>

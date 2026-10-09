@@ -102,12 +102,13 @@
 		<p class="warning" role="alert">{m.people_recognition_disabled()}</p>
 	{/if}
 	<div class="tools">
-		<button type="button" disabled={busy !== null} onclick={backfill}>
+		<button type="button" class="btn" disabled={busy !== null} onclick={backfill}>
 			{m.people_recognition_backfill()}
 		</button>
 		<div class="recluster">
 			<button
 				type="button"
+				class="btn"
 				disabled={busy !== null}
 				aria-describedby="recluster-hint"
 				onclick={recluster}
@@ -179,21 +180,7 @@
 		color: var(--color-text-muted);
 	}
 
-	.tools button {
+	.tools .btn {
 		justify-self: start;
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-raised);
-		cursor: pointer;
-	}
-
-	.tools button:hover {
-		background: var(--color-surface);
-	}
-
-	.tools button:disabled {
-		opacity: 0.5;
-		cursor: progress;
 	}
 </style>
