@@ -51,6 +51,7 @@ import com.photonne.app.resources.admin_settings_face_recognition
 import com.photonne.app.resources.admin_settings_image
 import com.photonne.app.resources.admin_settings_image_embedding
 import com.photonne.app.resources.admin_settings_metadata
+import com.photonne.app.resources.admin_settings_performance
 import com.photonne.app.resources.admin_settings_nightly
 import com.photonne.app.resources.admin_settings_notifications
 import com.photonne.app.resources.admin_settings_object_detection
@@ -202,6 +203,7 @@ internal enum class MoreSubscreen {
     AdminSettingsImageEmbedding,
     AdminSettingsImage,
     AdminSettingsMetadata,
+    AdminSettingsPerformance,
     AdminSettingsNightly,
     AdminSettingsNotifications,
     AdminSettingsServer,
@@ -225,6 +227,7 @@ internal fun isAdminSettingsSubpage(subscreen: MoreSubscreen?): Boolean = when (
     MoreSubscreen.AdminSettingsImageEmbedding,
     MoreSubscreen.AdminSettingsImage,
     MoreSubscreen.AdminSettingsMetadata,
+    MoreSubscreen.AdminSettingsPerformance,
     MoreSubscreen.AdminSettingsNightly,
     MoreSubscreen.AdminSettingsNotifications,
     MoreSubscreen.AdminSettingsServer,
@@ -268,6 +271,8 @@ private fun adminSettingsSubpageMeta(
         Res.string.admin_settings_image to Unit
     MoreSubscreen.AdminSettingsMetadata ->
         Res.string.admin_settings_metadata to Unit
+    MoreSubscreen.AdminSettingsPerformance ->
+        Res.string.admin_settings_performance to Unit
     MoreSubscreen.AdminSettingsNightly ->
         Res.string.admin_settings_nightly to Unit
     MoreSubscreen.AdminSettingsNotifications ->
@@ -330,6 +335,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AdminSettingsImageEmbedding,
     MoreSubscreen.AdminSettingsImage,
     MoreSubscreen.AdminSettingsMetadata,
+    MoreSubscreen.AdminSettingsPerformance,
     MoreSubscreen.AdminSettingsNightly,
     MoreSubscreen.AdminSettingsNotifications,
     MoreSubscreen.AdminSettingsServer,
@@ -1173,6 +1179,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.AdminSettingsImageEmbedding,
         MoreSubscreen.AdminSettingsImage,
         MoreSubscreen.AdminSettingsMetadata,
+        MoreSubscreen.AdminSettingsPerformance,
         MoreSubscreen.AdminSettingsNightly,
         MoreSubscreen.AdminSettingsNotifications,
         MoreSubscreen.AdminSettingsServer,

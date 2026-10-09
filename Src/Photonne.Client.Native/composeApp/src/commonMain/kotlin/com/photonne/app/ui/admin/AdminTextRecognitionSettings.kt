@@ -14,8 +14,6 @@ import com.photonne.app.resources.admin_face_settings_nightly_section
 import com.photonne.app.resources.admin_face_settings_parameters_section
 import com.photonne.app.resources.admin_face_settings_prefer_thumb_large
 import com.photonne.app.resources.admin_face_settings_prefer_thumb_large_description
-import com.photonne.app.resources.admin_face_settings_workers
-import com.photonne.app.resources.admin_face_settings_workers_section
 import com.photonne.app.resources.admin_text_settings_enabled
 import com.photonne.app.resources.admin_text_settings_enabled_description
 import com.photonne.app.resources.admin_text_settings_max_lines
@@ -40,7 +38,6 @@ class AdminTextRecognitionSettingsViewModel(
         MIN_SCORE_KEY,
         MAX_LINES_PER_ASSET_KEY,
         PREFER_THUMBNAIL_LARGE_KEY,
-        WORKERS_KEY,
         NIGHTLY_ENABLED_KEY,
         NIGHTLY_MODE_KEY,
     )
@@ -51,14 +48,13 @@ class AdminTextRecognitionSettingsViewModel(
         MIN_SCORE_KEY to "0.5",
         MAX_LINES_PER_ASSET_KEY to "200",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
-        WORKERS_KEY to "1",
         NIGHTLY_ENABLED_KEY to "false",
         NIGHTLY_MODE_KEY to "missing",
     )
 
     override fun normalize(key: String, value: String): String = when (key) {
         MIN_SCORE_KEY -> normalizeDecimal(value)
-        MAX_LINES_PER_ASSET_KEY, WORKERS_KEY -> value.filter { it.isDigit() }
+        MAX_LINES_PER_ASSET_KEY -> value.filter { it.isDigit() }
         else -> value
     }
 
@@ -68,7 +64,6 @@ class AdminTextRecognitionSettingsViewModel(
         const val MIN_SCORE_KEY = "TextRecognition.MinScore"
         const val MAX_LINES_PER_ASSET_KEY = "TextRecognition.MaxLinesPerAsset"
         const val PREFER_THUMBNAIL_LARGE_KEY = "TextRecognition.PreferThumbnailLarge"
-        const val WORKERS_KEY = "TaskSettings.TextRecognitionWorkers"
         const val NIGHTLY_ENABLED_KEY = "NightlyTaskSettings.TextRecognition.Enabled"
         const val NIGHTLY_MODE_KEY = "NightlyTaskSettings.TextRecognition.Mode"
     }
@@ -150,20 +145,6 @@ fun AdminTextRecognitionSettingsScreen(
         ) { v ->
             viewModel.setBool(AdminTextRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
-
-        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
-        SettingIntSlider(
-            label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminTextRecognitionSettingsViewModel.WORKERS_KEY)
-                .toIntOrNull() ?: 1,
-            range = 1..32,
-            onValueChange = {
-                viewModel.set(
-                    AdminTextRecognitionSettingsViewModel.WORKERS_KEY,
-                    it.toString(),
-                )
-            }
-        )
 
         SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(

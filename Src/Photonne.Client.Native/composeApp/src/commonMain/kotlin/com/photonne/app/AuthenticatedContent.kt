@@ -40,6 +40,7 @@ import com.photonne.app.resources.admin_settings_face_recognition
 import com.photonne.app.resources.admin_settings_image
 import com.photonne.app.resources.admin_settings_image_embedding
 import com.photonne.app.resources.admin_settings_metadata
+import com.photonne.app.resources.admin_settings_performance
 import com.photonne.app.resources.admin_settings_nightly
 import com.photonne.app.resources.admin_settings_notifications
 import com.photonne.app.resources.admin_settings_object_detection
@@ -1637,6 +1638,8 @@ private fun AccountAdminSubscreenOverlay(host: AuthenticatedContentHost) {
                                 MoreSubscreen.AdminSettingsImage
                             com.photonne.app.ui.admin.AdminSettingsEntry.Metadata ->
                                 MoreSubscreen.AdminSettingsMetadata
+                            com.photonne.app.ui.admin.AdminSettingsEntry.Performance ->
+                                MoreSubscreen.AdminSettingsPerformance
                             com.photonne.app.ui.admin.AdminSettingsEntry.NightlyTasks ->
                                 MoreSubscreen.AdminSettingsNightly
                             com.photonne.app.ui.admin.AdminSettingsEntry.Notifications ->
@@ -1731,6 +1734,16 @@ private fun AccountAdminSubscreenOverlay(host: AuthenticatedContentHost) {
                     onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                     viewModel = adminMetadataSettingsViewModel
                 )
+            MoreSubscreen.AdminSettingsPerformance -> {
+                val vm: com.photonne.app.ui.admin.AdminPerformanceSettingsViewModel =
+                    koinViewModel()
+                com.photonne.app.ui.admin.AdminPerformanceSettingsScreen(
+                    title = stringResource(Res.string.admin_settings_performance),
+                    onBack = { appState.moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                    onChromeVisibleChange = { appState.subscreenChromeVisible = it },
+                    viewModel = vm
+                )
+            }
             MoreSubscreen.AdminSettingsNightly ->
                 com.photonne.app.ui.admin.AdminNightlySettingsScreen(
                     title = stringResource(Res.string.admin_settings_nightly),

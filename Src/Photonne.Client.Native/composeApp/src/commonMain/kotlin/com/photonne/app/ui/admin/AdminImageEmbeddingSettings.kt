@@ -35,8 +35,6 @@ import com.photonne.app.resources.admin_face_settings_nightly_section
 import com.photonne.app.resources.admin_face_settings_parameters_section
 import com.photonne.app.resources.admin_face_settings_prefer_thumb_large
 import com.photonne.app.resources.admin_face_settings_prefer_thumb_large_description
-import com.photonne.app.resources.admin_face_settings_workers
-import com.photonne.app.resources.admin_face_settings_workers_section
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -60,7 +58,6 @@ class AdminImageEmbeddingSettingsViewModel(
         MODEL_VERSION_KEY,
         MAX_COSINE_DISTANCE_KEY,
         PREFER_THUMBNAIL_LARGE_KEY,
-        WORKERS_KEY,
         NIGHTLY_ENABLED_KEY,
         NIGHTLY_MODE_KEY,
     )
@@ -72,14 +69,12 @@ class AdminImageEmbeddingSettingsViewModel(
         // appsettings.json ships 0.85 and overrides the 0.7 of EmbeddingOptions.
         MAX_COSINE_DISTANCE_KEY to "0.85",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
-        WORKERS_KEY to "1",
         NIGHTLY_ENABLED_KEY to "false",
         NIGHTLY_MODE_KEY to "missing",
     )
 
     override fun normalize(key: String, value: String): String = when (key) {
         MAX_COSINE_DISTANCE_KEY -> normalizeDecimal(value)
-        WORKERS_KEY -> value.filter { it.isDigit() }
         else -> value
     }
 
@@ -89,7 +84,6 @@ class AdminImageEmbeddingSettingsViewModel(
         const val MODEL_VERSION_KEY = "Embedding.ModelVersion"
         const val MAX_COSINE_DISTANCE_KEY = "Embedding.MaxCosineDistance"
         const val PREFER_THUMBNAIL_LARGE_KEY = "Embedding.PreferThumbnailLarge"
-        const val WORKERS_KEY = "TaskSettings.ImageEmbeddingWorkers"
         const val NIGHTLY_ENABLED_KEY = "NightlyTaskSettings.ImageEmbedding.Enabled"
         const val NIGHTLY_MODE_KEY = "NightlyTaskSettings.ImageEmbedding.Mode"
     }
@@ -174,20 +168,6 @@ fun AdminImageEmbeddingSettingsScreen(
         ) { v ->
             viewModel.setBool(AdminImageEmbeddingSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
-
-        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
-        SettingIntSlider(
-            label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminImageEmbeddingSettingsViewModel.WORKERS_KEY)
-                .toIntOrNull() ?: 1,
-            range = 1..32,
-            onValueChange = {
-                viewModel.set(
-                    AdminImageEmbeddingSettingsViewModel.WORKERS_KEY,
-                    it.toString(),
-                )
-            }
-        )
 
         SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(

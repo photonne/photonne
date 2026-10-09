@@ -21,9 +21,7 @@ import com.photonne.app.resources.admin_settings_nightly_object
 import com.photonne.app.resources.admin_settings_nightly_scene
 import com.photonne.app.resources.admin_settings_nightly_schedule
 import com.photonne.app.resources.admin_settings_nightly_text
-import com.photonne.app.resources.admin_settings_nightly_batch_size_hint
 import com.photonne.app.resources.admin_settings_nightly_thumbnails
-import com.photonne.app.resources.admin_settings_task_backfill_batch
 import com.photonne.app.resources.admin_settings_nightly_timezone
 import com.photonne.app.resources.admin_settings_nightly_indexing_coverage
 import com.photonne.app.resources.admin_settings_nightly_trash_cleanup
@@ -55,7 +53,6 @@ class AdminNightlySettingsViewModel(
         "NightlyTaskSettings.FaceClustering.Enabled",
         "NightlyTaskSettings.TrashCleanup.Enabled",
         "NightlyTaskSettings.IndexingCoverage.Enabled",
-        BACKFILL_BATCH_SIZE_KEY,
     )
 
     override val defaults = buildMap {
@@ -72,16 +69,6 @@ class AdminNightlySettingsViewModel(
         put("NightlyTaskSettings.FaceClustering.Enabled", "true")
         put("NightlyTaskSettings.TrashCleanup.Enabled", "false")
         put("NightlyTaskSettings.IndexingCoverage.Enabled", "false")
-        put(BACKFILL_BATCH_SIZE_KEY, "500")
-    }
-
-    override val intRanges = mapOf(BACKFILL_BATCH_SIZE_KEY to BATCH_SIZE_RANGE)
-
-    companion object {
-        const val BACKFILL_BATCH_SIZE_KEY = "TaskSettings.BackfillBatchSize"
-
-        /** MlBackfillEndpoints clamps the batch to this. */
-        val BATCH_SIZE_RANGE = 1..5000
     }
 }
 
@@ -133,17 +120,6 @@ fun AdminNightlySettingsScreen(
         FeatureRow(state, viewModel, "TextRecognition", stringResource(Res.string.admin_settings_nightly_text), modeOptions)
         FeatureRow(state, viewModel, "ImageEmbedding", stringResource(Res.string.admin_settings_nightly_embedding), modeOptions)
 
-        HorizontalDivider()
-        // Dragged in hundreds; a batch set by hand below that still shows as
-        // it is, and the − / + buttons walk from wherever it stands.
-        SettingIntSlider(
-            label = stringResource(Res.string.admin_settings_task_backfill_batch),
-            value = state.int(AdminNightlySettingsViewModel.BACKFILL_BATCH_SIZE_KEY, 500),
-            range = 100..5000,
-            step = 100,
-            description = stringResource(Res.string.admin_settings_nightly_batch_size_hint),
-            onValueChange = { viewModel.set(AdminNightlySettingsViewModel.BACKFILL_BATCH_SIZE_KEY, it.toString()) }
-        )
 
         HorizontalDivider()
         SettingSwitch(

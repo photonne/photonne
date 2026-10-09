@@ -70,6 +70,7 @@ import com.photonne.app.ui.admin.AdminTextRecognitionSettingsViewModel
 import com.photonne.app.ui.admin.AdminImageSettingsViewModel
 import com.photonne.app.ui.admin.AdminLibrariesViewModel
 import com.photonne.app.ui.admin.AdminMetadataSettingsViewModel
+import com.photonne.app.ui.admin.AdminPerformanceSettingsViewModel
 import com.photonne.app.ui.admin.AdminNightlySettingsViewModel
 import com.photonne.app.ui.admin.AdminNotificationSettingsViewModel
 import com.photonne.app.ui.admin.AdminServerSettingsViewModel
@@ -272,6 +273,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminLibrariesViewModel)
     viewModelOf(::AdminImageSettingsViewModel)
     viewModelOf(::AdminMetadataSettingsViewModel)
+    viewModelOf(::AdminPerformanceSettingsViewModel)
     viewModelOf(::AdminNightlySettingsViewModel)
     viewModelOf(::AdminNotificationSettingsViewModel)
     viewModelOf(::AdminServerSettingsViewModel)

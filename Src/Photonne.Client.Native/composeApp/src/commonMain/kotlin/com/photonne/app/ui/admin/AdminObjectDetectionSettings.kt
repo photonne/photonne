@@ -14,8 +14,6 @@ import com.photonne.app.resources.admin_face_settings_nightly_section
 import com.photonne.app.resources.admin_face_settings_parameters_section
 import com.photonne.app.resources.admin_face_settings_prefer_thumb_large
 import com.photonne.app.resources.admin_face_settings_prefer_thumb_large_description
-import com.photonne.app.resources.admin_face_settings_workers
-import com.photonne.app.resources.admin_face_settings_workers_section
 import com.photonne.app.resources.admin_object_settings_enabled
 import com.photonne.app.resources.admin_object_settings_enabled_description
 import com.photonne.app.resources.admin_object_settings_max_objects
@@ -45,7 +43,6 @@ class AdminObjectDetectionSettingsViewModel(
         MIN_NORMALIZED_SIZE_KEY,
         MAX_OBJECTS_PER_ASSET_KEY,
         PREFER_THUMBNAIL_LARGE_KEY,
-        WORKERS_KEY,
         NIGHTLY_ENABLED_KEY,
         NIGHTLY_MODE_KEY,
     )
@@ -57,7 +54,6 @@ class AdminObjectDetectionSettingsViewModel(
         MIN_NORMALIZED_SIZE_KEY to "0.02",
         MAX_OBJECTS_PER_ASSET_KEY to "50",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
-        WORKERS_KEY to "1",
         NIGHTLY_ENABLED_KEY to "false",
         NIGHTLY_MODE_KEY to "missing",
     )
@@ -66,8 +62,7 @@ class AdminObjectDetectionSettingsViewModel(
         MIN_SCORE_KEY,
         MIN_NORMALIZED_SIZE_KEY -> normalizeDecimal(value)
 
-        MAX_OBJECTS_PER_ASSET_KEY,
-        WORKERS_KEY -> value.filter { it.isDigit() }
+        MAX_OBJECTS_PER_ASSET_KEY -> value.filter { it.isDigit() }
 
         else -> value
     }
@@ -79,7 +74,6 @@ class AdminObjectDetectionSettingsViewModel(
         const val MIN_NORMALIZED_SIZE_KEY = "ObjectDetection.MinNormalizedSize"
         const val MAX_OBJECTS_PER_ASSET_KEY = "ObjectDetection.MaxObjectsPerAsset"
         const val PREFER_THUMBNAIL_LARGE_KEY = "ObjectDetection.PreferThumbnailLarge"
-        const val WORKERS_KEY = "TaskSettings.ObjectDetectionWorkers"
         const val NIGHTLY_ENABLED_KEY = "NightlyTaskSettings.ObjectDetection.Enabled"
         const val NIGHTLY_MODE_KEY = "NightlyTaskSettings.ObjectDetection.Mode"
     }
@@ -178,20 +172,6 @@ fun AdminObjectDetectionSettingsScreen(
         ) { v ->
             viewModel.setBool(AdminObjectDetectionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
-
-        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
-        SettingIntSlider(
-            label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminObjectDetectionSettingsViewModel.WORKERS_KEY)
-                .toIntOrNull() ?: 1,
-            range = 1..32,
-            onValueChange = {
-                viewModel.set(
-                    AdminObjectDetectionSettingsViewModel.WORKERS_KEY,
-                    it.toString(),
-                )
-            }
-        )
 
         SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(

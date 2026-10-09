@@ -471,7 +471,7 @@
     <string name="search_scenes_count">Escenas (%1$d)</string>
     <string name="search_people_count">Personas (%1$d)</string>
 
-    <string name="archive_title">Archivados</string>
+    <string name="archive_title">Archivo</string>
     <string name="archived_empty_title">Sin elementos archivados</string>
     <string name="archived_empty_subtitle">Archiva una foto para que aparezca aquí sin desaparecer de tu biblioteca.</string>
     <string name="archive_action_unarchive">Desarchivar</string>
@@ -781,7 +781,7 @@
     <string name="administration_hint">Gestiona usuarios, consulta estadísticas y administra la papelera del servidor.</string>
     <string name="admin_section_users">Usuarios</string>
     <string name="admin_section_users_subtitle">Crear, editar y eliminar cuentas</string>
-    <string name="admin_section_stats">Estadísticas</string>
+    <string name="admin_section_stats">Panel</string>
     <string name="admin_section_stats_subtitle">Uso global y por usuario</string>
 
     <string name="admin_users_empty">No hay usuarios todavía.</string>
@@ -822,7 +822,7 @@
     <string name="admin_stats_coverage_unsupported">No soportados</string>
     <string name="admin_stats_coverage_unindexed">Sin indexar</string>
     <string name="admin_stats_coverage_verified_at">Verificado: %1$s</string>
-    <string name="admin_stats_coverage_never">Aún sin verificar. Lanza «Cobertura de indexación» en Sistema › Ejecutar tareas.</string>
+    <string name="admin_stats_coverage_never">Aún sin verificar. Lanza «Cobertura de indexación» en Sistema › Mantenimiento.</string>
     <plurals name="admin_stats_coverage_offline">
         <item quantity="one">%1$d biblioteca externa no disponible quedó sin verificar</item>
         <item quantity="other">%1$d bibliotecas externas no disponibles quedaron sin verificar</item>
@@ -889,7 +889,7 @@
     <string name="admin_settings_task_backfill_batch">Tamaño del lote de reprocesado</string>
     <string name="admin_settings_nightly_batch_size_hint">Cuántas fotos se encolan por tanda al lanzar un análisis a mano desde Sistema.</string>
 
-    <string name="admin_system_run_tasks">Ejecutar tareas</string>
+    <string name="admin_system_run_tasks">Mantenimiento</string>
     <string name="admin_system_run_tasks_subtitle">Indexar, analizar, reparar y limpiar</string>
     <string name="admin_run_tasks_pending_format">%1$d sin procesar · %2$d en cola</string>
     <string name="admin_run_tasks_section_new_photos">Fotos nuevas</string>
@@ -981,8 +981,6 @@
     <string name="admin_face_settings_knn_neighbors_hint">Top-k consultado por cara en el camino kNN.</string>
     <string name="admin_face_settings_prefer_thumb_large">Preferir miniatura grande</string>
     <string name="admin_face_settings_prefer_thumb_large_description">Usa la miniatura Large (1280 px) en vez del original. Reduce I/O. ArcFace recorta a 112x112 igualmente.</string>
-    <string name="admin_face_settings_workers_section">Rendimiento</string>
-    <string name="admin_face_settings_workers">Procesos en paralelo</string>
     <string name="admin_face_settings_nightly_section">Programación nocturna</string>
     <string name="admin_face_settings_nightly_state_enabled">Activado en la tarea nocturna</string>
     <string name="admin_face_settings_nightly_state_disabled">Desactivado en la tarea nocturna</string>
@@ -1050,6 +1048,14 @@
 
     <string name="admin_settings_metadata">Configuración de metadatos</string>
     <string name="admin_settings_metadata_subtitle">Qué campos EXIF/IPTC/XMP se extraen</string>
+    <string name="admin_settings_group_general">General</string>
+    <string name="admin_settings_group_processing">Procesado</string>
+    <string name="admin_settings_group_ai">Inteligencia artificial</string>
+    <string name="admin_settings_performance">Rendimiento</string>
+    <string name="admin_settings_performance_subtitle">Cuántas fotos se procesan a la vez en cada tipo de tarea</string>
+    <string name="admin_settings_performance_io">Indexado y miniaturas</string>
+    <string name="admin_settings_performance_ml">Modelos de IA</string>
+    <string name="admin_settings_performance_backfill">Reprocesado</string>
     <string name="admin_settings_metadata_datetime">Fecha y hora</string>
     <string name="admin_settings_metadata_gps">GPS</string>
     <string name="admin_settings_metadata_camera">Cámara y exposición</string>
@@ -1107,7 +1113,7 @@
     <string name="admin_settings_device_probe_unreachable">La URL local no responde desde esta red.</string>
     <string name="admin_settings_device_saved">Conexión guardada.</string>
 
-    <string name="admin_settings_trash">Configuración de papelera</string>
+    <string name="admin_settings_trash">Papelera</string>
     <string name="admin_settings_trash_subtitle">Retención, cuota y estado actual</string>
     <string name="admin_settings_trash_section_config">Configuración</string>
     <string name="admin_settings_trash_section_stats">Estado actual</string>
@@ -1127,7 +1133,7 @@
     <string name="admin_shared_trash_purge_confirm_message">Los elementos seleccionados se eliminarán de forma permanente. Esta acción no se puede deshacer.</string>
     <string name="admin_shared_trash_load_more">Cargar más</string>
 
-    <string name="admin_settings_user_defaults">Ajustes de usuario</string>
+    <string name="admin_settings_user_defaults">Usuarios nuevos</string>
     <string name="admin_settings_user_defaults_subtitle">Valores por defecto al crear cuentas</string>
     <string name="admin_settings_user_defaults_active">Cuenta activa por defecto</string>
     <string name="admin_settings_user_defaults_role">Rol por defecto</string>
@@ -1568,7 +1574,7 @@
     <string name="organize_suggestions_title">Lotes propuestos</string>
     <string name="organize_suggestions_see_all">Ver todas las fotos</string>
     <string name="organize_suggestions_back">Volver a los lotes</string>
-    <string name="organize_inbox_title">Para organizar</string>
+    <string name="organize_inbox_title">Organizar</string>
     <string name="organize_rule_title">Mover por condiciones</string>
     <string name="organize_inbox_card_subtitle">Fotos en MobileBackup sin organizar</string>
     <string name="organize_inbox_count_format">%1$d sin organizar</string>
@@ -1579,13 +1585,13 @@
     <string name="organize_excluded_title">Apartadas</string>
     <string name="organize_excluded_header">No cuentan como pendientes. Selecciona las que quieras devolver a la bandeja.</string>
     <string name="organize_excluded_empty_title">Nada apartado</string>
-    <string name="organize_excluded_empty_subtitle">Lo que apartes de "Para organizar" aparecerá aquí.</string>
+    <string name="organize_excluded_empty_subtitle">Lo que apartes de "Organizar" aparecerá aquí.</string>
     <string name="organize_excluded_action_include">Devolver a la bandeja</string>
     <plurals name="organize_excluded_included_done">
         <item quantity="one">1 foto devuelta a la bandeja</item>
         <item quantity="other">%1$d fotos devueltas a la bandeja</item>
     </plurals>
-    <string name="organize_rule_intro">Mueve de golpe todo lo que sigue en "Para organizar" y cumpla estas condiciones.</string>
+    <string name="organize_rule_intro">Mueve de golpe todo lo que sigue en "Organizar" y cumpla estas condiciones.</string>
     <string name="organize_rule_year_split_label">Se repartirán en:</string>
     <string name="organize_move_destination_label">Mover a</string>
     <string name="organize_move_destination_placeholder">Elige una carpeta destino</string>
@@ -1657,8 +1663,8 @@
     <string name="admin_libraries_permissions_add">Dar acceso a</string>
     <string name="admin_enrichment_failures_error_load">No se pudo cargar el registro de problemas</string>
     <string name="admin_enrichment_failures_error_retry_all">No se pudieron reintentar las tareas</string>
-    <string name="admin_enrichment_failures_retry_all_done">%1$d tarea(s) enviadas a la cola. El progreso se ve en Ejecutar tareas.</string>
-    <string name="admin_enrichment_failures_retry_done">Enviada a la cola. El progreso se ve en Ejecutar tareas.</string>
+    <string name="admin_enrichment_failures_retry_all_done">%1$d tarea(s) enviadas a la cola. El progreso se ve en Mantenimiento.</string>
+    <string name="admin_enrichment_failures_retry_done">Enviada a la cola. El progreso se ve en Mantenimiento.</string>
     <string name="admin_enrichment_failures_retry_all_confirm">Se volverán a encolar las %1$d tareas del filtro actual. Las que fallan por el propio archivo volverán a fallar igual.</string>
     <string name="admin_user_not_found">No se encontró el usuario</string>
     <string name="admin_libraries_not_found">No se encontró la biblioteca</string>
