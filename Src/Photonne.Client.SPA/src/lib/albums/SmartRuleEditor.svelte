@@ -16,7 +16,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import MenuButton from './MenuButton.svelte';
+	import PopupMenu from '#lib/components/ui/PopupMenu.svelte';
 	import MultiPicker, { type PickerOption } from './MultiPicker.svelte';
 	import {
 		buildRule,
@@ -156,10 +156,11 @@
 				<option value="OR">{m.albums_rule_any()}</option>
 			</select>
 		</label>
-		<MenuButton
+		<PopupMenu
 			label={m.albums_rule_add()}
+			text={m.albums_rule_add()}
 			icon="add"
-			showLabel
+			align="start"
 			items={conditionTypes.map((type) => ({ label: typeLabels[type](), run: () => add(type) }))}
 		/>
 	</div>

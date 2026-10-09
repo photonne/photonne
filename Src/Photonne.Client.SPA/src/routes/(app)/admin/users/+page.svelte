@@ -30,7 +30,7 @@
 		type UserSortKey
 	} from '#lib/admin/users.js';
 	import { session } from '#lib/auth/session.svelte.js';
-	import RowMenu, { type RowMenuItem } from '#lib/admin/RowMenu.svelte';
+	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
@@ -163,14 +163,18 @@
 	}
 
 	/** The row's secondary actions, in the "⋮" menu: only what applies to this user. */
-	function menuItems(user: AdminUser): RowMenuItem[] {
-		const items: RowMenuItem[] = [
-			{ label: m.admin_users_reset(), iconPath: adminIcons.key, run: () => (resetting = user) }
+	function menuItems(user: AdminUser): MenuEntry[] {
+		const items: MenuEntry[] = [
+			{
+				label: m.admin_users_reset(),
+				icon: { path: adminIcons.key },
+				run: () => (resetting = user)
+			}
 		];
 		if (canChangeRoleOrStatus(user, me)) {
 			items.push({
 				label: user.isActive ? m.admin_users_deactivate() : m.admin_users_activate(),
-				iconPath: user.isActive ? adminIcons.personOff : adminIcons.personCheck,
+				icon: { path: user.isActive ? adminIcons.personOff : adminIcons.personCheck },
 				run: () => setActive(user, !user.isActive)
 			});
 		}
@@ -182,6 +186,8 @@
 			});
 		}
 		if (canDelete(user, me)) {
+			// Destructive, after a rule.
+			items.push({ kind: 'separator', id: 'danger' });
 			items.push({
 				label: m.admin_core_delete(),
 				icon: 'delete',
@@ -365,9 +371,10 @@
 										<Icon name="edit" size={18} />
 										{m.admin_core_edit()}
 									</button>
-									<RowMenu
+									<PopupMenu
 										label={m.admin_users_more({ name: user.username })}
 										items={menuItems(user)}
+										triggerClass="icon-btn sm"
 									/>
 								</div>
 							</td>

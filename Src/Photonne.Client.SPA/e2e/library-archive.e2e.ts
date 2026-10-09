@@ -57,8 +57,13 @@ test('unarchives from the viewer and moves on to the next photo', async ({ page 
 
 	const viewer = page.getByRole('dialog');
 	await expect(viewer).toBeVisible();
-	// The archive viewer doesn't offer archiving again.
-	await expect(viewer.getByRole('button', { name: 'Archivar', exact: true })).toHaveCount(0);
+	// The archive viewer doesn't offer archiving again (its actions are in the ⋮ menu).
+	await viewer.getByRole('button', { name: 'Más acciones' }).click();
+	const menu = page.getByRole('menu');
+	await expect(menu.getByRole('menuitem').first()).toBeVisible();
+	await expect(menu.getByRole('menuitem', { name: /^Archivar/ })).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	await expect(menu).toBeHidden();
 
 	await viewer.getByRole('button', { name: 'Desarchivar' }).click();
 

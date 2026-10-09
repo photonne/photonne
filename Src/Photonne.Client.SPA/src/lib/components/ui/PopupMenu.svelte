@@ -35,7 +35,7 @@
 		/** The menu's name, and the trigger's when it has no visible text. */
 		label: string;
 		items: readonly MenuEntry[];
-		/** The trigger's icon ("⋮" by default); none when `text` is given. */
+		/** The trigger's icon: "⋮" by default; with `text`, drawn before it when given. */
 		icon?: Glyph | null;
 		/** Visible text on the trigger (then `label` should contain it). */
 		text?: string;
@@ -50,7 +50,7 @@
 	let {
 		label,
 		items,
-		icon = 'moreVert',
+		icon,
 		text,
 		triggerClass,
 		title,
@@ -62,6 +62,25 @@
 	let open = $state(false);
 	let trigger = $state<HTMLButtonElement>();
 	let menu = $state<HTMLDivElement>();
+	/** Where the menu opens, fixed to the window so no scroll box clips it. */
+	let place = $state<{ top: number; left: number; up: boolean }>({ top: 0, left: 0, up: false });
+
+	const GAP = 4;
+	const MARGIN = 8;
+
+	function position() {
+		if (!trigger || !menu) return;
+		const anchor = trigger.getBoundingClientRect();
+		const { width, height } = menu.getBoundingClientRect();
+		const below = window.innerHeight - anchor.bottom - GAP - MARGIN;
+		const up = below < height && anchor.top - GAP - MARGIN > below;
+		const preferred = align === 'start' ? anchor.left : anchor.right - width;
+		place = {
+			top: up ? anchor.top - GAP - height : anchor.bottom + GAP,
+			left: Math.max(MARGIN, Math.min(preferred, window.innerWidth - width - MARGIN)),
+			up
+		};
+	}
 
 	const entries = () => [
 		...(menu?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"])') ?? [])
@@ -70,6 +89,7 @@
 	async function show(focus: 'first' | 'last' | 'checked' = 'first') {
 		open = true;
 		await tick();
+		position();
 		const all = entries();
 		const checked = all.find((entry) => entry.getAttribute('aria-checked') === 'true');
 		(focus === 'checked' && checked ? checked : focus === 'last' ? all.at(-1) : all[0])?.focus();
@@ -128,7 +148,12 @@
 	const roles = { action: 'menuitem', check: 'menuitemcheckbox', radio: 'menuitemradio' };
 </script>
 
-<svelte:window onpointerdown={onWindowPointer} />
+<!-- A fixed menu would drift from its button: scrolling or resizing closes it. -->
+<svelte:window
+	onpointerdown={onWindowPointer}
+	onresize={() => open && hide(false)}
+	onscrollcapture={(event) => open && !menu?.contains(event.target as Node) && hide(false)}
+/>
 
 {#snippet glyph(value: Glyph | undefined | null, size: number)}
 	{#if typeof value === 'string'}<Icon name={value} {size} />{:else if value}<Icon
@@ -149,7 +174,7 @@
 	{#if entry.shortcut}<kbd aria-hidden="true">{entry.shortcut}</kbd>{/if}
 {/snippet}
 
-<div class="popup" class:start={align === 'start'}>
+<div class="popup">
 	<button
 		bind:this={trigger}
 		type="button"
@@ -165,12 +190,13 @@
 		onkeydown={onTriggerKey}
 	>
 		{#if text}
+			{#if icon}{@render glyph(icon, 18)}{/if}
 			<span>{text}</span>
 			<svg class="caret" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
 				><path d="M7 10l5 5 5-5z" fill="currentColor" /></svg
 			>
 		{:else}
-			{@render glyph(icon, 20)}
+			{@render glyph(icon ?? 'moreVert', 20)}
 		{/if}
 	</button>
 	{#if open}
@@ -178,6 +204,9 @@
 			bind:this={menu}
 			id="{id}-menu"
 			class="menu"
+			class:up={place.up}
+			style:top="{place.top}px"
+			style:left="{place.left}px"
 			role="menu"
 			aria-label={label}
 			tabindex="-1"
@@ -234,10 +263,8 @@
 	}
 
 	.menu {
-		position: absolute;
-		top: calc(100% + var(--space-1));
-		right: 0;
-		z-index: 30;
+		position: fixed;
+		z-index: 60;
 		display: grid;
 		min-width: 220px;
 		padding: var(--space-1);
@@ -249,15 +276,21 @@
 		animation: pop var(--duration-fast) ease-out;
 	}
 
-	.start .menu {
-		right: auto;
-		left: 0;
+	.menu.up {
+		animation-name: pop-up;
 	}
 
 	@keyframes pop {
 		from {
 			opacity: 0;
 			transform: translateY(-4px);
+		}
+	}
+
+	@keyframes pop-up {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
 		}
 	}
 
