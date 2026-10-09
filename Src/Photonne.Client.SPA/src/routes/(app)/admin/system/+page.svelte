@@ -13,6 +13,7 @@
 	import { count, localDate, localDateTime, relativeTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -41,14 +42,14 @@
 		<section class="card" aria-labelledby="version-title">
 			<h2 id="version-title">{m.admin_sys_version_title()}</h2>
 			{#if versionQuery.isPending}
-				<p class="muted" role="status">{m.session_restoring()}</p>
+				<Skeleton variant="text" count={3} />
 			{:else if !version}
 				<p class="notice danger" role="alert">{m.error_loading()}</p>
 			{:else}
 				<p class="current">
 					<strong>v{version.currentVersion}</strong>
 					{#if version.hasUpdate}
-						<span class="badge warning">{m.admin_dash_update()}</span>
+						<span class="chip tag warning">{m.admin_dash_update()}</span>
 					{/if}
 				</p>
 				{#if version.hasUpdate}
@@ -190,7 +191,7 @@
 								href={attribution.licenseUrl}
 								target="_blank"
 								rel="noreferrer noopener"
-								class="badge">{attribution.license}</a
+								class="chip tag">{attribution.license}</a
 							>
 							{#if attribution.datasetDate}
 								<span class="muted small"
@@ -312,11 +313,11 @@
 		gap: var(--space-2);
 	}
 
-	a:not(.btn):not(.badge) {
+	a:not(.btn):not(.chip) {
 		color: var(--color-accent);
 	}
 
-	a.badge {
+	a.chip {
 		text-decoration: none;
 	}
 

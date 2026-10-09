@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { session } from '#lib/auth/session.svelte.js';
+	import Tabs from '#lib/components/ui/Tabs.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { LayoutProps } from './$types';
@@ -23,17 +24,19 @@
 		const href = appHref(path);
 		return path === '/admin' ? page.url.pathname === href : page.url.pathname.startsWith(href);
 	}
+
+	const tabs = $derived(
+		sections.map((section) => ({
+			href: appHref(section.path),
+			label: section.label(),
+			current: isCurrent(section.path)
+		}))
+	);
 </script>
 
 {#if session.isAdmin}
 	<div class="admin">
-		<nav aria-label={m.admin_nav()}>
-			{#each sections as section (section.path)}
-				<a href={appHref(section.path)} aria-current={isCurrent(section.path) ? 'page' : undefined}
-					>{section.label()}</a
-				>
-			{/each}
-		</nav>
+		<div class="nav"><Tabs {tabs} label={m.admin_nav()} /></div>
 		<div class="body">{@render children()}</div>
 	</div>
 {:else}
@@ -42,44 +45,19 @@
 
 <style>
 	.admin {
-		/* Pages under it pin their own sticky bars right below the tabs. */
-		--admin-nav-height: 57px;
+		/* Pages under it pin their own sticky bars right below the tabs: the
+		   tabs' 44 px row plus their 1 px rule (Tabs.svelte). */
+		--admin-nav-height: 45px;
 		display: flex;
 		flex-direction: column;
 		min-height: 100%;
 	}
 
-	nav {
+	.nav {
 		position: sticky;
 		top: 0;
-		z-index: 2;
-		box-sizing: border-box;
+		z-index: 3;
 		height: var(--admin-nav-height);
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		overflow-x: auto;
-		padding: var(--space-2) var(--space-4);
-		background: var(--color-bg);
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	nav a {
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-sm);
-		color: inherit;
-		text-decoration: none;
-		white-space: nowrap;
-	}
-
-	nav a:hover {
-		background: var(--color-surface);
-	}
-
-	nav a[aria-current='page'] {
-		background: var(--color-surface);
-		color: var(--color-accent);
-		font-weight: 600;
 	}
 
 	.body {
@@ -87,7 +65,7 @@
 	}
 
 	.denied {
-		padding: var(--space-6);
+		padding: var(--space-6) var(--page-gutter);
 		color: var(--color-text-muted);
 	}
 </style>

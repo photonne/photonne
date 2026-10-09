@@ -11,6 +11,7 @@
 		getReverseGeocodePendingCountOptions,
 		getReverseGeocodePendingCountQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import '#lib/adminops/adminops.css';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import JobRow from '#lib/adminops/JobRow.svelte';
@@ -159,23 +160,17 @@
 	const clustering = $derived(latest.get('FaceClustering'));
 </script>
 
-<svelte:head>
-	<title>{m.admin_maintenance()} · {m.app_name()}</title>
-</svelte:head>
-
-<div class="ops-page">
-	<header class="ops-head">
-		<div>
-			<h1>{m.ops_mt_title()}</h1>
-			<p>{m.ops_mt_intro()}</p>
-		</div>
-		<div class="ops-actions">
-			<a class="ops-btn" href={appHref('/admin/tasks')}>
-				<Icon path={icons.queue} size={18} />
-				{m.ops_mt_open_tasks()}
-			</a>
-		</div>
-	</header>
+<AdminPage
+	title={m.ops_mt_title()}
+	description={m.ops_mt_intro()}
+	documentTitle={m.admin_maintenance()}
+>
+	{#snippet actions()}
+		<a class="btn" href={appHref('/admin/tasks')}>
+			<Icon path={icons.queue} size={18} />
+			{m.ops_mt_open_tasks()}
+		</a>
+	{/snippet}
 
 	{#each sectionIds as section (section)}
 		{@const open = !collapsed.includes(section)}
@@ -196,7 +191,7 @@
 				</h2>
 				<p>{sectionTitles[section].hint()}</p>
 				{#if !open && active > 0}
-					<span class="ops-badge info">{m.ops_tasks_running_count({ count: active })}</span>
+					<span class="chip tag accent">{m.ops_tasks_running_count({ count: active })}</span>
 				{/if}
 			</header>
 			{#if open}
@@ -211,10 +206,10 @@
 									{#if task.id === 'faces'}
 										<div class="extra">
 											<div class="extra-head">
-												<span class="ops-small">{m.ops_mt_clustering_hint()}</span>
+												<span class="small">{m.ops_mt_clustering_hint()}</span>
 												<button
 													type="button"
-													class="ops-btn sm"
+													class="btn sm"
 													disabled={starting.includes('clustering') ||
 														(clustering !== undefined && isRunning(clustering))}
 													onclick={() => run('clustering', faceClustering)}
@@ -225,7 +220,7 @@
 												{#if clustering && isRunning(clustering)}
 													<button
 														type="button"
-														class="ops-btn danger sm"
+														class="btn sm"
 														disabled={stopping.includes(clustering.id)}
 														onclick={() => stop(clustering.id)}
 													>
@@ -261,12 +256,12 @@
 								{#snippet extra()}
 									{#if task.id === 'geocode' && geocode.data}
 										{#if !geocode.data.datasetAvailable}
-											<p class="ops-alert warn">
+											<p class="notice warning">
 												<Icon path={icons.warning} size={18} />
 												{m.ops_mt_geocode_no_dataset()}
 											</p>
 										{:else}
-											<p class="ops-small ops-muted">
+											<p class="small muted">
 												{m.ops_mt_geocode_pending({
 													count: geocode.data.pending,
 													cities: count(geocode.data.cities)
@@ -276,9 +271,9 @@
 									{:else if task.id === 'coverage' && coverage.data?.hasResult}
 										{@const result = coverage.data}
 										<div class="coverage">
-											<p class="ops-small">
+											<p class="small">
 												{#if result.verifiedAtUtc}
-													<span class="ops-muted" title={localDateTime(result.verifiedAtUtc)}
+													<span class="muted" title={localDateTime(result.verifiedAtUtc)}
 														>{m.ops_mt_coverage_verified({
 															time: timeAgo(result.verifiedAtUtc, clock.now)
 														})}</span
@@ -290,28 +285,28 @@
 													unsupported: count(result.unsupported)
 												})}
 												{#if result.unindexed > 0}
-													<span class="ops-badge warn"
+													<span class="chip tag warning"
 														>{m.ops_mt_coverage_unindexed({ count: result.unindexed })}</span
 													>
 												{:else}
-													<span class="ops-badge ok">{m.ops_mt_coverage_ok()}</span>
+													<span class="chip tag success">{m.ops_mt_coverage_ok()}</span>
 												{/if}
 											</p>
 											{#if result.offlineLibraries > 0}
-												<p class="ops-small ops-muted">
+												<p class="small muted">
 													{m.ops_mt_coverage_offline({ count: result.offlineLibraries })}
 												</p>
 											{/if}
 											{#if result.unindexedPaths.length}
 												<details>
-													<summary class="ops-small">{m.ops_mt_coverage_paths()}</summary>
+													<summary class="small">{m.ops_mt_coverage_paths()}</summary>
 													<ul class="paths">
 														{#each result.unindexedPaths as path (path)}
 															<li><code>{path}</code></li>
 														{/each}
 													</ul>
 													{#if result.unindexedTruncated}
-														<p class="ops-small ops-muted">{m.ops_mt_coverage_truncated()}</p>
+														<p class="small muted">{m.ops_mt_coverage_truncated()}</p>
 													{/if}
 												</details>
 											{/if}
@@ -325,7 +320,7 @@
 			{/if}
 		</section>
 	{/each}
-</div>
+</AdminPage>
 
 <ConfirmDialog
 	open={confirming !== null}
@@ -400,7 +395,7 @@
 		color: var(--color-text-muted);
 	}
 
-	.rows :global(p.ops-small) {
+	.rows :global(p.small) {
 		margin: 0;
 	}
 

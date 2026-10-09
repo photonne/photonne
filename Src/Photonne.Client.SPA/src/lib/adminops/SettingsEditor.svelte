@@ -4,6 +4,8 @@
 	import { getDemoInfoOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -80,106 +82,118 @@
 <svelte:window {onkeydown} />
 
 <div class="editor">
-	<header class="ops-head">
-		<div>
-			<h1>{section.title()}</h1>
-			<p>{section.description()}</p>
-		</div>
-		{#if section.maintenanceHint}
-			<div class="ops-actions">
-				<a class="ops-btn" href={appHref('/admin/maintenance')}>
+	<PageHeader title={section.title()} subtitle={section.description()}>
+		{#snippet actions()}
+			{#if section.maintenanceHint}
+				<a class="btn" href={appHref('/admin/maintenance')}>
 					<Icon name="build" size={18} />
 					{m.ops_set_open_maintenance()}
 				</a>
+			{/if}
+		{/snippet}
+	</PageHeader>
+
+	<div class="body">
+		{#if readOnly}
+			<p class="notice warning"><Icon name="lock" size={18} />{m.ops_set_demo()}</p>
+		{/if}
+
+		{#if form.status === 'loading'}
+			<div class="loading"><Skeleton variant="rows" count={4} /></div>
+		{:else if form.status === 'error'}
+			<p class="notice danger" role="alert">
+				<Icon path={icons.warning} size={18} />
+				{m.ops_set_load_failed()}
+				<button type="button" class="btn sm" onclick={() => form.load()}>{m.ops_retry()}</button>
+			</p>
+		{:else}
+			<div
+				class="layout"
+				class:with-panel={section.panel !== undefined && section.panel !== 'embedding'}
+			>
+				<form id="settings-form" class="groups" onsubmit={save} novalidate>
+					{#each section.groups as group, index (index)}
+						{@const fields = group.fields.filter((field) => isVisible(field, form.values))}
+						<section
+							class="ops-card group"
+							aria-labelledby={group.title ? `group-${index}` : undefined}
+						>
+							{#if group.title}
+								<header>
+									<h2 id="group-{index}">{group.title()}</h2>
+									{#if group.description}<p>{group.description()}</p>{/if}
+								</header>
+							{/if}
+							<div class="fields">
+								{#each fields as field (field.key)}
+									<SettingField
+										{field}
+										value={form.values[field.key] ?? ''}
+										error={form.errors[field.key]}
+										changed={changed(field.key)}
+										disabled={readOnly || form.saving}
+										onchange={(value) => form.set(field.key, value)}
+									/>
+									{#if field.key === 'Embedding.ModelVersion' && modelChanged}
+										<p class="notice warning">
+											<Icon path={icons.warning} size={18} />{m.ops_set_embedding_model_warning()}
+										</p>
+									{/if}
+								{/each}
+							</div>
+						</section>
+					{/each}
+				</form>
+
+				{#if section.panel === 'trash'}
+					<aside><TrashPanel {readOnly} /></aside>
+				{:else if section.panel === 'notifications'}
+					<aside><NotificationsPanel {readOnly} /></aside>
+				{:else if section.panel === 'nightly'}
+					<aside><NightlyPanel {readOnly} /></aside>
+				{:else if section.panel === 'performance'}
+					<aside><PerformancePanel /></aside>
+				{/if}
 			</div>
 		{/if}
-	</header>
+	</div>
 
-	{#if readOnly}
-		<p class="ops-alert warn"><Icon name="lock" size={18} />{m.ops_set_demo()}</p>
-	{/if}
-
-	{#if form.status === 'loading'}
-		<p class="ops-muted">{m.ops_loading()}</p>
-	{:else if form.status === 'error'}
-		<p class="ops-alert error" role="alert">
-			<Icon path={icons.warning} size={18} />
-			{m.ops_set_load_failed()}
-			<button type="button" class="ops-btn sm" onclick={() => form.load()}>{m.ops_retry()}</button>
-		</p>
-	{:else}
+	{#if form.status === 'ready'}
+		<!-- Pinned to the bottom of the window, also under a short form. -->
 		<div
-			class="layout"
-			class:with-panel={section.panel !== undefined && section.panel !== 'embedding'}
+			class="save-bar"
+			class:dirty={form.dirty}
+			role="region"
+			aria-label={m.ops_set_save_region()}
 		>
-			<form id="settings-form" class="groups" onsubmit={save} novalidate>
-				{#each section.groups as group, index (index)}
-					{@const fields = group.fields.filter((field) => isVisible(field, form.values))}
-					<section
-						class="ops-card group"
-						aria-labelledby={group.title ? `group-${index}` : undefined}
-					>
-						{#if group.title}
-							<header>
-								<h2 id="group-{index}">{group.title()}</h2>
-								{#if group.description}<p>{group.description()}</p>{/if}
-							</header>
-						{/if}
-						<div class="fields">
-							{#each fields as field (field.key)}
-								<SettingField
-									{field}
-									value={form.values[field.key] ?? ''}
-									error={form.errors[field.key]}
-									changed={changed(field.key)}
-									disabled={readOnly || form.saving}
-									onchange={(value) => form.set(field.key, value)}
-								/>
-								{#if field.key === 'Embedding.ModelVersion' && modelChanged}
-									<p class="ops-alert warn">
-										<Icon path={icons.warning} size={18} />{m.ops_set_embedding_model_warning()}
-									</p>
-								{/if}
-							{/each}
-						</div>
-					</section>
-				{/each}
-			</form>
-
-			{#if section.panel === 'trash'}
-				<aside><TrashPanel {readOnly} /></aside>
-			{:else if section.panel === 'notifications'}
-				<aside><NotificationsPanel {readOnly} /></aside>
-			{:else if section.panel === 'nightly'}
-				<aside><NightlyPanel {readOnly} /></aside>
-			{:else if section.panel === 'performance'}
-				<aside><PerformancePanel /></aside>
-			{/if}
-		</div>
-
-		<div class="save-bar" role="region" aria-label={m.ops_set_save_region()}>
 			<p class="state" aria-live="polite">
 				{#if form.saving}
 					{m.ops_set_saving()}
 				{:else if !form.valid}
-					<span class="invalid">{m.ops_set_invalid()}</span>
+					<span class="invalid">
+						<Icon path={icons.warning} size={18} />
+						{m.ops_set_invalid()}
+					</span>
 				{:else if form.dirty}
-					{m.ops_set_pending({ count: form.pending.length })}
+					<span class="pending">
+						<span class="dot" aria-hidden="true"></span>
+						{m.ops_set_pending({ count: form.pending.length })}
+					</span>
 				{:else}
-					<span class="ops-muted">{m.ops_set_clean()}</span>
+					<span class="muted">{m.ops_set_clean()}</span>
 				{/if}
 			</p>
-			<span class="ops-muted ops-small shortcut">{m.ops_set_shortcut()}</span>
+			<span class="muted small shortcut">{m.ops_set_shortcut()}</span>
 			<button
 				type="button"
-				class="ops-btn"
+				class="btn"
 				disabled={!form.dirty || form.saving}
 				onclick={() => form.reset()}>{m.ops_set_discard()}</button
 			>
 			<button
 				type="submit"
 				form="settings-form"
-				class="ops-btn primary"
+				class="btn primary"
 				disabled={!form.canSave || readOnly}>{m.ops_set_save()}</button
 			>
 		</div>
@@ -196,9 +210,22 @@
 
 <style>
 	.editor {
+		display: flex;
+		flex-direction: column;
+		/* At least the window's height, so the save bar sits at its bottom. */
+		min-height: calc(
+			100dvh - var(--header-height) - var(--admin-nav-height) - var(--settings-nav-height, 0px)
+		);
+	}
+
+	.body {
 		display: grid;
 		gap: var(--space-4);
-		padding: var(--space-6) var(--space-6) 0;
+		padding: var(--space-3) var(--page-gutter) var(--space-6);
+	}
+
+	.loading {
+		margin: 0 calc(-1 * var(--page-gutter));
 	}
 
 	.layout {
@@ -219,6 +246,7 @@
 	.groups {
 		display: grid;
 		gap: var(--space-4);
+		max-width: 960px;
 	}
 
 	.group {
@@ -247,15 +275,22 @@
 	.save-bar {
 		position: sticky;
 		bottom: 0;
-		z-index: 1;
+		z-index: 2;
+		margin-top: auto;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--space-2) var(--space-3);
-		margin: 0 calc(-1 * var(--space-6));
-		padding: var(--space-3) var(--space-6);
+		padding: var(--space-3) var(--page-gutter);
 		border-top: 1px solid var(--color-border);
-		background: var(--color-bg);
+		background: var(--color-surface-raised);
+		box-shadow: 0 -4px 16px rgb(0 0 0 / 0.06);
+	}
+
+	/* Unsaved edits: the bar takes the accent so it can't be missed. */
+	.save-bar.dirty {
+		border-top-color: var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent-soft) 60%, var(--color-surface-raised));
 	}
 
 	.state {
@@ -265,8 +300,26 @@
 		font-weight: 500;
 	}
 
+	.state > span {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.pending {
+		font-weight: 600;
+	}
+
+	.dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--color-accent);
+	}
+
 	.invalid {
 		color: var(--color-danger);
+		font-weight: 600;
 	}
 
 	.leave {
@@ -274,7 +327,7 @@
 		color: var(--color-text-muted);
 	}
 
-	@media (max-width: 1200px) {
+	@media (max-width: 1400px) {
 		.layout.with-panel {
 			grid-template-columns: minmax(0, 1fr);
 		}

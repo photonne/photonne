@@ -8,6 +8,7 @@
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { formatBytes } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { toastError } from './feedback.svelte.js';
 	import { count } from './time.js';
@@ -34,12 +35,12 @@
 <section class="ops-card panel" aria-labelledby="trash-usage">
 	<h2 id="trash-usage">{m.ops_trash_usage()}</h2>
 	{#if stats.isPending}
-		<p class="ops-muted">{m.ops_loading()}</p>
+		<div class="loading"><Skeleton variant="text" count={3} /></div>
 	{:else if stats.isError || !stats.data}
-		<p class="ops-muted" role="alert">{m.ops_load_failed()}</p>
+		<p class="muted" role="alert">{m.ops_load_failed()}</p>
 	{:else}
 		{@const s = stats.data}
-		<dl class="facts">
+		<dl class="ops-facts">
 			<div>
 				<dt>{m.ops_trash_items()}</dt>
 				<dd>{count(s.totalItems)}</dd>
@@ -77,7 +78,7 @@
 						<tr class:over={user.overQuota}>
 							<th scope="row">
 								{user.username}
-								{#if user.overQuota}<span class="ops-badge error">{m.ops_trash_over_quota()}</span
+								{#if user.overQuota}<span class="chip tag danger">{m.ops_trash_over_quota()}</span
 									>{/if}
 							</th>
 							<td class="num">{count(user.items)}</td>
@@ -91,7 +92,7 @@
 		<div>
 			<button
 				type="button"
-				class="ops-btn danger"
+				class="btn danger"
 				disabled={readOnly || s.expiredItems === 0 || cleaning}
 				onclick={() => (confirm = true)}>{m.ops_trash_cleanup({ count: s.expiredItems })}</button
 			>
@@ -111,6 +112,10 @@
 />
 
 <style>
+	.loading {
+		margin: 0 calc(-1 * var(--page-gutter));
+	}
+
 	tr.over th,
 	tr.over td {
 		color: var(--color-danger);

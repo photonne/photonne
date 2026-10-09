@@ -1,47 +1,18 @@
 /*
- * Shared looks of the administration operations screens (tasks, maintenance,
- * settings). Global but namespaced with `ops-`, so pages and their small
- * components agree without repeating the same scoped rules everywhere.
+ * What only the administration operations screens need (tasks, maintenance,
+ * settings): sections, the card that holds a table or a list of rows, the
+ * tables and the side panels' facts. Buttons, chips and fields are the shared
+ * ones of src/lib/styles/ui.css; tags and notices come from
+ * src/lib/admin/admin.css (these pages render inside .admin-page).
  */
-
-.ops-page {
-	display: grid;
-	gap: var(--space-6);
-	padding: var(--space-6);
-}
-
-.ops-head {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: flex-start;
-	gap: var(--space-3) var(--space-4);
-}
-
-.ops-head > div:first-child {
-	flex: 1 1 320px;
-	min-width: 0;
-}
-
-.ops-head h1,
-.ops-head h2 {
-	margin: 0;
-	font-size: var(--font-size-xl);
-}
-
-.ops-head p {
-	margin: var(--space-1) 0 0;
-	color: var(--color-text-muted);
-}
-
-.ops-head .ops-actions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-}
 
 .ops-section {
 	display: grid;
 	gap: var(--space-3);
+}
+
+.ops-section + .ops-section {
+	margin-top: var(--space-2);
 }
 
 .ops-section > h2,
@@ -53,8 +24,9 @@
 .ops-section > header {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: baseline;
+	align-items: center;
 	gap: var(--space-2) var(--space-4);
+	min-height: var(--control-h);
 }
 
 .ops-section > header p {
@@ -66,6 +38,7 @@
 .ops-section > header .ops-actions {
 	margin-left: auto;
 	display: flex;
+	align-items: center;
 	gap: var(--space-2);
 }
 
@@ -73,138 +46,6 @@
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-md);
 	background: var(--color-surface-raised);
-}
-
-.ops-muted {
-	color: var(--color-text-muted);
-}
-
-.ops-small {
-	font-size: var(--font-size-sm);
-}
-
-/* Buttons */
-
-.ops-btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	min-height: 36px;
-	padding: var(--space-1) var(--space-3);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-sm);
-	background: var(--color-surface-raised);
-	color: var(--color-text);
-	font-size: var(--font-size-sm);
-	font-weight: 500;
-	text-decoration: none;
-	white-space: nowrap;
-	cursor: pointer;
-	transition: background var(--duration-fast);
-}
-
-.ops-btn:hover:not(:disabled) {
-	background: var(--color-surface);
-}
-
-.ops-btn.primary {
-	border-color: var(--color-accent);
-	background: var(--color-accent);
-	color: var(--color-accent-text);
-}
-
-.ops-btn.primary:hover:not(:disabled) {
-	background: var(--color-accent);
-	filter: brightness(1.08);
-}
-
-.ops-btn.danger {
-	border-color: var(--color-danger);
-	color: var(--color-danger);
-}
-
-.ops-btn.danger:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--color-danger) 10%, transparent);
-}
-
-.ops-btn.ghost {
-	border-color: transparent;
-	background: transparent;
-}
-
-.ops-btn.sm {
-	min-height: 30px;
-	padding: 2px var(--space-2);
-}
-
-.ops-btn:disabled {
-	opacity: 0.5;
-	cursor: default;
-}
-
-/* Badges */
-
-.ops-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-1);
-	padding: 1px var(--space-2);
-	border-radius: 999px;
-	background: var(--color-surface);
-	color: var(--color-text-muted);
-	font-size: var(--font-size-xs);
-	font-weight: 600;
-	white-space: nowrap;
-}
-
-.ops-badge.info {
-	background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-	color: var(--color-accent);
-}
-
-.ops-badge.ok {
-	background: color-mix(in srgb, #2e7d32 16%, transparent);
-	color: light-dark(#1b5e20, #81c784);
-}
-
-.ops-badge.warn {
-	background: color-mix(in srgb, #ed6c02 18%, transparent);
-	color: light-dark(#a54b00, #ffb74d);
-}
-
-.ops-badge.error {
-	background: color-mix(in srgb, var(--color-danger) 14%, transparent);
-	color: var(--color-danger);
-}
-
-/* Notices */
-
-.ops-alert {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--space-2);
-	margin: 0;
-	padding: var(--space-3) var(--space-4);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-sm);
-	background: var(--color-surface);
-	font-size: var(--font-size-sm);
-}
-
-.ops-alert.warn {
-	border-color: color-mix(in srgb, #ed6c02 45%, transparent);
-	background: color-mix(in srgb, #ed6c02 9%, transparent);
-}
-
-.ops-alert.error {
-	border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
-	background: color-mix(in srgb, var(--color-danger) 8%, transparent);
-}
-
-.ops-alert > svg {
-	flex: none;
-	margin-top: 1px;
 }
 
 /* Tables */
@@ -228,56 +69,33 @@
 	white-space: nowrap;
 }
 
+.ops-table thead th {
+	height: var(--control-h);
+	background: var(--color-surface);
+	font-size: var(--font-size-xs);
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+.ops-table tbody th {
+	color: var(--color-text);
+}
+
 .ops-table td {
 	padding: var(--space-2) var(--space-3);
 	border-bottom: 1px solid var(--color-border);
 	vertical-align: middle;
 }
 
-.ops-table tr:last-child td {
+.ops-table tr:last-child td,
+.ops-table tbody tr:last-child th {
 	border-bottom: none;
 }
 
 .ops-table .num {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
-}
-
-/* Form controls */
-
-.ops-input,
-.ops-select {
-	min-height: 36px;
-	padding: var(--space-1) var(--space-3);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-sm);
-	background: var(--color-bg);
-	font-size: var(--font-size-sm);
-}
-
-.ops-input[aria-invalid='true'],
-.ops-select[aria-invalid='true'] {
-	border-color: var(--color-danger);
-}
-
-.ops-check {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
-	font-size: var(--font-size-sm);
-	cursor: pointer;
-}
-
-.ops-check input {
-	width: 16px;
-	height: 16px;
-	margin: 0;
-	accent-color: var(--color-accent);
-}
-
-.ops-check:has(input:disabled) {
-	opacity: 0.55;
-	cursor: default;
 }
 
 /* Side panels on settings pages */
@@ -297,24 +115,24 @@
 	margin: 0;
 }
 
-.facts {
+.ops-facts {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 	gap: var(--space-3);
 	margin: 0;
 }
 
-.facts div {
+.ops-facts div {
 	display: grid;
 	gap: 2px;
 }
 
-.facts dt {
+.ops-facts dt {
 	color: var(--color-text-muted);
 	font-size: var(--font-size-xs);
 }
 
-.facts dd {
+.ops-facts dd {
 	margin: 0;
 	font-size: var(--font-size-lg);
 	font-weight: 700;

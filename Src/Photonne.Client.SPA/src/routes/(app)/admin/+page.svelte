@@ -13,8 +13,9 @@
 	import { count, localDateTime, percent } from '#lib/admin/format.js';
 	import GrowthChart from '#lib/admin/GrowthChart.svelte';
 	import { adminIcons } from '#lib/admin/icons.js';
-	import { coverageShare, growthSeries } from '#lib/admin/stats.js';
+	import { coverageShare, coverageTone, growthSeries, type Tone } from '#lib/admin/stats.js';
 	import Icon, { type IconName } from '#lib/components/Icon.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { formatBytes } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -42,6 +43,23 @@
 	const months = $derived(growthSeries(growthQuery.data ?? [], 24));
 	const coverage = $derived(coverageQuery.data);
 	const share = $derived(coverage?.hasResult ? coverageShare(coverage) : null);
+	const tone = $derived(share !== null ? coverageTone(share) : null);
+	const admins = $derived((usersQuery.data ?? []).filter((u) => u.role === 'Admin').length);
+
+	/** One card design for every number on the dashboard. */
+	interface Metric {
+		label: string;
+		value: string;
+		sub: string;
+		icon?: IconName;
+		iconPath?: string;
+		/** The section that explains the number. */
+		href?: string;
+		badge?: string;
+		tone?: Tone;
+		/** Still loading: a placeholder instead of the dash. */
+		pending?: boolean;
+	}
 	let showUnindexed = $state(false);
 
 	const dash = '—';
@@ -96,115 +114,102 @@
 		<p class="notice warning" role="alert">{m.admin_dash_stats_failed()}</p>
 	{/if}
 
-	<section class="tiles" aria-label={m.admin_dash_totals()}>
-		{@render tile(m.admin_dash_photos(), stats ? count(stats.totalPhotos) : dash, 'photos')}
-		{@render tile(
-			m.admin_dash_videos(),
-			stats ? count(stats.totalVideos) : dash,
-			null,
-			adminIcons.videocam
-		)}
-		{@render tile(
-			m.admin_dash_users(),
-			usersQuery.data ? count(usersQuery.data.length) : dash,
-			'people'
-		)}
-		{@render tile(
-			m.admin_dash_storage(),
-			stats ? formatBytes(stats.totalBytes) : dash,
-			null,
-			adminIcons.storage
-		)}
+	<section class="metrics" aria-label={m.admin_dash_totals()}>
+		{@render metric({
+			label: m.admin_dash_photos(),
+			value: stats ? count(stats.totalPhotos) : dash,
+			pending: statsQuery.isPending,
+			icon: 'photos',
+			sub: stats ? m.admin_dash_size_used({ size: formatBytes(photoBytes) }) : dash
+		})}
+		{@render metric({
+			label: m.admin_dash_videos(),
+			value: stats ? count(stats.totalVideos) : dash,
+			pending: statsQuery.isPending,
+			iconPath: adminIcons.videocam,
+			sub: stats ? m.admin_dash_size_used({ size: formatBytes(videoBytes) }) : dash
+		})}
+		{@render metric({
+			label: m.admin_dash_users(),
+			value: usersQuery.data ? count(usersQuery.data.length) : dash,
+			pending: usersQuery.isPending,
+			icon: 'people',
+			sub: usersQuery.data ? m.admin_dash_users_admins({ count: admins, n: count(admins) }) : dash,
+			href: appHref('/admin/users')
+		})}
+		{@render metric({
+			label: m.admin_dash_storage(),
+			value: stats ? formatBytes(stats.totalBytes) : dash,
+			pending: statsQuery.isPending,
+			iconPath: adminIcons.storage,
+			sub: stats ? m.admin_dash_storage_sub({ count: usage.length, n: count(usage.length) }) : dash
+		})}
 	</section>
 
-	<section class="ops" aria-label={m.admin_dash_status()}>
-		<a class="card op" href={appHref('/admin/system')}>
-			<span class="op-head">
-				<Icon path={adminIcons.sync} size={18} />
-				{m.admin_dash_version()}
-				{#if versionQuery.data?.hasUpdate}
-					<span class="badge warning">{m.admin_dash_update()}</span>
-				{/if}
-			</span>
-			<strong class="op-value">
-				{versionQuery.data ? `v${versionQuery.data.currentVersion}` : dash}
-			</strong>
-			<span class="muted small">
-				{#if !versionQuery.data}
-					{dash}
-				{:else if versionQuery.data.hasUpdate}
-					{m.admin_dash_update_available({ version: versionQuery.data.latestVersion ?? '' })}
-				{:else if versionQuery.data.isAhead}
-					{m.admin_dash_version_ahead({ version: versionQuery.data.latestVersion ?? '' })}
-				{:else if versionQuery.data.checkError}
-					{m.admin_dash_version_unchecked()}
-				{:else}
-					{m.admin_dash_up_to_date()}
-				{/if}
-			</span>
-		</a>
-
-		<a class="card op" href={appHref('/admin/tasks')}>
-			<span class="op-head">
-				<Icon path={adminIcons.psychology} size={18} />
-				{m.admin_dash_ml_queue()}
-			</span>
-			<strong class="op-value num">{mlQuery.data ? count(mlQuery.data.count) : dash}</strong>
-			<span class="muted small">
-				{#if mlQuery.data}
-					{mlQuery.data.count > 0 ? m.admin_dash_ml_pending() : m.admin_dash_ml_done()}
-				{:else}
-					{dash}
-				{/if}
-			</span>
-		</a>
-
-		<a class="card op" href={appHref('/admin/maintenance')}>
-			<span class="op-head">
-				<Icon name="delete" size={18} />
-				{m.admin_dash_trash()}
-				{#if trashQuery.data?.expiredItems}
-					<span class="badge warning"
-						>{m.admin_dash_trash_expired({
-							count: trashQuery.data.expiredItems,
-							n: count(trashQuery.data.expiredItems)
-						})}</span
-					>
-				{/if}
-			</span>
-			<strong class="op-value num"
-				>{trashQuery.data ? count(trashQuery.data.totalItems) : dash}</strong
-			>
-			<span class="muted small">
-				{trashQuery.data
-					? m.admin_dash_trash_size({ size: formatBytes(trashQuery.data.totalBytes) })
-					: dash}
-			</span>
-		</a>
-
-		<a class="card op" href="#coverage">
-			<span class="op-head">
-				<Icon path={adminIcons.checkCircle} size={18} />
-				{m.admin_dash_coverage()}
-			</span>
-			<strong class="op-value num" class:bad={share !== null && share < 1}>
-				{share !== null ? percent(share, 1) : dash}
-			</strong>
-			<span class="muted small">
-				{#if coverage?.hasResult}
-					{coverage.unindexed > 0
-						? m.admin_dash_coverage_unindexed({
-								count: coverage.unindexed,
-								n: count(coverage.unindexed)
-							})
-						: m.admin_dash_coverage_complete()}
-				{:else if coverage}
-					{m.admin_dash_coverage_never_short()}
-				{:else}
-					{dash}
-				{/if}
-			</span>
-		</a>
+	<section class="metrics" aria-label={m.admin_dash_status()}>
+		{@render metric({
+			label: m.admin_dash_version(),
+			value: versionQuery.data ? `v${versionQuery.data.currentVersion}` : dash,
+			pending: versionQuery.isPending,
+			iconPath: adminIcons.sync,
+			href: appHref('/admin/system'),
+			badge: versionQuery.data?.hasUpdate ? m.admin_dash_update() : undefined,
+			sub: !versionQuery.data
+				? dash
+				: versionQuery.data.hasUpdate
+					? m.admin_dash_update_available({ version: versionQuery.data.latestVersion ?? '' })
+					: versionQuery.data.isAhead
+						? m.admin_dash_version_ahead({ version: versionQuery.data.latestVersion ?? '' })
+						: versionQuery.data.checkError
+							? m.admin_dash_version_unchecked()
+							: m.admin_dash_up_to_date()
+		})}
+		{@render metric({
+			label: m.admin_dash_ml_queue(),
+			value: mlQuery.data ? count(mlQuery.data.count) : dash,
+			pending: mlQuery.isPending,
+			iconPath: adminIcons.psychology,
+			href: appHref('/admin/tasks'),
+			sub: mlQuery.data
+				? mlQuery.data.count > 0
+					? m.admin_dash_ml_pending()
+					: m.admin_dash_ml_done()
+				: dash
+		})}
+		{@render metric({
+			label: m.admin_dash_trash(),
+			value: trashQuery.data ? count(trashQuery.data.totalItems) : dash,
+			pending: trashQuery.isPending,
+			icon: 'delete',
+			href: appHref('/admin/maintenance'),
+			badge: trashQuery.data?.expiredItems
+				? m.admin_dash_trash_expired({
+						count: trashQuery.data.expiredItems,
+						n: count(trashQuery.data.expiredItems)
+					})
+				: undefined,
+			sub: trashQuery.data
+				? m.admin_dash_trash_size({ size: formatBytes(trashQuery.data.totalBytes) })
+				: dash
+		})}
+		{@render metric({
+			label: m.admin_dash_coverage(),
+			value: share !== null ? percent(share, 1) : dash,
+			pending: coverageQuery.isPending,
+			iconPath: adminIcons.checkCircle,
+			href: '#coverage',
+			tone: tone ?? undefined,
+			sub: coverage?.hasResult
+				? coverage.unindexed > 0
+					? m.admin_dash_coverage_unindexed({
+							count: coverage.unindexed,
+							n: count(coverage.unindexed)
+						})
+					: m.admin_dash_coverage_complete()
+				: coverage
+					? m.admin_dash_coverage_never_short()
+					: dash
+		})}
 	</section>
 
 	<div class="charts">
@@ -216,7 +221,7 @@
 			{:else if growthQuery.isError}
 				<p class="muted">{m.error_loading()}</p>
 			{:else}
-				<div class="placeholder"></div>
+				<Skeleton variant="text" count={4} />
 			{/if}
 		</section>
 
@@ -253,7 +258,7 @@
 					{/each}
 				</ol>
 			{:else}
-				<div class="placeholder"></div>
+				<Skeleton variant="text" count={4} />
 			{/if}
 		</section>
 	</div>
@@ -281,13 +286,12 @@
 					</div>
 					<div>
 						<dt>{m.admin_dash_coverage_unindexed_label()}</dt>
-						<dd class="num" class:bad={coverage.unindexed > 0}>{count(coverage.unindexed)}</dd>
+						<dd class="num {coverage.unindexed > 0 ? tone : ''}">{count(coverage.unindexed)}</dd>
 					</div>
 				</dl>
 				<div class="coverage-summary">
 					<div
-						class="bar"
-						class:warning={share !== null && share < 1}
+						class="bar {tone ?? ''}"
 						role="meter"
 						aria-valuemin="0"
 						aria-valuemax="100"
@@ -307,7 +311,7 @@
 								})}
 					</p>
 					{#if coverage.offlineLibraries > 0}
-						<p class="small bad">
+						<p class="small danger">
 							{m.admin_dash_coverage_offline({ count: coverage.offlineLibraries })}
 						</p>
 					{/if}
@@ -345,7 +349,7 @@
 				{/if}
 			{/if}
 		{:else}
-			<div class="placeholder short"></div>
+			<Skeleton variant="text" count={2} />
 		{/if}
 	</section>
 
@@ -407,8 +411,8 @@
 			{#each links as link (link.path)}
 				<li>
 					<a class="card link" href={appHref(link.path)}>
-						<span class="link-icon"
-							><Icon name={link.icon ?? undefined} path={link.iconPath} /></span
+						<span class="link-icon" aria-hidden="true"
+							><Icon name={link.icon ?? undefined} path={link.iconPath} size={20} /></span
 						>
 						<span>
 							<strong>{link.title()}</strong>
@@ -421,12 +425,24 @@
 	</section>
 </AdminPage>
 
-{#snippet tile(label: string, value: string, icon: IconName | null, iconPath?: string)}
-	<div class="card tile">
-		<span class="tile-icon"><Icon name={icon ?? undefined} path={iconPath} /></span>
-		<span class="tile-label">{label}</span>
-		<strong class="tile-value num">{value}</strong>
-	</div>
+{#snippet metric(card: Metric)}
+	<svelte:element this={card.href ? 'a' : 'div'} class="card metric" href={card.href}>
+		<span class="metric-icon" aria-hidden="true"
+			><Icon name={card.icon} path={card.iconPath} size={22} /></span
+		>
+		<span class="metric-body">
+			<span class="metric-label">
+				{card.label}
+				{#if card.badge}<span class="chip tag warning">{card.badge}</span>{/if}
+			</span>
+			{#if card.value === dash && card.pending}
+				<span class="metric-value pending" role="status" aria-label={m.loading()}></span>
+			{:else}
+				<strong class="metric-value num {card.tone ?? ''}">{card.value}</strong>
+			{/if}
+			<span class="metric-sub">{card.sub}</span>
+		</span>
+	</svelte:element>
 {/snippet}
 
 {#snippet split(
@@ -471,70 +487,74 @@
 		margin: 0;
 	}
 
-	.tiles,
-	.ops {
+	.metrics {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: var(--space-3);
 	}
 
-	.tile {
-		display: grid;
-		grid-template-columns: auto 1fr;
-		grid-template-rows: auto auto;
-		column-gap: var(--space-3);
-		align-items: center;
+	/* One card for every number: icon tile, label (and a tag), value, a line. */
+	.metric {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-3);
 	}
 
-	.tile-icon {
-		grid-row: span 2;
+	.metric-icon {
+		flex: none;
 		display: grid;
 		place-items: center;
-		width: 40px;
-		height: 40px;
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
+		width: 44px;
+		height: 44px;
+		border-radius: var(--radius-control);
+		background: var(--color-brand-tile);
 		color: var(--color-accent);
 	}
 
-	.tile-label {
-		font-size: var(--font-size-sm);
-		color: var(--color-text-muted);
-	}
-
-	.tile-value {
-		font-size: var(--font-size-lg);
-	}
-
-	.op {
+	.metric-body {
+		flex: 1;
 		display: grid;
 		gap: 2px;
-		color: inherit;
-		text-decoration: none;
-		transition: border-color var(--duration-fast);
+		min-width: 0;
 	}
 
-	.op:hover {
-		border-color: var(--color-accent);
-	}
-
-	.op-head {
+	.metric-label {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-2);
+		gap: var(--space-1) var(--space-2);
+		min-height: 24px;
 		font-size: var(--font-size-sm);
 		color: var(--color-text-muted);
 	}
 
-	.op-head .badge {
-		margin-left: auto;
+	.metric-value {
+		font-size: var(--font-size-xl);
+		font-weight: 650;
+		line-height: 1.2;
 	}
 
-	.op-value {
-		font-size: var(--font-size-lg);
+	.metric-value.pending {
+		width: 6ch;
+		height: 1.2em;
+		border-radius: var(--radius-sm);
+		background: var(--color-placeholder);
 	}
 
-	.bad {
+	.metric-sub {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
+	}
+
+	.success {
+		color: var(--color-success);
+	}
+
+	.warning {
+		color: var(--color-warning);
+	}
+
+	.danger {
 		color: var(--color-danger);
 	}
 
@@ -546,16 +566,6 @@
 
 	.sub {
 		margin-bottom: var(--space-3);
-	}
-
-	.placeholder {
-		height: 220px;
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-	}
-
-	.placeholder.short {
-		height: 80px;
 	}
 
 	.split {
@@ -704,14 +714,9 @@
 
 	.link {
 		display: flex;
+		align-items: flex-start;
 		gap: var(--space-3);
 		height: 100%;
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.link:hover {
-		border-color: var(--color-accent);
 	}
 
 	.link > span:last-child {
@@ -720,15 +725,24 @@
 	}
 
 	.link-icon {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border-radius: var(--radius-control);
+		background: var(--color-brand-tile);
 		color: var(--color-accent);
 	}
 
-	@media (max-width: 1100px) {
-		.tiles,
-		.ops {
+	/* Four across only while a card keeps its label and tag on one line. */
+	@media (max-width: 1360px) {
+		.metrics {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
+	}
 
+	@media (max-width: 1100px) {
 		.charts,
 		.coverage {
 			grid-template-columns: minmax(0, 1fr);

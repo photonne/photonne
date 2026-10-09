@@ -30,7 +30,9 @@
 		type UserSortKey
 	} from '#lib/admin/users.js';
 	import { session } from '#lib/auth/session.svelte.js';
+	import RowMenu, { type RowMenuItem } from '#lib/admin/RowMenu.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { formatBytes } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -160,6 +162,36 @@
 		refresh();
 	}
 
+	/** The row's secondary actions, in the "⋮" menu: only what applies to this user. */
+	function menuItems(user: AdminUser): RowMenuItem[] {
+		const items: RowMenuItem[] = [
+			{ label: m.admin_users_reset(), iconPath: adminIcons.key, run: () => (resetting = user) }
+		];
+		if (canChangeRoleOrStatus(user, me)) {
+			items.push({
+				label: user.isActive ? m.admin_users_deactivate() : m.admin_users_activate(),
+				iconPath: user.isActive ? adminIcons.personOff : adminIcons.personCheck,
+				run: () => setActive(user, !user.isActive)
+			});
+		}
+		if (canPromote(user, me)) {
+			items.push({
+				label: m.admin_users_promote(),
+				icon: 'shield',
+				run: () => (confirming = { kind: 'promote', user })
+			});
+		}
+		if (canDelete(user, me)) {
+			items.push({
+				label: m.admin_core_delete(),
+				icon: 'delete',
+				danger: true,
+				run: () => (confirming = { kind: 'delete', user })
+			});
+		}
+		return items;
+	}
+
 	function sortLabel(key: UserSortKey) {
 		if (sort.key !== key) return undefined;
 		return sort.direction === 'asc' ? 'ascending' : 'descending';
@@ -173,29 +205,28 @@
 			{m.admin_users_new()}
 		</button>
 	{/snippet}
-
-	<div class="toolbar">
+	{#snippet toolbar()}
 		<label class="search">
 			<span class="visually-hidden">{m.admin_users_search()}</span>
 			<Icon name="search" size={18} />
-			<input type="search" placeholder={m.admin_users_search()} bind:value={search} />
+			<input class="bare" type="search" placeholder={m.admin_users_search()} bind:value={search} />
 		</label>
 		<div class="filters" role="group" aria-label={m.admin_users_filter()}>
 			{#each filters as { value, label, total } (value)}
 				<button
 					type="button"
 					aria-pressed={filter === value}
-					class="filter"
+					class="chip"
 					onclick={() => (filter = value)}
 				>
-					{label} <span class="num">{count(total)}</span>
+					{label} <span class="n num">{count(total)}</span>
 				</button>
 			{/each}
 		</div>
-	</div>
+	{/snippet}
 
 	{#if usersQuery.isPending}
-		<p class="muted" role="status">{m.session_restoring()}</p>
+		<div class="table-wrap"><Skeleton variant="rows" count={4} /></div>
 	{:else if usersQuery.isError}
 		<p class="notice danger" role="alert">{m.error_loading()}</p>
 	{:else}
@@ -251,34 +282,35 @@
 												: user.email}
 										</span>
 									</div>
-									{#if isMe}<span class="badge accent">{m.admin_users_you()}</span>{/if}
+									{#if isMe}<span class="chip tag">{m.admin_users_you()}</span>{/if}
 									<span class="inline">
 										{#if user.isPrimaryAdmin}
-											<span class="badge warning">{m.admin_users_primary()}</span>
+											<span class="chip tag accent">{m.admin_users_primary()}</span>
 										{:else if user.role === 'Admin'}
-											<span class="badge danger">{m.admin_core_role_admin()}</span>
+											<span class="chip tag accent">{m.admin_core_role_admin()}</span>
 										{/if}
 										{#if !user.isActive}
-											<span class="badge">{m.admin_users_inactive()}</span>
+											<span class="chip tag">{m.admin_users_inactive()}</span>
 										{/if}
 									</span>
 								</div>
 							</td>
 							<td class="role-col">
 								<div class="role">
-									<span class="badge" class:danger={user.role === 'Admin'}>
+									<span class="chip tag" class:accent={user.role === 'Admin'}>
+										{#if user.role === 'Admin'}<Icon name="shield" size={14} />{/if}
 										{user.role === 'Admin' ? m.admin_core_role_admin() : m.admin_core_role_user()}
 									</span>
 									{#if user.isPrimaryAdmin}
-										<span class="badge warning" title={m.admin_users_primary_hint()}>
-											<Icon name="shield" size={12} />
+										<span class="chip tag" title={m.admin_users_primary_hint()}>
 											{m.admin_users_primary()}
 										</span>
 									{/if}
 								</div>
 							</td>
 							<td class="status-col">
-								<span class="badge" class:success={user.isActive}>
+								<span class="chip tag" class:success={user.isActive}>
+									<span class="status-dot" aria-hidden="true"></span>
 									{user.isActive ? m.admin_users_active() : m.admin_users_inactive()}
 								</span>
 							</td>
@@ -326,66 +358,17 @@
 								<div class="row-actions">
 									<button
 										type="button"
-										class="icon-btn"
+										class="btn sm ghost"
 										aria-label={m.admin_users_edit_named({ name: user.username })}
-										title={m.admin_core_edit()}
 										onclick={() => (editing = { user })}
 									>
 										<Icon name="edit" size={18} />
+										{m.admin_core_edit()}
 									</button>
-									<button
-										type="button"
-										class="icon-btn"
-										aria-label={m.admin_users_reset_named({ name: user.username })}
-										title={m.admin_users_reset()}
-										onclick={() => (resetting = user)}
-									>
-										<Icon path={adminIcons.key} size={18} />
-									</button>
-									{#if canChangeRoleOrStatus(user, me)}
-										<button
-											type="button"
-											class="icon-btn"
-											aria-label={user.isActive
-												? m.admin_users_deactivate_named({ name: user.username })
-												: m.admin_users_activate_named({ name: user.username })}
-											title={user.isActive ? m.admin_users_deactivate() : m.admin_users_activate()}
-											onclick={() => setActive(user, !user.isActive)}
-										>
-											<Icon
-												path={user.isActive ? adminIcons.personOff : adminIcons.personCheck}
-												size={18}
-											/>
-										</button>
-									{:else}
-										<span class="slot"></span>
-									{/if}
-									{#if canPromote(user, me)}
-										<button
-											type="button"
-											class="icon-btn"
-											aria-label={m.admin_users_promote_named({ name: user.username })}
-											title={m.admin_users_promote()}
-											onclick={() => (confirming = { kind: 'promote', user })}
-										>
-											<Icon name="shield" size={18} />
-										</button>
-									{:else}
-										<span class="slot"></span>
-									{/if}
-									{#if canDelete(user, me)}
-										<button
-											type="button"
-											class="icon-btn danger"
-											aria-label={m.admin_users_delete_named({ name: user.username })}
-											title={m.admin_core_delete()}
-											onclick={() => (confirming = { kind: 'delete', user })}
-										>
-											<Icon name="delete" size={18} />
-										</button>
-									{:else}
-										<span class="slot"></span>
-									{/if}
+									<RowMenu
+										label={m.admin_users_more({ name: user.username })}
+										items={menuItems(user)}
+									/>
 								</div>
 							</td>
 						</tr>
@@ -445,69 +428,45 @@
 </AdminPage>
 
 <style>
-	.toolbar {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
 	.search {
 		flex: 1 1 260px;
 		max-width: 420px;
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
+		min-height: var(--control-h);
 		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-control);
 		background: var(--color-bg);
 		color: var(--color-text-muted);
 	}
 
 	.search:focus-within {
-		outline: 2px solid var(--color-focus);
-		outline-offset: 1px;
+		border-color: var(--color-focus);
+		box-shadow: 0 0 0 1px var(--color-focus);
 	}
 
 	.search input {
 		flex: 1;
 		min-width: 0;
-		min-height: 36px;
+		min-height: calc(var(--control-h) - 2px);
+		padding: 0;
 		border: 0;
 		background: transparent;
 		outline: none;
 		color: var(--color-text);
+		font-size: var(--font-size-sm);
 	}
 
 	.filters {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--space-1);
+		gap: var(--space-2);
 	}
 
-	.filter {
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: transparent;
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
-	.filter .num {
+	.n {
 		color: var(--color-text-muted);
-	}
-
-	.filter[aria-pressed='true'] {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-	}
-
-	.filter[aria-pressed='true'] .num {
-		color: inherit;
-		opacity: 0.85;
 	}
 
 	th .sort {
@@ -542,15 +501,24 @@
 		width: 34px;
 		height: 34px;
 		border-radius: 50%;
-		background: var(--color-accent);
-		color: var(--color-accent-text);
+		background: var(--color-brand-tile);
+		box-shadow: inset 0 0 0 1px var(--color-brand-ring);
+		color: var(--color-text);
 		font-size: var(--font-size-xs);
 		font-weight: 700;
 	}
 
 	.avatar.admin {
-		background: var(--color-danger);
-		color: #fff;
+		background: var(--color-accent);
+		box-shadow: none;
+		color: var(--color-accent-text);
+	}
+
+	.status-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
 	}
 
 	.names {
@@ -604,10 +572,6 @@
 		max-width: 160px;
 	}
 
-	.slot {
-		width: 32px;
-	}
-
 	.role {
 		display: flex;
 		flex-wrap: wrap;
@@ -625,8 +589,9 @@
 
 	.row-actions {
 		display: flex;
+		align-items: center;
 		justify-content: flex-end;
-		gap: 2px;
+		gap: var(--space-1);
 	}
 
 	.empty {

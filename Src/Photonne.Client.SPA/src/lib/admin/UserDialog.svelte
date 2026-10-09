@@ -310,7 +310,7 @@
 					<code>{preview.currentVirtualPath ?? '—'}</code> →
 					<code>{preview.newVirtualPath ?? '—'}</code>
 					{#if !preview.folderExistsOnDisk}
-						<span class="badge">{m.admin_user_rename_folder_missing()}</span>
+						<span class="chip tag warning">{m.admin_user_rename_folder_missing()}</span>
 					{/if}
 				</dd>
 				<dt>{m.admin_user_rename_assets()}</dt>

@@ -464,5 +464,28 @@
 	"admin_sys_credits_title": "Créditos",
 	"admin_sys_credits_intro": "Datos de terceros que incluye el servidor y sus licencias.",
 	"admin_sys_credits_dataset": "datos del {date}",
-	"admin_sys_credits_none": "El servidor no incluye datos de terceros."
+	"admin_sys_credits_none": "El servidor no incluye datos de terceros.",
+	"admin_dash_size_used": "{size} ocupados",
+	"admin_dash_storage_sub": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "entre {n} usuario",
+				"countPlural=other": "entre {n} usuarios"
+			}
+		}
+	],
+	"admin_dash_users_admins": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} administrador",
+				"countPlural=other": "{n} administradores"
+			}
+		}
+	],
+	"admin_users_more": "Más acciones para {name}",
+	"admin_strash_empty_hint": "Cuando alguien borre algo de una carpeta compartida, aparecerá aquí."
 }

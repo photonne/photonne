@@ -7,6 +7,7 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { toastError } from './feedback.svelte.js';
 	import { count, localDateTime } from './time.js';
@@ -33,11 +34,11 @@
 <section class="ops-card panel" aria-labelledby="notif-usage">
 	<h2 id="notif-usage">{m.ops_notif_usage()}</h2>
 	{#if stats.isPending}
-		<p class="ops-muted">{m.ops_loading()}</p>
+		<div class="loading"><Skeleton variant="text" count={3} /></div>
 	{:else if stats.isError || !stats.data}
-		<p class="ops-muted" role="alert">{m.ops_load_failed()}</p>
+		<p class="muted" role="alert">{m.ops_load_failed()}</p>
 	{:else}
-		<dl class="facts">
+		<dl class="ops-facts">
 			<div>
 				<dt>{m.ops_notif_total()}</dt>
 				<dd>{count(stats.data.total)}</dd>
@@ -51,11 +52,11 @@
 				<dd>{stats.data.oldestAt ? localDateTime(stats.data.oldestAt) : '—'}</dd>
 			</div>
 		</dl>
-		<p class="ops-small ops-muted">{m.ops_notif_purge_hint()}</p>
+		<p class="small muted">{m.ops_notif_purge_hint()}</p>
 		<div>
 			<button
 				type="button"
-				class="ops-btn danger"
+				class="btn danger"
 				disabled={readOnly || stats.data.total === 0 || purging}
 				onclick={() => (confirm = true)}>{m.ops_notif_purge()}</button
 			>
@@ -73,3 +74,9 @@
 	onconfirm={purge}
 	onclose={() => (confirm = false)}
 />
+
+<style>
+	.loading {
+		margin: 0 calc(-1 * var(--page-gutter));
+	}
+</style>

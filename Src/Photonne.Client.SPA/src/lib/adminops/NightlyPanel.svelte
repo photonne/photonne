@@ -7,6 +7,7 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toastError } from './feedback.svelte.js';
 
 	let { readOnly }: { readOnly: boolean } = $props();
@@ -30,19 +31,25 @@
 <section class="ops-card panel" aria-labelledby="nightly-last">
 	<h2 id="nightly-last">{m.ops_nightly_last()}</h2>
 	{#if lastRun.isPending}
-		<p class="ops-muted">{m.ops_loading()}</p>
+		<div class="loading"><Skeleton variant="text" count={3} /></div>
 	{:else if lastRun.data?.value}
 		<p>{m.ops_nightly_last_value({ date: lastRun.data.value })}</p>
-		<p class="ops-small ops-muted">{m.ops_nightly_last_hint()}</p>
+		<p class="small muted">{m.ops_nightly_last_hint()}</p>
 	{:else}
-		<p class="ops-muted">{m.ops_nightly_never()}</p>
+		<p class="muted">{m.ops_nightly_never()}</p>
 	{/if}
 	<div>
 		<button
 			type="button"
-			class="ops-btn"
+			class="btn"
 			disabled={readOnly || !lastRun.data?.value || resetting}
 			onclick={reset}>{m.ops_nightly_reset()}</button
 		>
 	</div>
 </section>
+
+<style>
+	.loading {
+		margin: 0 calc(-1 * var(--page-gutter));
+	}
+</style>

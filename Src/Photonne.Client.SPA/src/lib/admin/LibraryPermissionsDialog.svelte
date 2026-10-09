@@ -14,6 +14,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { errorText } from './errors.js';
 	import { localDate } from './format.js';
 
@@ -97,7 +98,7 @@
 	<div class="access">
 		<p class="muted small">{m.admin_libs_access_intro()}</p>
 		{#if permissions.isPending}
-			<p class="muted" role="status">{m.session_restoring()}</p>
+			<Skeleton variant="rows" count={2} />
 		{:else if permissions.isError}
 			<p class="field-error" role="alert">{m.error_loading()}</p>
 		{:else}

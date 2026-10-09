@@ -49,6 +49,6 @@
 	}
 
 	li.ok {
-		color: var(--admin-success);
+		color: var(--color-success);
 	}
 </style>

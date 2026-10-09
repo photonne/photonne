@@ -16,6 +16,8 @@
 	import LibraryPermissionsDialog from '#lib/admin/LibraryPermissionsDialog.svelte';
 	import { LibraryScanner } from '#lib/admin/library-scan.svelte.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -103,17 +105,23 @@
 	{/snippet}
 
 	{#if libraries.isPending}
-		<p class="muted" role="status">{m.session_restoring()}</p>
+		<div class="loading"><Skeleton variant="rows" count={3} /></div>
 	{:else if libraries.isError}
 		<p class="notice danger" role="alert">{m.error_loading()}</p>
 	{:else if libraries.data.length === 0}
-		<div class="card empty">
-			<Icon path={adminIcons.folderSpecial} size={40} />
-			<h2>{m.admin_libs_empty_title()}</h2>
-			<p class="muted">{m.admin_libs_empty_body()}</p>
-			<button type="button" class="btn primary" onclick={() => (editing = { library: null })}>
-				{m.admin_libs_new()}
-			</button>
+		<div class="card">
+			<EmptyState
+				iconPath={adminIcons.folderSpecial}
+				title={m.admin_libs_empty_title()}
+				hint={m.admin_libs_empty_body()}
+			>
+				{#snippet action()}
+					<button type="button" class="btn primary" onclick={() => (editing = { library: null })}>
+						<Icon name="add" size={18} />
+						{m.admin_libs_new()}
+					</button>
+				{/snippet}
+			</EmptyState>
 		</div>
 	{:else}
 		<ul class="libraries">
@@ -130,7 +138,7 @@
 							<div class="tools">
 								<button
 									type="button"
-									class="icon-btn"
+									class="icon-btn sm"
 									aria-label={m.admin_libs_access_named({ name: library.name })}
 									title={m.admin_libs_access()}
 									onclick={() => (sharing = library)}
@@ -139,7 +147,7 @@
 								</button>
 								<button
 									type="button"
-									class="icon-btn"
+									class="icon-btn sm"
 									aria-label={m.admin_libs_edit_named({ name: library.name })}
 									title={m.admin_core_edit()}
 									disabled={!!scan}
@@ -149,7 +157,7 @@
 								</button>
 								<button
 									type="button"
-									class="icon-btn danger"
+									class="icon-btn sm"
 									aria-label={m.admin_libs_delete_named({ name: library.name })}
 									title={m.admin_core_delete()}
 									disabled={!!scan}
@@ -308,17 +316,8 @@
 		margin: 0;
 	}
 
-	.empty {
-		display: grid;
-		justify-items: center;
-		gap: var(--space-2);
-		padding: var(--space-8);
-		text-align: center;
-		color: var(--color-text-muted);
-	}
-
-	.empty h2 {
-		color: var(--color-text);
+	.loading {
+		margin: 0 calc(-1 * var(--page-gutter));
 	}
 
 	.libraries {
@@ -349,8 +348,8 @@
 		place-items: center;
 		width: 40px;
 		height: 40px;
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
+		border-radius: var(--radius-control);
+		background: var(--color-brand-tile);
 		color: var(--color-accent);
 	}
 
@@ -402,7 +401,7 @@
 	}
 
 	.status-completed :global(svg) {
-		color: var(--admin-success);
+		color: var(--color-success);
 	}
 
 	.status-failed {
@@ -430,7 +429,7 @@
 	}
 
 	.warn {
-		color: var(--admin-warning);
+		color: var(--color-warning);
 	}
 
 	.foot {
