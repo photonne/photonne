@@ -57,3 +57,33 @@ test('on a narrow window the menu starts as a rail', async ({ page }) => {
 
 	await expect(page.getByRole('button', { name: 'Expandir el menú' })).toBeVisible();
 });
+
+test('the menu follows the native app: photos, collections, actions', async ({ page }) => {
+	await page.setViewportSize({ width: 1400, height: 900 });
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/');
+
+	const sidebar = page.getByRole('navigation', { name: 'Navegación principal' });
+	await expect(sidebar.getByRole('heading')).toHaveText(['Colecciones', 'Fijados', 'Acciones']);
+	// Pinned albums go right after the collections, as in the native app.
+	const links = sidebar.getByRole('link');
+	await expect
+		.poll(async () => (await links.allTextContents()).map((text) => text.trim()))
+		.toEqual([
+			'Fotos',
+			'Recuerdos',
+			'Personas',
+			'Favoritos',
+			'Álbumes',
+			'Carpetas',
+			'Explorar',
+			'Mapa',
+			'Archivo',
+			'Papelera',
+			'Vacaciones',
+			'Subir',
+			'Organizar',
+			'Mis enlaces',
+			'Utilidades'
+		]);
+});
