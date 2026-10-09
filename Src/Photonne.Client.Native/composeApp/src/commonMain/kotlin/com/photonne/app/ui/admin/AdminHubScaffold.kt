@@ -31,7 +31,7 @@ fun AdminHubList(
     entries: List<AdminHubEntry>,
     onClick: (String) -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {}
-) = AdminHubList(
+) = AdminSectionedHubList(
     title = title,
     onBack = onBack,
     sections = listOf(AdminHubSection(title = null, entries = entries)),
@@ -41,7 +41,7 @@ fun AdminHubList(
 
 /** The same list split into titled [sections], each its own card, as Más. */
 @Composable
-fun AdminHubList(
+fun AdminSectionedHubList(
     title: String,
     onBack: () -> Unit,
     sections: List<AdminHubSection>,
