@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatCount } from '#lib/format.js';
 	import { createQuery } from '@tanstack/svelte-query';
 	import {
 		getApiPeopleOptions,
@@ -80,7 +81,7 @@
 									{/if}
 									<span class="caption">
 										<span>{labelText(item.label)}</span>
-										<span class="count">{item.assetCount}</span>
+										<span class="count">{formatCount(item.assetCount)}</span>
 									</span>
 								</a>
 							</li>

@@ -35,21 +35,29 @@
 	"settings_rename_body": "You'll go from “{from}” to “{to}”. Your personal folder is renamed with it:",
 	"settings_rename_assets": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} file will be updated",
-				"countPlural=other": "{count} files will be updated"
+				"countPlural=one": "{countFormatted} file will be updated",
+				"countPlural=other": "{countFormatted} files will be updated"
 			}
 		}
 	],
 	"settings_rename_folders": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} folder will be updated",
-				"countPlural=other": "{count} folders will be updated"
+				"countPlural=one": "{countFormatted} folder will be updated",
+				"countPlural=other": "{countFormatted} folders will be updated"
 			}
 		}
 	],
@@ -114,22 +122,30 @@
 	"settings_discovery_folders_lead": "Nobody has shared folders with you yet.",
 	"settings_discovery_hidden_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} hidden from your photos",
-				"countPlural=other": "{count} hidden from your photos"
+				"countPlural=one": "{countFormatted} hidden from your photos",
+				"countPlural=other": "{countFormatted} hidden from your photos"
 			}
 		}
 	],
 	"settings_discovery_empty": "When someone shares a folder with you, you can choose here whether its photos mix with yours.",
 	"settings_discovery_items": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} item",
-				"countPlural=other": "{count} items"
+				"countPlural=one": "{countFormatted} item",
+				"countPlural=other": "{countFormatted} items"
 			}
 		}
 	],
@@ -142,21 +158,29 @@
 	"settings_analysis_summary": "Status",
 	"settings_analysis_in_flight": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo processing",
-				"countPlural=other": "{count} photos processing"
+				"countPlural=one": "{countFormatted} photo processing",
+				"countPlural=other": "{countFormatted} photos processing"
 			}
 		}
 	],
 	"settings_analysis_failed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} with errors",
-				"countPlural=other": "{count} with errors"
+				"countPlural=one": "{countFormatted} with errors",
+				"countPlural=other": "{countFormatted} with errors"
 			}
 		}
 	],
@@ -172,22 +196,30 @@
 	"settings_analysis_retrying": "Retrying…",
 	"settings_analysis_retried": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} task queued again",
-				"countPlural=other": "{count} tasks queued again"
+				"countPlural=one": "{countFormatted} task queued again",
+				"countPlural=other": "{countFormatted} tasks queued again"
 			}
 		}
 	],
 	"settings_analysis_retried_task": "{task} of “{name}” queued again",
 	"settings_analysis_retried_assets": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Retrying {count} photo",
-				"countPlural=other": "Retrying {count} photos"
+				"countPlural=one": "Retrying {countFormatted} photo",
+				"countPlural=other": "Retrying {countFormatted} photos"
 			}
 		}
 	],

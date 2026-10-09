@@ -23,7 +23,7 @@
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
-	import { dateTime } from '#lib/format.js';
+	import { dateTime, formatCount } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -112,7 +112,9 @@
 				</button>
 				<button type="button" aria-pressed={unreadOnly} onclick={() => navigateTo('unread')}>
 					{m.notifications_filter_unread()}
-					{#if data && data.unreadCount > 0}<span class="count">{data.unreadCount}</span>{/if}
+					{#if data && data.unreadCount > 0}<span class="count"
+							>{formatCount(data.unreadCount)}</span
+						>{/if}
 				</button>
 			</div>
 		{/snippet}

@@ -8,11 +8,15 @@
 	"viewer_ai_rerun": "Analyse again: {analysis}",
 	"viewer_ai_retried": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Retrying {count} analysis",
-				"countPlural=other": "Retrying {count} analyses"
+				"countPlural=one": "Retrying {countFormatted} analysis",
+				"countPlural=other": "Retrying {countFormatted} analyses"
 			}
 		}
 	],

@@ -19,11 +19,15 @@
 	"timeline_jump_months": "Months of {year}",
 	"timeline_jump_month": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{month}, {count} item",
-				"countPlural=other": "{month}, {count} items"
+				"countPlural=one": "{month}, {countFormatted} item",
+				"countPlural=other": "{month}, {countFormatted} items"
 			}
 		}
 	],
@@ -31,11 +35,15 @@
 	"timeline_jump_hint": "Shortcut: G. Months without photos are disabled.",
 	"timeline_year_items": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} item",
-				"countPlural=other": "{count} items"
+				"countPlural=one": "{countFormatted} item",
+				"countPlural=other": "{countFormatted} items"
 			}
 		}
 	],

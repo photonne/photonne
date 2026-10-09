@@ -8,31 +8,43 @@
 	"people_show_hidden": "Mostrar ocultas",
 	"people_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} persona",
-				"countPlural=other": "{count} personas"
+				"countPlural=one": "{countFormatted} persona",
+				"countPlural=other": "{countFormatted} personas"
 			}
 		}
 	],
 	"people_faces": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} cara",
-				"countPlural=other": "{count} caras"
+				"countPlural=one": "{countFormatted} cara",
+				"countPlural=other": "{countFormatted} caras"
 			}
 		}
 	],
 	"people_pending_badge": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} sugerencia por revisar",
-				"countPlural=other": "{count} sugerencias por revisar"
+				"countPlural=one": "{countFormatted} sugerencia por revisar",
+				"countPlural=other": "{countFormatted} sugerencias por revisar"
 			}
 		}
 	],
@@ -57,21 +69,29 @@
 	"people_renamed": "Nombre guardado",
 	"people_hidden_toast": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} persona oculta",
-				"countPlural=other": "{count} personas ocultas"
+				"countPlural=one": "{countFormatted} persona oculta",
+				"countPlural=other": "{countFormatted} personas ocultas"
 			}
 		}
 	],
 	"people_unhidden_toast": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} persona visible de nuevo",
-				"countPlural=other": "{count} personas visibles de nuevo"
+				"countPlural=one": "{countFormatted} persona visible de nuevo",
+				"countPlural=other": "{countFormatted} personas visibles de nuevo"
 			}
 		}
 	],
@@ -81,11 +101,16 @@
 	"people_merge_confirm": "Fusionar",
 	"people_merged": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} persona fusionada con {name}",
-				"countPlural=other": "{count} personas fusionadas con {name}"
+				"countPlural=one": "{countFormatted} persona fusionada con {name}",
+				"countPlural=other": "{countFormatted} personas fusionadas con {name}"
 			}
 		}
 	],
@@ -104,21 +129,31 @@
 	"people_unlink_title": "Quitar fotos de {name}",
 	"people_unlink_body": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Las caras de {name} en {count} foto dejarán de estar asignadas. La foto no se borra.",
-				"countPlural=other": "Las caras de {name} en {count} fotos dejarán de estar asignadas. Las fotos no se borran."
+				"countPlural=one": "Las caras de {name} en {countFormatted} foto dejarán de estar asignadas. La foto no se borra.",
+				"countPlural=other": "Las caras de {name} en {countFormatted} fotos dejarán de estar asignadas. Las fotos no se borran."
 			}
 		}
 	],
 	"people_unlinked": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto quitada de {name}",
-				"countPlural=other": "{count} fotos quitadas de {name}"
+				"countPlural=one": "{countFormatted} foto quitada de {name}",
+				"countPlural=other": "{countFormatted} fotos quitadas de {name}"
 			}
 		}
 	],
@@ -135,31 +170,44 @@
 	"people_face_open": "Abrir la foto",
 	"people_faces_unassigned": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} cara quitada",
-				"countPlural=other": "{count} caras quitadas"
+				"countPlural=one": "{countFormatted} cara quitada",
+				"countPlural=other": "{countFormatted} caras quitadas"
 			}
 		}
 	],
 	"people_faces_moved": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} cara movida a {name}",
-				"countPlural=other": "{count} caras movidas a {name}"
+				"countPlural=one": "{countFormatted} cara movida a {name}",
+				"countPlural=other": "{countFormatted} caras movidas a {name}"
 			}
 		}
 	],
 	"people_faces_rejected": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} cara descartada",
-				"countPlural=other": "{count} caras descartadas"
+				"countPlural=one": "{countFormatted} cara descartada",
+				"countPlural=other": "{countFormatted} caras descartadas"
 			}
 		}
 	],
@@ -173,41 +221,59 @@
 	"people_suggestions_dismiss_all": "Descartar todas",
 	"people_suggestions_accept_all_body": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Se asignará {count} cara sugerida a {name}.",
-				"countPlural=other": "Se asignarán {count} caras sugeridas a {name}."
+				"countPlural=one": "Se asignará {countFormatted} cara sugerida a {name}.",
+				"countPlural=other": "Se asignarán {countFormatted} caras sugeridas a {name}."
 			}
 		}
 	],
 	"people_suggestions_dismiss_all_body": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Se descartará {count} sugerencia para {name}. La cara queda sin asignar.",
-				"countPlural=other": "Se descartarán {count} sugerencias para {name}. Las caras quedan sin asignar."
+				"countPlural=one": "Se descartará {countFormatted} sugerencia para {name}. La cara queda sin asignar.",
+				"countPlural=other": "Se descartarán {countFormatted} sugerencias para {name}. Las caras quedan sin asignar."
 			}
 		}
 	],
 	"people_suggestions_accepted": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} cara confirmada",
-				"countPlural=other": "{count} caras confirmadas"
+				"countPlural=one": "{countFormatted} cara confirmada",
+				"countPlural=other": "{countFormatted} caras confirmadas"
 			}
 		}
 	],
 	"people_suggestions_dismissed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} sugerencia descartada",
-				"countPlural=other": "{count} sugerencias descartadas"
+				"countPlural=one": "{countFormatted} sugerencia descartada",
+				"countPlural=other": "{countFormatted} sugerencias descartadas"
 			}
 		}
 	],
@@ -222,11 +288,15 @@
 	"people_recognition_backfill": "Analizar las pendientes",
 	"people_recognition_queued": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto en cola para analizar",
-				"countPlural=other": "{count} fotos en cola para analizar"
+				"countPlural=one": "{countFormatted} foto en cola para analizar",
+				"countPlural=other": "{countFormatted} fotos en cola para analizar"
 			}
 		}
 	],
@@ -237,11 +307,15 @@
 	"people_reclustered_none": "Caras reagrupadas; no hay personas nuevas",
 	"people_reclustered": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Caras reagrupadas: {count} persona nueva",
-				"countPlural=other": "Caras reagrupadas: {count} personas nuevas"
+				"countPlural=one": "Caras reagrupadas: {countFormatted} persona nueva",
+				"countPlural=other": "Caras reagrupadas: {countFormatted} personas nuevas"
 			}
 		}
 	],

@@ -9,11 +9,15 @@
 	"archive_unarchive_all_confirm": "Todas las fotos y vídeos archivados volverán al timeline.",
 	"archive_unarchived": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} desarchivada",
-				"countPlural=other": "{count} desarchivadas"
+				"countPlural=one": "{countFormatted} desarchivada",
+				"countPlural=other": "{countFormatted} desarchivadas"
 			}
 		}
 	],
@@ -25,11 +29,15 @@
 	"trash_restore_all_confirm": "Todo lo que hay en la papelera volverá a su sitio.",
 	"trash_restored": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} restaurada",
-				"countPlural=other": "{count} restauradas"
+				"countPlural=one": "{countFormatted} restaurada",
+				"countPlural=other": "{countFormatted} restauradas"
 			}
 		}
 	],
@@ -38,21 +46,29 @@
 	"trash_purge_action": "Eliminar",
 	"trash_purge_confirm": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Se eliminará {count} elemento para siempre, también el archivo. No se puede deshacer.",
-				"countPlural=other": "Se eliminarán {count} elementos para siempre, también sus archivos. No se puede deshacer."
+				"countPlural=one": "Se eliminará {countFormatted} elemento para siempre, también el archivo. No se puede deshacer.",
+				"countPlural=other": "Se eliminarán {countFormatted} elementos para siempre, también sus archivos. No se puede deshacer."
 			}
 		}
 	],
 	"trash_purged": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} eliminada definitivamente",
-				"countPlural=other": "{count} eliminadas definitivamente"
+				"countPlural=one": "{countFormatted} eliminada definitivamente",
+				"countPlural=other": "{countFormatted} eliminadas definitivamente"
 			}
 		}
 	],
@@ -66,11 +82,15 @@
 	"trash_policy_disabled": "La papelera está desactivada en este servidor: lo que borres se elimina definitivamente.",
 	"trash_policy_retention": [
 		{
-			"declarations": ["input days", "local daysPlural = days: plural"],
+			"declarations": [
+				"input days",
+				"local daysPlural = days: plural",
+				"local daysFormatted = days: number"
+			],
 			"selectors": ["daysPlural"],
 			"match": {
-				"daysPlural=one": "Lo que llega a la papelera se elimina definitivamente al cabo de {days} día.",
-				"daysPlural=other": "Lo que llega a la papelera se elimina definitivamente al cabo de {days} días."
+				"daysPlural=one": "Lo que llega a la papelera se elimina definitivamente al cabo de {daysFormatted} día.",
+				"daysPlural=other": "Lo que llega a la papelera se elimina definitivamente al cabo de {daysFormatted} días."
 			}
 		}
 	],
@@ -85,11 +105,15 @@
 	"memories_on_this_day_empty": "No hay fotos de un día como hoy en años anteriores.",
 	"memories_photo_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto",
-				"countPlural=other": "{count} fotos"
+				"countPlural=one": "{countFormatted} foto",
+				"countPlural=other": "{countFormatted} fotos"
 			}
 		}
 	],
@@ -112,11 +136,15 @@
 	"explore_label_no_match": "Nada coincide con la búsqueda.",
 	"explore_label_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} etiqueta",
-				"countPlural=other": "{count} etiquetas"
+				"countPlural=one": "{countFormatted} etiqueta",
+				"countPlural=other": "{countFormatted} etiquetas"
 			}
 		}
 	],
@@ -135,11 +163,15 @@
 	"explore_theme_missing": "Este tema ya no está entre tus recuerdos.",
 	"explore_theme_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} recuerdo",
-				"countPlural=other": "{count} recuerdos"
+				"countPlural=one": "{countFormatted} recuerdo",
+				"countPlural=other": "{countFormatted} recuerdos"
 			}
 		}
 	]

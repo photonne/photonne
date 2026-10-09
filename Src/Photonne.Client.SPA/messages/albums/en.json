@@ -22,11 +22,15 @@
 	"albums_filters": "Filter albums",
 	"albums_items": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} item",
-				"countPlural=other": "{count} items"
+				"countPlural=one": "{countFormatted} item",
+				"countPlural=other": "{countFormatted} items"
 			}
 		}
 	],
@@ -87,11 +91,15 @@
 	"albums_link_updated": "Link updated",
 	"albums_link_uploads": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} upload",
-				"countPlural=other": "{count} uploads"
+				"countPlural=one": "{countFormatted} upload",
+				"countPlural=other": "{countFormatted} uploads"
 			}
 		}
 	],
@@ -99,11 +107,15 @@
 	"albums_link_used_up": "No views left",
 	"albums_link_views": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} view",
-				"countPlural=other": "{count} views"
+				"countPlural=one": "{countFormatted} view",
+				"countPlural=other": "{countFormatted} views"
 			}
 		}
 	],
@@ -129,11 +141,15 @@
 	"albums_picker_filter": "Search {label}",
 	"albums_picker_more": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} more: type to narrow",
-				"countPlural=other": "{count} more: type to narrow"
+				"countPlural=one": "{countFormatted} more: type to narrow",
+				"countPlural=other": "{countFormatted} more: type to narrow"
 			}
 		}
 	],
@@ -146,11 +162,15 @@
 	"albums_remove": "Remove from album",
 	"albums_removed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} removed from the album",
-				"countPlural=other": "{count} removed from the album"
+				"countPlural=one": "{countFormatted} removed from the album",
+				"countPlural=other": "{countFormatted} removed from the album"
 			}
 		}
 	],
@@ -172,11 +192,15 @@
 	"albums_rule_match_any_person": "any of them",
 	"albums_rule_matches": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo matches",
-				"countPlural=other": "{count} photos match"
+				"countPlural=one": "{countFormatted} photo matches",
+				"countPlural=other": "{countFormatted} photos match"
 			}
 		}
 	],
@@ -192,11 +216,15 @@
 	"albums_rule_photos": "Photos",
 	"albums_rule_preserved": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "The rule has {count} more condition not shown here; it’s kept when saving.",
-				"countPlural=other": "The rule has {count} more conditions not shown here; they’re kept when saving."
+				"countPlural=one": "The rule has {countFormatted} more condition not shown here; it’s kept when saving.",
+				"countPlural=other": "The rule has {countFormatted} more conditions not shown here; they’re kept when saving."
 			}
 		}
 	],
@@ -230,11 +258,15 @@
 	"albums_shared": "Shared",
 	"albums_shared_with": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Shared with {count} person",
-				"countPlural=other": "Shared with {count} people"
+				"countPlural=one": "Shared with {countFormatted} person",
+				"countPlural=other": "Shared with {countFormatted} people"
 			}
 		}
 	],
@@ -272,61 +304,85 @@
 	"albums_bulk_cannot_leave": "You can only leave albums others shared with you",
 	"albums_bulk_delete_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Delete {count} album?",
-				"countPlural=other": "Delete {count} albums?"
+				"countPlural=one": "Delete {countFormatted} album?",
+				"countPlural=other": "Delete {countFormatted} albums?"
 			}
 		}
 	],
 	"albums_bulk_delete_message": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "The selected album will be deleted. Its photos stay in your library.",
-				"countPlural=other": "The {count} selected albums will be deleted. Their photos stay in your library."
+				"countPlural=other": "The {countFormatted} selected albums will be deleted. Their photos stay in your library."
 			}
 		}
 	],
 	"albums_bulk_leave_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Leave {count} album?",
-				"countPlural=other": "Leave {count} albums?"
+				"countPlural=one": "Leave {countFormatted} album?",
+				"countPlural=other": "Leave {countFormatted} albums?"
 			}
 		}
 	],
 	"albums_bulk_leave_message": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "You'll stop seeing the selected album. To come back, its owner will have to invite you again.",
-				"countPlural=other": "You'll stop seeing the {count} selected albums. To come back, their owners will have to invite you again."
+				"countPlural=other": "You'll stop seeing the {countFormatted} selected albums. To come back, their owners will have to invite you again."
 			}
 		}
 	],
 	"albums_bulk_deleted": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} album deleted",
-				"countPlural=other": "{count} albums deleted"
+				"countPlural=one": "{countFormatted} album deleted",
+				"countPlural=other": "{countFormatted} albums deleted"
 			}
 		}
 	],
 	"albums_bulk_left": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Left {count} album",
-				"countPlural=other": "Left {count} albums"
+				"countPlural=one": "Left {countFormatted} album",
+				"countPlural=other": "Left {countFormatted} albums"
 			}
 		}
 	],

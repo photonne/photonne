@@ -11,11 +11,15 @@
 	"utilities_duplicates_description": "Copias exactas de la misma foto en distintas carpetas.",
 	"utilities_duplicates_figure": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} grupo · {size} recuperables",
-				"countPlural=other": "{count} grupos · {size} recuperables"
+				"countPlural=one": "{countFormatted} grupo · {size} recuperables",
+				"countPlural=other": "{countFormatted} grupos · {size} recuperables"
 			}
 		}
 	],
@@ -23,21 +27,29 @@
 	"utilities_duplicates_empty": "No hay copias exactas en tu biblioteca.",
 	"utilities_duplicates_summary": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} grupo · hasta {size} recuperables",
-				"countPlural=other": "{count} grupos · hasta {size} recuperables"
+				"countPlural=one": "{countFormatted} grupo · hasta {size} recuperables",
+				"countPlural=other": "{countFormatted} grupos · hasta {size} recuperables"
 			}
 		}
 	],
 	"utilities_marked_summary": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} marcada ({size})",
-				"countPlural=other": "{count} marcadas ({size})"
+				"countPlural=one": "{countFormatted} marcada ({size})",
+				"countPlural=other": "{countFormatted} marcadas ({size})"
 			}
 		}
 	],
@@ -46,11 +58,15 @@
 	"utilities_unmark_all": "Desmarcar todo",
 	"utilities_trash_marked": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Mover {count} a la papelera",
-				"countPlural=other": "Mover {count} a la papelera"
+				"countPlural=one": "Mover {countFormatted} a la papelera",
+				"countPlural=other": "Mover {countFormatted} a la papelera"
 			}
 		}
 	],
@@ -58,11 +74,15 @@
 	"utilities_group_label": "Grupo {index}",
 	"utilities_group_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} copia de {size}",
-				"countPlural=other": "{count} copias de {size} cada una"
+				"countPlural=one": "{countFormatted} copia de {size}",
+				"countPlural=other": "{countFormatted} copias de {size} cada una"
 			}
 		}
 	],
@@ -78,21 +98,29 @@
 	"utilities_confirm_trash_title": "¿Mover las copias a la papelera?",
 	"utilities_confirm_trash_body": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Se moverá {count} copia ({size}) a la papelera. Podrás recuperarla desde allí.",
-				"countPlural=other": "Se moverán {count} copias ({size}) a la papelera. Podrás recuperarlas desde allí."
+				"countPlural=one": "Se moverá {countFormatted} copia ({size}) a la papelera. Podrás recuperarla desde allí.",
+				"countPlural=other": "Se moverán {countFormatted} copias ({size}) a la papelera. Podrás recuperarlas desde allí."
 			}
 		}
 	],
 	"utilities_trashed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} movida a la papelera",
-				"countPlural=other": "{count} movidas a la papelera"
+				"countPlural=one": "{countFormatted} movida a la papelera",
+				"countPlural=other": "{countFormatted} movidas a la papelera"
 			}
 		}
 	],
@@ -100,11 +128,15 @@
 	"utilities_large_files_description": "Lo que más espacio ocupa en tu biblioteca.",
 	"utilities_large_files_figure": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} archivo grande · {size}",
-				"countPlural=other": "{count} archivos grandes · {size}"
+				"countPlural=one": "{countFormatted} archivo grande · {size}",
+				"countPlural=other": "{countFormatted} archivos grandes · {size}"
 			}
 		}
 	],
@@ -114,11 +146,15 @@
 	"utilities_show": "Mostrar",
 	"utilities_trash_selected": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Mover {count} a la papelera",
-				"countPlural=other": "Mover {count} a la papelera"
+				"countPlural=one": "Mover {countFormatted} a la papelera",
+				"countPlural=other": "Mover {countFormatted} a la papelera"
 			}
 		}
 	],
@@ -142,41 +178,57 @@
 	"utilities_filter_folders": "Filtrar carpetas",
 	"utilities_folder_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} carpeta",
-				"countPlural=other": "{count} carpetas"
+				"countPlural=one": "{countFormatted} carpeta",
+				"countPlural=other": "{countFormatted} carpetas"
 			}
 		}
 	],
 	"utilities_photos": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} archivo",
-				"countPlural=other": "{count} archivos"
+				"countPlural=one": "{countFormatted} archivo",
+				"countPlural=other": "{countFormatted} archivos"
 			}
 		}
 	],
 	"utilities_subfolders": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} subcarpeta",
-				"countPlural=other": "{count} subcarpetas"
+				"countPlural=one": "{countFormatted} subcarpeta",
+				"countPlural=other": "{countFormatted} subcarpetas"
 			}
 		}
 	],
 	"utilities_here": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} aquí",
-				"countPlural=other": "{count} aquí"
+				"countPlural=one": "{countFormatted} aquí",
+				"countPlural=other": "{countFormatted} aquí"
 			}
 		}
 	],
@@ -188,11 +240,15 @@
 	"utilities_unsupported_description": "Archivos de tus carpetas que no son fotos ni vídeos.",
 	"utilities_unsupported_figure": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} archivo",
-				"countPlural=other": "{count} archivos"
+				"countPlural=one": "{countFormatted} archivo",
+				"countPlural=other": "{countFormatted} archivos"
 			}
 		}
 	],

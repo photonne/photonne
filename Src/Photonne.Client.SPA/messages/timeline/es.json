@@ -19,11 +19,15 @@
 	"timeline_jump_months": "Meses de {year}",
 	"timeline_jump_month": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{month}, {count} elemento",
-				"countPlural=other": "{month}, {count} elementos"
+				"countPlural=one": "{month}, {countFormatted} elemento",
+				"countPlural=other": "{month}, {countFormatted} elementos"
 			}
 		}
 	],
@@ -31,11 +35,15 @@
 	"timeline_jump_hint": "Atajo: G. Los meses sin fotos aparecen desactivados.",
 	"timeline_year_items": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} elemento",
-				"countPlural=other": "{count} elementos"
+				"countPlural=one": "{countFormatted} elemento",
+				"countPlural=other": "{countFormatted} elementos"
 			}
 		}
 	],

@@ -6,11 +6,15 @@
 	"links_search": "Search by name",
 	"links_totals_active": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} active link",
-				"countPlural=other": "{count} active links"
+				"countPlural=one": "{countFormatted} active link",
+				"countPlural=other": "{countFormatted} active links"
 			}
 		}
 	],
@@ -29,21 +33,29 @@
 	"links_share_action": "Share as a link",
 	"links_share_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Share {count} photo",
-				"countPlural=other": "Share {count} photos"
+				"countPlural=one": "Share {countFormatted} photo",
+				"countPlural=other": "Share {countFormatted} photos"
 			}
 		}
 	],
 	"links_share_intro": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "An album is created with the photo, plus a public link to view it without an account.",
-				"countPlural=other": "An album is created with the {count} photos, plus a public link to view it without an account."
+				"countPlural=other": "An album is created with the {countFormatted} photos, plus a public link to view it without an account."
 			}
 		}
 	],
@@ -59,11 +71,16 @@
 	"links_format_scope_all": "All {total} photos are RAW or HEIC.",
 	"links_format_scope_some": [
 		{
-			"declarations": ["input count", "input total", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input total",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} of the {total} photos is RAW or HEIC; the rest download as they are.",
-				"countPlural=other": "{count} of the {total} photos are RAW or HEIC; the rest download as they are."
+				"countPlural=one": "{countFormatted} of the {total} photos is RAW or HEIC; the rest download as they are.",
+				"countPlural=other": "{countFormatted} of the {total} photos are RAW or HEIC; the rest download as they are."
 			}
 		}
 	],

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatCount } from '#lib/format.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -21,7 +22,9 @@
 
 <div class="section-title">
 	<h2 {id}>{title}</h2>
-	{#if count !== null && count !== undefined}<span class="count">{count}</span>{/if}
+	{#if count !== null && count !== undefined}<span class="count"
+			>{typeof count === 'number' ? formatCount(count) : count}</span
+		>{/if}
 	{#if more}
 		<a class="more" href={more.href}>
 			{more.label ?? m.explore_see_all()}

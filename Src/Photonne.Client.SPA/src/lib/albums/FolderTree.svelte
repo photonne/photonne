@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatCount } from '#lib/format.js';
 	import { tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { isAssetDrag } from '#lib/actions/drag-assets.js';
@@ -179,7 +180,7 @@
 				<Icon path={iconFor(folder)} name={iconFor(folder) ? undefined : 'folder'} size={18} />
 				<span class="name">{folder.name}</span>
 				{#if folder.isPinned}<span class="pinned"><Icon name="pin" size={12} /></span>{/if}
-				<span class="count" aria-hidden="true">{folder.assetCount}</span>
+				<span class="count" aria-hidden="true">{formatCount(folder.assetCount)}</span>
 			</li>
 		{/each}
 	</ul>

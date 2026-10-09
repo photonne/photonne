@@ -50,7 +50,12 @@
 	"admin_dash_trash": "Trash",
 	"admin_dash_trash_expired": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{n} expired",
@@ -62,7 +67,12 @@
 	"admin_dash_coverage": "Indexing coverage",
 	"admin_dash_coverage_unindexed": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{n} file not indexed",
@@ -93,18 +103,27 @@
 	"admin_dash_coverage_summary_partial": "{indexed} of {total} indexable files are indexed.",
 	"admin_dash_coverage_offline": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} external library was offline when verified.",
-				"countPlural=other": "{count} external libraries were offline when verified."
+				"countPlural=one": "{countFormatted} external library was offline when verified.",
+				"countPlural=other": "{countFormatted} external libraries were offline when verified."
 			}
 		}
 	],
 	"admin_dash_coverage_verified": "Verified on {date}",
 	"admin_dash_coverage_show_list": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "Show the file not indexed",
@@ -161,11 +180,16 @@
 	"admin_users_empty": "There are no users yet.",
 	"admin_users_summary": [
 		{
-			"declarations": ["input shown", "input total", "local totalPlural = total: plural"],
+			"declarations": [
+				"input shown",
+				"input total",
+				"local totalPlural = total: plural",
+				"local totalFormatted = total: number"
+			],
 			"selectors": ["totalPlural"],
 			"match": {
-				"totalPlural=one": "{shown} of {total} user",
-				"totalPlural=other": "{shown} of {total} users"
+				"totalPlural=one": "{shown} of {totalFormatted} user",
+				"totalPlural=other": "{shown} of {totalFormatted} users"
 			}
 		}
 	],
@@ -231,7 +255,12 @@
 	"admin_libs_delete_named": "Delete “{name}”",
 	"admin_libs_assets": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{n} item",
@@ -252,7 +281,12 @@
 	"admin_libs_scan_progress": "Scan progress of “{name}”",
 	"admin_libs_scan_found": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{n} found",
@@ -262,7 +296,12 @@
 	],
 	"admin_libs_scan_indexed": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{n} indexed",
@@ -272,7 +311,12 @@
 	],
 	"admin_libs_scan_missing": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{n} gone",
@@ -282,7 +326,13 @@
 	],
 	"admin_libs_scan_done": [
 		{
-			"declarations": ["input name", "input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input name",
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "“{name}” scanned: {n} indexed",
@@ -378,11 +428,16 @@
 	"admin_strash_filter": "Filter by who deleted it",
 	"admin_strash_summary": [
 		{
-			"declarations": ["input size", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input size",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} item · {size}",
-				"countPlural=other": "{count} items · {size}"
+				"countPlural=one": "{countFormatted} item · {size}",
+				"countPlural=other": "{countFormatted} items · {size}"
 			}
 		}
 	],
@@ -392,32 +447,44 @@
 	"admin_strash_purge": "Delete forever",
 	"admin_strash_restored": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} restored to its folder",
-				"countPlural=other": "{count} restored to their folders"
+				"countPlural=one": "{countFormatted} restored to its folder",
+				"countPlural=other": "{countFormatted} restored to their folders"
 			}
 		}
 	],
 	"admin_strash_purged": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} deleted forever",
-				"countPlural=other": "{count} deleted forever"
+				"countPlural=one": "{countFormatted} deleted forever",
+				"countPlural=other": "{countFormatted} deleted forever"
 			}
 		}
 	],
 	"admin_strash_purge_title": "Delete forever",
 	"admin_strash_purge_body": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} file will be removed from disk. This cannot be undone.",
-				"countPlural=other": "{count} files will be removed from disk. This cannot be undone."
+				"countPlural=one": "{countFormatted} file will be removed from disk. This cannot be undone.",
+				"countPlural=other": "{countFormatted} files will be removed from disk. This cannot be undone."
 			}
 		}
 	],
@@ -452,11 +519,15 @@
 	"admin_sys_demo_interval": "Reset",
 	"admin_sys_demo_hours": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "every hour",
-				"countPlural=other": "every {count} hours"
+				"countPlural=other": "every {countFormatted} hours"
 			}
 		}
 	],
@@ -468,7 +539,12 @@
 	"admin_dash_size_used": "{size} used",
 	"admin_dash_storage_sub": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "across {n} user",
@@ -478,7 +554,12 @@
 	],
 	"admin_dash_users_admins": [
 		{
-			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input n",
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{n} administrator",

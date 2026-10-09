@@ -7,11 +7,15 @@
 	"folders_delete": "Delete folder",
 	"folders_delete_message": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "“{name}”, its subfolders and {count} item will go to the trash.",
-				"countPlural=other": "“{name}”, its subfolders and {count} items will go to the trash."
+				"countPlural=one": "“{name}”, its subfolders and {countFormatted} item will go to the trash.",
+				"countPlural=other": "“{name}”, its subfolders and {countFormatted} items will go to the trash."
 			}
 		}
 	],
@@ -41,11 +45,15 @@
 	"folders_move_hint": "It moves with everything inside, on disk too.",
 	"folders_moved_by_year": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} moved to “{folder}” by year ({years})",
-				"countPlural=other": "{count} moved to “{folder}” by year ({years})"
+				"countPlural=one": "{countFormatted} moved to “{folder}” by year ({years})",
+				"countPlural=other": "{countFormatted} moved to “{folder}” by year ({years})"
 			}
 		}
 	],
@@ -58,11 +66,15 @@
 	"folders_remove": "Remove from folder (keeps the photos)",
 	"folders_removed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} removed from the folder",
-				"countPlural=other": "{count} removed from the folder"
+				"countPlural=one": "{countFormatted} removed from the folder",
+				"countPlural=other": "{countFormatted} removed from the folder"
 			}
 		}
 	],
@@ -75,11 +87,15 @@
 	"folders_tree": "Folder tree",
 	"folders_tree_item": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{name}, {count} item",
-				"countPlural=other": "{name}, {count} items"
+				"countPlural=one": "{name}, {countFormatted} item",
+				"countPlural=other": "{name}, {countFormatted} items"
 			}
 		}
 	],
@@ -104,51 +120,71 @@
 	"folders_bulk_cannot_delete": "Some of the selected folders can't be deleted",
 	"folders_bulk_move_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Move {count} folder",
-				"countPlural=other": "Move {count} folders"
+				"countPlural=one": "Move {countFormatted} folder",
+				"countPlural=other": "Move {countFormatted} folders"
 			}
 		}
 	],
 	"folders_bulk_moved": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} folder moved to “{parent}”",
-				"countPlural=other": "{count} folders moved to “{parent}”"
+				"countPlural=one": "{countFormatted} folder moved to “{parent}”",
+				"countPlural=other": "{countFormatted} folders moved to “{parent}”"
 			}
 		}
 	],
 	"folders_bulk_delete_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Delete {count} folder?",
-				"countPlural=other": "Delete {count} folders?"
+				"countPlural=one": "Delete {countFormatted} folder?",
+				"countPlural=other": "Delete {countFormatted} folders?"
 			}
 		}
 	],
 	"folders_bulk_delete_message": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "The selected folder, its subfolders and its photos will go to the trash.",
-				"countPlural=other": "The {count} selected folders, their subfolders and their photos will go to the trash."
+				"countPlural=other": "The {countFormatted} selected folders, their subfolders and their photos will go to the trash."
 			}
 		}
 	],
 	"folders_bulk_deleted": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} folder deleted",
-				"countPlural=other": "{count} folders deleted"
+				"countPlural=one": "{countFormatted} folder deleted",
+				"countPlural=other": "{countFormatted} folders deleted"
 			}
 		}
 	],

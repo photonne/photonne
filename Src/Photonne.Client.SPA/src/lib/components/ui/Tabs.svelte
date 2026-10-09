@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatCount } from '#lib/format.js';
 	interface Tab {
 		href: string;
 		label: string;
@@ -46,7 +47,8 @@
 	<div class="list" bind:this={list} onscroll={measure}>
 		{#each tabs as tab (tab.href)}
 			<a href={tab.href} aria-current={tab.current ? 'page' : undefined}
-				>{tab.label}{#if tab.count != null}<span class="count">{tab.count}</span>{/if}</a
+				>{tab.label}{#if tab.count != null}<span class="count">{formatCount(tab.count)}</span
+					>{/if}</a
 			>
 		{/each}
 	</div>

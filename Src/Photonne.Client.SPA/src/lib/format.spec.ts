@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('#lib/paraglide/runtime.js', () => ({ getLocale: () => 'es' }));
 
-const { formatBytes, fromDateTimeLocal, monthTitle, toDateTimeLocal } = await import('./format.js');
+const { formatBytes, formatCount, fromDateTimeLocal, monthTitle, toDateTimeLocal } =
+	await import('./format.js');
 
 describe('format', () => {
 	it('titles a bucket month', () => {
@@ -13,6 +14,11 @@ describe('format', () => {
 	it('formats sizes', () => {
 		expect(formatBytes(512)).toBe('512 B');
 		expect(formatBytes(3.25 * 1024 * 1024)).toBe('3,3 MB');
+	});
+
+	it('groups the thousands of a count', () => {
+		expect(formatCount(12345)).toBe('12.345');
+		expect(formatCount(7)).toBe('7');
 	});
 
 	it('round-trips a capture time through a datetime-local value', () => {

@@ -9,11 +9,15 @@
 	"archive_unarchive_all_confirm": "Every archived photo and video will go back to the timeline.",
 	"archive_unarchived": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} unarchived",
-				"countPlural=other": "{count} unarchived"
+				"countPlural=one": "{countFormatted} unarchived",
+				"countPlural=other": "{countFormatted} unarchived"
 			}
 		}
 	],
@@ -25,11 +29,15 @@
 	"trash_restore_all_confirm": "Everything in the trash will go back where it was.",
 	"trash_restored": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} restored",
-				"countPlural=other": "{count} restored"
+				"countPlural=one": "{countFormatted} restored",
+				"countPlural=other": "{countFormatted} restored"
 			}
 		}
 	],
@@ -38,21 +46,29 @@
 	"trash_purge_action": "Delete",
 	"trash_purge_confirm": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} item will be deleted forever, file included. This cannot be undone.",
-				"countPlural=other": "{count} items will be deleted forever, files included. This cannot be undone."
+				"countPlural=one": "{countFormatted} item will be deleted forever, file included. This cannot be undone.",
+				"countPlural=other": "{countFormatted} items will be deleted forever, files included. This cannot be undone."
 			}
 		}
 	],
 	"trash_purged": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} permanently deleted",
-				"countPlural=other": "{count} permanently deleted"
+				"countPlural=one": "{countFormatted} permanently deleted",
+				"countPlural=other": "{countFormatted} permanently deleted"
 			}
 		}
 	],
@@ -66,11 +82,15 @@
 	"trash_policy_disabled": "The trash is turned off on this server: what you delete is deleted permanently.",
 	"trash_policy_retention": [
 		{
-			"declarations": ["input days", "local daysPlural = days: plural"],
+			"declarations": [
+				"input days",
+				"local daysPlural = days: plural",
+				"local daysFormatted = days: number"
+			],
 			"selectors": ["daysPlural"],
 			"match": {
-				"daysPlural=one": "Items are deleted permanently {days} day after they reach the trash.",
-				"daysPlural=other": "Items are deleted permanently {days} days after they reach the trash."
+				"daysPlural=one": "Items are deleted permanently {daysFormatted} day after they reach the trash.",
+				"daysPlural=other": "Items are deleted permanently {daysFormatted} days after they reach the trash."
 			}
 		}
 	],
@@ -85,11 +105,15 @@
 	"memories_on_this_day_empty": "No photos from this day in earlier years.",
 	"memories_photo_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo",
-				"countPlural=other": "{count} photos"
+				"countPlural=one": "{countFormatted} photo",
+				"countPlural=other": "{countFormatted} photos"
 			}
 		}
 	],
@@ -112,11 +136,15 @@
 	"explore_label_no_match": "Nothing matches the search.",
 	"explore_label_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} label",
-				"countPlural=other": "{count} labels"
+				"countPlural=one": "{countFormatted} label",
+				"countPlural=other": "{countFormatted} labels"
 			}
 		}
 	],
@@ -135,11 +163,15 @@
 	"explore_theme_missing": "This theme is no longer among your memories.",
 	"explore_theme_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} memory",
-				"countPlural=other": "{count} memories"
+				"countPlural=one": "{countFormatted} memory",
+				"countPlural=other": "{countFormatted} memories"
 			}
 		}
 	]

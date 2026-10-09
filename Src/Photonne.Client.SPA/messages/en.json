@@ -40,11 +40,15 @@
 	"selection_clear": "Clear selection",
 	"selection_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} selected",
-				"countPlural=other": "{count} selected"
+				"countPlural=one": "{countFormatted} selected",
+				"countPlural=other": "{countFormatted} selected"
 			}
 		}
 	],
@@ -106,11 +110,15 @@
 	"admin_only": "This section is for administrators only.",
 	"nav_notifications_unread": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Notifications: {count} unread",
-				"countPlural=other": "Notifications: {count} unread"
+				"countPlural=one": "Notifications: {countFormatted} unread",
+				"countPlural=other": "Notifications: {countFormatted} unread"
 			}
 		}
 	]

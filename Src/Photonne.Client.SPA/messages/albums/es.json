@@ -22,11 +22,15 @@
 	"albums_filters": "Filtrar álbumes",
 	"albums_items": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} elemento",
-				"countPlural=other": "{count} elementos"
+				"countPlural=one": "{countFormatted} elemento",
+				"countPlural=other": "{countFormatted} elementos"
 			}
 		}
 	],
@@ -87,11 +91,15 @@
 	"albums_link_updated": "Enlace actualizado",
 	"albums_link_uploads": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} subida",
-				"countPlural=other": "{count} subidas"
+				"countPlural=one": "{countFormatted} subida",
+				"countPlural=other": "{countFormatted} subidas"
 			}
 		}
 	],
@@ -99,11 +107,15 @@
 	"albums_link_used_up": "Visitas agotadas",
 	"albums_link_views": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} visita",
-				"countPlural=other": "{count} visitas"
+				"countPlural=one": "{countFormatted} visita",
+				"countPlural=other": "{countFormatted} visitas"
 			}
 		}
 	],
@@ -129,11 +141,15 @@
 	"albums_picker_filter": "Buscar en {label}",
 	"albums_picker_more": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} más: escribe para afinar",
-				"countPlural=other": "{count} más: escribe para afinar"
+				"countPlural=one": "{countFormatted} más: escribe para afinar",
+				"countPlural=other": "{countFormatted} más: escribe para afinar"
 			}
 		}
 	],
@@ -146,11 +162,15 @@
 	"albums_remove": "Quitar del álbum",
 	"albums_removed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} quitada del álbum",
-				"countPlural=other": "{count} quitadas del álbum"
+				"countPlural=one": "{countFormatted} quitada del álbum",
+				"countPlural=other": "{countFormatted} quitadas del álbum"
 			}
 		}
 	],
@@ -172,11 +192,15 @@
 	"albums_rule_match_any_person": "cualquiera de ellas",
 	"albums_rule_matches": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto cumple las condiciones",
-				"countPlural=other": "{count} fotos cumplen las condiciones"
+				"countPlural=one": "{countFormatted} foto cumple las condiciones",
+				"countPlural=other": "{countFormatted} fotos cumplen las condiciones"
 			}
 		}
 	],
@@ -192,11 +216,15 @@
 	"albums_rule_photos": "Fotos",
 	"albums_rule_preserved": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "La regla tiene {count} condición más que aquí no se muestra; se conserva al guardar.",
-				"countPlural=other": "La regla tiene {count} condiciones más que aquí no se muestran; se conservan al guardar."
+				"countPlural=one": "La regla tiene {countFormatted} condición más que aquí no se muestra; se conserva al guardar.",
+				"countPlural=other": "La regla tiene {countFormatted} condiciones más que aquí no se muestran; se conservan al guardar."
 			}
 		}
 	],
@@ -230,11 +258,15 @@
 	"albums_shared": "Compartido",
 	"albums_shared_with": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Compartido con {count} persona",
-				"countPlural=other": "Compartido con {count} personas"
+				"countPlural=one": "Compartido con {countFormatted} persona",
+				"countPlural=other": "Compartido con {countFormatted} personas"
 			}
 		}
 	],
@@ -272,61 +304,85 @@
 	"albums_bulk_cannot_leave": "Solo puedes salir de álbumes que te han compartido",
 	"albums_bulk_delete_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "¿Eliminar {count} álbum?",
-				"countPlural=other": "¿Eliminar {count} álbumes?"
+				"countPlural=one": "¿Eliminar {countFormatted} álbum?",
+				"countPlural=other": "¿Eliminar {countFormatted} álbumes?"
 			}
 		}
 	],
 	"albums_bulk_delete_message": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "Se eliminará el álbum seleccionado. Las fotos no se borran: siguen en tu biblioteca.",
-				"countPlural=other": "Se eliminarán los {count} álbumes seleccionados. Las fotos no se borran: siguen en tu biblioteca."
+				"countPlural=other": "Se eliminarán los {countFormatted} álbumes seleccionados. Las fotos no se borran: siguen en tu biblioteca."
 			}
 		}
 	],
 	"albums_bulk_leave_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "¿Salir de {count} álbum?",
-				"countPlural=other": "¿Salir de {count} álbumes?"
+				"countPlural=one": "¿Salir de {countFormatted} álbum?",
+				"countPlural=other": "¿Salir de {countFormatted} álbumes?"
 			}
 		}
 	],
 	"albums_bulk_leave_message": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "Dejarás de ver el álbum seleccionado. Para volver, quien lo comparte tendrá que invitarte otra vez.",
-				"countPlural=other": "Dejarás de ver los {count} álbumes seleccionados. Para volver, quien los comparte tendrá que invitarte otra vez."
+				"countPlural=other": "Dejarás de ver los {countFormatted} álbumes seleccionados. Para volver, quien los comparte tendrá que invitarte otra vez."
 			}
 		}
 	],
 	"albums_bulk_deleted": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} álbum eliminado",
-				"countPlural=other": "{count} álbumes eliminados"
+				"countPlural=one": "{countFormatted} álbum eliminado",
+				"countPlural=other": "{countFormatted} álbumes eliminados"
 			}
 		}
 	],
 	"albums_bulk_left": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Has salido de {count} álbum",
-				"countPlural=other": "Has salido de {count} álbumes"
+				"countPlural=one": "Has salido de {countFormatted} álbum",
+				"countPlural=other": "Has salido de {countFormatted} álbumes"
 			}
 		}
 	],
