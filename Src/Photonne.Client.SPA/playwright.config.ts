@@ -48,8 +48,10 @@ export default defineConfig({
 		}
 	],
 	webServer: {
-		command: `npm run build && npm run preview -- --port ${port} --strictPort`,
-		port,
+		// On 127.0.0.1 explicitly: `localhost` may resolve to ::1 only (as on the
+		// GitHub runners), and the lan-http project maps its name to this address.
+		command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${port} --strictPort`,
+		url: `http://127.0.0.1:${port}`,
 		// Only reuse a server explicitly started for this checkout (E2E_REUSE=1):
 		// another checkout's preview on the same port would be tested silently.
 		reuseExistingServer: process.env.E2E_REUSE === '1'
