@@ -11,6 +11,7 @@
 	import { icons } from '#lib/albums/icons.js';
 	import { session } from '#lib/auth/session.svelte.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import PaneResizer from '#lib/components/PaneResizer.svelte';
 	import { savedWidth } from '#lib/components/pane-width.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
@@ -39,7 +40,7 @@
 			<h2 id="folders-tree-title"><a href={appHref('/folders')}>{m.nav_folders()}</a></h2>
 			<button
 				type="button"
-				class="icon"
+				class="icon-btn"
 				aria-label={m.folders_new()}
 				title={m.folders_new()}
 				onclick={() => (creating = true)}
@@ -48,7 +49,7 @@
 			</button>
 		</div>
 		{#if treeQuery.isPending}
-			<p class="note" role="status">{m.session_restoring()}</p>
+			<div class="loading"><Skeleton variant="text" count={4} /></div>
 		{:else if treeQuery.isError}
 			<p class="note" role="alert">{m.error_loading()}</p>
 		{:else}
@@ -122,6 +123,7 @@
 	h2 {
 		margin: 0;
 		font-size: var(--font-size-md);
+		font-weight: 600;
 	}
 
 	h2 a {
@@ -133,20 +135,9 @@
 		text-decoration: underline;
 	}
 
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.icon:hover {
-		background: var(--color-surface);
+	/* The pane is narrow: the skeleton keeps the tree's own inset. */
+	.loading {
+		--page-gutter: var(--space-2);
 	}
 
 	.note,

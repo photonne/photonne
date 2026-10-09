@@ -153,5 +153,7 @@
 		}
 	],
 	"folders_bulk_nested": "Las subcarpetas de otra seleccionada van con ella.",
-	"folders_bulk_partial": "Hecho con {done} de {total}. Las que fallaron siguen seleccionadas."
+	"folders_bulk_partial": "Hecho con {done} de {total}. Las que fallaron siguen seleccionadas.",
+	"folders_upload": "Subir fotos",
+	"folders_none_hint": "Las fotos que subes se guardan en carpetas. Sube algunas o crea una carpeta con el botón del árbol."
 }

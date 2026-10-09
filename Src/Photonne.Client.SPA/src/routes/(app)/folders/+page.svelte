@@ -20,6 +20,10 @@
 	import ListViewToggle from '#lib/albums/ListViewToggle.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
+	import { appHref } from '#lib/navigation/href.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -131,6 +135,11 @@
 		else toasts.show(done(outcome.succeeded.length));
 	}
 
+	function clearFilters() {
+		options.query = '';
+		options.scope = 'all';
+	}
+
 	async function removeSelected() {
 		await run(
 			async (folder) => !(await deleteFolder({ path: { folderId: folder.id } })).error,
@@ -166,7 +175,7 @@
 			{#snippet actions()}
 				<button
 					type="button"
-					class="bulk"
+					class="btn"
 					disabled={!allowed.canMove || busy}
 					title={allowed.canMove ? undefined : m.folders_bulk_cannot_move()}
 					onclick={() => (moving = true)}
@@ -175,7 +184,7 @@
 				</button>
 				<button
 					type="button"
-					class="bulk danger"
+					class="btn danger"
 					disabled={!allowed.canDelete || busy}
 					title={allowed.canDelete ? undefined : m.folders_bulk_cannot_delete()}
 					onclick={() => (confirmingDelete = true)}
@@ -186,28 +195,11 @@
 		</SelectionBar>
 	</div>
 
-	<h1>{m.nav_folders()}</h1>
-	{#if treeQuery.isPending}
-		<p class="note" role="status">{m.session_restoring()}</p>
-	{:else if treeQuery.isError}
-		<p class="note" role="alert">{m.error_loading()}</p>
-	{:else if roots.length === 0}
-		<div class="empty">
-			<Icon name="folder" size={48} />
-			<p class="title">{m.folders_none()}</p>
-			<p>{m.folders_none_body()}</p>
-		</div>
-	{:else}
-		<div class="filters" role="search" aria-label={m.folders_filters()}>
-			<label class="search">
-				<Icon name="search" size={18} />
-				<span class="visually-hidden">{m.folders_search()}</span>
-				<input type="search" placeholder={m.folders_search()} bind:value={options.query} />
-			</label>
-
+	{#snippet toolbar()}
+		<div class="filters" role="group" aria-label={m.folders_filters()}>
 			<div class="segmented" role="radiogroup" aria-label={m.folders_scope()}>
 				{#each scopes as scope (scope.key)}
-					<label class:on={options.scope === scope.key}>
+					<label>
 						<input type="radio" name="scope" value={scope.key} bind:group={options.scope} />
 						{scope.label()} <span class="count">{counts[scope.key]}</span>
 					</label>
@@ -223,7 +215,7 @@
 				</label>
 				<button
 					type="button"
-					class="icon"
+					class="icon-btn"
 					aria-label={options.descending ? m.folders_sort_descending() : m.folders_sort_ascending()}
 					title={options.descending ? m.folders_sort_descending() : m.folders_sort_ascending()}
 					onclick={() => (options.descending = !options.descending)}
@@ -232,13 +224,55 @@
 				</button>
 			</div>
 
-			<ListViewToggle bind:view={options.view} />
+			<span class="view"><ListViewToggle bind:view={options.view} /></span>
 		</div>
+	{/snippet}
 
-		{#if shown.length === 0}
-			<p class="note">{filtered ? m.folders_no_match() : m.folders_none()}</p>
-		{:else}
-			{#if !searching}<p class="note">{m.folders_intro()}</p>{/if}
+	<!-- The filters wait for the folders: counts of 0 while loading read as "none". -->
+	<PageHeader
+		title={m.nav_folders()}
+		subtitle={roots.length && !searching ? m.folders_intro() : null}
+		toolbar={roots.length ? toolbar : undefined}
+	>
+		{#snippet actions()}
+			{#if roots.length}
+				<div class="search" role="search" aria-label={m.folders_filters()}>
+					<Icon name="search" size={18} />
+					<input
+						type="search"
+						aria-label={m.folders_search()}
+						placeholder={m.folders_search()}
+						bind:value={options.query}
+					/>
+				</div>
+			{/if}
+		{/snippet}
+	</PageHeader>
+
+	{#if treeQuery.isPending}
+		<Skeleton variant="cards" count={10} />
+	{:else if treeQuery.isError}
+		<p class="status" role="alert">{m.error_loading()}</p>
+	{:else if roots.length === 0}
+		<EmptyState icon="folder" title={m.folders_none()} hint={m.folders_none_hint()}>
+			{#snippet action()}
+				<a class="btn primary" href={appHref('/upload')}>
+					<Icon name="upload" size={18} />{m.folders_upload()}
+				</a>
+			{/snippet}
+		</EmptyState>
+	{:else if shown.length === 0}
+		<EmptyState compact icon="search" title={filtered ? m.folders_no_match() : m.folders_none()}>
+			{#snippet action()}
+				{#if filtered}
+					<button type="button" class="btn" onclick={clearFilters}
+						>{m.albums_clear_filters()}</button
+					>
+				{/if}
+			{/snippet}
+		</EmptyState>
+	{:else}
+		<div class="content">
 			<FolderList
 				folders={shown}
 				label={searching ? m.folders_results() : m.folders_roots()}
@@ -246,7 +280,7 @@
 				{selection}
 				{location}
 			/>
-		{/if}
+		</div>
 	{/if}
 </div>
 
@@ -276,9 +310,8 @@
 <style>
 	.page {
 		display: grid;
-		gap: var(--space-4);
 		align-content: start;
-		padding: var(--space-4);
+		padding-bottom: var(--space-8);
 	}
 
 	.dock {
@@ -286,94 +319,38 @@
 		top: 0;
 		z-index: 3;
 		height: 0;
-		margin: calc(-1 * var(--space-4));
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-	}
-
-	.note {
-		margin: 0;
-		color: var(--color-text-muted);
 	}
 
 	.filters {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-3);
+		gap: var(--space-2) var(--space-3);
+		width: 100%;
 	}
 
 	.search {
-		flex: 0 1 260px;
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
-		height: 36px;
-		padding: 0 var(--space-3);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
 		color: var(--color-text-muted);
 	}
 
-	.search:focus-within {
-		outline: 2px solid var(--color-focus);
+	.search :global(svg) {
+		position: absolute;
+		left: var(--space-3);
+		pointer-events: none;
 	}
 
 	.search input {
-		flex: 1;
-		min-width: 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
-		outline: none;
-	}
-
-	.segmented {
-		display: inline-flex;
-		padding: 2px;
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-	}
-
-	.segmented label {
-		position: relative;
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		height: 32px;
-		padding: 0 var(--space-3);
-		border-radius: calc(var(--radius-sm) - 2px);
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
-	.segmented label.on {
-		background: var(--color-surface-raised);
-		box-shadow: var(--shadow-raised);
-		font-weight: 600;
-	}
-
-	.segmented label:has(input:focus-visible) {
-		outline: 2px solid var(--color-focus);
-	}
-
-	/* The radio covers its label: invisible, but it is what gets clicked. */
-	.segmented input {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		margin: 0;
-		opacity: 0;
-		cursor: pointer;
+		width: 240px;
+		padding-left: calc(var(--space-3) + 26px);
 	}
 
 	.count {
 		color: var(--color-text-muted);
 		font-weight: 400;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.sort {
@@ -382,73 +359,17 @@
 		gap: var(--space-1);
 	}
 
-	select {
-		height: 36px;
-		padding: 0 var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
+	.view {
+		margin-left: auto;
 	}
 
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
+	.content {
+		padding: var(--space-2) var(--page-gutter) 0;
 	}
 
-	.icon:hover {
-		background: var(--color-surface);
-	}
-
-	.bulk {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: 36px;
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.bulk:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.bulk.danger {
-		border-color: var(--color-danger);
-		color: var(--color-danger);
-	}
-
-	.bulk:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
-	}
-
-	.empty {
-		display: grid;
-		justify-items: center;
-		gap: var(--space-1);
-		padding: var(--space-8) var(--space-4);
-		color: var(--color-text-muted);
-		text-align: center;
-	}
-
-	.empty p {
+	.status {
 		margin: 0;
-	}
-
-	.empty .title {
-		font-size: var(--font-size-lg);
-		font-weight: 600;
-		color: var(--color-text);
+		padding: var(--space-6) var(--page-gutter);
+		color: var(--color-text-muted);
 	}
 </style>

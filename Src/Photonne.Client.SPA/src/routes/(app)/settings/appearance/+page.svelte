@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getTheme, setTheme, type Theme } from '#lib/theme.js';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale, type Locale } from '#lib/paraglide/runtime.js';
 
@@ -25,56 +26,57 @@
 </svelte:head>
 
 <div class="settings-page">
-	<h1>{m.settings_appearance()}</h1>
-	<p class="lead">{m.settings_appearance_lead()}</p>
+	<PageHeader title={m.settings_appearance()} subtitle={m.settings_appearance_lead()} />
 
-	<section class="card" aria-labelledby="theme-title">
-		<header>
-			<h2 id="theme-title">{m.settings_theme()}</h2>
-			<p>{m.settings_theme_lead()}</p>
-		</header>
-		<fieldset class="choices">
-			<legend class="visually-hidden">{m.settings_theme()}</legend>
-			{#each themes as option (option.value)}
-				<label class="choice theme-choice">
-					<input
-						type="radio"
-						name="theme"
-						value={option.value}
-						checked={theme === option.value}
-						onchange={() => chooseTheme(option.value)}
-					/>
-					<span class="swatch {option.value}" aria-hidden="true"></span>
-					<span class="text">
-						<span>{option.label()}</span>
-						<small>{option.hint()}</small>
-					</span>
-				</label>
-			{/each}
-		</fieldset>
-	</section>
+	<div class="settings-body">
+		<section class="card" aria-labelledby="theme-title">
+			<header>
+				<h2 id="theme-title">{m.settings_theme()}</h2>
+				<p>{m.settings_theme_lead()}</p>
+			</header>
+			<fieldset class="choices">
+				<legend class="visually-hidden">{m.settings_theme()}</legend>
+				{#each themes as option (option.value)}
+					<label class="choice theme-choice">
+						<input
+							type="radio"
+							name="theme"
+							value={option.value}
+							checked={theme === option.value}
+							onchange={() => chooseTheme(option.value)}
+						/>
+						<span class="swatch {option.value}" aria-hidden="true"></span>
+						<span class="text">
+							<span>{option.label()}</span>
+							<small>{option.hint()}</small>
+						</span>
+					</label>
+				{/each}
+			</fieldset>
+		</section>
 
-	<section class="card" aria-labelledby="language-title">
-		<header>
-			<h2 id="language-title">{m.language()}</h2>
-			<p>{m.settings_language_lead()}</p>
-		</header>
-		<fieldset class="choices">
-			<legend class="visually-hidden">{m.language()}</legend>
-			{#each locales as locale (locale)}
-				<label class="choice" lang={locale}>
-					<input
-						type="radio"
-						name="language"
-						value={locale}
-						checked={getLocale() === locale}
-						onchange={() => setLocale(locale)}
-					/>
-					{localeNames[locale]}
-				</label>
-			{/each}
-		</fieldset>
-	</section>
+		<section class="card" aria-labelledby="language-title">
+			<header>
+				<h2 id="language-title">{m.language()}</h2>
+				<p>{m.settings_language_lead()}</p>
+			</header>
+			<fieldset class="choices">
+				<legend class="visually-hidden">{m.language()}</legend>
+				{#each locales as locale (locale)}
+					<label class="choice" lang={locale}>
+						<input
+							type="radio"
+							name="language"
+							value={locale}
+							checked={getLocale() === locale}
+							onchange={() => setLocale(locale)}
+						/>
+						{localeNames[locale]}
+					</label>
+				{/each}
+			</fieldset>
+		</section>
+	</div>
 </div>
 
 <style>

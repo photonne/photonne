@@ -64,21 +64,6 @@
 		gap: var(--space-3);
 	}
 
-	.field {
-		display: grid;
-		gap: var(--space-1);
-		font-size: var(--font-size-sm);
-		font-weight: 600;
-	}
-
-	select {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-		font-weight: 400;
-	}
-
 	.hint {
 		margin: 0;
 		color: var(--color-text-muted);

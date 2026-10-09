@@ -51,14 +51,14 @@
 				aria-current={selected ? 'true' : undefined}
 				onclick={(event) => onclick(event, folder)}
 			>
-				<span class="thumb">
+				<span class="thumb" class:tile={!src}>
 					{#if src}
 						<img {src} alt="" loading="lazy" decoding="async" />
 					{:else}
 						<Icon
 							path={folder.isShared ? icons.folderShared : undefined}
 							name={folder.isShared ? undefined : 'folder'}
-							size={view === 'grid' ? 40 : 24}
+							size={view === 'grid' ? 44 : 22}
 						/>
 					{/if}
 				</span>
@@ -107,8 +107,8 @@
 
 	ul.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-		gap: var(--space-5, 20px) var(--space-4);
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		gap: var(--space-6) var(--space-4);
 	}
 
 	ul.list {
@@ -126,7 +126,11 @@
 		gap: 2px;
 		color: inherit;
 		text-decoration: none;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
+	}
+
+	a:focus-visible {
+		outline: none;
 	}
 
 	.thumb {
@@ -135,7 +139,15 @@
 		overflow: hidden;
 		background: var(--color-placeholder);
 		color: var(--color-text-muted);
-		transition: transform var(--duration-fast);
+		transition:
+			transform var(--duration-normal) ease,
+			box-shadow var(--duration-normal) ease;
+	}
+
+	/* No photo to show: the folder's mark on a tinted tile. */
+	.thumb.tile {
+		background: var(--color-brand-tile);
+		color: var(--color-brand);
 	}
 
 	.thumb img {
@@ -146,11 +158,14 @@
 
 	.text {
 		display: grid;
+		gap: 2px;
 		min-width: 0;
 	}
 
 	.name {
+		font-size: var(--font-size-md);
 		font-weight: 600;
+		line-height: 1.3;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -167,11 +182,13 @@
 	.badge {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-		padding: 2px var(--space-2);
+		gap: var(--space-1);
+		min-height: 24px;
+		padding: 0 var(--space-2);
 		border-radius: 999px;
 		font-size: var(--font-size-xs);
 		font-weight: 600;
+		white-space: nowrap;
 	}
 
 	.check {
@@ -187,7 +204,9 @@
 		color: transparent;
 		cursor: pointer;
 		opacity: 0;
-		transition: opacity var(--duration-fast);
+		transition:
+			opacity var(--duration-fast),
+			transform var(--duration-normal) ease;
 	}
 
 	li:hover .check,
@@ -208,26 +227,43 @@
 	.grid .thumb {
 		aspect-ratio: 1;
 		margin-bottom: var(--space-2);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 	}
 
-	.grid a:hover img {
-		transform: scale(1.03);
+	.grid a:hover .thumb {
+		transform: translateY(-3px);
+		box-shadow: var(--shadow-raised);
 	}
 
-	.grid img {
-		transition: transform var(--duration-normal) ease;
+	.grid li:has(a:hover) .check,
+	.grid li:has(a:hover) .badges {
+		transform: translateY(-3px);
+	}
+
+	.grid a:focus-visible .thumb {
+		outline: 2px solid var(--color-focus);
+		outline-offset: 2px;
+	}
+
+	.grid .text {
+		padding: 0 2px;
 	}
 
 	.grid .badges {
 		position: absolute;
-		right: var(--space-2);
 		top: var(--space-2);
+		right: var(--space-2);
+		transition: transform var(--duration-normal) ease;
 	}
 
 	.grid .badge {
-		background: rgb(0 0 0 / 0.55);
+		width: 28px;
+		min-height: 28px;
+		justify-content: center;
+		padding: 0;
+		background: rgb(0 0 0 / 0.6);
 		color: #fff;
+		backdrop-filter: blur(6px);
 	}
 
 	.grid .check {
@@ -235,8 +271,10 @@
 		left: var(--space-2);
 	}
 
-	.grid .selected .thumb {
+	.grid .selected .thumb,
+	.grid .selected a:hover .thumb {
 		transform: scale(0.92);
+		box-shadow: none;
 		outline: 3px solid var(--color-accent);
 		outline-offset: 2px;
 	}
@@ -248,11 +286,17 @@
 		align-items: center;
 		gap: var(--space-3);
 		padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 34px);
+		border-radius: var(--radius-md);
 	}
 
 	.list a:hover,
 	.list .selected a {
-		background: var(--color-surface);
+		background: var(--color-hover);
+	}
+
+	.list a:focus-visible {
+		outline: 2px solid var(--color-focus);
+		outline-offset: -2px;
 	}
 
 	.list .selected a {
@@ -274,7 +318,7 @@
 		top: 50%;
 		left: var(--space-3);
 		transform: translateY(-50%);
-		border-color: var(--color-text-muted);
+		border-color: var(--color-border-strong);
 		background: transparent;
 	}
 

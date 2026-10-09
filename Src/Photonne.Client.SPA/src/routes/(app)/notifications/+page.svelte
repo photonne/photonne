@@ -19,6 +19,9 @@
 		getNotificationsQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { dateTime } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
@@ -90,41 +93,49 @@
 </svelte:head>
 
 <div class="page">
-	<header class="head">
-		<h1>{m.nav_notifications()}</h1>
-		<button
-			type="button"
-			class="mark-all"
-			disabled={!data || data.unreadCount === 0}
-			onclick={markAllRead}
-		>
-			<Icon path={ICON_DONE_ALL} size={18} />
-			{m.notifications_mark_all()}
-		</button>
-	</header>
-
-	<div class="filters" role="group" aria-label={m.notifications_filter()}>
-		<button type="button" aria-pressed={!unreadOnly} onclick={() => navigateTo('all')}>
-			{m.notifications_filter_all()}
-		</button>
-		<button type="button" aria-pressed={unreadOnly} onclick={() => navigateTo('unread')}>
-			{m.notifications_filter_unread()}
-			{#if data && data.unreadCount > 0}<span class="count">{data.unreadCount}</span>{/if}
-		</button>
-	</div>
+	<PageHeader title={m.nav_notifications()}>
+		{#snippet actions()}
+			<button
+				type="button"
+				class="btn"
+				disabled={!data || data.unreadCount === 0}
+				onclick={markAllRead}
+			>
+				<Icon path={ICON_DONE_ALL} size={18} />
+				{m.notifications_mark_all()}
+			</button>
+		{/snippet}
+		{#snippet toolbar()}
+			<div class="segmented" role="group" aria-label={m.notifications_filter()}>
+				<button type="button" aria-pressed={!unreadOnly} onclick={() => navigateTo('all')}>
+					{m.notifications_filter_all()}
+				</button>
+				<button type="button" aria-pressed={unreadOnly} onclick={() => navigateTo('unread')}>
+					{m.notifications_filter_unread()}
+					{#if data && data.unreadCount > 0}<span class="count">{data.unreadCount}</span>{/if}
+				</button>
+			</div>
+		{/snippet}
+	</PageHeader>
 
 	{#if notifications.isPending}
-		<p class="status" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="rows" count={6} />
 	{:else if notifications.isError || !data}
 		<p class="status" role="alert">{m.error_loading()}</p>
 	{:else if data.items.length === 0}
-		<div class="empty">
-			<Icon name="notifications" size={40} />
-			<p class="empty-title">
-				{unreadOnly ? m.notifications_empty_unread() : m.notifications_empty()}
-			</p>
-			<p>{m.notifications_empty_hint()}</p>
-		</div>
+		<EmptyState
+			icon="notifications"
+			title={unreadOnly ? m.notifications_empty_unread() : m.notifications_empty()}
+			hint={m.notifications_empty_hint()}
+		>
+			{#snippet action()}
+				{#if unreadOnly}
+					<button type="button" class="btn" onclick={() => navigateTo('all')}>
+						{m.notifications_filter_all()}
+					</button>
+				{/if}
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="list" aria-label={m.nav_notifications()}>
 			{#each data.items as item (item.id)}
@@ -155,7 +166,7 @@
 					{#if !item.isRead}
 						<button
 							type="button"
-							class="read"
+							class="icon-btn sm read"
 							title={m.notifications_mark_read()}
 							aria-label={m.notifications_mark_read_one({ title: item.title })}
 							onclick={() => markRead(item)}
@@ -171,6 +182,7 @@
 			{#if data.totalPages > 1}
 				<button
 					type="button"
+					class="btn sm"
 					disabled={pageNumber <= 1}
 					onclick={() => navigateTo(unreadOnly ? 'unread' : 'all', pageNumber - 1)}
 				>
@@ -180,6 +192,7 @@
 				<span>{m.notifications_page({ page: pageNumber, pages: data.totalPages })}</span>
 				<button
 					type="button"
+					class="btn sm"
 					disabled={pageNumber >= data.totalPages}
 					onclick={() => navigateTo(unreadOnly ? 'unread' : 'all', pageNumber + 1)}
 				>
@@ -194,104 +207,34 @@
 
 <style>
 	.page {
-		display: grid;
-		gap: var(--space-4);
-		max-width: 820px;
-		padding: var(--space-4) var(--space-6) var(--space-8);
-	}
-
-	.head {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-3);
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-	}
-
-	button {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-raised);
-		cursor: pointer;
-		font-size: var(--font-size-sm);
-	}
-
-	button:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	button:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-
-	.mark-all {
-		margin-left: auto;
-	}
-
-	.filters {
-		display: flex;
-		gap: var(--space-2);
-	}
-
-	.filters button {
-		border-radius: 999px;
-		padding: var(--space-1) var(--space-4);
-	}
-
-	.filters button[aria-pressed='true'] {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
+		max-width: calc(820px + 2 * var(--page-gutter));
+		padding-bottom: var(--space-8);
 	}
 
 	.count {
-		min-width: 1.4em;
+		min-width: 1.5em;
 		padding: 0 6px;
 		border-radius: 999px;
-		background: color-mix(in srgb, currentColor 18%, transparent);
+		background: var(--color-badge);
+		color: #fff;
 		font-size: var(--font-size-xs);
+		font-weight: 600;
+		line-height: 1.5;
 		text-align: center;
 	}
 
 	.status {
-		color: var(--color-text-muted);
-	}
-
-	.empty {
-		display: grid;
-		justify-items: center;
-		gap: var(--space-1);
-		padding: var(--space-8) var(--space-4);
-		color: var(--color-text-muted);
-		text-align: center;
-	}
-
-	.empty p {
 		margin: 0;
-	}
-
-	.empty-title {
-		margin-top: var(--space-2) !important;
-		color: var(--color-text);
-		font-weight: 600;
+		padding: var(--space-6) var(--page-gutter);
+		color: var(--color-text-muted);
 	}
 
 	.list {
 		list-style: none;
-		margin: 0;
+		margin: var(--space-2) var(--page-gutter) 0;
 		padding: 0;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		background: var(--color-surface-raised);
 		overflow: hidden;
 	}
@@ -301,7 +244,7 @@
 		display: flex;
 		align-items: flex-start;
 		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
+		padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
 	}
 
 	li + li {
@@ -309,11 +252,11 @@
 	}
 
 	li.unread {
-		background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+		background: color-mix(in srgb, var(--color-accent-soft) 60%, transparent);
 	}
 
 	li:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.icon {
@@ -324,18 +267,17 @@
 		height: 36px;
 		border-radius: 50%;
 		background: var(--color-surface);
+		color: var(--color-text-muted);
 	}
 
 	.icon.accent {
+		background: var(--color-brand-tile);
 		color: var(--color-accent);
 	}
 
 	.icon.danger {
+		background: color-mix(in srgb, var(--color-danger) 12%, transparent);
 		color: var(--color-danger);
-	}
-
-	.icon.muted {
-		color: var(--color-text-muted);
 	}
 
 	.text {
@@ -382,14 +324,6 @@
 	.read {
 		position: relative;
 		z-index: 1;
-		display: grid;
-		place-items: center;
-		width: 32px;
-		height: 32px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
 	}
 
 	.dot {
@@ -404,6 +338,7 @@
 		align-items: center;
 		flex-wrap: wrap;
 		gap: var(--space-3);
+		padding: var(--space-4) var(--page-gutter) 0;
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}

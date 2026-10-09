@@ -330,5 +330,6 @@
 			}
 		}
 	],
-	"albums_bulk_partial": "Hecho con {done} de {total}. Los que fallaron siguen seleccionados."
+	"albums_bulk_partial": "Hecho con {done} de {total}. Los que fallaron siguen seleccionados.",
+	"albums_clear_filters": "Quitar filtros"
 }

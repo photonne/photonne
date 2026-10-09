@@ -13,6 +13,9 @@
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { dateTime } from '#lib/format.js';
 	import { thumbnailUrl } from '#lib/media.js';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const queryClient = useQueryClient();
@@ -93,138 +96,131 @@
 </svelte:head>
 
 <div class="settings-page">
-	<h1>{m.settings_analysis()}</h1>
-	<p class="lead">{m.settings_analysis_lead()}</p>
+	<PageHeader title={m.settings_analysis()} subtitle={m.settings_analysis_lead()} />
 
 	{#if pending.isPending}
-		<p class="hint" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="rows" count={4} />
 	{:else if pending.isError}
-		<p class="error" role="alert">{m.error_loading()}</p>
+		<div class="settings-body"><p class="error" role="alert">{m.error_loading()}</p></div>
 	{:else if items.length === 0}
-		<section class="card empty">
-			<Icon name="check" size={32} />
-			<p>{m.settings_analysis_empty()}</p>
-			<div class="actions">
-				<button type="button" class="button" onclick={refresh}>
-					<Icon name="refresh" size={18} />{m.settings_analysis_refresh()}
-				</button>
-			</div>
-		</section>
-	{:else}
-		<section class="card" aria-labelledby="analysis-summary">
-			<header>
-				<h2 id="analysis-summary">{m.settings_analysis_summary()}</h2>
-			</header>
-			<p class="counts" role="status">
-				<span>{m.settings_analysis_in_flight({ count: summary.inFlight })}</span>
-				<span class:bad={summary.failed > 0}>
-					{m.settings_analysis_failed({ count: summary.failed })}
-				</span>
-			</p>
-			<div class="actions">
-				<button
-					type="button"
-					class="button primary"
-					disabled={failing.length === 0 || retryingEverything}
-					title={m.settings_analysis_retry_everything_hint()}
-					onclick={retryEverything}
-				>
-					<Icon name="refresh" size={18} />
-					{retryingEverything
-						? m.settings_analysis_retrying()
-						: m.settings_analysis_retry_everything()}
-				</button>
-				<button type="button" class="button" disabled={pending.isFetching} onclick={refresh}>
-					{m.settings_analysis_refresh()}
-				</button>
-			</div>
-		</section>
-
-		<ul class="items" aria-label={m.settings_analysis_list()}>
-			{#each items as item (item.assetId)}
-				<li>
-					<img
-						src={thumbnailUrl(item.assetId, 'Small')}
-						alt=""
-						loading="lazy"
-						decoding="async"
-						width="64"
-						height="64"
-					/>
-					<div class="about">
-						<span class="name">{item.fileName}</span>
-						<span class="meta">
-							{dateTime(item.fileCreatedAt)} ·
-							{m.settings_analysis_counts({
-								pending: item.pending,
-								processing: item.processing,
-								failed: item.failed
-							})}
-						</span>
-						{#if item.failedTaskTypes.length}
-							<ul
-								class="tasks"
-								aria-label={m.settings_analysis_failed_tasks({ name: item.fileName })}
-							>
-								{#each item.failedTaskTypes as type (type)}
-									<li>
-										<button
-											type="button"
-											class="task"
-											disabled={isBusy(item.assetId, type) || isBusy(item.assetId, 'all')}
-											aria-label={m.settings_analysis_retry_task({ task: enrichmentLabel(type) })}
-											title={m.settings_analysis_retry_task({ task: enrichmentLabel(type) })}
-											onclick={() => retryTask(item, type)}
-										>
-											<Icon name="refresh" size={14} />{enrichmentLabel(type)}
-										</button>
-									</li>
-								{/each}
-							</ul>
-						{/if}
-					</div>
-					{#if item.failed > 0 || item.failedTaskTypes.length}
-						<button
-							type="button"
-							class="button"
-							disabled={isBusy(item.assetId, 'all')}
-							onclick={() => retryAll(item)}
-						>
-							{isBusy(item.assetId, 'all')
-								? m.settings_analysis_retrying()
-								: m.settings_analysis_retry_all()}
+		<div class="settings-body">
+			<section class="card">
+				<EmptyState compact icon="check" title={m.settings_analysis_empty()}>
+					{#snippet action()}
+						<button type="button" class="btn" onclick={refresh}>
+							<Icon name="refresh" size={18} />{m.settings_analysis_refresh()}
 						</button>
-					{/if}
-				</li>
-			{/each}
-		</ul>
+					{/snippet}
+				</EmptyState>
+			</section>
+		</div>
+	{:else}
+		<div class="settings-body">
+			<section class="card" aria-labelledby="analysis-summary">
+				<header>
+					<h2 id="analysis-summary">{m.settings_analysis_summary()}</h2>
+				</header>
+				<p class="counts" role="status">
+					<span>{m.settings_analysis_in_flight({ count: summary.inFlight })}</span>
+					<span class:bad={summary.failed > 0}>
+						{m.settings_analysis_failed({ count: summary.failed })}
+					</span>
+				</p>
+				<div class="actions">
+					<button
+						type="button"
+						class="btn primary"
+						disabled={failing.length === 0 || retryingEverything}
+						title={m.settings_analysis_retry_everything_hint()}
+						onclick={retryEverything}
+					>
+						<Icon name="refresh" size={18} />
+						{retryingEverything
+							? m.settings_analysis_retrying()
+							: m.settings_analysis_retry_everything()}
+					</button>
+					<button type="button" class="btn" disabled={pending.isFetching} onclick={refresh}>
+						{m.settings_analysis_refresh()}
+					</button>
+				</div>
+			</section>
 
-		{#if pending.hasNextPage}
-			<div class="actions">
-				<button
-					type="button"
-					class="button"
-					disabled={pending.isFetchingNextPage}
-					onclick={() => pending.fetchNextPage()}
-				>
-					{m.settings_analysis_more()}
-				</button>
-			</div>
-		{/if}
+			<ul class="items" aria-label={m.settings_analysis_list()}>
+				{#each items as item (item.assetId)}
+					<li>
+						<img
+							src={thumbnailUrl(item.assetId, 'Small')}
+							alt=""
+							loading="lazy"
+							decoding="async"
+							width="64"
+							height="64"
+						/>
+						<div class="about">
+							<span class="name">{item.fileName}</span>
+							<span class="meta">
+								{dateTime(item.fileCreatedAt)} ·
+								{m.settings_analysis_counts({
+									pending: item.pending,
+									processing: item.processing,
+									failed: item.failed
+								})}
+							</span>
+							{#if item.failedTaskTypes.length}
+								<ul
+									class="tasks"
+									aria-label={m.settings_analysis_failed_tasks({ name: item.fileName })}
+								>
+									{#each item.failedTaskTypes as type (type)}
+										<li>
+											<button
+												type="button"
+												class="task"
+												disabled={isBusy(item.assetId, type) || isBusy(item.assetId, 'all')}
+												aria-label={m.settings_analysis_retry_task({ task: enrichmentLabel(type) })}
+												title={m.settings_analysis_retry_task({ task: enrichmentLabel(type) })}
+												onclick={() => retryTask(item, type)}
+											>
+												<Icon name="refresh" size={14} />{enrichmentLabel(type)}
+											</button>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</div>
+						{#if item.failed > 0 || item.failedTaskTypes.length}
+							<button
+								type="button"
+								class="btn"
+								disabled={isBusy(item.assetId, 'all')}
+								onclick={() => retryAll(item)}
+							>
+								{isBusy(item.assetId, 'all')
+									? m.settings_analysis_retrying()
+									: m.settings_analysis_retry_all()}
+							</button>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+
+			{#if pending.hasNextPage}
+				<div class="actions">
+					<button
+						type="button"
+						class="btn"
+						disabled={pending.isFetchingNextPage}
+						onclick={() => pending.fetchNextPage()}
+					>
+						{m.settings_analysis_more()}
+					</button>
+				</div>
+			{/if}
+		</div>
 	{/if}
 </div>
 
 <style>
-	.empty {
-		justify-items: center;
-		text-align: center;
-		color: var(--color-text-muted);
-	}
-
-	.empty p {
-		margin: 0;
-	}
-
 	.counts {
 		display: flex;
 		flex-wrap: wrap;
@@ -327,7 +323,7 @@
 			height: 48px;
 		}
 
-		.items > li > .button {
+		.items > li > .btn {
 			grid-column: 2;
 			justify-self: start;
 		}

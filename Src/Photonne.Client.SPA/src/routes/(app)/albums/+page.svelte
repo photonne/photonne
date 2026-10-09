@@ -21,6 +21,9 @@
 	import ListViewToggle from '#lib/albums/ListViewToggle.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
@@ -66,6 +69,8 @@
 		...(options.groupByYear ? years.flatMap((group) => group.albums) : arranged.others)
 	]);
 	const order = $derived(shown.map((album) => album.id));
+	/** Loaded, and the user has no album at all: nothing to filter. */
+	const empty = $derived(albums.isSuccess && albums.data.length === 0);
 	const filtered = $derived(
 		options.query.trim() !== '' || options.scope !== 'all' || options.kind !== 'all'
 	);
@@ -145,6 +150,12 @@
 		}
 	}
 
+	function clearFilters() {
+		options.query = '';
+		options.scope = 'all';
+		options.kind = 'all';
+	}
+
 	function saved(album: { id: string; name: string }) {
 		creating = null;
 		invalidateAlbums(queryClient);
@@ -167,7 +178,7 @@
 				{#if selected.some((album) => !album.isOwner)}
 					<button
 						type="button"
-						class="bulk"
+						class="btn"
 						disabled={!allowed.canLeave || busy}
 						title={allowed.canLeave ? undefined : m.albums_bulk_cannot_leave()}
 						onclick={() => (confirming = 'leave')}
@@ -177,7 +188,7 @@
 				{/if}
 				<button
 					type="button"
-					class="bulk danger"
+					class="btn danger"
 					disabled={!allowed.canDelete || busy}
 					title={allowed.canDelete ? undefined : m.albums_bulk_cannot_delete()}
 					onclick={() => (confirming = 'delete')}
@@ -188,103 +199,139 @@
 		</SelectionBar>
 	</div>
 
-	<header class="head">
-		<h1>{m.nav_albums()}</h1>
-		<div class="create">
-			<button type="button" class="secondary" onclick={() => (creating = 'smart')}>
+	<PageHeader title={m.nav_albums()} toolbar={empty ? undefined : toolbar}>
+		{#snippet actions()}
+			{#if !empty}
+				<div class="search" role="search" aria-label={m.albums_filters()}>
+					<Icon name="search" size={18} />
+					<input
+						type="search"
+						aria-label={m.albums_search()}
+						placeholder={m.albums_search()}
+						bind:value={options.query}
+					/>
+				</div>
+			{/if}
+			<button type="button" class="btn" onclick={() => (creating = 'smart')}>
 				<Icon path={icons.smart} size={18} />{m.albums_new_smart()}
 			</button>
-			<button type="button" class="primary" onclick={() => (creating = 'manual')}>
+			<button type="button" class="btn primary" onclick={() => (creating = 'manual')}>
 				<Icon name="add" size={18} />{m.albums_new()}
 			</button>
-		</div>
-	</header>
+		{/snippet}
+	</PageHeader>
 
-	<div class="filters" role="search" aria-label={m.albums_filters()}>
-		<label class="search">
-			<Icon name="search" size={18} />
-			<span class="visually-hidden">{m.albums_search()}</span>
-			<input type="search" placeholder={m.albums_search()} bind:value={options.query} />
-		</label>
+	{#snippet toolbar()}
+		<div class="filters" role="group" aria-label={m.albums_filters()}>
+			<div class="segmented" role="radiogroup" aria-label={m.albums_scope()}>
+				{#each scopes as scope (scope.key)}
+					<label>
+						<input type="radio" name="scope" value={scope.key} bind:group={options.scope} />
+						{scope.label()}
+						<!-- Counts wait for the list: "0" while loading reads as "none". -->
+						{#if albums.isSuccess}<span class="count">{counts[scope.key]}</span>{/if}
+					</label>
+				{/each}
+			</div>
 
-		<div class="segmented" role="radiogroup" aria-label={m.albums_scope()}>
-			{#each scopes as scope (scope.key)}
-				<label class:on={options.scope === scope.key}>
-					<input type="radio" name="scope" value={scope.key} bind:group={options.scope} />
-					{scope.label()} <span class="count">{counts[scope.key]}</span>
-				</label>
-			{/each}
-		</div>
-
-		<label class="select">
-			<span class="visually-hidden">{m.albums_kind()}</span>
-			<select bind:value={options.kind}>
-				{#each kinds as kind (kind.key)}<option value={kind.key}>{kind.label()}</option>{/each}
-			</select>
-		</label>
-
-		<div class="sort">
-			<label class="select">
-				<span class="visually-hidden">{m.albums_sort()}</span>
-				<select bind:value={options.sort}>
-					{#each sorts as sort (sort.key)}<option value={sort.key}>{sort.label()}</option>{/each}
+			<label>
+				<span class="visually-hidden">{m.albums_kind()}</span>
+				<select bind:value={options.kind}>
+					{#each kinds as kind (kind.key)}<option value={kind.key}>{kind.label()}</option>{/each}
 				</select>
 			</label>
+
+			<div class="sort">
+				<label>
+					<span class="visually-hidden">{m.albums_sort()}</span>
+					<select bind:value={options.sort}>
+						{#each sorts as sort (sort.key)}<option value={sort.key}>{sort.label()}</option>{/each}
+					</select>
+				</label>
+				<button
+					type="button"
+					class="icon-btn"
+					aria-label={options.descending ? m.albums_sort_descending() : m.albums_sort_ascending()}
+					title={options.descending ? m.albums_sort_descending() : m.albums_sort_ascending()}
+					onclick={() => (options.descending = !options.descending)}
+				>
+					<Icon path={options.descending ? icons.arrowDown : icons.arrowUp} size={18} />
+				</button>
+			</div>
+
 			<button
 				type="button"
-				class="icon"
-				aria-label={options.descending ? m.albums_sort_descending() : m.albums_sort_ascending()}
-				title={options.descending ? m.albums_sort_descending() : m.albums_sort_ascending()}
-				onclick={() => (options.descending = !options.descending)}
+				class="chip toggle"
+				class:active={options.groupByYear}
+				role="switch"
+				aria-checked={options.groupByYear}
+				onclick={() => (options.groupByYear = !options.groupByYear)}
 			>
-				<Icon path={options.descending ? icons.arrowDown : icons.arrowUp} size={18} />
+				{#if options.groupByYear}<Icon name="check" size={16} />{/if}
+				{m.albums_group_by_year()}
 			</button>
+
+			<span class="view"><ListViewToggle bind:view={options.view} /></span>
 		</div>
-
-		<label class="switch">
-			<input type="checkbox" role="switch" bind:checked={options.groupByYear} />
-			{m.albums_group_by_year()}
-		</label>
-
-		<ListViewToggle bind:view={options.view} />
-	</div>
+	{/snippet}
 
 	{#if albums.isPending}
-		<p class="status" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="cards" count={10} />
 	{:else if albums.isError}
 		<p class="status" role="alert">{m.error_loading()}</p>
 	{:else if (albums.data ?? []).length === 0}
-		<div class="empty">
-			<Icon name="album" size={48} />
-			<p class="title">{m.albums_empty_title()}</p>
-			<p>{m.albums_empty_body()}</p>
-		</div>
+		<EmptyState icon="album" title={m.albums_empty_title()} hint={m.albums_empty_body()}>
+			{#snippet action()}
+				<div class="empty-actions">
+					<button type="button" class="btn primary" onclick={() => (creating = 'manual')}>
+						<Icon name="add" size={18} />{m.albums_new()}
+					</button>
+					<button type="button" class="btn" onclick={() => (creating = 'smart')}>
+						<Icon path={icons.smart} size={18} />{m.albums_new_smart()}
+					</button>
+				</div>
+			{/snippet}
+		</EmptyState>
 	{:else if arranged.pinned.length + arranged.others.length === 0}
-		<p class="status">{filtered ? m.albums_no_match() : m.albums_empty_title()}</p>
+		<EmptyState
+			compact
+			icon="search"
+			title={filtered ? m.albums_no_match() : m.albums_empty_title()}
+		>
+			{#snippet action()}
+				{#if filtered}
+					<button type="button" class="btn" onclick={clearFilters}
+						>{m.albums_clear_filters()}</button
+					>
+				{/if}
+			{/snippet}
+		</EmptyState>
 	{:else}
-		{#if arranged.pinned.length}
-			<section aria-labelledby="pinned-title">
-				<h2 id="pinned-title">{m.nav_section_pinned()}</h2>
-				{@render list(arranged.pinned)}
-			</section>
-		{/if}
-		{#if options.groupByYear}
-			{#each years as group (group.year)}
-				<section aria-labelledby="year-{group.year}">
-					<h2 id="year-{group.year}" aria-label={m.albums_year_section({ year: group.year })}>
-						{group.year}
-					</h2>
-					{@render list(group.albums)}
+		<div class="content">
+			{#if arranged.pinned.length}
+				<section aria-labelledby="pinned-title">
+					<h2 id="pinned-title">{m.nav_section_pinned()}</h2>
+					{@render list(arranged.pinned)}
 				</section>
-			{/each}
-		{:else if arranged.others.length}
-			<section aria-labelledby="all-title">
-				<h2 id="all-title" class:visually-hidden={!arranged.pinned.length}>
-					{m.albums_section_all()}
-				</h2>
-				{@render list(arranged.others)}
-			</section>
-		{/if}
+			{/if}
+			{#if options.groupByYear}
+				{#each years as group (group.year)}
+					<section aria-labelledby="year-{group.year}">
+						<h2 id="year-{group.year}" aria-label={m.albums_year_section({ year: group.year })}>
+							{group.year}
+						</h2>
+						{@render list(group.albums)}
+					</section>
+				{/each}
+			{:else if arranged.others.length}
+				<section aria-labelledby="all-title">
+					<h2 id="all-title" class:visually-hidden={!arranged.pinned.length}>
+						{m.albums_section_all()}
+					</h2>
+					{@render list(arranged.others)}
+				</section>
+			{/if}
+		</div>
 	{/if}
 </div>
 
@@ -324,10 +371,9 @@
 
 <style>
 	.page {
-		padding: var(--space-4);
 		display: grid;
-		gap: var(--space-4);
 		align-content: start;
+		padding-bottom: var(--space-8);
 	}
 
 	.dock {
@@ -335,182 +381,38 @@
 		top: 0;
 		z-index: 3;
 		height: 0;
-		margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
-	}
-
-	.bulk {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: 36px;
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.bulk:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.bulk.danger {
-		border-color: var(--color-danger);
-		color: var(--color-danger);
-	}
-
-	.bulk:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
-	}
-
-	.switch {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
-	.switch input {
-		accent-color: var(--color-accent);
-	}
-
-	.rows {
-		display: grid;
-		gap: 2px;
-		margin: 0 0 var(--space-6);
-		padding: 0;
-		list-style: none;
-	}
-
-	.head {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-3);
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-	}
-
-	h2 {
-		margin: 0 0 var(--space-3);
-		font-size: var(--font-size-sm);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-muted);
-	}
-
-	.create {
-		margin-left: auto;
-		display: flex;
-		gap: var(--space-2);
-	}
-
-	.primary,
-	.secondary {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: 36px;
-		padding: 0 var(--space-4);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.primary {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-	}
-
-	.secondary:hover {
-		background: var(--color-surface);
 	}
 
 	.filters {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-3);
+		gap: var(--space-2) var(--space-3);
+		width: 100%;
 	}
 
 	.search {
-		flex: 0 1 260px;
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
-		height: 36px;
-		padding: 0 var(--space-3);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
 		color: var(--color-text-muted);
 	}
 
-	.search:focus-within {
-		outline: 2px solid var(--color-focus);
+	.search :global(svg) {
+		position: absolute;
+		left: var(--space-3);
+		pointer-events: none;
 	}
 
 	.search input {
-		flex: 1;
-		min-width: 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
-		outline: none;
-	}
-
-	.segmented {
-		display: inline-flex;
-		padding: 2px;
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-	}
-
-	.segmented label {
-		position: relative;
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		height: 32px;
-		padding: 0 var(--space-3);
-		border-radius: calc(var(--radius-sm) - 2px);
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
-	.segmented label.on {
-		background: var(--color-surface-raised);
-		box-shadow: var(--shadow-raised);
-		font-weight: 600;
-	}
-
-	.segmented label:has(input:focus-visible) {
-		outline: 2px solid var(--color-focus);
-	}
-
-	/* The radio covers its label: invisible, but it is what gets clicked. */
-	.segmented input {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		margin: 0;
-		opacity: 0;
-		cursor: pointer;
+		width: 240px;
+		padding-left: calc(var(--space-3) + 26px);
 	}
 
 	.count {
 		color: var(--color-text-muted);
 		font-weight: 400;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.sort {
@@ -519,59 +421,56 @@
 		gap: var(--space-1);
 	}
 
-	select {
-		height: 36px;
-		padding: 0 var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
+	/* The toggle sits in the row as tall as its neighbours. */
+	.toggle {
+		min-height: var(--control-h);
+		padding: 0 var(--space-4);
 	}
 
-	.icon {
+	.view {
+		margin-left: auto;
+	}
+
+	.content {
 		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
+		gap: var(--space-6);
+		padding: var(--space-2) var(--page-gutter) 0;
 	}
 
-	.icon:hover {
-		background: var(--color-surface);
+	h2 {
+		margin: 0 0 var(--space-3);
+		font-size: var(--font-size-lg);
+		font-weight: 600;
+		line-height: 1.3;
 	}
 
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 		gap: var(--space-6) var(--space-4);
-		margin: 0 0 var(--space-6);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.rows {
+		display: grid;
+		gap: 2px;
+		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
 
 	.status {
-		color: var(--color-text-muted);
-	}
-
-	.empty {
-		display: grid;
-		justify-items: center;
-		gap: var(--space-1);
-		padding: var(--space-8) var(--space-4);
-		color: var(--color-text-muted);
-		text-align: center;
-	}
-
-	.empty p {
 		margin: 0;
+		padding: var(--space-6) var(--page-gutter);
+		color: var(--color-text-muted);
 	}
 
-	.empty .title {
-		font-size: var(--font-size-lg);
-		font-weight: 600;
-		color: var(--color-text);
+	.empty-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: var(--space-2);
 	}
 </style>

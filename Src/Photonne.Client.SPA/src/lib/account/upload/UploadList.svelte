@@ -38,6 +38,23 @@
 		}
 	}
 
+	/** The status pill's colour: what the row's state means. */
+	function tone(entry: UploadEntry) {
+		switch (entry.status) {
+			case 'done':
+				return 'ok';
+			case 'duplicate':
+				return 'neutral';
+			case 'uploading':
+				return 'busy';
+			case 'failed':
+			case 'skipped':
+				return 'bad';
+			default:
+				return 'waiting';
+		}
+	}
+
 	const isVideo = (entry: UploadEntry) =>
 		entry.file.type.startsWith('video/') ||
 		/\.(mp4|mov|m4v|avi|mkv|webm|3gp)$/i.test(entry.file.name);
@@ -58,13 +75,19 @@
 			</span>
 			<span class="name" title={name}>{name}</span>
 			<span class="size">{formatBytes(entry.file.size)}</span>
-			<span class="status" aria-live={entry.status === 'failed' ? 'polite' : undefined}>
-				{statusText(entry)}
+			<span class="status-cell">
+				<span
+					class="status {tone(entry)}"
+					aria-live={entry.status === 'failed' ? 'polite' : undefined}
+				>
+					{statusText(entry)}
+				</span>
 			</span>
 			<span class="actions">
 				{#if entry.status === 'failed' || entry.status === 'cancelled'}
 					<button
 						type="button"
+						class="icon-btn sm"
 						aria-label={m.upload_retry_one({ name })}
 						title={m.upload_retry()}
 						onclick={() => queue.retry(entry.id)}
@@ -75,6 +98,7 @@
 				{#if entry.status === 'checking' || entry.status === 'queued' || entry.status === 'uploading'}
 					<button
 						type="button"
+						class="icon-btn sm"
 						aria-label={m.upload_cancel_one({ name })}
 						title={m.upload_cancel()}
 						onclick={() => queue.cancel(entry.id)}
@@ -84,6 +108,7 @@
 				{:else}
 					<button
 						type="button"
+						class="icon-btn sm"
 						aria-label={m.upload_remove_one({ name })}
 						title={m.upload_remove()}
 						onclick={() => queue.remove(entry.id)}
@@ -110,7 +135,7 @@
 		margin: 0;
 		padding: 0;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		background: var(--color-surface-raised);
 		overflow: hidden;
 	}
@@ -121,12 +146,12 @@
 		grid-template-columns: 24px minmax(0, 1fr) auto minmax(9rem, auto) auto;
 		align-items: center;
 		gap: var(--space-3);
-		min-height: 48px;
+		min-height: 52px;
 		padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
 		font-size: var(--font-size-sm);
 		/* Long folder drops: rows off screen skip layout and paint. */
 		content-visibility: auto;
-		contain-intrinsic-size: auto 48px;
+		contain-intrinsic-size: auto 52px;
 	}
 
 	.row + .row {
@@ -141,13 +166,11 @@
 
 	.done .kind,
 	.duplicate .kind {
-		color: var(--color-accent);
+		color: var(--color-success);
 	}
 
 	.failed .kind,
-	.skipped .kind,
-	.failed .status,
-	.skipped .status {
+	.skipped .kind {
 		color: var(--color-danger);
 	}
 
@@ -157,15 +180,49 @@
 		white-space: nowrap;
 	}
 
-	.size,
-	.status {
+	.size {
 		color: var(--color-text-muted);
 		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
 	}
 
+	.status-cell {
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	/* Status pills: tinted by meaning, the text in the full colour (AA). */
 	.status {
-		text-align: right;
+		display: inline-flex;
+		align-items: center;
+		min-height: 24px;
+		padding: 0 var(--space-2);
+		border-radius: 999px;
+		font-size: var(--font-size-xs);
+		font-weight: 600;
+		white-space: nowrap;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.status.waiting,
+	.status.neutral {
+		background: var(--color-surface);
+		color: var(--color-text-muted);
+	}
+
+	.status.busy {
+		background: var(--color-accent-soft);
+		color: var(--color-text);
+	}
+
+	.status.ok {
+		background: color-mix(in srgb, var(--color-success) 14%, transparent);
+		color: var(--color-success);
+	}
+
+	.status.bad {
+		background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+		color: var(--color-danger);
 	}
 
 	.cancelled .name {
@@ -176,25 +233,12 @@
 	.actions {
 		display: flex;
 		gap: 2px;
-		min-width: 72px;
+		min-width: 68px;
 		justify-content: flex-end;
-	}
-
-	.actions button {
-		display: grid;
-		place-items: center;
-		width: 32px;
-		height: 32px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
 		color: var(--color-text-muted);
-		cursor: pointer;
 	}
 
 	.actions button:hover {
-		background: var(--color-surface);
 		color: var(--color-text);
 	}
 

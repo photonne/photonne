@@ -89,8 +89,7 @@
 	<button
 		bind:this={trigger}
 		type="button"
-		class:icon-only={!showLabel}
-		class="trigger"
+		class={showLabel ? 'btn trigger' : 'icon-btn trigger'}
 		aria-haspopup="menu"
 		aria-expanded={open}
 		aria-controls={open ? `${id}-menu` : undefined}
@@ -137,29 +136,8 @@
 		position: relative;
 	}
 
-	.trigger {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: 36px;
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.trigger.icon-only {
-		width: 36px;
-		padding: 0;
-		justify-content: center;
-		border-color: transparent;
-		border-radius: 50%;
-	}
-
-	.trigger:hover,
 	.trigger[aria-expanded='true'] {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.menu {
@@ -178,6 +156,9 @@
 
 	[role='menuitem'] {
 		display: flex;
+		min-height: var(--control-h);
+		color: var(--color-text);
+		font-size: var(--font-size-sm);
 		align-items: center;
 		gap: var(--space-3);
 		padding: var(--space-2) var(--space-3);
@@ -191,8 +172,12 @@
 
 	[role='menuitem']:hover,
 	[role='menuitem']:focus-visible {
-		background: var(--color-surface);
+		background: var(--color-hover);
 		outline: none;
+	}
+
+	[role='menuitem']:focus-visible {
+		box-shadow: inset 0 0 0 2px var(--color-focus);
 	}
 
 	[role='menuitem'].danger {

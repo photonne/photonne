@@ -107,7 +107,7 @@
 		{/if}
 	</fieldset>
 
-	<label class="views">
+	<label class="field views">
 		<span>{m.albums_link_max_views()}</span>
 		<input
 			type="text"
@@ -132,16 +132,16 @@
 	{#if tried && errorText}<p class="error" role="alert">{errorText}</p>{/if}
 
 	<div class="buttons">
-		<button type="button" onclick={oncancel}>{m.dialog_cancel()}</button>
-		<button type="submit" class="primary" disabled={busy}>{submitLabel}</button>
+		<button type="button" class="btn sm" onclick={oncancel}>{m.dialog_cancel()}</button>
+		<button type="submit" class="btn sm primary" disabled={busy}>{submitLabel}</button>
 	</div>
 </form>
 
 <style>
 	.link-form {
 		display: grid;
-		gap: var(--space-3);
-		padding: var(--space-3);
+		gap: var(--space-4);
+		padding: var(--space-4);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		background: var(--color-surface);
@@ -155,9 +155,9 @@
 		border: 0;
 	}
 
-	legend,
-	.views > span {
-		margin-bottom: var(--space-1);
+	legend {
+		margin-bottom: var(--space-2);
+		padding: 0;
 		font-size: var(--font-size-sm);
 		font-weight: 600;
 	}
@@ -166,30 +166,11 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-2);
+		gap: var(--space-2) var(--space-3);
 	}
 
 	.views {
-		display: grid;
 		max-width: 220px;
-	}
-
-	input[type='date'],
-	input[type='password'],
-	input[type='text'] {
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-	}
-
-	.chip {
-		padding: 2px var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: var(--color-bg);
-		font-size: var(--font-size-sm);
-		cursor: pointer;
 	}
 
 	.check {
@@ -197,6 +178,12 @@
 		align-items: flex-start;
 		gap: var(--space-2);
 		font-size: var(--font-size-sm);
+		cursor: pointer;
+	}
+
+	.check input {
+		flex: none;
+		margin-top: 2px;
 	}
 
 	.hint {
@@ -215,20 +202,5 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--space-2);
-	}
-
-	.buttons button {
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.buttons .primary {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
 	}
 </style>

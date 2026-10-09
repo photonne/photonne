@@ -99,18 +99,27 @@
 		border-bottom: 1px solid var(--color-border);
 	}
 
+	/* As the shared Tabs (components/ui/Tabs.svelte), for in-dialog panels. */
 	[role='tab'] {
-		padding: var(--space-2) var(--space-3);
+		min-height: 40px;
+		margin-bottom: -1px;
+		padding: 0 var(--space-3);
 		border: 0;
 		border-bottom: 2px solid transparent;
 		background: transparent;
 		color: var(--color-text-muted);
-		font-weight: 600;
+		font-size: var(--font-size-sm);
+		font-weight: 500;
 		cursor: pointer;
+	}
+
+	[role='tab']:hover {
+		color: var(--color-text);
 	}
 
 	[role='tab'][aria-selected='true'] {
 		border-bottom-color: var(--color-accent);
 		color: var(--color-text);
+		font-weight: 600;
 	}
 </style>

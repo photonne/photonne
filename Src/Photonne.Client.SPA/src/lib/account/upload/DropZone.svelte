@@ -19,6 +19,8 @@
 		/** Replaces the default heading of the area. */
 		title?: string;
 		hint?: string;
+		/** Less room: the icon beside the text, for a card (the guest upload). */
+		compact?: boolean;
 	}
 
 	let {
@@ -27,7 +29,8 @@
 		folders = true,
 		disabled = false,
 		title = m.upload_drop_title(),
-		hint = m.upload_drop_hint()
+		hint = m.upload_drop_hint(),
+		compact = false
 	}: Props = $props();
 
 	let over = $state(false);
@@ -95,22 +98,25 @@
 		class="area"
 		class:over
 		class:disabled
+		class:compact
 		aria-label={title}
 		ondragenter={enter}
 		ondragover={overHandler}
 		ondragleave={leave}
 		ondrop={drop}
 	>
-		<span class="badge"><Icon name="upload" size={32} /></span>
-		<h2>{over ? m.upload_drop_release() : title}</h2>
-		<p>{hint}</p>
+		<span class="badge"><Icon name="upload" size={compact ? 24 : 32} /></span>
+		<div class="text">
+			<h2>{over ? m.upload_drop_release() : title}</h2>
+			<p>{hint}</p>
+		</div>
 		<div class="buttons">
-			<button type="button" class="primary" {disabled} onclick={() => fileInput?.click()}>
+			<button type="button" class="btn primary" {disabled} onclick={() => fileInput?.click()}>
 				<Icon name="add" size={18} />
 				{m.upload_pick_files()}
 			</button>
 			{#if folders}
-				<button type="button" {disabled} onclick={() => folderInput?.click()}>
+				<button type="button" class="btn" {disabled} onclick={() => folderInput?.click()}>
 					<Icon path={ICON_FOLDER_UPLOAD} size={18} />
 					{m.upload_pick_folder()}
 				</button>
@@ -144,7 +150,7 @@
 		justify-items: center;
 		gap: var(--space-2);
 		padding: var(--space-8) var(--space-6);
-		border: 2px dashed var(--color-border);
+		border: 2px dashed var(--color-border-strong);
 		border-radius: var(--radius-lg);
 		background: var(--color-surface);
 		text-align: center;
@@ -155,7 +161,7 @@
 
 	.area.over {
 		border-color: var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+		background: var(--color-accent-soft);
 	}
 
 	.area.disabled {
@@ -168,13 +174,19 @@
 		width: 64px;
 		height: 64px;
 		border-radius: 50%;
-		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-		color: var(--color-accent);
+		background: var(--color-brand-tile);
+		color: var(--color-brand);
+	}
+
+	.text {
+		display: grid;
+		gap: var(--space-1);
 	}
 
 	h2 {
 		margin: var(--space-2) 0 0;
 		font-size: var(--font-size-lg);
+		font-weight: 600;
 	}
 
 	p {
@@ -191,27 +203,38 @@
 		margin-top: var(--space-3);
 	}
 
-	button {
-		display: inline-flex;
+	/* Compact: one row, icon, text and buttons side by side. */
+	.area.compact {
+		grid-template-columns: auto minmax(0, 1fr) auto;
 		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-raised);
-		cursor: pointer;
+		justify-items: start;
+		gap: var(--space-4);
+		padding: var(--space-4);
+		text-align: left;
 	}
 
-	button.primary {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
+	.compact .badge {
+		width: 48px;
+		height: 48px;
 	}
 
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
+	.compact h2 {
+		margin: 0;
+		font-size: var(--font-size-md);
+	}
+
+	.compact .buttons {
+		margin: 0;
+	}
+
+	@media (max-width: 640px) {
+		.area.compact {
+			grid-template-columns: auto minmax(0, 1fr);
+		}
+
+		.compact .buttons {
+			grid-column: 1 / -1;
+		}
 	}
 
 	.overlay {
@@ -221,7 +244,8 @@
 		display: grid;
 		place-items: center;
 		padding: var(--space-6);
-		background: color-mix(in srgb, var(--color-accent) 18%, rgb(0 0 0 / 0.45));
+		background: rgb(10 10 12 / 0.5);
+		backdrop-filter: blur(2px);
 		pointer-events: none;
 	}
 

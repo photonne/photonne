@@ -47,7 +47,7 @@
 		<ul class="chips" aria-label={m.albums_picker_selected()}>
 			{#each selected as value (value)}
 				{@const name = byValue.get(value)?.label ?? unknownLabel?.(value) ?? value}
-				<li class="chip">
+				<li class="picked">
 					{name}
 					<button
 						type="button"
@@ -110,17 +110,20 @@
 		list-style: none;
 	}
 
-	.chip {
+	.picked {
 		display: inline-flex;
 		align-items: center;
 		gap: 2px;
-		padding: 2px 2px 2px var(--space-2);
+		min-height: 28px;
+		padding: 0 2px 0 var(--space-3);
+		border: 1px solid var(--color-accent);
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+		background: var(--color-accent-soft);
 		font-size: var(--font-size-sm);
+		font-weight: 600;
 	}
 
-	.chip button {
+	.picked button {
 		display: grid;
 		place-items: center;
 		width: 22px;
@@ -132,16 +135,12 @@
 		cursor: pointer;
 	}
 
-	.chip button:hover {
-		background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+	.picked button:hover {
+		background: var(--color-hover);
 	}
 
 	input[type='search'] {
 		width: 100%;
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
 	}
 
 	.options {
@@ -163,7 +162,7 @@
 	}
 
 	.options label:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.text {

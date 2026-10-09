@@ -18,6 +18,9 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -145,40 +148,44 @@
 </svelte:head>
 
 <div class="page">
-	<header class="head">
-		<div class="heading">
-			<h1>{m.links_title()}</h1>
-			{#if links.isSuccess && all.length > 0}
-				<p class="totals">
-					{m.links_totals_active({ count: totals.active })} · {m.albums_link_views({
-						count: totals.views
-					})}
-				</p>
+	<PageHeader
+		title={m.links_title()}
+		count={links.isSuccess && all.length > 0
+			? `${m.links_totals_active({ count: totals.active })} · ${m.albums_link_views({ count: totals.views })}`
+			: null}
+		subtitle={m.links_intro()}
+	>
+		{#snippet toolbar()}
+			{#if all.length > 0}
+				<label class="search">
+					<Icon name="search" size={18} />
+					<span class="visually-hidden">{m.links_search()}</span>
+					<input type="search" placeholder={m.links_search()} bind:value={query} />
+				</label>
 			{/if}
-		</div>
-		{#if all.length > 0}
-			<label class="search">
-				<Icon name="search" size={18} />
-				<span class="visually-hidden">{m.links_search()}</span>
-				<input type="search" placeholder={m.links_search()} bind:value={query} />
-			</label>
-		{/if}
-	</header>
-
-	<p class="intro">{m.links_intro()}</p>
+		{/snippet}
+	</PageHeader>
 
 	{#if links.isPending}
-		<p class="status" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="rows" count={4} />
 	{:else if links.isError}
 		<p class="status" role="alert">{m.error_loading()}</p>
 	{:else if all.length === 0}
-		<div class="empty">
-			<Icon name="link" size={48} />
-			<p class="title">{m.links_empty_title()}</p>
-			<p>{m.links_empty_body()}</p>
-		</div>
+		<EmptyState icon="link" title={m.links_empty_title()} hint={m.links_empty_body()}>
+			{#snippet action()}
+				<a class="btn primary" href={appHref('/albums')}>
+					<Icon name="add" size={18} />{m.links_empty_action()}
+				</a>
+			{/snippet}
+		</EmptyState>
 	{:else if shown.length === 0}
-		<p class="status">{m.links_no_match()}</p>
+		<EmptyState compact icon="search" title={m.links_no_match()}>
+			{#snippet action()}
+				<button type="button" class="btn" onclick={() => (query = '')}>
+					{m.albums_clear_filters()}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="list" aria-label={m.links_title()}>
 			{#each shown as link (link.token)}
@@ -236,16 +243,16 @@
 								onfocus={(event) => event.currentTarget.select()}
 							/>
 							<div class="buttons">
-								<button type="button" onclick={() => copy(link)}>
+								<button type="button" class="btn sm" onclick={() => copy(link)}>
 									<Icon name="copy" size={16} />{m.albums_link_copy()}
 								</button>
-								<a class="button" href={urlOf(link)} target="_blank" rel="noopener noreferrer">
+								<a class="btn sm" href={urlOf(link)} target="_blank" rel="noopener noreferrer">
 									<Icon path={icons.openInNew} size={16} />{m.links_open()}
 								</a>
-								<button type="button" onclick={() => edit(link)}>
+								<button type="button" class="btn sm" onclick={() => edit(link)}>
 									<Icon name="edit" size={16} />{m.albums_link_edit()}
 								</button>
-								<button type="button" class="danger" onclick={() => (revoking = link)}>
+								<button type="button" class="btn sm ghost revoke" onclick={() => (revoking = link)}>
 									<Icon name="delete" size={16} />{m.albums_link_revoke()}
 								</button>
 							</div>
@@ -271,86 +278,40 @@
 <style>
 	.page {
 		display: grid;
-		gap: var(--space-4);
 		align-content: start;
-		max-width: 960px;
-		padding: var(--space-4);
-	}
-
-	.head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-	}
-
-	.totals,
-	.intro,
-	.status {
-		margin: 0;
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-
-	.status {
-		padding: var(--space-6) 0;
-		font-size: inherit;
+		max-width: calc(960px + 2 * var(--page-gutter));
+		padding-bottom: var(--space-8);
 	}
 
 	.search {
-		margin-left: auto;
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: var(--color-bg);
 		color: var(--color-text-muted);
+	}
+
+	.search :global(svg) {
+		position: absolute;
+		left: var(--space-3);
+		pointer-events: none;
 	}
 
 	.search input {
-		width: 220px;
-		padding: var(--space-2) 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
-		outline: none;
+		width: 240px;
+		padding-left: calc(var(--space-3) + 26px);
 	}
 
-	.search:focus-within {
-		outline: 2px solid var(--color-accent);
-		outline-offset: 1px;
-	}
-
-	.empty {
-		display: grid;
-		justify-items: center;
-		gap: var(--space-2);
-		padding: var(--space-8) var(--space-4);
-		color: var(--color-text-muted);
-		text-align: center;
-	}
-
-	.empty p {
+	.status {
 		margin: 0;
-	}
-
-	.empty .title {
-		color: var(--color-text);
-		font-weight: 600;
+		padding: var(--space-6) var(--page-gutter);
+		color: var(--color-text-muted);
 	}
 
 	.list {
 		display: grid;
 		gap: var(--space-3);
 		margin: 0;
-		padding: 0;
+		padding: var(--space-2) var(--page-gutter) 0;
 		list-style: none;
 	}
 
@@ -358,9 +319,9 @@
 		display: grid;
 		grid-template-columns: 96px minmax(0, 1fr);
 		gap: var(--space-4);
-		padding: var(--space-3);
+		padding: var(--space-4);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		background: var(--color-surface-raised);
 	}
 
@@ -370,9 +331,9 @@
 		width: 96px;
 		height: 96px;
 		overflow: hidden;
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text-muted);
+		border-radius: var(--radius-md);
+		background: var(--color-brand-tile);
+		color: var(--color-brand);
 	}
 
 	.cover img {
@@ -398,6 +359,7 @@
 		margin: 0;
 		overflow: hidden;
 		font-size: var(--font-size-md);
+		font-weight: 600;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -427,11 +389,13 @@
 		list-style: none;
 	}
 
+	/* Status pills: tinted by meaning, the text in the full colour (AA). */
 	.badge {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-		padding: 2px var(--space-2);
+		gap: var(--space-1);
+		min-height: 24px;
+		padding: 0 var(--space-2);
 		border-radius: 999px;
 		background: var(--color-surface);
 		color: var(--color-text-muted);
@@ -441,13 +405,18 @@
 	}
 
 	.badge.active {
-		background: color-mix(in srgb, var(--color-accent) 16%, transparent);
-		color: var(--color-accent);
+		background: color-mix(in srgb, var(--color-success) 14%, transparent);
+		color: var(--color-success);
+	}
+
+	.badge.upload {
+		background: var(--color-accent-soft);
+		color: var(--color-text);
 	}
 
 	.badge.expired,
 	.badge.exhausted {
-		background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+		background: color-mix(in srgb, var(--color-danger) 14%, transparent);
 		color: var(--color-danger);
 	}
 
@@ -459,12 +428,10 @@
 
 	.url {
 		width: 100%;
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		min-height: var(--control-h-sm);
 		background: var(--color-surface);
 		font-family: ui-monospace, monospace;
-		font-size: var(--font-size-sm);
+		font-size: var(--font-size-xs);
 	}
 
 	.buttons {
@@ -473,27 +440,7 @@
 		gap: var(--space-2);
 	}
 
-	.buttons button,
-	.buttons .button {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: inherit;
-		font-size: var(--font-size-sm);
-		text-decoration: none;
-		cursor: pointer;
-	}
-
-	.buttons button:hover,
-	.buttons .button:hover {
-		background: var(--color-surface);
-	}
-
-	.buttons .danger {
+	.revoke {
 		color: var(--color-danger);
 	}
 

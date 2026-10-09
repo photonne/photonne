@@ -16,7 +16,7 @@
 	<input {...rest} type={shown ? 'text' : 'password'} bind:value />
 	<button
 		type="button"
-		class="toggle"
+		class="icon-btn sm toggle"
 		aria-label={shown ? m.settings_password_hide() : m.settings_password_show()}
 		aria-pressed={shown}
 		onclick={() => (shown = !shown)}
@@ -31,13 +31,10 @@
 		display: block;
 	}
 
+	/* The shared input, with room on the right for the eye. */
 	.password input {
 		width: 100%;
-		padding: var(--space-2) calc(var(--space-3) + 32px) var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-		font-size: var(--font-size-md);
+		padding-right: calc(var(--control-h-sm) + var(--space-2));
 	}
 
 	.password input[aria-invalid='true'] {
@@ -47,18 +44,9 @@
 	.toggle {
 		position: absolute;
 		top: 50%;
-		right: 4px;
+		right: 2px;
 		transform: translateY(-50%);
-		display: grid;
-		place-items: center;
-		width: 32px;
-		height: 32px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
 		color: var(--color-text-muted);
-		cursor: pointer;
 	}
 
 	.toggle:hover {

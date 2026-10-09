@@ -173,7 +173,7 @@
 {#if folderQuery.isError}
 	<div class="missing">
 		<p role="alert">{m.folders_not_found()}</p>
-		<a href={appHref('/folders')}>{m.folders_back()}</a>
+		<a class="btn" href={appHref('/folders')}>{m.folders_back()}</a>
 	</div>
 {:else}
 	<CollectionView
@@ -188,7 +188,7 @@
 				{#if canWrite && !isLibrary}
 					<button
 						type="button"
-						class="tool"
+						class="btn sm tool"
 						title={m.folders_new_sub()}
 						onclick={() => (creatingSub = true)}
 					>
@@ -199,7 +199,7 @@
 				{#if folder.isOwner}
 					<button
 						type="button"
-						class="tool"
+						class="btn sm tool"
 						title={m.albums_share()}
 						onclick={() => (sharing = true)}
 					>
@@ -208,7 +208,7 @@
 				{/if}
 				<button
 					type="button"
-					class="tool icon"
+					class="icon-btn"
 					aria-pressed={folder.isPinned}
 					aria-label={folder.isPinned ? m.albums_unpin() : m.albums_pin()}
 					title={folder.isPinned ? m.albums_unpin() : m.albums_pin()}
@@ -236,22 +236,21 @@
 					<p class="meta">
 						<span>{m.albums_items({ count: folder.assetCount })}</span>
 						{#if isLibrary}
-							<span class="badge"><Icon path={icons.library} size={14} />{m.folders_library()}</span
-							>
+							<span class="pill"><Icon path={icons.library} size={14} />{m.folders_library()}</span>
 						{/if}
 						{#if folder.isShared}
-							<span class="badge"
+							<span class="pill"
 								><Icon path={icons.folderShared} size={14} />{m.folders_shared_space_badge()}</span
 							>
 						{:else if folder.sharedWithCount > 0}
-							<span class="badge"
+							<span class="pill"
 								><Icon name="people" size={14} />{m.albums_shared_with({
 									count: folder.sharedWithCount
 								})}</span
 							>
 						{/if}
 						{#if folder.excludedFromDiscovery}
-							<span class="badge" title={m.folders_discovery_hidden_hint()}>
+							<span class="pill" title={m.folders_discovery_hidden_hint()}>
 								<Icon path={icons.visibilityOff} size={14} />{m.folders_discovery_hidden_badge()}
 							</span>
 						{/if}
@@ -278,7 +277,7 @@
 			{#if canWrite && !isLibrary}
 				<button
 					type="button"
-					class="action"
+					class="icon-btn"
 					title={m.folders_move()}
 					aria-label={m.folders_move()}
 					onclick={() => (moving = [...selection.ids])}
@@ -287,7 +286,7 @@
 				</button>
 				<button
 					type="button"
-					class="action"
+					class="icon-btn"
 					title={m.folders_remove()}
 					aria-label={m.folders_remove()}
 					disabled={busy}
@@ -352,27 +351,6 @@
 />
 
 <style>
-	.tool {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: 36px;
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-
-	.tool.icon {
-		width: 36px;
-		padding: 0;
-		justify-content: center;
-		border-color: transparent;
-		border-radius: 50%;
-	}
-
 	/* Narrow windows keep the icon; the text stays as the accessible name. */
 	@media (max-width: 1180px) {
 		.tool .label {
@@ -384,19 +362,19 @@
 			white-space: nowrap;
 		}
 
+		/* Icon only, it looks like its icon-only neighbours. */
 		.tool:has(.label) {
-			width: 36px;
+			width: var(--control-h);
+			min-height: var(--control-h);
 			padding: 0;
-			justify-content: center;
+			border-color: transparent;
+			border-radius: 50%;
+			background: transparent;
 		}
-	}
 
-	.tool:hover {
-		background: var(--color-surface);
-	}
-
-	.tool[aria-pressed='true'] {
-		color: var(--color-accent);
+		.tool:has(.label):hover {
+			background: var(--color-hover);
+		}
 	}
 
 	.about {
@@ -440,13 +418,15 @@
 		color: var(--color-text-muted);
 	}
 
-	.badge {
+	.pill {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-		padding: 1px var(--space-2);
+		gap: var(--space-1);
+		min-height: 24px;
+		padding: 0 var(--space-2);
 		border-radius: 999px;
 		background: var(--color-surface);
+		color: var(--color-text);
 		font-size: var(--font-size-xs);
 		font-weight: 600;
 	}
@@ -457,31 +437,10 @@
 		padding: 2px;
 	}
 
-	.action {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.action:hover {
-		background: var(--color-surface);
-	}
-
-	.action:disabled {
-		opacity: 0.4;
-		cursor: progress;
-	}
-
 	.missing {
-		padding: var(--space-6);
+		padding: var(--space-6) var(--page-gutter);
 		display: grid;
-		gap: var(--space-2);
+		gap: var(--space-3);
 		justify-items: start;
 	}
 

@@ -16,6 +16,7 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { session } from '#lib/auth/session.svelte.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { icons } from './icons.js';
@@ -138,7 +139,7 @@
 
 <div class="panel">
 	{#if permissions.isPending}
-		<p class="note" role="status">{m.session_restoring()}</p>
+		<div class="loading"><Skeleton variant="rows" count={2} /></div>
 	{:else if permissions.isError}
 		<p class="note" role="alert">{m.error_loading()}</p>
 	{:else if granted.length === 0}
@@ -153,6 +154,7 @@
 						<span class="email">{permission.email}</span>
 					</span>
 					<select
+						class="level"
 						aria-label={m.albums_level_for({ name: permission.username })}
 						value={level}
 						disabled={busy}
@@ -168,7 +170,7 @@
 					</select>
 					<button
 						type="button"
-						class="icon"
+						class="icon-btn"
 						disabled={busy}
 						aria-label={m.albums_unshare_user({ name: permission.username })}
 						title={m.albums_unshare_user({ name: permission.username })}
@@ -195,7 +197,7 @@
 				{/each}
 			</select>
 		</label>
-		<label>
+		<label class="level">
 			<span class="visually-hidden">{m.albums_level()}</span>
 			<select bind:value={newLevel}>
 				{#each accessLevels as option (option)}
@@ -203,7 +205,7 @@
 				{/each}
 			</select>
 		</label>
-		<button type="submit" class="primary" disabled={!newUser || busy}>
+		<button type="submit" class="btn primary" disabled={!newUser || busy}>
 			<Icon path={icons.personAdd} size={18} />
 			{m.albums_share_submit()}
 		</button>
@@ -226,7 +228,6 @@
 
 	.people {
 		display: grid;
-		gap: var(--space-1);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -238,7 +239,16 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-1) 0;
+		padding: var(--space-2) 0;
+	}
+
+	.people li + li {
+		border-top: 1px solid var(--color-border);
+	}
+
+	/* Inside a dialog: no page gutter around the placeholder. */
+	.loading {
+		--page-gutter: 0px;
 	}
 
 	.who {
@@ -258,13 +268,6 @@
 		text-overflow: ellipsis;
 	}
 
-	select {
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-	}
-
 	.add {
 		display: flex;
 		gap: var(--space-2);
@@ -281,37 +284,10 @@
 		width: 100%;
 	}
 
-	.primary {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-3);
-		border: 0;
-		border-radius: var(--radius-sm);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.primary:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 32px;
-		height: 32px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.icon:hover {
-		background: var(--color-surface);
+	/* Access levels: one width in the list and in the form, so they line up. */
+	.level,
+	label.level select {
+		flex: none;
+		width: 11rem;
 	}
 </style>

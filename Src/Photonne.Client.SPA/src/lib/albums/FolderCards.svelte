@@ -48,7 +48,7 @@
 					if (ids.length) ondropassets?.(folder, ids);
 				}}
 			>
-				<span class="thumb">
+				<span class="thumb" class:tile={!src}>
 					{#if src}
 						<img {src} alt="" loading="lazy" decoding="async" />
 					{:else}
@@ -90,7 +90,8 @@
 	}
 
 	a:hover {
-		background: var(--color-surface);
+		border-color: var(--color-border-strong);
+		background: var(--color-hover);
 	}
 
 	a.drop {
@@ -108,6 +109,11 @@
 		border-radius: var(--radius-sm);
 		background: var(--color-placeholder);
 		color: var(--color-text-muted);
+	}
+
+	.thumb.tile {
+		background: var(--color-brand-tile);
+		color: var(--color-brand);
 	}
 
 	.thumb img {
@@ -129,7 +135,7 @@
 	}
 
 	.count {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-sm);
 		color: var(--color-text-muted);
 	}
 </style>

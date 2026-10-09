@@ -21,9 +21,9 @@
 	];
 </script>
 
-<div class="toggle" role="radiogroup" aria-label={m.albums_view()}>
+<div class="segmented toggle" role="radiogroup" aria-label={m.albums_view()}>
 	{#each options as option (option.key)}
-		<label class:on={view === option.key} title={option.label()}>
+		<label title={option.label()}>
 			<input type="radio" {name} value={option.key} bind:group={view} />
 			<Icon path={option.path} size={18} />
 			<span class="visually-hidden">{option.label()}</span>
@@ -32,42 +32,10 @@
 </div>
 
 <style>
-	.toggle {
-		display: inline-flex;
-		padding: 2px;
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-	}
-
-	label {
-		position: relative;
-		display: grid;
-		place-items: center;
-		width: 34px;
-		height: 32px;
-		border-radius: calc(var(--radius-sm) - 2px);
-		color: var(--color-text-muted);
-		cursor: pointer;
-	}
-
-	label.on {
-		background: var(--color-surface-raised);
-		box-shadow: var(--shadow-raised);
-		color: var(--color-text);
-	}
-
-	label:has(input:focus-visible) {
-		outline: 2px solid var(--color-focus);
-	}
-
-	/* The radio covers its label: invisible, but it is what gets clicked. */
-	input {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		margin: 0;
-		opacity: 0;
-		cursor: pointer;
+	/* Icon-only options: square, as tall as the other controls. */
+	.toggle > label {
+		justify-content: center;
+		width: calc(var(--control-h) - 4px);
+		padding: 0;
 	}
 </style>

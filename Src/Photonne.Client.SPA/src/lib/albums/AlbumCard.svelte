@@ -58,7 +58,7 @@
 		aria-current={selected ? 'true' : undefined}
 		{onclick}
 	>
-		<div class="cover">
+		<div class="cover" class:empty={!album.coverThumbnailUrl}>
 			{#if album.coverThumbnailUrl}
 				<img src={album.coverThumbnailUrl} alt="" loading="lazy" decoding="async" />
 			{:else}
@@ -69,14 +69,19 @@
 				/>
 			{/if}
 			{#if view === 'grid'}
-				<span class="badges">
+				<span class="pills">
 					{#if smart}
-						<span class="badge" title={m.albums_smart_hint()}>
+						<span class="pill" title={m.albums_smart_hint()}>
 							<Icon path={icons.smart} size={14} />{m.albums_smart()}
 						</span>
 					{/if}
+					{#if sharedLabel}
+						<span class="pill" title={sharedLabel}>
+							<Icon name="people" size={14} /><span class="ellipsis">{sharedLabel}</span>
+						</span>
+					{/if}
 					{#if album.hasActiveShareLink}
-						<span class="badge" title={m.albums_link_active()}>
+						<span class="pill" title={m.albums_link_active()}>
 							<Icon name="link" size={14} /><span class="visually-hidden"
 								>{m.albums_link_active()}</span
 							>
@@ -89,7 +94,7 @@
 			<span class="name">{album.name}</span>
 			<span class="meta">
 				{m.albums_items({ count: album.assetCount })}
-				{#if sharedLabel}· {sharedLabel}{/if}
+				{#if sharedLabel && view === 'list'}· {sharedLabel}{/if}
 				{#if view === 'list' && smart}· {m.albums_smart()}{/if}
 			</span>
 		</span>
@@ -119,7 +124,7 @@
 		title={album.isPinned ? m.albums_unpin() : m.albums_pin()}
 		onclick={() => ontogglepin(album)}
 	>
-		<Icon name="pin" size={18} />
+		<Icon name="pin" size={16} />
 	</button>
 </li>
 
@@ -134,7 +139,16 @@
 		gap: 2px;
 		color: inherit;
 		text-decoration: none;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
+	}
+
+	.link:focus-visible {
+		outline: none;
+	}
+
+	.link:focus-visible .cover {
+		outline: 2px solid var(--color-focus);
+		outline-offset: 2px;
 	}
 
 	.cover {
@@ -144,31 +158,42 @@
 		aspect-ratio: 1;
 		margin-bottom: var(--space-2);
 		overflow: hidden;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		background: var(--color-placeholder);
 		color: var(--color-text-muted);
-		transition: transform var(--duration-fast);
+		transition:
+			transform var(--duration-normal) ease,
+			box-shadow var(--duration-normal) ease;
+	}
+
+	/* No photo yet: the album's own mark on a tinted tile. */
+	.cover.empty {
+		background: var(--color-brand-tile);
+		color: var(--color-brand);
 	}
 
 	.cover img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-		transition: transform var(--duration-normal) ease;
 	}
 
-	.link:hover img {
-		transform: scale(1.03);
+	.grid .link:hover .cover {
+		transform: translateY(-3px);
+		box-shadow: var(--shadow-raised);
 	}
 
 	.text {
 		display: grid;
 		gap: 2px;
 		min-width: 0;
+		padding: 0 2px;
 	}
 
 	.name {
+		font-size: var(--font-size-md);
 		font-weight: 600;
+		line-height: 1.3;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -183,24 +208,36 @@
 		text-overflow: ellipsis;
 	}
 
-	.badges {
+	/* Pills on the photo: dark glass, legible on any cover. */
+	.pills {
 		position: absolute;
 		left: var(--space-2);
+		right: var(--space-2);
 		bottom: var(--space-2);
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--space-1);
 	}
 
-	.badge {
+	.pill {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-		padding: 2px var(--space-2);
+		gap: var(--space-1);
+		min-height: 24px;
+		padding: 0 var(--space-2);
 		border-radius: 999px;
-		background: rgb(0 0 0 / 0.55);
+		background: rgb(0 0 0 / 0.6);
 		color: #fff;
 		font-size: var(--font-size-xs);
 		font-weight: 600;
+		backdrop-filter: blur(6px);
+		max-width: 100%;
+	}
+
+	.ellipsis {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.pin,
@@ -209,16 +246,18 @@
 		top: var(--space-2);
 		display: grid;
 		place-items: center;
-		width: 32px;
-		height: 32px;
+		width: var(--control-h-sm);
+		height: var(--control-h-sm);
 		padding: 0;
 		border: 0;
 		border-radius: 50%;
-		background: rgb(0 0 0 / 0.55);
+		background: rgb(0 0 0 / 0.6);
 		color: #fff;
 		cursor: pointer;
 		opacity: 0;
-		transition: opacity var(--duration-fast);
+		transition:
+			opacity var(--duration-fast),
+			transform var(--duration-normal) ease;
 	}
 
 	.pin {
@@ -240,6 +279,12 @@
 		color: var(--color-accent-text);
 	}
 
+	/* The overlay buttons ride along with the lifted cover. */
+	.grid:has(.link:hover) .pin,
+	.grid:has(.link:hover) .check {
+		transform: translateY(-3px);
+	}
+
 	.card:hover .pin,
 	.card:hover .check,
 	.pin:focus-visible,
@@ -255,8 +300,10 @@
 		color: var(--color-accent-text);
 	}
 
-	.grid.selected .cover {
+	.grid.selected .cover,
+	.grid.selected .link:hover .cover {
 		transform: scale(0.92);
+		box-shadow: none;
 		outline: 3px solid var(--color-accent);
 		outline-offset: 2px;
 	}
@@ -268,11 +315,21 @@
 		align-items: center;
 		gap: var(--space-3);
 		padding: var(--space-2) calc(var(--space-2) + 72px) var(--space-2) calc(var(--space-2) + 36px);
+		border-radius: var(--radius-md);
 	}
 
 	.list .link:hover,
 	.list.selected .link {
-		background: var(--color-surface);
+		background: var(--color-hover);
+	}
+
+	.list .link:focus-visible {
+		outline: 2px solid var(--color-focus);
+		outline-offset: -2px;
+	}
+
+	.list .link:focus-visible .cover {
+		outline: none;
 	}
 
 	.list.selected .link {
@@ -285,11 +342,15 @@
 		border-radius: var(--radius-sm);
 	}
 
+	.list .text {
+		padding: 0;
+	}
+
 	.list .check {
 		top: 50%;
 		left: var(--space-2);
 		transform: translateY(-50%);
-		border-color: var(--color-text-muted);
+		border-color: var(--color-border-strong);
 		background: transparent;
 	}
 
@@ -303,6 +364,10 @@
 		transform: translateY(-50%);
 		background: transparent;
 		color: var(--color-text-muted);
+	}
+
+	.list .pin:hover {
+		background: var(--color-hover);
 	}
 
 	.list .pin.on {

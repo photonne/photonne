@@ -180,7 +180,7 @@
 					<h3>{title}</h3>
 					<button
 						type="button"
-						class="icon"
+						class="icon-btn sm"
 						aria-label={m.albums_rule_remove({ condition: title })}
 						title={m.albums_rule_remove({ condition: title })}
 						onclick={() => remove(condition)}
@@ -350,15 +350,6 @@
 		width: 100%;
 	}
 
-	select,
-	input[type='date'],
-	input[type='text'] {
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-	}
-
 	.note {
 		margin: 0;
 		font-size: var(--font-size-sm);
@@ -397,22 +388,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-4);
-	}
-
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 28px;
-		height: 28px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.icon:hover {
-		background: var(--color-surface);
 	}
 
 	.preview {

@@ -12,6 +12,7 @@
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	// --- Change password -------------------------------------------------
@@ -110,92 +111,98 @@
 </svelte:head>
 
 <div class="settings-page">
-	<h1>{m.settings_security()}</h1>
-	<p class="lead">{m.settings_security_lead()}</p>
+	<PageHeader title={m.settings_security()} subtitle={m.settings_security_lead()} />
 
-	<form class="card" onsubmit={submitChange} novalidate>
-		<header>
-			<h2>{m.settings_password_title()}</h2>
-			<p>{m.settings_password_lead()}</p>
-		</header>
-		<!-- For password managers: which account this password belongs to. -->
-		<input
-			type="text"
-			class="visually-hidden"
-			autocomplete="username"
-			value={session.user?.username ?? ''}
-			readonly
-			tabindex="-1"
-			aria-hidden="true"
-		/>
-		<div class="fields">
-			<label class="field">
-				<span>{m.settings_password_current()}</span>
-				<PasswordInput autocomplete="current-password" required bind:value={current} />
-			</label>
-		</div>
-		<div class="fields">
-			<label class="field">
-				<span>{m.settings_password_new()}</span>
-				<PasswordInput
-					autocomplete="new-password"
-					required
-					aria-describedby="password-rules"
-					bind:value={next}
-				/>
-			</label>
-			<label class="field">
-				<span>{m.settings_password_confirm()}</span>
-				<PasswordInput
-					autocomplete="new-password"
-					required
-					aria-invalid={mismatch}
-					aria-describedby={mismatch ? 'password-mismatch' : undefined}
-					onblur={() => (touchedConfirm = true)}
-					bind:value={confirm}
-				/>
-				{#if mismatch}
-					<span id="password-mismatch" class="error">{m.settings_password_mismatch()}</span>
-				{/if}
-			</label>
-		</div>
-		<ul id="password-rules" class="rules" aria-label={m.settings_password_rules()}>
-			{#each Object.entries(rules) as [rule, ok] (rule)}
-				<li class:ok>
-					<Icon name={ok ? 'check' : 'close'} size={16} />
-					{ruleText[rule as PasswordRule]()}
-					<span class="visually-hidden">
-						{ok ? m.settings_password_rule_met() : m.settings_password_rule_unmet()}
-					</span>
-				</li>
-			{/each}
-		</ul>
-		{#if changeError}
-			<p class="error" role="alert">{changeError}</p>
-		{/if}
-		<div class="actions">
-			<button type="submit" class="button primary" disabled={!canChange}>
-				<Icon name="lock" size={18} />
-				{changing ? m.settings_saving() : m.settings_password_submit()}
-			</button>
-		</div>
-	</form>
+	<div class="settings-body">
+		<form class="card" onsubmit={submitChange} novalidate>
+			<header>
+				<h2>{m.settings_password_title()}</h2>
+				<p>{m.settings_password_lead()}</p>
+			</header>
+			<!-- For password managers: which account this password belongs to. -->
+			<input
+				type="text"
+				class="visually-hidden"
+				autocomplete="username"
+				value={session.user?.username ?? ''}
+				readonly
+				tabindex="-1"
+				aria-hidden="true"
+			/>
+			<div class="fields">
+				<label class="field">
+					<span>{m.settings_password_current()}</span>
+					<PasswordInput autocomplete="current-password" required bind:value={current} />
+				</label>
+			</div>
+			<div class="fields">
+				<label class="field">
+					<span>{m.settings_password_new()}</span>
+					<PasswordInput
+						autocomplete="new-password"
+						required
+						aria-describedby="password-rules"
+						bind:value={next}
+					/>
+				</label>
+				<label class="field">
+					<span>{m.settings_password_confirm()}</span>
+					<PasswordInput
+						autocomplete="new-password"
+						required
+						aria-invalid={mismatch}
+						aria-describedby={mismatch ? 'password-mismatch' : undefined}
+						onblur={() => (touchedConfirm = true)}
+						bind:value={confirm}
+					/>
+					{#if mismatch}
+						<span id="password-mismatch" class="error">{m.settings_password_mismatch()}</span>
+					{/if}
+				</label>
+			</div>
+			<ul id="password-rules" class="rules" aria-label={m.settings_password_rules()}>
+				{#each Object.entries(rules) as [rule, ok] (rule)}
+					<li class:ok>
+						<Icon name={ok ? 'check' : 'close'} size={16} />
+						{ruleText[rule as PasswordRule]()}
+						<span class="visually-hidden">
+							{ok ? m.settings_password_rule_met() : m.settings_password_rule_unmet()}
+						</span>
+					</li>
+				{/each}
+			</ul>
+			{#if changeError}
+				<p class="error" role="alert">{changeError}</p>
+			{/if}
+			<div class="actions">
+				<button type="submit" class="btn primary" disabled={!canChange}>
+					<Icon name="lock" size={18} />
+					{changing ? m.settings_saving() : m.settings_password_submit()}
+				</button>
+			</div>
+		</form>
 
-	<section class="card danger" aria-labelledby="delete-title">
-		<header>
-			<h2 id="delete-title">{m.settings_delete_title()}</h2>
-			<p>{m.settings_delete_lead()}</p>
-		</header>
-		{#if isPrimaryAdmin}
-			<p class="hint">{m.settings_delete_primary_admin()}</p>
-		{/if}
-		<div class="actions">
-			<button type="button" class="button danger" disabled={isPrimaryAdmin} onclick={openDelete}>
-				<Icon name="delete" size={18} />
-				{m.settings_delete_open()}
-			</button>
-		</div>
-	</section>
+		<section class="card danger" aria-labelledby="delete-title">
+			<header>
+				<h2 id="delete-title">{m.settings_delete_title()}</h2>
+				<p>{m.settings_delete_lead()}</p>
+			</header>
+			{#if isPrimaryAdmin}
+				<p class="hint">{m.settings_delete_primary_admin()}</p>
+			{/if}
+			<div class="actions">
+				<button
+					type="button"
+					class="btn outline-danger"
+					disabled={isPrimaryAdmin}
+					onclick={openDelete}
+				>
+					<Icon name="delete" size={18} />
+					{m.settings_delete_open()}
+				</button>
+			</div>
+		</section>
+	</div>
 </div>
 
 <Dialog open={deleting} title={m.settings_delete_title()} onclose={() => (deleting = false)}>
@@ -241,7 +248,7 @@
 	}
 
 	.rules li.ok {
-		color: var(--color-accent);
+		color: var(--color-success);
 	}
 
 	.delete {
@@ -251,13 +258,6 @@
 
 	.delete p {
 		margin: 0;
-	}
-
-	.delete .field {
-		display: grid;
-		gap: var(--space-1);
-		font-size: var(--font-size-sm);
-		color: var(--color-text-muted);
 	}
 
 	.delete .error {
