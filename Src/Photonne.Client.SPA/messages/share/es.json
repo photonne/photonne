@@ -1,7 +1,7 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"share_title": "Álbum compartido",
-	"share_go_to_library": "Ir a tu biblioteca",
+	"share_sign_in": "Iniciar sesión",
 	"share_password_title": "Enlace protegido",
 	"share_password_lead": "Escribe la contraseña que te han dado para ver el álbum.",
 	"share_password_label": "Contraseña",

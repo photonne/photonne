@@ -11,6 +11,8 @@
 	import { icons } from '#lib/albums/icons.js';
 	import { session } from '#lib/auth/session.svelte.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import PaneResizer from '#lib/components/PaneResizer.svelte';
+	import { savedWidth } from '#lib/components/pane-width.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -25,10 +27,14 @@
 	const currentId = $derived(page.params.folderId ?? null);
 
 	let creating = $state(false);
+
+	// The tree pane is as wide as the user leaves it: deep trees need room.
+	const TREE = { initial: 280, min: 200, max: 640, key: 'photonne.folders.treeWidth' };
+	let treeWidth = $state(savedWidth(TREE.key, TREE.initial, TREE.min, TREE.max));
 </script>
 
-<div class="folders">
-	<aside class="pane" aria-labelledby="folders-tree-title">
+<div class="folders" style:--tree-width="{treeWidth}px">
+	<aside id="folders-tree" class="pane" aria-labelledby="folders-tree-title">
 		<div class="pane-head">
 			<h2 id="folders-tree-title"><a href={appHref('/folders')}>{m.nav_folders()}</a></h2>
 			<button
@@ -61,6 +67,15 @@
 		<p class="tip">{m.folders_drag_tip()}</p>
 	</aside>
 
+	<PaneResizer
+		bind:width={treeWidth}
+		min={TREE.min}
+		max={TREE.max}
+		initial={TREE.initial}
+		storageKey={TREE.key}
+		controls="folders-tree"
+	/>
+
 	<div class="main">
 		{@render children()}
 	</div>
@@ -84,7 +99,7 @@
 <style>
 	.folders {
 		display: grid;
-		grid-template-columns: 264px minmax(0, 1fr);
+		grid-template-columns: var(--tree-width) auto minmax(0, 1fr);
 		height: 100%;
 	}
 
@@ -94,7 +109,6 @@
 		gap: var(--space-2);
 		min-height: 0;
 		padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
-		border-right: 1px solid var(--color-border);
 		overflow-y: auto;
 	}
 
@@ -152,11 +166,5 @@
 		min-width: 0;
 		height: 100%;
 		overflow: auto;
-	}
-
-	@media (max-width: 1100px) {
-		.folders {
-			grid-template-columns: 216px minmax(0, 1fr);
-		}
 	}
 </style>

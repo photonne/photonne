@@ -30,10 +30,17 @@
 	--color-border: #dfe1e6;
 	--color-text: #1d1d1f;
 	--color-text-muted: #5f6368;
-	--color-accent: #2563eb;
+	/* Gold of the native app. The accent is a darker shade of it so text and
+	   buttons in it pass WCAG AA on light surfaces; the brand gold itself is
+	   for the logo and decoration. */
+	--color-brand: #c8960a;
+	--color-brand-tile: #fff6e0;
+	--color-brand-ring: #efdcae;
+	--color-accent: #8a6400;
 	--color-accent-text: #ffffff;
+	--color-accent-soft: #fff1cc;
 	--color-danger: #c62828;
-	--color-focus: #2563eb;
+	--color-focus: #8a6400;
 	--color-placeholder: #e8eaed;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
 
@@ -53,10 +60,14 @@
 		--color-border: #2f3136;
 		--color-text: #e8e8ea;
 		--color-text-muted: #a0a3a8;
-		--color-accent: #60a5fa;
-		--color-accent-text: #0b1220;
+		--color-brand: #ffd166;
+		--color-brand-tile: #2a2410;
+		--color-brand-ring: #5c4a1a;
+		--color-accent: #ffd166;
+		--color-accent-text: #1a1a2e;
+		--color-accent-soft: rgb(255 209 102 / 0.14);
 		--color-danger: #ef9a9a;
-		--color-focus: #93c5fd;
+		--color-focus: #ffd166;
 		--color-placeholder: #26282c;
 		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 		color-scheme: dark;
@@ -70,10 +81,14 @@
 	--color-border: #2f3136;
 	--color-text: #e8e8ea;
 	--color-text-muted: #a0a3a8;
-	--color-accent: #60a5fa;
-	--color-accent-text: #0b1220;
+	--color-brand: #ffd166;
+	--color-brand-tile: #2a2410;
+	--color-brand-ring: #5c4a1a;
+	--color-accent: #ffd166;
+	--color-accent-text: #1a1a2e;
+	--color-accent-soft: rgb(255 209 102 / 0.14);
 	--color-danger: #ef9a9a;
-	--color-focus: #93c5fd;
+	--color-focus: #ffd166;
 	--color-placeholder: #26282c;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 	color-scheme: dark;

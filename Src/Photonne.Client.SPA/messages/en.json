@@ -26,6 +26,8 @@
 	"error_not_found_title": "This page doesn't exist",
 	"error_not_found_text": "The link may be mistyped, or what you were looking for is gone.",
 	"error_home": "Go to my photos",
+	"pane_resize": "Resize the pane",
+	"pane_resize_hint": "Drag or use the arrow keys; double-click to reset",
 	"error_loading": "Couldn't load. Try again.",
 	"skip_to_content": "Skip to content",
 	"grid_select_section": "Select {section}",

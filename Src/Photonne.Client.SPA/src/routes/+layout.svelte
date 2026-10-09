@@ -3,7 +3,6 @@
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import { configureApiClient } from '#lib/api/index.js';
 	import Toaster from '#lib/components/Toaster.svelte';
-	import favicon from '#lib/assets/favicon.svg';
 	import { session } from '#lib/auth/session.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -32,14 +31,11 @@
 	document.documentElement.lang = getLocale();
 
 	// Public shared links (/share/…) work without a session: they don't wait
-	// for (or depend on) restoring one.
+	// for (or depend on) restoring one. It is still restored, so a signed-in
+	// user sees the link inside the app.
 	const isPublic = $derived(page.route.id?.startsWith('/share') ?? false);
-	if (!page.route.id?.startsWith('/share')) session.restore();
+	session.restore();
 </script>
-
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
 
 <QueryClientProvider client={queryClient}>
 	{#if isPublic}

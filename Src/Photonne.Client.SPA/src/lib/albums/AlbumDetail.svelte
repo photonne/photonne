@@ -196,6 +196,7 @@
 	<CollectionView
 		store={list.store}
 		title={album?.name ?? ''}
+		cover={album?.coverThumbnailUrl}
 		status={albumQuery.isPending ? 'pending' : list.status}
 		emptyText={smart ? m.albums_empty_smart() : m.albums_empty_album()}
 		headers={false}

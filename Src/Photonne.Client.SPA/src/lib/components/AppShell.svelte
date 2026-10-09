@@ -18,6 +18,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale, type Locale } from '#lib/paraglide/runtime.js';
 	import Icon from './Icon.svelte';
+	import Logo from './Logo.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -68,7 +69,7 @@
 
 <div class="shell">
 	<header class="topbar">
-		<a class="brand" href={href('/')}>{m.app_name()}</a>
+		<a class="brand" href={href('/')} aria-label={m.app_name()}><Logo size={30} /></a>
 
 		<form class="search" role="search" onsubmit={submitSearch}>
 			<Icon name="search" size={18} />
@@ -208,8 +209,8 @@
 
 	.brand {
 		width: calc(var(--sidebar-width) - var(--space-4));
-		font-weight: 700;
-		font-size: var(--font-size-lg);
+		display: flex;
+		align-items: center;
 		color: inherit;
 		text-decoration: none;
 	}

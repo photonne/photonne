@@ -40,6 +40,11 @@
 		toolbar?: Snippet;
 		/** Above the grid, under the title (album description, filters…). */
 		header?: Snippet;
+		/**
+		 * A cover photo: the title and header then sit on it as a banner, which
+		 * folds to a slim bar once the grid scrolls.
+		 */
+		cover?: string | null;
 		onnearend?: () => void;
 	}
 
@@ -55,8 +60,16 @@
 		viewerExtra,
 		toolbar,
 		header,
+		cover = null,
 		onnearend
 	}: Props = $props();
+
+	let scrolled = $state(false);
+	/** Height the banner gives back when it folds (see .banner below). */
+	const BANNER_FOLD = 240;
+	// A bigger rendition for the banner when the server has one.
+	const coverSrc = $derived(cover?.replace(/([?&]size=)Medium\b/, '$1Large') ?? null);
+	let coverFailed = $state(false);
 
 	const queryClient = useQueryClient();
 	const selection = new Selection();
@@ -123,11 +136,27 @@
 		{/snippet}
 	</SelectionBar>
 
-	<header class="head">
-		<h1>{title}</h1>
-		{#if toolbar}<div class="toolbar">{@render toolbar()}</div>{/if}
-	</header>
-	{@render header?.()}
+	{#if cover}
+		<section class="banner" class:folded={scrolled} aria-labelledby="collection-title">
+			<img
+				src={coverFailed ? cover : coverSrc}
+				alt=""
+				decoding="async"
+				onerror={() => (coverFailed = true)}
+			/>
+			<div class="banner-text">
+				<h1 id="collection-title">{title}</h1>
+				<div class="banner-header">{@render header?.()}</div>
+			</div>
+		</section>
+		{#if toolbar}<div class="head bar"><div class="toolbar">{@render toolbar()}</div></div>{/if}
+	{:else}
+		<header class="head">
+			<h1>{title}</h1>
+			{#if toolbar}<div class="toolbar">{@render toolbar()}</div>{/if}
+		</header>
+		{@render header?.()}
+	{/if}
 
 	{#if status === 'pending'}
 		<p class="status" role="status">{m.session_restoring()}</p>
@@ -147,6 +176,12 @@
 				onneedsection={() => {}}
 				onopen={(item) => viewer.open(item.id)}
 				{onnearend}
+				onscrolled={(top, max) => {
+					// Only folds when the grid would still scroll once it gets the
+					// banner's room; otherwise folding would undo the scroll and loop.
+					if (top <= 0) scrolled = false;
+					else if (top > 24 && max > BANNER_FOLD) scrolled = true;
+				}}
 				bind:this={grid}
 			/>
 		</div>
@@ -215,6 +250,73 @@
 	h1 {
 		margin: 0;
 		font-size: var(--font-size-xl);
+	}
+
+	.head.bar {
+		padding-top: var(--space-2);
+	}
+
+	.banner {
+		position: relative;
+		flex: none;
+		height: clamp(180px, 28vh, 300px);
+		margin: var(--space-3) var(--space-4) 0;
+		overflow: hidden;
+		border-radius: var(--radius-lg);
+		background: #1d1d1f;
+		color: #fff;
+		transition: height var(--duration-normal) ease;
+		/* What the header snippet draws (description, badges) reads on the photo. */
+		--color-text: #fff;
+		--color-text-muted: rgb(255 255 255 / 0.82);
+		--color-surface: rgb(255 255 255 / 0.18);
+	}
+
+	.banner.folded {
+		height: 72px;
+	}
+
+	.banner img {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.banner::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.1) 60%, transparent);
+	}
+
+	.banner-text {
+		position: absolute;
+		inset: auto 0 0;
+		z-index: 1;
+		display: grid;
+		gap: var(--space-1);
+		padding: var(--space-4) var(--space-6);
+	}
+
+	.banner h1 {
+		font-size: 2rem;
+		line-height: 1.15;
+		text-shadow: 0 1px 8px rgb(0 0 0 / 0.4);
+		transition: font-size var(--duration-normal) ease;
+	}
+
+	.banner-header :global(.about) {
+		padding: 0;
+	}
+
+	.folded h1 {
+		font-size: var(--font-size-lg);
+	}
+
+	.folded .banner-header {
+		display: none;
 	}
 
 	.toolbar {

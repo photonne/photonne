@@ -51,6 +51,8 @@
 		selectable?: boolean;
 		/** Muted text after a section's title (a year's photo count). */
 		sectionSubtitle?: (key: string) => string;
+		/** The scroll offset and how far it can go, e.g. to fold a header above it. */
+		onscrolled?: (top: number, max: number) => void;
 	}
 
 	let {
@@ -67,7 +69,8 @@
 		onzoom,
 		reflowKey = '',
 		selectable = true,
-		sectionSubtitle
+		sectionSubtitle,
+		onscrolled
 	}: Props = $props();
 
 	const HEADER_HEIGHT = 52;
@@ -80,6 +83,10 @@
 	let scroller = $state<HTMLDivElement>();
 	let scrollTop = $state(0);
 	let viewportHeight = $state(0);
+
+	$effect(() => {
+		onscrolled?.(scrollTop, maxScroll);
+	});
 	let outerWidth = $state(0);
 	let focusedId = $state<string | null>(null);
 

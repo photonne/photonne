@@ -74,7 +74,7 @@
 	.action {
 		padding: var(--space-1) var(--space-2);
 		border-radius: var(--radius-sm);
-		color: #93c5fd;
+		color: #ffd166;
 		font-weight: 600;
 	}
 

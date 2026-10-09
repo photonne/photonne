@@ -164,7 +164,9 @@
 		--color-surface: #26282c;
 		--color-text: #e8e8ea;
 		--color-text-muted: #a0a3a8;
-		--color-focus: #93c5fd;
+		--color-focus: #ffd166;
+		--color-accent: #ffd166;
+		--color-accent-text: #1a1a2e;
 		color-scheme: dark;
 		position: fixed;
 		inset: 0;

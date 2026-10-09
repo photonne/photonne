@@ -20,7 +20,9 @@
 	import ShareViewer from '#lib/account/share/ShareViewer.svelte';
 	import type { SharedAssetDto } from '#lib/api/index.js';
 	import { session } from '#lib/auth/session.svelte.js';
+	import AppShell from '#lib/components/AppShell.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import Logo from '#lib/components/Logo.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { longDate } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
@@ -95,128 +97,138 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="public">
-	<header class="topbar">
-		<a class="brand" href={appHref('/')}>{m.app_name()}</a>
-		{#if session.status === 'signedIn'}
-			<a class="library" href={appHref('/')}>{m.share_go_to_library()}</a>
-		{/if}
-	</header>
-
-	<main id="content">
-		{#if share.isPending}
-			<p class="center" role="status">{m.session_restoring()}</p>
-		{:else if !outcome || outcome.kind === 'unreachable'}
-			<div class="center">
-				<Icon path={ICON_BROKEN_IMAGE} size={48} />
-				<h1>{m.session_unreachable_title()}</h1>
-				<p>{m.session_unreachable_body()}</p>
-				<button type="button" class="button" onclick={() => share.refetch()}>
-					{m.session_retry()}
-				</button>
-			</div>
-		{:else if outcome.kind === 'password'}
-			<form class="gate" onsubmit={submitPassword}>
-				<span class="gate-icon"><Icon name="lock" size={32} /></span>
-				<h1>{m.share_password_title()}</h1>
-				<p>{m.share_password_lead()}</p>
-				<label>
-					<span>{m.share_password_label()}</span>
-					<PasswordInput
-						autocomplete="off"
-						required
-						autofocus
-						aria-invalid={outcome.wrong}
-						aria-describedby={outcome.wrong ? 'password-error' : undefined}
-						bind:value={typed}
-					/>
-				</label>
-				{#if outcome.wrong}
-					<p id="password-error" class="error" role="alert">{m.share_password_wrong()}</p>
-				{/if}
-				<button type="submit" class="button primary" disabled={!typed || share.isFetching}>
-					{m.share_password_submit()}
-				</button>
-			</form>
-		{:else if outcome.kind === 'expired'}
-			<div class="center">
-				<Icon path={ICON_SCHEDULE} size={48} />
-				<h1>{m.share_expired_title()}</h1>
-				<p>{m.share_expired_body()}</p>
-			</div>
-		{:else if outcome.kind === 'maxViews'}
-			<div class="center">
-				<Icon path={ICON_VISIBILITY_OFF} size={48} />
-				<h1>{m.share_max_views_title()}</h1>
-				<p>{m.share_max_views_body()}</p>
-			</div>
-		{:else if outcome.kind === 'notFound' || !content?.album}
-			<div class="center">
-				<Icon path={ICON_LINK_OFF} size={48} />
-				<h1>{m.share_not_found_title()}</h1>
-				<p>{m.share_not_found_body()}</p>
-			</div>
-		{:else}
-			{@const album = content.album}
-			{@const cover = coverOf(assets)}
-			<section class="hero" aria-labelledby="album-title">
-				{#if cover}<div class="hero-bg" style:background-image="url('{cover}')"></div>{/if}
-				<div class="hero-content">
-					<h1 id="album-title">{album.name}</h1>
-					{#if album.description}<p class="description">{album.description}</p>{/if}
-					<p class="meta">
-						<span><Icon name="photos" size={16} /> {m.share_items({ count: assets.length })}</span>
-						{#if content.expiresAt}
-							<span>
-								<Icon path={ICON_SCHEDULE} size={16} />
-								{m.share_expires({ date: longDate(content.expiresAt) })}
-							</span>
-						{/if}
-					</p>
-					{#if content.allowDownload && assets.length > 0}
-						<div class="hero-actions">
-							<button type="button" class="button" onclick={downloadAll}>
-								<Icon name="download" size={18} />
-								{m.share_download_all()}
-							</button>
-						</div>
+{#snippet body()}
+	{#if share.isPending}
+		<p class="center" role="status">{m.session_restoring()}</p>
+	{:else if !outcome || outcome.kind === 'unreachable'}
+		<div class="center">
+			<Icon path={ICON_BROKEN_IMAGE} size={48} />
+			<h1>{m.session_unreachable_title()}</h1>
+			<p>{m.session_unreachable_body()}</p>
+			<button type="button" class="button" onclick={() => share.refetch()}>
+				{m.session_retry()}
+			</button>
+		</div>
+	{:else if outcome.kind === 'password'}
+		<form class="gate" onsubmit={submitPassword}>
+			<span class="gate-icon"><Icon name="lock" size={32} /></span>
+			<h1>{m.share_password_title()}</h1>
+			<p>{m.share_password_lead()}</p>
+			<label>
+				<span>{m.share_password_label()}</span>
+				<PasswordInput
+					autocomplete="off"
+					required
+					autofocus
+					aria-invalid={outcome.wrong}
+					aria-describedby={outcome.wrong ? 'password-error' : undefined}
+					bind:value={typed}
+				/>
+			</label>
+			{#if outcome.wrong}
+				<p id="password-error" class="error" role="alert">{m.share_password_wrong()}</p>
+			{/if}
+			<button type="submit" class="button primary" disabled={!typed || share.isFetching}>
+				{m.share_password_submit()}
+			</button>
+		</form>
+	{:else if outcome.kind === 'expired'}
+		<div class="center">
+			<Icon path={ICON_SCHEDULE} size={48} />
+			<h1>{m.share_expired_title()}</h1>
+			<p>{m.share_expired_body()}</p>
+		</div>
+	{:else if outcome.kind === 'maxViews'}
+		<div class="center">
+			<Icon path={ICON_VISIBILITY_OFF} size={48} />
+			<h1>{m.share_max_views_title()}</h1>
+			<p>{m.share_max_views_body()}</p>
+		</div>
+	{:else if outcome.kind === 'notFound' || !content?.album}
+		<div class="center">
+			<Icon path={ICON_LINK_OFF} size={48} />
+			<h1>{m.share_not_found_title()}</h1>
+			<p>{m.share_not_found_body()}</p>
+		</div>
+	{:else}
+		{@const album = content.album}
+		{@const cover = coverOf(assets)}
+		<section class="hero" aria-labelledby="album-title">
+			{#if cover}<div class="hero-bg" style:background-image="url('{cover}')"></div>{/if}
+			<div class="hero-content">
+				<h1 id="album-title">{album.name}</h1>
+				{#if album.description}<p class="description">{album.description}</p>{/if}
+				<p class="meta">
+					<span><Icon name="photos" size={16} /> {m.share_items({ count: assets.length })}</span>
+					{#if content.expiresAt}
+						<span>
+							<Icon path={ICON_SCHEDULE} size={16} />
+							{m.share_expires({ date: longDate(content.expiresAt) })}
+						</span>
 					{/if}
-				</div>
-			</section>
-
-			<div class="body">
-				{#if content.allowUpload}
-					<ShareUploadCard {token} {password} onuploaded={() => share.refetch()} />
-				{/if}
-
-				{#if assets.length === 0}
-					<p class="empty">{m.share_empty()}</p>
-				{:else}
-					<ShareGrid
-						bind:this={grid}
-						{token}
-						{password}
-						{assets}
-						label={album.name ?? m.share_title()}
-						onopen={(asset) => viewer.open(asset.id)}
-					/>
+				</p>
+				{#if content.allowDownload && assets.length > 0}
+					<div class="hero-actions">
+						<button type="button" class="button" onclick={downloadAll}>
+							<Icon name="download" size={18} />
+							{m.share_download_all()}
+						</button>
+					</div>
 				{/if}
 			</div>
+		</section>
 
-			{#if viewer.openId && assets.some((asset) => asset.id === viewer.openId)}
-				<ShareViewer
+		<div class="body">
+			{#if content.allowUpload}
+				<ShareUploadCard {token} {password} onuploaded={() => share.refetch()} />
+			{/if}
+
+			{#if assets.length === 0}
+				<p class="empty">{m.share_empty()}</p>
+			{:else}
+				<ShareGrid
+					bind:this={grid}
 					{token}
 					{password}
 					{assets}
-					assetId={viewer.openId}
-					allowDownload={content.allowDownload}
-					onnavigate={(id) => viewer.navigate(id)}
-					onclose={closeViewer}
+					label={album.name ?? m.share_title()}
+					onopen={(asset) => viewer.open(asset.id)}
 				/>
 			{/if}
+		</div>
+
+		{#if viewer.openId && assets.some((asset) => asset.id === viewer.openId)}
+			<ShareViewer
+				{token}
+				{password}
+				{assets}
+				assetId={viewer.openId}
+				allowDownload={content.allowDownload}
+				onnavigate={(id) => viewer.navigate(id)}
+				onclose={closeViewer}
+			/>
 		{/if}
-	</main>
-</div>
+	{/if}
+{/snippet}
+
+{#if session.status === 'signedIn'}
+	<!-- A Photonne user opening a link sees it inside the app, with their library at hand. -->
+	<AppShell>
+		<div class="in-app">{@render body()}</div>
+	</AppShell>
+{:else if session.status === 'restoring'}
+	<p class="center" role="status">{m.session_restoring()}</p>
+{:else}
+	<div class="public">
+		<header class="topbar">
+			<a class="brand" href={appHref('/')} aria-label={m.app_name()}><Logo size={30} /></a>
+			<a class="library" href="{appHref('/login')}?returnTo={encodeURIComponent(page.url.pathname)}"
+				>{m.share_sign_in()}</a
+			>
+		</header>
+		<main id="content">{@render body()}</main>
+	</div>
+{/if}
 
 <style>
 	.public {
@@ -235,10 +247,15 @@
 	}
 
 	.brand {
-		font-weight: 700;
-		font-size: var(--font-size-lg);
+		display: flex;
 		color: inherit;
 		text-decoration: none;
+	}
+
+	.in-app {
+		display: flex;
+		flex-direction: column;
+		min-height: 100%;
 	}
 
 	.library {

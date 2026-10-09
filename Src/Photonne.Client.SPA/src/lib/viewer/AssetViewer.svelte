@@ -680,8 +680,9 @@
 		--color-border: #34363b;
 		--color-text: #e8e8ea;
 		--color-text-muted: #a0a3a8;
-		--color-accent: #60a5fa;
-		--color-accent-text: #0b1220;
+		--color-accent: #ffd166;
+		--color-accent-text: #1a1a2e;
+		--color-focus: #ffd166;
 		--color-danger: #ef9a9a;
 		color-scheme: dark;
 		position: fixed;

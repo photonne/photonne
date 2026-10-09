@@ -12,8 +12,12 @@ test('a visitor without a session browses a shared album and its viewer', async 
 	await expect(page.getByText('14 fotos y vídeos')).toBeVisible();
 	await expect(page.getByText(/Caduca el 31 de diciembre de 2026/)).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Descargar todo' })).toBeVisible();
-	// No session: no way into a library.
-	await expect(page.getByRole('link', { name: 'Ir a tu biblioteca' })).toHaveCount(0);
+	// No session: the public page, with a way to sign in and come back here.
+	await expect(page.getByRole('navigation', { name: 'Principal' })).toHaveCount(0);
+	await expect(page.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute(
+		'href',
+		'/login?returnTo=%2Fshare%2Fboda'
+	);
 
 	const grid = page.getByRole('list', { name: 'Boda de Marta y Joan' });
 	const cells = grid.getByRole('button', { name: /^(Foto|Vídeo), / });
@@ -96,4 +100,14 @@ test('a guest adds photos to a photo-request album', async ({ page }) => {
 		{ token: 'boda', name: 'Laia', pw: null, file: 'invitada-1.jpg' },
 		{ token: 'boda', name: 'Laia', pw: null, file: 'invitada-2.jpg' }
 	]);
+});
+
+test('a signed-in user sees the shared album inside the app', async ({ page }) => {
+	await fakeApi(page, { signedIn: true });
+
+	await page.goto('/share/boda');
+
+	await expect(page.getByRole('heading', { name: 'Boda de Marta y Joan', level: 1 })).toBeVisible();
+	await expect(page.getByRole('navigation', { name: 'Principal' })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Iniciar sesión' })).toHaveCount(0);
 });
