@@ -205,7 +205,8 @@ test.describe('server settings', () => {
 		await expect(page.getByText('2 cambios sin guardar')).toBeVisible();
 		await page.keyboard.press('Control+s');
 		await expect(page.getByText('Ajustes guardados.')).toBeVisible();
-		expect(state.saved).toEqual([
+		// Each setting is its own request, all at once: they land in any order.
+		expect([...state.saved].sort()).toEqual([
 			['ServerSettings.PublicUrl', 'https://photos.example.org'],
 			['ServerSettings.SessionTimeoutMinutes', '60']
 		]);
@@ -232,7 +233,8 @@ test.describe('server settings', () => {
 		await expect(page).toHaveURL(/\/faces$/);
 		await page.getByRole('button', { name: 'Guardar' }).click();
 		await expect(page.getByText('Ajustes guardados.')).toBeVisible();
-		expect(state.saved).toEqual([
+		// Each setting is its own request, all at once: they land in any order.
+		expect([...state.saved].sort()).toEqual([
 			['FaceRecognition.SuggestionThreshold', '0.6'],
 			['NightlyTaskSettings.FaceRecognition.Enabled', 'true']
 		]);
