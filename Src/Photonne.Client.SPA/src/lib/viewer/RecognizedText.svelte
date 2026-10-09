@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText } from '#lib/clipboard.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -20,7 +21,7 @@
 
 	async function copy() {
 		try {
-			await navigator.clipboard.writeText(text);
+			await copyText(text);
 			toasts.show(m.viewer_text_copied());
 		} catch {
 			toasts.error(m.viewer_text_copy_failed());

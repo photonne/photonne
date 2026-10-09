@@ -38,6 +38,8 @@ export default defineConfig({
 		}
 	},
 	preview: {
+		// The e2e tests also open the build as http://photonne.lan (playwright.config.ts).
+		allowedHosts: ['photonne.lan'],
 		proxy: {
 			'/api': { target: apiTarget, changeOrigin: false }
 		}

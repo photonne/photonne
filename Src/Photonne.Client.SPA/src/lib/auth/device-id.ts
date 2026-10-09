@@ -10,7 +10,7 @@ export function getDeviceId(storage: Pick<Storage, 'getItem' | 'setItem'> | null
 	const existing = read(storage);
 	if (existing) return existing;
 
-	const created = `web-${crypto.randomUUID()}`;
+	const created = `web-${randomId()}`;
 	try {
 		storage?.setItem(KEY, created);
 	} catch {
@@ -36,4 +36,14 @@ function safeStorage() {
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * crypto.randomUUID only exists in secure contexts; a server opened as plain
+ * http on the local network isn't one. getRandomValues works everywhere.
+ */
+function randomId() {
+	if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+	const bytes = crypto.getRandomValues(new Uint8Array(16));
+	return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }

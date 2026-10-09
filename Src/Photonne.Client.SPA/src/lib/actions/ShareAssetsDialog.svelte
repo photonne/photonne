@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText } from '#lib/clipboard.js';
 	import { untrack } from 'svelte';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { invalidateAlbums } from '#lib/albums/cache.js';
@@ -115,7 +116,7 @@
 	async function copy() {
 		if (!created) return;
 		try {
-			await navigator.clipboard.writeText(created.url);
+			await copyText(created.url);
 			toasts.show(m.albums_link_copied());
 		} catch {
 			toasts.error(m.albums_link_copy_failed());

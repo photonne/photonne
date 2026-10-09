@@ -20,6 +20,7 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
+			testIgnore: '**/*.lan.e2e.ts',
 			use: {
 				...devices['Desktop Chrome'],
 				// For machines with a Chromium already installed (e.g. a sandbox
@@ -27,6 +28,22 @@ export default defineConfig({
 				launchOptions: process.env.CHROMIUM_PATH
 					? { executablePath: process.env.CHROMIUM_PATH }
 					: {}
+			}
+		},
+		{
+			// A self-hosted server is often opened as http://<lan-name>:port: not a
+			// secure context, so APIs such as crypto.randomUUID or the clipboard
+			// are missing. localhost doesn't show that, so these tests use a name
+			// that resolves to it without being it.
+			name: 'lan-http',
+			testMatch: '**/*.lan.e2e.ts',
+			use: {
+				...devices['Desktop Chrome'],
+				baseURL: `http://photonne.lan:${port}`,
+				launchOptions: {
+					args: ['--host-resolver-rules=MAP photonne.lan 127.0.0.1'],
+					...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
+				}
 			}
 		}
 	],
