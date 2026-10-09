@@ -3,6 +3,8 @@
 		href: string;
 		label: string;
 		current: boolean;
+		/** A number after the label (pending suggestions, items). */
+		count?: number | null;
 	}
 
 	interface Props {
@@ -43,7 +45,9 @@
 <nav class="tabs" class:fade-start={fadeStart} class:fade-end={fadeEnd} aria-label={label}>
 	<div class="list" bind:this={list} onscroll={measure}>
 		{#each tabs as tab (tab.href)}
-			<a href={tab.href} aria-current={tab.current ? 'page' : undefined}>{tab.label}</a>
+			<a href={tab.href} aria-current={tab.current ? 'page' : undefined}
+				>{tab.label}{#if tab.count != null}<span class="count">{tab.count}</span>{/if}</a
+			>
 		{/each}
 	</div>
 </nav>
@@ -109,6 +113,23 @@
 
 	a:hover {
 		color: var(--color-text);
+	}
+
+	.count {
+		margin-left: var(--space-2);
+		min-width: 20px;
+		padding: 0 6px;
+		border-radius: 999px;
+		background: var(--color-surface);
+		font-size: var(--font-size-2xs);
+		font-weight: 600;
+		line-height: 18px;
+		text-align: center;
+	}
+
+	a[aria-current='page'] .count {
+		background: var(--color-accent-soft);
+		color: var(--color-accent);
 	}
 
 	/* Inside the scroll box: drawn inwards, or the box would clip it. */

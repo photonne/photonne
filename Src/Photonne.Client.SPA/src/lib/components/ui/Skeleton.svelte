@@ -13,9 +13,17 @@
 		round?: boolean;
 		/** No page gutter, for use inside a card or panel. */
 		flush?: boolean;
+		/** Narrowest card width, as in the real grid (`cards`). */
+		min?: string;
 	}
 
-	let { variant = 'grid', count = 8, round = false, flush = false }: Props = $props();
+	let {
+		variant = 'grid',
+		count = 8,
+		round = false,
+		flush = false,
+		min = '180px'
+	}: Props = $props();
 
 	// Varied widths so the placeholder reads as photos, not as a table.
 	const rowWidths = [
@@ -26,7 +34,13 @@
 	];
 </script>
 
-<div class="skeleton {variant}" class:flush role="status" aria-label={m.loading()}>
+<div
+	class="skeleton {variant}"
+	class:flush
+	style:--card-min={min}
+	role="status"
+	aria-label={m.loading()}
+>
 	{#if variant === 'grid'}
 		{#each rowWidths as row, r (r)}
 			<div class="row">
@@ -97,7 +111,7 @@
 	}
 
 	.cards {
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr));
 		gap: var(--space-4);
 	}
 
