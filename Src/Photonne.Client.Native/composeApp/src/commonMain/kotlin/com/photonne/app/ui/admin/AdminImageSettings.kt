@@ -7,8 +7,6 @@ import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.admin_face_settings_workers
-import com.photonne.app.resources.admin_face_settings_workers_section
 import com.photonne.app.resources.admin_settings_image_format
 import com.photonne.app.resources.admin_settings_image_format_jpeg
 import com.photonne.app.resources.admin_settings_image_format_webp
@@ -23,7 +21,7 @@ class AdminImageSettingsViewModel(
     errorFactory: UiErrorFactory,
 ) : AdminKeyValueSettingsViewModel(repository, errorFactory) {
 
-    override val keys = listOf(FORMAT_KEY, QUALITY_SMALL_KEY, QUALITY_MEDIUM_KEY, QUALITY_LARGE_KEY, WORKERS_KEY)
+    override val keys = listOf(FORMAT_KEY, QUALITY_SMALL_KEY, QUALITY_MEDIUM_KEY, QUALITY_LARGE_KEY)
 
     // What ThumbnailGeneratorService falls back to when a key was never
     // stored. They have to match: an unset key shows its default here, and a
@@ -33,14 +31,12 @@ class AdminImageSettingsViewModel(
         QUALITY_SMALL_KEY to "75",
         QUALITY_MEDIUM_KEY to "80",
         QUALITY_LARGE_KEY to "85",
-        WORKERS_KEY to "2",
     )
 
     override val intRanges = mapOf(
         QUALITY_SMALL_KEY to QUALITY_RANGE,
         QUALITY_MEDIUM_KEY to QUALITY_RANGE,
         QUALITY_LARGE_KEY to QUALITY_RANGE,
-        WORKERS_KEY to WORKERS_RANGE,
     )
 
     companion object {
@@ -48,7 +44,6 @@ class AdminImageSettingsViewModel(
         const val QUALITY_SMALL_KEY = "TaskSettings.ThumbnailQuality.Small"
         const val QUALITY_MEDIUM_KEY = "TaskSettings.ThumbnailQuality.Medium"
         const val QUALITY_LARGE_KEY = "TaskSettings.ThumbnailQuality.Large"
-        const val WORKERS_KEY = "TaskSettings.ThumbnailWorkers"
 
         // Spelled the way the web client writes them. The server compares
         // ignoring case, the web's radio buttons don't.
@@ -57,7 +52,6 @@ class AdminImageSettingsViewModel(
 
         /** The server clamps to these when it reads the settings. */
         val QUALITY_RANGE = 1..100
-        val WORKERS_RANGE = 1..16
     }
 }
 
@@ -100,14 +94,6 @@ fun AdminImageSettingsScreen(
             stringResource(Res.string.admin_settings_image_quality_medium))
         QualitySlider(state, viewModel, AdminImageSettingsViewModel.QUALITY_LARGE_KEY, 85,
             stringResource(Res.string.admin_settings_image_quality_large))
-
-        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
-        SettingIntSlider(
-            label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.int(AdminImageSettingsViewModel.WORKERS_KEY, 2),
-            range = AdminImageSettingsViewModel.WORKERS_RANGE,
-            onValueChange = { viewModel.set(AdminImageSettingsViewModel.WORKERS_KEY, it.toString()) }
-        )
     }
 }
 

@@ -2,6 +2,7 @@ package com.photonne.app.ui.admin
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.photonne.app.ui.theme.SectionHeader
 import com.photonne.app.ui.theme.SettingsGroup
 import com.photonne.app.ui.theme.SettingsItem
 
@@ -11,6 +12,12 @@ data class AdminHubEntry(
     val title: String,
     val subtitle: String?,
     val icon: ImageVector
+)
+
+/** A titled group of entries in a hub (Ajustes: General, Procesado, IA). */
+data class AdminHubSection(
+    val title: String?,
+    val entries: List<AdminHubEntry>
 )
 
 /** Shared scaffold used by the Ajustes and Sistema hub screens to render
@@ -24,19 +31,38 @@ fun AdminHubList(
     entries: List<AdminHubEntry>,
     onClick: (String) -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {}
+) = AdminHubList(
+    title = title,
+    onBack = onBack,
+    sections = listOf(AdminHubSection(title = null, entries = entries)),
+    onClick = onClick,
+    onChromeVisibleChange = onChromeVisibleChange
+)
+
+/** The same list split into titled [sections], each its own card, as Más. */
+@Composable
+fun AdminHubList(
+    title: String,
+    onBack: () -> Unit,
+    sections: List<AdminHubSection>,
+    onClick: (String) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     AdminPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
         page {
-            // One card split by dividers, like Más and Ajustes.
-            SettingsGroup {
-                entries.forEachIndexed { index, entry ->
-                    SettingsItem(
-                        headline = entry.title,
-                        supporting = entry.subtitle,
-                        leadingIcon = entry.icon,
-                        onClick = { onClick(entry.key) },
-                        showDivider = index > 0
-                    )
+            sections.forEach { section ->
+                section.title?.let { SectionHeader(it) }
+                // One card split by dividers, like Más and Ajustes.
+                SettingsGroup {
+                    section.entries.forEachIndexed { index, entry ->
+                        SettingsItem(
+                            headline = entry.title,
+                            supporting = entry.subtitle,
+                            leadingIcon = entry.icon,
+                            onClick = { onClick(entry.key) },
+                            showDivider = index > 0
+                        )
+                    }
                 }
             }
         }

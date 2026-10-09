@@ -14,8 +14,6 @@ import com.photonne.app.resources.admin_face_settings_nightly_section
 import com.photonne.app.resources.admin_face_settings_parameters_section
 import com.photonne.app.resources.admin_face_settings_prefer_thumb_large
 import com.photonne.app.resources.admin_face_settings_prefer_thumb_large_description
-import com.photonne.app.resources.admin_face_settings_workers
-import com.photonne.app.resources.admin_face_settings_workers_section
 import com.photonne.app.resources.admin_scene_settings_enabled
 import com.photonne.app.resources.admin_scene_settings_enabled_description
 import com.photonne.app.resources.admin_scene_settings_max_scenes
@@ -41,7 +39,6 @@ class AdminSceneClassificationSettingsViewModel(
         MIN_SCORE_KEY,
         MAX_SCENES_PER_ASSET_KEY,
         PREFER_THUMBNAIL_LARGE_KEY,
-        WORKERS_KEY,
         NIGHTLY_ENABLED_KEY,
         NIGHTLY_MODE_KEY,
     )
@@ -52,14 +49,13 @@ class AdminSceneClassificationSettingsViewModel(
         MIN_SCORE_KEY to "0.15",
         MAX_SCENES_PER_ASSET_KEY to "5",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
-        WORKERS_KEY to "1",
         NIGHTLY_ENABLED_KEY to "false",
         NIGHTLY_MODE_KEY to "missing",
     )
 
     override fun normalize(key: String, value: String): String = when (key) {
         MIN_SCORE_KEY -> normalizeDecimal(value)
-        MAX_SCENES_PER_ASSET_KEY, WORKERS_KEY -> value.filter { it.isDigit() }
+        MAX_SCENES_PER_ASSET_KEY -> value.filter { it.isDigit() }
         else -> value
     }
 
@@ -69,7 +65,6 @@ class AdminSceneClassificationSettingsViewModel(
         const val MIN_SCORE_KEY = "SceneClassification.MinScore"
         const val MAX_SCENES_PER_ASSET_KEY = "SceneClassification.MaxScenesPerAsset"
         const val PREFER_THUMBNAIL_LARGE_KEY = "SceneClassification.PreferThumbnailLarge"
-        const val WORKERS_KEY = "TaskSettings.SceneClassificationWorkers"
         const val NIGHTLY_ENABLED_KEY = "NightlyTaskSettings.SceneClassification.Enabled"
         const val NIGHTLY_MODE_KEY = "NightlyTaskSettings.SceneClassification.Mode"
     }
@@ -149,20 +144,6 @@ fun AdminSceneClassificationSettingsScreen(
         ) { v ->
             viewModel.setBool(AdminSceneClassificationSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
-
-        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
-        SettingIntSlider(
-            label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminSceneClassificationSettingsViewModel.WORKERS_KEY)
-                .toIntOrNull() ?: 1,
-            range = 1..32,
-            onValueChange = {
-                viewModel.set(
-                    AdminSceneClassificationSettingsViewModel.WORKERS_KEY,
-                    it.toString(),
-                )
-            }
-        )
 
         SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(

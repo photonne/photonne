@@ -28,8 +28,6 @@ import com.photonne.app.resources.admin_face_settings_prefer_thumb_large_descrip
 import com.photonne.app.resources.admin_face_settings_suggestion_threshold
 import com.photonne.app.resources.admin_face_settings_suggestion_threshold_hint
 import com.photonne.app.resources.admin_face_settings_threshold_hint
-import com.photonne.app.resources.admin_face_settings_workers
-import com.photonne.app.resources.admin_face_settings_workers_section
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -55,7 +53,6 @@ class AdminFaceRecognitionSettingsViewModel(
         KNN_SWITCHOVER_THRESHOLD_KEY,
         KNN_NEIGHBORS_KEY,
         PREFER_THUMBNAIL_LARGE_KEY,
-        WORKERS_KEY,
         NIGHTLY_ENABLED_KEY,
         NIGHTLY_MODE_KEY,
     )
@@ -70,7 +67,6 @@ class AdminFaceRecognitionSettingsViewModel(
         KNN_SWITCHOVER_THRESHOLD_KEY to "1500",
         KNN_NEIGHBORS_KEY to "20",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
-        WORKERS_KEY to "1",
         NIGHTLY_ENABLED_KEY to "false",
         NIGHTLY_MODE_KEY to "missing",
     )
@@ -94,8 +90,7 @@ class AdminFaceRecognitionSettingsViewModel(
 
         MIN_FACES_FOR_CLUSTER_KEY,
         KNN_SWITCHOVER_THRESHOLD_KEY,
-        KNN_NEIGHBORS_KEY,
-        WORKERS_KEY -> value.filter { it.isDigit() }
+        KNN_NEIGHBORS_KEY -> value.filter { it.isDigit() }
 
         else -> value
     }
@@ -110,7 +105,6 @@ class AdminFaceRecognitionSettingsViewModel(
         const val KNN_SWITCHOVER_THRESHOLD_KEY = "FaceRecognition.KnnSwitchoverThreshold"
         const val KNN_NEIGHBORS_KEY = "FaceRecognition.KnnNeighbors"
         const val PREFER_THUMBNAIL_LARGE_KEY = "FaceRecognition.PreferThumbnailLarge"
-        const val WORKERS_KEY = "TaskSettings.FaceRecognitionWorkers"
         const val NIGHTLY_ENABLED_KEY = "NightlyTaskSettings.FaceRecognition.Enabled"
         const val NIGHTLY_MODE_KEY = "NightlyTaskSettings.FaceRecognition.Mode"
     }
@@ -248,20 +242,6 @@ fun AdminFaceRecognitionSettingsScreen(
         ) { v ->
             viewModel.setBool(AdminFaceRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY, v)
         }
-
-        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
-        SettingIntSlider(
-            label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminFaceRecognitionSettingsViewModel.WORKERS_KEY)
-                .toIntOrNull() ?: 1,
-            range = 1..32,
-            onValueChange = {
-                viewModel.set(
-                    AdminFaceRecognitionSettingsViewModel.WORKERS_KEY,
-                    it.toString(),
-                )
-            }
-        )
 
         SettingSectionHeader(stringResource(Res.string.admin_face_settings_nightly_section))
         NightlyStateCard(

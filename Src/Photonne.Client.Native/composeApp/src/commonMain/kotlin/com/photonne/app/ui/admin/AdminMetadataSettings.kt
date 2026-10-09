@@ -8,8 +8,6 @@ import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.admin_face_settings_workers
-import com.photonne.app.resources.admin_face_settings_workers_section
 import com.photonne.app.resources.admin_settings_metadata_camera
 import com.photonne.app.resources.admin_settings_metadata_datetime
 import com.photonne.app.resources.admin_settings_metadata_gps
@@ -30,7 +28,6 @@ class AdminMetadataSettingsViewModel(
         "MetadataSettings.ExtractIptc",
         "MetadataSettings.ReadXmpSidecar",
         "MetadataSettings.DefaultTimezone",
-        WORKERS_KEY,
     )
 
     override val defaults = mapOf(
@@ -40,17 +37,7 @@ class AdminMetadataSettingsViewModel(
         "MetadataSettings.ExtractIptc" to "true",
         "MetadataSettings.ReadXmpSidecar" to "true",
         "MetadataSettings.DefaultTimezone" to "UTC",
-        WORKERS_KEY to "2",
     )
-
-    override val intRanges = mapOf(WORKERS_KEY to WORKERS_RANGE)
-
-    companion object {
-        const val WORKERS_KEY = "TaskSettings.MetadataWorkers"
-
-        /** EnrichmentWorker clamps every worker count to this. */
-        val WORKERS_RANGE = 1..32
-    }
 }
 
 @Composable
@@ -99,13 +86,5 @@ fun AdminMetadataSettingsScreen(
             label = stringResource(Res.string.admin_settings_metadata_timezone),
             value = state.get("MetadataSettings.DefaultTimezone")
         ) { viewModel.set("MetadataSettings.DefaultTimezone", it) }
-
-        SettingSectionHeader(stringResource(Res.string.admin_face_settings_workers_section))
-        SettingIntSlider(
-            label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.int(AdminMetadataSettingsViewModel.WORKERS_KEY, 2),
-            range = AdminMetadataSettingsViewModel.WORKERS_RANGE,
-            onValueChange = { viewModel.set(AdminMetadataSettingsViewModel.WORKERS_KEY, it.toString()) }
-        )
     }
 }

@@ -774,7 +774,7 @@
     <string name="administration_hint">Manage users, review usage and clean up the server trash.</string>
     <string name="admin_section_users">Users</string>
     <string name="admin_section_users_subtitle">Create, edit and delete accounts</string>
-    <string name="admin_section_stats">Statistics</string>
+    <string name="admin_section_stats">Dashboard</string>
     <string name="admin_section_stats_subtitle">Global usage and per-user breakdown</string>
 
     <string name="admin_users_empty">No users yet.</string>
@@ -815,7 +815,7 @@
     <string name="admin_stats_coverage_unsupported">Unsupported</string>
     <string name="admin_stats_coverage_unindexed">Unindexed</string>
     <string name="admin_stats_coverage_verified_at">Verified: %1$s</string>
-    <string name="admin_stats_coverage_never">Not verified yet. Run "Indexing coverage" in System › Run tasks.</string>
+    <string name="admin_stats_coverage_never">Not verified yet. Run "Indexing coverage" in System › Maintenance.</string>
     <plurals name="admin_stats_coverage_offline">
         <item quantity="one">%1$d unreachable external library was left unverified</item>
         <item quantity="other">%1$d unreachable external libraries were left unverified</item>
@@ -882,7 +882,7 @@
     <string name="admin_settings_task_backfill_batch">Reprocessing batch size</string>
     <string name="admin_settings_nightly_batch_size_hint">How many photos are queued per round when an analysis is launched by hand from System.</string>
 
-    <string name="admin_system_run_tasks">Run tasks</string>
+    <string name="admin_system_run_tasks">Maintenance</string>
     <string name="admin_system_run_tasks_subtitle">Index, analyse, repair and clean up</string>
     <string name="admin_run_tasks_pending_format">%1$d unprocessed · %2$d in queue</string>
     <string name="admin_run_tasks_section_new_photos">New photos</string>
@@ -972,8 +972,6 @@
     <string name="admin_face_settings_knn_neighbors_hint">Top-k queried per face in the kNN path.</string>
     <string name="admin_face_settings_prefer_thumb_large">Prefer Large thumbnail</string>
     <string name="admin_face_settings_prefer_thumb_large_description">Use the Large (1280 px) thumbnail instead of the original. Reduces I/O. ArcFace crops to 112x112 anyway.</string>
-    <string name="admin_face_settings_workers_section">Performance</string>
-    <string name="admin_face_settings_workers">Parallel processes</string>
     <string name="admin_face_settings_nightly_section">Nightly schedule</string>
     <string name="admin_face_settings_nightly_state_enabled">Enabled in the nightly task</string>
     <string name="admin_face_settings_nightly_state_disabled">Disabled in the nightly task</string>
@@ -1041,6 +1039,14 @@
 
     <string name="admin_settings_metadata">Metadata settings</string>
     <string name="admin_settings_metadata_subtitle">Which EXIF/IPTC/XMP fields to extract</string>
+    <string name="admin_settings_group_general">General</string>
+    <string name="admin_settings_group_processing">Processing</string>
+    <string name="admin_settings_group_ai">Artificial intelligence</string>
+    <string name="admin_settings_performance">Performance</string>
+    <string name="admin_settings_performance_subtitle">How many photos each kind of task processes at once</string>
+    <string name="admin_settings_performance_io">Indexing and thumbnails</string>
+    <string name="admin_settings_performance_ml">AI models</string>
+    <string name="admin_settings_performance_backfill">Reprocessing</string>
     <string name="admin_settings_metadata_datetime">Date and time</string>
     <string name="admin_settings_metadata_gps">GPS</string>
     <string name="admin_settings_metadata_camera">Camera and exposure</string>
@@ -1098,7 +1104,7 @@
     <string name="admin_settings_device_probe_unreachable">Local URL did not respond from this network.</string>
     <string name="admin_settings_device_saved">Connection saved.</string>
 
-    <string name="admin_settings_trash">Trash configuration</string>
+    <string name="admin_settings_trash">Trash</string>
     <string name="admin_settings_trash_subtitle">Retention, quota and current state</string>
     <string name="admin_settings_trash_section_config">Configuration</string>
     <string name="admin_settings_trash_section_stats">Current state</string>
@@ -1107,7 +1113,7 @@
     <string name="admin_settings_trash_max_quota">Max quota (MB)</string>
     <string name="admin_settings_trash_max_quota_hint">0 = unlimited</string>
 
-    <string name="admin_settings_user_defaults">User defaults</string>
+    <string name="admin_settings_user_defaults">New users</string>
     <string name="admin_settings_user_defaults_subtitle">Default values for new accounts</string>
     <string name="admin_settings_user_defaults_active">Active by default</string>
     <string name="admin_settings_user_defaults_role">Default role</string>
@@ -1484,7 +1490,7 @@
     <string name="organize_suggestions_title">Suggested batches</string>
     <string name="organize_suggestions_see_all">See all photos</string>
     <string name="organize_suggestions_back">Back to batches</string>
-    <string name="organize_inbox_title">To organize</string>
+    <string name="organize_inbox_title">Organize</string>
     <string name="organize_rule_title">Move by conditions</string>
     <string name="organize_inbox_card_subtitle">Photos in MobileBackup not yet filed</string>
     <string name="organize_inbox_count_format">%1$d unorganized</string>
@@ -1495,13 +1501,13 @@
     <string name="organize_excluded_title">Set aside</string>
     <string name="organize_excluded_header">These don't count as pending. Select the ones you want back in the inbox.</string>
     <string name="organize_excluded_empty_title">Nothing set aside</string>
-    <string name="organize_excluded_empty_subtitle">What you set aside from "To organize" shows up here.</string>
+    <string name="organize_excluded_empty_subtitle">What you set aside from "Organize" shows up here.</string>
     <string name="organize_excluded_action_include">Return to inbox</string>
     <plurals name="organize_excluded_included_done">
         <item quantity="one">1 photo returned to the inbox</item>
         <item quantity="other">%1$d photos returned to the inbox</item>
     </plurals>
-    <string name="organize_rule_intro">Move everything still in "To organize" that matches these conditions, all at once.</string>
+    <string name="organize_rule_intro">Move everything still in "Organize" that matches these conditions, all at once.</string>
     <string name="organize_rule_year_split_label">They will be split into:</string>
     <string name="organize_move_destination_label">Move to</string>
     <string name="organize_move_destination_placeholder">Pick a destination folder</string>
@@ -1545,8 +1551,8 @@
     <string name="admin_libraries_permissions_add">Give access to</string>
     <string name="admin_enrichment_failures_error_load">Couldn\'t load the problems registry</string>
     <string name="admin_enrichment_failures_error_retry_all">Couldn\'t retry the tasks</string>
-    <string name="admin_enrichment_failures_retry_all_done">%1$d task(s) sent to the queue. Progress shows in Run tasks.</string>
-    <string name="admin_enrichment_failures_retry_done">Sent to the queue. Progress shows in Run tasks.</string>
+    <string name="admin_enrichment_failures_retry_all_done">%1$d task(s) sent to the queue. Progress shows in Maintenance.</string>
+    <string name="admin_enrichment_failures_retry_done">Sent to the queue. Progress shows in Maintenance.</string>
     <string name="admin_enrichment_failures_retry_all_confirm">The %1$d tasks in the current filter will be queued again. Those failing because of the file itself will fail the same way.</string>
     <string name="admin_user_not_found">Couldn\'t find the user</string>
     <string name="admin_libraries_not_found">Couldn\'t find the library</string>
