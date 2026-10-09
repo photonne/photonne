@@ -54,9 +54,9 @@
 	--color-accent: #8a6400;
 	--color-accent-text: #ffffff;
 	--color-accent-soft: #fff1cc;
-	--color-danger: #c62828;
-	--color-success: #1b7f3b;
-	--color-warning: #a15c00;
+	--color-danger: #b3261e;
+	--color-success: #17703a;
+	--color-warning: #8f5200;
 	--color-badge: #d32f2f;
 	--color-focus: #8a6400;
 	--color-placeholder: #e8eaed;
@@ -139,10 +139,8 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
-button,
-input,
-select,
-textarea {
+/* Zero specificity, so lib/styles/ui.css (loaded after) sets the controls' size. */
+:where(button, input, select, textarea) {
 	font: inherit;
 	color: inherit;
 }
