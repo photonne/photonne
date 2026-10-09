@@ -16,6 +16,8 @@ import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -288,6 +290,9 @@ class AuthRefreshPluginTest {
         // Both requests must be in flight with the old token before either
         // gets its 401, as happens with parallel backup uploads.
         val bothSent = CompletableDeferred<Unit>()
+        // MockEngine answers each request on its own thread: a bare ++ can
+        // lose one of the two arrivals, and then both wait here for ever.
+        val arrivals = Mutex()
         var oldTokenRequests = 0
 
         val engine = MockEngine { request ->
@@ -302,7 +307,7 @@ class AuthRefreshPluginTest {
                     )
                 }
                 auth == "Bearer old-access" -> {
-                    if (++oldTokenRequests == 2) bothSent.complete(Unit)
+                    if (arrivals.withLock { ++oldTokenRequests } == 2) bothSent.complete(Unit)
                     bothSent.await()
                     respond("", HttpStatusCode.Unauthorized)
                 }
