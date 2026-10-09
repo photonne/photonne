@@ -42,6 +42,17 @@ export class Session {
 	/** At startup (and on retry): signed in if the refresh cookie is still valid. */
 	async restore() {
 		this.status = 'restoring';
+		try {
+			await this.#restore();
+		} catch (error) {
+			// A bug must not leave the app on its loading screen for good: the
+			// retry screen at least shows something and lets the user act.
+			console.error('Restoring the session failed', error);
+			this.status = 'unreachable';
+		}
+	}
+
+	async #restore() {
 		const token = await this.refresh();
 		if (token === null) {
 			if (this.status === 'restoring') this.status = 'unreachable';

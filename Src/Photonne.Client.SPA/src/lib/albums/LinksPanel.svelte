@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText } from '#lib/clipboard.js';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import {
 		createShareLink,
@@ -50,7 +51,7 @@
 
 	async function copy(link: ShareLinkResponse) {
 		try {
-			await navigator.clipboard.writeText(urlOf(link));
+			await copyText(urlOf(link));
 			toasts.show(m.albums_link_copied());
 		} catch {
 			toasts.error(m.albums_link_copy_failed());
@@ -84,7 +85,7 @@
 		if (token === 'new') {
 			const created = result.data as ShareLinkResponse;
 			try {
-				await navigator.clipboard.writeText(urlOf(created));
+				await copyText(urlOf(created));
 				toasts.show(m.albums_link_created_copied());
 			} catch {
 				toasts.show(m.albums_link_created());

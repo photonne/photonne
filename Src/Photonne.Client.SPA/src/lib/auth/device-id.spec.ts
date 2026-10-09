@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { getDeviceId } from './device-id.js';
 
 function memoryStorage() {
@@ -33,5 +33,19 @@ describe('getDeviceId', () => {
 
 		expect(id).toMatch(/^web-/);
 		expect(getDeviceId(broken)).toBe(id);
+	});
+
+	it('works without crypto.randomUUID (plain http on the local network)', async () => {
+		vi.stubGlobal('crypto', {
+			getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto)
+		});
+		vi.resetModules();
+		try {
+			// A fresh module: the tests above leave an id in its memory.
+			const { getDeviceId: fresh } = await import('./device-id.js');
+			expect(fresh(memoryStorage())).toMatch(/^web-[0-9a-f]{32}$/);
+		} finally {
+			vi.unstubAllGlobals();
+		}
 	});
 });
