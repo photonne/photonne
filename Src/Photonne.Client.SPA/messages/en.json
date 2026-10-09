@@ -29,6 +29,8 @@
 	"pane_resize": "Resize the pane",
 	"pane_resize_hint": "Drag or use the arrow keys; double-click to reset",
 	"loading": "Loading",
+	"nav_collapse": "Collapse the menu",
+	"nav_expand": "Expand the menu",
 	"error_loading": "Couldn't load. Try again.",
 	"skip_to_content": "Skip to content",
 	"grid_select_section": "Select {section}",

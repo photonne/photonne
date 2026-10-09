@@ -15,6 +15,7 @@
 	import { session } from '#lib/auth/session.svelte.js';
 	import { appHref as href } from '#lib/navigation/href.js';
 	import { navigation } from '#lib/navigation/sections.js';
+	import { initialCollapsed, saveCollapsed } from '#lib/navigation/sidebar.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale, type Locale } from '#lib/paraglide/runtime.js';
 	import Icon from './Icon.svelte';
@@ -43,6 +44,13 @@
 	]);
 
 	let dropTarget = $state<string | null>(null);
+	// A rail of icons or the full menu; narrow windows start as a rail.
+	let collapsed = $state(initialCollapsed(window.innerWidth));
+
+	function toggleSidebar() {
+		collapsed = !collapsed;
+		saveCollapsed(collapsed);
+	}
 	let search = $state('');
 
 	function isCurrent(path: string) {
@@ -67,9 +75,24 @@
 <!-- Files dropped anywhere in the app go to the upload queue. -->
 <DropZone mode="window" onfiles={(files) => uploads.add(files)} />
 
-<div class="shell">
+<div class="shell" class:collapsed>
 	<header class="topbar">
-		<a class="brand" href={href('/')} aria-label={m.app_name()}><Logo size={30} /></a>
+		<div class="brand-area">
+			<button
+				type="button"
+				class="icon-btn"
+				aria-controls="sidebar"
+				aria-expanded={!collapsed}
+				aria-label={collapsed ? m.nav_expand() : m.nav_collapse()}
+				title={collapsed ? m.nav_expand() : m.nav_collapse()}
+				onclick={toggleSidebar}
+			>
+				<Icon name="menu" />
+			</button>
+			<a class="brand" href={href('/')} aria-label={m.app_name()}
+				><Logo size={28} markOnly={collapsed} /></a
+			>
+		</div>
 
 		<form class="search" role="search" onsubmit={submitSearch}>
 			<Icon name="search" size={18} />
@@ -120,15 +143,19 @@
 		</div>
 	</header>
 
-	<nav class="sidebar" aria-label={m.nav_main()}>
+	<nav id="sidebar" class="sidebar" aria-label={m.nav_main()}>
 		{#each navigation.filter((section) => !section.adminOnly || session.isAdmin) as section (section.label())}
-			<h2>{section.label()}</h2>
+			<h2 class:visually-hidden={collapsed}>{section.label()}</h2>
 			<ul>
 				{#each section.items as item (item.path)}
 					<li>
-						<a href={href(item.path)} aria-current={isCurrent(item.path) ? 'page' : undefined}>
+						<a
+							href={href(item.path)}
+							aria-current={isCurrent(item.path) ? 'page' : undefined}
+							title={collapsed ? item.label() : undefined}
+						>
 							<Icon name={item.icon} size={18} />
-							{item.label()}
+							<span class="label">{item.label()}</span>
 						</a>
 					</li>
 				{/each}
@@ -136,7 +163,7 @@
 		{/each}
 
 		{#if pinned.length > 0}
-			<h2>{m.nav_section_pinned()}</h2>
+			<h2 class:visually-hidden={collapsed}>{m.nav_section_pinned()}</h2>
 			<ul>
 				{#each pinned as item (item.kind + item.id)}
 					{@const path = item.kind === 'album' ? `/albums/${item.id}` : `/folders/${item.id}`}
@@ -162,7 +189,7 @@
 							}}
 						>
 							<Icon name={item.kind === 'album' ? 'album' : 'folder'} size={18} />
-							{item.name}
+							<span class="label">{item.name}</span>
 						</a>
 					</li>
 				{/each}
@@ -177,13 +204,19 @@
 
 <style>
 	.shell {
+		--nav-width: var(--sidebar-width);
 		display: grid;
-		grid-template-columns: var(--sidebar-width) 1fr;
+		grid-template-columns: var(--nav-width) minmax(0, 1fr);
 		grid-template-rows: var(--header-height) 1fr;
 		grid-template-areas:
 			'topbar topbar'
 			'sidebar content';
 		height: 100vh;
+		transition: grid-template-columns var(--duration-normal) ease;
+	}
+
+	.shell.collapsed {
+		--nav-width: 68px;
 	}
 
 	.skip-link {
@@ -209,10 +242,20 @@
 		border-bottom: 1px solid var(--color-border);
 	}
 
-	.brand {
-		width: calc(var(--sidebar-width) - var(--space-4));
+	.brand-area {
 		display: flex;
 		align-items: center;
+		gap: var(--space-2);
+		/* Lines the search box up with the content column. */
+		width: calc(var(--nav-width) - var(--space-4));
+		flex: none;
+		transition: width var(--duration-normal) ease;
+	}
+
+	.brand {
+		display: flex;
+		align-items: center;
+		min-width: 0;
 		color: inherit;
 		text-decoration: none;
 	}
@@ -357,6 +400,7 @@
 
 	.sidebar {
 		grid-area: sidebar;
+		overflow-x: hidden;
 		padding: var(--space-2) var(--space-3) var(--space-6);
 		overflow-y: auto;
 	}
@@ -402,6 +446,34 @@
 		background: var(--color-accent-soft);
 		color: var(--color-accent);
 		font-weight: 600;
+	}
+
+	/* The rail: icons only, their names in the title and for screen readers. */
+	.collapsed .sidebar {
+		padding-inline: var(--space-2);
+	}
+
+	.collapsed .sidebar a {
+		justify-content: center;
+		padding: 0;
+	}
+
+	.collapsed .sidebar .label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+
+	.collapsed .sidebar ul + h2 {
+		margin-top: var(--space-2);
+	}
+
+	.collapsed .sidebar ul {
+		padding-bottom: var(--space-2);
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.sidebar a.drop {
