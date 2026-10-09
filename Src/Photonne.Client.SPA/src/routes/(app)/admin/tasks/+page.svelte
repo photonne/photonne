@@ -12,6 +12,7 @@
 		getBackgroundTasksOptions,
 		getBackgroundTasksQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import '#lib/adminops/adminops.css';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ProgressBar from '#lib/adminops/ProgressBar.svelte';
@@ -28,6 +29,8 @@
 	import { elapsedMs, isRunning, remainingMs, sortTasks } from '#lib/adminops/tasks.js';
 	import { count, duration, localDateTime, percent, timeAgo } from '#lib/adminops/time.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -123,23 +126,17 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{m.admin_tasks()} · {m.app_name()}</title>
-</svelte:head>
-
-<div class="ops-page">
-	<header class="ops-head">
-		<div>
-			<h1>{m.ops_tasks_title()}</h1>
-			<p>{m.ops_tasks_intro()}</p>
-		</div>
-		<div class="ops-actions">
-			<a class="ops-btn" href={appHref('/admin/maintenance')}>
-				<Icon name="build" size={18} />
-				{m.ops_tasks_open_maintenance()}
-			</a>
-		</div>
-	</header>
+<AdminPage
+	title={m.ops_tasks_title()}
+	description={m.ops_tasks_intro()}
+	documentTitle={m.admin_tasks()}
+>
+	{#snippet actions()}
+		<a class="btn" href={appHref('/admin/maintenance')}>
+			<Icon name="build" size={18} />
+			{m.ops_tasks_open_maintenance()}
+		</a>
+	{/snippet}
 
 	<section class="ops-section" aria-labelledby="tasks-heading">
 		<header>
@@ -152,7 +149,7 @@
 			<div class="ops-actions">
 				<button
 					type="button"
-					class="ops-btn ghost sm"
+					class="icon-btn"
 					onclick={refreshTasks}
 					aria-label={m.ops_refresh()}
 					title={m.ops_refresh()}
@@ -164,16 +161,16 @@
 
 		<div class="ops-card ops-table-wrap">
 			{#if tasks.isPending}
-				<p class="empty">{m.ops_loading()}</p>
+				<Skeleton variant="rows" count={3} />
 			{:else if tasks.isError && !tasks.data}
 				<p class="empty" role="alert">
 					{m.ops_load_failed()}
-					<button type="button" class="ops-btn sm" onclick={() => tasks.refetch()}
+					<button type="button" class="btn sm" onclick={() => tasks.refetch()}
 						>{m.ops_retry()}</button
 					>
 				</p>
 			{:else if rows.length === 0}
-				<p class="empty">{m.ops_tasks_empty()}</p>
+				<EmptyState compact iconPath={icons.queue} title={m.ops_tasks_empty()} />
 			{:else}
 				<table class="ops-table tasks">
 					<thead>
@@ -194,16 +191,16 @@
 								<th scope="row" class="name">
 									{taskTitle(task)}
 									{#each parameterChips(task) as chip (chip)}
-										<span class="ops-badge param">{chip}</span>
+										<span class="chip tag param">{chip}</span>
 									{/each}
 								</th>
 								<td>
 									<span
-										class="ops-badge"
-										class:info={running}
-										class:ok={task.status === 'Completed'}
-										class:error={task.status === 'Failed'}
-										class:warn={task.status === 'Cancelled'}>{statusLabel(task.status)}</span
+										class="chip tag"
+										class:accent={running}
+										class:success={task.status === 'Completed'}
+										class:danger={task.status === 'Failed'}
+										class:warning={task.status === 'Cancelled'}>{statusLabel(task.status)}</span
 									>
 								</td>
 								<td class="progress-col">
@@ -227,7 +224,7 @@
 								<td class="duration">
 									{duration(elapsedMs(task, clock.now))}
 									{#if left !== null}
-										<span class="ops-muted ops-small"
+										<span class="muted small"
 											>{m.ops_tasks_remaining({ time: duration(left) })}</span
 										>
 									{/if}
@@ -236,7 +233,7 @@
 									{#if running}
 										<button
 											type="button"
-											class="ops-btn danger sm"
+											class="btn sm"
 											disabled={cancelling === task.id}
 											onclick={() => cancel(task)}
 										>
@@ -262,24 +259,24 @@
 		<div class="summary">
 			<div class="ops-card tile">
 				<span class="value">{count(totals.inQueue)}</span>
-				<span class="ops-muted ops-small">{m.ops_queue_in_queue()}</span>
+				<span class="muted small">{m.ops_queue_in_queue()}</span>
 			</div>
 			<div class="ops-card tile">
 				<span class="value">{count(totals.processing)}</span>
-				<span class="ops-muted ops-small">{m.ops_queue_processing()}</span>
+				<span class="muted small">{m.ops_queue_processing()}</span>
 			</div>
 			<div class="ops-card tile">
 				<span class="value">{count(totals.retrying)}</span>
-				<span class="ops-muted ops-small">{m.ops_queue_retrying()}</span>
+				<span class="muted small">{m.ops_queue_retrying()}</span>
 			</div>
 			<a class="ops-card tile link" class:alert={totals.failed > 0} href={failuresHref()}>
 				<span class="value">{count(totals.failed)}</span>
-				<span class="ops-small">{m.ops_queue_failed_link()}</span>
+				<span class="small">{m.ops_queue_failed_link()}</span>
 			</a>
 			{#if mlPending.data}
 				<a class="ops-card tile link" href={appHref('/admin/maintenance')}>
 					<span class="value">{count(mlPending.data.count)}</span>
-					<span class="ops-small">{m.ops_ml_pending_total()}</span>
+					<span class="small">{m.ops_ml_pending_total()}</span>
 				</a>
 			{/if}
 		</div>
@@ -307,7 +304,7 @@
 								<td class="num">{count(row.counts.inQueue)}</td>
 								<td class="num">
 									{#if row.counts.processing > 0}
-										<span class="ops-badge info">{count(row.counts.processing)}</span>
+										<span class="chip tag accent">{count(row.counts.processing)}</span>
 									{:else}
 										0
 									{/if}
@@ -324,7 +321,7 @@
 									{#if kind && row.counts.inQueue + row.counts.retrying > 0}
 										<button
 											type="button"
-											class="ops-btn sm"
+											class="btn sm"
 											onclick={() => (emptying = { type: row.type, kind })}
 										>
 											<Icon path={icons.clearQueue} size={16} />
@@ -339,7 +336,7 @@
 			{/if}
 		</div>
 	</section>
-</div>
+</AdminPage>
 
 <ConfirmDialog
 	open={emptying !== null}

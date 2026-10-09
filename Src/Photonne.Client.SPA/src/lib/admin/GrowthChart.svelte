@@ -10,10 +10,13 @@
 	 */
 	let { months, label }: { months: GrowthMonth[]; label: string } = $props();
 
-	const WIDTH = 720;
+	// Drawn at the size it is shown (no scaling), so the axis text keeps the
+	// token's size at any width.
+	let width = $state(720);
+	const WIDTH = $derived(Math.max(280, Math.round(width)));
 	const HEIGHT = 220;
 	const PAD = { top: 8, right: 8, bottom: 24, left: 44 };
-	const plotW = WIDTH - PAD.left - PAD.right;
+	const plotW = $derived(WIDTH - PAD.left - PAD.right);
 	const plotH = HEIGHT - PAD.top - PAD.bottom;
 
 	let active = $state<number | null>(null);
@@ -23,8 +26,10 @@
 	const slot = $derived(months.length ? plotW / months.length : plotW);
 	const barW = $derived(Math.max(2, slot * 0.68));
 	const y = (value: number) => PAD.top + plotH - (value / max) * plotH;
-	// One label every few months so they never collide.
-	const labelEvery = $derived(Math.max(1, Math.ceil(months.length / 8)));
+	// One label every few months so they never collide (about 64 px each).
+	const labelEvery = $derived(
+		Math.max(1, Math.ceil(months.length / Math.max(2, Math.floor(plotW / 64))))
+	);
 	const total = $derived(months.reduce((sum, p) => sum + p.photos + p.videos, 0));
 	const shown = $derived(active !== null ? months[active] : null);
 
@@ -52,6 +57,7 @@
 	<!-- A slider over the months: the readout is its value. -->
 	<div
 		class="plot"
+		bind:clientWidth={width}
 		role="slider"
 		tabindex="0"
 		aria-label={m.admin_dash_growth_aria({ label, total: count(total) })}
@@ -66,7 +72,7 @@
 		onblur={() => (active = null)}
 		onpointerleave={() => (active = null)}
 	>
-		<svg viewBox="0 0 {WIDTH} {HEIGHT}" aria-hidden="true">
+		<svg viewBox="0 0 {WIDTH} {HEIGHT}" width={WIDTH} height={HEIGHT} aria-hidden="true">
 			{#each ticks as tick (tick)}
 				<line class="grid" x1={PAD.left} x2={WIDTH - PAD.right} y1={y(tick)} y2={y(tick)} />
 				<text class="axis" x={PAD.left - 6} y={y(tick)} text-anchor="end" dominant-baseline="middle"
@@ -134,9 +140,9 @@
 	}
 
 	svg {
-		width: 100%;
-		height: auto;
 		display: block;
+		max-width: 100%;
+		overflow: visible;
 		border-radius: var(--radius-sm);
 	}
 
@@ -147,7 +153,8 @@
 
 	.axis {
 		fill: var(--color-text-muted);
-		font-size: 11px;
+		font-size: var(--font-size-2xs);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.photos {

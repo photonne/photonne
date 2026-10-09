@@ -115,7 +115,7 @@
 			{#if field.kind === 'select'}
 				<select
 					{id}
-					class="ops-select"
+					class="choice"
 					{value}
 					{disabled}
 					aria-describedby={describedBy}
@@ -129,7 +129,7 @@
 			{:else if field.kind === 'timezone'}
 				<select
 					{id}
-					class="ops-select"
+					class="choice"
 					{value}
 					{disabled}
 					aria-describedby={describedBy}
@@ -161,7 +161,7 @@
 				{/if}
 				<input
 					{id}
-					class="ops-input number"
+					class="number"
 					class:short={field.slider}
 					type="text"
 					inputmode={field.kind === 'decimal' ? 'decimal' : 'numeric'}
@@ -175,7 +175,6 @@
 			{:else if field.kind === 'time'}
 				<input
 					{id}
-					class="ops-input"
 					type="time"
 					{value}
 					{disabled}
@@ -186,7 +185,7 @@
 			{:else}
 				<input
 					{id}
-					class="ops-input wide"
+					class="wide"
 					type={field.kind === 'secret' && !reveal
 						? 'password'
 						: field.kind === 'url'
@@ -204,7 +203,7 @@
 				{#if field.kind === 'secret'}
 					<button
 						type="button"
-						class="ops-btn ghost sm"
+						class="icon-btn"
 						aria-pressed={reveal}
 						aria-label={reveal ? m.ops_field_hide() : m.ops_field_show()}
 						title={reveal ? m.ops_field_hide() : m.ops_field_show()}
@@ -218,7 +217,7 @@
 		{#if field.hint}<p class="hint" id={hintId}>{field.hint()}</p>{/if}
 		{#if error}<p class="error" id={errorId}>{errorText}</p>{/if}
 		{#if warning}
-			<p class="ops-alert warn"><Icon path={icons.warning} size={18} />{warning}</p>
+			<p class="notice warning"><Icon path={icons.warning} size={18} />{warning}</p>
 		{/if}
 	</div>
 {/if}
@@ -242,6 +241,7 @@
 	}
 
 	label {
+		color: var(--color-text);
 		font-weight: 500;
 	}
 
@@ -262,7 +262,7 @@
 		gap: var(--space-2) var(--space-3);
 	}
 
-	.ops-select {
+	.choice {
 		min-width: 240px;
 		max-width: 100%;
 	}
@@ -307,7 +307,7 @@
 		font-weight: 600;
 	}
 
-	.ops-alert {
+	.notice {
 		margin-top: var(--space-1);
 	}
 
@@ -317,7 +317,8 @@
 		height: 22px;
 		margin: 0;
 		border-radius: 999px;
-		background: var(--color-border);
+		/* The track's off state needs 3:1 against the card (WCAG 1.4.11). */
+		background: var(--color-border-strong);
 		appearance: none;
 		cursor: pointer;
 		transition: background var(--duration-fast);

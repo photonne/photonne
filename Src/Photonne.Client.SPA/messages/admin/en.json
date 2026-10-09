@@ -464,5 +464,28 @@
 	"admin_sys_credits_title": "Credits",
 	"admin_sys_credits_intro": "Third-party data bundled with the server and their licences.",
 	"admin_sys_credits_dataset": "data from {date}",
-	"admin_sys_credits_none": "The server bundles no third-party data."
+	"admin_sys_credits_none": "The server bundles no third-party data.",
+	"admin_dash_size_used": "{size} used",
+	"admin_dash_storage_sub": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "across {n} user",
+				"countPlural=other": "across {n} users"
+			}
+		}
+	],
+	"admin_dash_users_admins": [
+		{
+			"declarations": ["input n", "input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{n} administrator",
+				"countPlural=other": "{n} administrators"
+			}
+		}
+	],
+	"admin_users_more": "More actions for {name}",
+	"admin_strash_empty_hint": "When someone deletes something from a shared folder, it shows up here."
 }

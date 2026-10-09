@@ -50,7 +50,7 @@
 		<div class="options" role="group" aria-label={m.ops_mt_options({ task: task.title() })}>
 			{#each task.options as option (option.id)}
 				{@const enabled = option.enabledWhen?.(options) ?? true}
-				<label class="ops-check option">
+				<label class="check option">
 					<input
 						type="checkbox"
 						bind:checked={options[option.id]}
@@ -71,14 +71,14 @@
 
 	{#snippet actions()}
 		{#if task.href}
-			<a class="ops-btn" href={appHref(task.href)}>
+			<a class="btn" href={appHref(task.href)}>
 				<Icon path={icons.openInNew} size={18} />
 				{m.ops_open()}
 			</a>
 		{:else if running && latest}
 			<button
 				type="button"
-				class="ops-btn danger"
+				class="btn"
 				disabled={stopping}
 				onclick={() => onstop(latest.id)}
 				aria-label="{m.ops_stop()}: {task.title()}"
@@ -89,7 +89,7 @@
 		{:else}
 			<button
 				type="button"
-				class="ops-btn {task.confirm && !task.confirm.skip?.(options) ? 'danger' : 'primary'}"
+				class="btn {task.confirm && !task.confirm.skip?.(options) ? 'danger' : 'primary'}"
 				disabled={starting}
 				onclick={onstart}
 				aria-label="{m.ops_run()}: {task.title()}"

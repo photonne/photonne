@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coverageShare, growthSeries, niceMax } from './stats.js';
+import { coverageShare, coverageTone, growthSeries, niceMax } from './stats.js';
 
 describe('stats', () => {
 	it('fills the growth months, oldest first, across a year change', () => {
@@ -33,5 +33,14 @@ describe('stats', () => {
 		expect(coverageShare({ indexed: 0, unindexed: 0 })).toBe(1);
 		expect(coverageShare({ indexed: 9999, unindexed: 1 })).toBe(0.999);
 		expect(coverageShare({ indexed: 1, unindexed: 1 })).toBe(0.5);
+	});
+
+	it('grades the coverage: 99 % is fine, 90 % a warning, less is a problem', () => {
+		expect(coverageTone(1)).toBe('success');
+		expect(coverageTone(0.999)).toBe('success');
+		expect(coverageTone(0.99)).toBe('success');
+		expect(coverageTone(0.989)).toBe('warning');
+		expect(coverageTone(0.9)).toBe('warning');
+		expect(coverageTone(0.899)).toBe('danger');
 	});
 });

@@ -133,25 +133,27 @@
 >
 	<div class="counters">
 		{#if pending.isPending}
-			<span class="ops-muted">{m.ops_loading()}</span>
+			<span class="loading" role="status" aria-label={m.loading()}></span>
 		{:else if pending.isError && !pending.data}
-			<span class="ops-muted">{m.ops_load_failed()}</span>
+			<span class="muted">{m.ops_load_failed()}</span>
 		{:else}
 			<span class:strong={counts.unprocessed > 0}
 				>{m.ops_queue_unprocessed({ count: counts.unprocessed })}</span
 			>
 			<span>· {m.ops_queue_in_queue_count({ count: counts.inQueue })}</span>
 			{#if counts.processing > 0}
-				<span class="ops-badge info"
+				<span class="chip tag accent"
 					>{m.ops_queue_processing_count({ count: counts.processing })}</span
 				>
 			{/if}
 			{#if counts.retrying > 0}
-				<span class="ops-badge warn">{m.ops_queue_retrying_count({ count: counts.retrying })}</span>
+				<span class="chip tag warning"
+					>{m.ops_queue_retrying_count({ count: counts.retrying })}</span
+				>
 			{/if}
 			{#if counts.failed > 0 && task.enrichmentType}
 				<a
-					class="ops-badge error"
+					class="chip tag danger"
 					href="{appHref('/admin/tasks/failures')}?type={encodeURIComponent(task.enrichmentType)}"
 					>{m.ops_queue_failed_count({ count: counts.failed })}</a
 				>
@@ -161,7 +163,7 @@
 
 	{#if queueing}
 		<div class="line"><ProgressBar value={null} label={m.ops_queue_queueing()} /></div>
-		<p class="meta ops-muted">{m.ops_queue_queueing()}</p>
+		<p class="meta muted">{m.ops_queue_queueing()}</p>
 	{:else if progress !== null}
 		<div class="line">
 			<ProgressBar value={progress} label={task.active()} />
@@ -171,7 +173,7 @@
 	{:else if working}
 		<p class="meta"><strong>{task.active()}</strong></p>
 	{:else if pending.data && counts.unprocessed === 0 && counts.inQueue === 0}
-		<p class="meta ops-muted">{m.ops_queue_all_done()}</p>
+		<p class="meta muted">{m.ops_queue_all_done()}</p>
 	{/if}
 
 	{@render extra?.()}
@@ -180,7 +182,7 @@
 		{#if counts.inQueue + counts.retrying > 0}
 			<button
 				type="button"
-				class="ops-btn"
+				class="btn"
 				onclick={() => (confirmEmpty = true)}
 				aria-label="{m.ops_queue_empty()}: {task.title()}"
 			>
@@ -190,7 +192,7 @@
 		{/if}
 		<button
 			type="button"
-			class="ops-btn primary"
+			class="btn primary"
 			disabled={queueing || !pending.data || counts.unprocessed === 0}
 			onclick={start}
 			aria-label="{m.ops_queue_start()}: {task.title()}"
@@ -225,11 +227,19 @@
 		font-weight: 600;
 	}
 
-	a.ops-badge {
+	.loading {
+		width: 16rem;
+		max-width: 100%;
+		height: 12px;
+		border-radius: var(--radius-sm);
+		background: var(--color-placeholder);
+	}
+
+	a.chip {
 		text-decoration: none;
 	}
 
-	a.ops-badge:hover {
+	a.chip:hover {
 		text-decoration: underline;
 	}
 

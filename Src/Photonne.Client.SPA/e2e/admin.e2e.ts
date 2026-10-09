@@ -121,17 +121,36 @@ test.describe('users', () => {
 		const api = await fakeAdminApi(page);
 		await page.goto('/admin/users');
 
+		// The secondary actions are in each row's "⋮" menu.
+		const menu = (name: string) =>
+			page.getByRole('button', { name: `Más acciones para ${name}` }).click();
+		const item = (name: string) => page.getByRole('menuitem', { name, exact: true });
+
 		// The primary admin (me) can't be deleted or deactivated.
-		await expect(page.getByRole('button', { name: 'Eliminar a ana' })).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'Desactivar a ana' })).toHaveCount(0);
+		await menu('ana');
+		await expect(item('Restablecer contraseña')).toBeVisible();
+		await expect(item('Eliminar')).toHaveCount(0);
+		await expect(item('Desactivar')).toHaveCount(0);
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('menu')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Más acciones para ana' })).toBeFocused();
 
-		await page.getByRole('button', { name: 'Desactivar a marta' }).click();
+		await menu('marta');
+		await item('Desactivar').click();
 		await expect(page.getByText('«marta» ya no puede entrar')).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Activar a marta' })).toBeVisible();
+		await menu('marta');
+		await expect(item('Activar')).toBeVisible();
+		await page.keyboard.press('Escape');
 		await page.getByRole('button', { name: 'Deshacer' }).click();
-		await expect(page.getByRole('button', { name: 'Desactivar a marta' })).toBeVisible();
+		await menu('marta');
+		await expect(item('Desactivar')).toBeVisible();
+		await page.keyboard.press('Escape');
 
-		await page.getByRole('button', { name: 'Restablecer la contraseña de luis' }).click();
+		// The menu works from the keyboard too.
+		await page.getByRole('button', { name: 'Más acciones para luis' }).focus();
+		await page.keyboard.press('ArrowDown');
+		await expect(item('Restablecer contraseña')).toBeFocused();
+		await page.keyboard.press('Enter');
 		const reset = page.getByRole('dialog', { name: 'Restablecer contraseña' });
 		await reset.getByLabel('Nueva contraseña').fill('Otra-Clave-9');
 		await reset.getByLabel('Repite la contraseña').fill('Otra-Clave-8');
@@ -141,13 +160,17 @@ test.describe('users', () => {
 		await reset.getByRole('button', { name: 'Restablecer' }).click();
 		await expect(page.getByText('Se ha cambiado la contraseña de «luis»')).toBeVisible();
 
-		await page.getByRole('button', { name: 'Hacer a luis administrador principal' }).click();
+		await menu('luis');
+		await item('Transferir el rol de administrador principal').click();
 		await page.getByRole('dialog').getByRole('button', { name: 'Transferir' }).click();
 		await expect(page.getByText('«luis» es ahora el administrador principal')).toBeVisible();
 		// No longer primary: I can't hand it over again.
-		await expect(page.getByRole('button', { name: /administrador principal$/ })).toHaveCount(0);
+		await menu('marta');
+		await expect(item('Transferir el rol de administrador principal')).toHaveCount(0);
+		await page.keyboard.press('Escape');
 
-		await page.getByRole('button', { name: 'Eliminar a jorge' }).click();
+		await menu('jorge');
+		await item('Eliminar').click();
 		const confirm = page.getByRole('dialog', { name: 'Eliminar usuario' });
 		await expect(confirm.getByText('¿Eliminar la cuenta de «jorge»?')).toBeVisible();
 		await confirm.getByRole('button', { name: 'Eliminar' }).click();

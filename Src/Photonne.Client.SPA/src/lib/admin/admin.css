@@ -1,13 +1,13 @@
 /*
- * Building blocks shared by the admin pages (buttons, cards, form fields,
- * tables, badges, notices), on the design tokens of app.css. Everything is
- * scoped under .admin-page (AdminPage.svelte) so nothing leaks elsewhere.
+ * What only the admin pages need, on top of the shared controls of
+ * src/lib/styles/ui.css (.btn, .icon-btn, .chip, .field, native inputs):
+ * cards, status tags, notices, tables, meters and the chart colours.
+ * Everything is scoped under .admin-page (AdminPage.svelte) so nothing
+ * leaks elsewhere.
  */
 
 .admin-page {
-	--admin-success: #1b7f3b;
-	--admin-warning: #a15c00;
-	--admin-info: var(--color-accent);
+	/* The growth chart and the photo/video split: gold photos, teal videos. */
 	--admin-chart-photos: #c8960a;
 	--admin-chart-videos: #0f766e;
 }
@@ -15,98 +15,14 @@
 /* Dark like app.css: the system's, unless <html data-theme> pins one. */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) .admin-page {
-		--admin-success: #7bd88f;
-		--admin-warning: #f6b35a;
 		--admin-chart-photos: #ffd166;
 		--admin-chart-videos: #5eead4;
 	}
 }
 
 :root[data-theme='dark'] .admin-page {
-	--admin-success: #7bd88f;
-	--admin-warning: #f6b35a;
 	--admin-chart-photos: #ffd166;
 	--admin-chart-videos: #5eead4;
-}
-
-/* ── Buttons ─────────────────────────────────────────────────────────── */
-
-.admin-page .btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	min-height: 36px;
-	padding: var(--space-2) var(--space-4);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-sm);
-	background: var(--color-surface-raised);
-	color: var(--color-text);
-	font-size: var(--font-size-sm);
-	font-weight: 500;
-	text-decoration: none;
-	white-space: nowrap;
-	cursor: pointer;
-	transition: background var(--duration-fast);
-}
-
-.admin-page .btn:hover:not(:disabled) {
-	background: var(--color-surface);
-}
-
-.admin-page .btn.primary {
-	border-color: var(--color-accent);
-	background: var(--color-accent);
-	color: var(--color-accent-text);
-	font-weight: 600;
-}
-
-.admin-page .btn.primary:hover:not(:disabled) {
-	background: var(--color-accent);
-	filter: brightness(1.08);
-}
-
-.admin-page .btn.danger {
-	border-color: var(--color-danger);
-	color: var(--color-danger);
-}
-
-.admin-page .btn.danger.solid {
-	background: var(--color-danger);
-	color: #fff;
-}
-
-.admin-page .btn:disabled {
-	opacity: 0.5;
-	cursor: default;
-}
-
-/* A square icon-only button; its name goes in aria-label (and title). */
-.admin-page .icon-btn {
-	display: inline-grid;
-	place-items: center;
-	width: 32px;
-	height: 32px;
-	padding: 0;
-	border: 0;
-	border-radius: var(--radius-sm);
-	background: transparent;
-	color: var(--color-text-muted);
-	cursor: pointer;
-}
-
-.admin-page .icon-btn:hover:not(:disabled) {
-	background: var(--color-surface);
-	color: var(--color-text);
-}
-
-.admin-page .icon-btn.danger:hover:not(:disabled) {
-	color: var(--color-danger);
-}
-
-.admin-page .icon-btn:disabled {
-	opacity: 0.35;
-	cursor: default;
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────── */
@@ -126,6 +42,17 @@
 	font-weight: 600;
 }
 
+/* A card that is a link: the whole card is the target. */
+.admin-page a.card {
+	color: inherit;
+	text-decoration: none;
+	transition: border-color var(--duration-fast);
+}
+
+.admin-page a.card:hover {
+	border-color: var(--color-accent);
+}
+
 .admin-page .muted {
 	color: var(--color-text-muted);
 }
@@ -138,33 +65,9 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* ── Form fields ─────────────────────────────────────────────────────── */
+/* ── Forms (fields and controls come from ui.css) ────────────────────── */
 
-.admin-page .field {
-	display: grid;
-	gap: var(--space-1);
-	min-width: 0;
-}
-
-.admin-page .field > span,
-.admin-page .field > label,
-.admin-page .label {
-	font-size: var(--font-size-sm);
-	font-weight: 600;
-}
-
-.admin-page .field input:not([type='checkbox']):not([type='radio']),
-.admin-page .field select,
-.admin-page .input {
-	width: 100%;
-	min-height: 36px;
-	padding: var(--space-2) var(--space-3);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-sm);
-	background: var(--color-bg);
-}
-
-.admin-page .field input[aria-invalid='true'] {
+.admin-page :is(input, select)[aria-invalid='true'] {
 	border-color: var(--color-danger);
 }
 
@@ -177,9 +80,11 @@
 .admin-page .field-error {
 	margin: 0;
 	font-size: var(--font-size-xs);
+	font-weight: 600;
 	color: var(--color-danger);
 }
 
+/* A checkbox and its text on one line. */
 .admin-page .check {
 	display: flex;
 	align-items: center;
@@ -188,11 +93,9 @@
 	cursor: pointer;
 }
 
-.admin-page .check input {
-	width: 16px;
-	height: 16px;
-	margin: 0;
-	accent-color: var(--color-accent);
+.admin-page .check:has(input:disabled) {
+	color: var(--color-text-muted);
+	cursor: not-allowed;
 }
 
 .admin-page .form {
@@ -225,35 +128,53 @@
 	color: var(--color-text-muted);
 }
 
-/* ── Badges ──────────────────────────────────────────────────────────── */
+/* ── Status tags: a read-only .chip ──────────────────────────────────── */
 
-.admin-page .badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 1px var(--space-2);
-	border: 1px solid currentColor;
-	border-radius: 999px;
+.admin-page .chip.tag {
+	min-height: 24px;
+	padding: 0 var(--space-2);
+	border-color: var(--color-border);
+	background: var(--color-surface);
+	color: var(--color-text-muted);
 	font-size: var(--font-size-xs);
 	font-weight: 600;
-	line-height: 1.5;
-	white-space: nowrap;
-	color: var(--color-text-muted);
+	line-height: 1.2;
+	cursor: default;
 }
 
-.admin-page .badge.accent {
-	color: var(--color-accent);
+.admin-page span.chip.tag:hover {
+	background: var(--color-surface);
 }
 
-.admin-page .badge.success {
-	color: var(--admin-success);
+.admin-page a.chip.tag {
+	cursor: pointer;
 }
 
-.admin-page .badge.warning {
-	color: var(--admin-warning);
+.admin-page a.chip.tag:hover {
+	text-decoration: underline;
 }
 
-.admin-page .badge.danger {
+.admin-page .chip.tag.accent {
+	border-color: var(--color-accent);
+	background: var(--color-accent-soft);
+	color: var(--color-text);
+}
+
+.admin-page .chip.tag.success {
+	border-color: color-mix(in srgb, var(--color-success) 45%, transparent);
+	background: color-mix(in srgb, var(--color-success) 6%, var(--color-surface-raised));
+	color: var(--color-success);
+}
+
+.admin-page .chip.tag.warning {
+	border-color: color-mix(in srgb, var(--color-warning) 45%, transparent);
+	background: color-mix(in srgb, var(--color-warning) 6%, var(--color-surface-raised));
+	color: var(--color-warning);
+}
+
+.admin-page .chip.tag.danger {
+	border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+	background: color-mix(in srgb, var(--color-danger) 6%, var(--color-surface-raised));
 	color: var(--color-danger);
 }
 
@@ -266,14 +187,14 @@
 	margin: 0;
 	padding: var(--space-3) var(--space-4);
 	border: 1px solid var(--color-border);
-	border-left: 4px solid var(--admin-info);
+	border-left: 4px solid var(--color-accent);
 	border-radius: var(--radius-sm);
 	background: var(--color-surface);
 	font-size: var(--font-size-sm);
 }
 
 .admin-page .notice.warning {
-	border-left-color: var(--admin-warning);
+	border-left-color: var(--color-warning);
 }
 
 .admin-page .notice.danger {
@@ -281,12 +202,24 @@
 }
 
 .admin-page .notice.success {
-	border-left-color: var(--admin-success);
+	border-left-color: var(--color-success);
 }
 
 .admin-page .notice > svg {
 	flex: none;
 	margin-top: 1px;
+}
+
+.admin-page .notice.warning > svg {
+	color: var(--color-warning);
+}
+
+.admin-page .notice.danger > svg {
+	color: var(--color-danger);
+}
+
+.admin-page .notice.success > svg {
+	color: var(--color-success);
 }
 
 /* ── Tables ──────────────────────────────────────────────────────────── */
@@ -319,6 +252,7 @@
 .admin-page table.data th {
 	position: sticky;
 	top: 0;
+	height: var(--control-h);
 	background: var(--color-surface);
 	font-size: var(--font-size-xs);
 	font-weight: 700;
@@ -329,10 +263,10 @@
 }
 
 .admin-page table.data tbody tr:hover {
-	background: var(--color-surface);
+	background: var(--color-hover);
 }
 
-/* ── Progress ────────────────────────────────────────────────────────── */
+/* ── Meters ──────────────────────────────────────────────────────────── */
 
 .admin-page .bar {
 	height: 6px;
@@ -349,8 +283,12 @@
 	transition: width var(--duration-normal);
 }
 
+.admin-page .bar.success > span {
+	background: var(--color-success);
+}
+
 .admin-page .bar.warning > span {
-	background: var(--admin-warning);
+	background: var(--color-warning);
 }
 
 .admin-page .bar.danger > span {

@@ -33,25 +33,25 @@
 			{#if task.lastMessage}· <span class="msg" title={task.lastMessage}>{task.lastMessage}</span
 				>{/if}
 		</p>
-		<p class="meta ops-muted">
+		<p class="meta muted">
 			{m.ops_elapsed({ time: duration(elapsedMs(task, now)) })}
 			{#if left !== null}· {m.ops_tasks_remaining({ time: duration(left) })}{/if}
 		</p>
 	{:else if starting}
 		<div class="line"><ProgressBar value={null} label={m.ops_starting()} /></div>
-		<p class="meta ops-muted">{m.ops_starting()}</p>
+		<p class="meta muted">{m.ops_starting()}</p>
 	{:else if task}
 		<p class="meta">
 			<span
-				class="ops-badge"
-				class:ok={task.status === 'Completed'}
-				class:error={task.status === 'Failed'}
-				class:warn={task.status === 'Cancelled'}>{statusLabel(task.status)}</span
+				class="chip tag"
+				class:success={task.status === 'Completed'}
+				class:danger={task.status === 'Failed'}
+				class:warning={task.status === 'Cancelled'}>{statusLabel(task.status)}</span
 			>
-			<span class="ops-muted">
+			<span class="muted">
 				{m.ops_last_run({ time: timeAgo(task.finishedAt ?? task.startedAt, now) })}
 			</span>
-			<span class="ops-muted" title={localDateTime(task.startedAt)}
+			<span class="muted" title={localDateTime(task.startedAt)}
 				>· {duration(elapsedMs(task, now))}</span
 			>
 		</p>

@@ -3,6 +3,7 @@
 	import { getServerInfoOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { icons } from './icons.js';
 
 	const info = createQuery(() => getServerInfoOptions());
@@ -13,7 +14,7 @@
 	<h2 id="perf-server">{m.ops_perf_server()}</h2>
 	{#if cores > 0}
 		<p>{m.ops_perf_cores({ count: cores })}</p>
-		<dl class="facts">
+		<dl class="ops-facts">
 			<div>
 				<dt>{m.ops_perf_recommended_io()}</dt>
 				<dd>{Math.max(2, Math.floor(cores / 2))}</dd>
@@ -24,11 +25,17 @@
 			</div>
 		</dl>
 	{:else if info.isPending}
-		<p class="ops-muted">{m.ops_loading()}</p>
+		<div class="loading"><Skeleton variant="text" count={3} /></div>
 	{/if}
-	<p class="ops-small ops-muted">{m.ops_perf_hint()}</p>
-	<p class="ops-alert warn">
+	<p class="small muted">{m.ops_perf_hint()}</p>
+	<p class="notice warning">
 		<Icon path={icons.warning} size={18} />
 		{m.ops_perf_restart()}
 	</p>
 </section>
+
+<style>
+	.loading {
+		margin: 0 calc(-1 * var(--page-gutter));
+	}
+</style>

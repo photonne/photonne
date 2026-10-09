@@ -10,6 +10,8 @@
 	import { adminIcons } from '#lib/admin/icons.js';
 	import { deleters, sharedTrashAsset } from '#lib/admin/shared-trash.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { formatBytes } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -120,92 +122,105 @@
 </script>
 
 <div class="admin-page shared-trash">
-	<CollectionView
-		{store}
-		title={m.admin_shared_trash()}
-		{status}
-		emptyText={m.admin_strash_empty()}
-		viewerActions={[]}
-		onnearend={more}
-	>
-		{#snippet toolbar()}
-			<button type="button" class="btn" onclick={load} disabled={status === 'pending'}>
-				<Icon name="refresh" size={18} />
-				{m.admin_core_refresh()}
-			</button>
-		{/snippet}
-		{#snippet header()}
-			<div class="intro">
-				<p class="muted">{m.admin_strash_description()}</p>
-				{#if all.length}
-					<div class="who" role="group" aria-label={m.admin_strash_filter()}>
-						<span class="small muted">
-							{m.admin_strash_summary({ count: all.length, size: formatBytes(totalBytes) })}
-						</span>
-						<button
-							type="button"
-							class="chip"
-							aria-pressed={who === null}
-							onclick={() => (who = null)}>{m.admin_strash_everyone()}</button
-						>
-						{#each people as person (person.name)}
+	{#if status === 'ready' && all.length === 0}
+		<!-- Nothing to review: say so the way every empty page does. -->
+		<PageHeader title={m.admin_shared_trash()} subtitle={m.admin_strash_description()}>
+			{#snippet actions()}
+				<button type="button" class="btn" onclick={load}>
+					<Icon name="refresh" size={18} />
+					{m.admin_core_refresh()}
+				</button>
+			{/snippet}
+		</PageHeader>
+		<EmptyState icon="restore" title={m.admin_strash_empty()} hint={m.admin_strash_empty_hint()} />
+	{:else}
+		<CollectionView
+			{store}
+			title={m.admin_shared_trash()}
+			{status}
+			emptyText={m.admin_strash_empty()}
+			viewerActions={[]}
+			onnearend={more}
+		>
+			{#snippet toolbar()}
+				<button type="button" class="btn" onclick={load} disabled={status === 'pending'}>
+					<Icon name="refresh" size={18} />
+					{m.admin_core_refresh()}
+				</button>
+			{/snippet}
+			{#snippet header()}
+				<div class="intro">
+					<p class="muted">{m.admin_strash_description()}</p>
+					{#if all.length}
+						<div class="who" role="group" aria-label={m.admin_strash_filter()}>
+							<span class="small muted">
+								{m.admin_strash_summary({ count: all.length, size: formatBytes(totalBytes) })}
+							</span>
 							<button
 								type="button"
 								class="chip"
-								aria-pressed={who === person.name}
-								onclick={() => (who = person.name)}
+								aria-pressed={who === null}
+								onclick={() => (who = null)}>{m.admin_strash_everyone()}</button
 							>
-								{person.name || m.admin_strash_unknown()}
-								<span class="num">{person.count}</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
-			</div>
-		{/snippet}
-		{#snippet viewerExtra(assetId)}
-			<button
-				type="button"
-				class="viewer-action"
-				disabled={busy}
-				aria-label={m.admin_strash_restore()}
-				title={m.admin_strash_restore()}
-				onclick={() => restore([assetId], null)}
-			>
-				<Icon name="restore" />
-			</button>
-			<button
-				type="button"
-				class="viewer-action"
-				disabled={busy}
-				aria-label={m.admin_strash_purge()}
-				title={m.admin_strash_purge()}
-				onclick={() => (purging = { ids: [assetId], selection: null })}
-			>
-				<Icon path={adminIcons.deleteForever} />
-			</button>
-		{/snippet}
-		{#snippet selectionActions(selection)}
-			<button
-				type="button"
-				class="action"
-				disabled={busy}
-				onclick={() => restore([...selection.ids], selection)}
-			>
-				<Icon name="restore" />
-				<span>{m.admin_strash_restore()}</span>
-			</button>
-			<button
-				type="button"
-				class="action danger"
-				disabled={busy}
-				onclick={() => (purging = { ids: [...selection.ids], selection })}
-			>
-				<Icon path={adminIcons.deleteForever} />
-				<span>{m.admin_strash_purge()}</span>
-			</button>
-		{/snippet}
-	</CollectionView>
+							{#each people as person (person.name)}
+								<button
+									type="button"
+									class="chip"
+									aria-pressed={who === person.name}
+									onclick={() => (who = person.name)}
+								>
+									{person.name || m.admin_strash_unknown()}
+									<span class="num">{person.count}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/snippet}
+			{#snippet viewerExtra(assetId)}
+				<button
+					type="button"
+					class="viewer-action"
+					disabled={busy}
+					aria-label={m.admin_strash_restore()}
+					title={m.admin_strash_restore()}
+					onclick={() => restore([assetId], null)}
+				>
+					<Icon name="restore" />
+				</button>
+				<button
+					type="button"
+					class="viewer-action"
+					disabled={busy}
+					aria-label={m.admin_strash_purge()}
+					title={m.admin_strash_purge()}
+					onclick={() => (purging = { ids: [assetId], selection: null })}
+				>
+					<Icon path={adminIcons.deleteForever} />
+				</button>
+			{/snippet}
+			{#snippet selectionActions(selection)}
+				<button
+					type="button"
+					class="action"
+					disabled={busy}
+					onclick={() => restore([...selection.ids], selection)}
+				>
+					<Icon name="restore" />
+					<span>{m.admin_strash_restore()}</span>
+				</button>
+				<button
+					type="button"
+					class="action danger"
+					disabled={busy}
+					onclick={() => (purging = { ids: [...selection.ids], selection })}
+				>
+					<Icon path={adminIcons.deleteForever} />
+					<span>{m.admin_strash_purge()}</span>
+				</button>
+			{/snippet}
+		</CollectionView>
+	{/if}
 
 	<ConfirmDialog
 		danger
@@ -246,27 +261,8 @@
 		gap: var(--space-2);
 	}
 
-	.chip {
-		padding: 2px var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: transparent;
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
 	.chip .num {
 		color: var(--color-text-muted);
-	}
-
-	.chip[aria-pressed='true'] {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-	}
-
-	.chip[aria-pressed='true'] .num {
-		color: inherit;
 	}
 
 	.action {

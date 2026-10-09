@@ -54,3 +54,15 @@ export function coverageShare(coverage: Pick<IndexingCoverageResponse, 'indexed'
 	if (indexable === 0 || coverage.unindexed === 0) return 1;
 	return Math.floor((coverage.indexed * 1000) / indexable) / 1000;
 }
+
+export type Tone = 'success' | 'warning' | 'danger';
+
+/**
+ * How worrying a coverage is: a few files out of thousands (99 % or more) is
+ * fine, down to 90 % deserves a look, below that something is wrong.
+ */
+export function coverageTone(share: number): Tone {
+	if (share >= 0.99) return 'success';
+	if (share >= 0.9) return 'warning';
+	return 'danger';
+}

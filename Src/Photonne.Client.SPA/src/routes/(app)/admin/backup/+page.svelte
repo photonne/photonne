@@ -189,7 +189,7 @@
 						<p class="field-error" role="alert">{m.admin_core_error_invalid_backup()}</p>
 					{:else if summary}
 						<p class="small">
-							<span class="badge accent">{levelText[summary.level].title()}</span>
+							<span class="chip tag accent">{levelText[summary.level].title()}</span>
 							{#if summary.createdAt}
 								<span class="muted">
 									{m.admin_backup_created_at({ date: localDateTime(summary.createdAt) })}</span
@@ -376,12 +376,11 @@
 
 	.level.chosen {
 		border-color: var(--color-accent);
-		background: var(--color-surface);
+		background: var(--color-accent-soft);
 	}
 
 	.level input {
 		margin-top: 3px;
-		accent-color: var(--color-accent);
 	}
 
 	.level > span {

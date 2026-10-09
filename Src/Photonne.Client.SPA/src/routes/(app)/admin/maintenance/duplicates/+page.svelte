@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { deletePhysicalDuplicates, detectDuplicatesStream } from '#lib/api/index.js';
+	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import '#lib/adminops/adminops.css';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ProgressBar from '#lib/adminops/ProgressBar.svelte';
@@ -17,6 +18,7 @@
 	import { follow } from '#lib/adminops/streams.js';
 	import { count, duration, localDateTime, percent } from '#lib/adminops/time.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { formatBytes } from '#lib/format.js';
 	import { thumbnailUrl } from '#lib/media.js';
@@ -140,21 +142,17 @@
 	];
 </script>
 
-<svelte:head>
-	<title>{m.ops_mt_duplicates()} · {m.app_name()}</title>
-</svelte:head>
-
-<div class="ops-page">
-	<header class="ops-head">
-		<div>
-			<a class="back" href={appHref('/admin/maintenance')}>
-				<Icon name="chevronLeft" size={18} />
-				{m.ops_mt_title()}
-			</a>
-			<h1>{m.ops_mt_duplicates()}</h1>
-			<p>{m.ops_dup_intro()}</p>
-		</div>
-	</header>
+<AdminPage
+	title={m.ops_mt_duplicates()}
+	description={m.ops_dup_intro()}
+	documentTitle={m.ops_mt_duplicates()}
+>
+	{#snippet actions()}
+		<a class="btn ghost" href={appHref('/admin/maintenance')}>
+			<Icon name="chevronLeft" size={18} />
+			{m.ops_mt_title()}
+		</a>
+	{/snippet}
 
 	<section class="ops-card setup" aria-labelledby="mode-heading">
 		<h2 id="mode-heading" class="visually-hidden">{m.ops_dup_mode()}</h2>
@@ -165,22 +163,22 @@
 					<input type="radio" name="mode" value={option.value} bind:group={mode} />
 					<span>
 						<strong>{option.label()}</strong>
-						<span class="ops-muted ops-small">{option.hint()}</span>
+						<span class="muted small">{option.hint()}</span>
 					</span>
 				</label>
 			{/each}
 		</fieldset>
 		<div class="run">
 			{#if running}
-				<button type="button" class="ops-btn danger" onclick={() => controller?.abort()}>
+				<button type="button" class="btn" onclick={() => controller?.abort()}>
 					<Icon path={icons.stop} size={18} />
 					{m.ops_stop()}
 				</button>
-				<span class="ops-small ops-muted">{m.ops_dup_leave_stops()}</span>
+				<span class="small muted">{m.ops_dup_leave_stops()}</span>
 			{:else}
 				<button
 					type="button"
-					class="ops-btn {mode === 'cleanup' ? 'danger' : 'primary'}"
+					class="btn {mode === 'cleanup' ? 'danger' : 'primary'}"
 					onclick={requestStart}
 				>
 					<Icon name="play" size={18} />
@@ -209,13 +207,13 @@
 						{#each tiles as tile (tile.label)}
 							<div class="tile">
 								<span class="value {tile.tone ?? ''}">{tile.value}</span>
-								<span class="ops-muted ops-small">{tile.label}</span>
+								<span class="muted small">{tile.label}</span>
 							</div>
 						{/each}
 					</div>
 				{/if}
 				{#if last?.isCompleted && (stat(last, 'duplicateGroups') ?? 0) === 0}
-					<p class="ops-alert"><Icon name="check" size={18} />{m.ops_dup_none()}</p>
+					<EmptyState compact icon="check" title={m.ops_dup_none()} />
 				{/if}
 			</div>
 		</section>
@@ -229,7 +227,7 @@
 				<div class="ops-actions">
 					<button
 						type="button"
-						class="ops-btn"
+						class="btn"
 						onclick={() => (reviews = reviews.map((review) => autoSelect(review)))}
 					>
 						<Icon path={icons.sparkle} size={18} />
@@ -237,7 +235,7 @@
 					</button>
 					<button
 						type="button"
-						class="ops-btn danger"
+						class="btn danger"
 						disabled={pendingDelete.length === 0 || deleting || running}
 						onclick={() => (confirmDelete = true)}
 					>
@@ -254,14 +252,14 @@
 						<div class="group-head">
 							<h3>{m.ops_dup_group_title({ count: review.files.length })}</h3>
 							{#if removing > 0}
-								<span class="ops-badge warn"
+								<span class="chip tag warning"
 									>{m.ops_dup_group_plan({ remove: removing, keep: review.keep.length })}</span
 								>
 							{/if}
 							<code class="hash" title={review.hash}>SHA-256 {review.hash.slice(0, 12)}…</code>
 							<button
 								type="button"
-								class="ops-btn ghost sm"
+								class="btn ghost sm"
 								onclick={() => setReview(index, autoSelect(review))}
 							>
 								{m.ops_dup_auto_group()}
@@ -297,7 +295,7 @@
 													>{localDateTime(file.fileModifiedAt)}</span
 												>
 												{#if file.ownerUsername}<span>{file.ownerUsername}</span>{/if}
-												<span class="ops-badge {file.isIndexed ? 'ok' : 'warn'}"
+												<span class="chip tag {file.isIndexed ? 'success' : 'warning'}"
 													>{file.isIndexed ? m.ops_dup_indexed() : m.ops_dup_not_indexed()}</span
 												>
 											</span>
@@ -314,7 +312,7 @@
 			</ol>
 		</section>
 	{/if}
-</div>
+</AdminPage>
 
 <ConfirmDialog
 	open={confirmCleanup}
@@ -338,20 +336,6 @@
 />
 
 <style>
-	.back {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		margin-bottom: var(--space-2);
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-		text-decoration: none;
-	}
-
-	.back:hover {
-		color: var(--color-accent);
-	}
-
 	.setup {
 		display: grid;
 		gap: var(--space-4);
@@ -384,7 +368,7 @@
 
 	.mode.selected {
 		border-color: var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+		background: var(--color-accent-soft);
 	}
 
 	.mode input {
@@ -450,11 +434,11 @@
 	}
 
 	.value.warn {
-		color: light-dark(#a54b00, #ffb74d);
+		color: var(--color-warning);
 	}
 
 	.value.ok {
-		color: light-dark(#1b5e20, #81c784);
+		color: var(--color-success);
 	}
 
 	.value.info {
@@ -492,7 +476,7 @@
 		font-size: var(--font-size-xs);
 	}
 
-	.group-head .ops-btn {
+	.group-head .btn {
 		margin-left: auto;
 	}
 

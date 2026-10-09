@@ -12,6 +12,7 @@
 		adminEnrichmentQueueSummaryQueryKey,
 		adminListEnrichmentFailuresInfiniteOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import '#lib/adminops/adminops.css';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { Clock, describeError, toastError } from '#lib/adminops/feedback.svelte.js';
@@ -25,6 +26,8 @@
 	} from '#lib/adminops/labels.js';
 	import { count, localDateTime, timeAgo } from '#lib/adminops/time.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { appHref } from '#lib/navigation/href.js';
@@ -149,75 +152,70 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{m.ops_failures_title()} · {m.app_name()}</title>
-</svelte:head>
-
-<div class="ops-page">
-	<header class="ops-head">
-		<div>
-			<a class="back" href={appHref('/admin/tasks')}>
-				<Icon name="chevronLeft" size={18} />
-				{m.ops_tasks_title()}
-			</a>
-			<h1>{m.ops_failures_title()}</h1>
-			<p>{m.ops_failures_intro()}</p>
-		</div>
-		<div class="ops-actions">
-			<button
-				type="button"
-				class="ops-btn primary"
-				disabled={!first || first.total === 0 || retryingAll}
-				onclick={() => (confirmRetryAll = true)}
-			>
-				<Icon name="refresh" size={18} />
-				{m.ops_failures_retry_all({ count: first?.total ?? 0 })}
-			</button>
-		</div>
-	</header>
-
-	<div class="filters">
-		<div class="chips" role="group" aria-label={m.ops_failures_filter_type()}>
-			<span class="chips-label">{m.ops_failures_filter_type()}</span>
-			<button
-				type="button"
-				class="chip"
-				aria-pressed={type === null}
-				onclick={() => setFilter('type', null)}>{m.ops_all()}</button
-			>
-			{#each typeChips as chip (chip.value)}
+<AdminPage
+	title={m.ops_failures_title()}
+	description={m.ops_failures_intro()}
+	documentTitle={m.ops_failures_title()}
+>
+	{#snippet actions()}
+		<a class="btn ghost" href={appHref('/admin/tasks')}>
+			<Icon name="chevronLeft" size={18} />
+			{m.ops_tasks_title()}
+		</a>
+		<button
+			type="button"
+			class="btn primary"
+			disabled={!first || first.total === 0 || retryingAll}
+			onclick={() => (confirmRetryAll = true)}
+		>
+			<Icon name="refresh" size={18} />
+			{m.ops_failures_retry_all({ count: first?.total ?? 0 })}
+		</button>
+	{/snippet}
+	{#snippet toolbar()}
+		<div class="filters">
+			<div class="chips" role="group" aria-label={m.ops_failures_filter_type()}>
+				<span class="chips-label">{m.ops_failures_filter_type()}</span>
 				<button
 					type="button"
 					class="chip"
-					aria-pressed={type === chip.value}
-					onclick={() => setFilter('type', chip.value)}
-					>{enrichmentLabel(chip.value)} <span class="n">{count(chip.count)}</span></button
+					aria-pressed={type === null}
+					onclick={() => setFilter('type', null)}>{m.ops_all()}</button
 				>
-			{/each}
-		</div>
-		<div class="chips" role="group" aria-label={m.ops_failures_filter_kind()}>
-			<span class="chips-label">{m.ops_failures_filter_kind()}</span>
-			<button
-				type="button"
-				class="chip"
-				aria-pressed={kind === null}
-				onclick={() => setFilter('kind', null)}>{m.ops_all()}</button
-			>
-			{#each kindChips as chip (chip.value)}
+				{#each typeChips as chip (chip.value)}
+					<button
+						type="button"
+						class="chip"
+						aria-pressed={type === chip.value}
+						onclick={() => setFilter('type', chip.value)}
+						>{enrichmentLabel(chip.value)} <span class="n num">{count(chip.count)}</span></button
+					>
+				{/each}
+			</div>
+			<div class="chips" role="group" aria-label={m.ops_failures_filter_kind()}>
+				<span class="chips-label">{m.ops_failures_filter_kind()}</span>
 				<button
 					type="button"
 					class="chip"
-					aria-pressed={kind === chip.value}
-					title={failureKindHint(chip.value)}
-					onclick={() => setFilter('kind', chip.value)}
-					>{failureKindLabel(chip.value)} <span class="n">{count(chip.count)}</span></button
+					aria-pressed={kind === null}
+					onclick={() => setFilter('kind', null)}>{m.ops_all()}</button
 				>
-			{/each}
+				{#each kindChips as chip (chip.value)}
+					<button
+						type="button"
+						class="chip"
+						aria-pressed={kind === chip.value}
+						title={failureKindHint(chip.value)}
+						onclick={() => setFilter('kind', chip.value)}
+						>{failureKindLabel(chip.value)} <span class="n num">{count(chip.count)}</span></button
+					>
+				{/each}
+			</div>
 		</div>
-	</div>
+	{/snippet}
 
 	{#if kind}
-		<p class="ops-alert">
+		<p class="notice">
 			<Icon name="info" size={18} />
 			{failureKindHint(kind)}
 		</p>
@@ -237,16 +235,16 @@
 			{/if}
 			{#if selected.length > 0}
 				<div class="ops-actions">
-					<span class="ops-small">{m.ops_selected({ count: selected.length })}</span>
-					<button type="button" class="ops-btn sm" onclick={() => act([...selected], 'retry')}>
+					<span class="small">{m.ops_selected({ count: selected.length })}</span>
+					<button type="button" class="btn sm" onclick={() => act([...selected], 'retry')}>
 						<Icon name="refresh" size={16} />
 						{m.ops_failures_retry()}
 					</button>
-					<button type="button" class="ops-btn sm" onclick={() => act([...selected], 'suppress')}>
+					<button type="button" class="btn sm" onclick={() => act([...selected], 'suppress')}>
 						<Icon path={icons.block} size={16} />
 						{m.ops_failures_suppress()}
 					</button>
-					<button type="button" class="ops-btn ghost sm" onclick={() => (selected = [])}
+					<button type="button" class="btn ghost sm" onclick={() => (selected = [])}
 						>{m.ops_clear_selection()}</button
 					>
 				</div>
@@ -255,21 +253,21 @@
 
 		<div class="ops-card ops-table-wrap">
 			{#if failures.isPending}
-				<p class="empty">{m.ops_loading()}</p>
+				<Skeleton variant="rows" count={4} />
 			{:else if failures.isError && !failures.data}
 				<p class="empty" role="alert">
 					{describeError(failures.error, m.ops_load_failed())}
-					<button type="button" class="ops-btn sm" onclick={() => failures.refetch()}
+					<button type="button" class="btn sm" onclick={() => failures.refetch()}
 						>{m.ops_retry()}</button
 					>
 				</p>
 			{:else if items.length === 0}
-				<p class="empty">{m.ops_failures_empty()}</p>
+				<EmptyState compact icon="check" title={m.ops_failures_empty()} />
 			{:else}
 				<table class="ops-table">
 					<thead>
 						<tr>
-							<th scope="col" class="check">
+							<th scope="col" class="select-col">
 								<input
 									type="checkbox"
 									checked={allSelected}
@@ -292,7 +290,7 @@
 							{@const isBusy = busy.includes(item.taskId)}
 							{@const open = expanded.includes(item.taskId)}
 							<tr class:busy={isBusy} class:selected={selected.includes(item.taskId)}>
-								<td class="check">
+								<td class="select-col">
 									<input
 										type="checkbox"
 										checked={selected.includes(item.taskId)}
@@ -311,21 +309,21 @@
 										/>
 										<div>
 											<span class="file-name" title={item.fileName}>{item.fileName}</span>
-											<span class="ops-muted ops-small">{item.ownerName ?? '—'}</span>
+											<span class="muted small">{item.ownerName ?? '—'}</span>
 										</div>
 									</div>
 								</td>
 								<td class="nowrap">{enrichmentLabel(item.taskType)}</td>
 								<td>
-									<span class="ops-badge" title={failureKindHint(item.failureKind)}
+									<span class="chip tag" title={failureKindHint(item.failureKind)}
 										>{failureKindLabel(item.failureKind)}</span
 									>
 									{#if item.status === 'Suppressed'}
-										<span class="ops-badge">{m.ops_failures_badge_suppressed()}</span>
+										<span class="chip tag">{m.ops_failures_badge_suppressed()}</span>
 									{:else if item.isPermanent}
-										<span class="ops-badge error">{m.ops_failures_badge_permanent()}</span>
+										<span class="chip tag danger">{m.ops_failures_badge_permanent()}</span>
 									{:else}
-										<span class="ops-badge info">{m.ops_failures_badge_retrying()}</span>
+										<span class="chip tag accent">{m.ops_failures_badge_retrying()}</span>
 									{/if}
 									{#if item.failureCode}
 										<code class="code">{item.failureCode}</code>
@@ -344,7 +342,7 @@
 													: [...expanded, item.taskId])}>{item.errorMessage}</button
 										>
 									{:else}
-										<span class="ops-muted">—</span>
+										<span class="muted">—</span>
 									{/if}
 								</td>
 								<td class="num">{count(item.attemptCount)}</td>
@@ -360,7 +358,7 @@
 								<td class="row-actions">
 									<button
 										type="button"
-										class="ops-btn sm"
+										class="icon-btn sm"
 										disabled={isBusy}
 										onclick={() => act([item.taskId], 'retry')}
 										aria-label={m.ops_failures_retry_item({ name: item.fileName })}
@@ -371,7 +369,7 @@
 									{#if item.status !== 'Suppressed'}
 										<button
 											type="button"
-											class="ops-btn sm"
+											class="icon-btn sm"
 											disabled={isBusy}
 											onclick={() => act([item.taskId], 'suppress')}
 											aria-label={m.ops_failures_suppress_item({ name: item.fileName })}
@@ -392,14 +390,14 @@
 			<div class="more">
 				<button
 					type="button"
-					class="ops-btn"
+					class="btn"
 					disabled={failures.isFetchingNextPage}
 					onclick={() => failures.fetchNextPage()}>{m.ops_load_more()}</button
 				>
 			</div>
 		{/if}
 	</section>
-</div>
+</AdminPage>
 
 <ConfirmDialog
 	open={confirmRetryAll}
@@ -412,20 +410,6 @@
 />
 
 <style>
-	.back {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		margin-bottom: var(--space-2);
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-		text-decoration: none;
-	}
-
-	.back:hover {
-		color: var(--color-accent);
-	}
-
 	.filters {
 		display: grid;
 		gap: var(--space-2);
@@ -444,26 +428,6 @@
 		font-size: var(--font-size-sm);
 	}
 
-	.chip {
-		padding: 2px var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: transparent;
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
-	.chip:hover {
-		background: var(--color-surface);
-	}
-
-	.chip[aria-pressed='true'] {
-		border-color: var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-		color: var(--color-accent);
-		font-weight: 600;
-	}
-
 	.n {
 		color: var(--color-text-muted);
 		font-variant-numeric: tabular-nums;
@@ -478,14 +442,8 @@
 		color: var(--color-text-muted);
 	}
 
-	.check {
+	.select-col {
 		width: 36px;
-	}
-
-	.check input {
-		width: 16px;
-		height: 16px;
-		accent-color: var(--color-accent);
 	}
 
 	tr.selected td {
@@ -566,7 +524,7 @@
 		text-align: right;
 	}
 
-	.row-actions .ops-btn + .ops-btn {
+	.row-actions .icon-btn + .icon-btn {
 		margin-left: var(--space-1);
 	}
 
