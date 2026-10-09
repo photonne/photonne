@@ -39,5 +39,15 @@
 			}
 		}
 	],
-	"timeline_year_item": "Show {month}, from a photo of {date}"
+	"timeline_year_item": "Show {month}, from a photo of {date}",
+	"timeline_zoom_current": "Thumbnail size: {level}",
+	"timeline_zoom_short_year": "Years",
+	"timeline_zoom_short_small": "Small",
+	"timeline_zoom_short_medium": "Medium",
+	"timeline_zoom_short_large": "Large",
+	"timeline_zoom_short_xlarge": "Extra large",
+	"timeline_range": "{from} – {to}",
+	"timeline_empty_title": "No photos yet",
+	"timeline_empty_hint": "Upload photos and videos and they will show up here, ordered by when they were taken.",
+	"timeline_upload": "Upload photos"
 }

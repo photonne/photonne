@@ -109,5 +109,8 @@
 	"viewer_text_copy_failed": "The text couldn't be copied",
 	"viewer_text_less": "Show less",
 	"viewer_text_more": "Show all",
-	"viewer_text_title": "Recognised text"
+	"viewer_text_title": "Recognised text",
+	"viewer_more": "More actions",
+	"viewer_date_change": "Change the date",
+	"viewer_key_delete": "Del"
 }

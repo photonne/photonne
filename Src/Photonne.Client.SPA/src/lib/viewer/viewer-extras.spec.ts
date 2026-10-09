@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EnrichmentTaskDto, FaceDto } from '#lib/api/index.js';
 import { aiAnalysisRows, busyTypes, isBusy, relativeTime, someFinished } from './ai-analysis';
-import { asUtc, canWriteToFile, dateCandidates } from './capture-date';
+import { asUtc, canWriteToFile, captureDateText, dateCandidates } from './capture-date';
 import { objectLabels, recognizedText, relatedItems, sceneLabels } from './extras';
 import { faceBox, samePeoplePersonId, visibleFaces } from './faces';
 import { clampFrame, nearestStripFrame, startFrame, stripFrames } from './frames';
@@ -173,6 +173,11 @@ describe('extras', () => {
 });
 
 describe('capture date', () => {
+	it('spells the date out in the app language, as the camera wrote it (UTC)', () => {
+		expect(captureDateText('2019-07-09T05:36:00', 'es')).toBe('martes, 9 de julio de 2019, 5:36');
+		expect(captureDateText('2019-07-09T05:36:00Z', 'en')).toBe('Tuesday, July 9, 2019 at 5:36 AM');
+	});
+
 	const suggestion = {
 		currentDate: '2026-01-01T10:00:00',
 		currentSource: 'FileSystem',

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '#lib/components/Icon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { MonthCount } from './jump.js';
 	import JumpToDateDialog from './JumpToDateDialog.svelte';
@@ -16,6 +17,10 @@
 	}
 
 	let { view, months, current, onjump, paused = false }: Props = $props();
+
+	// Material "event" (Apache 2.0): a calendar day.
+	const EVENT =
+		'M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z';
 
 	let jumping = $state<{ current: string | null } | null>(null);
 	let announcement = $state('');
@@ -52,11 +57,12 @@
 <div class="tools" aria-label={m.timeline_toolbar()} role="group">
 	<button
 		type="button"
-		class="jump"
+		class="btn sm"
 		title={m.timeline_jump_hint_short()}
 		aria-keyshortcuts="G"
 		onclick={() => (jumping = { current: current() })}
 	>
+		<Icon path={EVENT} size={18} />
 		{m.timeline_jump()}
 	</button>
 	<ZoomControl
@@ -84,24 +90,9 @@
 <style>
 	.tools {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: flex-end;
-		gap: var(--space-3);
-		min-height: 48px;
-		padding: var(--space-2) calc(var(--space-4) + 56px) 0 var(--space-4);
-	}
-
-	.jump {
-		height: 32px;
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
-	.jump:hover {
-		background: var(--color-surface);
+		gap: var(--space-2);
 	}
 </style>

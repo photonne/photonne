@@ -77,7 +77,8 @@ test('trashing from the viewer moves on to the next photo', async ({ page }) => 
 	await cells(page).nth(0).click();
 	await expect(page.getByRole('dialog', { name: 'IMG_202609_0.jpg' })).toBeVisible();
 
-	await page.getByRole('dialog').getByRole('button', { name: 'Mover a la papelera' }).click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Más acciones' }).click();
+	await page.getByRole('dialog').getByRole('menuitem', { name: 'Mover a la papelera' }).click();
 
 	await expect(page.getByRole('dialog', { name: 'IMG_202609_1.jpg' })).toBeVisible();
 	expect(api.removed).toEqual(['2026-09-0']);

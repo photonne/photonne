@@ -90,3 +90,30 @@ test('shows where the photo was taken and opens the map there', async ({ page })
 	await panel.getByRole('link', { name: 'Ver en el mapa' }).click();
 	await expect(page).toHaveURL(/\/map\?lat=41\.400000&lng=2\.170000&z=14$/);
 });
+
+test('reads the capture date in the app language and edits it on request', async ({ page }) => {
+	const { api, panel } = await openPanel(page);
+
+	await expect(panel.getByText('viernes, 25 de septiembre de 2026, 10:00')).toBeVisible();
+	await expect(panel.locator('input[type="datetime-local"]')).toHaveCount(0);
+
+	await panel.getByRole('button', { name: 'Cambiar la fecha' }).click();
+	const field = panel.getByLabel('Fecha y hora');
+	await expect(field).toBeFocused();
+	await expect(panel.getByRole('button', { name: 'Guardar', exact: true })).toBeDisabled();
+	// Escape leaves the field, not the viewer.
+	await page.keyboard.press('Escape');
+	await expect(field).toBeHidden();
+	await expect(page.getByRole('dialog').first()).toBeVisible();
+	await expect(panel.getByRole('button', { name: 'Cambiar la fecha' })).toBeFocused();
+
+	await panel.getByRole('button', { name: 'Cambiar la fecha' }).click();
+	await field.fill('2026-09-24T08:30');
+	await panel.getByRole('button', { name: 'Guardar', exact: true }).click();
+
+	await expect(panel.getByText('Guardado')).toBeVisible();
+	await expect(field).toBeHidden();
+	expect(viewerState(api.state).dates).toEqual([
+		{ assetId: TEXT_PHOTO, dateTaken: '2026-09-24T08:30:00.000Z', writeToFile: false }
+	]);
+});

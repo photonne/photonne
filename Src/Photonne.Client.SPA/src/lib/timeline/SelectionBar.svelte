@@ -11,8 +11,10 @@
 	<div class="bar" role="toolbar" aria-label={m.selection_count({ count: selection.size })}>
 		<button
 			type="button"
-			class="icon"
+			class="icon-btn"
+			title={m.selection_clear()}
 			aria-label={m.selection_clear()}
+			aria-keyshortcuts="Escape"
 			onclick={() => selection.clear()}
 		>
 			<Icon name="close" />
@@ -23,45 +25,50 @@
 {/if}
 
 <style>
-	/* Overlays the top of the grid instead of pushing it down: starting a
-	   selection must not move the photos under the pointer. */
+	/* Overlays the page's header instead of pushing the grid down: starting a
+	   selection must not move the photos under the pointer. The page header is
+	   at least as tall, so the bar covers neither the grid nor its scrubber. */
 	.bar {
 		position: absolute;
 		inset: 0 0 auto 0;
 		z-index: 3;
 		display: flex;
 		align-items: center;
-		gap: var(--space-3);
-		height: 56px;
-		padding: 0 var(--space-4);
+		gap: var(--space-2);
+		min-height: 64px;
+		padding: var(--space-2) var(--page-gutter) var(--space-2) var(--space-4);
 		background: var(--color-surface-raised);
 		border-bottom: 1px solid var(--color-border);
 		box-shadow: var(--shadow-raised);
+		animation: drop var(--duration-normal) ease-out;
+	}
+
+	@keyframes drop {
+		from {
+			opacity: 0;
+			transform: translateY(-8px);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.bar {
+			animation: none;
+		}
 	}
 
 	.count {
+		font-size: var(--font-size-md);
 		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
 	}
 
 	.actions {
 		margin-left: auto;
 		display: flex;
-		gap: var(--space-2);
-	}
-
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.icon:hover {
-		background: var(--color-surface);
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: flex-end;
+		gap: var(--space-1);
 	}
 </style>

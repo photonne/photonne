@@ -71,7 +71,8 @@
 	{@const button = buttons[key]}
 	<button
 		type="button"
-		class="action"
+		class="icon-btn"
+		class:danger={key === 'trash'}
 		title={button.label()}
 		aria-label={button.label()}
 		aria-keyshortcuts={shortcuts[key]}
@@ -100,24 +101,12 @@
 />
 
 <style>
-	.action {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.action:hover {
-		background: var(--color-surface);
-	}
-
-	.action:disabled {
-		opacity: 0.4;
+	/* While a batch runs the buttons wait; the pointer says so. */
+	.icon-btn:disabled {
 		cursor: progress;
+	}
+
+	.icon-btn.danger:hover:not(:disabled) {
+		color: var(--color-danger);
 	}
 </style>

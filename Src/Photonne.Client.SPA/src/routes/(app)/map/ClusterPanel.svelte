@@ -36,7 +36,7 @@
 		{#snippet toolbar()}
 			<button
 				type="button"
-				class="close"
+				class="icon-btn"
 				title={m.map_cluster_close()}
 				aria-label={m.map_cluster_close()}
 				onclick={onclose}
@@ -65,24 +65,8 @@
 
 	.range {
 		margin: 0;
-		padding: 0 var(--space-4) var(--space-2);
+		padding: 0 var(--page-gutter) var(--space-2);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
-	}
-
-	.close {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.close:hover {
-		background: var(--color-surface);
 	}
 </style>

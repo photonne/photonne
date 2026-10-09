@@ -17,11 +17,12 @@
 		getUserTagsOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
-	import { dateTime, formatBytes } from '#lib/format.js';
+	import { formatBytes } from '#lib/format.js';
 	import { labelHref } from '#lib/library/explore-links.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { hasName } from '#lib/people/people.js';
-	import { asUtc } from './capture-date.js';
+	import { getLocale } from '#lib/paraglide/runtime.js';
+	import { captureDateText } from './capture-date.js';
 	import DateEditor from './DateEditor.svelte';
 	import { objectLabels, recognizedText, relatedItems, sceneLabels } from './extras.js';
 	import { samePeoplePersonId } from './faces.js';
@@ -191,30 +192,34 @@
 			/>
 		{:else}
 			<h3>{m.info_date()}</h3>
-			<p>{dateTime(asUtc(asset.capturedAt))}</p>
+			<p class="date">{captureDateText(asset.capturedAt, getLocale())}</p>
 		{/if}
 	</section>
 
 	<PanelSection id="tags" title={m.info_tags()}>
-		<ul class="tags">
-			{#each tags as tag (tag)}
-				<li>
-					{tag}
-					{#if asset.canEdit}
-						<button
-							type="button"
-							aria-label={m.info_tag_remove({ tag })}
-							onclick={() => removeTag(tag)}
-						>
-							<Icon name="close" size={14} />
-						</button>
-					{/if}
-				</li>
-			{/each}
-			{#each asset.autoTags as tag (tag)}
-				<li class="auto">{tag}</li>
-			{/each}
-		</ul>
+		{#if tags.length || asset.autoTags.length}
+			<ul class="chips">
+				{#each tags as tag (tag)}
+					<li class="chip static" class:removable={asset.canEdit}>
+						{tag}
+						{#if asset.canEdit}
+							<button
+								type="button"
+								class="remove"
+								title={m.info_tag_remove({ tag })}
+								aria-label={m.info_tag_remove({ tag })}
+								onclick={() => removeTag(tag)}
+							>
+								<Icon name="close" size={14} />
+							</button>
+						{/if}
+					</li>
+				{/each}
+				{#each asset.autoTags as tag (tag)}
+					<li class="chip static auto">{tag}</li>
+				{/each}
+			</ul>
+		{/if}
 		{#if asset.canEdit}
 			<form class="row" onsubmit={addTag}>
 				<input
@@ -235,16 +240,18 @@
 	{#if objectChips.length || sceneChips.length}
 		<PanelSection id="content" title={m.viewer_content_title()}>
 			{#if objectChips.length}
+				<h4>{m.viewer_objects()}</h4>
 				<ul class="chips" aria-label={m.viewer_objects()}>
 					{#each objectChips as label (label)}
-						<li><a href={labelHref('objects', label)}>{label}</a></li>
+						<li><a class="chip" href={labelHref('objects', label)}>{label}</a></li>
 					{/each}
 				</ul>
 			{/if}
 			{#if sceneChips.length}
-				<ul class="chips scenes" aria-label={m.viewer_scenes()}>
+				<h4>{m.viewer_scenes()}</h4>
+				<ul class="chips" aria-label={m.viewer_scenes()}>
 					{#each sceneChips as label (label)}
-						<li><a href={labelHref('scenes', label)}>{label}</a></li>
+						<li><a class="chip" href={labelHref('scenes', label)}>{label}</a></li>
 					{/each}
 				</ul>
 			{/if}
@@ -329,7 +336,7 @@
 	}
 
 	h4 {
-		margin: var(--space-1) 0 0;
+		margin: var(--space-1) 0 var(--space-1);
 		font-size: var(--font-size-xs);
 		font-weight: 600;
 		color: var(--color-text-muted);
@@ -342,11 +349,14 @@
 	textarea,
 	input {
 		width: 100%;
-		padding: var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
+	}
+
+	textarea {
 		resize: vertical;
+	}
+
+	.date::first-letter {
+		text-transform: uppercase;
 	}
 
 	.row {
@@ -359,58 +369,62 @@
 		min-width: 0;
 	}
 
-	.tags,
+	/* Tags, objects and scenes: one chip style (.chip, lib/styles/ui.css). */
 	.chips {
 		list-style: none;
-		margin: 0;
+		margin: 0 0 var(--space-2);
 		padding: 0;
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-1);
 	}
 
-	.tags li {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
-		padding: 2px var(--space-2);
-		border-radius: 999px;
-		background: var(--color-surface);
-		font-size: var(--font-size-sm);
+	.chips:last-child {
+		margin-bottom: 0;
 	}
 
-	.tags li.auto {
+	/* A tag is not a button: only its ✕ is. */
+	.chip.static {
+		cursor: default;
+	}
+
+	.chip.static:hover {
+		background: transparent;
+	}
+
+	.chip.removable {
+		padding-right: 2px;
+	}
+
+	.chip.auto {
+		border-style: dashed;
 		color: var(--color-text-muted);
 	}
 
-	.tags button {
+	.remove {
 		display: grid;
 		place-items: center;
-		padding: 2px;
+		width: 22px;
+		height: 22px;
+		padding: 0;
 		border: 0;
 		border-radius: 50%;
 		background: transparent;
+		color: var(--color-text-muted);
 		cursor: pointer;
 	}
 
-	.chips a {
-		display: inline-block;
-		padding: 2px var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
+	.remove:hover {
+		background: var(--color-hover);
 		color: var(--color-text);
-		font-size: var(--font-size-sm);
-		text-decoration: none;
 	}
 
-	.chips.scenes a {
-		border-style: dashed;
+	a.chip {
+		color: var(--color-text);
 	}
 
-	.chips a:hover,
-	.chips a:focus-visible {
+	a.chip:hover {
 		border-color: var(--color-accent);
-		color: var(--color-accent);
 	}
 
 	.place {

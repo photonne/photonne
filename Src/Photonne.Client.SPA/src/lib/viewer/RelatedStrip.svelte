@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PersonAssetDto } from '#lib/api/index.js';
+	import Icon from '#lib/components/Icon.svelte';
 	import { longDate } from '#lib/format.js';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -31,7 +32,7 @@
 					<img src={thumbnailUrl(item.id, 'Small')} alt="" loading="lazy" draggable="false" />
 				{/if}
 				{#if item.type === 'Video'}
-					<span class="video" aria-hidden="true">▶</span>
+					<span class="video" aria-hidden="true"><Icon name="play" size={16} /></span>
 				{/if}
 			</button>
 		</li>
@@ -78,10 +79,10 @@
 
 	.video {
 		position: absolute;
-		right: 4px;
+		right: 2px;
 		bottom: 2px;
+		display: grid;
 		color: #fff;
-		font-size: 10px;
-		text-shadow: 0 0 3px #000;
+		filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.7));
 	}
 </style>

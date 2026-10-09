@@ -10,7 +10,7 @@ const STORAGE_KEY = 'photonne.timeline.zoom';
 
 // What PhotoGrid adds around the photos (side padding and the scrubber), to
 // size the year samples from the grid's outer width.
-const GRID_CHROME = 32 + 56;
+const GRID_CHROME = 24 + 56;
 
 /**
  * How the timeline is shown: the zoom level (remembered) and, at the year

@@ -77,7 +77,11 @@
 	const SUBHEADER_HEIGHT = 36;
 	const SECTION_GAP = 16;
 	const SPACING = 4;
-	const PADDING = 16;
+	/** Above the first row and under the last one. */
+	const PADDING = 8;
+	/** At each side: the page gutter (--page-gutter), so rows line up with the title. */
+	const GUTTER = 24;
+	/** The scrubber's column, which also stands for the right gutter. */
 	const SCRUBBER_WIDTH = 56;
 
 	let scroller = $state<HTMLDivElement>();
@@ -89,11 +93,24 @@
 	});
 	let outerWidth = $state(0);
 	let focusedId = $state<string | null>(null);
+	/**
+	 * The grid only gives up the scrubber's column while the scrubber is shown
+	 * (long timelines), not for an album or a search that fits a few screens.
+	 * Set from the layout (see the effect below): narrower rows only make the
+	 * grid taller, so the choice never flips back and forth.
+	 */
+	// Not a $derived: the layout it feeds is what decides it, a cycle a
+	// derived can't hold.
+	// eslint-disable-next-line svelte/prefer-writable-derived
+	let withScrubber = $state(false);
 
 	const byDay = $derived(headers && groupingOf(zoom) === 'day');
 
 	const options: GridOptions = $derived.by(() => {
-		const containerWidth = Math.max(0, outerWidth - PADDING * 2 - SCRUBBER_WIDTH);
+		const containerWidth = Math.max(
+			0,
+			outerWidth - GUTTER - (withScrubber ? SCRUBBER_WIDTH : GUTTER)
+		);
 		return {
 			containerWidth,
 			targetRowHeight: rowHeightFor(zoom, containerWidth),
@@ -124,6 +141,12 @@
 			22
 		)
 	);
+
+	const scrubberShown = $derived(viewportHeight > 0 && maxScroll > viewportHeight);
+
+	$effect(() => {
+		withScrubber = scrubberShown;
+	});
 
 	// Load the months that come within a screen of the viewport.
 	$effect(() => {
@@ -215,7 +238,7 @@
 			const box = element.getBoundingClientRect();
 			pointerAnchor = {
 				screenY: event.clientY - box.top,
-				x: event.clientX - box.left - PADDING
+				x: event.clientX - box.left - GUTTER
 			};
 			onzoom?.(step);
 		};
@@ -239,7 +262,9 @@
 
 	/** The section at the top of the view. */
 	export function currentSection() {
-		return sectionAt(layout, Math.max(0, scrollTop - PADDING));
+		// A pixel of slack: the browser rounds scrollTop, so a section scrolled
+		// to exactly (scrollToSection) can sit a fraction below the top.
+		return sectionAt(layout, Math.max(0, scrollTop - PADDING + 1));
 	}
 
 	function seek(fraction: number) {
@@ -387,6 +412,7 @@
 			class="canvas"
 			style:height="{layout.totalHeight + PADDING * 2}px"
 			style:width="{options.containerWidth}px"
+			style:margin-left="{GUTTER}px"
 			{onkeydown}
 		>
 			{#each visible as block (blockKey(block))}
@@ -431,6 +457,7 @@
 							class="cell"
 							class:selected
 							class:selecting={selection.active}
+							class:marked={item.isFavorite || item.isLivePhoto || item.isVideo}
 							style:top="{block.top + PADDING}px"
 							style:left="{cell.left}px"
 							style:width="{cell.width}px"
@@ -460,6 +487,7 @@
 									onload={(event) => event.currentTarget.classList.add('loaded')}
 								/>
 							</button>
+							<span class="scrim" aria-hidden="true"></span>
 							{#if selectable}
 								<button
 									type="button"
@@ -483,7 +511,7 @@
 		</div>
 	</div>
 
-	{#if maxScroll > viewportHeight}
+	{#if scrubberShown}
 		<Scrubber
 			{markers}
 			fraction={maxScroll > 0 ? scrollTop / maxScroll : 0}
@@ -516,7 +544,6 @@
 
 	.canvas {
 		position: relative;
-		margin-left: 16px;
 		outline: none;
 	}
 
@@ -603,6 +630,9 @@
 		position: absolute;
 		overflow: hidden;
 		background: var(--placeholder);
+		transition:
+			background var(--duration-fast),
+			border-radius var(--duration-fast);
 	}
 
 	.open {
@@ -628,39 +658,78 @@
 		opacity: 0;
 		transition:
 			opacity var(--duration-normal),
-			transform var(--duration-fast);
+			transform var(--duration-fast),
+			border-radius var(--duration-fast);
 	}
 
 	img:global(.loaded) {
 		opacity: 1;
 	}
 
-	.selected img {
-		transform: scale(0.88);
-		border-radius: var(--radius-sm);
+	/* Selected: the photo shrinks into a rounded inset on a tint of the accent. */
+	.selected {
+		background: var(--color-accent-soft);
 	}
 
-	.selected {
-		background: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg));
+	.selected img {
+		transform: scale(0.86);
+		border-radius: var(--radius-md);
+	}
+
+	/* A shade along the top, so the check and the badges read on bright photos.
+	   It shows on hover and while selecting; a cell with badges keeps a lighter one. */
+	.scrim {
+		position: absolute;
+		inset: 0 0 auto;
+		height: min(72px, 50%);
+		background: linear-gradient(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.18) 55%, transparent);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity var(--duration-fast);
+	}
+
+	.marked .scrim {
+		opacity: 0.5;
+	}
+
+	.cell:hover .scrim,
+	.selecting .scrim {
+		opacity: 1;
+	}
+
+	.cell.selected .scrim {
+		opacity: 0;
 	}
 
 	.check {
 		position: absolute;
-		top: 6px;
-		left: 6px;
+		top: 8px;
+		left: 8px;
 		display: grid;
 		place-items: center;
 		width: 24px;
 		height: 24px;
 		padding: 0;
-		border: 2px solid white;
+		border: 2px solid #fff;
 		border-radius: 50%;
-		background: rgb(0 0 0 / 0.25);
+		background: rgb(0 0 0 / 0.18);
+		/* A dark halo inside and out keeps the white ring on white skies. */
+		box-shadow:
+			0 0 0 1px rgb(0 0 0 / 0.25),
+			inset 0 0 0 1px rgb(0 0 0 / 0.2),
+			0 1px 4px rgb(0 0 0 / 0.4);
 		color: transparent;
 		cursor: pointer;
 		opacity: 0;
-		transition: opacity var(--duration-fast);
+		transition:
+			opacity var(--duration-fast),
+			background var(--duration-fast);
 		touch-action: none;
+	}
+
+	.check:hover {
+		background: rgb(255 255 255 / 0.3);
+		color: #fff;
 	}
 
 	.cell:hover .check,
@@ -670,19 +739,27 @@
 	}
 
 	.selected .check {
+		top: 4px;
+		left: 4px;
+		border-color: var(--color-bg);
 		background: var(--color-accent);
-		border-color: var(--color-accent);
+		box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
 		color: var(--color-accent-text);
 	}
 
 	.badges {
 		position: absolute;
-		top: 6px;
-		right: 6px;
+		top: 8px;
+		right: 8px;
 		display: flex;
-		gap: 4px;
-		color: white;
+		gap: var(--space-1);
+		color: #fff;
 		filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.6));
 		pointer-events: none;
+	}
+
+	.selected .badges {
+		top: 6px;
+		right: 6px;
 	}
 </style>

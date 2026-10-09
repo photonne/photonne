@@ -19,6 +19,18 @@ export function asUtc(iso: string) {
 	return /[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`;
 }
 
+/**
+ * "martes, 9 de julio de 2019, 5:36": the capture date in the app's language,
+ * spelled out (a datetime-local field shows the browser's format instead).
+ */
+export function captureDateText(iso: string, locale: string) {
+	return new Intl.DateTimeFormat(locale, {
+		dateStyle: 'full',
+		timeStyle: 'short',
+		timeZone: 'UTC'
+	}).format(new Date(asUtc(iso)));
+}
+
 const minute = (iso: string) => new Date(asUtc(iso)).toISOString().slice(0, 16);
 
 /**
