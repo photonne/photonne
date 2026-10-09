@@ -90,22 +90,25 @@ test('without located photos it says so', async ({ page }) => {
 });
 
 test('tiles follow the colour scheme', async ({ page }) => {
+	// Checked on the tiles shown, not on the requests: Leaflet sets each
+	// tile's src when it builds the layer, while an intercepted request can
+	// lag behind on a busy CI runner.
+	const shown = (scheme: 'dark' | 'light') =>
+		page.locator(`img.leaflet-tile[src*="/${scheme}_all/"]`).first();
+
 	await page.emulateMedia({ colorScheme: 'dark' });
-	const { tiles } = await openMap(page);
+	await openMap(page);
 	await expect(marker(page, /^24 fotos, /)).toBeVisible();
-	expect(tiles.some((url) => url.includes('/dark_all/'))).toBe(true);
+	await expect(shown('dark')).toBeAttached();
 
 	// The user's own theme wins over the system's.
-	let before = tiles.length;
 	await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
-	await expect
-		.poll(() => tiles.slice(before).some((url) => url.includes('/light_all/')))
-		.toBe(true);
-	await page.evaluate(() => delete document.documentElement.dataset.theme);
+	await expect(shown('light')).toBeAttached();
+	await expect(shown('dark')).not.toBeAttached();
 
-	before = tiles.length;
+	await page.evaluate(() => delete document.documentElement.dataset.theme);
+	await expect(shown('dark')).toBeAttached();
 	await page.emulateMedia({ colorScheme: 'light' });
-	await expect
-		.poll(() => tiles.slice(before).some((url) => url.includes('/light_all/')))
-		.toBe(true);
+	await expect(shown('light')).toBeAttached();
+	await expect(shown('dark')).not.toBeAttached();
 });
