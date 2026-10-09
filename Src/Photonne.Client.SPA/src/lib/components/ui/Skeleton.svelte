@@ -6,14 +6,16 @@
 		 * `grid`: justified photo rows; `cards`: a grid of cards (albums,
 		 * people, explore); `rows`: list or table rows; `text`: a few lines.
 		 */
-		variant?: 'grid' | 'cards' | 'rows' | 'text';
+		variant?: 'grid' | 'cards' | 'tiles' | 'rows' | 'text';
 		/** How many cards or rows. */
 		count?: number;
 		/** Round cards (people). */
 		round?: boolean;
+		/** No page gutter, for use inside a card or panel. */
+		flush?: boolean;
 	}
 
-	let { variant = 'grid', count = 8, round = false }: Props = $props();
+	let { variant = 'grid', count = 8, round = false, flush = false }: Props = $props();
 
 	// Varied widths so the placeholder reads as photos, not as a table.
 	const rowWidths = [
@@ -24,7 +26,7 @@
 	];
 </script>
 
-<div class="skeleton {variant}" role="status" aria-label={m.loading()}>
+<div class="skeleton {variant}" class:flush role="status" aria-label={m.loading()}>
 	{#if variant === 'grid'}
 		{#each rowWidths as row, r (r)}
 			<div class="row">
@@ -37,6 +39,13 @@
 				<span class="block media" class:round></span>
 				<span class="block line"></span>
 				<span class="block line short"></span>
+			</div>
+		{/each}
+	{:else if variant === 'tiles'}
+		{#each { length: count }, i (i)}
+			<div class="tile">
+				<span class="block line short"></span>
+				<span class="block value"></span>
 			</div>
 		{/each}
 	{:else if variant === 'rows'}
@@ -57,6 +66,10 @@
 		display: grid;
 		gap: var(--space-2);
 		padding: var(--space-4) var(--page-gutter);
+	}
+
+	.flush {
+		padding: 0;
 	}
 
 	.block {
@@ -86,6 +99,24 @@
 	.cards {
 		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 		gap: var(--space-4);
+	}
+
+	.tiles {
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: var(--space-4);
+	}
+
+	.tile {
+		display: grid;
+		gap: var(--space-3);
+		padding: var(--space-4);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+	}
+
+	.value {
+		width: 40%;
+		height: 24px;
 	}
 
 	.card {

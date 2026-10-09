@@ -111,6 +111,12 @@
 		color: var(--color-text);
 	}
 
+	/* Inside the scroll box: drawn inwards, or the box would clip it. */
+	a:focus-visible {
+		outline-offset: -2px;
+		border-radius: var(--radius-sm);
+	}
+
 	a[aria-current='page'] {
 		color: var(--color-text);
 		font-weight: 600;
