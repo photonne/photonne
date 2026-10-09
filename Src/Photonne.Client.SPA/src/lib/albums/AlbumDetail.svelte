@@ -26,7 +26,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { icons } from './icons.js';
 	import { orderItems, type ItemOrder } from './item-order.js';
-	import MenuButton, { type MenuItem } from './MenuButton.svelte';
+	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import ShareDialog from './ShareDialog.svelte';
 
 	let { albumId }: { albumId: string } = $props();
@@ -73,7 +73,7 @@
 
 	const menu = $derived.by(() => {
 		if (!album) return [];
-		const items: MenuItem[] = [];
+		const items: MenuEntry[] = [];
 		if (canWrite) items.push({ label: m.albums_edit(), icon: 'edit', run: () => (editing = true) });
 		if (album.canManagePermissions)
 			items.push({
@@ -232,7 +232,7 @@
 				>
 					<Icon name="pin" size={18} />
 				</button>
-				<MenuButton label={m.albums_more()} items={menu} />
+				<PopupMenu label={m.albums_more()} items={menu} />
 			{/if}
 		{/snippet}
 

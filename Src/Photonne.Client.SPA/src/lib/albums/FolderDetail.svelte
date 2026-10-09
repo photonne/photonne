@@ -31,7 +31,7 @@
 	import { moveAssets, onAssetsMoved } from './folder-moves.js';
 	import { pathTo, sortTree } from './folder-tree.js';
 	import { icons } from './icons.js';
-	import MenuButton, { type MenuItem } from './MenuButton.svelte';
+	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import ShareDialog from './ShareDialog.svelte';
 
 	let { folderId }: { folderId: string } = $props();
@@ -95,7 +95,7 @@
 
 	const menu = $derived.by(() => {
 		if (!folder) return [];
-		const items: MenuItem[] = [];
+		const items: MenuEntry[] = [];
 		if (canWrite && !isLibrary)
 			items.push({ label: m.folders_edit(), icon: 'edit', run: () => (editing = true) });
 		if (folder.isOwner)
@@ -216,7 +216,7 @@
 				>
 					<Icon name="pin" size={18} />
 				</button>
-				{#if menu.length}<MenuButton label={m.albums_more()} items={menu} />{/if}
+				{#if menu.length}<PopupMenu label={m.albums_more()} items={menu} />{/if}
 			{/if}
 		{/snippet}
 

@@ -22,7 +22,7 @@
 
 <script lang="ts">
 	import Icon from '#lib/components/Icon.svelte';
-	import PopupMenu, { type MenuEntry } from './PopupMenu.svelte';
+	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import { stepZoom, zoomLevels } from './zoom.js';
 
 	interface Props {

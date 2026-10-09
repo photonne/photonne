@@ -42,7 +42,7 @@
 		type SlideshowInterval
 	} from './slideshow.js';
 	import ViewerPanel, { PANEL_TABS, type PanelTab } from './ViewerPanel.svelte';
-	import PopupMenu, { type MenuEntry } from '#lib/timeline/PopupMenu.svelte';
+	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import ZoomableImage from './ZoomableImage.svelte';
 	import { IDENTITY } from './zoom.js';
 
