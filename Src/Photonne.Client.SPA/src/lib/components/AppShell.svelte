@@ -144,8 +144,10 @@
 	</header>
 
 	<nav id="sidebar" class="sidebar" aria-label={m.nav_main()}>
-		{#each navigation.filter((section) => !section.adminOnly || session.isAdmin) as section (section.label())}
-			<h2 class:visually-hidden={collapsed}>{section.label()}</h2>
+		{#each navigation.filter((section) => !section.adminOnly || session.isAdmin) as section (section.id)}
+			{#if section.label}
+				<h2 class:visually-hidden={collapsed}>{section.label()}</h2>
+			{/if}
 			<ul>
 				{#each section.items as item (item.path)}
 					<li>
@@ -160,41 +162,42 @@
 					</li>
 				{/each}
 			</ul>
+			{#if section.id === 'collections'}
+				{#if pinned.length > 0}
+					<h2 class:visually-hidden={collapsed}>{m.nav_section_pinned()}</h2>
+					<ul>
+						{#each pinned as item (item.kind + item.id)}
+							{@const path = item.kind === 'album' ? `/albums/${item.id}` : `/folders/${item.id}`}
+							<li>
+								<a
+									href={href(path)}
+									class:drop={dropTarget === item.id}
+									aria-current={isCurrent(path) ? 'page' : undefined}
+									title={item.kind === 'album'
+										? m.drop_add_to_album({ album: item.name })
+										: m.drop_move_to_folder({ folder: item.name })}
+									ondragover={(event) => {
+										if (!isAssetDrag(event)) return;
+										event.preventDefault();
+										dropTarget = item.id;
+									}}
+									ondragleave={() => (dropTarget = null)}
+									ondrop={(event) => {
+										event.preventDefault();
+										dropTarget = null;
+										if (item.kind === 'album') dropOnAlbum(event, item);
+										else dropOnFolder(event, item);
+									}}
+								>
+									<Icon name={item.kind === 'album' ? 'album' : 'folder'} size={18} />
+									<span class="label">{item.name}</span>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			{/if}
 		{/each}
-
-		{#if pinned.length > 0}
-			<h2 class:visually-hidden={collapsed}>{m.nav_section_pinned()}</h2>
-			<ul>
-				{#each pinned as item (item.kind + item.id)}
-					{@const path = item.kind === 'album' ? `/albums/${item.id}` : `/folders/${item.id}`}
-					<li>
-						<a
-							href={href(path)}
-							class:drop={dropTarget === item.id}
-							aria-current={isCurrent(path) ? 'page' : undefined}
-							title={item.kind === 'album'
-								? m.drop_add_to_album({ album: item.name })
-								: m.drop_move_to_folder({ folder: item.name })}
-							ondragover={(event) => {
-								if (!isAssetDrag(event)) return;
-								event.preventDefault();
-								dropTarget = item.id;
-							}}
-							ondragleave={() => (dropTarget = null)}
-							ondrop={(event) => {
-								event.preventDefault();
-								dropTarget = null;
-								if (item.kind === 'album') dropOnAlbum(event, item);
-								else dropOnFolder(event, item);
-							}}
-						>
-							<Icon name={item.kind === 'album' ? 'album' : 'folder'} size={18} />
-							<span class="label">{item.name}</span>
-						</a>
-					</li>
-				{/each}
-			</ul>
-		{/if}
 	</nav>
 
 	<main id="content" class="content" tabindex="-1">
