@@ -3,7 +3,7 @@
     <!-- Versión única de la aplicación. Es la fuente de verdad y se inyecta
          en wwwroot/index.html (APP_VERSION) y wwwroot/service-worker.published.js
          (SW_VERSION) en build mediante el target StampAppVersion del cliente. -->
-    <Version>1.192.1</Version>
+    <Version>1.193.0</Version>
 
     <!-- Compatibilidad entre el servidor y las apps nativas, que se actualizan
          por separado. Se suben A MANO (release-please solo toca <Version>):
