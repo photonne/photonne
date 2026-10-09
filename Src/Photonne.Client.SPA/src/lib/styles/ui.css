@@ -1,0 +1,298 @@
+/*
+ * Shared controls. Every area uses these instead of styling its own buttons,
+ * inputs and selects, so heights, borders, states and contrast match across
+ * the app. Tokens come from src/app.css.
+ *
+ *   .btn            a text button (36 px); .primary, .danger, .ghost; .sm, .lg
+ *   .icon-btn       a round icon-only button (36 px; .sm 32 px); its name goes
+ *                   in aria-label
+ *   .chip           a small pill (filters, badges); [aria-pressed] / .active
+ *   .segmented      a row of exclusive options (radio inputs or buttons)
+ *   input, select, textarea   styled by default (opt out with .bare)
+ */
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	min-height: var(--control-h);
+	padding: 0 var(--space-4);
+	border: 1px solid var(--color-border-strong);
+	border-radius: var(--radius-control);
+	background: var(--color-surface-raised);
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+	font-weight: 500;
+	line-height: 1;
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		background var(--duration-fast),
+		border-color var(--duration-fast),
+		box-shadow var(--duration-fast);
+}
+
+.btn:hover:not(:disabled) {
+	background: var(--color-surface);
+}
+
+.btn.primary {
+	border-color: var(--color-accent);
+	background: var(--color-accent);
+	color: var(--color-accent-text);
+	font-weight: 600;
+}
+
+.btn.primary:hover:not(:disabled) {
+	background: var(--color-accent);
+	box-shadow: inset 0 0 0 100px rgb(255 255 255 / 0.1);
+}
+
+.btn.danger {
+	border-color: var(--color-danger);
+	background: var(--color-danger);
+	color: #fff;
+	font-weight: 600;
+}
+
+:root[data-theme='dark'] .btn.danger {
+	color: #1a1a2e;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .btn.danger {
+		color: #1a1a2e;
+	}
+}
+
+.btn.danger:hover:not(:disabled) {
+	background: var(--color-danger);
+	box-shadow: inset 0 0 0 100px rgb(255 255 255 / 0.1);
+}
+
+.btn.ghost {
+	border-color: transparent;
+	background: transparent;
+}
+
+.btn.ghost:hover:not(:disabled) {
+	background: var(--color-hover);
+}
+
+.btn.sm {
+	min-height: var(--control-h-sm);
+	padding: 0 var(--space-3);
+}
+
+.btn.lg {
+	min-height: var(--control-h-lg);
+	padding: 0 var(--space-6);
+	font-size: var(--font-size-md);
+}
+
+/* Disabled is muted on its own colours, not faded: dimming a filled button
+   (gold, red) leaves its text unreadable, mostly in dark. */
+.btn:disabled,
+.btn.primary:disabled,
+.btn.danger:disabled {
+	border-color: var(--color-border);
+	background: var(--color-surface);
+	color: var(--color-text-muted);
+	box-shadow: none;
+	cursor: not-allowed;
+}
+
+.icon-btn {
+	display: inline-grid;
+	place-items: center;
+	flex: none;
+	width: var(--control-h);
+	height: var(--control-h);
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	transition: background var(--duration-fast);
+}
+
+.icon-btn.sm {
+	width: var(--control-h-sm);
+	height: var(--control-h-sm);
+}
+
+.icon-btn:hover:not(:disabled) {
+	background: var(--color-hover);
+}
+
+.icon-btn[aria-pressed='true'] {
+	color: var(--color-accent);
+}
+
+.icon-btn:disabled {
+	color: var(--color-text-muted);
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* ── Chips and segmented choices ─────────────────────────────────────── */
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+	min-height: 28px;
+	padding: 0 var(--space-3);
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+	white-space: nowrap;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.chip:hover {
+	background: var(--color-hover);
+}
+
+.chip[aria-pressed='true'],
+.chip.active {
+	border-color: var(--color-accent);
+	background: var(--color-accent-soft);
+	color: var(--color-text);
+	font-weight: 600;
+}
+
+.segmented {
+	display: inline-flex;
+	gap: 2px;
+	padding: 2px;
+	border-radius: var(--radius-control);
+	background: var(--color-surface);
+}
+
+.segmented > label,
+.segmented > button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+	min-height: calc(var(--control-h) - 4px);
+	padding: 0 var(--space-3);
+	border: 0;
+	border-radius: calc(var(--radius-control) - 2px);
+	background: transparent;
+	color: var(--color-text-muted);
+	font-size: var(--font-size-sm);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.segmented > label:has(input:checked),
+.segmented > button[aria-pressed='true'] {
+	background: var(--color-surface-raised);
+	color: var(--color-text);
+	font-weight: 600;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+.segmented > label:has(input:focus-visible) {
+	outline: 2px solid var(--color-focus);
+	outline-offset: 1px;
+}
+
+/* The radio covers its label invisibly: clicks, keys and assistive tech
+   reach the real input, the label draws the look. */
+.segmented > label {
+	position: relative;
+}
+
+.segmented input[type='radio'] {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+/* ── Form controls ───────────────────────────────────────────────────── */
+
+:where(
+	input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], .bare),
+	select:not(.bare),
+	textarea:not(.bare)
+) {
+	min-height: var(--control-h);
+	padding: 0 var(--space-3);
+	border: 1px solid var(--color-border-strong);
+	border-radius: var(--radius-control);
+	background: var(--color-bg);
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+}
+
+:where(textarea:not(.bare)) {
+	padding: var(--space-2) var(--space-3);
+	line-height: 1.5;
+}
+
+:where(select:not(.bare)) {
+	appearance: none;
+	padding-right: calc(var(--space-3) + 20px);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23868b93' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right var(--space-2) center;
+	background-size: 20px;
+	cursor: pointer;
+}
+
+:where(input, select, textarea):disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* One focus ring on fields: the border takes the accent, no outline on top. */
+:where(
+	input:not([type='checkbox'], [type='radio'], [type='range'], .bare),
+	select:not(.bare),
+	textarea:not(.bare)
+):focus-visible {
+	outline: none;
+	border-color: var(--color-focus);
+	box-shadow: 0 0 0 1px var(--color-focus);
+}
+
+:where(input[type='checkbox'], input[type='radio'], input[type='range'], progress) {
+	accent-color: var(--color-accent);
+}
+
+:where(input[type='checkbox'], input[type='radio']) {
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	cursor: pointer;
+}
+
+/* A field: label above its control, with an optional hint below. */
+.field {
+	display: grid;
+	gap: var(--space-1);
+	font-size: var(--font-size-sm);
+	color: var(--color-text-muted);
+}
+
+.field > :where(input, select, textarea) {
+	width: 100%;
+}
+
+.field .hint {
+	font-size: var(--font-size-xs);
+}

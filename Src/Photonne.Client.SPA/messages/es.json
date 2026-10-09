@@ -28,6 +28,7 @@
 	"error_home": "Ir a mis fotos",
 	"pane_resize": "Cambiar el ancho del panel",
 	"pane_resize_hint": "Arrastra o usa las flechas; doble clic para volver al ancho inicial",
+	"loading": "Cargando",
 	"error_loading": "No se ha podido cargar. Inténtalo de nuevo.",
 	"skip_to_content": "Saltar al contenido",
 	"grid_select_section": "Seleccionar {section}",

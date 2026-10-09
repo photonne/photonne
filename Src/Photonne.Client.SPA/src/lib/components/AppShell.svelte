@@ -96,7 +96,9 @@
 			</a>
 			<details class="account">
 				<summary aria-label={m.account_menu()}>
-					<Icon name="person" size={18} />
+					<span class="avatar" aria-hidden="true"
+						>{(session.user?.firstName || session.user?.username || '?').charAt(0)}</span
+					>
 					<span>{session.user?.username}</span>
 				</summary>
 				<div class="menu">
@@ -272,9 +274,10 @@
 		min-width: 18px;
 		padding: 0 5px;
 		border-radius: 9px;
-		background: var(--color-danger);
+		background: var(--color-badge);
 		color: #fff;
-		font-size: 11px;
+		box-shadow: 0 0 0 2px var(--color-bg);
+		font-size: var(--font-size-2xs);
 		font-weight: 700;
 		line-height: 18px;
 		text-align: center;
@@ -300,6 +303,19 @@
 
 	.account summary:hover {
 		background: var(--color-surface);
+	}
+
+	.avatar {
+		display: grid;
+		place-items: center;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		background: var(--color-accent-soft);
+		color: var(--color-accent);
+		font-size: var(--font-size-sm);
+		font-weight: 700;
+		text-transform: uppercase;
 	}
 
 	.menu {
@@ -347,7 +363,7 @@
 
 	.sidebar h2 {
 		margin: var(--space-4) var(--space-3) var(--space-1);
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-2xs);
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
@@ -366,8 +382,11 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-sm);
+		min-height: 36px;
+		padding: 0 var(--space-3);
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+		border-radius: var(--radius-control);
 		color: inherit;
 		text-decoration: none;
 		white-space: nowrap;
@@ -380,7 +399,7 @@
 	}
 
 	.sidebar a[aria-current='page'] {
-		background: var(--color-surface);
+		background: var(--color-accent-soft);
 		color: var(--color-accent);
 		font-weight: 600;
 	}

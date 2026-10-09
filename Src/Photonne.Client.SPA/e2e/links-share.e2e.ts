@@ -65,7 +65,7 @@ test('shares the selection as a new album with a public link', async ({ page, co
 	await expect(page.getByText('Enlace copiado')).toBeVisible();
 	expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/share\/nuevo4$/);
 
-	await ready.getByRole('button', { name: 'Cerrar' }).click();
+	await ready.getByRole('button', { name: 'Cerrar', exact: true }).click();
 	await expect(ready).toBeHidden();
 });
 

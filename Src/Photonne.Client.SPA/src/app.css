@@ -3,12 +3,15 @@
  * and dark (and a future theme setting) are one place to change.
  */
 :root {
-	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+	--font-sans:
+		'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+	--font-size-2xs: 0.6875rem;
 	--font-size-xs: 0.75rem;
 	--font-size-sm: 0.875rem;
 	--font-size-md: 1rem;
 	--font-size-lg: 1.25rem;
-	--font-size-xl: 1.75rem;
+	--font-size-xl: 1.5rem;
+	--font-size-2xl: 2rem;
 
 	--space-1: 0.25rem;
 	--space-2: 0.5rem;
@@ -20,6 +23,15 @@
 	--radius-sm: 6px;
 	--radius-md: 10px;
 	--radius-lg: 16px;
+	--radius-control: 8px;
+
+	/* One height per control size, shared by buttons, inputs and selects. */
+	--control-h-sm: 32px;
+	--control-h: 36px;
+	--control-h-lg: 42px;
+
+	/* Space between the content area's edge and a page's content. */
+	--page-gutter: var(--space-6);
 
 	--duration-fast: 120ms;
 	--duration-normal: 200ms;
@@ -28,6 +40,9 @@
 	--color-surface: #f4f5f7;
 	--color-surface-raised: #ffffff;
 	--color-border: #dfe1e6;
+	/* Control outlines (inputs, selects, checkboxes) need 3:1 (WCAG 1.4.11). */
+	--color-border-strong: #868b93;
+	--color-hover: rgb(0 0 0 / 0.05);
 	--color-text: #1d1d1f;
 	--color-text-muted: #5f6368;
 	/* Gold of the native app. The accent is a darker shade of it so text and
@@ -40,6 +55,9 @@
 	--color-accent-text: #ffffff;
 	--color-accent-soft: #fff1cc;
 	--color-danger: #c62828;
+	--color-success: #1b7f3b;
+	--color-warning: #a15c00;
+	--color-badge: #d32f2f;
 	--color-focus: #8a6400;
 	--color-placeholder: #e8eaed;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
@@ -58,6 +76,8 @@
 		--color-surface: #1b1c1f;
 		--color-surface-raised: #232428;
 		--color-border: #2f3136;
+		--color-border-strong: #70747c;
+		--color-hover: rgb(255 255 255 / 0.06);
 		--color-text: #e8e8ea;
 		--color-text-muted: #a0a3a8;
 		--color-brand: #ffd166;
@@ -67,6 +87,8 @@
 		--color-accent-text: #1a1a2e;
 		--color-accent-soft: rgb(255 209 102 / 0.14);
 		--color-danger: #ef9a9a;
+		--color-success: #7bd88f;
+		--color-warning: #f6b35a;
 		--color-focus: #ffd166;
 		--color-placeholder: #26282c;
 		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
@@ -79,6 +101,8 @@
 	--color-surface: #1b1c1f;
 	--color-surface-raised: #232428;
 	--color-border: #2f3136;
+	--color-border-strong: #70747c;
+	--color-hover: rgb(255 255 255 / 0.06);
 	--color-text: #e8e8ea;
 	--color-text-muted: #a0a3a8;
 	--color-brand: #ffd166;
@@ -88,6 +112,8 @@
 	--color-accent-text: #1a1a2e;
 	--color-accent-soft: rgb(255 209 102 / 0.14);
 	--color-danger: #ef9a9a;
+	--color-success: #7bd88f;
+	--color-warning: #f6b35a;
 	--color-focus: #ffd166;
 	--color-placeholder: #26282c;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);

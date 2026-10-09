@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import Logo from '#lib/components/Logo.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -11,10 +12,11 @@
 </svelte:head>
 
 <main class="error">
+	<a class="logo" href={appHref('/')} aria-label={m.app_name()}><Logo size={36} /></a>
 	<p class="code" aria-hidden="true">{page.status}</p>
 	<h1>{missing ? m.error_not_found_title() : m.error_title()}</h1>
 	<p>{missing ? m.error_not_found_text() : m.error_text()}</p>
-	<a class="home" href={appHref('/')}>{m.error_home()}</a>
+	<a class="home btn primary" href={appHref('/')}>{m.error_home()}</a>
 </main>
 
 <style>
@@ -29,12 +31,18 @@
 		background: var(--color-bg);
 	}
 
+	.logo {
+		margin-bottom: var(--space-6);
+		color: inherit;
+		text-decoration: none;
+	}
+
 	.code {
 		margin: 0;
 		font-size: 4rem;
 		font-weight: 700;
 		line-height: 1;
-		color: var(--color-text-muted);
+		color: var(--color-brand);
 	}
 
 	h1 {
@@ -50,11 +58,5 @@
 
 	.home {
 		margin-top: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		border-radius: var(--radius-sm);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		text-decoration: none;
-		font-weight: 600;
 	}
 </style>

@@ -220,7 +220,7 @@ test.describe('external libraries', () => {
 		await expect(
 			access.getByRole('list', { name: 'Usuarios con acceso' }).getByText('marta@photonne.test')
 		).toHaveCount(0);
-		await access.getByRole('button', { name: 'Cerrar' }).click();
+		await access.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
 		await page.getByRole('button', { name: 'Eliminar «NAS fotos»' }).click();
 		await page
