@@ -397,6 +397,8 @@ test('an album with a cover opens under it as a banner that folds when scrolling
 	// enough for its six photos to take more than one row (without a scrubber
 	// the grid has the whole width).
 	await page.setViewportSize({ width: 1024, height: 420 });
+	// With the full menu: at this width it would start as a rail.
+	await page.addInitScript(() => localStorage.setItem('photonne.sidebar', 'full'));
 	await open(page, '/albums/album-1');
 
 	const banner = page.getByRole('region', { name: 'Vacaciones', exact: true }).filter({
