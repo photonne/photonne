@@ -8,6 +8,7 @@
 		ICON_STORAGE
 	} from '#lib/account/icons.js';
 	import Icon, { type IconName } from '#lib/components/Icon.svelte';
+	import Tabs from '#lib/components/ui/Tabs.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { LayoutProps } from './$types';
@@ -22,16 +23,23 @@
 		{ path: '/settings/shared-folders', label: m.settings_discovery, iconPath: ICON_FOLDER_SHARED },
 		{ path: '/settings/analysis', label: m.settings_analysis, iconPath: ICON_AUTO_AWESOME }
 	];
+
+	const tabs = $derived(
+		sections.map((section) => {
+			const href = appHref(section.path);
+			return { href, label: section.label(), current: page.url.pathname === href };
+		})
+	);
 </script>
 
 <div class="layout">
-	<nav aria-label={m.nav_settings()}>
+	<!-- Wide windows: a side list. Narrow ones: tabs above the page (one shows at a time). -->
+	<nav class="side" aria-label={m.nav_settings()}>
 		<h2>{m.nav_settings()}</h2>
 		<ul>
-			{#each sections as section (section.path)}
-				{@const href = appHref(section.path)}
+			{#each sections as section, i (section.path)}
 				<li>
-					<a {href} aria-current={page.url.pathname === href ? 'page' : undefined}>
+					<a href={tabs[i].href} aria-current={tabs[i].current ? 'page' : undefined}>
 						<Icon name={section.icon} path={section.iconPath} size={18} />
 						{section.label()}
 					</a>
@@ -39,6 +47,7 @@
 			{/each}
 		</ul>
 	</nav>
+	<div class="tabs"><Tabs {tabs} label={m.nav_settings()} /></div>
 	<div class="content">
 		{@render children()}
 	</div>
@@ -47,18 +56,20 @@
 <style>
 	.layout {
 		display: grid;
-		grid-template-columns: 220px minmax(0, 1fr);
-		gap: var(--space-8);
-		padding: var(--space-4) var(--space-6) var(--space-8);
+		grid-template-columns: 232px minmax(0, 1fr);
+		min-height: 100%;
 	}
 
-	nav h2 {
-		margin: var(--space-2) var(--space-3) var(--space-2);
-		font-size: var(--font-size-xs);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-muted);
+	.side {
+		padding: var(--space-6) var(--space-3) var(--space-8) var(--page-gutter);
+		border-right: 1px solid var(--color-border);
+	}
+
+	.side h2 {
+		margin: var(--space-1) var(--space-3) var(--space-4);
+		font-size: var(--font-size-lg);
+		font-weight: 650;
+		line-height: 1.2;
 	}
 
 	ul {
@@ -75,51 +86,55 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-sm);
-		color: inherit;
+		min-height: var(--control-h);
+		padding: 0 var(--space-3);
+		border-radius: var(--radius-control);
+		color: var(--color-text);
+		font-size: var(--font-size-sm);
+		font-weight: 500;
 		text-decoration: none;
 		white-space: nowrap;
 	}
 
+	a :global(svg) {
+		flex: none;
+		color: var(--color-text-muted);
+	}
+
 	a:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	a[aria-current='page'] {
-		background: var(--color-surface);
-		color: var(--color-accent);
+		background: var(--color-accent-soft);
 		font-weight: 600;
+	}
+
+	a[aria-current='page'] :global(svg) {
+		color: var(--color-accent);
+	}
+
+	.tabs {
+		display: none;
 	}
 
 	.content {
 		min-width: 0;
 	}
 
-	/* A narrow window: the sections become a row of tabs above the page. */
-	@media (max-width: 1040px) {
+	/* Narrower windows: the shared tabs, which scroll when they don't fit. */
+	@media (max-width: 1180px) {
 		.layout {
 			grid-template-columns: minmax(0, 1fr);
-			gap: var(--space-4);
+			grid-template-rows: auto 1fr;
 		}
 
-		nav h2 {
+		.side {
 			display: none;
 		}
 
-		ul {
-			position: static;
-			display: flex;
-			overflow-x: auto;
-			border-bottom: 1px solid var(--color-border);
-		}
-
-		a {
-			border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-		}
-
-		a[aria-current='page'] {
-			box-shadow: inset 0 -2px 0 var(--color-accent);
+		.tabs {
+			display: block;
 		}
 	}
 </style>

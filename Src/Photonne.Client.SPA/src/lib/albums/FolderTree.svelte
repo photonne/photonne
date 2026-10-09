@@ -206,7 +206,7 @@
 	}
 
 	[role='treeitem']:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	[role='treeitem']:focus-visible {
@@ -214,14 +214,14 @@
 		outline-offset: -2px;
 	}
 
-	.current {
-		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-		color: var(--color-accent);
+	.current,
+	.current:hover {
+		background: var(--color-accent-soft);
 		font-weight: 600;
 	}
 
-	.current:hover {
-		background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+	.current :global(svg) {
+		color: var(--color-accent);
 	}
 
 	.drop {
@@ -247,7 +247,7 @@
 	}
 
 	.twisty:hover {
-		background: var(--color-border);
+		background: var(--color-hover);
 	}
 
 	.name {

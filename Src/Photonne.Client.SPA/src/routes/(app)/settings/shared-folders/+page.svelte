@@ -5,6 +5,8 @@
 	import { getAllFoldersOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const queryClient = useQueryClient();
@@ -49,53 +51,54 @@
 </svelte:head>
 
 <div class="settings-page">
-	<h1>{m.settings_discovery()}</h1>
-	<p class="lead">{m.settings_discovery_lead()}</p>
+	<PageHeader title={m.settings_discovery()} subtitle={m.settings_discovery_lead()} />
 
-	<section class="card" aria-labelledby="shared-title">
-		<header>
-			<h2 id="shared-title">{m.settings_discovery_folders()}</h2>
-			<p>
-				{rows.length === 0
-					? m.settings_discovery_folders_lead()
-					: m.settings_discovery_hidden_count({ count: hiddenCount })}
-			</p>
-		</header>
+	<div class="settings-body">
+		<section class="card" aria-labelledby="shared-title">
+			<header>
+				<h2 id="shared-title">{m.settings_discovery_folders()}</h2>
+				<p>
+					{rows.length === 0
+						? m.settings_discovery_folders_lead()
+						: m.settings_discovery_hidden_count({ count: hiddenCount })}
+				</p>
+			</header>
 
-		{#if folders.isPending}
-			<p class="hint" role="status">{m.session_restoring()}</p>
-		{:else if folders.isError}
-			<p class="error" role="alert">{m.error_loading()}</p>
-		{:else if rows.length === 0}
-			<p class="hint">{m.settings_discovery_empty()}</p>
-		{:else}
-			<ul class="folders">
-				{#each rows as row (row.id)}
-					{@const excluded = overrides[row.id] ?? row.excluded}
-					<li style:--depth={row.depth} class:excluded>
-						<label>
-							<input
-								type="checkbox"
-								role="switch"
-								checked={!excluded}
-								onchange={(event) => setIncluded(row.id, row.name, event.currentTarget.checked)}
-							/>
-							<Icon name="folder" size={20} />
-							<span class="name">
-								{row.name}
-								<small>{m.settings_discovery_items({ count: row.assetCount })}</small>
-							</span>
-							<span class="state">
-								{excluded
-									? m.settings_discovery_state_hidden()
-									: m.settings_discovery_state_shown()}
-							</span>
-						</label>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	</section>
+			{#if folders.isPending}
+				<div class="loading"><Skeleton variant="rows" count={4} /></div>
+			{:else if folders.isError}
+				<p class="error" role="alert">{m.error_loading()}</p>
+			{:else if rows.length === 0}
+				<p class="hint">{m.settings_discovery_empty()}</p>
+			{:else}
+				<ul class="folders">
+					{#each rows as row (row.id)}
+						{@const excluded = overrides[row.id] ?? row.excluded}
+						<li style:--depth={row.depth} class:excluded>
+							<label>
+								<input
+									type="checkbox"
+									role="switch"
+									checked={!excluded}
+									onchange={(event) => setIncluded(row.id, row.name, event.currentTarget.checked)}
+								/>
+								<Icon name="folder" size={20} />
+								<span class="name">
+									{row.name}
+									<small>{m.settings_discovery_items({ count: row.assetCount })}</small>
+								</span>
+								<span class="state">
+									{excluded
+										? m.settings_discovery_state_hidden()
+										: m.settings_discovery_state_shown()}
+								</span>
+							</label>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+	</div>
 </div>
 
 <style>
@@ -122,7 +125,7 @@
 	}
 
 	label:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	label:has(input:focus-visible) {
@@ -133,7 +136,11 @@
 	input {
 		width: 18px;
 		height: 18px;
-		accent-color: var(--color-accent);
+	}
+
+	/* In a card: no page gutter around the placeholder. */
+	.loading {
+		--page-gutter: 0px;
 	}
 
 	.name {

@@ -23,6 +23,8 @@
 	import AppShell from '#lib/components/AppShell.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import Logo from '#lib/components/Logo.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { longDate } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
@@ -97,24 +99,32 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
+{#snippet notice(iconPath: string, heading: string, text: string)}
+	<div class="center">
+		<span class="mark" aria-hidden="true"><Icon path={iconPath} size={32} /></span>
+		<h1>{heading}</h1>
+		<p>{text}</p>
+	</div>
+{/snippet}
+
 {#snippet body()}
 	{#if share.isPending}
-		<p class="center" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="grid" />
 	{:else if !outcome || outcome.kind === 'unreachable'}
 		<div class="center">
-			<Icon path={ICON_BROKEN_IMAGE} size={48} />
+			<span class="mark" aria-hidden="true"><Icon path={ICON_BROKEN_IMAGE} size={32} /></span>
 			<h1>{m.session_unreachable_title()}</h1>
 			<p>{m.session_unreachable_body()}</p>
-			<button type="button" class="button" onclick={() => share.refetch()}>
+			<button type="button" class="btn" onclick={() => share.refetch()}>
 				{m.session_retry()}
 			</button>
 		</div>
 	{:else if outcome.kind === 'password'}
 		<form class="gate" onsubmit={submitPassword}>
-			<span class="gate-icon"><Icon name="lock" size={32} /></span>
+			<span class="mark" aria-hidden="true"><Icon name="lock" size={28} /></span>
 			<h1>{m.share_password_title()}</h1>
 			<p>{m.share_password_lead()}</p>
-			<label>
+			<label class="field">
 				<span>{m.share_password_label()}</span>
 				<PasswordInput
 					autocomplete="off"
@@ -128,53 +138,42 @@
 			{#if outcome.wrong}
 				<p id="password-error" class="error" role="alert">{m.share_password_wrong()}</p>
 			{/if}
-			<button type="submit" class="button primary" disabled={!typed || share.isFetching}>
+			<button type="submit" class="btn primary lg" disabled={!typed || share.isFetching}>
 				{m.share_password_submit()}
 			</button>
 		</form>
 	{:else if outcome.kind === 'expired'}
-		<div class="center">
-			<Icon path={ICON_SCHEDULE} size={48} />
-			<h1>{m.share_expired_title()}</h1>
-			<p>{m.share_expired_body()}</p>
-		</div>
+		{@render notice(ICON_SCHEDULE, m.share_expired_title(), m.share_expired_body())}
 	{:else if outcome.kind === 'maxViews'}
-		<div class="center">
-			<Icon path={ICON_VISIBILITY_OFF} size={48} />
-			<h1>{m.share_max_views_title()}</h1>
-			<p>{m.share_max_views_body()}</p>
-		</div>
+		{@render notice(ICON_VISIBILITY_OFF, m.share_max_views_title(), m.share_max_views_body())}
 	{:else if outcome.kind === 'notFound' || !content?.album}
-		<div class="center">
-			<Icon path={ICON_LINK_OFF} size={48} />
-			<h1>{m.share_not_found_title()}</h1>
-			<p>{m.share_not_found_body()}</p>
-		</div>
+		{@render notice(ICON_LINK_OFF, m.share_not_found_title(), m.share_not_found_body())}
 	{:else}
 		{@const album = content.album}
 		{@const cover = coverOf(assets)}
-		<section class="hero" aria-labelledby="album-title">
-			{#if cover}<div class="hero-bg" style:background-image="url('{cover}')"></div>{/if}
+		<!-- As an album's banner in the app: the cover sharp, a gradient, the title on it. -->
+		<section class="hero" class:plain={!cover} aria-labelledby="album-title">
+			{#if cover}<img class="hero-image" src={cover} alt="" decoding="async" />{/if}
 			<div class="hero-content">
 				<h1 id="album-title">{album.name}</h1>
 				{#if album.description}<p class="description">{album.description}</p>{/if}
-				<p class="meta">
-					<span><Icon name="photos" size={16} /> {m.share_items({ count: assets.length })}</span>
-					{#if content.expiresAt}
-						<span>
-							<Icon path={ICON_SCHEDULE} size={16} />
-							{m.share_expires({ date: longDate(content.expiresAt) })}
-						</span>
-					{/if}
-				</p>
-				{#if content.allowDownload && assets.length > 0}
-					<div class="hero-actions">
-						<button type="button" class="button" onclick={downloadAll}>
+				<div class="hero-row">
+					<p class="meta">
+						<span><Icon name="photos" size={16} /> {m.share_items({ count: assets.length })}</span>
+						{#if content.expiresAt}
+							<span>
+								<Icon path={ICON_SCHEDULE} size={16} />
+								{m.share_expires({ date: longDate(content.expiresAt) })}
+							</span>
+						{/if}
+					</p>
+					{#if content.allowDownload && assets.length > 0}
+						<button type="button" class="btn on-photo" onclick={downloadAll}>
 							<Icon name="download" size={18} />
 							{m.share_download_all()}
 						</button>
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</div>
 		</section>
 
@@ -184,7 +183,7 @@
 			{/if}
 
 			{#if assets.length === 0}
-				<p class="empty">{m.share_empty()}</p>
+				<EmptyState compact icon="photos" title={m.share_empty()} />
 			{:else}
 				<ShareGrid
 					bind:this={grid}
@@ -217,12 +216,14 @@
 		<div class="in-app">{@render body()}</div>
 	</AppShell>
 {:else if session.status === 'restoring'}
-	<p class="center" role="status">{m.session_restoring()}</p>
+	<Skeleton variant="grid" />
 {:else}
 	<div class="public">
 		<header class="topbar">
 			<a class="brand" href={appHref('/')} aria-label={m.app_name()}><Logo size={30} /></a>
-			<a class="library" href="{appHref('/login')}?returnTo={encodeURIComponent(page.url.pathname)}"
+			<a
+				class="btn sm library"
+				href="{appHref('/login')}?returnTo={encodeURIComponent(page.url.pathname)}"
 				>{m.share_sign_in()}</a
 			>
 		</header>
@@ -242,7 +243,7 @@
 		align-items: center;
 		gap: var(--space-4);
 		height: var(--header-height);
-		padding: 0 var(--space-6);
+		padding: 0 var(--page-gutter);
 		border-bottom: 1px solid var(--color-border);
 	}
 
@@ -252,16 +253,14 @@
 		text-decoration: none;
 	}
 
+	.library {
+		margin-left: auto;
+	}
+
 	.in-app {
 		display: flex;
 		flex-direction: column;
 		min-height: 100%;
-	}
-
-	.library {
-		margin-left: auto;
-		color: var(--color-accent);
-		font-weight: 600;
 	}
 
 	main {
@@ -270,60 +269,74 @@
 		flex-direction: column;
 	}
 
+	/* --- Notices: a link that no longer works, a password ----------------- */
+
 	.center,
 	.gate {
 		margin: auto;
 		display: grid;
 		justify-items: center;
 		gap: var(--space-2);
-		max-width: 420px;
+		max-width: 440px;
 		padding: var(--space-8) var(--space-6);
 		text-align: center;
 		color: var(--color-text-muted);
 	}
 
+	/* As EmptyState's mark (components/ui/EmptyState.svelte). */
+	.mark {
+		display: grid;
+		place-items: center;
+		width: 72px;
+		height: 72px;
+		margin-bottom: var(--space-2);
+		border-radius: 50%;
+		background: var(--color-brand-tile);
+		color: var(--color-brand);
+	}
+
 	.center h1,
 	.gate h1 {
-		margin: var(--space-2) 0 0;
+		margin: 0;
 		font-size: var(--font-size-lg);
+		font-weight: 600;
 		color: var(--color-text);
 	}
 
 	.center p,
 	.gate p {
 		margin: 0;
+		font-size: var(--font-size-sm);
+	}
+
+	.center .btn {
+		margin-top: var(--space-3);
 	}
 
 	.gate {
-		width: min(100%, 400px);
+		width: min(100% - 2 * var(--space-4), 400px);
 		gap: var(--space-3);
+		padding: var(--space-8) var(--space-6) var(--space-6);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		background: var(--color-surface-raised);
 		box-shadow: var(--shadow-raised);
 	}
 
-	.gate-icon {
-		display: grid;
-		place-items: center;
-		width: 64px;
-		height: 64px;
-		border-radius: 50%;
-		background: var(--color-surface);
-		color: var(--color-text);
+	.gate .mark {
+		width: 60px;
+		height: 60px;
+		margin-bottom: 0;
 	}
 
-	.gate label {
-		display: grid;
-		gap: var(--space-1);
+	.gate .field {
 		width: 100%;
+		margin-top: var(--space-2);
 		text-align: left;
-		font-size: var(--font-size-sm);
 	}
 
-	.gate .button {
+	.gate .btn {
 		width: 100%;
-		justify-content: center;
 	}
 
 	.error {
@@ -331,68 +344,69 @@
 		font-size: var(--font-size-sm);
 	}
 
-	.button {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-raised);
-		color: var(--color-text);
-		cursor: pointer;
-	}
-
-	.button.primary {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
-	}
-
-	.button:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
+	/* --- The album: banner, upload card, grid ------------------------------ */
 
 	.hero {
 		position: relative;
-		overflow: hidden;
-		min-height: 240px;
 		display: flex;
 		align-items: flex-end;
+		width: calc(100% - 2 * var(--page-gutter));
+		max-width: 1400px;
+		height: clamp(220px, 34vh, 360px);
+		margin: var(--space-4) auto 0;
+		overflow: hidden;
+		border-radius: var(--radius-lg);
 		background: #1d1d1f;
 		color: #fff;
 	}
 
-	.hero-bg {
+	.hero-image {
 		position: absolute;
-		inset: -24px;
-		background-size: cover;
-		background-position: center;
-		filter: blur(18px) brightness(0.55);
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.hero::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(to top, rgb(0 0 0 / 0.75), rgb(0 0 0 / 0.15) 60%, transparent);
 	}
 
 	.hero-content {
 		position: relative;
+		z-index: 1;
 		display: grid;
-		gap: var(--space-2);
+		gap: var(--space-1);
 		width: 100%;
-		max-width: 1400px;
-		margin: 0 auto;
-		padding: var(--space-8) var(--space-6) var(--space-6);
+		padding: var(--space-6);
 	}
 
 	.hero h1 {
 		margin: 0;
-		font-size: 2.25rem;
+		font-size: var(--font-size-2xl);
+		font-weight: 650;
 		line-height: 1.15;
+		letter-spacing: -0.01em;
+		text-shadow: 0 1px 8px rgb(0 0 0 / 0.4);
 	}
 
 	.description {
 		margin: 0;
 		max-width: 70ch;
-		color: rgb(255 255 255 / 0.85);
+		color: rgb(255 255 255 / 0.9);
+		white-space: pre-line;
+	}
+
+	.hero-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+		margin-top: var(--space-1);
 	}
 
 	.meta {
@@ -400,7 +414,7 @@
 		flex-wrap: wrap;
 		gap: var(--space-4);
 		margin: 0;
-		color: rgb(255 255 255 / 0.75);
+		color: rgb(255 255 255 / 0.85);
 		font-size: var(--font-size-sm);
 	}
 
@@ -410,31 +424,52 @@
 		gap: var(--space-1);
 	}
 
-	.hero-actions {
-		margin-top: var(--space-2);
-	}
-
-	.hero-actions .button {
-		border-color: rgb(255 255 255 / 0.4);
-		background: rgb(255 255 255 / 0.12);
+	/* A button on the photo: white glass, legible on any cover. */
+	.btn.on-photo {
+		border-color: rgb(255 255 255 / 0.5);
+		background: rgb(255 255 255 / 0.14);
 		color: #fff;
+		backdrop-filter: blur(6px);
 	}
 
-	.hero-actions .button:hover {
-		background: rgb(255 255 255 / 0.2);
+	.btn.on-photo:hover {
+		background: rgb(255 255 255 / 0.24);
+	}
+
+	/* No cover photo: the same banner on the brand tile, in the page's colours. */
+	.hero.plain {
+		height: auto;
+		min-height: 160px;
+		background: var(--color-brand-tile);
+		color: var(--color-text);
+	}
+
+	.hero.plain::after {
+		display: none;
+	}
+
+	.plain h1 {
+		text-shadow: none;
+	}
+
+	.plain .description,
+	.plain .meta {
+		color: var(--color-text-muted);
+	}
+
+	.plain .btn.on-photo {
+		border-color: var(--color-border-strong);
+		background: var(--color-surface-raised);
+		color: var(--color-text);
+		backdrop-filter: none;
 	}
 
 	.body {
 		display: grid;
 		gap: var(--space-6);
 		width: 100%;
-		max-width: 1400px;
+		max-width: calc(1400px + 2 * var(--page-gutter));
 		margin: 0 auto;
-		padding: var(--space-6);
-	}
-
-	.empty {
-		color: var(--color-text-muted);
-		text-align: center;
+		padding: var(--space-6) var(--page-gutter);
 	}
 </style>

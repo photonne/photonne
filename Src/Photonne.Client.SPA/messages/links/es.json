@@ -80,5 +80,6 @@
 	"links_format_original_extension": "Original (.{extension})",
 	"links_format_original_hint": "El archivo tal cual, con toda su calidad. Para editarlo.",
 	"links_format_jpeg": "JPEG",
-	"links_format_jpeg_hint": "Se abre en cualquier sitio. Para enviarla o publicarla."
+	"links_format_jpeg_hint": "Se abre en cualquier sitio. Para enviarla o publicarla.",
+	"links_empty_action": "Crear enlace"
 }

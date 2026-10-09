@@ -12,6 +12,8 @@
 	import { session } from '#lib/auth/session.svelte.js';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 
@@ -126,90 +128,91 @@
 </svelte:head>
 
 <div class="settings-page">
-	<h1>{m.settings_profile()}</h1>
-	<p class="lead">{m.settings_profile_lead()}</p>
+	<PageHeader title={m.settings_profile()} subtitle={m.settings_profile_lead()} />
 
 	{#if me.isPending}
-		<p class="hint" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="text" count={4} />
 	{:else if !me.data}
-		<p class="error" role="alert">{m.error_loading()}</p>
+		<div class="settings-body"><p class="error" role="alert">{m.error_loading()}</p></div>
 	{:else}
-		<form class="card" onsubmit={submit} novalidate>
-			<header>
-				<h2>{m.settings_profile_details()}</h2>
-			</header>
-			<div class="fields">
-				<label class="field">
-					<span>{m.settings_profile_first_name()}</span>
-					<input autocomplete="given-name" bind:value={firstName} />
-				</label>
-				<label class="field">
-					<span>{m.settings_profile_last_name()}</span>
-					<input autocomplete="family-name" bind:value={lastName} />
-				</label>
-				<label class="field">
-					<span>{m.settings_profile_username()}</span>
-					<input
-						autocomplete="username"
-						autocapitalize="none"
-						spellcheck="false"
-						required
-						aria-invalid={usernameInvalid}
-						aria-describedby="username-hint"
-						bind:value={username}
-					/>
-					<span id="username-hint" class={usernameInvalid ? 'error' : 'hint'}>
-						{usernameInvalid
-							? m.settings_profile_error_username()
-							: m.settings_profile_username_hint()}
-					</span>
-				</label>
-				<label class="field">
-					<span>{m.settings_profile_email()}</span>
-					<input
-						type="email"
-						autocomplete="email"
-						required
-						aria-invalid={emailInvalid}
-						aria-describedby={emailInvalid ? 'email-error' : undefined}
-						bind:value={email}
-					/>
-					{#if emailInvalid}
-						<span id="email-error" class="error">{m.settings_profile_error_email()}</span>
-					{/if}
-				</label>
-			</div>
-			{#if serverError}
-				<p class="error" role="alert">{serverError}</p>
-			{/if}
-			<div class="actions">
-				<button type="submit" class="button primary" disabled={!canSave}>
-					{saving ? m.settings_saving() : m.settings_save()}
-				</button>
-				{#if dirty}
-					<button type="button" class="button" onclick={() => me.data && fill(me.data)}>
-						{m.settings_discard()}
-					</button>
+		<div class="settings-body">
+			<form class="card" onsubmit={submit} novalidate>
+				<header>
+					<h2>{m.settings_profile_details()}</h2>
+				</header>
+				<div class="fields">
+					<label class="field">
+						<span>{m.settings_profile_first_name()}</span>
+						<input autocomplete="given-name" bind:value={firstName} />
+					</label>
+					<label class="field">
+						<span>{m.settings_profile_last_name()}</span>
+						<input autocomplete="family-name" bind:value={lastName} />
+					</label>
+					<label class="field">
+						<span>{m.settings_profile_username()}</span>
+						<input
+							autocomplete="username"
+							autocapitalize="none"
+							spellcheck="false"
+							required
+							aria-invalid={usernameInvalid}
+							aria-describedby="username-hint"
+							bind:value={username}
+						/>
+						<span id="username-hint" class={usernameInvalid ? 'error' : 'hint'}>
+							{usernameInvalid
+								? m.settings_profile_error_username()
+								: m.settings_profile_username_hint()}
+						</span>
+					</label>
+					<label class="field">
+						<span>{m.settings_profile_email()}</span>
+						<input
+							type="email"
+							autocomplete="email"
+							required
+							aria-invalid={emailInvalid}
+							aria-describedby={emailInvalid ? 'email-error' : undefined}
+							bind:value={email}
+						/>
+						{#if emailInvalid}
+							<span id="email-error" class="error">{m.settings_profile_error_email()}</span>
+						{/if}
+					</label>
+				</div>
+				{#if serverError}
+					<p class="error" role="alert">{serverError}</p>
 				{/if}
-			</div>
-		</form>
+				<div class="actions">
+					<button type="submit" class="btn primary" disabled={!canSave}>
+						{saving ? m.settings_saving() : m.settings_save()}
+					</button>
+					{#if dirty}
+						<button type="button" class="btn" onclick={() => me.data && fill(me.data)}>
+							{m.settings_discard()}
+						</button>
+					{/if}
+				</div>
+			</form>
 
-		<section class="card" aria-labelledby="account-facts">
-			<header>
-				<h2 id="account-facts">{m.settings_profile_account()}</h2>
-			</header>
-			<dl class="facts">
-				<dt>{m.settings_profile_role()}</dt>
-				<dd>
-					{me.data.role === 'Admin' ? m.settings_role_admin() : m.settings_role_user()}
-					{#if me.data.isPrimaryAdmin}· {m.settings_role_primary()}{/if}
-				</dd>
-				<dt>{m.settings_profile_created()}</dt>
-				<dd>{formatDate(me.data.createdAt)}</dd>
-				<dt>{m.settings_profile_last_login()}</dt>
-				<dd>{formatDate(me.data.lastLoginAt)}</dd>
-			</dl>
-		</section>
+			<section class="card" aria-labelledby="account-facts">
+				<header>
+					<h2 id="account-facts">{m.settings_profile_account()}</h2>
+				</header>
+				<dl class="facts">
+					<dt>{m.settings_profile_role()}</dt>
+					<dd>
+						{me.data.role === 'Admin' ? m.settings_role_admin() : m.settings_role_user()}
+						{#if me.data.isPrimaryAdmin}· {m.settings_role_primary()}{/if}
+					</dd>
+					<dt>{m.settings_profile_created()}</dt>
+					<dd>{formatDate(me.data.createdAt)}</dd>
+					<dt>{m.settings_profile_last_login()}</dt>
+					<dd>{formatDate(me.data.lastLoginAt)}</dd>
+				</dl>
+			</section>
+		</div>
 	{/if}
 </div>
 

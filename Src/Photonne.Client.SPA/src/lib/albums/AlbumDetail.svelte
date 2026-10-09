@@ -190,7 +190,7 @@
 {#if albumQuery.isError}
 	<div class="missing">
 		<p role="alert">{m.albums_not_found()}</p>
-		<a href={appHref('/albums')}>{m.albums_back()}</a>
+		<a class="btn" href={appHref('/albums')}>{m.albums_back()}</a>
 	</div>
 {:else}
 	<CollectionView
@@ -215,7 +215,7 @@
 				{#if album.canManagePermissions || canWrite}
 					<button
 						type="button"
-						class="tool"
+						class="btn sm tool"
 						title={m.albums_share()}
 						onclick={() => (sharing = album.canManagePermissions ? 'people' : 'links')}
 					>
@@ -224,7 +224,7 @@
 				{/if}
 				<button
 					type="button"
-					class="tool icon"
+					class="icon-btn"
 					aria-pressed={album.isPinned}
 					aria-label={album.isPinned ? m.albums_unpin() : m.albums_pin()}
 					title={album.isPinned ? m.albums_unpin() : m.albums_pin()}
@@ -243,17 +243,17 @@
 					<p class="meta">
 						<span>{m.albums_items({ count: album.assetCount })}</span>
 						{#if smart}
-							<span class="badge" title={m.albums_smart_hint()}>
+							<span class="pill" title={m.albums_smart_hint()}>
 								<Icon path={icons.smart} size={14} />{m.albums_smart()}
 							</span>
 						{/if}
 						{#if !album.isOwner}
-							<span class="badge">{m.albums_shared_with_you()}</span>
+							<span class="pill"><Icon name="people" size={14} />{m.albums_shared_with_you()}</span>
 						{:else if album.isShared}
-							<span class="badge"><Icon name="people" size={14} />{m.albums_shared()}</span>
+							<span class="pill"><Icon name="people" size={14} />{m.albums_shared()}</span>
 						{/if}
 						{#if album.hasActiveShareLink}
-							<span class="badge"><Icon name="link" size={14} />{m.albums_link_active()}</span>
+							<span class="pill"><Icon name="link" size={14} />{m.albums_link_active()}</span>
 						{/if}
 					</p>
 				</div>
@@ -264,7 +264,7 @@
 			{#if canWrite}
 				<button
 					type="button"
-					class="viewer-action"
+					class="icon-btn viewer-action"
 					title={m.albums_set_cover()}
 					aria-label={m.albums_set_cover()}
 					onclick={() => setCover(assetId)}
@@ -278,7 +278,7 @@
 			{#if canRemove}
 				<button
 					type="button"
-					class="action"
+					class="icon-btn"
 					title={m.albums_remove()}
 					aria-label={m.albums_remove()}
 					disabled={busy}
@@ -290,7 +290,7 @@
 			{#if canWrite && selection.size === 1}
 				<button
 					type="button"
-					class="action"
+					class="icon-btn"
 					title={m.albums_set_cover()}
 					aria-label={m.albums_set_cover()}
 					onclick={() => setCover([...selection.ids][0], selection)}
@@ -335,31 +335,7 @@
 
 <style>
 	.order select {
-		height: 36px;
-		padding: 0 var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-	}
-
-	.tool {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: 36px;
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.tool.icon {
-		width: 36px;
-		padding: 0;
-		justify-content: center;
-		border-color: transparent;
-		border-radius: 50%;
+		min-height: var(--control-h-sm);
 	}
 
 	/* Narrow windows keep the icon; the text stays as the accessible name. */
@@ -373,19 +349,19 @@
 			white-space: nowrap;
 		}
 
+		/* Icon only, it looks like its icon-only neighbours. */
 		.tool:has(.label) {
-			width: 36px;
+			width: var(--control-h);
+			min-height: var(--control-h);
 			padding: 0;
-			justify-content: center;
+			border-color: transparent;
+			border-radius: 50%;
+			background: transparent;
 		}
-	}
 
-	.tool:hover {
-		background: var(--color-surface);
-	}
-
-	.tool[aria-pressed='true'] {
-		color: var(--color-accent);
+		.tool:has(.label):hover {
+			background: var(--color-hover);
+		}
 	}
 
 	.about {
@@ -408,59 +384,28 @@
 		color: var(--color-text-muted);
 	}
 
-	.badge {
+	/* On the banner, CollectionView turns --color-surface into white glass. */
+	.pill {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-		padding: 1px var(--space-2);
+		gap: var(--space-1);
+		min-height: 24px;
+		padding: 0 var(--space-2);
 		border-radius: 999px;
 		background: var(--color-surface);
+		color: var(--color-text);
 		font-size: var(--font-size-xs);
 		font-weight: 600;
-	}
-
-	.action {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.viewer-action {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		color: inherit;
-		cursor: pointer;
 	}
 
 	.viewer-action:hover {
 		background: rgb(255 255 255 / 0.12);
 	}
 
-	.action:hover {
-		background: var(--color-surface);
-	}
-
-	.action:disabled {
-		opacity: 0.4;
-		cursor: progress;
-	}
-
 	.missing {
-		padding: var(--space-6);
+		padding: var(--space-6) var(--page-gutter);
 		display: grid;
-		gap: var(--space-2);
+		gap: var(--space-3);
 		justify-items: start;
 	}
 

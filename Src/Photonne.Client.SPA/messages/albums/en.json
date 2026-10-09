@@ -330,5 +330,6 @@
 			}
 		}
 	],
-	"albums_bulk_partial": "Done with {done} of {total}. The ones that failed stay selected."
+	"albums_bulk_partial": "Done with {done} of {total}. The ones that failed stay selected.",
+	"albums_clear_filters": "Clear filters"
 }

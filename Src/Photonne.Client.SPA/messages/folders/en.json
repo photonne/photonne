@@ -153,5 +153,7 @@
 		}
 	],
 	"folders_bulk_nested": "Subfolders of another selected folder go with it.",
-	"folders_bulk_partial": "Done with {done} of {total}. The ones that failed stay selected."
+	"folders_bulk_partial": "Done with {done} of {total}. The ones that failed stay selected.",
+	"folders_upload": "Upload photos",
+	"folders_none_hint": "The photos you upload are kept in folders. Upload some, or create a folder with the button above the tree."
 }

@@ -12,6 +12,7 @@
 		listShareLinksQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -128,7 +129,7 @@
 	<p class="note">{m.albums_links_intro()}</p>
 
 	{#if links.isPending}
-		<p class="note" role="status">{m.session_restoring()}</p>
+		<div class="loading"><Skeleton variant="rows" count={2} /></div>
 	{:else if links.isError}
 		<p class="note" role="alert">{m.error_loading()}</p>
 	{:else}
@@ -156,7 +157,7 @@
 								onfocus={(event) => event.currentTarget.select()}
 							/>
 							{#if status !== 'active'}
-								<span class="status">
+								<span class="pill bad">
 									{status === 'expired' ? m.albums_link_expired() : m.albums_link_used_up()}
 								</span>
 							{/if}
@@ -170,22 +171,26 @@
 									{m.albums_link_revoke_message()}
 								</span>
 								<!-- svelte-ignore a11y_autofocus -->
-								<button type="button" autofocus onclick={() => (revoking = null)}
+								<button type="button" class="btn sm" autofocus onclick={() => (revoking = null)}
 									>{m.dialog_cancel()}</button
 								>
-								<button type="button" class="danger solid" disabled={busy} onclick={revoke}>
+								<button type="button" class="btn sm danger" disabled={busy} onclick={revoke}>
 									{m.albums_link_revoke()}
 								</button>
 							</div>
 						{:else}
 							<div class="buttons">
-								<button type="button" onclick={() => copy(link)}>
+								<button type="button" class="btn sm" onclick={() => copy(link)}>
 									<Icon name="copy" size={16} />{m.albums_link_copy()}
 								</button>
-								<button type="button" onclick={() => edit(link)}>
+								<button type="button" class="btn sm" onclick={() => edit(link)}>
 									<Icon name="edit" size={16} />{m.albums_link_edit()}
 								</button>
-								<button type="button" class="danger" onclick={() => (revoking = link.token)}>
+								<button
+									type="button"
+									class="btn sm ghost revoke"
+									onclick={() => (revoking = link.token)}
+								>
 									<Icon name="delete" size={16} />{m.albums_link_revoke()}
 								</button>
 							</div>
@@ -207,7 +212,7 @@
 				oncancel={() => (editing = null)}
 			/>
 		{:else}
-			<button type="button" class="new" onclick={() => edit(null)}>
+			<button type="button" class="btn new" onclick={() => edit(null)}>
 				<Icon name="add" size={18} />{m.albums_link_new()}
 			</button>
 		{/if}
@@ -226,6 +231,11 @@
 		font-size: var(--font-size-sm);
 	}
 
+	/* Inside a dialog: no page gutter around the placeholder. */
+	.loading {
+		--page-gutter: 0px;
+	}
+
 	.links {
 		display: grid;
 		gap: var(--space-2);
@@ -236,7 +246,7 @@
 
 	.link:not(:has(form)) {
 		display: grid;
-		gap: var(--space-1);
+		gap: var(--space-2);
 		padding: var(--space-3);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
@@ -246,27 +256,33 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
+		color: var(--color-text-muted);
 	}
 
 	.url {
 		flex: 1;
 		min-width: 0;
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		min-height: var(--control-h-sm);
 		background: var(--color-surface);
+		color: var(--color-text);
 		font-family: ui-monospace, monospace;
-		font-size: var(--font-size-sm);
+		font-size: var(--font-size-xs);
 	}
 
-	.status {
-		padding: 2px var(--space-2);
+	.pill {
+		display: inline-flex;
+		align-items: center;
+		min-height: 24px;
+		padding: 0 var(--space-2);
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--color-danger) 18%, transparent);
-		color: var(--color-danger);
 		font-size: var(--font-size-xs);
 		font-weight: 600;
 		white-space: nowrap;
+	}
+
+	.pill.bad {
+		background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+		color: var(--color-danger);
 	}
 
 	.summary {
@@ -281,38 +297,13 @@
 		gap: var(--space-2);
 	}
 
-	.buttons button,
-	.new {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-size: var(--font-size-sm);
-		cursor: pointer;
-	}
-
-	.buttons button:hover,
-	.new:hover {
-		background: var(--color-surface);
-	}
-
-	.buttons .danger {
+	.revoke {
 		color: var(--color-danger);
-	}
-
-	.buttons .danger.solid {
-		border-color: var(--color-danger);
-		background: var(--color-danger);
-		color: #fff;
-		font-weight: 600;
 	}
 
 	.confirm {
 		align-items: center;
-		padding: var(--space-2);
+		padding: var(--space-2) var(--space-3);
 		border-radius: var(--radius-sm);
 		background: color-mix(in srgb, var(--color-danger) 10%, transparent);
 	}

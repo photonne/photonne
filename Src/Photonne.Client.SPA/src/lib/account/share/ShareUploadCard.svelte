@@ -49,18 +49,21 @@
 		<p>{m.share_upload_lead()}</p>
 	</header>
 
-	<label class="field">
-		<span>{m.share_upload_name()}</span>
-		<input autocomplete="name" maxlength="80" bind:value={name} />
-		<small>{m.share_upload_name_hint()}</small>
-	</label>
+	<div class="row">
+		<label class="field name">
+			<span>{m.share_upload_name()}</span>
+			<input autocomplete="name" maxlength="80" bind:value={name} />
+			<small class="hint">{m.share_upload_name_hint()}</small>
+		</label>
 
-	<DropZone
-		onfiles={add}
-		folders={false}
-		title={m.share_upload_drop()}
-		hint={m.share_upload_drop_hint()}
-	/>
+		<DropZone
+			compact
+			onfiles={add}
+			folders={false}
+			title={m.share_upload_drop()}
+			hint={m.share_upload_drop_hint()}
+		/>
+	</div>
 
 	{#if !queue.active && counts.done > 0}
 		<p class="thanks" role="status">{m.share_upload_thanks({ count: counts.done })}</p>
@@ -68,7 +71,9 @@
 	{#if counts.failed > 0 && !queue.active}
 		<div class="failed" role="alert">
 			<span>{m.upload_count_failed({ count: counts.failed })}</span>
-			<button type="button" onclick={() => queue.retryFailed()}>{m.upload_retry_failed()}</button>
+			<button type="button" class="btn sm" onclick={() => queue.retryFailed()}
+				>{m.upload_retry_failed()}</button
+			>
 		</div>
 	{/if}
 	{#if counts.total > 0}
@@ -78,9 +83,10 @@
 
 <style>
 	.card {
+		container-type: inline-size;
 		display: grid;
 		gap: var(--space-4);
-		padding: var(--space-6);
+		padding: var(--space-4) var(--space-6) var(--space-6);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		background: var(--color-surface-raised);
@@ -89,35 +95,43 @@
 	h2 {
 		margin: 0;
 		font-size: var(--font-size-lg);
+		font-weight: 600;
 	}
 
 	header p {
 		margin: var(--space-1) 0 0;
 		color: var(--color-text-muted);
-	}
-
-	.field {
-		display: grid;
-		gap: var(--space-1);
-		max-width: 360px;
 		font-size: var(--font-size-sm);
-		color: var(--color-text-muted);
 	}
 
-	input {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-		color: var(--color-text);
-		font-size: var(--font-size-md);
+	/* The name beside the drop zone: one row on a wide window. */
+	.row {
+		display: grid;
+		grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+		align-items: start;
+		gap: var(--space-4);
+	}
+
+	.hint {
+		font-size: var(--font-size-xs);
+	}
+
+	@container (max-width: 820px) {
+		.row {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.name {
+			max-width: 360px;
+		}
 	}
 
 	.thanks {
 		margin: 0;
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-md);
-		background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+		background: color-mix(in srgb, var(--color-success) 12%, transparent);
+		color: var(--color-text);
 		font-weight: 600;
 	}
 
@@ -126,14 +140,7 @@
 		align-items: center;
 		gap: var(--space-3);
 		color: var(--color-danger);
-	}
-
-	.failed button {
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-raised);
-		color: var(--color-text);
-		cursor: pointer;
+		font-size: var(--font-size-sm);
+		font-weight: 600;
 	}
 </style>

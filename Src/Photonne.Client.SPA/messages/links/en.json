@@ -71,5 +71,6 @@
 	"links_format_original_extension": "Original (.{extension})",
 	"links_format_original_hint": "The file as it is, at full quality. For editing.",
 	"links_format_jpeg": "JPEG",
-	"links_format_jpeg_hint": "Opens anywhere. For sending or posting."
+	"links_format_jpeg_hint": "Opens anywhere. For sending or posting.",
+	"links_empty_action": "Create a link"
 }
