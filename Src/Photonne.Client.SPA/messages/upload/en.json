@@ -37,71 +37,99 @@
 	"upload_add_to_album": "Add to an album",
 	"upload_batch_done": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo or video uploaded",
-				"countPlural=other": "{count} photos and videos uploaded"
+				"countPlural=one": "{countFormatted} photo or video uploaded",
+				"countPlural=other": "{countFormatted} photos and videos uploaded"
 			}
 		}
 	],
 	"upload_ignored": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} file skipped: not a photo or video",
-				"countPlural=other": "{count} files skipped: not photos or videos"
+				"countPlural=one": "{countFormatted} file skipped: not a photo or video",
+				"countPlural=other": "{countFormatted} files skipped: not photos or videos"
 			}
 		}
 	],
 	"upload_count_pending": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} pending",
-				"countPlural=other": "{count} pending"
+				"countPlural=one": "{countFormatted} pending",
+				"countPlural=other": "{countFormatted} pending"
 			}
 		}
 	],
 	"upload_count_done": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} uploaded",
-				"countPlural=other": "{count} uploaded"
+				"countPlural=one": "{countFormatted} uploaded",
+				"countPlural=other": "{countFormatted} uploaded"
 			}
 		}
 	],
 	"upload_count_duplicate": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} already there",
-				"countPlural=other": "{count} already there"
+				"countPlural=one": "{countFormatted} already there",
+				"countPlural=other": "{countFormatted} already there"
 			}
 		}
 	],
 	"upload_count_failed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} failed",
-				"countPlural=other": "{count} failed"
+				"countPlural=one": "{countFormatted} failed",
+				"countPlural=other": "{countFormatted} failed"
 			}
 		}
 	],
 	"upload_count_skipped": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} too large",
-				"countPlural=other": "{count} too large"
+				"countPlural=one": "{countFormatted} too large",
+				"countPlural=other": "{countFormatted} too large"
 			}
 		}
 	]

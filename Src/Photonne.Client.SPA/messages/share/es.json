@@ -15,11 +15,15 @@
 	"share_not_found_body": "Puede que lo hayan revocado o que la dirección no esté completa.",
 	"share_items": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto o vídeo",
-				"countPlural=other": "{count} fotos y vídeos"
+				"countPlural=one": "{countFormatted} foto o vídeo",
+				"countPlural=other": "{countFormatted} fotos y vídeos"
 			}
 		}
 	],
@@ -27,11 +31,15 @@
 	"share_download_all": "Descargar todo",
 	"share_downloading": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Descargando {count} archivo…",
-				"countPlural=other": "Descargando {count} archivos…"
+				"countPlural=one": "Descargando {countFormatted} archivo…",
+				"countPlural=other": "Descargando {countFormatted} archivos…"
 			}
 		}
 	],
@@ -47,11 +55,15 @@
 	"share_upload_duplicate": "Ya estaba en el álbum",
 	"share_upload_thanks": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "¡Gracias! Tu archivo se ha añadido al álbum.",
-				"countPlural=other": "¡Gracias! Se han añadido {count} archivos al álbum."
+				"countPlural=other": "¡Gracias! Se han añadido {countFormatted} archivos al álbum."
 			}
 		}
 	]

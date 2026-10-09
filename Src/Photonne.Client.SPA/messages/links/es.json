@@ -6,11 +6,15 @@
 	"links_search": "Buscar por nombre",
 	"links_totals_active": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} enlace activo",
-				"countPlural=other": "{count} enlaces activos"
+				"countPlural=one": "{countFormatted} enlace activo",
+				"countPlural=other": "{countFormatted} enlaces activos"
 			}
 		}
 	],
@@ -29,27 +33,40 @@
 	"links_share_action": "Compartir con un enlace",
 	"links_share_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Compartir {count} foto",
-				"countPlural=other": "Compartir {count} fotos"
+				"countPlural=one": "Compartir {countFormatted} foto",
+				"countPlural=other": "Compartir {countFormatted} fotos"
 			}
 		}
 	],
 	"links_share_intro": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "Se crea un álbum con la foto y un enlace público para verlo sin cuenta.",
-				"countPlural=other": "Se crea un álbum con las {count} fotos y un enlace público para verlo sin cuenta."
+				"countPlural=other": "Se crea un álbum con las {countFormatted} fotos y un enlace público para verlo sin cuenta."
 			}
 		}
 	],
 	"links_share_default_name": [
 		{
-			"declarations": ["input count", "input date", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input date",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "Compartida el {date}",
@@ -68,11 +85,16 @@
 	"links_format_scope_all": "Las {total} fotos son RAW o HEIC.",
 	"links_format_scope_some": [
 		{
-			"declarations": ["input count", "input total", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input total",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} de las {total} fotos es RAW o HEIC; el resto se descarga tal cual.",
-				"countPlural=other": "{count} de las {total} fotos son RAW o HEIC; el resto se descarga tal cual."
+				"countPlural=one": "{countFormatted} de las {total} fotos es RAW o HEIC; el resto se descarga tal cual.",
+				"countPlural=other": "{countFormatted} de las {total} fotos son RAW o HEIC; el resto se descarga tal cual."
 			}
 		}
 	],

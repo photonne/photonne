@@ -10,61 +10,85 @@
 	"action_failed": "No se ha podido completar la acción.",
 	"action_favorited": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} marcada como favorita",
-				"countPlural=other": "{count} marcadas como favoritas"
+				"countPlural=one": "{countFormatted} marcada como favorita",
+				"countPlural=other": "{countFormatted} marcadas como favoritas"
 			}
 		}
 	],
 	"action_unfavorited": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} quitada de favoritas",
-				"countPlural=other": "{count} quitadas de favoritas"
+				"countPlural=one": "{countFormatted} quitada de favoritas",
+				"countPlural=other": "{countFormatted} quitadas de favoritas"
 			}
 		}
 	],
 	"action_archived": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} archivada",
-				"countPlural=other": "{count} archivadas"
+				"countPlural=one": "{countFormatted} archivada",
+				"countPlural=other": "{countFormatted} archivadas"
 			}
 		}
 	],
 	"action_trashed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} movida a la papelera",
-				"countPlural=other": "{count} movidas a la papelera"
+				"countPlural=one": "{countFormatted} movida a la papelera",
+				"countPlural=other": "{countFormatted} movidas a la papelera"
 			}
 		}
 	],
 	"action_added_to_album": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} añadida a «{album}»",
-				"countPlural=other": "{count} añadidas a «{album}»"
+				"countPlural=one": "{countFormatted} añadida a «{album}»",
+				"countPlural=other": "{countFormatted} añadidas a «{album}»"
 			}
 		}
 	],
 	"action_moved": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} movida a «{folder}»",
-				"countPlural=other": "{count} movidas a «{folder}»"
+				"countPlural=one": "{countFormatted} movida a «{folder}»",
+				"countPlural=other": "{countFormatted} movidas a «{folder}»"
 			}
 		}
 	],
@@ -77,11 +101,15 @@
 	"album_picker_empty": "No hay álbumes que coincidan.",
 	"album_picker_items": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} elemento",
-				"countPlural=other": "{count} elementos"
+				"countPlural=one": "{countFormatted} elemento",
+				"countPlural=other": "{countFormatted} elementos"
 			}
 		}
 	],

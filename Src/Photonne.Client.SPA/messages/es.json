@@ -40,11 +40,15 @@
 	"selection_clear": "Quitar selección",
 	"selection_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} seleccionado",
-				"countPlural=other": "{count} seleccionados"
+				"countPlural=one": "{countFormatted} seleccionado",
+				"countPlural=other": "{countFormatted} seleccionados"
 			}
 		}
 	],
@@ -106,11 +110,15 @@
 	"admin_only": "Esta sección es solo para administradores.",
 	"nav_notifications_unread": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Notificaciones: {count} sin leer",
-				"countPlural=other": "Notificaciones: {count} sin leer"
+				"countPlural=one": "Notificaciones: {countFormatted} sin leer",
+				"countPlural=other": "Notificaciones: {countFormatted} sin leer"
 			}
 		}
 	]

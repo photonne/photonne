@@ -77,3 +77,8 @@ export function fileStamp(now = Date.now()) {
 	const pad = (n: number) => String(n).padStart(2, '0');
 	return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
+
+/** "12.345" in Spanish, "12,345" in English: a count with the language's grouping. */
+export function formatCount(value: number) {
+	return new Intl.NumberFormat(getLocale()).format(value);
+}

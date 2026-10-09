@@ -3,11 +3,15 @@
 	"organize_lead": "What the automatic backup uploads waits here until you file it in a folder.",
 	"organize_pending": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} pending",
-				"countPlural=other": "{count} pending"
+				"countPlural=one": "{countFormatted} pending",
+				"countPlural=other": "{countFormatted} pending"
 			}
 		}
 	],
@@ -26,11 +30,15 @@
 	"organize_kind_month": "Month",
 	"organize_photo_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo",
-				"countPlural=other": "{count} photos"
+				"countPlural=one": "{countFormatted} photo",
+				"countPlural=other": "{countFormatted} photos"
 			}
 		}
 	],
@@ -43,33 +51,45 @@
 	"organize_cancel": "Cancel",
 	"organize_moved": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} moved to “{folder}”",
-				"countPlural=other": "{count} moved to “{folder}”"
+				"countPlural=one": "{countFormatted} moved to “{folder}”",
+				"countPlural=other": "{countFormatted} moved to “{folder}”"
 			}
 		}
 	],
 	"organize_set_aside_action": "Set aside from the inbox",
 	"organize_set_aside": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} set aside",
-				"countPlural=other": "{count} set aside"
+				"countPlural=one": "{countFormatted} set aside",
+				"countPlural=other": "{countFormatted} set aside"
 			}
 		}
 	],
 	"organize_put_back_action": "Put back in the inbox",
 	"organize_put_back": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} put back in the inbox",
-				"countPlural=other": "{count} put back in the inbox"
+				"countPlural=one": "{countFormatted} put back in the inbox",
+				"countPlural=other": "{countFormatted} put back in the inbox"
 			}
 		}
 	],
@@ -100,11 +120,15 @@
 	"organize_rule_pick": "Choose…",
 	"organize_rule_picked": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} chosen",
-				"countPlural=other": "{count} chosen"
+				"countPlural=one": "{countFormatted} chosen",
+				"countPlural=other": "{countFormatted} chosen"
 			}
 		}
 	],
@@ -126,11 +150,15 @@
 	"organize_rule_preview_empty": "Complete a condition to see what matches.",
 	"organize_rule_matches": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} pending photo matches",
-				"countPlural=other": "{count} pending photos match"
+				"countPlural=one": "{countFormatted} pending photo matches",
+				"countPlural=other": "{countFormatted} pending photos match"
 			}
 		}
 	],

@@ -13,7 +13,7 @@
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
-	import { formatBytes } from '#lib/format.js';
+	import { formatBytes, formatCount } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
 	import { ListStore } from '#lib/timeline/list-store.svelte.js';
@@ -170,7 +170,7 @@
 									onclick={() => (who = person.name)}
 								>
 									{person.name || m.admin_strash_unknown()}
-									<span class="num">{person.count}</span>
+									<span class="num">{formatCount(person.count)}</span>
 								</button>
 							{/each}
 						</div>

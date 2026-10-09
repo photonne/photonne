@@ -11,11 +11,15 @@
 	"utilities_duplicates_description": "Exact copies of the same photo in different folders.",
 	"utilities_duplicates_figure": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} group · {size} to free",
-				"countPlural=other": "{count} groups · {size} to free"
+				"countPlural=one": "{countFormatted} group · {size} to free",
+				"countPlural=other": "{countFormatted} groups · {size} to free"
 			}
 		}
 	],
@@ -23,21 +27,29 @@
 	"utilities_duplicates_empty": "There are no exact copies in your library.",
 	"utilities_duplicates_summary": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} group · up to {size} to free",
-				"countPlural=other": "{count} groups · up to {size} to free"
+				"countPlural=one": "{countFormatted} group · up to {size} to free",
+				"countPlural=other": "{countFormatted} groups · up to {size} to free"
 			}
 		}
 	],
 	"utilities_marked_summary": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} marked ({size})",
-				"countPlural=other": "{count} marked ({size})"
+				"countPlural=one": "{countFormatted} marked ({size})",
+				"countPlural=other": "{countFormatted} marked ({size})"
 			}
 		}
 	],
@@ -46,11 +58,15 @@
 	"utilities_unmark_all": "Unmark all",
 	"utilities_trash_marked": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Move {count} to the trash",
-				"countPlural=other": "Move {count} to the trash"
+				"countPlural=one": "Move {countFormatted} to the trash",
+				"countPlural=other": "Move {countFormatted} to the trash"
 			}
 		}
 	],
@@ -58,11 +74,15 @@
 	"utilities_group_label": "Group {index}",
 	"utilities_group_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} copy of {size}",
-				"countPlural=other": "{count} copies of {size} each"
+				"countPlural=one": "{countFormatted} copy of {size}",
+				"countPlural=other": "{countFormatted} copies of {size} each"
 			}
 		}
 	],
@@ -78,21 +98,29 @@
 	"utilities_confirm_trash_title": "Move the copies to the trash?",
 	"utilities_confirm_trash_body": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} copy ({size}) will move to the trash. You can recover it from there.",
-				"countPlural=other": "{count} copies ({size}) will move to the trash. You can recover them from there."
+				"countPlural=one": "{countFormatted} copy ({size}) will move to the trash. You can recover it from there.",
+				"countPlural=other": "{countFormatted} copies ({size}) will move to the trash. You can recover them from there."
 			}
 		}
 	],
 	"utilities_trashed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} moved to the trash",
-				"countPlural=other": "{count} moved to the trash"
+				"countPlural=one": "{countFormatted} moved to the trash",
+				"countPlural=other": "{countFormatted} moved to the trash"
 			}
 		}
 	],
@@ -100,11 +128,15 @@
 	"utilities_large_files_description": "What takes the most space in your library.",
 	"utilities_large_files_figure": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} large file · {size}",
-				"countPlural=other": "{count} large files · {size}"
+				"countPlural=one": "{countFormatted} large file · {size}",
+				"countPlural=other": "{countFormatted} large files · {size}"
 			}
 		}
 	],
@@ -114,11 +146,15 @@
 	"utilities_show": "Show",
 	"utilities_trash_selected": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Move {count} to the trash",
-				"countPlural=other": "Move {count} to the trash"
+				"countPlural=one": "Move {countFormatted} to the trash",
+				"countPlural=other": "Move {countFormatted} to the trash"
 			}
 		}
 	],
@@ -142,41 +178,57 @@
 	"utilities_filter_folders": "Filter folders",
 	"utilities_folder_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} folder",
-				"countPlural=other": "{count} folders"
+				"countPlural=one": "{countFormatted} folder",
+				"countPlural=other": "{countFormatted} folders"
 			}
 		}
 	],
 	"utilities_photos": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} file",
-				"countPlural=other": "{count} files"
+				"countPlural=one": "{countFormatted} file",
+				"countPlural=other": "{countFormatted} files"
 			}
 		}
 	],
 	"utilities_subfolders": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} subfolder",
-				"countPlural=other": "{count} subfolders"
+				"countPlural=one": "{countFormatted} subfolder",
+				"countPlural=other": "{countFormatted} subfolders"
 			}
 		}
 	],
 	"utilities_here": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} here",
-				"countPlural=other": "{count} here"
+				"countPlural=one": "{countFormatted} here",
+				"countPlural=other": "{countFormatted} here"
 			}
 		}
 	],
@@ -188,11 +240,15 @@
 	"utilities_unsupported_description": "Files in your folders that aren't photos or videos.",
 	"utilities_unsupported_figure": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} file",
-				"countPlural=other": "{count} files"
+				"countPlural=one": "{countFormatted} file",
+				"countPlural=other": "{countFormatted} files"
 			}
 		}
 	],

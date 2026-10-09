@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { getOrganizeInboxCountOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Tabs from '#lib/components/ui/Tabs.svelte';
-	import { monthTitle } from '#lib/format.js';
+	import { monthTitle, formatCount } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -45,7 +45,7 @@
 	tabs={tabs.map((tab) => ({
 		href: appHref(tab.path),
 		// The count reads as part of the tab's name ("Bandeja 32").
-		label: tab.count !== undefined ? `${tab.label} ${tab.count}` : tab.label,
+		label: tab.count !== undefined ? `${tab.label} ${formatCount(tab.count)}` : tab.label,
 		current: page.url.pathname === appHref(tab.path)
 	}))}
 />

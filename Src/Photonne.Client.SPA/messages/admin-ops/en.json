@@ -24,21 +24,29 @@
 	"ops_dup_copies": "Redundant copies",
 	"ops_dup_delete": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Delete {count} file ({size})",
-				"countPlural=other": "Delete {count} files ({size})"
+				"countPlural=one": "Delete {countFormatted} file ({size})",
+				"countPlural=other": "Delete {countFormatted} files ({size})"
 			}
 		}
 	],
 	"ops_dup_delete_confirm": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Delete {count} file from disk?",
-				"countPlural=other": "Delete {count} files from disk?"
+				"countPlural=one": "Delete {countFormatted} file from disk?",
+				"countPlural=other": "Delete {countFormatted} files from disk?"
 			}
 		}
 	],
@@ -46,21 +54,29 @@
 	"ops_dup_delete_short": "Delete",
 	"ops_dup_deleted": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} file deleted.",
-				"countPlural=other": "{count} files deleted."
+				"countPlural=one": "{countFormatted} file deleted.",
+				"countPlural=other": "{countFormatted} files deleted."
 			}
 		}
 	],
 	"ops_dup_deleted_errors": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} file deleted; {errors} couldn’t be deleted.",
-				"countPlural=other": "{count} files deleted; {errors} couldn’t be deleted."
+				"countPlural=one": "{countFormatted} file deleted; {errors} couldn’t be deleted.",
+				"countPlural=other": "{countFormatted} files deleted; {errors} couldn’t be deleted."
 			}
 		}
 	],
@@ -69,11 +85,15 @@
 	"ops_dup_group_plan": "{remove} to delete · {keep} to keep",
 	"ops_dup_group_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} identical file",
-				"countPlural=other": "{count} identical files"
+				"countPlural=one": "{countFormatted} identical file",
+				"countPlural=other": "{countFormatted} identical files"
 			}
 		}
 	],
@@ -106,21 +126,29 @@
 	"ops_failures_action_failed": "Couldn't apply the action.",
 	"ops_failures_also_retrying": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} retrying on its own",
-				"countPlural=other": "{count} retrying on their own"
+				"countPlural=one": "{countFormatted} retrying on its own",
+				"countPlural=other": "{countFormatted} retrying on their own"
 			}
 		}
 	],
 	"ops_failures_also_suppressed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} dismissed",
-				"countPlural=other": "{count} dismissed"
+				"countPlural=one": "{countFormatted} dismissed",
+				"countPlural=other": "{countFormatted} dismissed"
 			}
 		}
 	],
@@ -133,32 +161,44 @@
 	"ops_failures_intro": "Metadata, thumbnail and analysis tasks that failed, for every user, with their cause.",
 	"ops_failures_retried": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} task sent to the queue.",
-				"countPlural=other": "{count} tasks sent to the queue."
+				"countPlural=one": "{countFormatted} task sent to the queue.",
+				"countPlural=other": "{countFormatted} tasks sent to the queue."
 			}
 		}
 	],
 	"ops_failures_retry": "Retry",
 	"ops_failures_retry_all": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Retry {count} task",
-				"countPlural=other": "Retry {count} tasks"
+				"countPlural=one": "Retry {countFormatted} task",
+				"countPlural=other": "Retry {countFormatted} tasks"
 			}
 		}
 	],
 	"ops_failures_retry_all_text": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "The task in the current filter is queued again. If the file itself is the cause, it will fail the same way.",
-				"countPlural=other": "The {count} tasks in the current filter are queued again. Those failing because of the file itself will fail the same way."
+				"countPlural=other": "The {countFormatted} tasks in the current filter are queued again. Those failing because of the file itself will fail the same way."
 			}
 		}
 	],
@@ -167,22 +207,30 @@
 	"ops_failures_suppress_item": "Dismiss {name}",
 	"ops_failures_suppressed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} task dismissed: it won’t be retried.",
-				"countPlural=other": "{count} tasks dismissed: they won’t be retried."
+				"countPlural=one": "{countFormatted} task dismissed: it won’t be retried.",
+				"countPlural=other": "{countFormatted} tasks dismissed: they won’t be retried."
 			}
 		}
 	],
 	"ops_failures_title": "Assets with problems",
 	"ops_failures_total": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} task with problems",
-				"countPlural=other": "{count} tasks with problems"
+				"countPlural=one": "{countFormatted} task with problems",
+				"countPlural=other": "{countFormatted} tasks with problems"
 			}
 		}
 	],
@@ -216,11 +264,15 @@
 	"ops_mt_coverage_desc": "Walks the disk the way the indexer does and checks every file is indexed.",
 	"ops_mt_coverage_offline": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} external library was offline and wasn’t checked.",
-				"countPlural=other": "{count} external libraries were offline and weren’t checked."
+				"countPlural=one": "{countFormatted} external library was offline and wasn’t checked.",
+				"countPlural=other": "{countFormatted} external libraries were offline and weren’t checked."
 			}
 		}
 	],
@@ -230,11 +282,15 @@
 	"ops_mt_coverage_truncated": "The list is cut short: there are more.",
 	"ops_mt_coverage_unindexed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} not indexed",
-				"countPlural=other": "{count} not indexed"
+				"countPlural=one": "{countFormatted} not indexed",
+				"countPlural=other": "{countFormatted} not indexed"
 			}
 		}
 	],
@@ -262,11 +318,15 @@
 	"ops_mt_geocode_no_dataset": "This installation has no city dataset: the task won’t resolve any place.",
 	"ops_mt_geocode_pending": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo with coordinates but no place · {cities} known cities",
-				"countPlural=other": "{count} photos with coordinates but no place · {cities} known cities"
+				"countPlural=one": "{countFormatted} photo with coordinates but no place · {cities} known cities",
+				"countPlural=other": "{countFormatted} photos with coordinates but no place · {cities} known cities"
 			}
 		}
 	],
@@ -356,11 +416,15 @@
 	"ops_notif_purge_text": "Notifications past the retention are deleted for every user. This can’t be undone.",
 	"ops_notif_purged": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} notification deleted.",
-				"countPlural=other": "{count} notifications deleted."
+				"countPlural=one": "{countFormatted} notification deleted.",
+				"countPlural=other": "{countFormatted} notifications deleted."
 			}
 		}
 	],
@@ -370,11 +434,15 @@
 	"ops_open": "Open",
 	"ops_perf_cores": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "It has {count} CPU core.",
-				"countPlural=other": "It has {count} CPU cores."
+				"countPlural=one": "It has {countFormatted} CPU core.",
+				"countPlural=other": "It has {countFormatted} CPU cores."
 			}
 		}
 	],
@@ -387,21 +455,29 @@
 	"ops_queue_all_done": "All processed.",
 	"ops_queue_emptied": [
 		{
-			"declarations": ["input deleted", "local deletedPlural = deleted: plural"],
+			"declarations": [
+				"input deleted",
+				"local deletedPlural = deleted: plural",
+				"local deletedFormatted = deleted: number"
+			],
 			"selectors": ["deletedPlural"],
 			"match": {
-				"deletedPlural=one": "Queue emptied: {deleted} job removed.",
-				"deletedPlural=other": "Queue emptied: {deleted} jobs removed."
+				"deletedPlural=one": "Queue emptied: {deletedFormatted} job removed.",
+				"deletedPlural=other": "Queue emptied: {deletedFormatted} jobs removed."
 			}
 		}
 	],
 	"ops_queue_emptied_busy": [
 		{
-			"declarations": ["input deleted", "local deletedPlural = deleted: plural"],
+			"declarations": [
+				"input deleted",
+				"local deletedPlural = deleted: plural",
+				"local deletedFormatted = deleted: number"
+			],
 			"selectors": ["deletedPlural"],
 			"match": {
-				"deletedPlural=one": "Queue emptied: {deleted} job removed; {busy} running will finish on their own.",
-				"deletedPlural=other": "Queue emptied: {deleted} jobs removed; {busy} running will finish on their own."
+				"deletedPlural=one": "Queue emptied: {deletedFormatted} job removed; {busy} running will finish on their own.",
+				"deletedPlural=other": "Queue emptied: {deletedFormatted} jobs removed; {busy} running will finish on their own."
 			}
 		}
 	],
@@ -412,11 +488,15 @@
 	"ops_queue_failed": "Failed",
 	"ops_queue_failed_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} failed",
-				"countPlural=other": "{count} failed"
+				"countPlural=one": "{countFormatted} failed",
+				"countPlural=other": "{countFormatted} failed"
 			}
 		}
 	],
@@ -424,11 +504,15 @@
 	"ops_queue_in_queue": "Queued",
 	"ops_queue_in_queue_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} queued",
-				"countPlural=other": "{count} queued"
+				"countPlural=one": "{countFormatted} queued",
+				"countPlural=other": "{countFormatted} queued"
 			}
 		}
 	],
@@ -436,11 +520,15 @@
 	"ops_queue_processing": "Processing",
 	"ops_queue_processing_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} processing",
-				"countPlural=other": "{count} processing"
+				"countPlural=one": "{countFormatted} processing",
+				"countPlural=other": "{countFormatted} processing"
 			}
 		}
 	],
@@ -448,22 +536,30 @@
 	"ops_queue_retrying": "Retrying",
 	"ops_queue_retrying_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} retrying",
-				"countPlural=other": "{count} retrying"
+				"countPlural=one": "{countFormatted} retrying",
+				"countPlural=other": "{countFormatted} retrying"
 			}
 		}
 	],
 	"ops_queue_start": "Queue pending",
 	"ops_queue_unprocessed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} unprocessed",
-				"countPlural=other": "{count} unprocessed"
+				"countPlural=one": "{countFormatted} unprocessed",
+				"countPlural=other": "{countFormatted} unprocessed"
 			}
 		}
 	],
@@ -476,11 +572,15 @@
 	"ops_select_item": "Select {name}",
 	"ops_selected": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} selected",
-				"countPlural=other": "{count} selected"
+				"countPlural=one": "{countFormatted} selected",
+				"countPlural=other": "{countFormatted} selected"
 			}
 		}
 	],
@@ -586,11 +686,15 @@
 	"ops_set_open_maintenance": "Process pending",
 	"ops_set_pending": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} unsaved change",
-				"countPlural=other": "{count} unsaved changes"
+				"countPlural=one": "{countFormatted} unsaved change",
+				"countPlural=other": "{countFormatted} unsaved changes"
 			}
 		}
 	],
@@ -610,11 +714,15 @@
 	"ops_set_save": "Save",
 	"ops_set_save_failed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} setting couldn't be saved.",
-				"countPlural=other": "{count} settings couldn't be saved."
+				"countPlural=one": "{countFormatted} setting couldn't be saved.",
+				"countPlural=other": "{countFormatted} settings couldn't be saved."
 			}
 		}
 	],
@@ -678,11 +786,15 @@
 	"ops_tasks_remaining": "~{time} left",
 	"ops_tasks_running_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} running",
-				"countPlural=other": "{count} running"
+				"countPlural=one": "{countFormatted} running",
+				"countPlural=other": "{countFormatted} running"
 			}
 		}
 	],
@@ -690,21 +802,29 @@
 	"ops_trash_bytes": "Space",
 	"ops_trash_cleaned": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} expired item deleted.",
-				"countPlural=other": "{count} expired items deleted."
+				"countPlural=one": "{countFormatted} expired item deleted.",
+				"countPlural=other": "{countFormatted} expired items deleted."
 			}
 		}
 	],
 	"ops_trash_cleanup": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Delete {count} expired",
-				"countPlural=other": "Delete {count} expired"
+				"countPlural=one": "Delete {countFormatted} expired",
+				"countPlural=other": "Delete {countFormatted} expired"
 			}
 		}
 	],

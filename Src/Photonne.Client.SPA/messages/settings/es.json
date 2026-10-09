@@ -35,21 +35,29 @@
 	"settings_rename_body": "Pasarás de «{from}» a «{to}». Tu carpeta personal se renombra con él:",
 	"settings_rename_assets": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} archivo se actualizará",
-				"countPlural=other": "{count} archivos se actualizarán"
+				"countPlural=one": "{countFormatted} archivo se actualizará",
+				"countPlural=other": "{countFormatted} archivos se actualizarán"
 			}
 		}
 	],
 	"settings_rename_folders": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} carpeta se actualizará",
-				"countPlural=other": "{count} carpetas se actualizarán"
+				"countPlural=one": "{countFormatted} carpeta se actualizará",
+				"countPlural=other": "{countFormatted} carpetas se actualizarán"
 			}
 		}
 	],
@@ -114,22 +122,30 @@
 	"settings_discovery_folders_lead": "Nadie ha compartido carpetas contigo todavía.",
 	"settings_discovery_hidden_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} oculta de tus fotos",
-				"countPlural=other": "{count} ocultas de tus fotos"
+				"countPlural=one": "{countFormatted} oculta de tus fotos",
+				"countPlural=other": "{countFormatted} ocultas de tus fotos"
 			}
 		}
 	],
 	"settings_discovery_empty": "Cuando alguien comparta una carpeta contigo, podrás elegir aquí si sus fotos se mezclan con las tuyas.",
 	"settings_discovery_items": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} elemento",
-				"countPlural=other": "{count} elementos"
+				"countPlural=one": "{countFormatted} elemento",
+				"countPlural=other": "{countFormatted} elementos"
 			}
 		}
 	],
@@ -142,21 +158,29 @@
 	"settings_analysis_summary": "Estado",
 	"settings_analysis_in_flight": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto procesándose",
-				"countPlural=other": "{count} fotos procesándose"
+				"countPlural=one": "{countFormatted} foto procesándose",
+				"countPlural=other": "{countFormatted} fotos procesándose"
 			}
 		}
 	],
 	"settings_analysis_failed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} con errores",
-				"countPlural=other": "{count} con errores"
+				"countPlural=one": "{countFormatted} con errores",
+				"countPlural=other": "{countFormatted} con errores"
 			}
 		}
 	],
@@ -172,22 +196,30 @@
 	"settings_analysis_retrying": "Reintentando…",
 	"settings_analysis_retried": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} tarea vuelve a la cola",
-				"countPlural=other": "{count} tareas vuelven a la cola"
+				"countPlural=one": "{countFormatted} tarea vuelve a la cola",
+				"countPlural=other": "{countFormatted} tareas vuelven a la cola"
 			}
 		}
 	],
 	"settings_analysis_retried_task": "{task} de «{name}» vuelve a la cola",
 	"settings_analysis_retried_assets": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Reintentando {count} foto",
-				"countPlural=other": "Reintentando {count} fotos"
+				"countPlural=one": "Reintentando {countFormatted} foto",
+				"countPlural=other": "Reintentando {countFormatted} fotos"
 			}
 		}
 	],

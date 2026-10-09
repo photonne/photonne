@@ -42,21 +42,29 @@
 	"search_results": "Resultados",
 	"search_result_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} resultado",
-				"countPlural=other": "{count} resultados"
+				"countPlural=one": "{countFormatted} resultado",
+				"countPlural=other": "{countFormatted} resultados"
 			}
 		}
 	],
 	"search_result_count_more": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Más de {count} resultado",
-				"countPlural=other": "Más de {count} resultados"
+				"countPlural=one": "Más de {countFormatted} resultado",
+				"countPlural=other": "Más de {countFormatted} resultados"
 			}
 		}
 	],

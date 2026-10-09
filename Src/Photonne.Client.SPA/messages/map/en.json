@@ -3,11 +3,15 @@
 	"map_label": "Photo map. Arrow keys move around, + and − zoom in or out.",
 	"map_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo with a location",
-				"countPlural=other": "{count} photos with a location"
+				"countPlural=one": "{countFormatted} photo with a location",
+				"countPlural=other": "{countFormatted} photos with a location"
 			}
 		}
 	],
@@ -18,21 +22,30 @@
 	"map_zoom_out": "Zoom out",
 	"map_cluster": [
 		{
-			"declarations": ["input count", "input range", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input range",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo, {range}",
-				"countPlural=other": "{count} photos, {range}"
+				"countPlural=one": "{countFormatted} photo, {range}",
+				"countPlural=other": "{countFormatted} photos, {range}"
 			}
 		}
 	],
 	"map_cluster_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo here",
-				"countPlural=other": "{count} photos here"
+				"countPlural=one": "{countFormatted} photo here",
+				"countPlural=other": "{countFormatted} photos here"
 			}
 		}
 	],

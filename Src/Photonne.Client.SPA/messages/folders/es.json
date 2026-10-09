@@ -7,11 +7,15 @@
 	"folders_delete": "Eliminar carpeta",
 	"folders_delete_message": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "«{name}», sus subcarpetas y {count} elemento irán a la papelera.",
-				"countPlural=other": "«{name}», sus subcarpetas y {count} elementos irán a la papelera."
+				"countPlural=one": "«{name}», sus subcarpetas y {countFormatted} elemento irán a la papelera.",
+				"countPlural=other": "«{name}», sus subcarpetas y {countFormatted} elementos irán a la papelera."
 			}
 		}
 	],
@@ -41,11 +45,15 @@
 	"folders_move_hint": "Se moverá con todo su contenido, también en el disco.",
 	"folders_moved_by_year": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} movida a «{folder}» por años ({years})",
-				"countPlural=other": "{count} movidas a «{folder}» por años ({years})"
+				"countPlural=one": "{countFormatted} movida a «{folder}» por años ({years})",
+				"countPlural=other": "{countFormatted} movidas a «{folder}» por años ({years})"
 			}
 		}
 	],
@@ -58,11 +66,15 @@
 	"folders_remove": "Quitar de la carpeta (sin borrar)",
 	"folders_removed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} quitada de la carpeta",
-				"countPlural=other": "{count} quitadas de la carpeta"
+				"countPlural=one": "{countFormatted} quitada de la carpeta",
+				"countPlural=other": "{countFormatted} quitadas de la carpeta"
 			}
 		}
 	],
@@ -75,11 +87,15 @@
 	"folders_tree": "Árbol de carpetas",
 	"folders_tree_item": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{name}, {count} elemento",
-				"countPlural=other": "{name}, {count} elementos"
+				"countPlural=one": "{name}, {countFormatted} elemento",
+				"countPlural=other": "{name}, {countFormatted} elementos"
 			}
 		}
 	],
@@ -104,51 +120,71 @@
 	"folders_bulk_cannot_delete": "Alguna de las carpetas seleccionadas no se puede eliminar",
 	"folders_bulk_move_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Mover {count} carpeta",
-				"countPlural=other": "Mover {count} carpetas"
+				"countPlural=one": "Mover {countFormatted} carpeta",
+				"countPlural=other": "Mover {countFormatted} carpetas"
 			}
 		}
 	],
 	"folders_bulk_moved": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} carpeta movida a «{parent}»",
-				"countPlural=other": "{count} carpetas movidas a «{parent}»"
+				"countPlural=one": "{countFormatted} carpeta movida a «{parent}»",
+				"countPlural=other": "{countFormatted} carpetas movidas a «{parent}»"
 			}
 		}
 	],
 	"folders_bulk_delete_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "¿Eliminar {count} carpeta?",
-				"countPlural=other": "¿Eliminar {count} carpetas?"
+				"countPlural=one": "¿Eliminar {countFormatted} carpeta?",
+				"countPlural=other": "¿Eliminar {countFormatted} carpetas?"
 			}
 		}
 	],
 	"folders_bulk_delete_message": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "La carpeta seleccionada, sus subcarpetas y sus fotos irán a la papelera.",
-				"countPlural=other": "Las {count} carpetas seleccionadas, sus subcarpetas y sus fotos irán a la papelera."
+				"countPlural=other": "Las {countFormatted} carpetas seleccionadas, sus subcarpetas y sus fotos irán a la papelera."
 			}
 		}
 	],
 	"folders_bulk_deleted": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} carpeta eliminada",
-				"countPlural=other": "{count} carpetas eliminadas"
+				"countPlural=one": "{countFormatted} carpeta eliminada",
+				"countPlural=other": "{countFormatted} carpetas eliminadas"
 			}
 		}
 	],

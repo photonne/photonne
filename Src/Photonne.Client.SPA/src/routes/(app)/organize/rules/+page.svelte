@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatCount } from '#lib/format.js';
 	import { createQuery, keepPreviousData, useQueryClient } from '@tanstack/svelte-query';
 	import {
 		apiErrorCode,
@@ -158,7 +159,7 @@
 				{#if preview.data.yearBreakdown.length}
 					<ul class="years" aria-label={m.organize_rule_years()}>
 						{#each [...preview.data.yearBreakdown].sort((a, b) => b.year - a.year) as year (year.year)}
-							<li>{year.year} <span>{year.count}</span></li>
+							<li>{year.year} <span>{formatCount(year.count)}</span></li>
 						{/each}
 					</ul>
 				{/if}

@@ -3,11 +3,15 @@
 	"map_label": "Mapa de fotos. Flechas para moverte, + y − para acercar o alejar.",
 	"map_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto con ubicación",
-				"countPlural=other": "{count} fotos con ubicación"
+				"countPlural=one": "{countFormatted} foto con ubicación",
+				"countPlural=other": "{countFormatted} fotos con ubicación"
 			}
 		}
 	],
@@ -18,21 +22,30 @@
 	"map_zoom_out": "Alejar",
 	"map_cluster": [
 		{
-			"declarations": ["input count", "input range", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input range",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto, {range}",
-				"countPlural=other": "{count} fotos, {range}"
+				"countPlural=one": "{countFormatted} foto, {range}",
+				"countPlural=other": "{countFormatted} fotos, {range}"
 			}
 		}
 	],
 	"map_cluster_title": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto aquí",
-				"countPlural=other": "{count} fotos aquí"
+				"countPlural=one": "{countFormatted} foto aquí",
+				"countPlural=other": "{countFormatted} fotos aquí"
 			}
 		}
 	],

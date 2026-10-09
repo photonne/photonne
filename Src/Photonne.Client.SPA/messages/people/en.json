@@ -8,31 +8,43 @@
 	"people_show_hidden": "Show hidden",
 	"people_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} person",
-				"countPlural=other": "{count} people"
+				"countPlural=one": "{countFormatted} person",
+				"countPlural=other": "{countFormatted} people"
 			}
 		}
 	],
 	"people_faces": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} face",
-				"countPlural=other": "{count} faces"
+				"countPlural=one": "{countFormatted} face",
+				"countPlural=other": "{countFormatted} faces"
 			}
 		}
 	],
 	"people_pending_badge": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} suggestion to review",
-				"countPlural=other": "{count} suggestions to review"
+				"countPlural=one": "{countFormatted} suggestion to review",
+				"countPlural=other": "{countFormatted} suggestions to review"
 			}
 		}
 	],
@@ -57,21 +69,29 @@
 	"people_renamed": "Name saved",
 	"people_hidden_toast": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} person hidden",
-				"countPlural=other": "{count} people hidden"
+				"countPlural=one": "{countFormatted} person hidden",
+				"countPlural=other": "{countFormatted} people hidden"
 			}
 		}
 	],
 	"people_unhidden_toast": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} person visible again",
-				"countPlural=other": "{count} people visible again"
+				"countPlural=one": "{countFormatted} person visible again",
+				"countPlural=other": "{countFormatted} people visible again"
 			}
 		}
 	],
@@ -81,11 +101,16 @@
 	"people_merge_confirm": "Merge",
 	"people_merged": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} person merged into {name}",
-				"countPlural=other": "{count} people merged into {name}"
+				"countPlural=one": "{countFormatted} person merged into {name}",
+				"countPlural=other": "{countFormatted} people merged into {name}"
 			}
 		}
 	],
@@ -104,21 +129,31 @@
 	"people_unlink_title": "Remove photos from {name}",
 	"people_unlink_body": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{name}'s faces in {count} photo will no longer be assigned. The photo isn't deleted.",
-				"countPlural=other": "{name}'s faces in {count} photos will no longer be assigned. The photos aren't deleted."
+				"countPlural=one": "{name}'s faces in {countFormatted} photo will no longer be assigned. The photo isn't deleted.",
+				"countPlural=other": "{name}'s faces in {countFormatted} photos will no longer be assigned. The photos aren't deleted."
 			}
 		}
 	],
 	"people_unlinked": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo removed from {name}",
-				"countPlural=other": "{count} photos removed from {name}"
+				"countPlural=one": "{countFormatted} photo removed from {name}",
+				"countPlural=other": "{countFormatted} photos removed from {name}"
 			}
 		}
 	],
@@ -135,31 +170,44 @@
 	"people_face_open": "Open the photo",
 	"people_faces_unassigned": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} face removed",
-				"countPlural=other": "{count} faces removed"
+				"countPlural=one": "{countFormatted} face removed",
+				"countPlural=other": "{countFormatted} faces removed"
 			}
 		}
 	],
 	"people_faces_moved": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} face moved to {name}",
-				"countPlural=other": "{count} faces moved to {name}"
+				"countPlural=one": "{countFormatted} face moved to {name}",
+				"countPlural=other": "{countFormatted} faces moved to {name}"
 			}
 		}
 	],
 	"people_faces_rejected": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} face discarded",
-				"countPlural=other": "{count} faces discarded"
+				"countPlural=one": "{countFormatted} face discarded",
+				"countPlural=other": "{countFormatted} faces discarded"
 			}
 		}
 	],
@@ -173,41 +221,59 @@
 	"people_suggestions_dismiss_all": "Dismiss all",
 	"people_suggestions_accept_all_body": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} suggested face will be assigned to {name}.",
-				"countPlural=other": "{count} suggested faces will be assigned to {name}."
+				"countPlural=one": "{countFormatted} suggested face will be assigned to {name}.",
+				"countPlural=other": "{countFormatted} suggested faces will be assigned to {name}."
 			}
 		}
 	],
 	"people_suggestions_dismiss_all_body": [
 		{
-			"declarations": ["input count", "input name", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"input name",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} suggestion for {name} will be dismissed. The face stays unassigned.",
-				"countPlural=other": "{count} suggestions for {name} will be dismissed. The faces stay unassigned."
+				"countPlural=one": "{countFormatted} suggestion for {name} will be dismissed. The face stays unassigned.",
+				"countPlural=other": "{countFormatted} suggestions for {name} will be dismissed. The faces stay unassigned."
 			}
 		}
 	],
 	"people_suggestions_accepted": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} face confirmed",
-				"countPlural=other": "{count} faces confirmed"
+				"countPlural=one": "{countFormatted} face confirmed",
+				"countPlural=other": "{countFormatted} faces confirmed"
 			}
 		}
 	],
 	"people_suggestions_dismissed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} suggestion dismissed",
-				"countPlural=other": "{count} suggestions dismissed"
+				"countPlural=one": "{countFormatted} suggestion dismissed",
+				"countPlural=other": "{countFormatted} suggestions dismissed"
 			}
 		}
 	],
@@ -222,11 +288,15 @@
 	"people_recognition_backfill": "Analyse pending photos",
 	"people_recognition_queued": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} photo queued for analysis",
-				"countPlural=other": "{count} photos queued for analysis"
+				"countPlural=one": "{countFormatted} photo queued for analysis",
+				"countPlural=other": "{countFormatted} photos queued for analysis"
 			}
 		}
 	],
@@ -237,11 +307,15 @@
 	"people_reclustered_none": "Faces regrouped; no new people",
 	"people_reclustered": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "Faces regrouped: {count} new person",
-				"countPlural=other": "Faces regrouped: {count} new people"
+				"countPlural=one": "Faces regrouped: {countFormatted} new person",
+				"countPlural=other": "Faces regrouped: {countFormatted} new people"
 			}
 		}
 	],

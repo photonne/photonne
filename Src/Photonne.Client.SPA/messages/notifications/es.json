@@ -13,11 +13,15 @@
 	"notifications_mark_read_one": "Marcar como leída: {title}",
 	"notifications_grouped": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} avisos agrupados",
-				"countPlural=other": "{count} avisos agrupados"
+				"countPlural=one": "{countFormatted} avisos agrupados",
+				"countPlural=other": "{countFormatted} avisos agrupados"
 			}
 		}
 	],
@@ -27,11 +31,15 @@
 	"notifications_page": "Página {page} de {pages}",
 	"notifications_total": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} notificación en total",
-				"countPlural=other": "{count} notificaciones en total"
+				"countPlural=one": "{countFormatted} notificación en total",
+				"countPlural=other": "{countFormatted} notificaciones en total"
 			}
 		}
 	]

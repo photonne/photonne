@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatCount } from '#lib/format.js';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -67,7 +68,7 @@
 		onclick={() => (open = !open)}
 	>
 		{label}
-		{#if count > 0}<span class="count">{count}</span>{/if}
+		{#if count > 0}<span class="count">{formatCount(count)}</span>{/if}
 		<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
 			<path d="M7 10l5 5 5-5z" fill="currentColor" />
 		</svg>

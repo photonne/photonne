@@ -37,71 +37,99 @@
 	"upload_add_to_album": "Añadir a un álbum",
 	"upload_batch_done": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto o vídeo subido",
-				"countPlural=other": "{count} fotos y vídeos subidos"
+				"countPlural=one": "{countFormatted} foto o vídeo subido",
+				"countPlural=other": "{countFormatted} fotos y vídeos subidos"
 			}
 		}
 	],
 	"upload_ignored": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} archivo ignorado: no es una foto ni un vídeo",
-				"countPlural=other": "{count} archivos ignorados: no son fotos ni vídeos"
+				"countPlural=one": "{countFormatted} archivo ignorado: no es una foto ni un vídeo",
+				"countPlural=other": "{countFormatted} archivos ignorados: no son fotos ni vídeos"
 			}
 		}
 	],
 	"upload_count_pending": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} pendiente",
-				"countPlural=other": "{count} pendientes"
+				"countPlural=one": "{countFormatted} pendiente",
+				"countPlural=other": "{countFormatted} pendientes"
 			}
 		}
 	],
 	"upload_count_done": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} subida",
-				"countPlural=other": "{count} subidas"
+				"countPlural=one": "{countFormatted} subida",
+				"countPlural=other": "{countFormatted} subidas"
 			}
 		}
 	],
 	"upload_count_duplicate": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} ya existía",
-				"countPlural=other": "{count} ya existían"
+				"countPlural=one": "{countFormatted} ya existía",
+				"countPlural=other": "{countFormatted} ya existían"
 			}
 		}
 	],
 	"upload_count_failed": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} con error",
-				"countPlural=other": "{count} con error"
+				"countPlural=one": "{countFormatted} con error",
+				"countPlural=other": "{countFormatted} con error"
 			}
 		}
 	],
 	"upload_count_skipped": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} demasiado grande",
-				"countPlural=other": "{count} demasiado grandes"
+				"countPlural=one": "{countFormatted} demasiado grande",
+				"countPlural=other": "{countFormatted} demasiado grandes"
 			}
 		}
 	]

@@ -3,11 +3,15 @@
 	"organize_lead": "Lo que sube el backup automático espera aquí hasta que lo guardes en una carpeta.",
 	"organize_pending": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} pendiente",
-				"countPlural=other": "{count} pendientes"
+				"countPlural=one": "{countFormatted} pendiente",
+				"countPlural=other": "{countFormatted} pendientes"
 			}
 		}
 	],
@@ -26,11 +30,15 @@
 	"organize_kind_month": "Mes",
 	"organize_photo_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto",
-				"countPlural=other": "{count} fotos"
+				"countPlural=one": "{countFormatted} foto",
+				"countPlural=other": "{countFormatted} fotos"
 			}
 		}
 	],
@@ -43,33 +51,45 @@
 	"organize_cancel": "Cancelar",
 	"organize_moved": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} movida a «{folder}»",
-				"countPlural=other": "{count} movidas a «{folder}»"
+				"countPlural=one": "{countFormatted} movida a «{folder}»",
+				"countPlural=other": "{countFormatted} movidas a «{folder}»"
 			}
 		}
 	],
 	"organize_set_aside_action": "Apartar de la bandeja",
 	"organize_set_aside": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} apartada",
-				"countPlural=other": "{count} apartadas"
+				"countPlural=one": "{countFormatted} apartada",
+				"countPlural=other": "{countFormatted} apartadas"
 			}
 		}
 	],
 	"organize_put_back_action": "Devolver a la bandeja",
 	"organize_put_back": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} devuelta a la bandeja",
-				"countPlural=other": "{count} devueltas a la bandeja"
+				"countPlural=one": "{countFormatted} devuelta a la bandeja",
+				"countPlural=other": "{countFormatted} devueltas a la bandeja"
 			}
 		}
 	],
@@ -100,11 +120,15 @@
 	"organize_rule_pick": "Elegir…",
 	"organize_rule_picked": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} elegida",
-				"countPlural=other": "{count} elegidas"
+				"countPlural=one": "{countFormatted} elegida",
+				"countPlural=other": "{countFormatted} elegidas"
 			}
 		}
 	],
@@ -126,11 +150,15 @@
 	"organize_rule_preview_empty": "Completa una condición para ver qué coincide.",
 	"organize_rule_matches": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
 			"selectors": ["countPlural"],
 			"match": {
-				"countPlural=one": "{count} foto pendiente coincide",
-				"countPlural=other": "{count} fotos pendientes coinciden"
+				"countPlural=one": "{countFormatted} foto pendiente coincide",
+				"countPlural=other": "{countFormatted} fotos pendientes coinciden"
 			}
 		}
 	],
