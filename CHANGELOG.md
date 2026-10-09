@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.194.0](https://github.com/photonne/photonne/compare/v1.193.0...v1.194.0) (2026-10-09)
+
+
+### Novedades
+
+* **spa:** Duplicados muestra cada copia en una fila con su ruta completa y lo que la distingue resaltado ([a67e0e5](https://github.com/photonne/photonne/commit/a67e0e58fc239d9cb712f1b364aca93ff0d783c2))
+
+
+### Correcciones
+
+* **native:** Archivar y mover a la papelera ya no se deshacen solos al irse el aviso ([b13b25b](https://github.com/photonne/photonne/commit/b13b25b035545bd26053f0bccd1162999da5d438))
+
 ## [1.193.0](https://github.com/photonne/photonne/compare/v1.192.1...v1.193.0) (2026-10-09)
 
 
