@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TimelineResponse } from '#lib/api/index.js';
 import {
+	splitFolders,
 	keepInAll,
 	keepOnly,
 	largest,
@@ -67,5 +68,22 @@ describe('duplicates review', () => {
 		expect(left.map((g) => g.hash)).toEqual(['h1']);
 		expect(left[0].assets.map((a) => a.id)).toEqual(['a2', 'a3']);
 		expect(left[0].totalSize).toBe(400);
+	});
+
+	it('sets apart the folders of a group by what differs', () => {
+		expect(splitFolders(['/assets/users/ana/Camera', '/assets/users/ana/Backup/2024'])).toEqual([
+			{ common: '/assets/users/ana/', own: 'Camera' },
+			{ common: '/assets/users/ana/', own: 'Backup/2024' }
+		]);
+		// One folder inside the other: the deeper one still shows its own part.
+		expect(splitFolders(['/fotos/viaje', '/fotos/viaje/copia'])).toEqual([
+			{ common: '/fotos/', own: 'viaje' },
+			{ common: '/fotos/', own: 'viaje/copia' }
+		]);
+		// Same folder: nothing sets them apart.
+		expect(splitFolders(['/fotos', '/fotos'])).toEqual([
+			{ common: '/fotos', own: '' },
+			{ common: '/fotos', own: '' }
+		]);
 	});
 });

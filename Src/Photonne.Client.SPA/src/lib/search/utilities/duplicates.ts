@@ -89,3 +89,26 @@ export function withoutAssets(groups: readonly Group[], ids: Iterable<string>): 
 		})
 		.filter((group) => group.assets.length > 1);
 }
+
+/**
+ * Splits each folder into what every copy of the group shares and what sets
+ * it apart, by whole path segments: `/fotos/2024/` and `Camera` vs `Backup`.
+ * When all copies are in the same folder nothing sets them apart.
+ */
+export function splitFolders(folders: readonly string[]): { common: string; own: string }[] {
+	const parts = folders.map((folder) => folder.split('/'));
+	let shared = 0;
+	if (new Set(folders).size > 1) {
+		const shortest = Math.min(...parts.map((segments) => segments.length));
+		while (
+			shared < shortest - 1 &&
+			parts.every((segments) => segments[shared] === parts[0][shared])
+		)
+			shared++;
+	}
+	return parts.map((segments, i) =>
+		shared === 0
+			? { common: folders[i], own: '' }
+			: { common: segments.slice(0, shared).join('/') + '/', own: segments.slice(shared).join('/') }
+	);
+}

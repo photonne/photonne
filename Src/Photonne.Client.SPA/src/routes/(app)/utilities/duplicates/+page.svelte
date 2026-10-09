@@ -26,6 +26,7 @@
 		markedBytes,
 		oldest,
 		recoverableBytes,
+		splitFolders,
 		toggleCopy,
 		withoutAssets
 	} from '#lib/search/utilities/duplicates.js';
@@ -160,6 +161,7 @@
 		</p>
 		<ol class="groups">
 			{#each all as group, index (group.hash)}
+				{@const folders = splitFolders(group.assets.map((asset) => directoryOf(asset.fullPath)))}
 				<li>
 					<section aria-label={m.utilities_group_label({ index: index + 1 })}>
 						<h2>
@@ -169,7 +171,7 @@
 							})}
 						</h2>
 						<ul class="copies">
-							{#each group.assets as asset (asset.id)}
+							{#each group.assets as asset, i (asset.id)}
 								{@const out = marked.has(asset.id)}
 								<li class:out>
 									<button
@@ -190,12 +192,20 @@
 									</button>
 									<div class="meta">
 										<span class="name" title={asset.fileName}>{asset.fileName}</span>
-										<span class="folder" title={asset.fullPath}>{directoryOf(asset.fullPath)}</span>
+										<!-- The whole path: what sets this copy apart is in it. -->
+										<span class="folder" title={asset.fullPath}
+											><span class="common">{folders[i].common}</span>{#if folders[i].own}<strong
+													>{folders[i].own}</strong
+												>{/if}</span
+										>
 										<span class="details">
-											{dateTime(asset.fileCreatedAt)} · {formatBytes(
-												asset.fileSize
-											)}{#if asset.width && asset.height}
-												· {asset.width}×{asset.height}{/if}
+											{[
+												dateTime(asset.fileCreatedAt),
+												formatBytes(asset.fileSize),
+												asset.width && asset.height ? `${asset.width}×${asset.height}` : null
+											]
+												.filter(Boolean)
+												.join(' · ')}
 										</span>
 									</div>
 									<div class="choices">
@@ -304,10 +314,14 @@
 		font-weight: 600;
 	}
 
+	/* One copy per row: the thumbnail, its whole path and the choices side by
+	   side, so the copies of a group read as a list to compare. */
+	.groups > li {
+		container-type: inline-size;
+	}
+
 	.copies {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-		gap: var(--space-3);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -315,8 +329,22 @@
 
 	.copies > li {
 		display: grid;
-		gap: var(--space-2);
-		align-content: start;
+		grid-template-columns: 128px minmax(0, 1fr) auto;
+		gap: var(--space-4);
+		align-items: center;
+		padding: var(--space-3) 0;
+	}
+
+	.copies > li + li {
+		border-top: 1px solid var(--color-border);
+	}
+
+	.copies > li:first-child {
+		padding-top: 0;
+	}
+
+	.copies > li:last-child {
+		padding-bottom: 0;
 	}
 
 	.thumb {
@@ -340,13 +368,13 @@
 
 	.badge {
 		position: absolute;
-		left: var(--space-2);
-		bottom: var(--space-2);
-		padding: 2px var(--space-2);
+		left: var(--space-1);
+		bottom: var(--space-1);
+		padding: 1px var(--space-2);
 		border-radius: 999px;
 		background: rgb(0 0 0 / 0.6);
 		color: #fff;
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-2xs);
 		font-weight: 600;
 	}
 
@@ -364,32 +392,58 @@
 
 	.meta {
 		display: grid;
+		gap: 2px;
 		min-width: 0;
 		font-size: var(--font-size-sm);
 	}
 
-	.name,
-	.folder {
+	.name {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	}
-
-	.name {
 		font-weight: 600;
 	}
 
-	.folder,
+	.folder {
+		overflow-wrap: anywhere;
+	}
+
+	.folder .common,
 	.details {
 		color: var(--color-text-muted);
+	}
+
+	.folder strong {
+		font-weight: 600;
+	}
+
+	.details {
 		font-size: var(--font-size-xs);
+	}
+
+	.out .name,
+	.out .folder strong {
+		text-decoration: line-through;
+		text-decoration-color: var(--color-danger);
+	}
+
+	/* Narrow: the choices go under the photo and its path. */
+	@container (max-width: 560px) {
+		.copies > li {
+			grid-template-columns: 96px minmax(0, 1fr);
+			gap: var(--space-2) var(--space-3);
+		}
+
+		.choices {
+			grid-column: 1 / -1;
+		}
 	}
 
 	.choices {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		justify-content: space-between;
+		justify-content: flex-end;
 		gap: var(--space-2);
 		font-size: var(--font-size-sm);
 	}
