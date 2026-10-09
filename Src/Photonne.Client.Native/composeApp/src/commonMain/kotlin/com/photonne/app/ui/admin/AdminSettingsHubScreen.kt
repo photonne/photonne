@@ -177,7 +177,7 @@ fun AdminSettingsHubScreen(
         )
     )
 
-    AdminHubList(
+    AdminSectionedHubList(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
