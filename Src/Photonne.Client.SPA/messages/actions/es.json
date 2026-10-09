@@ -89,6 +89,7 @@
 	"folder_picker_by_year": "Organizar por año de captura",
 	"folder_picker_move": "Mover",
 	"folder_picker_empty": "No tienes carpetas donde mover.",
+	"dialog_close": "Cerrar el diálogo",
 	"dialog_cancel": "Cancelar",
 	"drop_add_to_album": "Soltar para añadir a «{album}»",
 	"drop_move_to_folder": "Soltar para mover a «{folder}»"

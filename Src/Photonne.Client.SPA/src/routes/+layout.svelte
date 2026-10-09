@@ -1,5 +1,7 @@
 <script lang="ts">
+	import '@fontsource-variable/inter';
 	import '../app.css';
+	import '#lib/styles/ui.css';
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import { configureApiClient } from '#lib/api/index.js';
 	import Toaster from '#lib/components/Toaster.svelte';

@@ -89,6 +89,7 @@
 	"folder_picker_by_year": "Organize by capture year",
 	"folder_picker_move": "Move",
 	"folder_picker_empty": "You have no folders to move to.",
+	"dialog_close": "Close dialog",
 	"dialog_cancel": "Cancel",
 	"drop_add_to_album": "Drop to add to “{album}”",
 	"drop_move_to_folder": "Drop to move to “{folder}”"
