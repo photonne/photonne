@@ -91,7 +91,7 @@
 	.mini-map :global(.leaflet-control-attribution) {
 		background: rgb(0 0 0 / 0.55);
 		color: var(--color-text-muted);
-		font-size: 10px;
+		font-size: var(--font-size-2xs);
 	}
 
 	.mini-map :global(.leaflet-control-attribution a) {

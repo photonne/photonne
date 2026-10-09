@@ -42,6 +42,7 @@
 		type SlideshowInterval
 	} from './slideshow.js';
 	import ViewerPanel, { PANEL_TABS, type PanelTab } from './ViewerPanel.svelte';
+	import PopupMenu, { type MenuEntry } from '#lib/timeline/PopupMenu.svelte';
 	import ZoomableImage from './ZoomableImage.svelte';
 	import { IDENTITY } from './zoom.js';
 
@@ -118,6 +119,60 @@
 		`/api/assets/${assetId}/content${asset ? `?v=${asset.checksum}` : ''}`
 	);
 
+	// Everything past favourite, share and info waits in the "⋮" menu; the
+	// keys (S, Shift+F, Delete…) still work with it closed.
+	const moreItems: MenuEntry[] = $derived.by(() => {
+		const items: MenuEntry[] = [];
+		if (onaddtoalbum)
+			items.push({ label: m.action_add_to_album(), icon: 'albumAdd', run: onaddtoalbum });
+		items.push(
+			ondownload
+				? { label: m.viewer_download(), icon: 'download', run: ondownload }
+				: {
+						kind: 'link',
+						label: m.viewer_download(),
+						icon: 'download',
+						href: `/api/assets/${assetId}/content?download=true`,
+						download: true
+					}
+		);
+		items.push({
+			label: m.viewer_slideshow_start(),
+			icon: { path: slideshowPath },
+			shortcut: 'S',
+			run: startSlideshow
+		});
+		if (!isVideo)
+			items.push({
+				kind: 'check',
+				label: m.viewer_faces_boxes(),
+				icon: { path: icons.face },
+				shortcut: m.viewer_key_faces(),
+				keys: 'Shift+F',
+				checked: showFaces,
+				disabled: !asset,
+				run: toggleFaces
+			});
+		if (canPickFrame)
+			items.push({ label: m.viewer_frame_title(), icon: { path: framePath }, run: pickFrame });
+		if (onarchive || ontrash) items.push({ kind: 'separator', id: 'remove' });
+		if (onarchive) items.push({ label: m.action_archive(), icon: 'archive', run: onarchive });
+		if (ontrash)
+			items.push({
+				label: m.action_trash(),
+				icon: 'delete',
+				shortcut: m.viewer_key_delete(),
+				keys: 'Delete',
+				danger: true,
+				run: ontrash
+			});
+		return items;
+	});
+
+	function pickFrame() {
+		pickingFrame = true;
+	}
+
 	// Boxes are drawn on demand; the list in the panel loads them on its own.
 	const faces = createQuery(() => ({
 		...getApiAssetsByIdFacesOptions({ path: { id: assetId } }),
@@ -157,7 +212,9 @@
 	});
 
 	onMount(() => {
-		closeButton?.focus();
+		// The dialog itself takes focus, not its first button: no ring on open,
+		// and Tab still reaches the controls from here.
+		dialog?.focus();
 		const previousOverflow = document.body.style.overflow;
 		document.body.style.overflow = 'hidden';
 		// Leaving fullscreen (the browser's own Esc) ends the slideshow too.
@@ -375,7 +432,10 @@
 		if (focusable.length === 0) return;
 		const first = focusable[0];
 		const last = focusable.at(-1)!;
-		if (event.shiftKey && document.activeElement === first) {
+		if (document.activeElement === dialog) {
+			event.preventDefault();
+			(event.shiftKey ? last : first).focus();
+		} else if (event.shiftKey && document.activeElement === first) {
 			event.preventDefault();
 			last.focus();
 		} else if (!event.shiftKey && document.activeElement === last) {
@@ -404,9 +464,11 @@
 			<header class="bar">
 				<button
 					type="button"
-					class="icon"
+					class="icon-btn"
 					bind:this={closeButton}
+					title="{m.viewer_close()} · Esc"
 					aria-label={m.viewer_close()}
+					aria-keyshortcuts="Escape"
 					onclick={onclose}
 				>
 					<Icon name="close" />
@@ -430,104 +492,41 @@
 							LIVE
 						</button>
 					{/if}
-					{#if canPickFrame}
+					{#if onshare}
 						<button
 							type="button"
-							class="icon"
-							title={m.viewer_frame_title()}
-							aria-label={m.viewer_frame_title()}
-							onclick={() => (pickingFrame = true)}
+							class="icon-btn"
+							title={m.viewer_share()}
+							aria-label={m.viewer_share()}
+							onclick={onshare}
 						>
-							<Icon path={framePath} />
-						</button>
-					{/if}
-					{#if !isVideo}
-						<button
-							type="button"
-							class="icon"
-							aria-pressed={showFaces}
-							aria-keyshortcuts="Shift+F"
-							title="{m.viewer_faces_boxes()} · {m.viewer_key_faces()}"
-							aria-label={m.viewer_faces_boxes()}
-							disabled={!asset}
-							onclick={toggleFaces}
-						>
-							<Icon path={icons.face} />
+							<Icon name="share" />
 						</button>
 					{/if}
 					<button
 						type="button"
-						class="icon"
+						class="icon-btn"
 						aria-pressed={asset?.isFavorite ?? false}
+						aria-keyshortcuts="F"
+						title="{asset?.isFavorite ? m.viewer_favorite_remove() : m.viewer_favorite_add()} · F"
 						aria-label={asset?.isFavorite ? m.viewer_favorite_remove() : m.viewer_favorite_add()}
 						disabled={!asset}
 						onclick={favorite}
 					>
 						<Icon name={asset?.isFavorite ? 'favorite' : 'favoriteOutline'} />
 					</button>
-					{#if onshare}
-						<button type="button" class="icon" aria-label={m.viewer_share()} onclick={onshare}>
-							<Icon name="share" />
-						</button>
-					{/if}
-					{#if onaddtoalbum}
-						<button
-							type="button"
-							class="icon"
-							aria-label={m.action_add_to_album()}
-							onclick={onaddtoalbum}
-						>
-							<Icon name="albumAdd" />
-						</button>
-					{/if}
-					{#if onarchive}
-						<button type="button" class="icon" aria-label={m.action_archive()} onclick={onarchive}>
-							<Icon name="archive" />
-						</button>
-					{/if}
-					{#if ontrash}
-						<button type="button" class="icon" aria-label={m.action_trash()} onclick={ontrash}>
-							<Icon name="delete" />
-						</button>
-					{/if}
-					{#if ondownload}
-						<button
-							type="button"
-							class="icon"
-							aria-label={m.viewer_download()}
-							onclick={ondownload}
-						>
-							<Icon name="download" />
-						</button>
-					{:else}
-						<a
-							class="icon"
-							href="/api/assets/{assetId}/content?download=true"
-							download
-							aria-label={m.viewer_download()}
-						>
-							<Icon name="download" />
-						</a>
-					{/if}
 					<button
 						type="button"
-						class="icon"
-						aria-keyshortcuts="S"
-						title="{m.viewer_slideshow_start()} · S"
-						aria-label={m.viewer_slideshow_start()}
-						onclick={startSlideshow}
-					>
-						<Icon path={slideshowPath} />
-					</button>
-					<button
-						type="button"
-						class="icon"
+						class="icon-btn"
 						aria-pressed={showInfo}
+						aria-keyshortcuts="I"
+						title="{m.viewer_info()} · I"
 						aria-label={m.viewer_info()}
 						onclick={toggleInfo}
 					>
 						<Icon name="info" />
 					</button>
+					<PopupMenu label={m.viewer_more()} items={moreItems} />
 				</div>
 			</header>
 		{/if}
@@ -598,7 +597,7 @@
 			<div class="slideshow-bar" role="toolbar" aria-label={m.viewer_slideshow_label()}>
 				<button
 					type="button"
-					class="icon"
+					class="icon-btn"
 					aria-label={m.viewer_previous()}
 					disabled={!previous}
 					onclick={() => previous && onnavigate(previous)}
@@ -607,7 +606,7 @@
 				</button>
 				<button
 					type="button"
-					class="icon"
+					class="icon-btn"
 					aria-keyshortcuts="Space"
 					aria-label={paused ? m.viewer_slideshow_play() : m.viewer_slideshow_pause()}
 					onclick={() => (paused = !paused)}
@@ -616,7 +615,7 @@
 				</button>
 				<button
 					type="button"
-					class="icon"
+					class="icon-btn"
 					aria-label={m.viewer_next()}
 					disabled={!next}
 					onclick={advance}
@@ -637,7 +636,7 @@
 				</span>
 				<button
 					type="button"
-					class="icon"
+					class="icon-btn"
 					aria-keyshortcuts="Escape"
 					aria-label={m.viewer_slideshow_exit()}
 					onclick={stopSlideshow}
@@ -678,12 +677,20 @@
 		--color-surface: #26282c;
 		--color-surface-raised: #1b1c1f;
 		--color-border: #34363b;
+		--color-border-strong: #70747c;
+		--color-hover: rgb(255 255 255 / 0.12);
 		--color-text: #e8e8ea;
 		--color-text-muted: #a0a3a8;
+		--color-brand: #ffd166;
 		--color-accent: #ffd166;
 		--color-accent-text: #1a1a2e;
+		--color-accent-soft: rgb(255 209 102 / 0.14);
 		--color-focus: #ffd166;
 		--color-danger: #ef9a9a;
+		--color-success: #7bd88f;
+		--color-warning: #f6b35a;
+		--color-placeholder: #26282c;
+		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.5);
 		color-scheme: dark;
 		position: fixed;
 		inset: 0;
@@ -737,38 +744,25 @@
 	.actions {
 		margin-left: auto;
 		display: flex;
+		align-items: center;
 		gap: var(--space-1);
 	}
 
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		color: inherit;
-		cursor: pointer;
+	/* On the photo, the bar's buttons are white whatever is under them. */
+	.bar :global(.icon-btn) {
+		color: #fff;
 	}
 
-	.icon:hover {
-		background: rgb(255 255 255 / 0.12);
-	}
-
-	.icon[aria-pressed='true'] {
+	.bar :global(.icon-btn[aria-pressed='true']) {
 		color: var(--color-accent);
-	}
-
-	.icon:disabled {
-		opacity: 0.4;
 	}
 
 	.live {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-1);
+		height: var(--control-h-sm);
+		margin-right: var(--space-1);
 		padding: 0 var(--space-3);
 		border: 1px solid rgb(255 255 255 / 0.5);
 		border-radius: 999px;
@@ -881,11 +875,9 @@
 	}
 
 	.slideshow-bar select {
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid rgb(255 255 255 / 0.3);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: inherit;
+		min-height: var(--control-h-sm);
+		border-color: rgb(255 255 255 / 0.3);
+		background-color: transparent;
 	}
 
 	.state {

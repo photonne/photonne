@@ -393,8 +393,10 @@ test.describe('sharing', () => {
 test('an album with a cover opens under it as a banner that folds when scrolling', async ({
 	page
 }) => {
-	// Low enough for the album's photos to scroll under the banner.
-	await page.setViewportSize({ width: 1280, height: 420 });
+	// Low enough for the album's photos to scroll under the banner, and narrow
+	// enough for its six photos to take more than one row (without a scrubber
+	// the grid has the whole width).
+	await page.setViewportSize({ width: 1024, height: 420 });
 	await open(page, '/albums/album-1');
 
 	const banner = page.getByRole('region', { name: 'Vacaciones', exact: true }).filter({

@@ -39,5 +39,15 @@
 			}
 		}
 	],
-	"timeline_year_item": "Ver {month}, desde una foto del {date}"
+	"timeline_year_item": "Ver {month}, desde una foto del {date}",
+	"timeline_zoom_current": "Tamaño de las miniaturas: {level}",
+	"timeline_zoom_short_year": "Años",
+	"timeline_zoom_short_small": "Pequeñas",
+	"timeline_zoom_short_medium": "Medianas",
+	"timeline_zoom_short_large": "Grandes",
+	"timeline_zoom_short_xlarge": "Muy grandes",
+	"timeline_range": "{from} – {to}",
+	"timeline_empty_title": "Aún no hay fotos",
+	"timeline_empty_hint": "Sube fotos y vídeos y aparecerán aquí, ordenados por la fecha en que se hicieron.",
+	"timeline_upload": "Subir fotos"
 }

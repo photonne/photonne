@@ -10,6 +10,7 @@
 		getSettingOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import { icons } from '#lib/people/icons.js';
@@ -90,26 +91,25 @@
 </svelte:head>
 
 <div class="page">
-	<header class="head">
-		<h1>{m.nav_map()}</h1>
-		{#if points.data}
-			<span class="chip">{m.map_count({ count: points.data.length })}</span>
-		{/if}
-		{#if clusters.isFetching && hasPoints}
-			<span class="updating" role="status">{m.map_updating()}</span>
-		{/if}
-		<div class="toolbar">
+	<PageHeader
+		title={m.nav_map()}
+		count={points.data ? m.map_count({ count: points.data.length }) : null}
+	>
+		{#snippet actions()}
+			{#if clusters.isFetching && hasPoints}
+				<span class="updating" role="status">{m.map_updating()}</span>
+			{/if}
 			<button
 				type="button"
-				class="tool"
+				class="btn sm"
 				disabled={!bounds}
 				onclick={() => bounds && map?.fit(bounds)}
 			>
 				<Icon path={icons.fitAll} size={18} />
 				{m.map_fit()}
 			</button>
-		</div>
-	</header>
+		{/snippet}
+	</PageHeader>
 
 	<div class="body">
 		<div class="map">
@@ -128,8 +128,9 @@
 					<p>{m.error_loading()}</p>
 				</div>
 			{:else if points.data && points.data.length === 0}
+				<!-- EmptyState's look, with a heading: the page's only content. -->
 				<div class="overlay">
-					<Icon path={icons.locationOff} size={40} />
+					<span class="mark" aria-hidden="true"><Icon path={icons.locationOff} size={32} /></span>
 					<h2>{m.map_empty_title()}</h2>
 					<p>{m.map_empty_body()}</p>
 				</div>
@@ -150,55 +151,9 @@
 		height: 100%;
 	}
 
-	.head {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-4);
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-	}
-
-	.chip {
-		padding: 2px var(--space-3);
-		border-radius: 999px;
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-
 	.updating {
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
-	}
-
-	.toolbar {
-		margin-left: auto;
-		display: flex;
-		gap: var(--space-2);
-	}
-
-	.tool {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.tool:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.tool:disabled {
-		opacity: 0.5;
-		cursor: default;
 	}
 
 	.body {
@@ -223,19 +178,32 @@
 		justify-items: center;
 		gap: var(--space-2);
 		padding: var(--space-6);
-		background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+		background: color-mix(in srgb, var(--color-bg) 85%, transparent);
 		color: var(--color-text-muted);
 		text-align: center;
+	}
+
+	.mark {
+		display: grid;
+		place-items: center;
+		width: 72px;
+		height: 72px;
+		margin-bottom: var(--space-2);
+		border-radius: 50%;
+		background: var(--color-brand-tile);
+		color: var(--color-brand);
 	}
 
 	.overlay h2 {
 		margin: 0;
 		color: var(--color-text);
 		font-size: var(--font-size-lg);
+		font-weight: 600;
 	}
 
 	.overlay p {
 		margin: 0;
-		max-width: 36ch;
+		max-width: 46ch;
+		font-size: var(--font-size-sm);
 	}
 </style>

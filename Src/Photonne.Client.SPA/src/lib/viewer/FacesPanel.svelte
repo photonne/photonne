@@ -118,7 +118,7 @@
 		<h3>{m.viewer_faces_title()}</h3>
 		<button
 			type="button"
-			class="toggle"
+			class="chip"
 			aria-pressed={showBoxes}
 			aria-keyshortcuts="Shift+F"
 			title="{m.viewer_faces_boxes()} · {m.viewer_key_faces()}"
@@ -165,6 +165,7 @@
 					<div class="actions">
 						<button
 							type="button"
+							class="icon-btn sm"
 							title={face.personId ? m.viewer_face_change() : m.viewer_face_assign()}
 							aria-label={face.personId ? m.viewer_face_change() : m.viewer_face_assign()}
 							disabled={busy !== null}
@@ -175,6 +176,7 @@
 						{#if face.personId}
 							<button
 								type="button"
+								class="icon-btn sm"
 								title={m.people_face_unassign()}
 								aria-label={m.people_face_unassign()}
 								disabled={busy !== null}
@@ -185,6 +187,7 @@
 						{/if}
 						<button
 							type="button"
+							class="icon-btn sm"
 							title={m.people_face_reject()}
 							aria-label={m.people_face_reject()}
 							disabled={busy !== null}
@@ -226,23 +229,6 @@
 		font-size: var(--font-size-sm);
 		font-weight: 600;
 		color: var(--color-text-muted);
-	}
-
-	.toggle {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: 2px var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: transparent;
-		font-size: var(--font-size-xs);
-		cursor: pointer;
-	}
-
-	.toggle[aria-pressed='true'] {
-		border-color: var(--color-accent);
-		color: var(--color-accent);
 	}
 
 	.muted {
@@ -322,26 +308,11 @@
 		display: flex;
 	}
 
-	.actions button {
-		display: grid;
-		place-items: center;
-		width: 32px;
-		height: 32px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
+	.actions .icon-btn {
 		color: var(--color-text-muted);
-		cursor: pointer;
 	}
 
-	.actions button:hover:not(:disabled) {
-		background: var(--color-surface);
+	.actions .icon-btn:hover:not(:disabled) {
 		color: var(--color-text);
-	}
-
-	.actions button:disabled {
-		opacity: 0.4;
-		cursor: default;
 	}
 </style>

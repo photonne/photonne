@@ -216,13 +216,16 @@
 		outline: none;
 	}
 
+	/* A photo in a gold ring, with a light halo so it reads on any tile. */
 	.map :global(.photo-marker .ring) {
 		display: block;
 		overflow: hidden;
-		border: 3px solid #fff;
+		border: 3px solid var(--color-brand);
 		border-radius: 50%;
-		background: var(--color-accent);
-		box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+		background: var(--color-brand-tile);
+		box-shadow:
+			0 0 0 2px rgb(255 255 255 / 0.85),
+			0 2px 8px rgb(0 0 0 / 0.35);
 		transition: transform var(--duration-fast);
 	}
 
@@ -232,7 +235,6 @@
 	}
 
 	.map :global(.photo-marker:focus-visible .ring) {
-		border-color: var(--color-focus);
 		box-shadow:
 			0 0 0 3px var(--color-bg),
 			0 0 0 6px var(--color-focus);
@@ -240,9 +242,17 @@
 
 	.map :global(.photo-marker .ring.active) {
 		border-color: var(--color-accent);
+		border-width: 4px;
 		box-shadow:
-			0 0 0 3px #fff,
-			0 2px 10px rgb(0 0 0 / 0.45);
+			0 0 0 3px var(--color-bg),
+			0 0 0 6px var(--color-accent),
+			0 2px 12px rgb(0 0 0 / 0.45);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.map :global(.photo-marker .ring) {
+			transition: none;
+		}
 	}
 
 	.map :global(.photo-marker img) {
@@ -258,8 +268,8 @@
 		right: -8px;
 		min-width: 24px;
 		padding: 0 6px;
-		border: 2px solid #fff;
-		border-radius: 12px;
+		border: 2px solid var(--color-bg);
+		border-radius: 999px;
 		background: var(--color-accent);
 		color: var(--color-accent-text);
 		font-size: var(--font-size-xs);
@@ -267,21 +277,87 @@
 		line-height: 20px;
 		text-align: center;
 		white-space: nowrap;
+		box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
 	}
 
-	.map :global(.leaflet-control-zoom a),
-	.map :global(.leaflet-control-attribution),
-	.map :global(.leaflet-control-scale-line) {
+	/* Leaflet's controls, in the app's tokens (light and dark). */
+	.map :global(.leaflet-control-zoom.leaflet-bar) {
+		overflow: hidden;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-control);
+		background: var(--color-surface-raised);
+		box-shadow: var(--shadow-raised);
+	}
+
+	.map :global(.leaflet-control-zoom a) {
+		display: grid;
+		place-items: center;
+		width: var(--control-h);
+		height: var(--control-h);
+		border: 0;
+		border-radius: 0;
 		background: var(--color-surface-raised);
 		color: var(--color-text);
+		font: 400 var(--font-size-lg) / 1 var(--font-sans);
+		transition: background var(--duration-fast);
+	}
+
+	.map :global(.leaflet-control-zoom a + a) {
+		border-top: 1px solid var(--color-border);
+	}
+
+	.map :global(.leaflet-control-zoom a:hover) {
+		background: color-mix(in srgb, var(--color-text) 6%, var(--color-surface-raised));
+		color: var(--color-text);
+	}
+
+	.map :global(.leaflet-control-zoom a:focus-visible) {
+		outline: 2px solid var(--color-focus);
+		outline-offset: -2px;
+	}
+
+	.map :global(.leaflet-control-zoom a.leaflet-disabled) {
+		background: var(--color-surface-raised);
+		color: var(--color-text-muted);
+		opacity: 0.6;
+	}
+
+	.map :global(.leaflet-control-attribution) {
+		padding: 2px var(--space-2);
+		border-top-left-radius: var(--radius-sm);
+		background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-2xs);
+		line-height: 1.5;
 	}
 
 	.map :global(.leaflet-control-attribution a) {
 		color: var(--color-accent);
 	}
 
-	.map :global(.leaflet-bar) {
-		border-color: var(--color-border);
+	.map :global(.leaflet-control-scale-line) {
+		border-color: var(--color-text-muted);
+		background: color-mix(in srgb, var(--color-surface-raised) 80%, transparent);
+		color: var(--color-text);
+		font-size: var(--font-size-2xs);
+	}
+
+	.map :global(.leaflet-popup-content-wrapper),
+	.map :global(.leaflet-popup-tip) {
+		background: var(--color-surface-raised);
+		color: var(--color-text);
 		box-shadow: var(--shadow-raised);
+	}
+
+	.map :global(.leaflet-popup-content-wrapper) {
+		border-radius: var(--radius-md);
+	}
+
+	.map :global(.leaflet-popup-close-button) {
+		color: var(--color-text-muted);
+	}
+
+	.map :global(.leaflet-container a.leaflet-popup-close-button:hover) {
+		color: var(--color-text);
 	}
 </style>

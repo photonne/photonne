@@ -4,7 +4,9 @@ import { fakeApi } from './fake-api';
 test.use({ locale: 'es-ES', viewport: { width: 1280, height: 800 } });
 
 const cells = (page: Page) => page.getByRole('button', { name: /^(Foto|Vídeo), / });
-const zoom = (page: Page) => page.getByRole('slider', { name: 'Tamaño de las miniaturas' });
+// The level is a menu button named after the current size.
+const zoom = (page: Page) => page.getByRole('button', { name: /^Tamaño de las miniaturas: / });
+const level = (name: string) => `Tamaño de las miniaturas: ${name}`;
 
 async function openTimeline(page: Page) {
 	const monthRequests: string[] = [];
@@ -22,13 +24,13 @@ test('zooms with the keys and the control, splits days at large sizes and rememb
 	page
 }) => {
 	await openTimeline(page);
-	await expect(zoom(page)).toHaveAttribute('aria-valuetext', 'Medianas, por meses');
+	await expect(zoom(page)).toHaveAccessibleName(level('Medianas, por meses'));
 	await expect(page.getByRole('heading', { level: 3 })).toHaveCount(0);
 	const mediumHeight = (await cells(page).first().boundingBox())!.height;
 
 	await page.keyboard.press('+');
 
-	await expect(zoom(page)).toHaveAttribute('aria-valuetext', 'Grandes, por días');
+	await expect(zoom(page)).toHaveAccessibleName(level('Grandes, por días'));
 	await expect(
 		page.getByRole('status').filter({ hasText: 'Vista: Grandes, por días' })
 	).toBeAttached();
@@ -43,16 +45,43 @@ test('zooms with the keys and the control, splits days at large sizes and rememb
 	await page.keyboard.press('Escape');
 
 	await page.reload();
-	await expect(zoom(page)).toHaveAttribute('aria-valuetext', 'Grandes, por días');
+	await expect(zoom(page)).toHaveAccessibleName(level('Grandes, por días'));
 	await expect(
 		page.getByRole('heading', { name: 'lunes, 28 de septiembre', level: 3 })
 	).toBeVisible();
 
 	await page.getByRole('button', { name: 'Miniaturas más pequeñas' }).click();
 	await page.getByRole('button', { name: 'Miniaturas más pequeñas' }).click();
-	await expect(zoom(page)).toHaveAttribute('aria-valuetext', 'Pequeñas, por meses');
+	await expect(zoom(page)).toHaveAccessibleName(level('Pequeñas, por meses'));
 	await expect(page.getByRole('heading', { level: 3 })).toHaveCount(0);
 	expect((await cells(page).first().boundingBox())!.height).toBeLessThan(mediumHeight);
+});
+
+test('picks a size from the level menu, with the keyboard too', async ({ page }) => {
+	await openTimeline(page);
+
+	await zoom(page).click();
+	const menu = page.getByRole('menu', { name: level('Medianas, por meses') });
+	await expect(menu.getByRole('menuitemradio')).toHaveCount(5);
+	await expect(menu.getByRole('menuitemradio', { name: 'Medianas, por meses' })).toHaveAttribute(
+		'aria-checked',
+		'true'
+	);
+	// It opens on the current level.
+	await expect(menu.getByRole('menuitemradio', { name: 'Medianas, por meses' })).toBeFocused();
+	await page.keyboard.press('ArrowDown');
+	await page.keyboard.press('Enter');
+
+	await expect(menu).toBeHidden();
+	await expect(zoom(page)).toHaveAccessibleName(level('Grandes, por días'));
+	await expect(zoom(page)).toBeFocused();
+
+	// Escape closes the menu without changing the level.
+	await page.keyboard.press('ArrowDown');
+	await expect(page.getByRole('menu')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('menu')).toBeHidden();
+	await expect(zoom(page)).toHaveAccessibleName(level('Grandes, por días'));
 });
 
 test('Ctrl + wheel zooms around the photo under the pointer', async ({ page }) => {
@@ -62,9 +91,15 @@ test('Ctrl + wheel zooms around the photo under the pointer', async ({ page }) =
 	await page.mouse.wheel(0, 1600);
 	await expect(page.getByRole('heading', { name: 'Junio de 2026' })).toBeVisible();
 
-	const target = cells(page).nth(30);
+	// A photo wholly inside the grid's viewport (not under the page header).
+	const area = (await grid.boundingBox())!;
+	let index = 30;
+	let box = (await cells(page).nth(index).boundingBox())!;
+	while (box.y < area.y || box.y + box.height > area.y + area.height) {
+		box = (await cells(page).nth(++index).boundingBox())!;
+	}
+	const target = cells(page).nth(index);
 	const id = await target.getAttribute('data-id');
-	const box = (await target.boundingBox())!;
 	const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 	await page.mouse.move(point.x, point.y);
 
@@ -72,7 +107,7 @@ test('Ctrl + wheel zooms around the photo under the pointer', async ({ page }) =
 	await page.mouse.wheel(0, 120);
 	await page.keyboard.up('Control');
 
-	await expect(zoom(page)).toHaveAttribute('aria-valuetext', 'Pequeñas, por meses');
+	await expect(zoom(page)).toHaveAccessibleName(level('Pequeñas, por meses'));
 	// Rows reflow, so the photo may move sideways, but its row stays under the pointer.
 	const after = (await page.locator(`[data-id="${id}"]`).boundingBox())!;
 	expect(after.y).toBeLessThanOrEqual(point.y + 2);
@@ -85,7 +120,7 @@ test('the year view samples each year and a photo opens its month', async ({ pag
 	await page.keyboard.press('-');
 	await page.keyboard.press('-');
 
-	await expect(zoom(page)).toHaveAttribute('aria-valuetext', 'Años');
+	await expect(zoom(page)).toHaveAccessibleName(level('Años'));
 	await expect(page.getByRole('heading', { name: /^2026/ })).toContainText('92 elementos');
 	await expect(page.getByRole('heading', { name: /^2023/ })).toContainText('120 elementos');
 	expect((state.yearSamples as number[]).every((n) => n > 0 && n <= 100)).toBe(true);
@@ -97,7 +132,7 @@ test('the year view samples each year and a photo opens its month', async ({ pag
 		.first()
 		.click();
 
-	await expect(zoom(page)).toHaveAttribute('aria-valuetext', 'Pequeñas, por meses');
+	await expect(zoom(page)).toHaveAccessibleName(level('Pequeñas, por meses'));
 	await expect(page.getByRole('heading', { name: 'Julio de 2024' })).toBeInViewport();
 	await expect(page.locator('[data-id^="2024-07-"]:focus')).toHaveCount(1);
 });

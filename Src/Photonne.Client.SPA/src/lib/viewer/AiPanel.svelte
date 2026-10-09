@@ -157,7 +157,7 @@
 		<p class="muted" role="status">{m.session_restoring()}</p>
 	{:else if enrichment.isError || !rows}
 		<p class="muted" role="alert">{m.error_loading()}</p>
-		<button type="button" class="wide" onclick={() => enrichment.refetch()}>
+		<button type="button" class="btn wide" onclick={() => enrichment.refetch()}>
 			{m.viewer_ai_reload()}
 		</button>
 	{:else}
@@ -180,7 +180,7 @@
 					{:else}
 						<button
 							type="button"
-							class="run"
+							class="icon-btn run"
 							title={row.status.kind === 'never'
 								? m.viewer_ai_run({ analysis: label })
 								: m.viewer_ai_rerun({ analysis: label })}
@@ -197,14 +197,14 @@
 		</ul>
 		<button
 			type="button"
-			class="wide primary"
+			class="btn primary wide"
 			disabled={anyBusy}
 			onclick={() => launch(rows.map((row) => row.analysis))}
 		>
 			{m.viewer_ai_run_all()}
 		</button>
 		{#if anyFailed}
-			<button type="button" class="wide" disabled={anyBusy} onclick={retryFailed}>
+			<button type="button" class="btn wide" disabled={anyBusy} onclick={retryFailed}>
 				{m.viewer_ai_retry_failed()}
 			</button>
 		{/if}
@@ -271,22 +271,6 @@
 		color: var(--color-accent);
 	}
 
-	.run {
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.run:hover {
-		background: var(--color-surface);
-	}
-
 	.spinner {
 		width: 20px;
 		height: 20px;
@@ -311,22 +295,5 @@
 
 	.wide {
 		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		cursor: pointer;
-	}
-
-	.wide.primary {
-		border-color: transparent;
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-weight: 600;
-	}
-
-	.wide:disabled {
-		opacity: 0.5;
-		cursor: default;
 	}
 </style>

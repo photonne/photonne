@@ -12,10 +12,14 @@ test('Shift+F draws the face boxes and one opens its face in the panel', async (
 	await expect(viewer).toBeVisible();
 
 	await page.keyboard.press('Shift+F');
-	await expect(viewer.getByRole('button', { name: 'Recuadros de caras' })).toHaveAttribute(
-		'aria-pressed',
-		'true'
-	);
+	// The toggle lives in the "⋮" menu; the key works with it closed.
+	await viewer.getByRole('button', { name: 'Más acciones' }).click();
+	await expect(
+		viewer.getByRole('menuitemcheckbox', { name: 'Recuadros de caras' })
+	).toHaveAttribute('aria-checked', 'true');
+	await page.keyboard.press('Escape');
+	await expect(viewer.getByRole('menu')).toBeHidden();
+	await expect(viewer).toBeVisible();
 	const boxes = viewer.getByRole('list', { name: 'Recuadros de caras' });
 	await expect(boxes.getByRole('button', { name: 'Cara: Ana' })).toBeVisible();
 	await expect(boxes.getByRole('button', { name: 'Cara: Sin asignar' })).toBeVisible();

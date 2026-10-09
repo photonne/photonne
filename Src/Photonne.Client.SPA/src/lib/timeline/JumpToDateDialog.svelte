@@ -82,11 +82,6 @@
 	}
 
 	select {
-		height: 36px;
-		padding: 0 var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
 		font-weight: 400;
 	}
 
@@ -104,21 +99,31 @@
 		justify-items: center;
 		gap: 2px;
 		width: 100%;
+		min-height: var(--control-h-lg);
 		padding: var(--space-2) var(--space-1);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-control);
 		background: transparent;
 		cursor: pointer;
+		transition:
+			background var(--duration-fast),
+			border-color var(--duration-fast);
 	}
 
 	.months button:hover:not(:disabled) {
-		background: var(--color-surface);
 		border-color: var(--color-accent);
+		background: var(--color-accent-soft);
 	}
 
+	/* No photos that month: muted, but its name still reads (no fading). */
 	.months button:disabled {
-		opacity: 0.45;
-		cursor: default;
+		border-style: dashed;
+		color: var(--color-text-muted);
+		cursor: not-allowed;
+	}
+
+	.months button:disabled .name {
+		font-weight: 500;
 	}
 
 	.name {

@@ -9,10 +9,20 @@
 		large: m.timeline_zoom_large,
 		xlarge: m.timeline_zoom_xlarge
 	};
+
+	/** One word for the trigger, where the full label doesn't fit. */
+	const shortLabels: Record<ZoomLevel, () => string> = {
+		year: m.timeline_zoom_short_year,
+		small: m.timeline_zoom_short_small,
+		medium: m.timeline_zoom_short_medium,
+		large: m.timeline_zoom_short_large,
+		xlarge: m.timeline_zoom_short_xlarge
+	};
 </script>
 
 <script lang="ts">
 	import Icon from '#lib/components/Icon.svelte';
+	import PopupMenu, { type MenuEntry } from './PopupMenu.svelte';
 	import { stepZoom, zoomLevels } from './zoom.js';
 
 	interface Props {
@@ -24,12 +34,22 @@
 
 	const index = $derived(zoomLevels.indexOf(zoom));
 	const REMOVE = 'M19 13H5v-2h14v2z';
+
+	const levels: readonly MenuEntry[] = $derived(
+		zoomLevels.map((level) => ({
+			kind: 'radio' as const,
+			label: zoomLabels[level](),
+			checked: level === zoom,
+			run: () => onchange(level)
+		}))
+	);
 </script>
 
+<!-- −, the level (a menu of all of them) and +: the keys + and − do the same. -->
 <div class="zoom" role="group" aria-label={m.timeline_zoom()}>
 	<button
 		type="button"
-		class="icon"
+		class="icon-btn sm"
 		aria-label={m.timeline_zoom_out()}
 		title={m.timeline_zoom_out_hint()}
 		disabled={index === 0}
@@ -37,20 +57,15 @@
 	>
 		<Icon path={REMOVE} size={18} />
 	</button>
-	<input
-		type="range"
-		min="0"
-		max={zoomLevels.length - 1}
-		step="1"
-		value={index}
-		aria-label={m.timeline_zoom()}
-		aria-valuetext={zoomLabels[zoom]()}
-		title={zoomLabels[zoom]()}
-		oninput={(event) => onchange(zoomLevels[Number(event.currentTarget.value)])}
+	<PopupMenu
+		label={m.timeline_zoom_current({ level: zoomLabels[zoom]() })}
+		text={shortLabels[zoom]()}
+		triggerClass="level"
+		items={levels}
 	/>
 	<button
 		type="button"
-		class="icon"
+		class="icon-btn sm"
 		aria-label={m.timeline_zoom_in()}
 		title={m.timeline_zoom_in_hint()}
 		disabled={index === zoomLevels.length - 1}
@@ -64,33 +79,38 @@
 	.zoom {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-1);
+		gap: 2px;
+		height: var(--control-h-sm);
+		padding: 0 2px;
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-control);
 	}
 
-	input {
-		width: 96px;
-		accent-color: var(--color-accent);
-		cursor: pointer;
+	.zoom :global(.icon-btn.sm) {
+		width: calc(var(--control-h-sm) - 4px);
+		height: calc(var(--control-h-sm) - 4px);
+		border-radius: calc(var(--radius-control) - 2px);
 	}
 
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 32px;
-		height: 32px;
-		padding: 0;
+	/* The level reads as the control's value: plain text that opens a list. */
+	.zoom :global(.level) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		min-width: 7.5em;
+		height: calc(var(--control-h-sm) - 4px);
+		padding: 0 var(--space-2);
 		border: 0;
-		border-radius: 50%;
+		border-radius: calc(var(--radius-control) - 2px);
 		background: transparent;
+		font-size: var(--font-size-sm);
+		font-weight: 500;
 		cursor: pointer;
 	}
 
-	.icon:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.icon:disabled {
-		opacity: 0.4;
-		cursor: default;
+	.zoom :global(.level:hover),
+	.zoom :global(.level[aria-expanded='true']) {
+		background: var(--color-hover);
 	}
 </style>

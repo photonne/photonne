@@ -9,7 +9,8 @@ test('picks a frame of a Live Photo and saves it as a photo', async ({ page }) =
 	await page.goto(`/?asset=${LIVE_ID}`);
 	await expect(page.getByRole('dialog', { name: 'IMG_LIVE.HEIC' })).toBeVisible();
 
-	await page.getByRole('button', { name: 'Elegir fotograma' }).click();
+	await page.getByRole('button', { name: 'Más acciones' }).click();
+	await page.getByRole('menuitem', { name: 'Elegir fotograma' }).click();
 	const picker = page.getByRole('region', { name: 'Elegir fotograma' });
 	await expect(picker.getByText('Fotograma 16 de 30')).toBeVisible();
 	await expect(picker.getByRole('img', { name: 'Fotograma 16 de 30' })).toBeVisible();
@@ -34,7 +35,8 @@ test('picks a frame of a Live Photo and saves it as a photo', async ({ page }) =
 test('Escape closes the frame picker before the viewer', async ({ page }) => {
 	await fakeApi(page, { signedIn: true });
 	await page.goto(`/?asset=${LIVE_ID}`);
-	await page.getByRole('button', { name: 'Elegir fotograma' }).click();
+	await page.getByRole('button', { name: 'Más acciones' }).click();
+	await page.getByRole('menuitem', { name: 'Elegir fotograma' }).click();
 	const picker = page.getByRole('region', { name: 'Elegir fotograma' });
 	await expect(picker).toBeVisible();
 

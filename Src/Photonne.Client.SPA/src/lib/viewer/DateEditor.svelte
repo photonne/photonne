@@ -1,11 +1,20 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { updateAssetCaptureDate, type AssetDetailResponse } from '#lib/api/index.js';
 	import { getAssetCaptureDateSuggestionOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { dateTime, fromDateTimeLocal, toDateTimeLocal } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import { asUtc, canWriteToFile, dateCandidates, type DateSource } from './capture-date.js';
+	import { getLocale } from '#lib/paraglide/runtime.js';
+	import {
+		asUtc,
+		canWriteToFile,
+		captureDateText,
+		dateCandidates,
+		type DateSource
+	} from './capture-date.js';
 
 	interface Props {
 		asset: AssetDetailResponse;
@@ -20,11 +29,22 @@
 	let writeToFile = $state(false);
 	let saving = $state(false);
 	let suggesting = $state(false);
+	/** The native field only shows while changing the date: it reads in the browser's format. */
+	let editing = $state(false);
+	let editButton = $state<HTMLButtonElement>();
 
 	$effect(() => {
 		date = toDateTimeLocal(asUtc(asset.capturedAt));
 		suggesting = false;
+		editing = false;
 	});
+
+	async function cancel() {
+		date = initial;
+		editing = false;
+		await tick();
+		editButton?.focus();
+	}
 
 	const writable = $derived(canWriteToFile(asset));
 	const initial = $derived(toDateTimeLocal(asUtc(asset.capturedAt)));
@@ -69,22 +89,58 @@
 			);
 		}
 		suggesting = false;
+		editing = false;
 		onchanged();
 	}
 </script>
 
 <div class="date">
-	<label for="info-date">{m.info_date()}</label>
-	<div class="row">
-		<input id="info-date" type="datetime-local" bind:value={date} />
-		<button
-			type="button"
-			disabled={date === initial || !date || saving}
-			onclick={() => save(fromDateTimeLocal(date))}
-		>
-			{m.info_save()}
-		</button>
-	</div>
+	{#if editing}
+		<label for="info-date">{m.info_date()}</label>
+		<!-- svelte-ignore a11y_autofocus -->
+		<input
+			id="info-date"
+			type="datetime-local"
+			bind:value={date}
+			autofocus
+			onkeydown={(event) => {
+				// Escape leaves the field, not the viewer.
+				if (event.key === 'Escape') {
+					event.preventDefault();
+					event.stopPropagation();
+					cancel();
+				}
+			}}
+		/>
+		<div class="row">
+			<button
+				type="button"
+				class="btn sm primary"
+				disabled={date === initial || !date || saving}
+				onclick={() => save(fromDateTimeLocal(date))}
+			>
+				{m.info_save()}
+			</button>
+			<button type="button" class="btn sm ghost" onclick={cancel}>{m.dialog_cancel()}</button>
+		</div>
+	{:else}
+		<h3>{m.info_date()}</h3>
+		<div class="readout">
+			<time datetime={asUtc(asset.capturedAt)}>
+				{captureDateText(asset.capturedAt, getLocale())}
+			</time>
+			<button
+				type="button"
+				class="icon-btn sm"
+				title={m.viewer_date_change()}
+				aria-label={m.viewer_date_change()}
+				bind:this={editButton}
+				onclick={() => (editing = true)}
+			>
+				<Icon name="edit" size={18} />
+			</button>
+		</div>
+	{/if}
 
 	{#if writable}
 		<label class="check">
@@ -124,6 +180,7 @@
 						{:else}
 							<button
 								type="button"
+								class="btn sm"
 								disabled={saving}
 								aria-label={m.viewer_date_apply_label({
 									date: dateTime(candidate.date),
@@ -148,38 +205,38 @@
 		gap: var(--space-2);
 	}
 
+	h3,
 	label[for] {
 		display: block;
+		margin: 0;
 		font-size: var(--font-size-sm);
 		font-weight: 600;
 		color: var(--color-text-muted);
 	}
 
-	.row {
+	.readout {
 		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		gap: var(--space-2);
 	}
 
-	input[type='datetime-local'] {
-		flex: 1;
-		min-width: 0;
-		padding: var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
+	.readout time::first-letter {
+		text-transform: uppercase;
 	}
 
-	button {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		cursor: pointer;
+	.readout .icon-btn {
+		margin: calc(var(--space-1) * -1) calc(var(--space-2) * -1) calc(var(--space-1) * -1) 0;
+		color: var(--color-text-muted);
 	}
 
-	button:disabled {
-		opacity: 0.5;
-		cursor: default;
+	.readout .icon-btn:hover {
+		color: var(--color-text);
+	}
+
+	.row {
+		display: flex;
+		gap: var(--space-2);
 	}
 
 	.check {
@@ -211,6 +268,7 @@
 		background: none;
 		color: var(--color-accent);
 		font-size: var(--font-size-sm);
+		cursor: pointer;
 	}
 
 	.link:hover {
@@ -237,14 +295,9 @@
 		justify-content: space-between;
 		gap: var(--space-2);
 		padding: var(--space-2);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-control);
 		background: var(--color-surface);
 		font-size: var(--font-size-sm);
-	}
-
-	.candidates button {
-		padding: var(--space-1) var(--space-2);
-		background: var(--color-bg);
 	}
 
 	.current {
