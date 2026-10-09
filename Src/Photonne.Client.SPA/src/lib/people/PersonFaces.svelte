@@ -10,6 +10,8 @@
 	} from '#lib/api/index.js';
 	import { getApiPeopleByIdFacesInfiniteOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
@@ -155,7 +157,7 @@
 	{#snippet actions()}
 		<button
 			type="button"
-			class="action"
+			class="icon-btn"
 			disabled={selection.size !== 1 || busy}
 			title={m.people_face_set_cover()}
 			aria-label={m.people_face_set_cover()}
@@ -165,7 +167,7 @@
 		</button>
 		<button
 			type="button"
-			class="action"
+			class="icon-btn"
 			disabled={busy}
 			title={m.people_face_move()}
 			aria-label={m.people_face_move()}
@@ -175,7 +177,7 @@
 		</button>
 		<button
 			type="button"
-			class="action"
+			class="icon-btn"
 			disabled={busy}
 			title={m.people_face_unassign()}
 			aria-label={m.people_face_unassign()}
@@ -185,7 +187,7 @@
 		</button>
 		<button
 			type="button"
-			class="action"
+			class="icon-btn"
 			disabled={busy}
 			title={m.people_face_reject()}
 			aria-label={m.people_face_reject()}
@@ -197,11 +199,11 @@
 </SelectionBar>
 
 {#if faces.isPending}
-	<p class="status" role="status">{m.session_restoring()}</p>
+	<Skeleton variant="cards" count={16} />
 {:else if faces.isError}
-	<p class="status" role="alert">{m.error_loading()}</p>
+	<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 {:else if items.length === 0}
-	<p class="status">{m.people_faces_empty()}</p>
+	<EmptyState iconPath={icons.face} title={m.people_faces_empty()} />
 {:else}
 	<p class="hint">{m.people_faces_hint()}</p>
 	<ul class="grid" aria-label={m.people_tab_faces()} bind:this={grid} {@attach gridKeys}>
@@ -277,21 +279,17 @@
 {/if}
 
 <style>
-	.status,
 	.hint {
-		padding: var(--space-3) var(--space-4);
 		margin: 0;
+		padding: var(--space-3) var(--page-gutter);
 		color: var(--color-text-muted);
-	}
-
-	.hint {
 		font-size: var(--font-size-sm);
 	}
 
 	.grid {
 		list-style: none;
 		margin: 0;
-		padding: 0 var(--space-4) var(--space-8);
+		padding: 0 var(--page-gutter) var(--space-8);
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
 		gap: var(--space-2);
@@ -394,26 +392,5 @@
 
 	.sentinel {
 		height: 1px;
-	}
-
-	.action {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.action:hover:not(:disabled) {
-		background: var(--color-surface);
-	}
-
-	.action:disabled {
-		opacity: 0.35;
-		cursor: default;
 	}
 </style>

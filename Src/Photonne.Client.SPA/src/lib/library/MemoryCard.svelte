@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '#lib/components/Icon.svelte';
 	import { thumbnailSizeFor, thumbnailUrl } from '#lib/media.js';
 
 	interface Props {
@@ -23,6 +24,10 @@
 <a class="card {size}" {href}>
 	{#if cover}
 		<img src={cover} alt="" loading="lazy" decoding="async" />
+	{:else}
+		<span class="mark" aria-hidden="true"
+			><Icon name="history" size={size === 'large' ? 36 : 28} /></span
+		>
 	{/if}
 	<span class="text">
 		<span class="title">{title}</span>
@@ -62,6 +67,28 @@
 	.card:hover img,
 	.card:focus-visible img {
 		transform: scale(1.04);
+	}
+
+	/* Without a cover: a tinted card with a mark, dark text. */
+	.card:not(:has(img)) {
+		background: var(--color-brand-tile);
+		color: var(--color-text);
+	}
+
+	.card:not(:has(img))::after {
+		display: none;
+	}
+
+	.card:not(:has(img)) .title {
+		text-shadow: none;
+	}
+
+	.mark {
+		position: absolute;
+		inset: 0 0 var(--space-8);
+		display: grid;
+		place-items: center;
+		color: var(--color-accent);
 	}
 
 	/* Legible white text on any photo. */

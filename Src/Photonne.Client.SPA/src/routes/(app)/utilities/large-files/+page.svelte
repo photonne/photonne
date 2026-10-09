@@ -1,5 +1,4 @@
 <script lang="ts">
-	import '#lib/search/ui.css';
 	import { tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
@@ -10,10 +9,13 @@
 		getUtilitiesSummaryQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { dateTime, formatBytes } from '#lib/format.js';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { storagePath } from '#lib/search/icons.js';
 	import { directoryOf } from '#lib/search/text.js';
 	import UtilityHeader from '#lib/search/utilities/UtilityHeader.svelte';
 	import ViewerHost from '#lib/search/utilities/ViewerHost.svelte';
@@ -85,11 +87,10 @@
 
 <div class="page">
 	<UtilityHeader title={m.utilities_large_files()} lead={m.utilities_large_files_lead({ count })}>
-		{#snippet toolbar()}
+		{#snippet tools()}
 			<label class="count">
 				{m.utilities_show()}
 				<select
-					class="ui-field"
 					value={count}
 					onchange={(event) => {
 						count = Number(event.currentTarget.value);
@@ -106,9 +107,11 @@
 					{/each}
 				</select>
 			</label>
+		{/snippet}
+		{#snippet actions()}
 			<button
 				type="button"
-				class="ui-button danger"
+				class="btn danger"
 				disabled={selected.size === 0 || busy}
 				onclick={() => trash([...selected])}
 			>
@@ -119,11 +122,11 @@
 	</UtilityHeader>
 
 	{#if files.isPending}
-		<p class="ui-status" role="status">{m.utilities_loading()}</p>
+		<Skeleton variant="rows" count={10} />
 	{:else if files.isError}
-		<p class="ui-status" role="alert">{m.error_loading()}</p>
+		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if items.length === 0}
-		<p class="ui-status">{m.utilities_large_files_empty()}</p>
+		<EmptyState iconPath={storagePath} title={m.utilities_large_files_empty()} />
 	{:else}
 		<p class="summary" aria-live="polite">
 			{m.utilities_large_files_total({ size: formatBytes(total) })}
@@ -220,12 +223,13 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
+		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}
 
 	.summary {
 		margin: 0;
-		padding: 0 var(--space-4) var(--space-3);
+		padding: 0 var(--page-gutter) var(--space-3);
 		color: var(--color-text-muted);
 	}
 
@@ -234,7 +238,7 @@
 	}
 
 	.table-wrap {
-		padding: 0 var(--space-4);
+		padding: 0 var(--page-gutter);
 		overflow-x: auto;
 	}
 
@@ -261,8 +265,12 @@
 		border-bottom: 1px solid var(--color-border);
 	}
 
+	tr:hover td {
+		background: var(--color-hover);
+	}
+
 	tr.selected td {
-		background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+		background: var(--color-accent-soft);
 	}
 
 	.check {
@@ -304,7 +312,7 @@
 	}
 
 	.file:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.file img {

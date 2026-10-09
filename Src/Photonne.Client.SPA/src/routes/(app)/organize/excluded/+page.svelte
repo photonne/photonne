@@ -69,7 +69,7 @@
 		<p class="hint">{m.organize_excluded_hint()}</p>
 	{/snippet}
 	{#snippet selectionActions(selection, batch)}
-		<button type="button" class="action" disabled={busy} onclick={() => putBack(selection)}>
+		<button type="button" class="btn sm" disabled={busy} onclick={() => putBack(selection)}>
 			<Icon path={moveToInboxPath} />
 			{m.organize_put_back_action()}
 		</button>
@@ -83,30 +83,10 @@
 
 <style>
 	.hint {
+		max-width: 80ch;
 		margin: 0;
-		padding: 0 var(--space-4) var(--space-2);
+		padding: var(--space-3) var(--page-gutter) var(--space-1);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
-	}
-
-	.action {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.action:hover {
-		background: var(--color-surface);
-	}
-
-	.action:disabled {
-		opacity: 0.5;
-		cursor: progress;
 	}
 </style>

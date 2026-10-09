@@ -1,78 +1,42 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import Icon from '#lib/components/Icon.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import PageCrumbs from '#lib/library/PageCrumbs.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		title: string;
+		/** What the tool does, under the title. */
 		lead?: string;
+		/** A count or short fact next to the title, once it's known. */
+		count?: string | null;
 		/** Page-level buttons, right of the title. */
-		toolbar?: Snippet;
+		actions?: Snippet;
+		/** Filters and options, in the row under the title. */
+		tools?: Snippet;
 	}
 
-	let { title, lead, toolbar }: Props = $props();
+	let { title, lead, count = null, actions, tools }: Props = $props();
 </script>
 
 <svelte:head>
 	<title>{title} · {m.nav_utilities()} · {m.app_name()}</title>
 </svelte:head>
 
-<header>
-	<nav aria-label={m.utilities_breadcrumb()}>
-		<a href={appHref('/utilities')}>
-			<Icon name="chevronLeft" size={18} />
-			{m.nav_utilities()}
-		</a>
-	</nav>
-	<div class="row">
-		<h1>{title}</h1>
-		{#if toolbar}<div class="toolbar">{@render toolbar()}</div>{/if}
-	</div>
-	{#if lead}<p>{lead}</p>{/if}
-</header>
+<PageHeader {title} {count} subtitle={lead} {actions}>
+	{#snippet toolbar()}
+		<PageCrumbs href={appHref('/utilities')} label={m.nav_utilities()} />
+		{#if tools}<span class="tools">{@render tools()}</span>{/if}
+	{/snippet}
+</PageHeader>
 
 <style>
-	header {
-		display: grid;
-		gap: var(--space-2);
-		padding: var(--space-3) var(--space-4) var(--space-2);
-	}
-
-	nav a {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		color: var(--color-text-muted);
-		text-decoration: none;
-		font-size: var(--font-size-sm);
-	}
-
-	nav a:hover {
-		color: var(--color-text);
-	}
-
-	.row {
+	.tools {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-3);
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-	}
-
-	.toolbar {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-2);
+		gap: var(--space-2) var(--space-3);
 		margin-left: auto;
-	}
-
-	p {
-		margin: 0;
-		color: var(--color-text-muted);
 	}
 </style>

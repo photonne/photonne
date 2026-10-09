@@ -28,7 +28,7 @@
 				{#if children.length}
 					<button
 						type="button"
-						class="toggle"
+						class="icon-btn sm toggle"
 						class:open
 						aria-expanded={open}
 						aria-label={m.utilities_toggle_folder({ folder: folder.name })}
@@ -102,21 +102,14 @@
 	}
 
 	.row:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.toggle {
-		display: grid;
-		place-items: center;
 		flex: none;
-		width: 28px;
-		height: 28px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
+		width: var(--control-h-sm);
+		height: var(--control-h-sm);
 		color: var(--color-text-muted);
-		cursor: pointer;
 	}
 
 	button.toggle :global(svg) {
@@ -128,18 +121,15 @@
 		transform: none;
 	}
 
-	button.toggle:hover:not(:disabled) {
-		background: var(--color-surface-raised);
-	}
-
 	button.toggle:disabled {
+		opacity: 1;
 		cursor: default;
 	}
 
 	.icon {
 		display: grid;
 		flex: none;
-		color: #e0a526;
+		color: var(--color-brand);
 	}
 
 	.names {

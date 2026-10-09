@@ -1,5 +1,4 @@
 <script lang="ts">
-	import '#lib/search/ui.css';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import {
 		deleteUnsupportedFile,
@@ -10,9 +9,12 @@
 	import { getUtilitiesSummaryQueryKey } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { dateTime, formatBytes } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { filePath } from '#lib/search/icons.js';
 	import { directoryOf } from '#lib/search/text.js';
 	import UtilityHeader from '#lib/search/utilities/UtilityHeader.svelte';
 
@@ -77,11 +79,11 @@
 	<UtilityHeader title={m.utilities_unsupported()} lead={m.utilities_unsupported_lead()} />
 
 	{#if status === 'pending'}
-		<p class="ui-status" role="status">{m.utilities_loading()}</p>
+		<Skeleton variant="rows" count={8} />
 	{:else if status === 'error'}
-		<p class="ui-status" role="alert">{m.error_loading()}</p>
+		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if files.length === 0}
-		<p class="ui-status">{m.utilities_unsupported_empty()}</p>
+		<EmptyState iconPath={filePath} title={m.utilities_unsupported_empty()} />
 	{:else}
 		<div class="table-wrap">
 			<table>
@@ -111,7 +113,7 @@
 							<td class="actions">
 								<button
 									type="button"
-									class="ui-icon-button"
+									class="icon-btn"
 									title={m.utilities_download()}
 									aria-label={m.utilities_download_file({ name: file.fileName })}
 									onclick={() => download(file)}
@@ -121,7 +123,7 @@
 								{#if file.canDelete}
 									<button
 										type="button"
-										class="ui-icon-button"
+										class="icon-btn"
 										title={m.utilities_delete()}
 										aria-label={m.utilities_delete_file({ name: file.fileName })}
 										disabled={busy}
@@ -138,7 +140,7 @@
 		</div>
 		{#if hasMore}
 			<div class="more">
-				<button type="button" class="ui-button" disabled={loadingMore} onclick={() => load(true)}>
+				<button type="button" class="btn" disabled={loadingMore} onclick={() => load(true)}>
 					{loadingMore ? m.utilities_loading() : m.utilities_load_more()}
 				</button>
 			</div>
@@ -166,7 +168,7 @@
 	}
 
 	.table-wrap {
-		padding: 0 var(--space-4);
+		padding: 0 var(--page-gutter);
 		overflow-x: auto;
 	}
 
@@ -190,7 +192,7 @@
 	}
 
 	tr:hover td {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.names {

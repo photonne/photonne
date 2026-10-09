@@ -80,7 +80,7 @@
 	{#snippet selectionActions(selection, batch)}
 		<button
 			type="button"
-			class="action"
+			class="icon-btn"
 			title={m.people_unlink()}
 			aria-label={m.people_unlink()}
 			disabled={batch.busy || busy}
@@ -109,26 +109,5 @@
 <style>
 	p {
 		margin: 0;
-	}
-
-	.action {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.action:hover {
-		background: var(--color-surface);
-	}
-
-	.action:disabled {
-		opacity: 0.4;
-		cursor: progress;
 	}
 </style>

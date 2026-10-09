@@ -26,6 +26,8 @@
 	const SEMANTIC_LIMIT = 200;
 
 	let notice = $state<'capped' | 'too_short' | null>(null);
+	/** The text search has pages beyond those loaded (it gives no total). */
+	let more = $state(false);
 
 	// The search can't change under a mounted view (the host keys it).
 	const search = untrack(() => ({ query, semantic }));
@@ -36,6 +38,7 @@
 		const { data } = await searchAssets({
 			query: textSearchRequest(search.query, offset, PAGE_SIZE)
 		});
+		if (data) more = data.hasMore;
 		return data && { ...data, nextCursor: String(offset + data.items.length) };
 	});
 
@@ -64,19 +67,31 @@
 		rankedStatus = 'ready';
 	}
 
+	const store = search.semantic ? ranked : list.store;
+	const status = $derived(search.semantic ? rankedStatus : list.status);
+	const found = $derived(store.items.length);
+	const countText = $derived(
+		status !== 'ready' || found === 0
+			? null
+			: more || notice === 'capped'
+				? m.search_result_count_more({ count: found })
+				: m.search_result_count({ count: found })
+	);
+
 	if (search.semantic) loadSemantic();
 	else list.start();
 </script>
 
 <CollectionView
-	store={search.semantic ? ranked : list.store}
+	{store}
 	title={m.search_results()}
-	status={search.semantic ? rankedStatus : list.status}
+	{status}
 	emptyText={notice === 'too_short' ? m.search_semantic_too_short() : m.search_no_results()}
 	headers={!search.semantic}
 	onnearend={() => !search.semantic && list.more()}
 >
 	{#snippet header()}
+		{#if countText}<p class="count" role="status">{countText}</p>{/if}
 		{#if fallback}
 			<p class="notice" role="status">{m.search_semantic_unavailable()}</p>
 		{:else if notice === 'capped'}
@@ -86,8 +101,16 @@
 </CollectionView>
 
 <style>
+	.count {
+		margin: 0;
+		padding: var(--space-1) var(--page-gutter) var(--space-2);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+
 	.notice {
-		margin: 0 var(--space-4) var(--space-2);
+		max-width: 80ch;
+		margin: 0 var(--page-gutter) var(--space-2);
 		padding: var(--space-2) var(--space-3);
 		border-left: 3px solid var(--color-accent);
 		border-radius: var(--radius-sm);

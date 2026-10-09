@@ -5,7 +5,13 @@
 		listObjectLabelsOptions,
 		listSceneLabelsOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
+	import { icons } from '#lib/library/icons.js';
+	import SectionTitle from '#lib/library/SectionTitle.svelte';
 	import { thumbnailUrl } from '#lib/media.js';
+	import PersonAvatar from '#lib/people/PersonAvatar.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { emptySearch, searchParams, type SearchQuery } from './search-query.js';
 	import { labelText } from './text.js';
@@ -28,71 +34,74 @@
 	);
 	const topScenes = $derived((scenes.data ?? []).slice(0, ROW));
 	const topObjects = $derived((objects.data ?? []).slice(0, ROW));
+	const pending = $derived(people.isPending && objects.isPending && scenes.isPending);
 
 	function link(query: Partial<SearchQuery>) {
 		return `${appHref('/search')}?${searchParams({ ...emptySearch, ...query })}`;
 	}
 </script>
 
-<div class="discover">
-	{#if topPeople.length > 0}
-		<section aria-labelledby="discover-people">
-			<h2 id="discover-people">{m.search_discover_people()}</h2>
-			<ul class="people">
-				{#each topPeople as person (person.id)}
-					<li>
-						<a href={link({ people: [person.id] })}>
-							{#if person.coverFaceId}
-								<img src="/api/faces/{person.coverFaceId}/thumbnail" alt="" loading="lazy" />
-							{:else}
-								<span class="face" aria-hidden="true"></span>
-							{/if}
-							<span>{person.name}</span>
-						</a>
-					</li>
-				{/each}
-			</ul>
-		</section>
-	{/if}
-
-	{#each [{ id: 'scenes', title: m.search_discover_scenes(), labels: topScenes, key: 'scenes' as const }, { id: 'objects', title: m.search_discover_objects(), labels: topObjects, key: 'objects' as const }] as row (row.id)}
-		{#if row.labels.length > 0}
-			<section aria-labelledby="discover-{row.id}">
-				<h2 id="discover-{row.id}">{row.title}</h2>
-				<ul class="tiles">
-					{#each row.labels as item (item.label)}
+{#if pending}
+	<Skeleton variant="cards" round count={8} />
+{:else if topPeople.length === 0 && topScenes.length === 0 && topObjects.length === 0}
+	<EmptyState icon="search" title={m.search_discover_empty()} hint={m.search_discover_hint()} />
+{:else}
+	<div class="discover">
+		{#if topPeople.length > 0}
+			<section aria-labelledby="discover-people">
+				<SectionTitle id="discover-people" title={m.search_discover_people()} />
+				<ul class="people">
+					{#each topPeople as person (person.id)}
 						<li>
-							<a href={link({ [row.key]: [item.label] })}>
-								{#if item.coverAssetId}
-									<img src={thumbnailUrl(item.coverAssetId, 'Small')} alt="" loading="lazy" />
-								{/if}
-								<span class="caption">
-									<span>{labelText(item.label)}</span>
-									<span class="count">{item.assetCount}</span>
-								</span>
+							<a href={link({ people: [person.id] })}>
+								<PersonAvatar faceId={person.coverFaceId} name={person.name} size="72px" />
+								<span>{person.name}</span>
 							</a>
 						</li>
 					{/each}
 				</ul>
 			</section>
 		{/if}
-	{/each}
 
-	{#if topPeople.length === 0 && topScenes.length === 0 && topObjects.length === 0}
-		<p class="hint">{m.search_discover_hint()}</p>
-	{/if}
-</div>
+		{#each [{ id: 'scenes', title: m.search_discover_scenes(), labels: topScenes, key: 'scenes' as const }, { id: 'objects', title: m.search_discover_objects(), labels: topObjects, key: 'objects' as const }] as row (row.id)}
+			{#if row.labels.length > 0}
+				<section aria-labelledby="discover-{row.id}">
+					<SectionTitle id="discover-{row.id}" title={row.title} />
+					<ul class="tiles">
+						{#each row.labels as item (item.label)}
+							<li>
+								<a href={link({ [row.key]: [item.label] })}>
+									{#if item.coverAssetId}
+										<img src={thumbnailUrl(item.coverAssetId, 'Small')} alt="" loading="lazy" />
+									{:else}
+										<span class="mark" aria-hidden="true"
+											><Icon path={icons.label} size={28} /></span
+										>
+									{/if}
+									<span class="caption">
+										<span>{labelText(item.label)}</span>
+										<span class="count">{item.assetCount}</span>
+									</span>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
+		{/each}
+	</div>
+{/if}
 
 <style>
 	.discover {
 		display: grid;
 		gap: var(--space-6);
-		padding: var(--space-4);
+		padding: var(--space-4) var(--page-gutter) var(--space-8);
 	}
 
-	h2 {
-		margin: 0 0 var(--space-3);
-		font-size: var(--font-size-md);
+	section {
+		display: grid;
+		gap: var(--space-3);
 	}
 
 	ul {
@@ -104,38 +113,31 @@
 	.people {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--space-4);
+		gap: var(--space-3);
 	}
 
 	.people a {
 		display: grid;
 		justify-items: center;
-		gap: var(--space-1);
-		width: 88px;
+		gap: var(--space-2);
+		width: 96px;
+		padding: var(--space-2) var(--space-1);
+		border-radius: var(--radius-md);
 		color: inherit;
 		text-decoration: none;
 		font-size: var(--font-size-sm);
 		text-align: center;
 	}
 
-	.people a span {
+	.people a:hover {
+		background: var(--color-hover);
+	}
+
+	.people a span:last-child {
 		max-width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	}
-
-	.people img,
-	.face {
-		width: 72px;
-		height: 72px;
-		border-radius: 50%;
-		object-fit: cover;
-		background: var(--color-placeholder);
-	}
-
-	.people a:hover img {
-		outline: 2px solid var(--color-accent);
 	}
 
 	.tiles {
@@ -155,6 +157,11 @@
 		text-decoration: none;
 	}
 
+	.tiles a:not(:has(img)) {
+		background: var(--color-brand-tile);
+		color: var(--color-text);
+	}
+
 	.tiles img {
 		width: 100%;
 		height: 100%;
@@ -164,6 +171,14 @@
 
 	.tiles a:hover img {
 		transform: scale(1.04);
+	}
+
+	.mark {
+		position: absolute;
+		inset: 0 0 var(--space-8);
+		display: grid;
+		place-items: center;
+		color: var(--color-accent);
 	}
 
 	.caption {
@@ -178,13 +193,12 @@
 		font-weight: 600;
 	}
 
+	.tiles a:not(:has(img)) .caption {
+		background: none;
+	}
+
 	.count {
 		font-weight: 400;
 		opacity: 0.85;
-	}
-
-	.hint {
-		margin: 0;
-		color: var(--color-text-muted);
 	}
 </style>

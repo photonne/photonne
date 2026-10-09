@@ -4,7 +4,11 @@
 	import { memoryBlocks, type MemoryBlock } from '#lib/library/memories.js';
 	import MemoryCard from '#lib/library/MemoryCard.svelte';
 	import { memoryFeedOptions } from '#lib/library/memory-feed.js';
-	import PageHeader from '#lib/library/PageHeader.svelte';
+	import SectionTitle from '#lib/library/SectionTitle.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
+	import { icons } from '#lib/library/icons.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -32,18 +36,19 @@
 	<PageHeader title={m.nav_memories()} />
 
 	{#if feed.isPending}
-		<p class="status" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="cards" count={6} />
 	{:else if feed.isError && todayAssets.length === 0}
-		<p class="status" role="alert">{m.error_loading()}</p>
+		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if blocks.length === 0 && todayAssets.length === 0}
-		<div class="empty">
-			<p class="lead">{m.memories_empty()}</p>
-			<p>{m.memories_empty_hint()}</p>
-		</div>
+		<EmptyState iconPath={icons.sparkle} title={m.memories_empty()} hint={m.memories_empty_hint()}>
+			{#snippet action()}
+				<a class="btn" href={appHref('/explore')}>{m.nav_explore()}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		{#if todayAssets.length > 0}
 			<section aria-labelledby="block-today">
-				<h2 id="block-today">{m.memories_block_today()}</h2>
+				<SectionTitle id="block-today" title={m.memories_block_today()} />
 				<ul class="cards" role="list">
 					<li>
 						<MemoryCard
@@ -58,7 +63,7 @@
 		{/if}
 		{#each blocks as group (group.block)}
 			<section aria-labelledby="block-{group.block}">
-				<h2 id="block-{group.block}">{titles[group.block]()}</h2>
+				<SectionTitle id="block-{group.block}" title={titles[group.block]()} />
 				<ul class="cards" role="list">
 					{#each group.memories as memory (memory.id)}
 						<li>
@@ -82,13 +87,9 @@
 	}
 
 	section {
-		padding: 0 var(--space-4);
-	}
-
-	h2 {
-		margin: var(--space-6) 0 var(--space-3);
-		font-size: var(--font-size-md);
-		color: var(--color-text-muted);
+		display: grid;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--page-gutter);
 	}
 
 	.cards {
@@ -98,21 +99,5 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-	}
-
-	.status,
-	.empty {
-		padding: var(--space-6) var(--space-4);
-		color: var(--color-text-muted);
-	}
-
-	.empty p {
-		margin: 0 0 var(--space-2);
-		max-width: 60ch;
-	}
-
-	.empty .lead {
-		color: var(--color-text);
-		font-size: var(--font-size-lg);
 	}
 </style>

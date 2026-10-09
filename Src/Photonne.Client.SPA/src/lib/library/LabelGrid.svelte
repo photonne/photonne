@@ -4,15 +4,18 @@
 		listObjectLabelsOptions,
 		listSceneLabelsOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
-	import Icon from '#lib/components/Icon.svelte';
+	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import { labelHref, type LabelKind } from './explore-links.js';
 	import { isLabelSort, sortLabels, type LabelSort } from './labels.js';
 	import LabelTile from './LabelTile.svelte';
+	import { icons } from './icons.js';
 	import PageCrumbs from './PageCrumbs.svelte';
-	import PageHeader from './PageHeader.svelte';
+	import SearchField from './SearchField.svelte';
 
 	/** Every scene or object label, with a search (on the server) and a sort. */
 	let { kind }: { kind: LabelKind } = $props();
@@ -67,40 +70,42 @@
 </svelte:head>
 
 <div class="page">
-	<PageHeader {title}>
-		{#snippet tools()}
-			<label class="search">
-				<Icon name="search" size={18} />
-				<input
-					type="search"
-					bind:value={search}
-					aria-label={m.explore_label_search({ kind: title })}
-					placeholder={m.explore_label_search({ kind: title })}
-				/>
-			</label>
-			<label class="sort">
-				<span>{m.explore_sort()}</span>
-				<select value={sort} onchange={(event) => setSort(event.currentTarget.value as LabelSort)}>
-					<option value="count">{m.explore_sort_count()}</option>
-					<option value="name">{m.explore_sort_name()}</option>
-				</select>
-			</label>
+	<PageHeader
+		{title}
+		count={labels.isSuccess && !query ? m.explore_label_count({ count: visible.length }) : null}
+	>
+		{#snippet toolbar()}
+			<PageCrumbs href={appHref('/explore')} label={m.nav_explore()} />
+			<span class="tools">
+				<SearchField bind:value={search} label={m.explore_label_search({ kind: title })} />
+				<label class="sort">
+					<span>{m.explore_sort()}</span>
+					<select
+						value={sort}
+						onchange={(event) => setSort(event.currentTarget.value as LabelSort)}
+					>
+						<option value="count">{m.explore_sort_count()}</option>
+						<option value="name">{m.explore_sort_name()}</option>
+					</select>
+				</label>
+			</span>
 		{/snippet}
 	</PageHeader>
-	<PageCrumbs href={appHref('/explore')} label={m.nav_explore()} />
 
 	{#if labels.isPending}
-		<p class="status" role="status">{m.session_restoring()}</p>
+		<Skeleton variant="cards" count={12} />
 	{:else if labels.isError}
-		<p class="status" role="alert">{m.error_loading()}</p>
+		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if visible.length === 0}
-		<p class="status">
-			{query
-				? m.explore_label_no_match()
-				: kind === 'scenes'
-					? m.explore_scenes_empty()
-					: m.explore_objects_empty()}
-		</p>
+		{#if query}
+			<EmptyState icon="search" title={m.explore_label_no_match()} />
+		{:else}
+			<EmptyState
+				iconPath={icons.label}
+				title={kind === 'scenes' ? m.explore_scenes_empty() : m.explore_objects_empty()}
+				hint={m.explore_empty_hint()}
+			/>
+		{/if}
 	{:else}
 		<p class="visually-hidden" role="status">
 			{m.explore_label_count({ count: visible.length })}
@@ -125,27 +130,12 @@
 		padding-bottom: var(--space-8);
 	}
 
-	.search {
+	.tools {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-2);
-		padding: 0 var(--space-3);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-	}
-
-	.search:focus-within {
-		outline: 2px solid var(--color-focus);
-	}
-
-	.search input {
-		width: 14rem;
-		padding: var(--space-2) 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
-		outline: none;
+		gap: var(--space-2) var(--space-3);
+		margin-left: auto;
 	}
 
 	.sort {
@@ -156,24 +146,12 @@
 		font-size: var(--font-size-sm);
 	}
 
-	.sort select {
-		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-	}
-
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 		gap: var(--space-3);
 		margin: 0;
-		padding: var(--space-4);
+		padding: var(--space-2) var(--page-gutter);
 		list-style: none;
-	}
-
-	.status {
-		padding: var(--space-6) var(--space-4);
-		color: var(--color-text-muted);
 	}
 </style>

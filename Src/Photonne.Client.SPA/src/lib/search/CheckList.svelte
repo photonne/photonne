@@ -73,10 +73,6 @@
 
 	input[type='search'] {
 		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
 	}
 
 	ul {
@@ -97,7 +93,7 @@
 	}
 
 	label:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.name {

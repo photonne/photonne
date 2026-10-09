@@ -24,15 +24,19 @@
 </script>
 
 <form class="search" role="search" {onsubmit}>
-	<Icon path={icons.textFields} />
-	<input
-		type="search"
-		bind:this={input}
-		bind:value={query}
-		aria-label={m.explore_text_label()}
-		placeholder={m.explore_text_placeholder()}
-	/>
-	<button type="submit" disabled={!query.trim()}>{m.explore_text_submit()}</button>
+	<span class="query">
+		<Icon path={icons.textFields} size={18} />
+		<input
+			type="search"
+			bind:this={input}
+			bind:value={query}
+			aria-label={m.explore_text_label()}
+			placeholder={m.explore_text_placeholder()}
+		/>
+	</span>
+	<button type="submit" class="btn primary" disabled={!query.trim()}>
+		{m.explore_text_submit()}
+	</button>
 </form>
 
 <style>
@@ -40,42 +44,28 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		max-width: 520px;
-		padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
+		width: min(520px, 100%);
+	}
+
+	.query {
+		position: relative;
+		flex: 1;
+		min-width: 0;
+		display: flex;
 		color: var(--color-text-muted);
 	}
 
-	.search:focus-within {
-		outline: 2px solid var(--color-focus);
-		outline-offset: 1px;
+	.query :global(svg) {
+		position: absolute;
+		top: 50%;
+		left: var(--space-3);
+		transform: translateY(-50%);
+		pointer-events: none;
 	}
 
 	input {
 		flex: 1;
 		min-width: 0;
-		padding: var(--space-1) 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
-		outline: none;
-	}
-
-	button {
-		padding: var(--space-1) var(--space-3);
-		border: 0;
-		border-radius: var(--radius-sm);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-		font-size: var(--font-size-sm);
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	button:disabled {
-		opacity: 0.5;
-		cursor: default;
+		padding-left: calc(var(--space-3) + 18px + var(--space-2));
 	}
 </style>

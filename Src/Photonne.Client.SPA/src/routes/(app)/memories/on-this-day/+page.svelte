@@ -41,7 +41,7 @@
 		/>
 	{/snippet}
 	{#snippet header()}
-		<PageCrumbs href={appHref('/memories')} label={m.nav_memories()} />
+		<PageCrumbs href={appHref('/memories')} label={m.nav_memories()} inset />
 	{/snippet}
 </CollectionView>
 

@@ -18,7 +18,13 @@
 </script>
 
 <!-- Decorative: the person's name is always written next to it. -->
-<span class="avatar {shape}" style:width={size} style:height={size} aria-hidden="true">
+<span
+	class="avatar {shape}"
+	class:initials={!(faceId && failed !== faceId)}
+	style:width={size}
+	style:height={size}
+	aria-hidden="true"
+>
 	{#if faceId && failed !== faceId}
 		<img
 			src={faceThumbnailUrl(faceId)}
@@ -31,7 +37,7 @@
 	{:else if letters}
 		<span class="letters">{letters}</span>
 	{:else}
-		<Icon name="person" size={24} />
+		<span class="silhouette"><Icon name="person" size={24} /></span>
 	{/if}
 </span>
 
@@ -44,6 +50,12 @@
 		container-type: size;
 		background: var(--color-placeholder);
 		color: var(--color-text-muted);
+	}
+
+	/* No face crop: the initials (or a silhouette) on the soft accent. */
+	.initials {
+		background: var(--color-accent-soft);
+		color: var(--color-text);
 	}
 
 	.circle {
@@ -63,5 +75,17 @@
 	.letters {
 		font-weight: 600;
 		font-size: 36cqw;
+		letter-spacing: 0.02em;
+	}
+
+	.silhouette {
+		display: grid;
+		place-items: center;
+		color: var(--color-accent);
+	}
+
+	.silhouette :global(svg) {
+		width: 45cqw;
+		height: 45cqw;
 	}
 </style>

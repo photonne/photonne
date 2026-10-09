@@ -40,7 +40,7 @@
 
 <button
 	type="button"
-	class="tool"
+	class="icon-btn"
 	title={m.people_action_rename()}
 	aria-label={m.people_action_rename()}
 	onclick={() => (renaming = person)}
@@ -49,7 +49,7 @@
 </button>
 <button
 	type="button"
-	class="tool"
+	class="icon-btn"
 	title={m.people_action_merge_with()}
 	aria-label={m.people_action_merge_with()}
 	onclick={() => (picking = true)}
@@ -58,7 +58,7 @@
 </button>
 <button
 	type="button"
-	class="tool"
+	class="icon-btn"
 	disabled={busy}
 	title={person.isHidden ? m.people_action_unhide() : m.people_action_hide()}
 	aria-label={person.isHidden ? m.people_action_unhide() : m.people_action_hide()}
@@ -85,26 +85,3 @@
 		if (target.id !== person.id) goto(appHref(`/people/${target.id}`), { replace: true });
 	}}
 />
-
-<style>
-	.tool {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.tool:hover {
-		background: var(--color-surface);
-	}
-
-	.tool:disabled {
-		opacity: 0.4;
-		cursor: progress;
-	}
-</style>

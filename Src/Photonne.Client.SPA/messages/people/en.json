@@ -245,5 +245,7 @@
 			}
 		}
 	],
-	"people_together": "People with the most photos together"
+	"people_together": "People with the most photos together",
+	"people_empty_title": "No people yet",
+	"people_empty_hint": "Once face recognition has gone through your photos, similar faces are grouped here."
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { m } from '#lib/paraglide/messages.js';
+	import SectionTitle from './SectionTitle.svelte';
 
 	interface Props {
 		id: string;
@@ -15,12 +15,7 @@
 </script>
 
 <section aria-labelledby={id}>
-	<div class="head">
-		<h2 {id}>{title}</h2>
-		{#if more}
-			<a class="more" href={more.href}>{more.label ?? m.explore_see_all()}</a>
-		{/if}
-	</div>
+	<div class="head"><SectionTitle {id} {title} {more} /></div>
 	<ul class="row" role="list" aria-labelledby={id}>
 		{@render children()}
 	</ul>
@@ -28,30 +23,11 @@
 
 <style>
 	section {
-		margin-top: var(--space-6);
+		margin-top: var(--space-4);
 	}
 
 	.head {
-		display: flex;
-		align-items: baseline;
-		gap: var(--space-3);
-		padding: 0 var(--space-4);
-	}
-
-	h2 {
-		margin: 0;
-		font-size: var(--font-size-md);
-	}
-
-	.more {
-		margin-left: auto;
-		color: var(--color-accent);
-		font-size: var(--font-size-sm);
-		text-decoration: none;
-	}
-
-	.more:hover {
-		text-decoration: underline;
+		padding: 0 var(--page-gutter);
 	}
 
 	/* One scrolling row; focus moving along it scrolls it too. */
@@ -61,10 +37,10 @@
 		grid-auto-columns: 150px;
 		gap: var(--space-3);
 		margin: 0;
-		padding: var(--space-3) var(--space-4) var(--space-2);
+		padding: var(--space-2) var(--page-gutter);
 		overflow-x: auto;
 		overscroll-behavior-x: contain;
-		scroll-padding-inline: var(--space-4);
+		scroll-padding-inline: var(--page-gutter);
 		scroll-snap-type: x proximity;
 		list-style: none;
 	}

@@ -2,6 +2,7 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { page } from '$app/state';
 	import { getOrganizeInboxCountOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import Tabs from '#lib/components/ui/Tabs.svelte';
 	import { monthTitle } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -29,7 +30,7 @@
 	});
 </script>
 
-<div class="organize-nav">
+<div class="intro">
 	<p class="lead">{m.organize_lead()}</p>
 	{#if count.data && count.data.count > 0}
 		<p class="summary">
@@ -38,71 +39,34 @@
 				: m.organize_pending({ count: count.data.count })}
 		</p>
 	{/if}
-	<nav aria-label={m.organize_sections()}>
-		{#each tabs as tab (tab.path)}
-			<a
-				href={appHref(tab.path)}
-				aria-current={page.url.pathname === appHref(tab.path) ? 'page' : undefined}
-			>
-				{tab.label}
-				{#if tab.count !== undefined}<span class="count">{tab.count}</span>{/if}
-			</a>
-		{/each}
-	</nav>
 </div>
+<Tabs
+	label={m.organize_sections()}
+	tabs={tabs.map((tab) => ({
+		href: appHref(tab.path),
+		// The count reads as part of the tab's name ("Bandeja 32").
+		label: tab.count !== undefined ? `${tab.label} ${tab.count}` : tab.label,
+		current: page.url.pathname === appHref(tab.path)
+	}))}
+/>
 
 <style>
-	.organize-nav {
+	.intro {
 		display: grid;
-		gap: var(--space-3);
-		padding: var(--space-1) var(--space-4) var(--space-3);
+		gap: var(--space-1);
+		padding: 0 var(--page-gutter) var(--space-3);
 	}
 
 	.lead,
 	.summary {
+		max-width: 80ch;
 		margin: 0;
 		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
 	}
 
 	.summary {
-		margin-top: calc(-1 * var(--space-2));
 		color: var(--color-text);
 		font-weight: 600;
-	}
-
-	nav {
-		display: flex;
-		gap: var(--space-1);
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	a {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		border-bottom: 2px solid transparent;
-		color: var(--color-text-muted);
-		text-decoration: none;
-		font-weight: 600;
-	}
-
-	a:hover {
-		color: var(--color-text);
-	}
-
-	a[aria-current='page'] {
-		border-bottom-color: var(--color-accent);
-		color: var(--color-accent);
-	}
-
-	.count {
-		min-width: 1.5rem;
-		padding: 0 var(--space-2);
-		border-radius: 999px;
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: var(--font-size-xs);
-		text-align: center;
 	}
 </style>

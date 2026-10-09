@@ -39,5 +39,26 @@
 	"search_discover_scenes": "Escenas",
 	"search_discover_objects": "Objetos",
 	"search_discover_hint": "Busca por nombre de archivo, ruta, etiqueta o fecha, o activa la búsqueda semántica y descríbelo con tus palabras.",
-	"search_results": "Resultados"
+	"search_results": "Resultados",
+	"search_result_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} resultado",
+				"countPlural=other": "{count} resultados"
+			}
+		}
+	],
+	"search_result_count_more": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Más de {count} resultado",
+				"countPlural=other": "Más de {count} resultados"
+			}
+		}
+	],
+	"search_discover_empty": "Busca en tu biblioteca"
 }

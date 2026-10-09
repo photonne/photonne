@@ -128,7 +128,7 @@
 	{#snippet selectionActions(selection, batch)}
 		<button
 			type="button"
-			class="action"
+			class="icon-btn"
 			disabled={busy}
 			title={m.organize_move()}
 			aria-label={m.organize_move()}
@@ -138,7 +138,7 @@
 		</button>
 		<button
 			type="button"
-			class="action"
+			class="icon-btn"
 			disabled={busy}
 			title={m.organize_set_aside_action()}
 			aria-label={m.organize_set_aside_action()}
@@ -167,26 +167,3 @@
 />
 
 <FolderPickerDialog open={moving !== null} onclose={() => (moving = null)} onpick={move} />
-
-<style>
-	.action {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.action:hover {
-		background: var(--color-surface);
-	}
-
-	.action:disabled {
-		opacity: 0.4;
-		cursor: progress;
-	}
-</style>

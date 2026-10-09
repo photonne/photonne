@@ -120,9 +120,13 @@
 		cursor: pointer;
 	}
 
+	label:hover {
+		background: var(--color-hover);
+	}
+
 	label.checked {
 		border-color: var(--color-accent);
-		background: var(--color-surface);
+		background: var(--color-accent-soft);
 	}
 
 	label:has(input:focus-visible) {

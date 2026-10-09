@@ -245,5 +245,7 @@
 			}
 		}
 	],
-	"people_together": "Personas con más fotos juntas"
+	"people_together": "Personas con más fotos juntas",
+	"people_empty_title": "Todavía no hay personas",
+	"people_empty_hint": "Cuando el reconocimiento facial analice tus fotos, las caras parecidas se agruparán aquí."
 }

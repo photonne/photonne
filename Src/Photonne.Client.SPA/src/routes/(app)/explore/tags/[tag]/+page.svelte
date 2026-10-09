@@ -23,7 +23,8 @@
 <style>
 	.note {
 		margin: var(--space-1) 0 0;
-		padding: 0 var(--space-4);
+		max-width: 80ch;
+		padding: 0 var(--page-gutter) var(--space-2);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}
