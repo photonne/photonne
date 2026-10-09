@@ -57,12 +57,17 @@ class SnackbarController(
      * [onDismissed] corre cuando el snackbar se va SIN que se pulse la acción
      * (caduca, lo sustituye otro o se desmonta el host): es el momento de
      * consolidar lo que el Deshacer aún podía revertir.
+     *
+     * [onAction] va el ÚLTIMO a propósito: los hosts lo pasan como lambda
+     * final (`show(msg, undoLabel) { deshacer() }`). Con [onDismissed] detrás,
+     * esa lambda acababa en onDismissed: el snackbar salía sin botón y
+     * "deshacía" solo al caducar, devolviendo lo archivado o borrado.
      */
     fun show(
         message: String,
         actionLabel: String? = null,
-        onAction: (() -> Unit)? = null,
-        onDismissed: (() -> Unit)? = null
+        onDismissed: (() -> Unit)? = null,
+        onAction: (() -> Unit)? = null
     ) {
         if (message.isBlank()) {
             onDismissed?.invoke()
