@@ -198,7 +198,6 @@
 	.editor {
 		display: grid;
 		gap: var(--space-4);
-		max-width: 1180px;
 		padding: var(--space-6) var(--space-6) 0;
 	}
 

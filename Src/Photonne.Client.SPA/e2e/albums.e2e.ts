@@ -389,3 +389,26 @@ test.describe('sharing', () => {
 		await expect(dialog.getByText('No hay enlaces activos.')).toBeVisible();
 	});
 });
+
+test('an album with a cover opens under it as a banner that folds when scrolling', async ({
+	page
+}) => {
+	// Low enough for the album's photos to scroll under the banner.
+	await page.setViewportSize({ width: 1280, height: 420 });
+	await open(page, '/albums/album-1');
+
+	const banner = page.getByRole('region', { name: 'Vacaciones', exact: true }).filter({
+		has: page.getByRole('heading', { level: 1 })
+	});
+	await expect(banner.getByRole('heading', { name: 'Vacaciones', level: 1 })).toBeVisible();
+	// The large rendition, not the card's medium one.
+	await expect(banner.locator(':scope > img')).toHaveAttribute('src', /size=Large/);
+	const tall = (await banner.boundingBox())!.height;
+
+	await page
+		.getByRole('button', { name: /^(Foto|Vídeo), / })
+		.first()
+		.hover();
+	await page.mouse.wheel(0, 600);
+	await expect.poll(async () => (await banner.boundingBox())!.height).toBeLessThan(tall);
+});

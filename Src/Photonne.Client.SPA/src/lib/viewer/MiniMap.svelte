@@ -55,7 +55,7 @@
 			radius: 7,
 			weight: 3,
 			color: '#fff',
-			fillColor: '#60a5fa',
+			fillColor: '#ffd166',
 			fillOpacity: 1,
 			interactive: false
 		}).addTo(map);

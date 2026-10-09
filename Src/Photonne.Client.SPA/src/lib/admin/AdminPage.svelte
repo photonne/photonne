@@ -36,12 +36,12 @@
 		display: grid;
 		gap: var(--space-4);
 		align-content: start;
-		max-width: 1400px;
 		padding: var(--space-4) var(--space-6) var(--space-8);
 	}
 
+	/* Pages of a few cards: their grid stays readable on a wide screen. */
 	.narrow {
-		max-width: 1100px;
+		max-width: 1600px;
 	}
 
 	header {

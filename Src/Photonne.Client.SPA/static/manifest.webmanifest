@@ -7,17 +7,17 @@
 	"scope": "/",
 	"display": "standalone",
 	"display_override": ["window-controls-overlay", "standalone"],
-	"background_color": "#111214",
-	"theme_color": "#111214",
+	"background_color": "#fff6e0",
+	"theme_color": "#c8960a",
 	"prefer_related_applications": false,
 	"icons": [
-		{ "src": "/icons/icon-192-dark.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
-		{ "src": "/icons/icon-512-dark.png", "type": "image/png", "sizes": "512x512", "purpose": "any" }
+		{ "src": "/icons/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+		{ "src": "/icons/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
 	],
 	"shortcuts": [
-		{ "name": "Fotos", "url": "/", "icons": [{ "src": "/icons/icon-192-dark.png", "sizes": "192x192" }] },
-		{ "name": "Buscar", "url": "/search", "icons": [{ "src": "/icons/icon-192-dark.png", "sizes": "192x192" }] },
-		{ "name": "Álbumes", "url": "/albums", "icons": [{ "src": "/icons/icon-192-dark.png", "sizes": "192x192" }] },
-		{ "name": "Subir", "url": "/upload", "icons": [{ "src": "/icons/icon-192-dark.png", "sizes": "192x192" }] }
+		{ "name": "Fotos", "url": "/", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+		{ "name": "Buscar", "url": "/search", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+		{ "name": "Álbumes", "url": "/albums", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+		{ "name": "Subir", "url": "/upload", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
 	]
 }

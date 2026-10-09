@@ -224,3 +224,31 @@ test('shares a folder with a person', async ({ page }) => {
 		canWrite: false
 	});
 });
+
+test('the tree pane is resized by dragging or with the keyboard, and remembered', async ({
+	page
+}) => {
+	await open(page, '/folders');
+	const handle = page.getByRole('separator', { name: 'Cambiar el ancho del panel' });
+	const pane = page.locator('#folders-tree');
+	await expect(handle).toHaveAttribute('aria-valuenow', '280');
+
+	await handle.focus();
+	await page.keyboard.press('ArrowRight');
+	await page.keyboard.press('ArrowRight');
+	await expect(handle).toHaveAttribute('aria-valuenow', '312');
+
+	const box = (await handle.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + 200);
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width / 2 + 100, box.y + 200, { steps: 4 });
+	await page.mouse.up();
+	await expect(handle).toHaveAttribute('aria-valuenow', '412');
+	expect(Math.round((await pane.boundingBox())!.width)).toBe(412);
+
+	await page.reload();
+	await expect(handle).toHaveAttribute('aria-valuenow', '412');
+
+	await handle.dblclick();
+	await expect(handle).toHaveAttribute('aria-valuenow', '280');
+});

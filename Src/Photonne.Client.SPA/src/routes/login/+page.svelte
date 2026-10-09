@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Logo from '#lib/components/Logo.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { session, type LoginFailure } from '#lib/auth/session.svelte.js';
@@ -38,7 +39,7 @@
 
 <main class="page">
 	<form class="card" onsubmit={submit} aria-describedby={failure ? 'login-error' : undefined}>
-		<h1>{m.app_name()}</h1>
+		<h1><Logo size={40} /></h1>
 		<p class="subtitle">{m.login_title()}</p>
 
 		<label>
@@ -82,7 +83,9 @@
 		display: grid;
 		place-items: center;
 		padding: var(--space-6);
-		background: var(--color-surface);
+		background:
+			radial-gradient(60rem 30rem at 50% -10%, var(--color-accent-soft), transparent 70%),
+			var(--color-surface);
 	}
 
 	.card {
@@ -97,9 +100,9 @@
 	}
 
 	h1 {
-		margin: 0;
-		font-size: var(--font-size-xl);
-		text-align: center;
+		margin: 0 0 var(--space-2);
+		display: flex;
+		justify-content: center;
 	}
 
 	.subtitle {
