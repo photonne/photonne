@@ -19,6 +19,16 @@ class UploadRepository(
         fileModifiedAtMillis, fileCreatedAtMillis
     )
 
+    /** Whether the server still lacks the motion clip of the still [assetId]. */
+    suspend fun motionClipMissing(assetId: String): Boolean =
+        assetId in api.motionClipsMissing(listOf(assetId))
+
+    /** Attaches a Live Photo's motion clip, read whole, to its still [assetId]. */
+    suspend fun attachMotionClip(assetId: String, fileName: String, mimeType: String, bytes: ByteArray) {
+        val source = kotlinx.io.Buffer().apply { write(bytes) }
+        api.attachMotionClip(assetId, fileName, mimeType, source, bytes.size.toLong())
+    }
+
     /** Streaming variant for large files — see [PhotonneApi.uploadAssetStream]. */
     suspend fun uploadStream(
         fileName: String,

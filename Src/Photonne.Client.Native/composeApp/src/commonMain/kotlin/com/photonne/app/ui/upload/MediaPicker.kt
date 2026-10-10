@@ -18,11 +18,25 @@ data class PickedFile(
      * platform picker exposes it; sent with the upload so the server
      * preserves the file's real date instead of the upload time.
      */
-    val lastModifiedMillis: Long? = null
+    val lastModifiedMillis: Long? = null,
+    /**
+     * iOS Live Photo: the paired video PhotoKit keeps as a second resource of
+     * the asset. Uploaded right after the still so the server can show it as
+     * a motion photo. Null everywhere else (Android motion photos carry the
+     * clip inside the JPEG).
+     */
+    val motionClip: PickedMotionClip? = null
 ) {
     override fun equals(other: Any?): Boolean = this === other
     override fun hashCode(): Int = (name.hashCode() * 31 + mimeType.hashCode()) * 31 + sizeBytes.hashCode()
 }
+
+/** The motion clip of a picked Live Photo, read whole like its still. */
+class PickedMotionClip(
+    val name: String,
+    val mimeType: String,
+    val bytes: ByteArray
+)
 
 /**
  * Returns a function that, when called, opens the platform's native

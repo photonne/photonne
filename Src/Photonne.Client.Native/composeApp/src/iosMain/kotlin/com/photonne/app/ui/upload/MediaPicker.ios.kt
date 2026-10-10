@@ -19,8 +19,11 @@ import platform.Foundation.NSMutableData
 import platform.Foundation.NSURL
 import platform.Foundation.appendData
 import platform.Foundation.dataWithContentsOfURL
+import com.photonne.app.data.devicebackup.pairedVideoResource
 import platform.Photos.PHAccessLevelReadWrite
 import platform.Photos.PHAsset
+import platform.Photos.PHAssetMediaSubtypePhotoLive
+import platform.Photos.PHAssetMediaTypeImage
 import platform.Photos.PHAssetResource
 import platform.Photos.PHAssetResourceManager
 import platform.Photos.PHAssetResourceRequestOptions
@@ -160,6 +163,28 @@ private suspend fun loadFromAsset(localIdentifier: String): PickedFile? {
         name = filename,
         mimeType = mime,
         sizeBytes = data.length.toLong(),
+        bytes = data.toByteArray(),
+        motionClip = loadMotionClip(asset)
+    )
+}
+
+/**
+ * The paired video of a Live Photo, or null when [asset] isn't one or the
+ * clip can't be read: the still alone still uploads. The permission-free
+ * fallback has no asset to ask, so picks without Photos access stay stills.
+ */
+@OptIn(ExperimentalForeignApi::class)
+private suspend fun loadMotionClip(asset: PHAsset): PickedMotionClip? {
+    if (asset.mediaType != PHAssetMediaTypeImage ||
+        (asset.mediaSubtypes and PHAssetMediaSubtypePhotoLive) == 0uL
+    ) return null
+    val resource = pairedVideoResource(asset) ?: return null
+    val data = runCatching { readResourceData(resource) }.getOrNull() ?: return null
+    if (data.length == 0uL) return null
+    return PickedMotionClip(
+        name = resource.originalFilename,
+        mimeType = UTType.typeWithIdentifier(resource.uniformTypeIdentifier)?.preferredMIMEType
+            ?: "video/quicktime",
         bytes = data.toByteArray()
     )
 }

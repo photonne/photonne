@@ -9,6 +9,7 @@ import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.upload.UploadRepository
 import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,8 @@ data class UploadItem(
      */
     val bytes: ByteArray?,
     val lastModifiedMillis: Long? = null,
+    /** A Live Photo's paired video; released together with [bytes]. */
+    val motionClip: PickedMotionClip? = null,
     val status: UploadStatus = UploadStatus.Queued,
     val assetId: String? = null,
     val errorMessage: String? = null
@@ -85,7 +88,8 @@ class UploadViewModel(
                     mimeType = picked.mimeType.ifBlank { "application/octet-stream" },
                     sizeBytes = picked.sizeBytes,
                     bytes = picked.bytes,
-                    lastModifiedMillis = picked.lastModifiedMillis
+                    lastModifiedMillis = picked.lastModifiedMillis,
+                    motionClip = picked.motionClip
                 )
             }
         val tooBig = files.size - newItems.size
@@ -134,7 +138,7 @@ class UploadViewModel(
             if (index < 0) return@update previous
             val item = items[index]
             if (item.status == UploadStatus.Uploading) {
-                items[index] = item.copy(status = UploadStatus.Cancelled, bytes = null)
+                items[index] = item.copy(status = UploadStatus.Cancelled, bytes = null, motionClip = null)
             } else {
                 items.removeAt(index)
             }
@@ -161,7 +165,7 @@ class UploadViewModel(
                 isUploading = false,
                 items = previous.items.map { item ->
                     if (item.status == UploadStatus.Queued || item.status == UploadStatus.Uploading) {
-                        item.copy(status = UploadStatus.Cancelled, bytes = null)
+                        item.copy(status = UploadStatus.Cancelled, bytes = null, motionClip = null)
                     } else item
                 }
             )
@@ -269,13 +273,17 @@ class UploadViewModel(
         }
         outcome.onSuccess { response ->
             val alreadyExisted = response.message.contains("already exists", ignoreCase = true)
+            val clip = current.motionClip
+            val assetId = response.assetId
+            if (clip != null && !assetId.isNullOrEmpty()) attachMotionClip(assetId, clip, alreadyExisted)
             _state.update {
                 it.copy(
                     items = it.items.map { item ->
                         if (item.id == itemId) item.copy(
                             status = if (alreadyExisted) UploadStatus.Skipped else UploadStatus.Done,
                             assetId = response.assetId,
-                            bytes = null
+                            bytes = null,
+                            motionClip = null
                         ) else item
                     }
                 )
@@ -297,6 +305,22 @@ class UploadViewModel(
                 !response.message.contains("already exists", ignoreCase = true)
         } ?: false
         return landed
+    }
+
+    /**
+     * Sube el vídeo de una Live Photo tras su foto. Si la foto ya estaba en el
+     * servidor solo lo manda cuando le falta, así que volver a subir el carrete
+     * a mano recupera los vídeos que la copia antigua no llevó. Un fallo aquí
+     * no falla el elemento: la foto ya ha entrado y la copia lo reintenta.
+     */
+    private suspend fun attachMotionClip(assetId: String, clip: PickedMotionClip, alreadyExisted: Boolean) {
+        try {
+            if (alreadyExisted && !repository.motionClipMissing(assetId)) return
+            repository.attachMotionClip(assetId, clip.name, clip.mimeType, clip.bytes)
+        } catch (ex: CancellationException) {
+            throw ex
+        } catch (_: Throwable) {
+        }
     }
 
     /**

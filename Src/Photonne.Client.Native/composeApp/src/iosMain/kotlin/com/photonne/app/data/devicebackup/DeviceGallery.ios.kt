@@ -304,7 +304,7 @@ private suspend fun <T> withSpilledResource(
  * one when only that is around (same preference as [primaryResource]).
  */
 @OptIn(ExperimentalForeignApi::class)
-private fun pairedVideoResource(asset: PHAsset): PHAssetResource? {
+internal fun pairedVideoResource(asset: PHAsset): PHAssetResource? {
     val resources = PHAssetResource.assetResourcesForAsset(asset)
     var fullSize: PHAssetResource? = null
     for (any in resources) {
