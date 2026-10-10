@@ -21,9 +21,9 @@
 <div class="empty" class:compact>
 	{#if icon || iconPath}
 		<span class="mark" aria-hidden="true">
-			{#if iconPath}<Icon path={iconPath} size={compact ? 24 : 32} />{:else if icon}<Icon
+			{#if iconPath}<Icon path={iconPath} size={compact ? 24 : 56} />{:else if icon}<Icon
 					name={icon}
-					size={compact ? 24 : 32}
+					size={compact ? 24 : 56}
 				/>{/if}
 		</span>
 	{/if}
@@ -37,8 +37,8 @@
 		display: grid;
 		justify-items: center;
 		align-content: center;
-		gap: var(--space-2);
-		min-height: 320px;
+		gap: var(--space-3);
+		min-height: min(60vh, 560px);
 		padding: var(--space-8) var(--page-gutter);
 		text-align: center;
 	}
@@ -51,22 +51,27 @@
 	.mark {
 		display: grid;
 		place-items: center;
-		width: 72px;
-		height: 72px;
-		margin-bottom: var(--space-2);
+		width: 128px;
+		height: 128px;
+		margin-bottom: var(--space-3);
 		border-radius: 50%;
 		background: var(--color-brand-tile);
 		color: var(--color-brand);
 	}
 
+	.compact {
+		gap: var(--space-2);
+	}
+
 	.compact .mark {
 		width: 52px;
 		height: 52px;
+		margin-bottom: var(--space-2);
 	}
 
 	.title {
 		margin: 0;
-		font-size: var(--font-size-lg);
+		font-size: var(--font-size-xl);
 		font-weight: 600;
 	}
 
@@ -76,9 +81,14 @@
 
 	.hint {
 		margin: 0;
+		max-width: 52ch;
+		font-size: var(--font-size-md);
+		color: var(--color-text-muted);
+	}
+
+	.compact .hint {
 		max-width: 46ch;
 		font-size: var(--font-size-sm);
-		color: var(--color-text-muted);
 	}
 
 	.action {
