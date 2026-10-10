@@ -36,9 +36,6 @@ public class MapPointsEndpoint : IEndpoint
 
         var userRootPath = $"/assets/users/{username}";
 
-        // Reuse the same cache key as MapAssetsEndpoint to avoid a double DB query
-        // when both endpoints are called. Uses a separate typed cache key to avoid
-        // type mismatch with the AssetLocation inner class of MapAssetsEndpoint.
         var cacheKey = $"map:points:{userId}";
         if (!cache.TryGetValue(cacheKey, out List<MapPointResponse>? points) || points == null)
         {
