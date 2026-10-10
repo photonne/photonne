@@ -11,6 +11,9 @@
 		getUnreadNotificationsCountOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import DropZone from '#lib/account/upload/DropZone.svelte';
+	import { isSmart } from '#lib/albums/album-list.js';
+	import { icons } from '#lib/albums/icons.js';
+	import { mergePinned } from '#lib/albums/pinned.js';
 	import { uploads } from '#lib/account/upload/uploads.svelte.js';
 	import { session } from '#lib/auth/session.svelte.js';
 	import { appHref as href } from '#lib/navigation/href.js';
@@ -34,14 +37,15 @@
 	}));
 	const unreadCount = $derived(unread.data?.count ?? 0);
 
-	const pinned = $derived([
-		...(albums.data ?? [])
-			.filter((album) => album.isPinned && album.kind !== 'Smart')
-			.map((album) => ({ kind: 'album' as const, id: album.id, name: album.name })),
-		...(folders.data ?? [])
-			.filter((folder) => folder.isPinned)
-			.map((folder) => ({ kind: 'folder' as const, id: folder.id, name: folder.name }))
-	]);
+	const pinned = $derived(
+		mergePinned(albums.data ?? [], folders.data ?? []).map((entry) => ({
+			kind: entry.kind,
+			id: entry.item.id,
+			name: entry.item.name,
+			// Smart albums fill themselves: they open, but photos can't be dropped on them.
+			smart: entry.kind === 'album' && isSmart(entry.item)
+		}))
+	);
 
 	let dropTarget = $state<string | null>(null);
 	// A rail of icons or the full menu; narrow windows start as a rail.
@@ -173,23 +177,30 @@
 									href={href(path)}
 									class:drop={dropTarget === item.id}
 									aria-current={isCurrent(path) ? 'page' : undefined}
-									title={item.kind === 'album'
-										? m.drop_add_to_album({ album: item.name })
-										: m.drop_move_to_folder({ folder: item.name })}
+									title={item.smart
+										? item.name
+										: item.kind === 'album'
+											? m.drop_add_to_album({ album: item.name })
+											: m.drop_move_to_folder({ folder: item.name })}
 									ondragover={(event) => {
-										if (!isAssetDrag(event)) return;
+										if (item.smart || !isAssetDrag(event)) return;
 										event.preventDefault();
 										dropTarget = item.id;
 									}}
 									ondragleave={() => (dropTarget = null)}
 									ondrop={(event) => {
+										if (item.smart) return;
 										event.preventDefault();
 										dropTarget = null;
 										if (item.kind === 'album') dropOnAlbum(event, item);
 										else dropOnFolder(event, item);
 									}}
 								>
-									<Icon name={item.kind === 'album' ? 'album' : 'folder'} size={18} />
+									<Icon
+										path={item.smart ? icons.smart : undefined}
+										name={item.smart ? undefined : item.kind === 'album' ? 'album' : 'folder'}
+										size={18}
+									/>
 									<span class="label">{item.name}</span>
 								</a>
 							</li>

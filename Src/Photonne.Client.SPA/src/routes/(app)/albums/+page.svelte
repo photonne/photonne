@@ -2,13 +2,17 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
 	import { deleteAlbum, leaveAlbum, type AlbumResponse } from '#lib/api/index.js';
-	import { getAllAlbumsOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import {
+		getAllAlbumsOptions,
+		getAllFoldersOptions
+	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AlbumCard from '#lib/albums/AlbumCard.svelte';
 	import AlbumFormDialog from '#lib/albums/AlbumFormDialog.svelte';
 	import {
 		albumSelectionActions,
 		arrangeAlbums,
 		groupByYear,
+		isFiltered,
 		parseListOptions,
 		scopeCounts,
 		type AlbumKindFilter,
@@ -19,6 +23,8 @@
 	import { invalidateAlbums, toggleAlbumPin } from '#lib/albums/cache.js';
 	import { icons } from '#lib/albums/icons.js';
 	import ListViewToggle from '#lib/albums/ListViewToggle.svelte';
+	import { mergePinned } from '#lib/albums/pinned.js';
+	import PinnedSection from '#lib/albums/PinnedSection.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
@@ -35,6 +41,8 @@
 
 	const queryClient = useQueryClient();
 	const albums = createQuery(() => getAllAlbumsOptions());
+	// Pinned folders join the pinned albums, as in the sidebar.
+	const folders = createQuery(() => getAllFoldersOptions());
 
 	let options = $state(parseListOptions(readSaved()));
 	let creating = $state<'manual' | 'smart' | null>(null);
@@ -62,18 +70,20 @@
 
 	const arranged = $derived(arrangeAlbums(albums.data ?? [], options, getLocale()));
 	const counts = $derived(scopeCounts(albums.data ?? []));
+	// Hidden while filtering: the matching albums are one list, pinned or not.
+	const pinned = $derived(
+		isFiltered(options) ? [] : mergePinned(arranged.pinned, folders.data ?? [])
+	);
 	const years = $derived(options.groupByYear ? groupByYear(arranged.others) : []);
 	/** Every shown album in screen order, for Shift ranges and Ctrl+A. */
 	const shown = $derived([
-		...arranged.pinned,
+		...pinned.flatMap((entry) => (entry.kind === 'album' ? [entry.item] : [])),
 		...(options.groupByYear ? years.flatMap((group) => group.albums) : arranged.others)
 	]);
 	const order = $derived(shown.map((album) => album.id));
 	/** Loaded, and the user has no album at all: nothing to filter. */
 	const empty = $derived(albums.isSuccess && albums.data.length === 0);
-	const filtered = $derived(
-		options.query.trim() !== '' || options.scope !== 'all' || options.kind !== 'all'
-	);
+	const filtered = $derived(isFiltered(options));
 
 	const scopes: { key: AlbumScope; label: () => string }[] = [
 		{ key: 'all', label: m.albums_scope_all },
@@ -308,11 +318,12 @@
 		</EmptyState>
 	{:else}
 		<div class="content">
-			{#if arranged.pinned.length}
-				<section aria-labelledby="pinned-title">
-					<h2 id="pinned-title">{m.nav_section_pinned()}</h2>
-					{@render list(arranged.pinned)}
-				</section>
+			{#if pinned.length}
+				<PinnedSection
+					entries={pinned}
+					view={options.view}
+					albumSelection={{ selection, select }}
+				/>
 			{/if}
 			{#if options.groupByYear}
 				{#each years as group (group.year)}
@@ -325,7 +336,7 @@
 				{/each}
 			{:else if arranged.others.length}
 				<section aria-labelledby="all-title">
-					<h2 id="all-title" class:visually-hidden={!arranged.pinned.length}>
+					<h2 id="all-title" class:visually-hidden={!pinned.length}>
 						{m.albums_section_all()}
 					</h2>
 					{@render list(arranged.others)}

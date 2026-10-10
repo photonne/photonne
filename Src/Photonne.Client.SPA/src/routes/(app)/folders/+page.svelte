@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { deleteFolder, updateFolder, type FolderResponse } from '#lib/api/index.js';
-	import { getFolderTreeOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import {
+		getAllAlbumsOptions,
+		getAllFoldersOptions,
+		getFolderTreeOptions
+	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { runBulk } from '#lib/albums/bulk.js';
 	import { invalidateFolders } from '#lib/albums/cache.js';
 	import {
@@ -18,6 +22,8 @@
 	import { pathTo, sortTree } from '#lib/albums/folder-tree.js';
 	import { icons } from '#lib/albums/icons.js';
 	import ListViewToggle from '#lib/albums/ListViewToggle.svelte';
+	import { mergePinned } from '#lib/albums/pinned.js';
+	import PinnedSection from '#lib/albums/PinnedSection.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
@@ -35,6 +41,9 @@
 	const queryClient = useQueryClient();
 	const treeQuery = createQuery(() => getFolderTreeOptions());
 	const roots = $derived(sortTree(treeQuery.data ?? [], getLocale()));
+	// What the sidebar pins, from any depth, with the pinned albums.
+	const albums = createQuery(() => getAllAlbumsOptions());
+	const allFolders = createQuery(() => getAllFoldersOptions());
 
 	let options = $state(parseFolderListOptions(readSaved()));
 
@@ -59,6 +68,8 @@
 	const shown = $derived(arrangeFolders(roots, options, getLocale()));
 	const counts = $derived(folderScopeCounts(roots));
 	const filtered = $derived(searching || options.scope !== 'all');
+	// Hidden while filtering, like on the albums page.
+	const pinned = $derived(filtered ? [] : mergePinned(albums.data ?? [], allFolders.data ?? []));
 
 	/** "Camera / 2025" for a search hit below the top level. */
 	function location(folder: FolderResponse) {
@@ -273,6 +284,10 @@
 		</EmptyState>
 	{:else}
 		<div class="content">
+			{#if pinned.length}
+				<PinnedSection entries={pinned} view={options.view} />
+				<h2>{m.folders_roots()}</h2>
+			{/if}
 			<FolderList
 				folders={shown}
 				label={searching ? m.folders_results() : m.folders_roots()}
@@ -365,6 +380,13 @@
 
 	.content {
 		padding: var(--space-2) var(--page-gutter) 0;
+	}
+
+	h2 {
+		margin: var(--space-6) 0 var(--space-3);
+		font-size: var(--font-size-lg);
+		font-weight: 600;
+		line-height: 1.3;
 	}
 
 	.status {

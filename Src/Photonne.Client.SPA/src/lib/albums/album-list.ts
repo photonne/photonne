@@ -70,9 +70,15 @@ export function compareAlbums(sort: AlbumSort, locale: string) {
 	return (a: AlbumResponse, b: AlbumResponse) => keyed[sort](a, b) || byName(a, b);
 }
 
+/** Some filter narrows the list (sorting and grouping don't count). */
+export function isFiltered(options: AlbumListOptions) {
+	return options.query.trim() !== '' || options.scope !== 'all' || options.kind !== 'all';
+}
+
 /**
- * The albums page's two groups: the user's pinned albums first, then the
- * rest, both filtered and sorted the same way.
+ * The albums page's two groups: the user's pinned albums apart, then the rest
+ * sorted. While a filter is on there is no pinned group: what matches is one
+ * list, pinned or not.
  */
 export function arrangeAlbums(
 	albums: readonly AlbumResponse[],
@@ -88,6 +94,7 @@ export function arrangeAlbums(
 				matchesQuery(album, options.query)
 		)
 		.sort((a, b) => (options.descending ? compare(b, a) : compare(a, b)));
+	if (isFiltered(options)) return { pinned: [], others: sorted };
 	return {
 		pinned: sorted.filter((album) => album.isPinned),
 		others: sorted.filter((album) => !album.isPinned)

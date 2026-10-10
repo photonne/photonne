@@ -208,6 +208,31 @@ test('pins a folder and hides a shared one from my photos', async ({ page }) => 
 	});
 });
 
+test('pinned albums, smart ones too, and folders show together everywhere', async ({ page }) => {
+	await open(page, '/folders/folder-4');
+	await page.getByRole('button', { name: 'Fijar en la barra lateral' }).click();
+	await expect(page.getByText('«Familia» fijado')).toBeVisible();
+
+	const sidebar = page.getByRole('navigation', { name: 'Navegación principal' });
+	await sidebar.getByRole('link', { name: 'Álbumes' }).click();
+	await page.getByRole('button', { name: 'Fijar «Perros»' }).click();
+	await expect(sidebar.getByRole('link', { name: 'Perros' })).toBeVisible();
+	await expect(sidebar.getByRole('link', { name: 'Familia' })).toBeVisible();
+
+	const pinned = page.getByRole('region', { name: 'Fijados' });
+	for (const name of [/Vacaciones/, /Perros/, /Familia/])
+		await expect(pinned.getByRole('link', { name })).toBeVisible();
+
+	// A filter turns the page into one list of matches: no pinned group.
+	await page.getByRole('searchbox', { name: 'Buscar álbumes' }).fill('perr');
+	await expect(pinned).toBeHidden();
+	await expect(page.getByRole('main').getByRole('link', { name: /Perros/ })).toBeVisible();
+
+	await sidebar.getByRole('link', { name: 'Carpetas', exact: true }).click();
+	await expect(pinned.getByRole('link')).toHaveCount(3);
+	await expect(page.getByRole('heading', { name: 'Carpetas principales' })).toBeVisible();
+});
+
 test('shares a folder with a person', async ({ page }) => {
 	const state = await open(page, '/folders/folder-1');
 

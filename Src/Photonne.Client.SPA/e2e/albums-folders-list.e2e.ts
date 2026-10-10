@@ -15,7 +15,11 @@ async function open(page: Page) {
 const calls = (state: { log: { call: string }[] }, call: string) =>
 	state.log.filter((entry) => entry.call === call);
 const main = (page: Page) => page.locator('.main');
-const names = (page: Page) => main(page).locator('li .name');
+// The folder list, not the pinned albums and folders above it.
+const names = (page: Page) =>
+	main(page)
+		.getByRole('list', { name: /^Carpetas/ })
+		.locator('li .name');
 const bar = (page: Page) => page.getByRole('toolbar');
 
 test('searches at any depth, filters by scope, sorts and remembers the view', async ({ page }) => {
@@ -41,7 +45,7 @@ test('searches at any depth, filters by scope, sorts and remembers the view', as
 	await expect(names(page)).toHaveText(['Camera', 'Familia', 'Documentos']);
 
 	await page.getByRole('radio', { name: 'Lista' }).check();
-	await expect(main(page).locator('ul.list')).toBeVisible();
+	await expect(page.getByRole('list', { name: 'Carpetas principales' })).toHaveClass(/list/);
 
 	await page.reload();
 	await expect(page.getByRole('radio', { name: 'Lista' })).toBeChecked();

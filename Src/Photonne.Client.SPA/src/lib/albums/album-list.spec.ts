@@ -63,12 +63,18 @@ describe('arrangeAlbums', () => {
 		expect(ids(arrangeAlbums(albums, { ...defaultListOptions, scope: 'shared' }).others)).toEqual([
 			'3'
 		]);
-		expect(ids(arrangeAlbums(albums, { ...defaultListOptions, kind: 'smart' }).pinned)).toEqual([
+		expect(ids(arrangeAlbums(albums, { ...defaultListOptions, kind: 'smart' }).others)).toEqual([
 			'4'
 		]);
 		expect(ids(arrangeAlbums(albums, { ...defaultListOptions, query: 'lucia' }).others)).toEqual([
 			'5'
 		]);
+	});
+
+	it('keeps pinned albums among the results while a filter is on', () => {
+		const { pinned, others } = arrangeAlbums(albums, { ...defaultListOptions, query: 'perr' });
+		expect(pinned).toEqual([]);
+		expect(ids(others)).toEqual(['4']);
 	});
 
 	it('sorts by number of photos', () => {
