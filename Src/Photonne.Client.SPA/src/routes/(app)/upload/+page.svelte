@@ -128,10 +128,8 @@
 />
 
 <style>
-	/* Centred and wide: the drop zone is the page, not a column on the left. */
+	/* Full width, like the rest of the app: the drop zone is the page. */
 	.page {
-		max-width: calc(1200px + 2 * var(--page-gutter));
-		margin-inline: auto;
 		padding-bottom: var(--space-8);
 	}
 

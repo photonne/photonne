@@ -6,10 +6,8 @@
  * of the app.
  */
 
-/* Header and body share one centred column beside the settings list. */
+/* Full width beside the settings list, like the rest of the app. */
 .settings-page {
-	max-width: calc(760px + 2 * var(--page-gutter));
-	margin-inline: auto;
 	padding-bottom: var(--space-8);
 }
 
@@ -47,7 +45,7 @@
 
 .settings-page .fields {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
 	gap: var(--space-4);
 }
 

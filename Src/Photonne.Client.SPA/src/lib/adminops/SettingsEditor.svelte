@@ -246,7 +246,6 @@
 	.groups {
 		display: grid;
 		gap: var(--space-4);
-		max-width: 960px;
 	}
 
 	.group {

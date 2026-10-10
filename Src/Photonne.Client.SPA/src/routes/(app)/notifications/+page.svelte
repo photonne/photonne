@@ -209,8 +209,6 @@
 
 <style>
 	.page {
-		max-width: calc(820px + 2 * var(--page-gutter));
-		margin-inline: auto;
 		padding-bottom: var(--space-8);
 	}
 

@@ -99,7 +99,6 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 		gap: var(--space-3);
-		max-width: 1100px;
 		margin: 0;
 		padding: var(--space-2) var(--page-gutter);
 		list-style: none;
