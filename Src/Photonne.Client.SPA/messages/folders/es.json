@@ -84,6 +84,9 @@
 	"folders_shared_space_badge": "Espacio compartido",
 	"folders_shared_space_hint": "Una carpeta común para varias personas, fuera de tu espacio personal.",
 	"folders_subfolders": "Subcarpetas",
+	"folders_group_personal": "Personal",
+	"folders_group_shared": "Compartido",
+	"folders_group_external": "Bibliotecas",
 	"folders_tree": "Árbol de carpetas",
 	"folders_tree_item": [
 		{

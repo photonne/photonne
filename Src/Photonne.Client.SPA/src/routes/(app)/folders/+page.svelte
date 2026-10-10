@@ -19,7 +19,8 @@
 	} from '#lib/albums/folder-list.js';
 	import FolderList from '#lib/albums/FolderList.svelte';
 	import FolderMoveDialog from '#lib/albums/FolderMoveDialog.svelte';
-	import { pathTo, sortTree } from '#lib/albums/folder-tree.js';
+	import { browsableRoots, groupFolders } from '#lib/albums/folder-groups.js';
+	import { pathTo } from '#lib/albums/folder-tree.js';
 	import { icons } from '#lib/albums/icons.js';
 	import ListViewToggle from '#lib/albums/ListViewToggle.svelte';
 	import { mergePinned } from '#lib/albums/pinned.js';
@@ -30,6 +31,7 @@
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { appHref } from '#lib/navigation/href.js';
+	import { session } from '#lib/auth/session.svelte.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -40,7 +42,8 @@
 
 	const queryClient = useQueryClient();
 	const treeQuery = createQuery(() => getFolderTreeOptions());
-	const roots = $derived(sortTree(treeQuery.data ?? [], getLocale()));
+	const username = $derived(session.user?.username ?? '');
+	const roots = $derived(browsableRoots(groupFolders(treeQuery.data ?? [], username, getLocale())));
 	// What the sidebar pins, from any depth, with the pinned albums.
 	const albums = createQuery(() => getAllAlbumsOptions());
 	const allFolders = createQuery(() => getAllFoldersOptions());
@@ -65,8 +68,8 @@
 	});
 
 	const searching = $derived(options.query.trim() !== '');
-	const shown = $derived(arrangeFolders(roots, options, getLocale()));
-	const counts = $derived(folderScopeCounts(roots));
+	const shown = $derived(arrangeFolders(roots, options, getLocale(), username));
+	const counts = $derived(folderScopeCounts(roots, username));
 	const filtered = $derived(searching || options.scope !== 'all');
 	// Hidden while filtering, like on the albums page.
 	const pinned = $derived(filtered ? [] : mergePinned(albums.data ?? [], allFolders.data ?? []));

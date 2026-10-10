@@ -67,8 +67,19 @@ const roots = [camera, docs, family, nas];
 
 describe('folderScope', () => {
 	it('puts external libraries first, even inside the shared space', () => {
-		expect(roots.map(folderScope)).toEqual(['personal', 'personal', 'shared', 'external']);
+		expect(roots.map((f) => folderScope(f))).toEqual([
+			'personal',
+			'personal',
+			'shared',
+			'external'
+		]);
 		expect(folderScopeCounts(roots)).toEqual({ all: 4, personal: 2, shared: 1, external: 1 });
+	});
+
+	it("counts another user's folder shared with this one as shared", () => {
+		const trip = folder({ id: 'trip', name: 'Viaje', path: '/assets/users/bob/Viaje' });
+		expect(folderScope(trip, 'ana')).toBe('shared');
+		expect(folderScope(camera, 'ana')).toBe('personal');
 	});
 });
 

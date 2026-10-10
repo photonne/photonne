@@ -6,7 +6,8 @@
 	import { invalidateFolders } from '#lib/albums/cache.js';
 	import FolderFormDialog from '#lib/albums/FolderFormDialog.svelte';
 	import { moveAssets, moveFolder } from '#lib/albums/folder-moves.js';
-	import { findFolder, sortTree } from '#lib/albums/folder-tree.js';
+	import { browsableRoots, groupFolders } from '#lib/albums/folder-groups.js';
+	import { findFolder } from '#lib/albums/folder-tree.js';
 	import FolderTree from '#lib/albums/FolderTree.svelte';
 	import { icons } from '#lib/albums/icons.js';
 	import { session } from '#lib/auth/session.svelte.js';
@@ -24,7 +25,10 @@
 
 	const queryClient = useQueryClient();
 	const treeQuery = createQuery(() => getFolderTreeOptions());
-	const tree = $derived(sortTree(treeQuery.data ?? [], getLocale()));
+	const groups = $derived(
+		groupFolders(treeQuery.data ?? [], session.user?.username ?? '', getLocale())
+	);
+	const tree = $derived(browsableRoots(groups));
 	const currentId = $derived(page.params.folderId ?? null);
 
 	let creating = $state(false);
@@ -54,7 +58,7 @@
 			<p class="note" role="alert">{m.error_loading()}</p>
 		{:else}
 			<FolderTree
-				{tree}
+				{groups}
 				{currentId}
 				label={m.folders_tree()}
 				onopen={(folder) => goto(appHref(`/folders/${folder.id}`))}

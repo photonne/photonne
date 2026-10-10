@@ -2,8 +2,11 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { FolderResponse } from '#lib/api/index.js';
 	import { getFolderTreeOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import { browsableRoots, groupFolders } from '#lib/albums/folder-groups.js';
+	import { session } from '#lib/auth/session.svelte.js';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { getLocale } from '#lib/paraglide/runtime.js';
 
 	interface Props {
 		open: boolean;
@@ -29,7 +32,11 @@
 		]);
 	}
 
-	const folders = $derived(flatten(tree.data ?? []));
+	const folders = $derived(
+		flatten(
+			browsableRoots(groupFolders(tree.data ?? [], session.user?.username ?? '', getLocale()))
+		)
+	);
 </script>
 
 <Dialog {open} title={m.folder_picker_title()} {onclose} width="520px">

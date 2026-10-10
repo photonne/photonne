@@ -84,6 +84,9 @@
 	"folders_shared_space_badge": "Shared space",
 	"folders_shared_space_hint": "A common folder for several people, outside your personal space.",
 	"folders_subfolders": "Subfolders",
+	"folders_group_personal": "Personal",
+	"folders_group_shared": "Shared",
+	"folders_group_external": "Libraries",
 	"folders_tree": "Folder tree",
 	"folders_tree_item": [
 		{

@@ -26,6 +26,12 @@ test('lists the top-level folders and opens one from the tree', async ({ page })
 	await expect(
 		page.getByRole('list', { name: 'Carpetas principales' }).getByRole('link')
 	).toHaveCount(3);
+	// Grouped, without the trash (it has its own page).
+	await expect(tree(page).getByRole('treeitem', { level: 1 })).toHaveText([
+		'Personal',
+		'Compartido'
+	]);
+	await expect(item(page, '_trash')).toHaveCount(0);
 	await expect(item(page, 'Camera')).toHaveAttribute('aria-expanded', 'false');
 
 	await item(page, 'Camera').click();
@@ -50,6 +56,8 @@ test('walks the tree with the keyboard', async ({ page }) => {
 	await page.keyboard.press('ArrowDown');
 	await expect(item(page, 'Documentos')).toBeFocused();
 	await page.keyboard.press('Home');
+	await expect(tree(page).getByRole('treeitem', { name: 'Personal', exact: true })).toBeFocused();
+	await page.keyboard.press('ArrowDown');
 	await expect(item(page, 'Camera')).toBeFocused();
 	await page.keyboard.press('ArrowLeft');
 	await expect(item(page, 'Camera')).toHaveAttribute('aria-expanded', 'false');

@@ -26,11 +26,17 @@ export const defaultFolderListOptions: FolderListOptions = {
 /**
  * The bucket a folder belongs to. An external library may point inside the
  * shared space or a home, so the library comes first (as in the native
- * app's FolderPartition): a folder never lands in two buckets.
+ * app's FolderPartition): a folder never lands in two buckets. Another
+ * user's folder shared with this one is shared, not personal.
  */
-export function folderScope(folder: FolderResponse): Exclude<FolderScope, 'all'> {
+export function folderScope(folder: FolderResponse, username = ''): Exclude<FolderScope, 'all'> {
 	if (folder.externalLibraryId) return 'external';
-	return folder.isShared ? 'shared' : 'personal';
+	if (folder.isShared) return 'shared';
+	const path = folder.path.replace(/\\/g, '/').toLowerCase();
+	const home = `/assets/users/${username.toLowerCase()}/`;
+	return username && path.startsWith('/assets/users/') && !path.startsWith(home)
+		? 'shared'
+		: 'personal';
 }
 
 /** Every folder of the tree, depth first. */
@@ -46,7 +52,8 @@ export function flattenTree(nodes: readonly FolderResponse[]): FolderResponse[] 
 export function arrangeFolders(
 	roots: readonly FolderResponse[],
 	options: FolderListOptions,
-	locale = 'es'
+	locale = 'es',
+	username = ''
 ): FolderResponse[] {
 	const needle = fold(options.query.trim());
 	const source = needle ? flattenTree(roots) : roots;
@@ -59,16 +66,16 @@ export function arrangeFolders(
 	return source
 		.filter(
 			(folder) =>
-				(options.scope === 'all' || folderScope(folder) === options.scope) &&
+				(options.scope === 'all' || folderScope(folder, username) === options.scope) &&
 				(!needle || fold(folder.name).includes(needle))
 		)
 		.sort((a, b) => (options.descending ? compare(b, a) : compare(a, b)));
 }
 
 /** How many top-level folders each scope holds, for the scope tabs. */
-export function folderScopeCounts(roots: readonly FolderResponse[]) {
+export function folderScopeCounts(roots: readonly FolderResponse[], username = '') {
 	const counts = { all: roots.length, personal: 0, shared: 0, external: 0 };
-	for (const folder of roots) counts[folderScope(folder)]++;
+	for (const folder of roots) counts[folderScope(folder, username)]++;
 	return counts;
 }
 

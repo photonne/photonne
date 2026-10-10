@@ -19,8 +19,12 @@
 
 	let { folder, parentId = null, tree, isAdmin, onclose, onsaved }: Props = $props();
 
-	// Mounted for one folder (or one creation) and closed after.
-	const initial = untrack(() => ({ folder, parentId }));
+	// Mounted for one folder (or one creation) and closed after. The tree's
+	// copy knows a folder at the top of the home has no parent to pick.
+	const initial = untrack(() => ({
+		folder: folder && (findFolder(tree, folder.id) ?? folder),
+		parentId
+	}));
 	const editing = !!initial.folder;
 
 	let name = $state(initial.folder?.name ?? '');

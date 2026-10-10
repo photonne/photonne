@@ -7,11 +7,22 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { draggedAssetIds, FOLDER_MIME, isFolderDrag } from './dragged.js';
+	import { browsableRoots, type FolderGroups } from './folder-groups.js';
 	import { canDropFolder, pathTo, treeKey, visibleRows } from './folder-tree.js';
 	import { icons } from './icons.js';
 
+	/** A heading over one group's folders: it folds, but isn't a folder. */
+	interface GroupNode {
+		id: string;
+		name: string;
+		parentFolderId: null;
+		subFolders: FolderResponse[];
+		group: true;
+	}
+	type TreeNode = FolderResponse | GroupNode;
+
 	interface Props {
-		tree: readonly FolderResponse[];
+		groups: FolderGroups;
 		/** The open folder: selected, and its ancestors expanded. */
 		currentId: string | null;
 		label: string;
@@ -20,9 +31,28 @@
 		ondropfolder: (folder: FolderResponse, parent: FolderResponse) => void;
 	}
 
-	let { tree, currentId, label, onopen, ondropassets, ondropfolder }: Props = $props();
+	let { groups, currentId, label, onopen, ondropassets, ondropfolder }: Props = $props();
 
-	const expanded = new SvelteSet<string>();
+	const GROUPS = [
+		{ key: 'personal', label: m.folders_group_personal },
+		{ key: 'shared', label: m.folders_group_shared },
+		{ key: 'external', label: m.folders_group_external }
+	] as const;
+	// Only the groups with folders: no "Libraries" heading over nothing.
+	const nodes = $derived<TreeNode[]>(
+		GROUPS.filter(({ key }) => groups[key].length).map(({ key, label }) => ({
+			id: `group:${key}`,
+			name: label(),
+			parentFolderId: null,
+			subFolders: groups[key],
+			group: true
+		}))
+	);
+	const tree = $derived(browsableRoots(groups));
+	const isGroup = (node: TreeNode): node is GroupNode => 'group' in node;
+
+	// The groups start open: closed, the tree would look empty.
+	const expanded = new SvelteSet<string>(GROUPS.map(({ key }) => `group:${key}`));
 	let focusId = $state<string | null>(null);
 	let dropTarget = $state<string | null>(null);
 	let draggedFolder = $state<FolderResponse | null>(null);
@@ -32,11 +62,11 @@
 	// Opening a folder (from a card, a link…) reveals it in the tree.
 	$effect(() => {
 		if (!currentId) return;
-		for (const ancestor of pathTo(tree, currentId).slice(0, -1)) expanded.add(ancestor.id);
+		for (const ancestor of pathTo(nodes, currentId).slice(0, -1)) expanded.add(ancestor.id);
 		focusId = currentId;
 	});
 
-	const rows = $derived(visibleRows(tree, expanded));
+	const rows = $derived(visibleRows(nodes, expanded));
 	// One row is in the tab order: the focused one, else the open one, else the first.
 	const tabStop = $derived(
 		rows.find((r) => r.folder.id === focusId)?.folder.id ??
@@ -55,10 +85,11 @@
 		else expanded.add(id);
 	}
 
-	function onkeydown(event: KeyboardEvent, folder: FolderResponse) {
+	function onkeydown(event: KeyboardEvent, folder: TreeNode) {
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
-			onopen(folder);
+			if (isGroup(folder)) toggle(folder.id);
+			else onopen(folder);
 			return;
 		}
 		if (event.key === '*') {
@@ -140,48 +171,69 @@
 	<ul class="tree" role="tree" aria-label={label} bind:this={list}>
 		{#each rows as row (row.folder.id)}
 			{@const folder = row.folder}
-			<li
-				role="treeitem"
-				data-folder={folder.id}
-				aria-level={row.depth + 1}
-				aria-expanded={row.hasChildren ? row.expanded : undefined}
-				aria-selected={folder.id === currentId}
-				aria-label={m.folders_tree_item({ name: folder.name, count: folder.assetCount })}
-				tabindex={folder.id === tabStop ? 0 : -1}
-				class:current={folder.id === currentId}
-				class:drop={dropTarget === folder.id}
-				style:--depth={row.depth}
-				draggable={folder.canWrite && !folder.externalLibraryId}
-				onclick={() => onopen(folder)}
-				onkeydown={(event) => onkeydown(event, folder)}
-				onfocus={() => (focusId = folder.id)}
-				ondragstart={(event) => ondragstart(event, folder)}
-				ondragend={() => (draggedFolder = null)}
-				ondragover={(event) => ondragover(event, folder)}
-				ondragleave={(event) => ondragleave(event, folder)}
-				ondrop={(event) => ondrop(event, folder)}
-			>
-				{#if row.hasChildren}
-					<!-- Mouse shortcut for the arrows; keyboard users have Left/Right. -->
-					<span
-						class="twisty"
-						class:open={row.expanded}
-						role="presentation"
-						onclick={(event) => {
-							event.stopPropagation();
-							toggle(folder.id);
-						}}
-					>
+			{#if isGroup(folder)}
+				<li
+					role="treeitem"
+					class="group"
+					data-folder={folder.id}
+					aria-level={row.depth + 1}
+					aria-expanded={row.expanded}
+					aria-selected="false"
+					tabindex={folder.id === tabStop ? 0 : -1}
+					style:--depth={row.depth}
+					onclick={() => toggle(folder.id)}
+					onkeydown={(event) => onkeydown(event, folder)}
+					onfocus={() => (focusId = folder.id)}
+				>
+					<span class="twisty" class:open={row.expanded} role="presentation">
 						<Icon path={icons.expandMore} size={18} />
 					</span>
-				{:else}
-					<span class="twisty"></span>
-				{/if}
-				<Icon path={iconFor(folder)} name={iconFor(folder) ? undefined : 'folder'} size={18} />
-				<span class="name">{folder.name}</span>
-				{#if folder.isPinned}<span class="pinned"><Icon name="pin" size={12} /></span>{/if}
-				<span class="count" aria-hidden="true">{formatCount(folder.assetCount)}</span>
-			</li>
+					<span class="name">{folder.name}</span>
+				</li>
+			{:else}
+				<li
+					role="treeitem"
+					data-folder={folder.id}
+					aria-level={row.depth + 1}
+					aria-expanded={row.hasChildren ? row.expanded : undefined}
+					aria-selected={folder.id === currentId}
+					aria-label={m.folders_tree_item({ name: folder.name, count: folder.assetCount })}
+					tabindex={folder.id === tabStop ? 0 : -1}
+					class:current={folder.id === currentId}
+					class:drop={dropTarget === folder.id}
+					style:--depth={row.depth}
+					draggable={folder.canWrite && !folder.externalLibraryId}
+					onclick={() => onopen(folder)}
+					onkeydown={(event) => onkeydown(event, folder)}
+					onfocus={() => (focusId = folder.id)}
+					ondragstart={(event) => ondragstart(event, folder)}
+					ondragend={() => (draggedFolder = null)}
+					ondragover={(event) => ondragover(event, folder)}
+					ondragleave={(event) => ondragleave(event, folder)}
+					ondrop={(event) => ondrop(event, folder)}
+				>
+					{#if row.hasChildren}
+						<!-- Mouse shortcut for the arrows; keyboard users have Left/Right. -->
+						<span
+							class="twisty"
+							class:open={row.expanded}
+							role="presentation"
+							onclick={(event) => {
+								event.stopPropagation();
+								toggle(folder.id);
+							}}
+						>
+							<Icon path={icons.expandMore} size={18} />
+						</span>
+					{:else}
+						<span class="twisty"></span>
+					{/if}
+					<Icon path={iconFor(folder)} name={iconFor(folder) ? undefined : 'folder'} size={18} />
+					<span class="name">{folder.name}</span>
+					{#if folder.isPinned}<span class="pinned"><Icon name="pin" size={12} /></span>{/if}
+					<span class="count" aria-hidden="true">{formatCount(folder.assetCount)}</span>
+				</li>
+			{/if}
 		{/each}
 	</ul>
 {/if}
@@ -213,6 +265,19 @@
 	[role='treeitem']:focus-visible {
 		outline: 2px solid var(--color-focus);
 		outline-offset: -2px;
+	}
+
+	.group {
+		margin-top: var(--space-2);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-xs);
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	.group:first-child {
+		margin-top: 0;
 	}
 
 	.current,

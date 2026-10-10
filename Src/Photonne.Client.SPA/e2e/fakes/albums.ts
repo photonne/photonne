@@ -201,6 +201,12 @@ function seed(): AlbumsState {
 				isShared: true,
 				sharedWithCount: 2,
 				canDelete: false
+			}),
+			// The server sends the home's trash as a top-level folder.
+			folder({
+				id: 'folder-trash',
+				name: '_trash',
+				path: '/assets/users/ana/_trash'
 			})
 		],
 		folderAssets: {
@@ -493,7 +499,13 @@ const handle: FakeHandler = async (context) => {
 			if (method === 'PUT') {
 				const { name, parentFolderId } = body();
 				log({ name, parentFolderId });
-				Object.assign(found, { name, parentFolderId });
+				// As on the server, the folder and its subtree move on disk too.
+				const parent = s.folders.find((f) => f.id === parentFolderId);
+				const from = `${found.path}/`;
+				const path = `${parent?.path ?? '/assets/users/ana'}/${name}`;
+				for (const f of s.folders)
+					if (f.path.startsWith(from)) f.path = `${path}/${f.path.slice(from.length)}`;
+				Object.assign(found, { name, parentFolderId, path });
 				return ok(found);
 			}
 			if (method === 'DELETE') {

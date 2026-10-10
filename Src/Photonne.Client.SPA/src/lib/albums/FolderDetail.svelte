@@ -29,6 +29,7 @@
 	import FolderCards from './FolderCards.svelte';
 	import FolderFormDialog from './FolderFormDialog.svelte';
 	import { moveAssets, onAssetsMoved } from './folder-moves.js';
+	import { browsableRoots, groupFolders } from './folder-groups.js';
 	import { pathTo, sortTree } from './folder-tree.js';
 	import { icons } from './icons.js';
 	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
@@ -40,7 +41,9 @@
 	const folderQuery = createQuery(() => getFolderByIdOptions({ path: { folderId } }));
 	const treeQuery = createQuery(() => getFolderTreeOptions());
 	const folder = $derived(folderQuery.data);
-	const tree = $derived(sortTree(treeQuery.data ?? [], getLocale()));
+	const tree = $derived(
+		browsableRoots(groupFolders(treeQuery.data ?? [], session.user?.username ?? '', getLocale()))
+	);
 	const ancestors = $derived(pathTo(tree, folderId).slice(0, -1));
 	const subfolders = $derived(sortTree(folder?.subFolders ?? [], getLocale()));
 
