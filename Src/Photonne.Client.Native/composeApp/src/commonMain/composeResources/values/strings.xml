@@ -1322,6 +1322,7 @@
         <item quantity="other">%1$d con errores de subida</item>
     </plurals>
     <string name="backup_status_syncing">Subiendo %1$d de %2$d…</string>
+    <string name="backup_status_motion_clips">Recuperando vídeos de Live Photos: %1$d de %2$d…</string>
     <plurals name="backup_uploading_count">
         <item quantity="one">Subiendo %1$d archivo…</item>
         <item quantity="other">Subiendo %1$d archivos…</item>

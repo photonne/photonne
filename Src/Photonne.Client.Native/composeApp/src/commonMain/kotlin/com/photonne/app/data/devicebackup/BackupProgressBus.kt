@@ -5,8 +5,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-/** Which stage of a backup pass is running right now. */
-enum class BackupPhase { Verifying, Uploading }
+/**
+ * Which stage of a backup pass is running right now. [RepairingMotionClips]
+ * closes a full pass on iOS: the motion clips of Live Photos whose still is
+ * already on the server ([DeviceBackupRepository.repairMotionClips]).
+ */
+enum class BackupPhase { Verifying, Uploading, RepairingMotionClips }
 
 /** Who asked for the pass. Drives both the wording in the UI and which
  *  cancellation path applies (in-process vs. OS worker). */
@@ -44,7 +48,10 @@ data class BackupActivity(
      * URI. Bounded by the upload fan-out (a handful of entries), so the pending
      * list can draw a per-file bar even when the pass belongs to the worker.
      */
-    val inFlightItems: Map<String, Float> = emptyMap()
+    val inFlightItems: Map<String, Float> = emptyMap(),
+    /** Clips finished / missing during [BackupPhase.RepairingMotionClips]. */
+    val motionClipsDone: Int = 0,
+    val motionClipsTotal: Int = 0
 ) {
     /** Files finished, whatever the outcome. */
     val done: Int get() = completed + skipped + failed

@@ -588,7 +588,8 @@ interface PhotonneApi {
         fileName: String,
         mimeType: String,
         source: kotlinx.io.Source,
-        sizeBytes: Long
+        sizeBytes: Long,
+        onProgress: ((bytesSent: Long, totalBytes: Long) -> Unit)? = null
     )
 
     /** Which of the caller's stills [assetIds] have no motion clip yet (1000 per call at most). */
@@ -1765,11 +1766,12 @@ class PhotonneApiClient(
         fileName: String,
         mimeType: String,
         source: kotlinx.io.Source,
-        sizeBytes: Long
+        sizeBytes: Long,
+        onProgress: ((bytesSent: Long, totalBytes: Long) -> Unit)?
     ) {
         postStreamedFile(
             "$baseUrl/api/assets/$assetId/motion-clip", fileName, mimeType, source, sizeBytes,
-            fields = emptyMap(), onProgress = null
+            fields = emptyMap(), onProgress = onProgress
         ) { response ->
             response.ensureSuccess { "Motion clip upload failed ($it)" }
         }

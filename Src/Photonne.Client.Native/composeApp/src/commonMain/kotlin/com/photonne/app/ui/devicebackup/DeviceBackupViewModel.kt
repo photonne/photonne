@@ -108,6 +108,12 @@ data class DeviceBackupUiState(
      */
     val activeOrigin: BackupOrigin? = null,
     /**
+     * Set while the motion clips of Live Photos already on the server are
+     * being sent: the closing phase of a worker pass, or the in-process sweep
+     * "Subir ahora" runs on iOS once its own uploads are done.
+     */
+    val motionClipProgress: MotionClipProgress? = null,
+    /**
      * True once a FULL verification against the server finished cleanly in
      * this session. "Liberar espacio" deletes device files on the strength of
      * the Synced verdicts, and the ledger's may be stale (the asset was moved
@@ -165,7 +171,8 @@ data class DeviceBackupUiState(
      * thing is worse than not offering one.
      */
     val canStopCurrentPass: Boolean
-        get() = (isSyncing || isCheckingHashes) && activeOrigin != BackupOrigin.Background
+        get() = (isSyncing || isCheckingHashes || motionClipProgress != null) &&
+            activeOrigin != BackupOrigin.Background
 
     /** Why "Liberar espacio" is off right now, or null when it's safe. */
     val freeSpaceBlock: FreeSpaceBlock?
@@ -187,6 +194,11 @@ data class DeviceBackupUiState(
 enum class FreeSpaceBlock { Verifying, Uploading, Freeing, NotVerified }
 
 /** Progress snapshot while the manual sync is uploading files. */
+/** Live Photo motion clips sent so far ([done], landed or not) of [total] missing. */
+data class MotionClipProgress(val done: Int, val total: Int) {
+    val fraction: Float get() = if (total > 0) done.toFloat() / total else 0f
+}
+
 data class SyncProgress(
     val total: Int,
     val completed: Int,
@@ -330,6 +342,7 @@ class DeviceBackupViewModel(
                     hashProgress = null,
                     syncProgress = null,
                     externalItemProgress = emptyMap(),
+                    motionClipProgress = ownMotionClipProgress(it),
                     lastRun = finished,
                     passBlock = repository.passBlock()
                 )
@@ -348,9 +361,10 @@ class DeviceBackupViewModel(
                         hashTotal = activity.hashTotal
                     ),
                     syncProgress = null,
-                    externalItemProgress = emptyMap()
+                    externalItemProgress = emptyMap(),
+                    motionClipProgress = ownMotionClipProgress(current)
                 )
-                BackupPhase.Uploading -> current.copy(
+                BackupPhase.Uploading, BackupPhase.RepairingMotionClips -> current.copy(
                     activeOrigin = activity.origin,
                     isCheckingHashes = false,
                     isSyncing = true,
@@ -365,11 +379,20 @@ class DeviceBackupViewModel(
                         bytesDone = activity.bytesDone,
                         bytesTotal = activity.bytesTotal
                     ),
-                    externalItemProgress = activity.inFlightItems
+                    externalItemProgress = activity.inFlightItems,
+                    motionClipProgress = if (activity.phase == BackupPhase.RepairingMotionClips) {
+                        MotionClipProgress(activity.motionClipsDone, activity.motionClipsTotal)
+                    } else {
+                        ownMotionClipProgress(current)
+                    }
                 )
             }
         }
     }
+
+    /** What a worker pass leaves of [MotionClipProgress]: ours, if our sweep runs. */
+    private fun ownMotionClipProgress(current: DeviceBackupUiState): MotionClipProgress? =
+        current.motionClipProgress.takeIf { motionClipRepair?.isActive == true }
 
     /**
      * Re-applies the ledger's verdicts over the grid. Unlike
@@ -752,6 +775,7 @@ class DeviceBackupViewModel(
      *  returns false and we run it in-process with live per-file progress. */
     fun syncAllPending() {
         if (_state.value.isSyncing || _state.value.isCheckingHashes) return
+        if (motionClipRepair?.isActive == true) return
         if (startWorkerPass(uris = null)) return
         selectAllNotSynced()
         if (_state.value.entries.none { it.isSelected }) {
@@ -766,8 +790,9 @@ class DeviceBackupViewModel(
     /**
      * In-process twin of the sweep [BackupRunner] runs on a full pass: sends
      * the motion clips the server lacks for Live Photos already backed up.
-     * Silent on purpose — the stills are safe and the counters belong to
-     * files, not clips. One at a time.
+     * It shows as its own phase ([DeviceBackupUiState.motionClipProgress]),
+     * apart from the file counters, and only once the server says some clip is
+     * missing. One at a time; [stopCurrentPass] cancels it.
      */
     private fun launchMotionClipRepair() {
         if (motionClipRepair?.isActive == true) return
@@ -775,7 +800,15 @@ class DeviceBackupViewModel(
             (entry.syncState as? DeviceMediaSyncState.Synced)?.let { entry.media to it.assetId }
         }
         motionClipRepair = viewModelScope.launch {
-            withBackgroundExecution { repository.repairMotionClips(synced) }
+            try {
+                withBackgroundExecution {
+                    repository.repairMotionClips(synced) { done, total ->
+                        _state.update { it.copy(motionClipProgress = MotionClipProgress(done, total)) }
+                    }
+                }
+            } finally {
+                _state.update { it.copy(motionClipProgress = null) }
+            }
         }
     }
 
@@ -856,6 +889,9 @@ class DeviceBackupViewModel(
             backgroundScheduler.cancelForegroundBackup()
             return
         }
+        // Clips already in flight are cut too: the server keeps asking for
+        // them, so the next pass picks them up.
+        motionClipRepair?.cancel()
         cancelSync()
         stopHashCheck()
     }

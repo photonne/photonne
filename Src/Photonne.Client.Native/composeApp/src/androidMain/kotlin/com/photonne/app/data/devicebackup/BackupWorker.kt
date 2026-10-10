@@ -253,14 +253,11 @@ class BackupWorker(
         var lastPct = -1
         bus.activity.collect { activity ->
             if (activity == null) return@collect
-            val done: Int
-            val total: Int
-            if (activity.phase == BackupPhase.Verifying) {
-                done = activity.hashedCount
-                total = activity.hashTotal
-            } else {
-                done = activity.done
-                total = activity.total
+            val (done, total) = when (activity.phase) {
+                BackupPhase.Verifying -> activity.hashedCount to activity.hashTotal
+                BackupPhase.Uploading -> activity.done to activity.total
+                BackupPhase.RepairingMotionClips ->
+                    activity.motionClipsDone to activity.motionClipsTotal
             }
             if (!promoted) {
                 if (activity.phase != BackupPhase.Uploading || activity.total == 0) return@collect

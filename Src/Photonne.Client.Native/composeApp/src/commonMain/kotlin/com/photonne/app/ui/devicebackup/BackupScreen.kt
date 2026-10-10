@@ -78,6 +78,7 @@ import com.photonne.app.resources.backup_status_failures
 import com.photonne.app.resources.backup_status_pending_sized
 import com.photonne.app.resources.backup_status_recheck
 import com.photonne.app.resources.backup_status_stop
+import com.photonne.app.resources.backup_status_motion_clips
 import com.photonne.app.resources.backup_status_syncing
 import com.photonne.app.resources.backup_status_upload_now
 import com.photonne.app.resources.backup_status_verifying
@@ -505,7 +506,7 @@ private fun BackupStatusCard(
                 val (icon, tint) = when {
                     !hasFolder -> PhotonneIcons.Upload to
                         MaterialTheme.colorScheme.onSurfaceVariant
-                    state.isSyncing || state.isCheckingHashes ->
+                    state.isSyncing || state.isCheckingHashes || state.motionClipProgress != null ->
                         Icons.Filled.HourglassEmpty to MaterialTheme.colorScheme.primary
                     state.failedCount > 0 -> PhotonneIcons.Upload to
                         MaterialTheme.colorScheme.error
@@ -529,6 +530,11 @@ private fun BackupStatusCard(
                     Text(
                         text = when {
                             !hasFolder -> stringResource(Res.string.backup_source_none)
+                            state.motionClipProgress != null -> stringResource(
+                                Res.string.backup_status_motion_clips,
+                                state.motionClipProgress.done,
+                                state.motionClipProgress.total
+                            )
                             state.isSyncing -> stringResource(
                                 Res.string.backup_status_syncing,
                                 (state.syncProgress?.completed ?: 0) +
@@ -594,9 +600,10 @@ private fun BackupStatusCard(
             }
 
             // ── Activity bar while verifying / uploading ────────────────
-            if (state.isCheckingHashes || state.isSyncing) {
+            if (state.isCheckingHashes || state.isSyncing || state.motionClipProgress != null) {
                 Spacer(Modifier.size(12.dp))
                 val progress = when {
+                    state.motionClipProgress != null -> state.motionClipProgress.fraction
                     // Byte-weighted while uploading, so the bar doesn't stall on
                     // a single big video and then leap through 300 photos.
                     state.isSyncing && state.syncProgress != null ->

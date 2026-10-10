@@ -1280,6 +1280,7 @@
         <item quantity="other">%1$d with upload errors</item>
     </plurals>
     <string name="backup_status_syncing">Uploading %1$d of %2$d…</string>
+    <string name="backup_status_motion_clips">Recovering Live Photo videos: %1$d of %2$d…</string>
     <plurals name="backup_uploading_count">
         <item quantity="one">Uploading %1$d file…</item>
         <item quantity="other">Uploading %1$d files…</item>

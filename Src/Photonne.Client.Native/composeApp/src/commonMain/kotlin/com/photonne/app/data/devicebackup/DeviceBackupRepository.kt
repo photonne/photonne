@@ -509,13 +509,16 @@ class DeviceBackupRepository(
      * memory — large videos OOM the Android heap if read into a ByteArray.
      * The server dedupes by SHA-256 itself, so if the hash check above
      * raced the upload still ends with the right asset id. Retries follow
-     * [withUploadRetries]. A Live Photo's motion clip follows its still.
+     * [withUploadRetries]. A Live Photo's motion clip follows its still,
+     * and [onProgress] then splits in halves: the still fills the first, the
+     * clip the second, so the bar doesn't sit at 100 % while the clip uploads.
      */
     suspend fun upload(
         media: DeviceMedia,
         maxAttempts: Int = DEFAULT_MAX_ATTEMPTS,
         onProgress: ((fraction: Float) -> Unit)? = null
     ): com.photonne.app.data.api.UploadAssetResponse {
+        val stillShare = if (media.isLivePhoto) LIVE_PHOTO_STILL_SHARE else 1f
         val response = withUploadRetries(maxAttempts) {
             gallery.withUploadSource(media) { source, sizeBytes ->
                 uploads.uploadStream(
@@ -528,7 +531,7 @@ class DeviceBackupRepository(
                     fileModifiedAtMillis = media.dateModifiedMillis.takeIf { it > 0 },
                     fileCreatedAtMillis = media.dateCreatedMillis,
                     onProgress = onProgress?.let { report ->
-                        { sent, total -> report((sent.toFloat() / total).coerceIn(0f, 1f)) }
+                        { sent, total -> report(stillShare * (sent.toFloat() / total).coerceIn(0f, 1f)) }
                     }
                 )
             }
@@ -536,7 +539,11 @@ class DeviceBackupRepository(
         // The still is what the backup promises, so a clip that doesn't make
         // it never fails the file: [repairMotionClips] sends it on a later pass.
         val assetId = response.assetId
-        if (media.isLivePhoto && !assetId.isNullOrEmpty()) attachMotionClip(media, assetId)
+        if (media.isLivePhoto && !assetId.isNullOrEmpty()) {
+            attachMotionClip(media, assetId, onProgress?.let { report ->
+                { fraction -> report(stillShare + (1f - stillShare) * fraction) }
+            })
+        }
         return response
     }
 
@@ -544,14 +551,18 @@ class DeviceBackupRepository(
      * Sends the motion clip of every Live Photo in [synced] (device file →
      * server asset id) whose still the server holds without one: stills backed
      * up before the clip travelled with them, or whose clip upload failed.
-     * One lookup per [MOTION_CLIP_BATCH] stills; only the missing clips are
-     * uploaded. Never throws but for cancellation — the stills themselves are
-     * safe, so a failure here just waits for the next pass. Returns how many
-     * clips landed.
+     * One lookup per [MOTION_CLIP_BATCH] stills, all of them up front so
+     * [onProgress] can count against the real total; only the missing clips
+     * are uploaded. [onProgress] reports clips finished (landed or not) of
+     * those missing, and stays silent when none is: the lookup alone isn't
+     * worth a phase on screen. Never throws but for cancellation — the stills
+     * themselves are safe, so a failure here just waits for the next pass.
+     * Returns how many clips landed.
      */
     suspend fun repairMotionClips(
         synced: List<Pair<DeviceMedia, String>>,
-        shouldContinue: () -> Boolean = { true }
+        shouldContinue: () -> Boolean = { true },
+        onProgress: ((done: Int, total: Int) -> Unit)? = null
     ): Int {
         val mediaByAssetId = synced
             .filter { (media, assetId) -> media.isLivePhoto && assetId.isNotEmpty() }
@@ -559,22 +570,30 @@ class DeviceBackupRepository(
         if (mediaByAssetId.isEmpty()) return 0
         var repaired = 0
         try {
+            val missing = mutableListOf<String>()
             for (batch in mediaByAssetId.keys.chunked(MOTION_CLIP_BATCH)) {
-                if (!shouldContinue()) break
-                val missing = api.motionClipsMissing(batch)
-                val permits = Semaphore(uploadConcurrency().video)
-                val counter = Mutex()
-                coroutineScope {
-                    missing.map { assetId ->
-                        async {
-                            permits.withPermit {
-                                if (!shouldContinue()) return@withPermit
-                                val media = mediaByAssetId[assetId] ?: return@withPermit
-                                if (attachMotionClip(media, assetId)) counter.withLock { repaired++ }
+                if (!shouldContinue()) return 0
+                missing += api.motionClipsMissing(batch).filter { it in mediaByAssetId }
+            }
+            if (missing.isEmpty()) return 0
+            onProgress?.invoke(0, missing.size)
+            var done = 0
+            val permits = Semaphore(uploadConcurrency().video)
+            val counter = Mutex()
+            coroutineScope {
+                missing.map { assetId ->
+                    async {
+                        permits.withPermit {
+                            if (!shouldContinue()) return@withPermit
+                            val landed = attachMotionClip(mediaByAssetId.getValue(assetId), assetId)
+                            counter.withLock {
+                                if (landed) repaired++
+                                done++
+                                onProgress?.invoke(done, missing.size)
                             }
                         }
-                    }.awaitAll()
-                }
+                    }
+                }.awaitAll()
             }
         } catch (ex: CancellationException) {
             throw ex
@@ -586,10 +605,19 @@ class DeviceBackupRepository(
 
     /** Uploads the paired clip of [media] to the still [assetId]. False when it
      *  has none or the upload failed after its retries. */
-    private suspend fun attachMotionClip(media: DeviceMedia, assetId: String): Boolean = try {
+    private suspend fun attachMotionClip(
+        media: DeviceMedia,
+        assetId: String,
+        onProgress: ((fraction: Float) -> Unit)? = null
+    ): Boolean = try {
         withUploadRetries(DEFAULT_MAX_ATTEMPTS) {
             gallery.withMotionClipSource(media) { source, sizeBytes, fileName, mimeType ->
-                api.attachMotionClip(assetId, fileName, mimeType, source, sizeBytes)
+                api.attachMotionClip(
+                    assetId, fileName, mimeType, source, sizeBytes,
+                    onProgress = onProgress?.let { report ->
+                        { sent, total -> report((sent.toFloat() / total).coerceIn(0f, 1f)) }
+                    }
+                )
             }
         } != null
     } catch (ex: CancellationException) {
@@ -659,6 +687,11 @@ class DeviceBackupRepository(
 
         // Same cap and margin for /motion-clips/missing.
         const val MOTION_CLIP_BATCH = 500
+
+        // Share of a Live Photo's bar that belongs to the still; the clip
+        // fills the rest. Their sizes aren't known before each is opened (iOS
+        // reports 0), and a 2–3 MB clip next to a 1–3 MB HEIC is about even.
+        const val LIVE_PHOTO_STILL_SHARE = 0.5f
 
         // Parallel SHA-256 workers during verification. Bounded so a phone
         // doesn't read too many large videos into the hash pipeline at once.

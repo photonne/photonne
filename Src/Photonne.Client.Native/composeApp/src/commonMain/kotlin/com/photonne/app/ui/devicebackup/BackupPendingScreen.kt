@@ -70,6 +70,7 @@ import com.photonne.app.resources.backup_failure_reason_label
 import com.photonne.app.resources.backup_section_pending
 import com.photonne.app.resources.backup_section_uploaded
 import com.photonne.app.resources.backup_status_queued
+import com.photonne.app.resources.backup_status_motion_clips
 import com.photonne.app.resources.backup_status_stop
 import com.photonne.app.resources.backup_summary_counts
 import com.photonne.app.resources.backup_summary_title
@@ -356,12 +357,13 @@ private fun PendingActivityCard(state: DeviceBackupUiState, onStop: () -> Unit) 
     val progress = state.syncProgress
     val summary = state.lastSyncSummary
     val verifying = state.isCheckingHashes
-    if (!verifying && progress == null && summary == null) return
+    val clips = state.motionClipProgress
+    if (!verifying && clips == null && progress == null && summary == null) return
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm),
         colors = CardDefaults.cardColors(
-            containerColor = if (verifying || state.isSyncing) {
+            containerColor = if (verifying || state.isSyncing || clips != null) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
@@ -395,6 +397,17 @@ private fun PendingActivityCard(state: DeviceBackupUiState, onStop: () -> Unit) 
                             modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
                         )
                     }
+                }
+                clips != null -> {
+                    Text(
+                        stringResource(Res.string.backup_status_motion_clips, clips.done, clips.total),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Spacer(Modifier.size(4.dp))
+                    LinearProgressIndicator(
+                        progress = { clips.fraction },
+                        modifier = Modifier.fillMaxWidth().height(ProgressHeight.inline)
+                    )
                 }
                 progress != null -> {
                     val done = progress.completed + progress.skipped + progress.failed

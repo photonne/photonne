@@ -268,7 +268,16 @@ class BackupRunner(
                 synced = listed.mapNotNull { media ->
                     (states[media.uri] as? DeviceMediaSyncState.Synced)?.let { media to it.assetId }
                 },
-                shouldContinue = shouldContinue
+                shouldContinue = shouldContinue,
+                onProgress = { done, clips ->
+                    progress.update {
+                        it.copy(
+                            phase = BackupPhase.RepairingMotionClips,
+                            motionClipsDone = done,
+                            motionClipsTotal = clips
+                        )
+                    }
+                }
             )
         }
 
