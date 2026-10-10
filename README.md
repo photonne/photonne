@@ -57,11 +57,16 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 
 ```
 Photonne.sln
-└── Src/
-    ├── Photonne.Server.Api/      # API REST ASP.NET Core 10
-    ├── Photonne.Client.SPA/      # Cliente web (SvelteKit en modo SPA, PWA)
-    ├── Photonne.Client.Native/   # Apps nativas (Android, iOS, Desktop) en KMP + Compose
-    └── Photonne.MlService/       # Servicio ML en Python (FastAPI)
+Directory.Build.props    # Versión, mínimos app↔servidor y prefijo Photonne. de las DLL
+├── src/
+│   ├── Server.Api/      # API REST ASP.NET Core 10
+│   ├── Server.Ml/       # Servicio ML en Python (FastAPI)
+│   ├── Client.SPA/      # Cliente web (SvelteKit en modo SPA, PWA)
+│   └── Client.Native/   # Apps nativas (Android, iOS, Desktop) en KMP + Compose
+├── tests/
+│   └── Server.Api.Tests/
+└── docs/
+    └── site/            # Página pública de GitHub Pages (política de privacidad)
 ```
 
 ### Responsabilidades por proyecto
@@ -75,14 +80,14 @@ Photonne.sln
 **`Client.SPA`** — Cliente web (SvelteKit + Svelte 5, TypeScript, PWA):
 - Todo lo que ofrece la app nativa salvo la copia de seguridad del dispositivo, más la administración del servidor; pensado para escritorio (selección con ratón y teclado, arrastrar y soltar, atajos).
 - Lo sirve el propio servidor desde `/` (la imagen lo compila en una etapa de Node y lo copia a `wwwroot`).
-- Cliente de API generado del contrato OpenAPI (`Src/Photonne.Server.Api/openapi/v1.json`); i18n en español e inglés.
-- Decisión técnica documentada en [`docs/ADR-004-client-spa-sveltekit.md`](docs/ADR-004-client-spa-sveltekit.md); desarrollo y tests en [`Src/Photonne.Client.SPA/README.md`](Src/Photonne.Client.SPA/README.md).
+- Cliente de API generado del contrato OpenAPI (`src/Server.Api/openapi/v1.json`); i18n en español e inglés.
+- Decisión técnica documentada en [`docs/ADR-004-client-spa-sveltekit.md`](docs/ADR-004-client-spa-sveltekit.md); desarrollo y tests en [`src/Client.SPA/README.md`](src/Client.SPA/README.md).
 
 **`Client.Native`** — Apps nativas (fuente principal de consumo):
 - Kotlin Multiplatform + Compose Multiplatform.
 - Targets Android, iOS y Desktop JVM con UI compartida.
 - Cliente Ktor con refresh-on-401.
-- Decisión técnica documentada en [`Src/Photonne.Client.Native/docs/ADR-001-kotlin-multiplatform.md`](Src/Photonne.Client.Native/docs/ADR-001-kotlin-multiplatform.md).
+- Decisión técnica documentada en [`src/Client.Native/docs/ADR-001-kotlin-multiplatform.md`](src/Client.Native/docs/ADR-001-kotlin-multiplatform.md).
 
 ## Requisitos
 
@@ -126,7 +131,7 @@ Usa la imagen pre-construida de GitHub Container Registry (`ghcr.io/photonne/pho
 ### 4. Ejecutar en desarrollo (sin Docker)
 
 ```bash
-cd Src/Photonne.Server.Api
+cd src/Server.Api
 dotnet run
 ```
 
@@ -146,7 +151,7 @@ El archivo `docker-compose.override.yml` se aplica automáticamente en desarroll
 Con la API en marcha (por defecto en `http://localhost:5030`; otra con `PHOTONNE_API_URL`):
 
 ```bash
-cd Src/Photonne.Client.SPA
+cd src/Client.SPA
 npm install
 npm run dev
 ```
@@ -417,7 +422,7 @@ docker compose up --build
 ```
 
 El `docker-compose.override.yml` se aplica automáticamente y compila desde el
-`Dockerfile` en `Src/Photonne.Server.Api/Dockerfile`. La build de
+`Dockerfile` en `src/Server.Api/Dockerfile`. La build de
 `photonne-ml` se adapta a tu arquitectura automáticamente (`ARG TARGETARCH`):
 en `amd64` usa los wheels `+cpu` de PyTorch (slim, ~200 MB); en `arm64` usa
 los wheels nativos de PyPI, también CPU-only.
@@ -444,7 +449,7 @@ etiqueta el commit y crea la release como borrador; `release.yml` construye las
 imágenes versionadas (`:X.Y.Z`, `:X.Y`, `:latest`) y los instaladores de
 escritorio desde esa etiqueta y, cuando todo está subido, publica la release.
 
-La PR actualiza `Src/Directory.Build.props` (`<Version>`, fuente de verdad que
+La PR actualiza `Directory.Build.props` (`<Version>`, fuente de verdad que
 cascada al servidor .NET, el cliente web, Android `versionName`/`versionCode`,
 Desktop y la constante `PhotonneVersion`), `version.txt` y `CHANGELOG.md`. iOS
 no deriva de ahí, así que el workflow sincroniza también `MARKETING_VERSION` y
@@ -465,9 +470,9 @@ a mano (ver el comentario del fichero).
 | Workflow | Cuándo | Qué publica |
 |---|---|---|
 | `api-image.yml` | push a `main` que toca el servidor/cliente web | `ghcr.io/photonne/photonne:edge` y `:sha-<commit>` |
-| `ml-image.yml` | push a `main` que toca `Src/Photonne.MlService` | `ghcr.io/photonne/photonne-ml:edge`, `:edge-gpu` y `:sha-<commit>[-gpu]` |
+| `ml-image.yml` | push a `main` que toca `src/Server.Ml` | `ghcr.io/photonne/photonne-ml:edge`, `:edge-gpu` y `:sha-<commit>[-gpu]` |
 | `release.yml` | cada push a `main` (mantiene la PR de release); merge de esa PR | `:X.Y.Z`, `:X.Y`, `:latest` (+ `-gpu`) de ambas imágenes, instaladores de escritorio y la release de GitHub |
-| `native-build.yml` | cambios en `Src/Photonne.Client.Native` | solo compila y prueba |
+| `native-build.yml` | cambios en `src/Client.Native` | solo compila y prueba |
 
 Las imágenes Docker se construyen para `linux/amd64` y `linux/arm64`, cada
 arquitectura en su runner nativo; la variante GPU de ML solo para `amd64`.

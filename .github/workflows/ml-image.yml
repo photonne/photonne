@@ -2,7 +2,7 @@ name: ML image
 
 # Same two modes as api-image.yml, for ghcr.io/<owner>/photonne-ml:
 #
-# - edge (push to main touching Src/Photonne.MlService, or by hand):
+# - edge (push to main touching src/Server.Ml, or by hand):
 #   :edge / :sha-<commit> and the GPU variant :edge-gpu / :sha-<commit>-gpu.
 # - release (workflow_call from release.yml): builds the tagged commit and
 #   publishes :<version>, :<minor>, :latest and their -gpu counterparts, so
@@ -13,7 +13,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Src/Photonne.MlService/**'
+      - 'src/Server.Ml/**'
       - '.github/workflows/ml-image.yml'
   workflow_dispatch:
   workflow_call:
@@ -49,9 +49,9 @@ jobs:
       - name: Read version from Directory.Build.props
         id: read
         run: |
-          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Src/Directory.Build.props | head -n1)
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -n1)
           if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Unexpected version '$version' in Src/Directory.Build.props"
+            echo "::error::Unexpected version '$version' in Directory.Build.props"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -107,8 +107,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: Src/Photonne.MlService
-          file: Src/Photonne.MlService/Dockerfile
+          context: src/Server.Ml
+          file: src/Server.Ml/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/photonne-ml,push-by-digest=true,name-canonical=true,push=true
@@ -224,8 +224,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
-          context: Src/Photonne.MlService
-          file: Src/Photonne.MlService/Dockerfile.gpu
+          context: src/Server.Ml
+          file: src/Server.Ml/Dockerfile.gpu
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

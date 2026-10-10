@@ -30,8 +30,8 @@ Opciones evaluadas:
 
 ## Decisión
 
-1. **Nuevo proyecto `Src/Photonne.Client.SPA`**: SvelteKit (Svelte 5) en modo SPA (`adapter-static`, `ssr = false`) y TypeScript estricto.
-2. **Reemplaza a `Photonne.Client.Web`** (Blazor). Cuando alcance la paridad, Client.Web y `Tests/Photonne.Client.Web.Tests` se retiran, y ADR-002 y ADR-003 se mueven a `docs/` como histórico.
+1. **Nuevo proyecto `src/Client.SPA`**: SvelteKit (Svelte 5) en modo SPA (`adapter-static`, `ssr = false`) y TypeScript estricto.
+2. **Reemplaza a `Photonne.Client.Web`** (Blazor). Cuando alcance la paridad, Client.Web y `tests/Client.Web.Tests` se retiran, y ADR-002 y ADR-003 se mueven a `docs/` como histórico.
 3. **Alcance**: todo lo que ofrece el cliente nativo **excepto el backup del dispositivo** (`ui/devicebackup`, que es propio del dispositivo), más lo que hoy cubre Client.Web: el workspace de gestión de ADR-003 y toda la administración del servidor. No sustituye a la landing (`site/`).
 4. **Versión adaptada a escritorio**, no un port de la UI táctil: selección con Shift/Ctrl y por arrastre, drag & drop (subir, mover a álbum o carpeta), atajos de teclado en todas las vistas, menús contextuales, operaciones en lote, y paneles que aprovechan pantallas anchas.
 5. **Despliegue**: el build estático se copia en el `wwwroot` de `Photonne.Server.Api` (etapa Node en el `Dockerfile`), con fallback a `index.html`. Sigue siendo un solo contenedor y sin Node en tiempo de ejecución.

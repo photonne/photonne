@@ -25,7 +25,7 @@
       "extra-files": [
         {
           "type": "xml",
-          "path": "Src/Directory.Build.props",
+          "path": "Directory.Build.props",
           "xpath": "//Project/PropertyGroup/Version"
         }
       ]

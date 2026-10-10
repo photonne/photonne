@@ -4,7 +4,7 @@ services:
   photonne-api:
     build:
       context: .
-      dockerfile: Src/Photonne.Server.Api/Dockerfile
+      dockerfile: src/Server.Api/Dockerfile
     pull_policy: build
     # Puerto único compartido con producción: ${API_PORT:-1107} viene del base
     # compose. Cámbialo desde .env si choca con otro servicio (en macOS, evita
@@ -16,7 +16,7 @@ services:
 
   photonne-ml:
     build:
-      context: ./Src/Photonne.MlService
+      context: ./src/Server.Ml
       args:
         STRICT_CLIP_BAKE: "1"
     pull_policy: build

@@ -1,6 +1,6 @@
 # Roadmap UX/UI — Client.Native
 
-Auditoría del 2026-09-17 sobre `Src/Photonne.Client.Native/composeApp/src/commonMain/kotlin/com/photonne/app/` (en adelante, las rutas son relativas a esa carpeta). Cinco pasadas de solo lectura: timeline/rejilla/shell, visor/mapa/recuerdos, álbumes/carpetas/organizar/utilidades, búsqueda/personas/ajustes/login/backup, y una transversal de consistencia. `ui/admin` quedó fuera porque se auditó y normalizó el mismo día.
+Auditoría del 2026-09-17 sobre `src/Client.Native/composeApp/src/commonMain/kotlin/com/photonne/app/` (en adelante, las rutas son relativas a esa carpeta). Cinco pasadas de solo lectura: timeline/rejilla/shell, visor/mapa/recuerdos, álbumes/carpetas/organizar/utilidades, búsqueda/personas/ajustes/login/backup, y una transversal de consistencia. `ui/admin` quedó fuera porque se auditó y normalizó el mismo día.
 
 **Estado: los 52 puntos correctivos cerrados y la deuda técnica acotada también** (rama `claude/roadmap-ux-pendientes`, 2026-09-20; ver "Qué queda") — Lotes A (`995cd74`), B y C (`83305d5`), D y E (`1fbb212`), I (`6a148d2`, `3490317`), F (`6427912`), G (`ad4eea2`, `232756b`, `733c4a0`) y H (`fa85fcf`, `45825d1`, `2b3e01f`). (2026-09-19, **sin verificar en dispositivo**.) Varios se cerraron en parcial: el detalle está en cada punto y el resumen por tipo de bloqueo, en "Qué queda". Marca cada punto con `[x]` al cerrarlo y anota el commit.
 

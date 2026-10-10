@@ -94,8 +94,8 @@ neutralizado por construcción. Si tras sanitizar queda vacío, el backup cae
 en `MobileBackup/` plano (sin subcarpeta) en lugar de fallar.
 
 Reglas de sanitización + edge cases en
-`Src/Photonne.Server.Api/Shared/Services/DeviceFolderSanitizer.cs` y sus 19
-tests unitarios en `Tests/.../Services/DeviceFolderSanitizerTests.cs`.
+`src/Server.Api/Shared/Services/DeviceFolderSanitizer.cs` y sus 19
+tests unitarios en `tests/.../Services/DeviceFolderSanitizerTests.cs`.
 
 ## Flujo de subida
 
@@ -324,15 +324,15 @@ enriquecimiento" en el cliente nativo.
 
 | Componente | Path |
 |---|---|
-| Modelo | `Src/Photonne.Server.Api/Shared/Models/AssetEnrichmentTask.cs` |
-| Servicio enqueue | `Src/Photonne.Server.Api/Shared/Services/EnrichmentService.cs` |
-| Cola in-memory | `Src/Photonne.Server.Api/Shared/Services/EnrichmentQueue.cs` |
-| Worker | `Src/Photonne.Server.Api/Shared/Services/EnrichmentWorker.cs` |
-| Backoff (pure) | `Src/Photonne.Server.Api/Shared/Services/EnrichmentBackoff.cs` |
-| Sanitizer | `Src/Photonne.Server.Api/Shared/Services/DeviceFolderSanitizer.cs` |
-| Endpoints | `Src/Photonne.Server.Api/Features/AssetEnrichment/*.cs` |
-| Upload | `Src/Photonne.Server.Api/Features/UploadAssets/UploadAssetsEndpoint.cs` |
-| Sync | `Src/Photonne.Server.Api/Features/SyncAsset/SyncAssetEndpoint.cs` |
-| Cliente nativo — backup | `Src/Photonne.Client.Native/.../data/devicebackup/DeviceBackupRepository.kt` |
-| Cliente nativo — enrich UI | `Src/Photonne.Client.Native/.../ui/devicebackup/EnrichmentStatusScreen.kt` |
-| Tests | `Tests/Photonne.Server.Api.Tests/AssetEnrichment/`, `Tests/.../Services/EnrichmentBackoffTests.cs` |
+| Modelo | `src/Server.Api/Shared/Models/AssetEnrichmentTask.cs` |
+| Servicio enqueue | `src/Server.Api/Shared/Services/EnrichmentService.cs` |
+| Cola in-memory | `src/Server.Api/Shared/Services/EnrichmentQueue.cs` |
+| Worker | `src/Server.Api/Shared/Services/EnrichmentWorker.cs` |
+| Backoff (pure) | `src/Server.Api/Shared/Services/EnrichmentBackoff.cs` |
+| Sanitizer | `src/Server.Api/Shared/Services/DeviceFolderSanitizer.cs` |
+| Endpoints | `src/Server.Api/Features/AssetEnrichment/*.cs` |
+| Upload | `src/Server.Api/Features/UploadAssets/UploadAssetsEndpoint.cs` |
+| Sync | `src/Server.Api/Features/SyncAsset/SyncAssetEndpoint.cs` |
+| Cliente nativo — backup | `src/Client.Native/.../data/devicebackup/DeviceBackupRepository.kt` |
+| Cliente nativo — enrich UI | `src/Client.Native/.../ui/devicebackup/EnrichmentStatusScreen.kt` |
+| Tests | `tests/Server.Api.Tests/AssetEnrichment/`, `tests/.../Services/EnrichmentBackoffTests.cs` |

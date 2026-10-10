@@ -1,6 +1,6 @@
 # Publicación en Google Play y App Store
 
-Estado del cliente nativo (`Src/Photonne.Client.Native`) frente a los requisitos
+Estado del cliente nativo (`src/Client.Native`) frente a los requisitos
 de las tiendas, y lo que queda fuera del código.
 
 ## Resuelto en el código
@@ -45,7 +45,7 @@ de las tiendas, y lo que queda fuera del código.
 
 ### 1. Antes del primer build
 
-- [ ] **Política de privacidad**: escrita en `site/privacy/index.html`
+- [ ] **Política de privacidad**: escrita en `docs/site/privacy/index.html`
   (español e inglés) y publicada por `.github/workflows/pages.yml` en
   `https://photonne.github.io/photonne/privacy/`. Falta activar una vez
   Settings → Pages → Source: "GitHub Actions". Si la app empieza a hablar
@@ -86,7 +86,7 @@ Es el camino más largo (14 días como mínimo), así que va primero.
    ```
 3. **Generar el AAB** desde un commit con versión nueva:
    ```sh
-   cd Src/Photonne.Client.Native
+   cd src/Client.Native
    ./gradlew :composeApp:bundleRelease
    # → composeApp/build/outputs/bundle/release/composeApp-release.aab
    ```
@@ -155,7 +155,7 @@ Connect apuntando a él.
 
 1. **Archivar** desde un commit con versión nueva (dos builds con la misma
    versión chocan):
-   - Abre `Src/Photonne.Client.Native/iosApp/iosApp.xcodeproj`.
+   - Abre `src/Client.Native/iosApp/iosApp.xcodeproj`.
    - Destino: **Any iOS Device (arm64)**.
    - **Product → Archive**. El enlace de Kotlin/Native en Release es lento
      (varios minutos en local).
@@ -226,7 +226,7 @@ interna para probarla en el móvil sin esperar a nadie, y de ahí a la cerrada.
    vX.Y.Z`: la versión solo sube al publicar una release y `versionCode` sale
    de ella), como en el paso 3 de la prueba cerrada:
    ```sh
-   cd Src/Photonne.Client.Native
+   cd src/Client.Native
    ./gradlew :composeApp:bundleRelease
    ```
 2. **Prueba → Prueba interna → Crear nueva versión**, subir el AAB y las

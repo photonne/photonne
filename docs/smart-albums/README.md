@@ -155,8 +155,8 @@ de primera clase, en discusión. Ver **`creation-ux.md`**.
 Piezas implementadas (fases 1-2): `Shared/Services/AssetQueryBuilder.cs` + `AssetFilter`,
 `Shared/Services/SmartAlbums/{PredicateBuilder,AssetConditions,SmartRuleNode,SmartRuleCompiler,SmartAlbumResolver}.cs`,
 `Features/Albums/AlbumPreviewEndpoint.cs`, `Album` model + `AddSmartAlbums` migración,
-`AlbumsEndpoint` (create/read). Tests: `Tests/…/Search/SearchFilterTests.cs`,
-`Tests/…/Albums/SmartAlbumPreviewTests.cs`.
+`AlbumsEndpoint` (create/read). Tests: `tests/…/Search/SearchFilterTests.cs`,
+`tests/…/Albums/SmartAlbumPreviewTests.cs`.
 
 ## 10. Archivos que se tocarán (referencia)
 

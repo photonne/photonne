@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Src/Photonne.Client.Native/**'
+      - 'src/Client.Native/**'
       - '.github/workflows/native-build.yml'
   pull_request:
     paths:
-      - 'Src/Photonne.Client.Native/**'
+      - 'src/Client.Native/**'
       - '.github/workflows/native-build.yml'
 
 concurrency:
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: Src/Photonne.Client.Native
+        working-directory: src/Client.Native
     steps:
       - uses: actions/checkout@v7
 
@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: android-r8-mapping
-          path: Src/Photonne.Client.Native/composeApp/build/outputs/mapping/release/
+          path: src/Client.Native/composeApp/build/outputs/mapping/release/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -81,7 +81,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: native-test-reports
-          path: Src/Photonne.Client.Native/composeApp/build/reports/
+          path: src/Client.Native/composeApp/build/reports/
           retention-days: 7
 
   ios:
@@ -89,7 +89,7 @@ jobs:
     runs-on: macos-latest
     defaults:
       run:
-        working-directory: Src/Photonne.Client.Native
+        working-directory: src/Client.Native
     steps:
       - uses: actions/checkout@v7
 
@@ -129,5 +129,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: native-ios-test-reports
-          path: Src/Photonne.Client.Native/composeApp/build/reports/
+          path: src/Client.Native/composeApp/build/reports/
           retention-days: 7

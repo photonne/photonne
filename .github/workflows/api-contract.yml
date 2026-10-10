@@ -4,20 +4,20 @@ name: API contract
 # contract (docs/api-compatibilidad.md). Two jobs guard it on every PR that
 # touches the server:
 #
-# - snapshot: the committed Src/Photonne.Server.Api/openapi/v1.json must be
+# - snapshot: the committed src/Server.Api/openapi/v1.json must be
 #   what the code generates (OpenApiContractTests), and every endpoint must
 #   declare its authorization (EndpointAuthorizationTests).
 # - breaking: oasdiff compares the PR's contract with the base branch's. A
 #   breaking change only passes if the same PR raises PhotonneMinClientVersion
-#   in Src/Directory.Build.props, which makes the older apps tell their users
+#   in Directory.Build.props, which makes the older apps tell their users
 #   to update.
 
 on:
   pull_request:
     paths:
-      - 'Src/Photonne.Server.Api/**'
-      - 'Src/Directory.Build.props'
-      - 'Tests/Photonne.Server.Api.Tests/**'
+      - 'src/Server.Api/**'
+      - 'Directory.Build.props'
+      - 'tests/Server.Api.Tests/**'
       - 'global.json'
       - '.github/oasdiff-severity.txt'
       - '.github/oasdiff-ignore.txt'
@@ -43,7 +43,7 @@ jobs:
       # Integration tests: Testcontainers starts Postgres on the runner's Docker.
       - name: Contract and authorization tests
         run: >-
-          dotnet test Tests/Photonne.Server.Api.Tests
+          dotnet test tests/Server.Api.Tests
           --filter "FullyQualifiedName~Contract|FullyQualifiedName~Security"
 
   breaking:
@@ -57,8 +57,8 @@ jobs:
       - name: Compare with the base branch
         env:
           BASE_REF: origin/${{ github.base_ref || 'main' }}
-          SPEC: Src/Photonne.Server.Api/openapi/v1.json
-          PROPS: Src/Directory.Build.props
+          SPEC: src/Server.Api/openapi/v1.json
+          PROPS: Directory.Build.props
         run: |
           mkdir -p /tmp/contract
           if ! git show "$BASE_REF:$SPEC" > /tmp/contract/base.json 2>/dev/null; then

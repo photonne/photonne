@@ -20,9 +20,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Src/**'
-      - '!Src/Photonne.MlService/**'
-      - '!Src/Photonne.Client.Native/**'
+      - 'src/**'
+      - '!src/Server.Ml/**'
+      - '!src/Client.Native/**'
+      - 'Directory.Build.props'
       - 'global.json'
       - '.github/workflows/api-image.yml'
   workflow_dispatch:
@@ -64,9 +65,9 @@ jobs:
       - name: Read version from Directory.Build.props
         id: read
         run: |
-          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Src/Directory.Build.props | head -n1)
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -n1)
           if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Unexpected version '$version' in Src/Directory.Build.props"
+            echo "::error::Unexpected version '$version' in Directory.Build.props"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -123,7 +124,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Src/Photonne.Server.Api/Dockerfile
+          file: src/Server.Api/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/photonne,push-by-digest=true,name-canonical=true,push=true

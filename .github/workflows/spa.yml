@@ -1,20 +1,20 @@
 name: SPA
 
 # Lint, type check, unit/component tests, end-to-end tests (API faked) and a
-# production build of Src/Photonne.Client.SPA on every PR that touches it or
+# production build of src/Client.SPA on every PR that touches it or
 # the API contract it is generated from.
 
 on:
   pull_request:
     paths:
-      - 'Src/Photonne.Client.SPA/**'
-      - 'Src/Photonne.Server.Api/openapi/v1.json'
+      - 'src/Client.SPA/**'
+      - 'src/Server.Api/openapi/v1.json'
       - '.github/workflows/spa.yml'
   push:
     branches: [main]
     paths:
-      - 'Src/Photonne.Client.SPA/**'
-      - 'Src/Photonne.Server.Api/openapi/v1.json'
+      - 'src/Client.SPA/**'
+      - 'src/Server.Api/openapi/v1.json'
       - '.github/workflows/spa.yml'
   workflow_dispatch:
 
@@ -24,7 +24,7 @@ concurrency:
 
 defaults:
   run:
-    working-directory: Src/Photonne.Client.SPA
+    working-directory: src/Client.SPA
 
 jobs:
   check:
@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: Src/Photonne.Client.SPA/package-lock.json
+          cache-dependency-path: src/Client.SPA/package-lock.json
 
       # Also generates the API client and the i18n messages (prepare script).
       - name: Install
@@ -64,5 +64,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-traces
-          path: Src/Photonne.Client.SPA/test-results
+          path: src/Client.SPA/test-results
           retention-days: 7

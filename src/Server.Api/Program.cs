@@ -1,0 +1,307 @@
+using System.Diagnostics;
+using System.Security.Claims;
+using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Photonne.Server.Api;
+using Photonne.Server.Api.Shared.Authorization;
+using Photonne.Server.Api.Shared.Extensions;
+using Photonne.Server.Api.Shared.Services;
+using Scalar.AspNetCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Demo mode: bind DemoMode section so DemoModeOptions is available via IOptions<>.
+// When Enabled=false the app runs normally; when true, the guard middleware and
+// seeder/reset services activate.
+builder.Services.Configure<DemoModeOptions>(
+    builder.Configuration.GetSection(DemoModeOptions.SectionName));
+
+var demoEnabled = builder.Configuration
+    .GetSection(DemoModeOptions.SectionName)
+    .GetValue<bool>(nameof(DemoModeOptions.Enabled));
+
+// Cap request body size when running a public demo so a single visitor can't fill
+// the host disk with a giant upload. In normal deployments the platform limits are
+// lifted entirely — Kestrel defaults to ~28.6 MB and multipart forms to 128 MB,
+// which silently 413'd any large video. The admin-configurable
+// ServerSettings.MaxUploadSizeMb (0 = unlimited) is the real upload policy.
+if (demoEnabled)
+{
+    builder.WebHost.ConfigureKestrel(o =>
+    {
+        o.Limits.MaxRequestBodySize = 25L * 1024 * 1024;
+    });
+}
+else
+{
+    builder.WebHost.ConfigureKestrel(o =>
+    {
+        o.Limits.MaxRequestBodySize = null;
+    });
+}
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = long.MaxValue;
+});
+
+// Rate limiter is registered ALWAYS so endpoints can declare policies unconditionally.
+// Outside demo mode every policy is a no-op (NoLimiter) — zero runtime overhead.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("demo-login", http =>
+    {
+        if (!demoEnabled)
+            return RateLimitPartition.GetNoLimiter<string>("noop");
+
+        var key = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    options.AddPolicy("demo-upload", http =>
+    {
+        if (!demoEnabled)
+            return RateLimitPartition.GetNoLimiter<string>("noop");
+
+        var userId = http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? http.Connection.RemoteIpAddress?.ToString()
+                     ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(userId, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // Subida pública por enlace ("solicitud de fotos"). Activa SIEMPRE, no solo en
+    // demo: el endpoint es anónimo, así que el token opaco + este límite por IP son
+    // la única barrera contra abuso.
+    options.AddPolicy("share-upload", http =>
+    {
+        var key = http.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+});
+
+// Add services to the container.
+builder.Services.AddPhotonneOpenApi();
+
+// Configurar JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Photonne";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "Photonne";
+
+// CORS — cualquier origen permitido. La seguridad la gestiona el JWT, no el origen.
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+});
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    // Sólo rutas de streaming de medios: los reproductores externos
+                    // (libvlc en desktop) no pueden enviar cabeceras Authorization.
+                    var path = context.HttpContext.Request.Path;
+                    var allowed = path.StartsWithSegments("/api/assets/pending", StringComparison.OrdinalIgnoreCase)
+                        || (path.StartsWithSegments("/api/assets", StringComparison.OrdinalIgnoreCase)
+                            && (path.Value!.EndsWith("/content", StringComparison.OrdinalIgnoreCase)
+                                || path.Value.EndsWith("/motion", StringComparison.OrdinalIgnoreCase)));
+                    if (allowed)
+                    {
+                        context.Token = accessToken;
+                    }
+                }
+                else if (string.IsNullOrEmpty(context.Request.Headers.Authorization)
+                         && MediaSessionCookie.IsMediaRequest(context.Request)
+                         && context.Request.Cookies.TryGetValue(MediaSessionCookie.Name, out var cookieToken))
+                {
+                    // <img>/<video> in the web clients can't send the header.
+                    context.Token = cookieToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+builder.AddPostgres();
+
+builder.AddApplicationServices();
+
+var app = builder.Build();
+
+app.ExecuteMigrations();
+await app.InitializeAdminUserAsync();
+await app.EnsureFFmpegAsync();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.MapScalarApiReference();
+}
+
+// The OpenAPI document is the contract the clients are generated from, so it
+// is served in every environment (JSON only; the Scalar UI stays dev-only).
+app.MapOpenApi();
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status500InternalServerError,
+            Title = ex is DbUpdateException ? "Error de base de datos" : "Error interno del servidor"
+        };
+        problem.Extensions["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier;
+
+        if (app.Environment.IsDevelopment())
+        {
+            problem.Detail = ex is DbUpdateException dbEx ? BuildDbErrorDetail(dbEx) : ex.Message;
+            problem.Extensions["stackTrace"] = ex.ToString();
+        }
+        else
+        {
+            // Exception text can carry file paths, SQL and connection details:
+            // it goes to the log, and the client gets the trace id to match it.
+            app.Logger.LogError(ex, "Unhandled exception (traceId {TraceId})", problem.Extensions["traceId"]);
+        }
+
+        context.Response.StatusCode = problem.Status.Value;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(problem);
+    }
+});
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+// Security headers (CSP, X-CTO, Referrer-Policy, X-Frame-Options). Skipped for the
+// dev-only Scalar/OpenAPI endpoints, which pull their UI from third-party CDNs.
+// The web client's only inline scripts are the ones in its index.html, allowed by
+// hash; styles stay 'unsafe-inline' for the style attributes Svelte writes. Map
+// tiles come from CARTO.
+var csp = string.Join("; ", new[]
+{
+    "default-src 'self'",
+    string.Join(' ', new[] { "script-src 'self'" }.Concat(SpaHosting.InlineScriptHashes(app.Environment))),
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "img-src 'self' data: blob: https://*.basemaps.cartocdn.com",
+    "media-src 'self' blob:",
+    "connect-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+});
+
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    var isDevDocs = path.StartsWithSegments("/scalar") || path.StartsWithSegments("/openapi");
+    if (!isDevDocs)
+    {
+        var headers = context.Response.Headers;
+        headers["Content-Security-Policy"] = csp;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        headers["X-Frame-Options"] = "DENY";
+    }
+    await next();
+});
+
+if (builder.Configuration.GetValue<bool>("HTTPS_REDIRECT"))
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Demo mode guard — after auth so blocks apply only to authenticated API calls.
+// No-op when DemoMode:Enabled = false.
+app.UseMiddleware<DemoModeGuardMiddleware>();
+
+// Rate limiter — always present but NoLimiter outside demo mode.
+app.UseRateLimiter();
+
+// The web client (src/Client.SPA, built into wwwroot).
+app.UseSpaStaticFiles();
+
+app.RegisterEndpoints();
+
+// Liveness probe consumed by the Docker HEALTHCHECK directive and by any
+// orchestrator (compose `depends_on: service_healthy`, K8s, Swarm). Returns
+// 200 with a stable JSON shape so the container is only reported healthy once
+// the request pipeline is up. Intentionally anonymous — the probe runs before
+// auth is configured for the caller.
+app.MapGet("/health", () => Results.Ok(new { status = "ready" }))
+    .AllowAnonymous()
+    .ExcludeFromDescription();
+
+app.MapSpaFallback();
+
+app.Run();
+
+static string BuildDbErrorDetail(DbUpdateException exception)
+{
+    if (exception.InnerException?.Message is { Length: > 0 } innerMessage)
+    {
+        return $"{exception.Message} | {innerMessage}";
+    }
+
+    return exception.Message;
+}
+
+// Exposes the implicit Program type so WebApplicationFactory<Program> in the
+// integration test project can spin up the real host.
+public partial class Program;

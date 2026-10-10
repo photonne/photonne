@@ -1,10 +1,10 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Photonne.Server.Api", "Src\Photonne.Server.Api\Photonne.Server.Api.csproj", "{F4945E13-3732-4151-A8B9-2FEF43F71783}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server.Api", "src\Server.Api\Server.Api.csproj", "{F4945E13-3732-4151-A8B9-2FEF43F71783}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{D2A44E9A-7D1C-4E5B-92F0-9E1A0F6CB5AB}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D2A44E9A-7D1C-4E5B-92F0-9E1A0F6CB5AB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Photonne.Server.Api.Tests", "Tests\Photonne.Server.Api.Tests\Photonne.Server.Api.Tests.csproj", "{A31C9F6D-8442-4E25-8A42-6B4A65D8E3B1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server.Api.Tests", "tests\Server.Api.Tests\Server.Api.Tests.csproj", "{A31C9F6D-8442-4E25-8A42-6B4A65D8E3B1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

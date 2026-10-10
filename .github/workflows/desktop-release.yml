@@ -43,7 +43,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: Src/Photonne.Client.Native
+        working-directory: src/Client.Native
     steps:
       - uses: actions/checkout@v7
         with:
@@ -73,13 +73,13 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: photonne-desktop-${{ runner.os }}
-          path: Src/Photonne.Client.Native/${{ matrix.artifact-glob }}
+          path: src/Client.Native/${{ matrix.artifact-glob }}
           if-no-files-found: error
           retention-days: 14
 
       - name: Attach installer to release
         if: inputs.tag != ''
-        working-directory: Src/Photonne.Client.Native
+        working-directory: src/Client.Native
         shell: bash
         run: gh release upload "$TAG" ${{ matrix.artifact-glob }} --clobber
         env:

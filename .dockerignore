@@ -28,9 +28,9 @@ README.md
 # the deployed app gets its config from env vars (docker-compose, .env).
 **/appsettings.Development.json
 # Web client outputs: the image builds its own.
-Src/Photonne.Client.SPA/.svelte-kit
-Src/Photonne.Client.SPA/build
-Src/Photonne.Client.SPA/test-results
-Src/Photonne.Client.SPA/playwright-report
-Src/Photonne.Client.SPA/src/lib/api/generated
-Src/Photonne.Client.SPA/src/lib/paraglide
+src/Client.SPA/.svelte-kit
+src/Client.SPA/build
+src/Client.SPA/test-results
+src/Client.SPA/playwright-report
+src/Client.SPA/src/lib/api/generated
+src/Client.SPA/src/lib/paraglide
