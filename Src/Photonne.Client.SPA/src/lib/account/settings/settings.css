@@ -6,7 +6,10 @@
  * of the app.
  */
 
+/* Header and body share one centred column beside the settings list. */
 .settings-page {
+	max-width: calc(760px + 2 * var(--page-gutter));
+	margin-inline: auto;
 	padding-bottom: var(--space-8);
 }
 
@@ -14,13 +17,7 @@
 .settings-page .settings-body {
 	display: grid;
 	gap: var(--space-6);
-	max-width: calc(760px + 2 * var(--page-gutter));
 	padding: var(--space-2) var(--page-gutter) 0;
-}
-
-/* The loading placeholder (Skeleton) as wide as the cards it stands for. */
-.settings-page > [role='status'] {
-	max-width: calc(760px + 2 * var(--page-gutter));
 }
 
 .settings-page .card {

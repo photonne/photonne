@@ -280,6 +280,7 @@
 		display: grid;
 		align-content: start;
 		max-width: calc(960px + 2 * var(--page-gutter));
+		margin-inline: auto;
 		padding-bottom: var(--space-8);
 	}
 

@@ -55,7 +55,9 @@
 	<PageHeader title={m.upload_title()} subtitle={m.upload_subtitle()} />
 
 	<div class="body">
-		<DropZone onfiles={add} />
+		<div class="drop">
+			<DropZone onfiles={add} />
+		</div>
 
 		{#if uploads.lastBatch.length > 0 && !uploads.active}
 			<div class="batch" role="status">
@@ -126,9 +128,17 @@
 />
 
 <style>
+	/* Centred and wide: the drop zone is the page, not a column on the left. */
 	.page {
-		max-width: calc(960px + 2 * var(--page-gutter));
+		max-width: calc(1200px + 2 * var(--page-gutter));
+		margin-inline: auto;
 		padding-bottom: var(--space-8);
+	}
+
+	/* A big target for the drag: its content centred in the height. */
+	.drop :global(.area) {
+		min-height: clamp(16rem, 38vh, 26rem);
+		align-content: center;
 	}
 
 	.body {
