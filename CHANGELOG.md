@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.195.0](https://github.com/photonne/photonne/compare/v1.194.0...v1.195.0) (2026-10-10)
+
+
+### Novedades
+
+* **native:** El vídeo de las Live Photos se ve en el progreso de la copia y su recuperación es una fase propia ([ede559d](https://github.com/photonne/photonne/commit/ede559d2bc19cd5b51f59992863f254fd67d6087))
+* **native:** La subida manual de iOS sube también el vídeo de las Live Photos ([51e88db](https://github.com/photonne/photonne/commit/51e88db685fe4cbf6791b4a0e7a0d84ea9cba5b2))
+* **spa:** El mapa abre en la foto más reciente y agrupa las fotos en el navegador ([072ddc6](https://github.com/photonne/photonne/commit/072ddc62807454f023b245b5af2d7ad80d936171))
+* **spa:** Fijados reúne álbumes, también los inteligentes, y carpetas en el menú, Álbumes y Carpetas ([bb1c238](https://github.com/photonne/photonne/commit/bb1c2385ff478d577432c26e2839920acff29129))
+* **spa:** Fijados usa mergePinned en el menú, Álbumes y Carpetas ([bd37e21](https://github.com/photonne/photonne/commit/bd37e21e8251ae9f5f81162a27a7f7b7b69d8fb6))
+
+
+### Otros cambios
+
+* **api:** Fuera GET /api/assets/map, el agrupado del mapa en el servidor ([ec7ac3c](https://github.com/photonne/photonne/commit/ec7ac3c0d211059438730b3b93f858e5150bed45))
+
 ## [1.194.0](https://github.com/photonne/photonne/compare/v1.193.0...v1.194.0) (2026-10-09)
 
 
