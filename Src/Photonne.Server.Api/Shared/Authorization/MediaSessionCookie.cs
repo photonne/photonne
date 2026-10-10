@@ -39,7 +39,8 @@ public static class MediaSessionCookie
         => context.Response.Cookies.Delete(Name, BuildOptions(context, expires: null));
 
     /// <summary>
-    /// GET/HEAD on an asset, face or unsupported-file media route. Public
+    /// GET/HEAD on an asset, face or unsupported-file media route, or on one
+    /// frame of a motion clip (<c>/motion/frames/{index}</c>). Public
     /// share media lives under <c>/api/share</c> and authenticates by its
     /// own token, so it's left out.
     /// </summary>
@@ -55,7 +56,16 @@ public static class MediaSessionCookie
         }
 
         var value = path.Value!;
-        return MediaSuffixes.Any(suffix => value.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+        return MediaSuffixes.Any(suffix => value.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            || IsMotionFrame(value);
+    }
+
+    private static bool IsMotionFrame(string path)
+    {
+        var slash = path.LastIndexOf('/');
+        return slash > 0
+            && path[..slash].EndsWith("/motion/frames", StringComparison.OrdinalIgnoreCase)
+            && int.TryParse(path.AsSpan(slash + 1), out _);
     }
 
     private static CookieOptions BuildOptions(HttpContext context, DateTimeOffset? expires) => new()
