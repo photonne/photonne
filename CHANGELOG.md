@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.196.0](https://github.com/photonne/photonne/compare/v1.195.0...v1.196.0) (2026-10-10)
+
+
+### Novedades
+
+* **spa:** Carpetas muestra Personal, Compartido y Bibliotecas en vez del árbol de disco ([76bf783](https://github.com/photonne/photonne/commit/76bf7833f5a74197be8143bdbdb7a17998152e81))
+* **spa:** Estado vacío más grande en las páginas ([ea02e67](https://github.com/photonne/photonne/commit/ea02e67fcbb3212c36d27a7a0fa792694ab3506a))
+* **spa:** Las páginas de columna limitada ocupan todo el ancho ([fe6cbb4](https://github.com/photonne/photonne/commit/fe6cbb48c3cb6667304663a38e1b4adb63034312))
+
+
+### Correcciones
+
+* **api:** La cookie de medios autentica los fotogramas de "Elegir fotograma" ([f248060](https://github.com/photonne/photonne/commit/f248060fbb1d0935a1f041a539b8cc091eae84e9))
+
+
+### Otros cambios
+
+* Normaliza la estructura de carpetas de la solución ([f906f5c](https://github.com/photonne/photonne/commit/f906f5c9d8b517e14e3c97ec0922c6d8c733d8bb))
+
 ## [1.195.0](https://github.com/photonne/photonne/compare/v1.194.0...v1.195.0) (2026-10-10)
 
 
