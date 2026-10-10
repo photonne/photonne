@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { createQuery, keepPreviousData } from '@tanstack/svelte-query';
+	import { createQuery } from '@tanstack/svelte-query';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import type { MapClusterResponse } from '#lib/api/index.js';
 	import {
-		getMapAssetsOptions,
 		getMapPointsOptions,
 		getSettingOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
@@ -19,10 +17,14 @@
 	import LeafletMap from './LeafletMap.svelte';
 	import {
 		centerParams,
-		clusterQuery,
+		clusterPoints,
 		dateRange,
+		latestPoint,
 		parseCenter,
 		pointsBounds,
+		START_ZOOM,
+		visibleClusters,
+		type MapCluster,
 		type MapView
 	} from './map-model.js';
 
@@ -39,28 +41,30 @@
 
 	const start = untrack(() => parseCenter(page.url.searchParams));
 	let view = $state<MapView | null>(null);
-	let active = $state<MapClusterResponse | null>(null);
+	let active = $state<MapCluster | null>(null);
 	let map = $state<LeafletMap>();
-	let fitted = false;
+	let placed = false;
 
-	const hasPoints = $derived((points.data?.length ?? 0) > 0);
 	const pointsById = $derived(new Map((points.data ?? []).map((point) => [point.id, point])));
 	const bounds = $derived(pointsBounds(points.data ?? []));
 
-	const clusters = createQuery(() => ({
-		...getMapAssetsOptions({ query: view ? clusterQuery(view) : {} }),
-		enabled: view !== null && hasPoints,
-		// The markers stay while the next view's clusters load.
-		placeholderData: keepPreviousData
-	}));
+	// Grouped here, from the points already loaded: a new zoom regroups them
+	// (panning keeps the zoom, so it doesn't), and only what's near the view
+	// is drawn.
+	const zoom = $derived(view ? Math.round(view.zoom) : null);
+	const clusters = $derived(zoom === null ? [] : clusterPoints(points.data ?? [], zoom));
+	const shown = $derived(view ? visibleClusters(clusters, view) : []);
 
 	const viewer = new ViewerRoute();
 
-	// The first time the photos arrive, frame them (unless the URL says where to look).
+	// The first time the photos arrive, open on the newest one, as the app
+	// does (unless the URL says where to look): a city's worth of markers
+	// rather than the whole world. "Show all" frames everything.
 	$effect(() => {
-		if (fitted || start || !bounds || !map) return;
-		fitted = true;
-		map.fit(bounds);
+		const latest = latestPoint(points.data ?? []);
+		if (placed || start || !latest || !map) return;
+		placed = true;
+		map.show(latest.latitude, latest.longitude, START_ZOOM);
 	});
 
 	function onview(next: MapView, center: { lat: number; lng: number }) {
@@ -73,12 +77,12 @@
 		if (url.href !== page.url.href) replaceState(url, page.state);
 	}
 
-	function pick(cluster: MapClusterResponse) {
+	function pick(cluster: MapCluster) {
 		active = cluster;
 		if (cluster.count === 1 && cluster.assetIds[0]) viewer.open(cluster.assetIds[0]);
 	}
 
-	function label(cluster: MapClusterResponse) {
+	function label(cluster: MapCluster) {
 		return m.map_cluster({
 			count: cluster.count,
 			range: dateRange(cluster.earliestDate, cluster.latestDate, getLocale())
@@ -96,9 +100,6 @@
 		count={points.data ? m.map_count({ count: points.data.length }) : null}
 	>
 		{#snippet actions()}
-			{#if clusters.isFetching && hasPoints}
-				<span class="updating" role="status">{m.map_updating()}</span>
-			{/if}
 			<button
 				type="button"
 				class="btn sm"
@@ -115,7 +116,7 @@
 		<div class="map">
 			<LeafletMap
 				bind:this={map}
-				clusters={hasPoints ? (clusters.data ?? []) : []}
+				clusters={shown}
 				{tileKey}
 				{start}
 				activeId={active?.id ?? null}
@@ -149,11 +150,6 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
-	}
-
-	.updating {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
 	}
 
 	.body {

@@ -50,6 +50,5 @@
 		}
 	],
 	"map_cluster_close": "Close the panel",
-	"map_cluster_empty": "These photos are no longer available.",
-	"map_updating": "Updating the map…"
+	"map_cluster_empty": "These photos are no longer available."
 }

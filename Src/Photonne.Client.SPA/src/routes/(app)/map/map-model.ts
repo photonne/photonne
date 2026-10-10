@@ -1,4 +1,4 @@
-import type { GetMapAssetsData, MapClusterResponse, MapPointResponse } from '#lib/api/index.js';
+import type { MapPointResponse } from '#lib/api/index.js';
 import type { GridAsset } from '#lib/timeline/types.js';
 
 /** What the map shows: its zoom level and the visible box, in degrees. */
@@ -23,30 +23,147 @@ export function tileUrl(theme: TileTheme, apiKey?: string | null) {
 	return apiKey ? `${base}?key=${encodeURIComponent(apiKey)}` : base;
 }
 
-const round = (value: number, step: number) => Math.round(value / step) * step;
+/** Zoom of the first view: the newest photo's city and suburbs, as in the app. */
+export const START_ZOOM = 12;
+
+/** Pixels between markers' centres below which they merge into one. */
+export const CLUSTER_RADIUS = 80;
+
+/** A group of nearby photos, drawn as one marker. */
+export interface MapCluster {
+	id: string;
+	latitude: number;
+	longitude: number;
+	count: number;
+	/** Newest first. */
+	assetIds: string[];
+	earliestDate: string;
+	latestDate: string;
+	/** The photo on the marker: the newest one with a thumbnail. */
+	firstAssetId: string;
+	hasThumbnail: boolean;
+}
+
+const TILE = 256;
+const MAX_LAT = 85.051128;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-/**
- * Query of GET /api/assets/map for a view. The box grows by a margin on each
- * side so short pans stay within what was fetched, and snaps to a grid that
- * depends on the zoom so nearby views share one cache entry. A view that
- * spans (nearly) the whole world asks for everything.
- */
-export function clusterQuery(view: MapView): NonNullable<GetMapAssetsData['query']> {
-	const zoom = clamp(Math.round(view.zoom), 0, 22);
-	const latSpan = view.north - view.south;
-	const lngSpan = view.east - view.west;
-	if (lngSpan >= 300) return { zoom };
-
-	const step = Math.max(360 / 2 ** (zoom + 3), 0.0005);
-	const pad = (span: number) => Math.max(span * 0.25, step);
+/** Web Mercator, in pixels of the whole world at a zoom (Leaflet's own). */
+function project(lat: number, lng: number, size: number) {
+	const sin = Math.sin((clamp(lat, -MAX_LAT, MAX_LAT) * Math.PI) / 180);
 	return {
-		zoom,
-		minLat: clamp(round(view.south - pad(latSpan), step), -90, 90),
-		maxLat: clamp(round(view.north + pad(latSpan), step), -90, 90),
-		minLng: clamp(round(view.west - pad(lngSpan), step), -180, 180),
-		maxLng: clamp(round(view.east + pad(lngSpan), step), -180, 180)
+		x: ((lng + 180) / 360) * size,
+		y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * size
 	};
+}
+
+function unproject(x: number, y: number, size: number) {
+	return {
+		latitude: (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / size))) * 180) / Math.PI,
+		longitude: (x / size) * 360 - 180
+	};
+}
+
+/**
+ * Groups the photos into markers for a zoom, in the browser: every photo
+ * within [radius] screen pixels of a group's first (newest) photo joins it.
+ * A grid of [radius]-wide cells keeps each search to the 3×3 cells around,
+ * so it runs in about linear time. The whole library is grouped at once,
+ * so panning at the same zoom changes nothing.
+ */
+export function clusterPoints(
+	points: readonly MapPointResponse[],
+	zoom: number,
+	radius = CLUSTER_RADIUS
+): MapCluster[] {
+	const size = TILE * 2 ** zoom;
+	const sorted = [...points].sort((a, b) =>
+		a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.id < b.id ? -1 : 1
+	);
+	const xs = new Float64Array(sorted.length);
+	const ys = new Float64Array(sorted.length);
+	const grid = new Map<string, number[]>();
+	sorted.forEach((point, i) => {
+		const { x, y } = project(point.latitude, point.longitude, size);
+		xs[i] = x;
+		ys[i] = y;
+		const key = `${Math.floor(x / radius)}:${Math.floor(y / radius)}`;
+		const cell = grid.get(key);
+		if (cell) cell.push(i);
+		else grid.set(key, [i]);
+	});
+
+	const taken = new Uint8Array(sorted.length);
+	const clusters: MapCluster[] = [];
+	const reach = radius * radius;
+	for (let seed = 0; seed < sorted.length; seed++) {
+		if (taken[seed]) continue;
+		taken[seed] = 1;
+		const members = [seed];
+		const cx = Math.floor(xs[seed] / radius);
+		const cy = Math.floor(ys[seed] / radius);
+		for (let dx = -1; dx <= 1; dx++) {
+			for (let dy = -1; dy <= 1; dy++) {
+				for (const i of grid.get(`${cx + dx}:${cy + dy}`) ?? []) {
+					if (taken[i]) continue;
+					const ddx = xs[i] - xs[seed];
+					const ddy = ys[i] - ys[seed];
+					if (ddx * ddx + ddy * ddy > reach) continue;
+					taken[i] = 1;
+					members.push(i);
+				}
+			}
+		}
+		// Indexes follow the newest-first order.
+		members.sort((a, b) => a - b);
+		let sumX = 0;
+		let sumY = 0;
+		for (const i of members) {
+			sumX += xs[i];
+			sumY += ys[i];
+		}
+		const photos = members.map((i) => sorted[i]);
+		const cover = photos.find((point) => point.hasThumbnail) ?? photos[0];
+		clusters.push({
+			id: `${zoom}:${photos[0].id}:${photos.length}`,
+			...unproject(sumX / members.length, sumY / members.length, size),
+			count: photos.length,
+			assetIds: photos.map((point) => point.id),
+			earliestDate: photos[photos.length - 1].date,
+			latestDate: photos[0].date,
+			firstAssetId: cover.id,
+			hasThumbnail: cover.hasThumbnail
+		});
+	}
+	return clusters;
+}
+
+/**
+ * The clusters worth drawing for a view: those in it, plus a margin on each
+ * side so a short pan shows markers already in place.
+ */
+export function visibleClusters(clusters: readonly MapCluster[], view: MapView) {
+	const lngSpan = view.east - view.west;
+	if (lngSpan >= 360) return clusters;
+	const latPad = (view.north - view.south) * 0.25;
+	const lngPad = lngSpan * 0.25;
+	const inside = (lng: number) => lng >= view.west - lngPad && lng <= view.east + lngPad;
+	return clusters.filter(
+		(cluster) =>
+			cluster.latitude >= view.south - latPad &&
+			cluster.latitude <= view.north + latPad &&
+			// Past the antimeridian the view's longitudes run beyond ±180.
+			(inside(cluster.longitude) ||
+				inside(cluster.longitude - 360) ||
+				inside(cluster.longitude + 360))
+	);
+}
+
+/** The newest photo, where the map opens; null for none. */
+export function latestPoint<T extends Pick<MapPointResponse, 'date'>>(points: readonly T[]) {
+	let latest: T | null = null;
+	for (const point of points) if (!latest || point.date > latest.date) latest = point;
+	return latest;
 }
 
 /** Marker diameter in CSS px: bigger for bigger clusters, on a log scale. */
@@ -105,7 +222,7 @@ export function pointsBounds(
  * square-ish and the viewer fetches the real asset.
  */
 export function clusterItems(
-	cluster: Pick<MapClusterResponse, 'assetIds' | 'latestDate'>,
+	cluster: Pick<MapCluster, 'assetIds' | 'latestDate'>,
 	points: ReadonlyMap<string, Pick<MapPointResponse, 'date'>>
 ): GridAsset[] {
 	return cluster.assetIds

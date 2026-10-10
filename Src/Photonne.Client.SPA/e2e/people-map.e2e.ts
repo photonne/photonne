@@ -26,8 +26,24 @@ async function openMap(page: Page, options: { empty?: boolean; url?: string } = 
 
 const marker = (page: Page, name: RegExp) => page.getByRole('button', { name });
 
+test('opens on the newest photo at a city zoom, and "show all" frames every place', async ({
+	page
+}) => {
+	await openMap(page);
+
+	// Barcelona holds the newest photo: Madrid and Bilbao are out of sight.
+	await expect(page).toHaveURL(/[?&]z=12\b/);
+	await expect(marker(page, /^24 fotos, /)).toBeInViewport();
+	await expect(marker(page, /^9 fotos, /)).toHaveCount(0);
+
+	await page.getByRole('button', { name: 'Ver todas' }).click();
+	await expect(marker(page, /^9 fotos, /)).toBeInViewport();
+	await expect(marker(page, /^1 foto, /)).toBeInViewport();
+});
+
 test('shows clusters with counts on CARTO raster tiles', async ({ page }) => {
 	const { tiles } = await openMap(page);
+	await page.getByRole('button', { name: 'Ver todas' }).click();
 
 	await expect(page.getByText('34 fotos con ubicación')).toBeVisible();
 	await expect(marker(page, /^24 fotos, /)).toBeVisible();
@@ -66,6 +82,7 @@ test('markers work from the keyboard; a single photo opens straight in the viewe
 	page
 }) => {
 	await openMap(page);
+	await page.getByRole('button', { name: 'Ver todas' }).click();
 
 	await marker(page, /^1 foto, /).focus();
 	await page.keyboard.press('Enter');

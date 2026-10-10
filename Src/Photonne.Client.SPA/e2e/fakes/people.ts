@@ -1,6 +1,5 @@
 import type {
 	FaceAssignmentResponse,
-	MapClusterResponse,
 	MapPointResponse,
 	MemoryResponse,
 	PeoplePageResponse,
@@ -143,25 +142,6 @@ export const mapPoints: MapPointResponse[] = (() => {
 	return points;
 })();
 
-function clusters(): MapClusterResponse[] {
-	let start = 0;
-	return places.map((place) => {
-		const members = mapPoints.slice(start, (start += place.count));
-		const dates = members.map((p) => p.date).sort();
-		return {
-			id: `${place.lat}_${place.lng}_${place.count}`,
-			latitude: place.lat,
-			longitude: place.lng,
-			count: place.count,
-			assetIds: members.map((p) => p.id),
-			earliestDate: dates[0],
-			latestDate: dates.at(-1)!,
-			firstAssetId: members[0].id,
-			hasThumbnail: true
-		};
-	});
-}
-
 /**
  * The memories a person appears in (GET /api/memories?personId=): Ana has two
  * "people together" pairs and a "through the years" one the page leaves out;
@@ -251,7 +231,6 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 	if (method === 'GET' && path === '/api/assets/map/points') {
 		return done(state.mapEmpty ? [] : mapPoints);
 	}
-	if (method === 'GET' && path === '/api/assets/map') return done(state.mapEmpty ? [] : clusters());
 
 	if (isPersonSearch) {
 		const personId = url.searchParams.get('personId')!;

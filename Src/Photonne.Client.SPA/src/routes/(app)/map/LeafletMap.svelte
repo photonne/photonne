@@ -2,23 +2,29 @@
 	import 'leaflet/dist/leaflet.css';
 	import L from 'leaflet';
 	import { onMount } from 'svelte';
-	import type { MapClusterResponse } from '#lib/api/index.js';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
-	import { compactCount, markerSize, tileUrl, type MapView, type TileTheme } from './map-model.js';
+	import {
+		compactCount,
+		markerSize,
+		tileUrl,
+		type MapCluster,
+		type MapView,
+		type TileTheme
+	} from './map-model.js';
 
 	interface Props {
-		clusters: readonly MapClusterResponse[];
+		clusters: readonly MapCluster[];
 		/** The server's tile key; undefined while it's being read (no tiles yet, so none watermarked). */
 		tileKey: string | null | undefined;
 		/** Where to start; without it the host fits the photos once they load. */
 		start: { lat: number; lng: number; zoom: number } | null;
 		/** The cluster whose photos are open, drawn highlighted. */
 		activeId: string | null;
-		label: (cluster: MapClusterResponse) => string;
+		label: (cluster: MapCluster) => string;
 		onview: (view: MapView, center: { lat: number; lng: number }) => void;
-		onpick: (cluster: MapClusterResponse) => void;
+		onpick: (cluster: MapCluster) => void;
 	}
 
 	let { clusters, tileKey, start, activeId, label, onview, onpick }: Props = $props();
@@ -31,8 +37,13 @@
 	let theme = $state<TileTheme>('light');
 	// Leaflet's own objects, not UI state: a plain Map that effects don't track.
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
-	const markers = new Map<string, { marker: L.Marker; cluster: MapClusterResponse }>();
+	const markers = new Map<string, { marker: L.Marker; cluster: MapCluster }>();
 	let layer: L.LayerGroup | undefined;
+
+	/** Moves the view to a place; the host calls it to open on the newest photo. */
+	export function show(lat: number, lng: number, zoom: number) {
+		map?.setView([lat, lng], zoom);
+	}
 
 	/** Moves the view to show the box; the host calls it for "show all". */
 	export function fit(bounds: L.LatLngBoundsExpression) {
@@ -113,7 +124,7 @@
 		};
 	});
 
-	function iconFor(cluster: MapClusterResponse) {
+	function iconFor(cluster: MapCluster) {
 		const size = markerSize(cluster.count);
 		const image =
 			cluster.hasThumbnail && cluster.firstAssetId

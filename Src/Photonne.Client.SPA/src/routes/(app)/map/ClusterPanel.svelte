@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import type { MapClusterResponse, MapPointResponse } from '#lib/api/index.js';
+	import type { MapPointResponse } from '#lib/api/index.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
 	import { ListStore } from '#lib/timeline/list-store.svelte.js';
-	import { clusterItems, dateRange } from './map-model.js';
+	import { clusterItems, dateRange, type MapCluster } from './map-model.js';
 
 	interface Props {
-		cluster: MapClusterResponse;
+		cluster: MapCluster;
 		points: ReadonlyMap<string, MapPointResponse>;
 		onclose: () => void;
 	}
