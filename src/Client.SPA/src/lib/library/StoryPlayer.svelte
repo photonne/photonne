@@ -175,8 +175,9 @@
 		<div class="title">
 			<span class="name">{title}</span>
 			{#if current}
+				{@const date = longDate(current.capturedAt)}
 				<span class="meta">
-					{subtitle ? `${subtitle} · ` : ''}{longDate(current.capturedAt)}
+					{subtitle && subtitle !== date ? `${subtitle} · ` : ''}{date}
 				</span>
 			{/if}
 		</div>

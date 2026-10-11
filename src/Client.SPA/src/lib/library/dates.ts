@@ -12,11 +12,22 @@ export function dateRange(startIso: string, endIso: string) {
 		year: 'numeric',
 		timeZone: 'UTC'
 	});
+	const [start, end] = bounds(startIso, endIso);
+	if (end.getTime() <= start.getTime()) return format.format(start);
+	return format.formatRange(start, end);
+}
+
+/** Whether a memory's window falls on one day (UTC wall clock, as dateRange reads it). */
+export function singleDay(startIso: string, endIso: string) {
+	const [start, end] = bounds(startIso, endIso);
+	return end.toISOString().slice(0, 10) <= start.toISOString().slice(0, 10);
+}
+
+function bounds(startIso: string, endIso: string) {
 	const start = new Date(startIso);
 	let end = new Date(endIso);
 	if (end.getTime() > start.getTime() && end.toISOString().endsWith('T00:00:00.000Z')) {
 		end = new Date(end.getTime() - 1);
 	}
-	if (end.getTime() <= start.getTime()) return format.format(start);
-	return format.formatRange(start, end);
+	return [start, end] as const;
 }
