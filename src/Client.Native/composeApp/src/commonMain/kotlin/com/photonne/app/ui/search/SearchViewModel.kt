@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
+import com.photonne.app.util.suspendRunCatching
 
 enum class SearchMode { Text, Semantic }
 
@@ -521,7 +522,9 @@ class SearchViewModel(
     private suspend fun runSearch(keepLoaded: Int = 0) {
         val snapshot = _state.value
         _state.update { it.copy(isLoading = true, isAppending = false, error = null) }
-        runCatching {
+        // A search cancelled by a newer one must not report an error nor wipe
+        // the results the newer one is about to bring.
+        suspendRunCatching {
             when (snapshot.mode) {
                 SearchMode.Text -> reloadLoadedPages<TimelineItem, Int>(
                     keepLoaded,
@@ -570,9 +573,16 @@ class SearchViewModel(
                 }
             }
             .onFailure { error ->
+                // The previous results answered other criteria: leaving them
+                // under the new query read as if the failed search had found
+                // them. Empty list, so the screen shows the error with retry.
                 _state.update {
                     it.copy(
                         isLoading = false,
+                        results = emptyList(),
+                        hasMore = false,
+                        semanticCapped = false,
+                        selection = emptySet(),
                         error = errorFactory.from(error, "No se pudo buscar")
                     )
                 }
