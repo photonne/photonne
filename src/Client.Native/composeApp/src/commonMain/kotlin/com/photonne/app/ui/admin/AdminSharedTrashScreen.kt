@@ -64,6 +64,7 @@ import com.photonne.app.resources.admin_shared_trash_purge_confirm_title
 import com.photonne.app.resources.admin_shared_trash_selected_format
 import com.photonne.app.resources.admin_shared_trash_unknown_user
 import com.photonne.app.ui.library.ConfirmActionDialog
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -130,9 +131,20 @@ class AdminSharedTrashViewModel(
         _state.update { it.copy(error = null) }
     }
 
+    // A reload replaces the list from the first page. A loadMore still in
+    // flight belongs to the list being replaced: appended after the reload,
+    // its page (fetched with the old cursor) mixed both lists. The generation
+    // marks which list a page was asked for; the job is cancelled as well, so
+    // it doesn't hold isAppending for a list that is gone.
+    private var generation = 0
+    private var loadMoreJob: Job? = null
+
     fun load() {
         if (_state.value.isLoading) return
-        _state.update { it.copy(isLoading = true, error = null) }
+        generation++
+        loadMoreJob?.cancel()
+        loadMoreJob = null
+        _state.update { it.copy(isLoading = true, isAppending = false, error = null) }
         viewModelScope.launch {
             runCatching { repository.getSharedTrash(cursor = null) }
                 .onSuccess { page ->
@@ -162,9 +174,12 @@ class AdminSharedTrashViewModel(
         val snapshot = _state.value
         if (snapshot.isAppending || snapshot.isLoading || !snapshot.hasMore) return
         val cursor = snapshot.nextCursor ?: return
+        val requestedFor = generation
         _state.update { it.copy(isAppending = true) }
-        viewModelScope.launch {
-            runCatching { repository.getSharedTrash(cursor = cursor) }
+        loadMoreJob = viewModelScope.launch {
+            val result = runCatching { repository.getSharedTrash(cursor = cursor) }
+            if (requestedFor != generation) return@launch
+            result
                 .onSuccess { page ->
                     _state.update { current ->
                         val existing = current.items.mapTo(HashSet()) { item -> item.id }
