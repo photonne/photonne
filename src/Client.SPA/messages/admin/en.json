@@ -133,17 +133,6 @@
 	],
 	"admin_dash_coverage_hide_list": "Hide the list",
 	"admin_dash_coverage_truncated": "Showing the first {count}.",
-	"admin_dash_usage_title": "Usage per user",
-	"admin_dash_share": "Share of total",
-	"admin_dash_links": "Quick links",
-	"admin_dash_link_users": "Create accounts, roles, quotas and passwords.",
-	"admin_dash_link_libraries": "Server folders indexed without moving them.",
-	"admin_dash_link_tasks": "Indexing, thumbnails, metadata and AI.",
-	"admin_dash_link_maintenance": "Trash cleanup and system jobs.",
-	"admin_dash_link_settings": "Server and AI configuration.",
-	"admin_dash_link_backup": "Export and restore the database.",
-	"admin_dash_link_shared_trash": "What was deleted from shared folders.",
-	"admin_dash_link_system": "Version, credits and server details.",
 	"admin_users_description": "Accounts, roles, storage quotas and access to the server.",
 	"admin_users_new": "New user",
 	"admin_users_search": "Search by name, username or email",
@@ -577,5 +566,6 @@
 	"admin_libs_demo": "Read-only in the demo: libraries can’t be created, edited, deleted or scanned, and who sees them can’t change.",
 	"admin_backup_demo": "Read-only in the demo: backups can’t be exported or restored.",
 	"admin_strash_summary_more": "More than {n} items · {size} in what’s loaded",
-	"admin_strash_partial_hint": "Counts only what’s loaded so far; scrolling down loads more."
+	"admin_strash_partial_hint": "Counts only what’s loaded so far; scrolling down loads more.",
+	"admin_dash_see_all_users": "See all in Users"
 }

@@ -133,17 +133,6 @@
 	],
 	"admin_dash_coverage_hide_list": "Ocultar la lista",
 	"admin_dash_coverage_truncated": "Se muestran los primeros {count}.",
-	"admin_dash_usage_title": "Uso por usuario",
-	"admin_dash_share": "Parte del total",
-	"admin_dash_links": "Accesos rápidos",
-	"admin_dash_link_users": "Crear cuentas, roles, cuotas y contraseñas.",
-	"admin_dash_link_libraries": "Carpetas del servidor indexadas sin moverlas.",
-	"admin_dash_link_tasks": "Indexación, miniaturas, metadatos e IA.",
-	"admin_dash_link_maintenance": "Limpieza de la papelera y tareas del sistema.",
-	"admin_dash_link_settings": "Configuración del servidor y de la IA.",
-	"admin_dash_link_backup": "Exportar y restaurar la base de datos.",
-	"admin_dash_link_shared_trash": "Lo borrado de las carpetas compartidas.",
-	"admin_dash_link_system": "Versión, créditos y datos del servidor.",
 	"admin_users_description": "Cuentas, roles, cuotas de almacenamiento y acceso al servidor.",
 	"admin_users_new": "Nuevo usuario",
 	"admin_users_search": "Buscar por nombre, usuario o correo",
@@ -577,5 +566,6 @@
 	"admin_libs_demo": "Solo lectura en la demo: no se pueden crear, editar, borrar ni escanear bibliotecas, ni cambiar quién las ve.",
 	"admin_backup_demo": "Solo lectura en la demo: no se pueden exportar ni restaurar copias de seguridad.",
 	"admin_strash_summary_more": "Más de {n} elementos · {size} en lo cargado",
-	"admin_strash_partial_hint": "Cuenta solo lo cargado hasta ahora; al bajar se cargan más."
+	"admin_strash_partial_hint": "Cuenta solo lo cargado hasta ahora; al bajar se cargan más.",
+	"admin_dash_see_all_users": "Ver todos en Usuarios"
 }

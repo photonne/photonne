@@ -63,50 +63,6 @@
 	let showUnindexed = $state(false);
 
 	const dash = '—';
-
-	const links: {
-		path: string;
-		icon: IconName | null;
-		iconPath?: string;
-		title: () => string;
-		text: () => string;
-	}[] = [
-		{ path: '/admin/users', icon: 'people', title: m.admin_users, text: m.admin_dash_link_users },
-		{
-			path: '/admin/libraries',
-			icon: null,
-			iconPath: adminIcons.folderSpecial,
-			title: m.admin_libraries,
-			text: m.admin_dash_link_libraries
-		},
-		{ path: '/admin/tasks', icon: 'history', title: m.admin_tasks, text: m.admin_dash_link_tasks },
-		{
-			path: '/admin/maintenance',
-			icon: 'build',
-			title: m.admin_maintenance,
-			text: m.admin_dash_link_maintenance
-		},
-		{
-			path: '/admin/settings',
-			icon: 'settings',
-			title: m.admin_settings,
-			text: m.admin_dash_link_settings
-		},
-		{
-			path: '/admin/backup',
-			icon: null,
-			iconPath: adminIcons.cloudDownload,
-			title: m.admin_backup,
-			text: m.admin_dash_link_backup
-		},
-		{
-			path: '/admin/shared-trash',
-			icon: 'restore',
-			title: m.admin_shared_trash,
-			text: m.admin_dash_link_shared_trash
-		},
-		{ path: '/admin/system', icon: 'info', title: m.admin_system, text: m.admin_dash_link_system }
-	];
 </script>
 
 <AdminPage title={m.admin_dash_title()} description={m.admin_dash_description()}>
@@ -242,12 +198,20 @@
 					formatBytes(photoBytes),
 					formatBytes(videoBytes)
 				)}
-				<h3>{m.admin_dash_top_users()}</h3>
+				<div class="top-head">
+					<h3>{m.admin_dash_top_users()}</h3>
+					{#if usage.length}
+						<a class="small" href={appHref('/admin/users')}>{m.admin_dash_see_all_users()}</a>
+					{/if}
+				</div>
 				<ol class="top">
 					{#each usage.slice(0, 5) as user (user.userId)}
 						<li>
 							<span class="top-name">{user.displayName}</span>
-							<span class="num muted small">{formatBytes(user.bytes)}</span>
+							<span class="num muted small"
+								>{formatBytes(user.bytes)}{#if stats.totalBytes}
+									· {percentOfOne(user.bytes / stats.totalBytes)}{/if}</span
+							>
 							<span class="bar"
 								><span style:width="{usage[0].bytes ? (user.bytes / usage[0].bytes) * 100 : 0}%"
 								></span></span
@@ -351,77 +315,6 @@
 		{:else}
 			<Skeleton variant="text" count={2} />
 		{/if}
-	</section>
-
-	{#if usage.length}
-		<section aria-labelledby="usage-title" class="usage">
-			<h2 id="usage-title">{m.admin_dash_usage_title()}</h2>
-			<div class="table-wrap">
-				<table class="data">
-					<thead>
-						<tr>
-							<th scope="col">{m.admin_users_col_user()}</th>
-							<th scope="col" class="right">{m.admin_dash_photos()}</th>
-							<th scope="col" class="right">{m.admin_dash_videos()}</th>
-							<th scope="col" class="right">{m.admin_dash_storage()}</th>
-							<th scope="col">{m.admin_dash_share()}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each usage as user (user.userId)}
-							<tr>
-								<td>
-									<strong>{user.displayName}</strong>
-									{#if user.email}<span class="muted small"> · {user.email}</span>{/if}
-								</td>
-								<td class="right num">
-									{count(user.photos)}
-									<span class="muted small">({formatBytes(user.photoBytes)})</span>
-								</td>
-								<td class="right num">
-									{count(user.videos)}
-									<span class="muted small">({formatBytes(user.videoBytes)})</span>
-								</td>
-								<td class="right num">{formatBytes(user.bytes)}</td>
-								<td class="share">
-									<div class="share-cell">
-										<span class="bar"
-											><span
-												style:width="{stats?.totalBytes
-													? (user.bytes / stats.totalBytes) * 100
-													: 0}%"
-											></span></span
-										>
-										<span class="num muted small"
-											>{percentOfOne(stats?.totalBytes ? user.bytes / stats.totalBytes : 0)}</span
-										>
-									</div>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		</section>
-	{/if}
-
-	<section aria-labelledby="links-title">
-		<h2 id="links-title">{m.admin_dash_links()}</h2>
-		<ul class="links">
-			{#each links as link (link.path)}
-				<li>
-					<a class="card link" href={appHref(link.path)}>
-						<span class="link-icon" aria-hidden="true"
-							><Icon name={link.icon ?? undefined} path={link.iconPath} size={20} /></span
-						>
-						<span>
-							<strong>{link.title()}</strong>
-							<span class="muted small">{link.text()}</span>
-						</span>
-					</a>
-				</li>
-			{/each}
-		</ul>
 	</section>
 </AdminPage>
 
@@ -614,6 +507,13 @@
 		border-radius: 2px;
 	}
 
+	.top-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-2);
+	}
+
 	.top {
 		display: grid;
 		gap: var(--space-2);
@@ -683,56 +583,6 @@
 		background: var(--color-surface);
 		list-style: none;
 		font-size: var(--font-size-xs);
-	}
-
-	.right {
-		text-align: right !important;
-	}
-
-	.share {
-		min-width: 160px;
-	}
-
-	.share-cell {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.share-cell .bar {
-		flex: 1;
-	}
-
-	.links {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-		gap: var(--space-3);
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.link {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		height: 100%;
-	}
-
-	.link > span:last-child {
-		display: grid;
-		gap: 2px;
-	}
-
-	.link-icon {
-		flex: none;
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		border-radius: var(--radius-control);
-		background: var(--color-brand-tile);
-		color: var(--color-accent);
 	}
 
 	/* Four across only while a card keeps its label and tag on one line. */
