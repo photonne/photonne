@@ -433,6 +433,10 @@
         <item quantity="one">1 upload</item>
         <item quantity="other">%1$d uploads</item>
     </plurals>
+    <plurals name="upload_pill_pending">
+        <item quantity="one">Uploading 1 file</item>
+        <item quantity="other">Uploading %1$d files</item>
+    </plurals>
     <string name="upload_batch_view">View</string>
     <string name="upload_batch_add_to_album">Add to album</string>
     <string name="upload_status_queued">Queued</string>

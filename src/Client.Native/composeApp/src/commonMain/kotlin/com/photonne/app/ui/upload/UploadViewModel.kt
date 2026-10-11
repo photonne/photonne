@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.upload.UploadRepository
 import kotlin.time.Clock
@@ -12,7 +14,10 @@ import kotlin.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -65,10 +70,19 @@ class UploadViewModel(
     private val repository: UploadRepository,
     private val albumsRepository: AlbumsRepository,
     private val errorFactory: UiErrorFactory,
+    private val mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UploadUiState())
     val state: StateFlow<UploadUiState> = _state.asStateFlow()
+
+    /**
+     * How many new assets a batch landed, once per batch, when the queue drains
+     * by itself: App shows it as a global snackbar so the user hears about it
+     * from whatever screen they moved on to (the summary card lives in Subir).
+     */
+    private val _batchLanded = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    val batchLanded: SharedFlow<Int> = _batchLanded.asSharedFlow()
 
     private var nextId = 0L
     private var worker: Job? = null
@@ -77,11 +91,12 @@ class UploadViewModel(
     private var inFlight: Pair<Long, Job>? = null
 
     /**
-     * [onQueueDrained] corre UNA vez cuando la cola se vacía y algo nuevo ha
-     * entrado en el servidor (lote L12): antes el timeline se recargaba
-     * entero por cada archivo subido.
+     * Encola [files]. Cuando la cola se vacía y algo nuevo ha entrado en el
+     * servidor se emite UNA vez [AssetMutation.AllChanged] (lote L12: antes el
+     * timeline se recargaba entero por cada archivo subido), así que Fotos,
+     * Carpetas y Álbumes se enteran sin que nadie lo pida a mano.
      */
-    fun enqueue(files: List<PickedFile>, onQueueDrained: () -> Unit = {}) {
+    fun enqueue(files: List<PickedFile>) {
         if (files.isEmpty()) return
         val unreadable = files.count { it.unreadable }
         val newItems = files
@@ -105,7 +120,7 @@ class UploadViewModel(
                 pickerError = skippedFilesMessage(tooBig, unreadable) ?: it.pickerError
             )
         }
-        if (newItems.isNotEmpty()) ensureWorker(onQueueDrained)
+        if (newItems.isNotEmpty()) ensureWorker()
     }
 
     fun pickerErrorRaised(message: String) {
@@ -116,7 +131,7 @@ class UploadViewModel(
         _state.update { it.copy(pickerError = null) }
     }
 
-    fun retry(id: Long, onQueueDrained: () -> Unit = {}) {
+    fun retry(id: Long) {
         _state.update { previous ->
             previous.copy(
                 items = previous.items.map { item ->
@@ -128,7 +143,7 @@ class UploadViewModel(
                 }
             )
         }
-        ensureWorker(onQueueDrained)
+        ensureWorker()
     }
 
     fun remove(id: Long) {
@@ -198,7 +213,7 @@ class UploadViewModel(
         }
     }
 
-    private fun ensureWorker(onQueueDrained: () -> Unit) {
+    private fun ensureWorker() {
         if (worker?.isActive == true) return
         worker = viewModelScope.launch {
             _state.update { it.copy(isUploading = true) }
@@ -240,10 +255,11 @@ class UploadViewModel(
                         lastBatch = batch.takeIf { it.isNotEmpty() }
                     )
                 }
+                if (landedIds.isNotEmpty()) _batchLanded.tryEmit(landedIds.size)
             } finally {
                 // También si "Cancelar todo" corta la cola: lo ya subido
                 // tiene que aparecer igualmente.
-                if (uploadedAny) onQueueDrained()
+                if (uploadedAny) mutationBus.emit(AssetMutation.AllChanged)
             }
         }
     }

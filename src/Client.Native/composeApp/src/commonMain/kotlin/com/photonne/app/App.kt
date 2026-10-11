@@ -31,6 +31,8 @@ import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.resources.action_undo
+import com.photonne.app.resources.upload_batch_done
+import com.photonne.app.resources.upload_batch_view
 import com.photonne.app.resources.selection_trash_blocked_foreign
 import com.photonne.app.resources.selection_move_blocked_read_only
 import com.photonne.app.resources.selection_restore_done
@@ -865,7 +867,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 sharedLinkViewModel.close()
                 appState.selectedTab = MainTab.More
                 appState.moreSubscreen = MoreSubscreen.Upload
-                uploadViewModel.enqueue(files) { timelineViewModel.refresh() }
+                uploadViewModel.enqueue(files)
             }
             com.photonne.app.ui.main.ExternalDestination.SharedLink -> {
                 com.photonne.app.ui.main.ExternalNavigation.consumeSharedLink()?.let { target ->
@@ -1417,6 +1419,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     Res.plurals.selection_added_to_album_done, count, count, albumName
                 )
             )
+        }
+    }
+    // Subida manual terminada: el resumen de la tanda vive en Subir, pero quien
+    // ya se ha ido a otra pantalla también tiene que enterarse ("N subidas · Ver").
+    LaunchedEffect(uploadViewModel) {
+        uploadViewModel.batchLanded.collect { count ->
+            if (appState.moreSubscreen == MoreSubscreen.Upload) return@collect
+            snackbarController.show(
+                message = org.jetbrains.compose.resources.getPluralString(
+                    Res.plurals.upload_batch_done, count, count
+                ),
+                actionLabel = org.jetbrains.compose.resources.getString(Res.string.upload_batch_view)
+            ) {
+                appState.assetDetail = null
+                appState.selectedTab = MainTab.More
+                appState.moreSubscreen = MoreSubscreen.Upload
+            }
         }
     }
     fun showMovedToFolderSnackbar(count: Int, folderName: String?) {

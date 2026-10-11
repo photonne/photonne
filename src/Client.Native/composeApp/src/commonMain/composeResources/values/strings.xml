@@ -513,6 +513,10 @@
         <item quantity="one">1 subida</item>
         <item quantity="other">%1$d subidas</item>
     </plurals>
+    <plurals name="upload_pill_pending">
+        <item quantity="one">Subiendo 1 archivo</item>
+        <item quantity="other">Subiendo %1$d archivos</item>
+    </plurals>
     <string name="upload_batch_view">Ver</string>
     <string name="upload_batch_add_to_album">Añadir a álbum</string>
     <string name="upload_status_queued">En cola</string>
