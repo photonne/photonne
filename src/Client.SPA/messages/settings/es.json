@@ -88,6 +88,7 @@
 	"settings_delete_warning": "Se borrará todo lo tuyo de este servidor y se cerrará la sesión. Escribe tu contraseña para confirmar.",
 	"settings_delete_password": "Contraseña",
 	"settings_delete_confirm": "Eliminar definitivamente",
+	"settings_delete_busy": "Eliminando…",
 	"settings_delete_done": "Tu cuenta se ha eliminado",
 	"settings_delete_error_password": "La contraseña no es correcta.",
 	"settings_delete_primary_admin": "Eres el administrador principal: transfiere antes ese rol a otro administrador para poder eliminar tu cuenta.",
