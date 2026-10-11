@@ -25,7 +25,7 @@
 	import { invalidatePeople } from './cache.js';
 	import { gridKeys } from './grid-keys.js';
 	import { displayName, faceThumbnailUrl, nextOffset, uniqueById } from './people.js';
-	import { whenVisible } from './visible.js';
+	import LoadMore from './LoadMore.svelte';
 
 	let { person }: { person: PersonDto } = $props();
 
@@ -231,16 +231,7 @@
 			</li>
 		{/each}
 	</ul>
-	{#if suggestions.hasNextPage}
-		{#key suggestions.data?.pages.length}
-			<div
-				class="sentinel"
-				{@attach whenVisible(() => {
-					if (!suggestions.isFetchingNextPage) suggestions.fetchNextPage();
-				})}
-			></div>
-		{/key}
-	{/if}
+	<LoadMore query={suggestions} />
 {/if}
 
 <Dialog
@@ -367,9 +358,5 @@
 
 	.confirm {
 		margin: 0;
-	}
-
-	.sentinel {
-		height: 1px;
 	}
 </style>
