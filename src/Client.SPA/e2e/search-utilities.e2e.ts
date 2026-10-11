@@ -94,6 +94,7 @@ test('large files can be picked and trashed, with undo', async ({ page }) => {
 	await page.getByRole('checkbox', { name: 'Seleccionar IMG_202609_0.jpg' }).check();
 	await page.getByRole('checkbox', { name: 'Seleccionar IMG_202609_1.jpg' }).check();
 	await page.getByRole('button', { name: 'Mover 2 a la papelera' }).click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Mover 2 a la papelera' }).click();
 
 	await expect(page.getByText('2 movidas a la papelera')).toBeVisible();
 	expect(api.removed).toEqual(['2026-09-0', '2026-09-1']);

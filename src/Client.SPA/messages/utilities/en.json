@@ -262,5 +262,20 @@
 	"utilities_delete_title": "Delete the file forever?",
 	"utilities_delete_body": "“{name}” will be deleted from disk. This can't be undone.",
 	"utilities_delete_forever": "Delete forever",
-	"utilities_unsupported_deleted": "“{name}” deleted"
+	"utilities_unsupported_deleted": "“{name}” deleted",
+	"utilities_confirm_trash_files_title": "Move to the trash?",
+	"utilities_confirm_trash_files_body": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} file ({size}) will move to the trash. You can recover it from there.",
+				"countPlural=other": "{countFormatted} files ({size}) will move to the trash. You can recover them from there."
+			}
+		}
+	]
 }

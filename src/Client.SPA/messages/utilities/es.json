@@ -262,5 +262,20 @@
 	"utilities_delete_title": "¿Borrar el archivo para siempre?",
 	"utilities_delete_body": "«{name}» se borrará del disco. Esto no se puede deshacer.",
 	"utilities_delete_forever": "Borrar para siempre",
-	"utilities_unsupported_deleted": "«{name}» borrado"
+	"utilities_unsupported_deleted": "«{name}» borrado",
+	"utilities_confirm_trash_files_title": "¿Mover a la papelera?",
+	"utilities_confirm_trash_files_body": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Se moverá {countFormatted} archivo ({size}) a la papelera. Podrás recuperarlo desde allí.",
+				"countPlural=other": "Se moverán {countFormatted} archivos ({size}) a la papelera. Podrás recuperarlos desde allí."
+			}
+		}
+	]
 }

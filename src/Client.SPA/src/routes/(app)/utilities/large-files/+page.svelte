@@ -5,9 +5,9 @@
 	import { deleteAssets, restoreAssets } from '#lib/api/index.js';
 	import {
 		getLargeFilesOptions,
-		getLargeFilesQueryKey,
 		getUtilitiesSummaryQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
@@ -31,6 +31,7 @@
 	const files = createQuery(() => getLargeFilesOptions({ query: { count } }));
 	const selected = new SvelteSet<string>();
 	let busy = $state(false);
+	let confirming = $state(false);
 
 	function readCount() {
 		try {
@@ -50,7 +51,8 @@
 	const allChecked = $derived(items.length > 0 && items.every((item) => selected.has(item.id)));
 
 	function refresh() {
-		queryClient.invalidateQueries({ queryKey: getLargeFilesQueryKey({ query: { count } }) });
+		// Every size of the list (25, 50…): a trashed file leaves all of them.
+		queryClient.invalidateQueries({ queryKey: [{ _id: 'getLargeFiles' }] });
 		queryClient.invalidateQueries({ queryKey: getUtilitiesSummaryQueryKey() });
 	}
 
@@ -113,7 +115,7 @@
 				type="button"
 				class="btn danger"
 				disabled={selected.size === 0 || busy}
-				onclick={() => trash([...selected])}
+				onclick={() => (confirming = true)}
 			>
 				<Icon name="delete" size={18} />
 				{selected.size ? m.utilities_trash_selected({ count: selected.size }) : m.utilities_trash()}
@@ -212,6 +214,20 @@
 	versionOf={(id) => items.find((item) => item.id === id)?.thumbnailsGeneratedAt}
 	ontrash={(id) => trash([id])}
 	onclosed={focusRow}
+/>
+
+<ConfirmDialog
+	open={confirming}
+	title={m.utilities_confirm_trash_files_title()}
+	message={m.utilities_confirm_trash_files_body({
+		count: selected.size,
+		size: formatBytes(selectedBytes)
+	})}
+	confirmLabel={m.utilities_trash_selected({ count: selected.size })}
+	danger
+	closeOnConfirm
+	onconfirm={() => trash([...selected])}
+	onclose={() => (confirming = false)}
 />
 
 <style>
