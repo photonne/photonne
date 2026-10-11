@@ -1,12 +1,18 @@
 package com.photonne.app.data.folder
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.TimelineItem
 
 class FoldersRepository(
-    private val api: PhotonneApi
+    private val api: PhotonneApi,
+    // Own bus by default so tests can build the repo bare; Koin injects the
+    // shared singleton in the app.
+    private val mutationBus: AssetMutationBus = AssetMutationBus(),
 ) {
     suspend fun list(): List<FolderSummary> = api.getFolders()
 
@@ -53,15 +59,23 @@ class FoldersRepository(
         api.removeFolderPermission(folderId, userId)
     }
 
+    /**
+     * Moves [assetIds] into [targetFolderId]. The server may move only part of
+     * them (no write permission on some source, already there…): callers must
+     * use [MoveOutcome.moved], not `assetIds.size`, and reload instead of
+     * dropping the ids locally when it falls short.
+     */
     suspend fun moveAssets(
         sourceFolderId: String?,
         targetFolderId: String,
         assetIds: List<String>
-    ) {
-        api.moveFolderAssets(
+    ): MoveOutcome {
+        val outcome = api.moveFolderAssets(
             sourceFolderId = sourceFolderId,
             targetFolderId = targetFolderId,
             assetIds = assetIds
         )
+        if (outcome.moved > 0) mutationBus.emit(AssetMutation.Moved(assetIds, targetFolderId))
+        return outcome
     }
 }

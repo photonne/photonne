@@ -1118,9 +1118,8 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                         recentDestinationsStore.record(targetFolderId)
                         val targetName = foldersState.moveDestinations
                             .firstOrNull { it.id == targetFolderId }?.name
-                        folderDetailViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
+                        folderDetailViewModel.moveSelectedAssets(targetFolderId) { moved ->
                             appState.showMoveSelectedAssets = false
-                            val moved = movedIds.size
                             if (moved > 0) {
                                 appState.selectedFolder = openedFolder.copy(
                                     assetCount = (openedFolder.assetCount - moved).coerceAtLeast(0)
@@ -1173,10 +1172,10 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                     timelineViewModel.clearError()
                 },
                 onMove = { targetFolderId, targetName ->
-                    timelineViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
+                    timelineViewModel.moveSelectedAssets(targetFolderId) { moved ->
                         appState.showMoveSelectedAssetsTimeline = false
                         foldersViewModel.refreshOrganizeCount()
-                        showMovedToFolderSnackbar(movedIds.size, targetName)
+                        showMovedToFolderSnackbar(moved, targetName)
                     }
                 }
             )
@@ -1203,12 +1202,13 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                                     targetFolderId = targetFolderId,
                                     assetIds = request.assetIds
                                 )
-                            }.onSuccess {
+                            }.onSuccess { outcome ->
                                 appState.moveSelectionSubmitting = false
                                 appState.moveSelectionRequest = null
                                 request.onMoved()
                                 foldersViewModel.refreshOrganizeCount()
-                                showMovedToFolderSnackbar(request.assetIds.size, targetName)
+                                // The server may move only part of the selection.
+                                showMovedToFolderSnackbar(outcome.moved, targetName)
                             }.onFailure { error ->
                                 appState.moveSelectionSubmitting = false
                                 appState.moveSelectionError =

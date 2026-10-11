@@ -413,7 +413,12 @@ class FolderDetailViewModel(
         }
     }
 
-    fun moveSelectedAssets(targetFolderId: String, onSuccess: (movedIds: List<String>) -> Unit = {}) {
+    /**
+     * Moves the selection into [targetFolderId]. [onSuccess] receives how many
+     * the server actually moved: when it falls short we can't tell which ones
+     * stayed, so the folder reloads instead of dropping every requested id.
+     */
+    fun moveSelectedAssets(targetFolderId: String, onSuccess: (moved: Int) -> Unit = {}) {
         val sourceFolderId = _state.value.folderId ?: return
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
@@ -426,15 +431,20 @@ class FolderDetailViewModel(
                     assetIds = ids
                 )
             }
-                .onSuccess {
-                    _state.update { previous ->
-                        previous.copy(
-                            items = previous.items.filterNot { it.id in ids },
-                            selection = emptySet(),
-                            isBulkMutating = false
-                        )
+                .onSuccess { outcome ->
+                    if (outcome.moved >= ids.size) {
+                        _state.update { previous ->
+                            previous.copy(
+                                items = previous.items.filterNot { it.id in ids },
+                                selection = emptySet(),
+                                isBulkMutating = false
+                            )
+                        }
+                    } else {
+                        _state.update { it.copy(selection = emptySet(), isBulkMutating = false) }
+                        refresh()
                     }
-                    onSuccess(ids)
+                    onSuccess(outcome.moved)
                 }
                 .onFailure { error ->
                     _state.update {

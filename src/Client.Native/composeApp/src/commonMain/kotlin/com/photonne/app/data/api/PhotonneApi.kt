@@ -2256,8 +2256,9 @@ class PhotonneApiClient(
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
             throw response.apiException("Moving folder assets failed (${response.status.value})")
         }
-        // Older servers replied 204 with no body; treat that as a bare success.
-        return if (response.status == HttpStatusCode.NoContent) MoveOutcome() else response.body()
+        // Older servers replied 204 with no body: a bare success, i.e. everything
+        // requested was moved (callers treat moved < requested as partial).
+        return if (response.status == HttpStatusCode.NoContent) MoveOutcome(moved = assetIds.size) else response.body()
     }
 
     override suspend fun searchAssets(

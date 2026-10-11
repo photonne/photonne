@@ -224,7 +224,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::MapRepository)
     singleOf(::PeopleRepository)
     single { com.photonne.app.data.library.UnsupportedFilesRepository(get()) }
-    single { com.photonne.app.data.organize.OrganizeRepository(get()) }
+    single { com.photonne.app.data.organize.OrganizeRepository(get(), get()) }
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
     viewModelOf(::MemoryFeedViewModel)

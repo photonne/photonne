@@ -4,6 +4,8 @@ import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.AlbumMemberRole
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -12,6 +14,9 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -61,7 +66,7 @@ private fun permissionPayload(
 
 class FoldersCrudTest {
 
-    private fun newRepo(engine: MockEngine) = FoldersRepository(
+    private fun newRepo(engine: MockEngine, bus: AssetMutationBus = AssetMutationBus()) = FoldersRepository(
         api = PhotonneApiClient(
             client = buildPhotonneHttpClient(
                 engine = engine,
@@ -70,8 +75,50 @@ class FoldersCrudTest {
                 authState = AuthStateHolder()
             ),
             baseUrl = "http://test.local"
-        )
+        ),
+        mutationBus = bus
     )
+
+    private fun moveEngine(moved: Int) = MockEngine {
+        respond(
+            content = ByteReadChannel("""{"moved": $moved, "yearBreakdown": []}"""),
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+    }
+
+    @Test
+    fun move_assets_returns_server_count_and_emits_moved() = runTest(UnconfinedTestDispatcher()) {
+        val bus = AssetMutationBus()
+        val event = async { bus.events.first() }
+
+        val outcome = newRepo(moveEngine(moved = 1), bus).moveAssets(
+            sourceFolderId = null,
+            targetFolderId = "f-2",
+            assetIds = listOf("a-1", "a-2")
+        )
+
+        // Partial: the caller must see 1, not the 2 requested.
+        assertEquals(1, outcome.moved)
+        assertEquals(AssetMutation.Moved(listOf("a-1", "a-2"), "f-2"), event.await())
+    }
+
+    @Test
+    fun move_assets_emits_nothing_when_nothing_moved() = runTest(UnconfinedTestDispatcher()) {
+        val bus = AssetMutationBus()
+        val event = async { bus.events.first() }
+
+        val outcome = newRepo(moveEngine(moved = 0), bus).moveAssets(
+            sourceFolderId = null,
+            targetFolderId = "f-2",
+            assetIds = listOf("a-1")
+        )
+        // Sentinel: if the move had emitted, it would arrive before this one.
+        bus.emit(AssetMutation.AllChanged)
+
+        assertEquals(0, outcome.moved)
+        assertEquals(AssetMutation.AllChanged, event.await())
+    }
 
     @Test
     fun create_posts_to_folders_endpoint() = runTest {
@@ -181,11 +228,13 @@ class FoldersCrudTest {
         }
         val repo = newRepo(engine)
 
-        repo.moveAssets(
+        val outcome = repo.moveAssets(
             sourceFolderId = "f-1",
             targetFolderId = "f-2",
             assetIds = listOf("a-1", "a-2")
         )
+        // Older servers answer 204 with no body: everything requested moved.
+        assertEquals(2, outcome.moved)
         assertEquals(HttpMethod.Post, captured.single().first)
         assertEquals("/api/folders/assets/move", captured.single().second)
     }
