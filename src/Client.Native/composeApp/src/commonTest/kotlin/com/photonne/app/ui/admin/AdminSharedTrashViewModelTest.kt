@@ -20,7 +20,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CompletableDeferred
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -49,6 +52,20 @@ class AdminSharedTrashViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
+    // Every view model a test made, so its coroutines (open streams, requests
+    // still in flight) end with the test instead of resuming in the next one
+    // under a different Main dispatcher.
+    private val created = mutableListOf<androidx.lifecycle.ViewModel>()
+
+    private fun runVmTest(block: suspend kotlinx.coroutines.test.TestScope.() -> Unit) = runTest {
+        try {
+            block()
+        } finally {
+            created.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() }
+            created.clear()
+        }
+    }
+
     private fun viewModel(
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
     ): AdminSharedTrashViewModel {
@@ -63,7 +80,7 @@ class AdminSharedTrashViewModelTest {
             AdminRepository(api),
             UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api)),
             AssetMutationBus(),
-        )
+        ).also { created += it }
     }
 
     private fun MockRequestHandleScope.json(body: String) = respond(
@@ -77,7 +94,7 @@ class AdminSharedTrashViewModelTest {
             """"nextCursor":${if (hasMore) "\"2026-10-01T00:00:00Z\"" else "null"}}"""
 
     @Test
-    fun a_reload_drops_the_page_a_pending_load_more_brings_back() = runTest {
+    fun a_reload_drops_the_page_a_pending_load_more_brings_back() = runVmTest {
         val olderPage = CompletableDeferred<Unit>()
         var firstPage = page("a", "b", hasMore = true)
         val vm = viewModel { request ->

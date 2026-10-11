@@ -20,7 +20,13 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.onSubscription
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -54,6 +60,20 @@ class AdminRunTasksViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
+    // Every view model a test made, so its coroutines (open streams, requests
+    // still in flight) end with the test instead of resuming in the next one
+    // under a different Main dispatcher.
+    private val created = mutableListOf<androidx.lifecycle.ViewModel>()
+
+    private fun runVmTest(block: suspend kotlinx.coroutines.test.TestScope.() -> Unit) = runTest {
+        try {
+            block()
+        } finally {
+            created.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() }
+            created.clear()
+        }
+    }
+
     private val bus = AssetMutationBus()
 
     private fun viewModel(
@@ -71,7 +91,7 @@ class AdminRunTasksViewModelTest {
             MapSettings(),
             UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api)),
             bus,
-        )
+        ).also { created += it }
     }
 
     private fun MockRequestHandleScope.json(body: String) = respond(
@@ -85,9 +105,15 @@ class AdminRunTasksViewModelTest {
             """"startedAt":"2026-10-11T10:00:00Z","finishedAt":"2026-10-11T10:05:00Z"}"""
 
     @Test
-    fun a_task_that_rewrites_the_library_tells_the_app_when_it_finishes() = runTest {
-        val events = mutableListOf<AssetMutation>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { bus.events.collect { events += it } }
+    fun a_task_that_rewrites_the_library_tells_the_app_when_it_finishes() = runVmTest {
+        // Emitted from whatever thread the response lands on: a channel fed by a
+        // collector on the test dispatcher keeps the reads on the test thread.
+        val events = Channel<AssetMutation>(Channel.UNLIMITED)
+        val subscribed = CompletableDeferred<Unit>()
+        backgroundScope.launch {
+            bus.events.onSubscription { subscribed.complete(Unit) }.collect { events.send(it) }
+        }
+        subscribed.await()
         var tasks = "[${finished("T1", "IndexAssets")}]"
         val vm = viewModel { request ->
             if (request.url.encodedPath == "/api/tasks") json(tasks)
@@ -98,23 +124,22 @@ class AdminRunTasksViewModelTest {
         vm.state.first { it.tasksLoaded && !it.isLoading }
         runCurrent()
         // A run that had already finished before the screen looked is old news.
-        assertTrue(events.isEmpty())
+        assertTrue(events.tryReceive().isFailure)
 
         tasks = "[${finished("T1", "IndexAssets")},${finished("T2", "Maintenance")},${finished("T3", "Thumbnails")}]"
         vm.load()
+        assertEquals(AssetMutation.AllChanged, events.receive())
         vm.state.first { it.backgroundTasks.size == 3 && !it.isLoading }
-        runCurrent()
-        assertEquals(listOf<AssetMutation>(AssetMutation.AllChanged), events)
 
         // Listed again on the next poll: not announced twice.
         vm.load()
         vm.state.first { !it.isLoading }
         runCurrent()
-        assertEquals(1, events.size)
+        assertTrue(events.tryReceive().isFailure)
     }
 
     @Test
-    fun a_failed_registry_read_is_shown_and_can_be_retried() = runTest {
+    fun a_failed_registry_read_is_shown_and_can_be_retried() = runVmTest {
         var fail = true
         val vm = viewModel { request ->
             when {

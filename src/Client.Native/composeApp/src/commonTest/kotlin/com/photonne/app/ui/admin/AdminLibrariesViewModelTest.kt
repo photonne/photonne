@@ -22,7 +22,10 @@ import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CompletableDeferred
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -54,6 +57,20 @@ class AdminLibrariesViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
+    // Every view model a test made, so its coroutines (open streams, requests
+    // still in flight) end with the test instead of resuming in the next one
+    // under a different Main dispatcher.
+    private val created = mutableListOf<androidx.lifecycle.ViewModel>()
+
+    private fun runVmTest(block: suspend kotlinx.coroutines.test.TestScope.() -> Unit) = runTest {
+        try {
+            block()
+        } finally {
+            created.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() }
+            created.clear()
+        }
+    }
+
     private fun viewModel(
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
     ): AdminLibrariesViewModel {
@@ -67,7 +84,7 @@ class AdminLibrariesViewModelTest {
         return AdminLibrariesViewModel(
             AdminRepository(api),
             UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api))
-        )
+        ).also { created += it }
     }
 
     private fun MockRequestHandleScope.json(body: String) = respond(
@@ -82,7 +99,7 @@ class AdminLibrariesViewModelTest {
             """"parameters":{"libraryId":"$libraryId"}}]"""
 
     @Test
-    fun cancel_stops_the_scan_on_the_server() = runTest {
+    fun cancel_stops_the_scan_on_the_server() = runVmTest {
         val stream = ByteChannel(autoFlush = true)
         val cancelled = mutableListOf<String>()
         val vm = viewModel { request ->
@@ -116,7 +133,7 @@ class AdminLibrariesViewModelTest {
     }
 
     @Test
-    fun a_failed_cancel_keeps_the_scan_card() = runTest {
+    fun a_failed_cancel_keeps_the_scan_card() = runVmTest {
         val stream = ByteChannel(autoFlush = true)
         val vm = viewModel { request ->
             val path = request.url.encodedPath
@@ -144,7 +161,7 @@ class AdminLibrariesViewModelTest {
     }
 
     @Test
-    fun entering_the_screen_follows_a_scan_already_running() = runTest {
+    fun entering_the_screen_follows_a_scan_already_running() = runVmTest {
         val stream = ByteChannel(autoFlush = true)
         val vm = viewModel { request ->
             val path = request.url.encodedPath
@@ -170,7 +187,7 @@ class AdminLibrariesViewModelTest {
     }
 
     @Test
-    fun scanning_a_library_already_being_scanned_follows_that_scan() = runTest {
+    fun scanning_a_library_already_being_scanned_follows_that_scan() = runVmTest {
         val requested = mutableListOf<String>()
         val vm = viewModel { request ->
             val path = request.url.encodedPath
@@ -192,7 +209,7 @@ class AdminLibrariesViewModelTest {
     }
 
     @Test
-    fun a_grant_that_lands_after_the_sheet_moved_on_is_dropped() = runTest {
+    fun a_grant_that_lands_after_the_sheet_moved_on_is_dropped() = runVmTest {
         val gate = CompletableDeferred<Unit>()
         val vm = viewModel { request ->
             val path = request.url.encodedPath
@@ -219,7 +236,7 @@ class AdminLibrariesViewModelTest {
     }
 
     @Test
-    fun a_failed_revoke_with_the_sheet_closed_goes_to_the_snackbar() = runTest {
+    fun a_failed_revoke_with_the_sheet_closed_goes_to_the_snackbar() = runVmTest {
         val gate = CompletableDeferred<Unit>()
         val vm = viewModel { request ->
             if (request.method == HttpMethod.Delete) {
