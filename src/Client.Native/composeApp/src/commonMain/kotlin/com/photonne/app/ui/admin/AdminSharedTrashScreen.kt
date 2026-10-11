@@ -1,5 +1,7 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.main.ResultSnackbar
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -114,6 +116,7 @@ data class AdminSharedTrashUiState(
 class AdminSharedTrashViewModel(
     private val repository: AdminRepository,
     private val errorFactory: UiErrorFactory,
+    private val assetMutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminSharedTrashUiState())
@@ -214,6 +217,9 @@ class AdminSharedTrashViewModel(
             runCatching { repository.restoreSharedTrash(ids) }
                 .onSuccess {
                     val done = getString(Res.string.admin_shared_trash_restored_format, ids.size)
+                    // Back in their shared folders: the timeline, albums and
+                    // folders have to pick them up again.
+                    assetMutationBus.emit(AssetMutation.AllChanged)
                     _state.update { it.copy(isMutating = false, selection = emptySet(), resultMessage = done) }
                     load()
                 }
@@ -236,6 +242,7 @@ class AdminSharedTrashViewModel(
             runCatching { repository.purgeSharedTrash(ids) }
                 .onSuccess {
                     val done = getString(Res.string.admin_shared_trash_purged_format, ids.size)
+                    assetMutationBus.emit(AssetMutation.AllChanged)
                     _state.update { it.copy(isMutating = false, selection = emptySet(), resultMessage = done) }
                     load()
                 }
