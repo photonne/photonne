@@ -104,3 +104,20 @@ test('only the link of the page on screen is the current page', async ({ page })
 	);
 	await expect(sidebar.getByRole('link', { name: 'Fotos' })).not.toHaveAttribute('aria-current');
 });
+
+test('the menu follows the window width until the user chooses', async ({ page }) => {
+	await page.setViewportSize({ width: 1400, height: 900 });
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/');
+
+	await expect(page.getByRole('button', { name: 'Contraer el menú' })).toBeVisible();
+	await page.setViewportSize({ width: 1000, height: 900 });
+	await expect(page.getByRole('button', { name: 'Expandir el menú' })).toBeVisible();
+	await page.setViewportSize({ width: 1400, height: 900 });
+	await expect(page.getByRole('button', { name: 'Contraer el menú' })).toBeVisible();
+
+	// Once chosen, the choice stays whatever the width.
+	await page.getByRole('button', { name: 'Contraer el menú' }).click();
+	await page.setViewportSize({ width: 1300, height: 900 });
+	await expect(page.getByRole('button', { name: 'Expandir el menú' })).toBeVisible();
+});

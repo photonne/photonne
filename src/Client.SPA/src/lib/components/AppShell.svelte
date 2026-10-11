@@ -21,7 +21,12 @@
 	import { session } from '#lib/auth/session.svelte.js';
 	import { appHref as href } from '#lib/navigation/href.js';
 	import { navigation } from '#lib/navigation/sections.js';
-	import { initialCollapsed, saveCollapsed } from '#lib/navigation/sidebar.js';
+	import {
+		initialCollapsed,
+		RAIL_QUERY,
+		saveCollapsed,
+		savedCollapsed
+	} from '#lib/navigation/sidebar.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import Icon from './Icon.svelte';
 	import Logo from './Logo.svelte';
@@ -55,8 +60,21 @@
 	// A rail of icons or the full menu; narrow windows start as a rail.
 	let collapsed = $state(initialCollapsed(window.innerWidth));
 
+	// Until the user picks one, the menu follows the window: a rail when it
+	// narrows, the full menu when it widens again.
+	let chosen = savedCollapsed() !== null;
+	$effect(() => {
+		const query = window.matchMedia(RAIL_QUERY);
+		const follow = () => {
+			if (!chosen) collapsed = query.matches;
+		};
+		query.addEventListener('change', follow);
+		return () => query.removeEventListener('change', follow);
+	});
+
 	function toggleSidebar() {
 		collapsed = !collapsed;
+		chosen = true;
 		saveCollapsed(collapsed);
 	}
 	let search = $state('');

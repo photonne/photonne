@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { initialCollapsed, saveCollapsed } from './sidebar.js';
+import { initialCollapsed, saveCollapsed, savedCollapsed } from './sidebar.js';
 
 function memoryStorage() {
 	const values = new Map<string, string>();
@@ -24,5 +24,12 @@ describe('sidebar state', () => {
 		expect(initialCollapsed(1024)).toBe(false);
 		saveCollapsed(true);
 		expect(initialCollapsed(1440)).toBe(true);
+	});
+
+	it('tells whether the user ever chose', () => {
+		vi.stubGlobal('localStorage', memoryStorage());
+		expect(savedCollapsed()).toBeNull();
+		saveCollapsed(false);
+		expect(savedCollapsed()).toBe(false);
 	});
 });
