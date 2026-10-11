@@ -12,6 +12,7 @@
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { longDate, monthTitle } from '#lib/format.js';
+	import { leaveViewerThen } from '#lib/library/viewer-flow.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import AssetViewer, { type AssetChange } from '#lib/viewer/AssetViewer.svelte';
 	import { neighborsIn } from '#lib/viewer/neighbors.js';
@@ -121,13 +122,8 @@
 		if (last) grid?.focusItem(last);
 	}
 
-	async function removeFromViewer(remove: (ids: readonly string[]) => Promise<void>) {
-		const id = viewer.openId;
-		if (!id) return;
-		const target = neighbors.next ?? neighbors.previous;
-		if (target) viewer.navigate(target);
-		else await close();
-		await remove([id]);
+	function removeFromViewer(remove: (ids: readonly string[]) => Promise<void>) {
+		return leaveViewerThen(viewer, store.order, remove);
 	}
 
 	function changed(assetId: string, change: AssetChange) {
