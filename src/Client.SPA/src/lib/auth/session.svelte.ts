@@ -139,10 +139,13 @@ export class Session {
 		this.#accessToken = null;
 		this.user = null;
 		this.status = 'signedOut';
+		if (!wasSignedIn) return;
 		// Whoever signs in next in this tab must not see the last user's
-		// albums, folders or photos from the cache.
+		// albums, folders or photos from the cache. Only when someone was
+		// signed in: a public link page restores a session that never existed
+		// while its own queries are loading.
 		queryClient.clear();
-		if (wasSignedIn) for (const listener of this.#signOutListeners) listener();
+		for (const listener of this.#signOutListeners) listener();
 	}
 }
 
