@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import Icon from '#lib/components/Icon.svelte';
 	import { longDate } from '#lib/format.js';
 	import { thumbnailUrl } from '#lib/media.js';
@@ -28,7 +29,11 @@
 	let root = $state<HTMLDivElement>();
 	let pauseButton = $state<HTMLButtonElement>();
 
+	/** Videos that couldn't play: they show their poster for a photo's time instead. */
+	const broken = new SvelteSet<string>();
+
 	const current = $derived(items[position.index]);
+	const playsVideo = $derived(!!current?.isVideo && !broken.has(current.id));
 	const segments = $derived(items.length <= MAX_SEGMENTS ? items.length : 1);
 	const overallProgress = $derived(
 		items.length ? (position.index + position.progress) / items.length : 0
@@ -46,7 +51,7 @@
 			const delta = now - last;
 			last = now;
 			// Videos move on their own clock (timeupdate / ended).
-			if (!paused && current && !current.isVideo) position = tick(position, delta, items.length);
+			if (!paused && current && !playsVideo) position = tick(position, delta, items.length);
 			frame = requestAnimationFrame(step);
 		});
 
@@ -122,6 +127,13 @@
 		if (video.duration) position = { ...position, progress: video.currentTime / video.duration };
 	}
 
+	// A video that won't load would hold the story forever (its clock never runs):
+	// it becomes a still of its poster and moves on with the photos' timer.
+	function onvideoerror() {
+		if (current) broken.add(current.id);
+		position = { ...position, progress: 0 };
+	}
+
 	function onvideoended() {
 		if (position.index < items.length - 1) go(position.index + 1);
 		else position = { ...position, progress: 1, finished: true };
@@ -192,7 +204,7 @@
 	<div class="stage">
 		{#if current}
 			{#key current.id}
-				{#if current.isVideo}
+				{#if playsVideo}
 					<video
 						src="/api/assets/{current.id}/content"
 						poster={imageUrl(current)}
@@ -201,6 +213,7 @@
 						use:playback={paused}
 						ontimeupdate={onvideotime}
 						onended={onvideoended}
+						onerror={onvideoerror}
 					></video>
 				{:else}
 					<img
