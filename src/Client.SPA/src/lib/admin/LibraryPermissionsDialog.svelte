@@ -39,9 +39,9 @@
 		if (library) selected = '';
 	});
 
-	function invalidate() {
+	function invalidate(libraryId = id) {
 		return queryClient.invalidateQueries({
-			queryKey: getExternalLibraryPermissionsQueryKey({ path: { libraryId: id } })
+			queryKey: getExternalLibraryPermissionsQueryKey({ path: { libraryId } })
 		});
 	}
 
@@ -49,9 +49,11 @@
 		event.preventDefault();
 		if (!selected || !library) return;
 		busy = true;
+		const libraryId = id;
+		const libraryName = library.name;
 		const user = candidates.find((u) => u.id === selected);
 		const { error } = await setExternalLibraryPermission({
-			path: { libraryId: id },
+			path: { libraryId },
 			body: { userId: selected, canRead: true }
 		});
 		busy = false;
@@ -60,29 +62,36 @@
 			return;
 		}
 		selected = '';
-		await invalidate();
-		toasts.show(m.admin_libs_access_granted({ name: user?.username ?? '', library: library.name }));
+		await invalidate(libraryId);
+		toasts.show(m.admin_libs_access_granted({ name: user?.username ?? '', library: libraryName }));
 	}
 
 	async function revoke(userId: string, username: string) {
 		if (!library) return;
+		// The undo can run after the dialog closed (library = null, id = ''), so it keeps its own copy.
+		const libraryId = id;
+		const libraryName = library.name;
 		busy = true;
-		const { error } = await removeExternalLibraryPermission({ path: { libraryId: id, userId } });
+		const { error } = await removeExternalLibraryPermission({ path: { libraryId, userId } });
 		busy = false;
 		if (error) {
 			toasts.error(errorText(error));
 			return;
 		}
-		await invalidate();
-		toasts.show(m.admin_libs_access_revoked({ name: username, library: library.name }), {
+		await invalidate(libraryId);
+		toasts.show(m.admin_libs_access_revoked({ name: username, library: libraryName }), {
 			action: {
 				label: m.action_undo(),
 				run: async () => {
-					await setExternalLibraryPermission({
-						path: { libraryId: id },
+					const { error: undoError } = await setExternalLibraryPermission({
+						path: { libraryId },
 						body: { userId, canRead: true }
 					});
-					await invalidate();
+					if (undoError) {
+						toasts.error(errorText(undoError));
+						return;
+					}
+					await invalidate(libraryId);
 				}
 			}
 		});
