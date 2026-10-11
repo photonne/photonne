@@ -16,6 +16,8 @@ import kotlin.time.Instant
 data class SentSharesUiState(
     val links: List<SentShareLink> = emptyList(),
     val isLoading: Boolean = false,
+    /** Recarga pedida con el gesto; la de cada apertura va en silencio. */
+    val isRefreshing: Boolean = false,
     val isMutating: Boolean = false,
     val hasLoaded: Boolean = false,
     val error: UiError? = null,
@@ -34,30 +36,44 @@ class SentSharesViewModel(
     private val _state = MutableStateFlow(SentSharesUiState())
     val state: StateFlow<SentSharesUiState> = _state.asStateFlow()
 
-    /** Loads on first open; later opens of the tab keep the cached list (use [refresh] to reload). */
+    /**
+     * Reloads on every open, keeping the cached list on screen meanwhile. Links
+     * are also created, edited and revoked from an album's share sheet and from
+     * the asset share flow, which this list never hears about: loading only once
+     * left it showing revoked links and missing new ones.
+     */
     fun load() {
-        if (_state.value.hasLoaded || _state.value.isLoading) return
-        reload()
+        if (_state.value.isLoading) return
+        reload(showIndicator = false)
     }
 
     fun refresh() {
         if (_state.value.isLoading) return
-        reload()
+        reload(showIndicator = true)
     }
 
-    private fun reload() {
-        _state.update { it.copy(isLoading = true, error = null) }
+    private fun reload(showIndicator: Boolean) {
+        _state.update {
+            it.copy(isLoading = true, isRefreshing = showIndicator && it.links.isNotEmpty(), error = null)
+        }
         viewModelScope.launch {
             runCatching { repository.sentShares() }
                 .onSuccess { links ->
                     _state.update {
-                        it.copy(links = links, isLoading = false, hasLoaded = true, error = null)
+                        it.copy(
+                            links = links,
+                            isLoading = false,
+                            isRefreshing = false,
+                            hasLoaded = true,
+                            error = null
+                        )
                     }
                 }
                 .onFailure { error ->
                     _state.update {
                         it.copy(
                             isLoading = false,
+                            isRefreshing = false,
                             hasLoaded = true,
                             error = errorFactory.from(error, "No se pudieron cargar los enlaces")
                         )

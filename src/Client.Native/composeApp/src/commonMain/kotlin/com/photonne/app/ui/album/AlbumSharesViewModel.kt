@@ -30,11 +30,17 @@ class AlbumSharesViewModel(
     private val _state = MutableStateFlow(AlbumSharesUiState())
     val state: StateFlow<AlbumSharesUiState> = _state.asStateFlow()
 
+    /**
+     * Reloads on every open. Reopening the same album keeps its links on screen
+     * meanwhile, but no longer trusts them: "Mis enlaces" edits and revokes these
+     * same links without going through this view model.
+     */
     fun open(albumId: String) {
         if (_state.value.albumId == albumId && _state.value.links.isNotEmpty()) {
-            return
+            _state.update { it.copy(isLoading = true, error = null, createdLink = null) }
+        } else {
+            _state.value = AlbumSharesUiState(albumId = albumId, isLoading = true)
         }
-        _state.value = AlbumSharesUiState(albumId = albumId, isLoading = true)
         viewModelScope.launch { reloadInternal(albumId) }
     }
 
@@ -178,8 +184,9 @@ class AlbumSharesViewModel(
         runCatching { repository.listShares(albumId) }
             .onSuccess { links ->
                 _state.update {
+                    // Another album opened meanwhile: its own load answers.
+                    if (it.albumId != albumId) return@update it
                     it.copy(
-                        albumId = albumId,
                         links = links,
                         isLoading = false
                     )
@@ -187,6 +194,7 @@ class AlbumSharesViewModel(
             }
             .onFailure { error ->
                 _state.update {
+                    if (it.albumId != albumId) return@update it
                     it.copy(
                         isLoading = false,
                         error = errorFactory.from(error, "No se pudieron cargar los enlaces")
