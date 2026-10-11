@@ -196,5 +196,6 @@
 	"folders_upload": "Upload photos",
 	"folders_none_hint": "The photos you upload are kept in folders. Upload some, or create a folder with the button above the tree.",
 	"folders_load_failed": "The folder couldn’t be loaded.",
-	"folders_retry": "Try again"
+	"folders_retry": "Try again",
+	"folders_tree_close": "Close the folder tree"
 }
