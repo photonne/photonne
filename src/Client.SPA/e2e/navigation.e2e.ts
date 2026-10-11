@@ -121,3 +121,31 @@ test('the menu follows the window width until the user chooses', async ({ page }
 	await page.setViewportSize({ width: 1300, height: 900 });
 	await expect(page.getByRole('button', { name: 'Expandir el menú' })).toBeVisible();
 });
+
+test('on a phone the menu is a drawer over the page', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 800 });
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/');
+
+	const open = page.getByRole('button', { name: 'Abrir el menú' });
+	const sidebar = page.getByRole('navigation', { name: 'Navegación principal' });
+	await expect(sidebar).toBeHidden();
+
+	await open.click();
+	await expect(sidebar).toBeVisible();
+	await expect(sidebar.getByRole('link', { name: 'Fotos' })).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(sidebar).toBeHidden();
+	await expect(open).toBeFocused();
+
+	// Going somewhere closes it.
+	await open.click();
+	await sidebar.getByRole('link', { name: 'Álbumes' }).click();
+	await expect(page).toHaveURL(/\/albums$/);
+	await expect(sidebar).toBeHidden();
+
+	// So does a click on the page behind it.
+	await open.click();
+	await page.mouse.click(370, 400);
+	await expect(sidebar).toBeHidden();
+});

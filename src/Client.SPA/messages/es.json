@@ -33,6 +33,8 @@
 	"loading": "Cargando",
 	"nav_collapse": "Contraer el menú",
 	"nav_expand": "Expandir el menú",
+	"nav_open_menu": "Abrir el menú",
+	"nav_close_menu": "Cerrar el menú",
 	"error_loading": "No se ha podido cargar. Inténtalo de nuevo.",
 	"skip_to_content": "Saltar al contenido",
 	"grid_select_section": "Seleccionar {section}",
