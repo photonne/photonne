@@ -1,4 +1,6 @@
 import { addAssetsToAlbumBatch, moveFolderAssets } from '#lib/api/index.js';
+import { invalidateLibrary } from '#lib/api/query-client.js';
+import { announceAssetsMoved } from '#lib/albums/folder-moves.js';
 import { toasts } from '#lib/components/toasts.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 
@@ -32,14 +34,18 @@ export async function dropOnAlbum(event: DragEvent, album: { id: string; name: s
 		path: { albumId: album.id },
 		body: { assetIds }
 	});
-	if (error) toasts.error(m.action_failed());
-	else toasts.show(m.action_added_to_album({ count: assetIds.length, album: album.name }));
+	if (error) {
+		toasts.error(m.action_failed());
+		return;
+	}
+	invalidateLibrary();
+	toasts.show(m.action_added_to_album({ count: assetIds.length, album: album.name }));
 }
 
 export async function dropOnFolder(event: DragEvent, folder: { id: string; name: string }) {
 	const assetIds = draggedIds(event);
 	if (assetIds.length === 0) return;
-	const { error } = await moveFolderAssets({
+	const { data, error } = await moveFolderAssets({
 		body: {
 			sourceFolderId: null,
 			targetFolderId: folder.id,
@@ -47,6 +53,16 @@ export async function dropOnFolder(event: DragEvent, folder: { id: string; name:
 			organizeByCaptureYear: false
 		}
 	});
-	if (error) toasts.error(m.action_failed());
-	else toasts.show(m.action_moved({ count: assetIds.length, folder: folder.name }));
+	if (error) {
+		toasts.error(m.action_failed());
+		return;
+	}
+	announceAssetsMoved({
+		assetIds,
+		from: null,
+		to: folder.id,
+		exact: data?.moved === assetIds.length
+	});
+	invalidateLibrary();
+	toasts.show(m.action_moved({ count: assetIds.length, folder: folder.name }));
 }

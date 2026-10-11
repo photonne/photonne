@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateLibrary } from '#lib/api/query-client.js';
 	import { page } from '$app/state';
 	import { emptyTrash, getSharedTrash, getTrashedAssets, restoreAllTrash } from '#lib/api/index.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
@@ -59,6 +60,7 @@
 			const { error } = await call();
 			if (error) throw error;
 			toasts.show(done);
+			invalidateLibrary();
 			await personal.start();
 		} catch {
 			toasts.error(m.action_failed());

@@ -7,6 +7,7 @@ import {
 	restoreSharedTrash,
 	unarchiveAssets
 } from '#lib/api/index.js';
+import { invalidateLibrary } from '#lib/api/query-client.js';
 import { toasts } from '#lib/components/toasts.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { GridHost } from '#lib/timeline/grid-host.js';
@@ -78,13 +79,17 @@ export class LibraryActions {
 				if (error) throw error;
 				this.#host.remove(assetIds);
 				selection?.set(assetIds, false);
+				invalidateLibrary();
 				toasts.show(message({ count: assetIds.length }), {
 					action: revert && {
 						label: m.action_undo(),
 						run: async () => {
 							const { error } = await revert({ body: { assetIds } });
 							if (error) toasts.error(m.action_failed());
-							else this.#host.reload();
+							else {
+								invalidateLibrary();
+								this.#host.reload();
+							}
 						}
 					}
 				});
