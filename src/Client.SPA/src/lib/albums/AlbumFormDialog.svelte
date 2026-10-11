@@ -36,7 +36,11 @@
 
 	const ruleQuery = createQuery(() => ({
 		...getAlbumRuleOptions({ path: { albumId: album?.id ?? '' } }),
-		enabled: editing && editsRule
+		enabled: editing && editsRule,
+		// The editor fills once from the first data it sees, so a cached copy from an earlier
+		// edit would show (and then save back) the old rule: always read it fresh.
+		staleTime: 0,
+		gcTime: 0
 	}));
 
 	// A saved rule fills the editor once.

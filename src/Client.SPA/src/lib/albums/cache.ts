@@ -9,6 +9,7 @@ import {
 } from '#lib/api/index.js';
 import {
 	getAlbumByIdQueryKey,
+	getAlbumRuleQueryKey,
 	getAllAlbumsQueryKey,
 	getAllFoldersQueryKey,
 	getFolderByIdQueryKey,
@@ -18,11 +19,13 @@ import {
 import { toasts } from '#lib/components/toasts.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 
-/** Refetches the album lists (page, sidebar pins, pickers) and, if given, one album. */
+/** Refetches the album lists (page, sidebar pins, pickers) and, if given, one album and its rule. */
 export function invalidateAlbums(queryClient: QueryClient, albumId?: string) {
 	queryClient.invalidateQueries({ queryKey: getAllAlbumsQueryKey() });
-	if (albumId)
+	if (albumId) {
 		queryClient.invalidateQueries({ queryKey: getAlbumByIdQueryKey({ path: { albumId } }) });
+		queryClient.invalidateQueries({ queryKey: getAlbumRuleQueryKey({ path: { albumId } }) });
+	}
 }
 
 /** Refetches every folder list (tree, sidebar pins, pickers) and, if given, one folder. */
