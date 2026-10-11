@@ -16,7 +16,7 @@
 	"login_error_server": "El servidor no ha podido iniciar la sesión. Inténtalo más tarde.",
 	"nav_main": "Navegación principal",
 	"nav_photos": "Fotos",
-	"account_menu": "Cuenta",
+	"account_menu_label": "{name}, menú de cuenta",
 	"account_logout": "Cerrar sesión",
 	"account_logout_uploads_title": "¿Cerrar sesión con subidas en curso?",
 	"account_logout_uploads_body": "Las fotos que aún no se han subido se cancelarán.",

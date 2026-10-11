@@ -35,8 +35,8 @@ test('signs out', async ({ page }) => {
 	await fakeApi(page, { signedIn: true });
 	await page.goto('/');
 
-	await page.getByLabel('Cuenta').click();
-	await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+	await page.getByRole('button', { name: /menú de cuenta/ }).click();
+	await page.getByRole('menuitem', { name: 'Cerrar sesión' }).click();
 
 	await expect(page).toHaveURL(/\/login$/);
 });

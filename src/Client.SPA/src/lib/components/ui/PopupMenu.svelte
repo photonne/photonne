@@ -28,7 +28,7 @@
 </script>
 
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 	import Icon from '#lib/components/Icon.svelte';
 
 	interface Props {
@@ -45,6 +45,10 @@
 		/** Which edge of the trigger the menu lines up with. */
 		align?: 'start' | 'end';
 		disabled?: boolean;
+		/** Custom trigger content (an avatar and a name…), in place of `icon` and `text`. */
+		trigger?: Snippet;
+		/** Non-interactive content above the items (who is signed in…). */
+		header?: Snippet;
 	}
 
 	let {
@@ -55,7 +59,9 @@
 		triggerClass,
 		title,
 		align = 'end',
-		disabled = false
+		disabled = false,
+		trigger: triggerContent,
+		header
 	}: Props = $props();
 
 	const id = $props.id();
@@ -178,18 +184,20 @@
 	<button
 		bind:this={trigger}
 		type="button"
-		class={triggerClass ?? (text ? 'btn sm' : 'icon-btn')}
+		class={triggerClass ?? (text || triggerContent ? 'btn sm' : 'icon-btn')}
 		class:open
 		aria-haspopup="menu"
 		aria-expanded={open}
 		aria-controls={open ? `${id}-menu` : undefined}
 		aria-label={label}
-		title={title ?? (text ? undefined : label)}
+		title={title ?? (text || triggerContent ? undefined : label)}
 		{disabled}
 		onclick={() => (open ? hide() : show('checked'))}
 		onkeydown={onTriggerKey}
 	>
-		{#if text}
+		{#if triggerContent}
+			{@render triggerContent()}
+		{:else if text}
 			{#if icon}{@render glyph(icon, 18)}{/if}
 			<span>{text}</span>
 			<svg class="caret" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
@@ -212,6 +220,9 @@
 			tabindex="-1"
 			onkeydown={onMenuKey}
 		>
+			{#if header}
+				<div class="header" role="none">{@render header()}</div>
+			{/if}
 			{#each items as entry, index (entry.kind === 'separator' ? entry.id : `${index}:${entry.label}`)}
 				{#if entry.kind === 'separator'}
 					<div class="separator" role="separator"></div>
@@ -364,6 +375,13 @@
 		font: inherit;
 		font-size: var(--font-size-2xs);
 		line-height: 18px;
+	}
+
+	.header {
+		min-width: 0;
+		padding: var(--space-2) var(--space-3) var(--space-3);
+		margin-bottom: var(--space-1);
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.separator {
