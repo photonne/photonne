@@ -33,6 +33,7 @@ import com.photonne.app.resources.admin_user_field_admin
 import com.photonne.app.resources.admin_user_field_password
 import com.photonne.app.resources.admin_user_field_quota_mb
 import com.photonne.app.resources.admin_user_field_quota_mb_hint
+import com.photonne.app.resources.admin_user_field_quota_mb_hint_edit
 import com.photonne.app.resources.admin_user_promote_success
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.demo.LocalDemoMode
@@ -43,6 +44,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 
 internal const val ADMIN_USER_MIN_PASSWORD_LENGTH = 8
+
+/** What `PUT /api/users/{id}` reads as "no quota" (UsersEndpoint.UpdateUser);
+ *  a null quota there means "leave it as it is". */
+internal const val REMOVE_STORAGE_QUOTA = -1L
 
 /**
  * Full-page editor used to create a new user or edit an existing one,
@@ -201,7 +206,12 @@ fun AdminUserEditorScreen(
             enabled = !isSubmitting && !demoLocksAccount,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             supportingText = {
-                Text(stringResource(Res.string.admin_user_field_quota_mb_hint))
+                Text(
+                    stringResource(
+                        if (isEdit) Res.string.admin_user_field_quota_mb_hint_edit
+                        else Res.string.admin_user_field_quota_mb_hint
+                    )
+                )
             },
             modifier = Modifier.fillMaxWidth()
         )
@@ -248,7 +258,9 @@ fun AdminUserEditorScreen(
                         lastName = lastName,
                         role = role,
                         isActive = isActive,
-                        storageQuotaBytes = quotaBytes,
+                        // Blank means no quota. Null would be "unchanged" to
+                        // the server, which is how a quota couldn't be removed.
+                        storageQuotaBytes = quotaBytes ?: REMOVE_STORAGE_QUOTA,
                         onDone = onDone
                     )
                 } else {
