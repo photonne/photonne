@@ -845,5 +845,7 @@
 	"ops_type_scenes": "Escenas",
 	"ops_type_text": "Texto (OCR)",
 	"ops_type_thumbnails": "Miniaturas",
-	"ops_unit_days": "días"
+	"ops_unit_days": "días",
+	"ops_mt_dates_confirm": "¿Escribir las fechas en los archivos?",
+	"ops_mt_dates_confirm_text": "Las fechas deducidas de la ruta o de la fecha del archivo se escribirán en los metadatos de los propios archivos originales. No se puede deshacer. Si dudas, ejecútalo antes con «Solo contar» o desmarca «Escribir la fecha deducida en el archivo»."
 }

@@ -345,7 +345,16 @@ export const catalog: MaintenanceTask[] = [
 				},
 				parseAs: 'stream',
 				signal
-			})
+			}),
+		// Writing the deduced dates changes the original files on disk.
+		confirm: {
+			title: m.ops_mt_dates_confirm,
+			message: m.ops_mt_dates_confirm_text,
+			skip: (options) =>
+				options.dryRun === true ||
+				(options.inferFromPath !== true && options.useFileDate !== true) ||
+				options.writeToFile !== true
+		}
 	},
 	{
 		id: 'media',
