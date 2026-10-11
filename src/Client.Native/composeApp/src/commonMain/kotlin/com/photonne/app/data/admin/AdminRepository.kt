@@ -57,7 +57,7 @@ class AdminRepository(private val api: PhotonneApi) {
         firstName: String?,
         lastName: String?,
         role: String?,
-        isActive: Boolean,
+        isActive: Boolean?,
         storageQuotaBytes: Long?
     ): UserDto = api.adminCreateUser(
         CreateUserRequest(

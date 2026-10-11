@@ -77,6 +77,12 @@ fun AdminUserEditorScreen(
         ?.let { (it / (1024L * 1024L)).toString() }
         .orEmpty()
     var quotaMb by remember(existing?.id) { mutableStateOf(initialQuotaMb) }
+    // A new account takes the server's defaults for whatever the admin doesn't
+    // touch: those fields are filled in with them once they're known, and sent
+    // as "not set" so the server decides even if they never arrive.
+    var roleTouched by remember(existing?.id) { mutableStateOf(false) }
+    var activeTouched by remember(existing?.id) { mutableStateOf(false) }
+    var quotaTouched by remember(existing?.id) { mutableStateOf(false) }
 
     var showResetPassword by remember(existing?.id) { mutableStateOf(false) }
     var showDelete by remember(existing?.id) { mutableStateOf(false) }
@@ -98,6 +104,16 @@ fun AdminUserEditorScreen(
     // no admin can be created, promoted, edited, reset or deleted. An admin's
     // editor is read-only there, and nobody can be made admin.
     val isDemo = LocalDemoMode.current
+    if (!isEdit) {
+        LaunchedEffect(Unit) { viewModel.loadNewUserDefaults() }
+        LaunchedEffect(state.newUserDefaults) {
+            val defaults = state.newUserDefaults ?: return@LaunchedEffect
+            // The demo makes every new account a regular user, whatever the default.
+            if (!roleTouched && !isDemo) isAdmin = defaults.isAdmin
+            if (!activeTouched) isActive = defaults.isActive
+            if (!quotaTouched) quotaMb = defaults.quotaMb
+        }
+    }
     val demoLocksAccount = isDemo && existing != null && !existing.role.equals("User", ignoreCase = true)
 
     val isSubmitting = state.isMutating
@@ -176,7 +192,10 @@ fun AdminUserEditorScreen(
         }
         OutlinedTextField(
             value = quotaMb,
-            onValueChange = { input -> quotaMb = input.filter { it.isDigit() } },
+            onValueChange = { input ->
+                quotaMb = input.filter { it.isDigit() }
+                quotaTouched = true
+            },
             label = { Text(stringResource(Res.string.admin_user_field_quota_mb)) },
             singleLine = true,
             enabled = !isSubmitting && !demoLocksAccount,
@@ -190,13 +209,19 @@ fun AdminUserEditorScreen(
         SettingSwitch(
             label = stringResource(Res.string.admin_user_field_admin),
             checked = isAdmin,
-            onChange = { isAdmin = it },
+            onChange = {
+                isAdmin = it
+                roleTouched = true
+            },
             enabled = !isSubmitting && !isDemo && existing?.isPrimaryAdmin != true
         )
         SettingSwitch(
             label = stringResource(Res.string.admin_user_field_active),
             checked = isActive,
-            onChange = { isActive = it },
+            onChange = {
+                isActive = it
+                activeTouched = true
+            },
             enabled = !isSubmitting && !demoLocksAccount && existing?.isPrimaryAdmin != true
         )
 
@@ -233,9 +258,9 @@ fun AdminUserEditorScreen(
                         password = password,
                         firstName = firstName,
                         lastName = lastName,
-                        role = role,
-                        isActive = isActive,
-                        storageQuotaBytes = quotaBytes,
+                        role = role.takeIf { roleTouched },
+                        isActive = isActive.takeIf { activeTouched },
+                        storageQuotaBytes = quotaBytes.takeIf { quotaTouched },
                         onDone = onDone
                     )
                 }
