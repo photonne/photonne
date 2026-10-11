@@ -58,6 +58,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -1050,14 +1051,27 @@ fun AssetSelectionBottomBar(
             else -> runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
         }
     }
+    // Supr pulsado mientras otra acción en bloque sigue en vuelo: se guarda
+    // con los ids seleccionados en ese momento y se lanza en cuanto termina.
+    // Antes se descartaba en silencio (los ViewModels ignoran un segundo lote
+    // mientras hay uno en curso). Si al llegar su turno la selección ya no es
+    // la misma, el usuario ha cambiado de idea: no se borra otra cosa.
+    var queuedTrashIds by remember { mutableStateOf<Set<String>?>(null) }
+    LaunchedEffect(isMutating, queuedTrashIds) {
+        val queued = queuedTrashIds ?: return@LaunchedEffect
+        if (isMutating) return@LaunchedEffect
+        queuedTrashIds = null
+        // Pantallas sin selectedIds: conjunto vacío, se usa la selección actual.
+        if (queued.isEmpty() || selectedIds().toSet() == queued) requestTrash()
+    }
     // Escritorio: Supr/Retroceso con selección = esta misma papelera, con su
     // confirmación, su Deshacer y la política del servidor. Si está bloqueada
     // se explica por qué en vez de no hacer nada.
     com.photonne.app.ui.selection.SelectionShortcutsHandler(
         onDelete = {
             when {
-                isMutating -> Unit
                 trashDisabledReason != null -> snackbar?.show(trashDisabledReason)
+                isMutating -> queuedTrashIds = selectedIds().toSet()
                 else -> requestTrash()
             }
         }
