@@ -24,10 +24,10 @@
 	} from '#lib/people/people.js';
 	import PersonAvatar from '#lib/people/PersonAvatar.svelte';
 	import RenameDialog from '#lib/people/RenameDialog.svelte';
-	import { whenVisible } from '#lib/people/visible.js';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
 	import type { Snapshot } from './$types';
+	import LoadMore from '#lib/people/LoadMore.svelte';
 
 	const queryClient = useQueryClient();
 
@@ -264,16 +264,7 @@
 					</li>
 				{/each}
 			</ul>
-			{#if people.hasNextPage}
-				{#key people.data?.pages.length}
-					<div
-						class="sentinel"
-						{@attach whenVisible(() => {
-							if (!people.isFetchingNextPage) people.fetchNextPage();
-						})}
-					></div>
-				{/key}
-			{/if}
+			<LoadMore query={people} />
 		{/if}
 	</div>
 </div>
@@ -466,9 +457,5 @@
 		background: var(--color-accent);
 		color: var(--color-accent-text);
 		opacity: 1;
-	}
-
-	.sentinel {
-		height: 1px;
 	}
 </style>

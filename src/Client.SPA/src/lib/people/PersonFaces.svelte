@@ -25,7 +25,7 @@
 	import { icons } from './icons.js';
 	import { displayName, faceThumbnailUrl, nextOffset } from './people.js';
 	import PersonPickerDialog, { type PersonPick } from './PersonPickerDialog.svelte';
-	import { whenVisible } from './visible.js';
+	import LoadMore from './LoadMore.svelte';
 
 	let { person }: { person: PersonDto } = $props();
 
@@ -246,16 +246,7 @@
 			</li>
 		{/each}
 	</ul>
-	{#if faces.hasNextPage}
-		{#key faces.data?.pages.length}
-			<div
-				class="sentinel"
-				{@attach whenVisible(() => {
-					if (!faces.isFetchingNextPage) faces.fetchNextPage();
-				})}
-			></div>
-		{/key}
-	{/if}
+	<LoadMore query={faces} />
 {/if}
 
 <PersonPickerDialog
@@ -388,9 +379,5 @@
 
 	li:hover .open {
 		opacity: 1;
-	}
-
-	.sentinel {
-		height: 1px;
 	}
 </style>
