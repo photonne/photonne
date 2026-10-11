@@ -1,6 +1,8 @@
 package com.photonne.app.data.utilities
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.FolderTreeNode
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.UserDuplicateGroup
@@ -16,9 +18,16 @@ import com.photonne.app.data.models.UtilitiesSummary
  * `/api/assets/delete` endpoint that the timeline's "Move to trash"
  * action already calls via [PhotonneApi.trashAssets], which keeps
  * the trash bookkeeping and per-user quota in sync without us
- * inventing a parallel pipeline.
+ * inventing a parallel pipeline. It also emits the same
+ * [AssetMutation.Removed] so the timeline, folders and albums drop the
+ * trashed copies without a manual refresh.
  */
-class UtilitiesRepository(private val api: PhotonneApi) {
+class UtilitiesRepository(
+    private val api: PhotonneApi,
+    // Own bus by default so tests can build the repo bare; Koin injects the
+    // shared singleton in the app.
+    private val mutationBus: AssetMutationBus = AssetMutationBus(),
+) {
 
     suspend fun duplicates(): List<UserDuplicateGroup> = api.utilitiesDuplicates()
 
@@ -32,5 +41,6 @@ class UtilitiesRepository(private val api: PhotonneApi) {
     suspend fun deleteAssets(assetIds: List<String>) {
         if (assetIds.isEmpty()) return
         api.trashAssets(assetIds)
+        mutationBus.emit(AssetMutation.Removed(assetIds))
     }
 }
