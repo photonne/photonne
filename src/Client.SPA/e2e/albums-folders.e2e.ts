@@ -124,7 +124,8 @@ test('moves the selection with the folder picker and removes photos from the fol
 		.click({ modifiers: ['ControlOrMeta'] });
 	await page.getByRole('button', { name: 'Mover a otra carpeta' }).click();
 	const picker = page.getByRole('dialog', { name: 'Mover a una carpeta' });
-	await picker.getByRole('button', { name: 'Documentos' }).click();
+	await picker.getByText('Documentos', { exact: true }).click();
+	await expect(picker.getByRole('radio', { name: 'Documentos' })).toBeChecked();
 	await picker.getByRole('button', { name: 'Mover' }).click();
 
 	await expect(page.getByText('2 movidas a «Documentos»')).toBeVisible();

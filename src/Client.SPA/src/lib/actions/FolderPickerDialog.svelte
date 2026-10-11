@@ -5,6 +5,7 @@
 	import { browsableRoots, groupFolders } from '#lib/albums/folder-groups.js';
 	import { session } from '#lib/auth/session.svelte.js';
 	import Dialog from '#lib/components/Dialog.svelte';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 
@@ -20,6 +21,14 @@
 
 	let chosen = $state<FolderResponse | null>(null);
 	let byYear = $state(false);
+	const name = $props.id();
+
+	// Each opening starts afresh: no folder or option left from the last move.
+	$effect(() => {
+		if (!open) return;
+		chosen = null;
+		byYear = false;
+	});
 
 	/** The tree flattened in display order, with its depth, keeping writable folders. */
 	function flatten(
@@ -40,23 +49,33 @@
 </script>
 
 <Dialog {open} title={m.folder_picker_title()} {onclose} width="520px">
-	{#if tree.isSuccess && folders.length === 0}
-		<p class="empty">{m.folder_picker_empty()}</p>
+	{#if tree.isPending}
+		<Skeleton variant="rows" count={6} flush />
+	{:else if tree.isError}
+		<p class="status" role="alert">
+			{m.error_loading()}
+			<button type="button" class="btn sm" onclick={() => tree.refetch()}
+				>{m.session_retry()}</button
+			>
+		</p>
+	{:else if folders.length === 0}
+		<p class="status">{m.folder_picker_empty()}</p>
 	{:else}
-		<ul role="listbox" aria-label={m.folder_picker_title()}>
+		<!-- Native radios: one choice, arrow keys between them, confirmed with Mover. -->
+		<div class="list" role="radiogroup" aria-label={m.folder_picker_title()}>
 			{#each folders as { folder, depth } (folder.id)}
-				<li role="option" aria-selected={chosen?.id === folder.id}>
-					<button
-						type="button"
-						style:padding-left="calc(var(--space-3) + {depth} * var(--space-4))"
-						class:chosen={chosen?.id === folder.id}
-						onclick={() => (chosen = folder)}
-					>
-						{folder.name}
-					</button>
-				</li>
+				<label style:padding-left="calc(var(--space-3) + {depth} * var(--space-4))">
+					<input
+						type="radio"
+						{name}
+						value={folder.id}
+						checked={chosen?.id === folder.id}
+						onchange={() => (chosen = folder)}
+					/>
+					{folder.name}
+				</label>
 			{/each}
-		</ul>
+		</div>
 	{/if}
 	<label class="by-year">
 		<input type="checkbox" bind:checked={byYear} />
@@ -77,33 +96,41 @@
 </Dialog>
 
 <style>
-	ul {
-		list-style: none;
+	.list {
 		margin: 0 0 var(--space-3);
-		padding: 0;
 		max-height: 360px;
 		overflow-y: auto;
 		display: grid;
 		gap: 2px;
 	}
 
-	li button {
-		width: 100%;
+	.list label {
+		position: relative;
+		display: block;
 		padding: var(--space-2) var(--space-3);
-		border: 0;
 		border-radius: var(--radius-sm);
-		background: transparent;
-		text-align: left;
 		cursor: pointer;
 	}
 
-	li button:hover {
+	.list label:hover {
 		background: var(--color-surface);
 	}
 
-	li button.chosen {
+	/* The row is the radio: the circle itself stays for screen readers only. */
+	.list input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.list label:has(:checked) {
 		background: color-mix(in srgb, var(--color-accent) 18%, transparent);
 		font-weight: 600;
+	}
+
+	.list label:has(:focus-visible) {
+		outline: 2px solid var(--color-focus);
+		outline-offset: -2px;
 	}
 
 	.by-year {
@@ -113,7 +140,11 @@
 		font-size: var(--font-size-sm);
 	}
 
-	.empty {
+	.status {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-3);
 		color: var(--color-text-muted);
 	}
 </style>

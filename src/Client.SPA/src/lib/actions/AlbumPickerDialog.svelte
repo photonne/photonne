@@ -7,6 +7,7 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
+	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
@@ -23,6 +24,13 @@
 	let search = $state('');
 	let newName = $state('');
 	let creating = $state(false);
+
+	// Each opening starts afresh: no search or half-typed name from last time.
+	$effect(() => {
+		if (!open) return;
+		search = '';
+		newName = '';
+	});
 
 	// Only manual albums the user can add to; smart albums fill themselves.
 	const writable = $derived(
@@ -55,20 +63,30 @@
 	<div class="picker">
 		<input type="search" placeholder={m.album_picker_search()} bind:value={search} />
 
-		<ul role="listbox" aria-label={m.album_picker_title()}>
-			{#each filtered as album (album.id)}
-				<li role="option" aria-selected="false">
-					<button type="button" onclick={() => onpick({ id: album.id, name: album.name })}>
-						<span class="name">{album.name}</span>
-						<span class="count">{m.album_picker_items({ count: album.assetCount })}</span>
-					</button>
-				</li>
-			{:else}
-				{#if albums.isSuccess}
+		{#if albums.isPending}
+			<Skeleton variant="rows" count={5} flush />
+		{:else if albums.isError}
+			<p class="status" role="alert">
+				{m.error_loading()}
+				<button type="button" class="btn sm" onclick={() => albums.refetch()}
+					>{m.session_retry()}</button
+				>
+			</p>
+		{:else}
+			<!-- Choosing an album adds to it at once: a plain list of buttons. -->
+			<ul aria-label={m.album_picker_title()}>
+				{#each filtered as album (album.id)}
+					<li>
+						<button type="button" onclick={() => onpick({ id: album.id, name: album.name })}>
+							<span class="name">{album.name}</span>
+							<span class="count">{m.album_picker_items({ count: album.assetCount })}</span>
+						</button>
+					</li>
+				{:else}
 					<li class="empty">{m.album_picker_empty()}</li>
-				{/if}
-			{/each}
-		</ul>
+				{/each}
+			</ul>
+		{/if}
 
 		<form onsubmit={create}>
 			<input
@@ -125,13 +143,22 @@
 	}
 
 	.count,
-	.empty {
+	.empty,
+	.status {
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}
 
 	.empty {
 		padding: var(--space-2) var(--space-3);
+	}
+
+	.status {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-3);
+		margin: 0;
 	}
 
 	form {
