@@ -758,6 +758,8 @@
     <string name="storage_used_format">%1$s used of %2$s</string>
     <string name="storage_used_unbounded_format">%1$s used</string>
     <string name="storage_quota_summary">%1$d%% of %2$s</string>
+    <string name="storage_quota_exceeded_summary">Quota exceeded · %1$d%% of %2$s</string>
+    <string name="storage_quota_exceeded_format">Quota exceeded by %1$s</string>
     <string name="storage_no_quota">No quota limit</string>
     <string name="storage_used_percent_format">%1$s used of %2$s (%3$d%%)</string>
     <string name="storage_remaining_format">%1$s remaining</string>
@@ -796,6 +798,8 @@
     <string name="admin_user_last_login">Last login: %1$s</string>
     <string name="admin_user_never_logged_in">Never signed in</string>
     <string name="admin_user_quota_format">Quota: %1$s</string>
+    <string name="admin_user_quota_exceeded">Quota exceeded</string>
+    <string name="admin_user_quota_usage_format">Quota: %1$s of %2$s (%3$d%%)</string>
     <string name="admin_user_action_reset_password">Reset password</string>
     <string name="admin_user_action_reset_password_title">Reset password</string>
     <string name="admin_user_action_reset_password_message">Set a new password for "%1$s". The user will need to sign in with the new password.</string>
