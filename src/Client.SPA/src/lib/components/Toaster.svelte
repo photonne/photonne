@@ -35,6 +35,13 @@
 		if (!toaster) return;
 		home ??= toaster.parentElement;
 		place();
+		// A dialog can leave the page while open (its component unmounts),
+		// taking the toaster with it, with no close event: bring it back.
+		const watcher = new MutationObserver(() => {
+			if (toaster && !toaster.isConnected) place();
+		});
+		watcher.observe(document.body, { childList: true, subtree: true });
+		return () => watcher.disconnect();
 	});
 
 	// Browsers without `toggle` on <dialog> catch up when a toast arrives.
