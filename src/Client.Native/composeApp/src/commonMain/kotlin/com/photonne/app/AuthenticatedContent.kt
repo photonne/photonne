@@ -936,7 +936,10 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                         exploreFacetsViewModel.refresh()
                     },
                     onBack = { appState.moreSubscreen = null },
-                    onChromeVisibleChange = { appState.subscreenChromeVisible = it }
+                    onChromeVisibleChange = { appState.subscreenChromeVisible = it },
+                    scenesError = facets.scenesError,
+                    objectsError = facets.objectsError,
+                    onRetryLabels = exploreFacetsViewModel::refresh
                 )
             }
             MoreSubscreen.MemoryTheme ->

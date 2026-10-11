@@ -27,7 +27,7 @@ fun ExploreObjectsScreen(
     ExploreLabelGridScreen(
         tiles = tiles,
         isLoading = state.isLoading,
-        error = state.error,
+        error = state.objectsError,
         emptyText = stringResource(Res.string.explore_objects_empty),
         baseUrl = baseUrl,
         title = stringResource(Res.string.explore_section_objects),

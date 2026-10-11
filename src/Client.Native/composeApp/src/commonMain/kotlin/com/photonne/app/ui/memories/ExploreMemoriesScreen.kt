@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.photonne.app.data.error.UiError
 import com.photonne.app.data.models.MemoryDetail
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.data.models.ObjectLabel
 import com.photonne.app.data.models.SceneLabel
 import com.photonne.app.resources.Res
@@ -53,6 +55,10 @@ fun ExploreMemoriesScreen(
     onRefresh: () -> Unit,
     onBack: () -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {},
+    /** Escenas y objetos cargan aparte: su fallo se pinta en su fila. */
+    scenesError: UiError? = null,
+    objectsError: UiError? = null,
+    onRetryLabels: () -> Unit = {},
 ) {
     MemoryFeedScaffold(
         title = stringResource(Res.string.explore_title),
@@ -60,13 +66,26 @@ fun ExploreMemoriesScreen(
         onOpenMemory = onOpenMemory,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
-        isEmpty = { it.exploreRows.isEmpty() && scenes.isEmpty() && objects.isEmpty() },
+        isEmpty = {
+            it.exploreRows.isEmpty() && scenes.isEmpty() && objects.isEmpty() &&
+                scenesError == null && objectsError == null
+        },
         emptyTitle = stringResource(Res.string.explore_empty),
         onRefresh = onRefresh,
     ) { state, open ->
         items(state.exploreRows, key = { "row:${it.key}" }) { row ->
             Column(Modifier.contentWidth()) {
                 MemoryThemeRow(row = row, baseUrl = baseUrl, openingId = state.openingId, onClick = open)
+            }
+        }
+        if (scenes.isEmpty() && scenesError != null) {
+            item(key = "scenes-error") {
+                LabelRowError(
+                    title = stringResource(Res.string.explore_section_scenes),
+                    error = scenesError,
+                    onTitleClick = onSeeAllScenes,
+                    onRetry = onRetryLabels
+                )
             }
         }
         if (scenes.isNotEmpty()) {
@@ -79,6 +98,16 @@ fun ExploreMemoriesScreen(
                     baseUrl = baseUrl,
                     onTitleClick = onSeeAllScenes,
                     onClick = onOpenScene,
+                )
+            }
+        }
+        if (objects.isEmpty() && objectsError != null) {
+            item(key = "objects-error") {
+                LabelRowError(
+                    title = stringResource(Res.string.explore_section_objects),
+                    error = objectsError,
+                    onTitleClick = onSeeAllObjects,
+                    onRetry = onRetryLabels
                 )
             }
         }
@@ -95,6 +124,25 @@ fun ExploreMemoriesScreen(
                 )
             }
         }
+    }
+}
+
+/** La fila de Escenas u Objetos cuando no se pudo cargar: su título y el error. */
+@Composable
+private fun LabelRowError(
+    title: String,
+    error: UiError,
+    onTitleClick: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    Column(Modifier.contentWidth()) {
+        Spacer(Modifier.padding(top = Spacing.sm))
+        SectionTitle(title, onClick = onTitleClick)
+        ErrorBanner(
+            error = error,
+            onRetry = onRetry,
+            modifier = Modifier.padding(horizontal = Spacing.lg)
+        )
     }
 }
 
