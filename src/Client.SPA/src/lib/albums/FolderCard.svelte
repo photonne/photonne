@@ -47,7 +47,7 @@
 </script>
 
 <li class="card {view}" class:selected class:selecting class:pinnable={ontogglepin}>
-	<a href={appHref(`/folders/${folder.id}`)} aria-current={selected ? 'true' : undefined} {onclick}>
+	<a href={appHref(`/folders/${folder.id}`)} {onclick}>
 		<span class="thumb" class:tile={!src}>
 			{#if src}
 				<img {src} alt="" loading="lazy" decoding="async" />
@@ -86,7 +86,8 @@
 		<button
 			type="button"
 			class="check"
-			aria-pressed={selected}
+			role="checkbox"
+			aria-checked={selected}
 			aria-label={m.folders_select_named({ name: folder.name })}
 			onclick={(event) => onselect(event.shiftKey ? 'range' : 'toggle')}
 		>

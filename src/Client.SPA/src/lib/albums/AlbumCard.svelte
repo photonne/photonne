@@ -52,12 +52,7 @@
 </script>
 
 <li class="card {view}" class:selected class:selecting>
-	<a
-		href={appHref(`/albums/${album.id}`)}
-		class="link"
-		aria-current={selected ? 'true' : undefined}
-		{onclick}
-	>
+	<a href={appHref(`/albums/${album.id}`)} class="link" {onclick}>
 		<div class="cover" class:empty={!album.coverThumbnailUrl}>
 			{#if album.coverThumbnailUrl}
 				<img src={album.coverThumbnailUrl} alt="" loading="lazy" decoding="async" />
@@ -106,7 +101,8 @@
 		<button
 			type="button"
 			class="check"
-			aria-pressed={selected}
+			role="checkbox"
+			aria-checked={selected}
 			aria-label={m.albums_select_named({ name: album.name })}
 			onclick={(event) => onselect(event.shiftKey ? 'range' : 'toggle')}
 		>
