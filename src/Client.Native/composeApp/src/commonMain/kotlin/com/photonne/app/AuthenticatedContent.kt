@@ -258,6 +258,7 @@ internal fun AuthenticatedTabsPager(host: AuthenticatedContentHost) {
                     onToggleSelection = timelineViewModel::toggleSelection,
                     onSetSelected = timelineViewModel::setSelected,
                     onApplySelection = timelineViewModel::applySelection,
+                    onSelectRange = timelineViewModel::selectRange,
                     onOpenUpload = {
                         appState.selectedTab = MainTab.More
                         appState.moreSubscreen = MoreSubscreen.Upload

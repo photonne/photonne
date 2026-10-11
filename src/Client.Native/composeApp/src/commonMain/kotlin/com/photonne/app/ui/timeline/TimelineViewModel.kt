@@ -240,6 +240,36 @@ class TimelineViewModel(
         _state.update { it.copy(selection = it.selection.withSelection(ids, selected)) }
     }
 
+    /**
+     * Shift+clic: marca todo lo que hay entre [anchorId] y [targetId], en el
+     * orden del timeline, incluidos los meses intermedios que aún no se han
+     * cargado (antes el rango se los saltaba sin decir nada: solo veía las
+     * celdas cargadas). Esos meses se piden sin guardarlos en el store
+     * (TimelineBucketStore.contentsOf). Si alguno falla, se marca lo que se
+     * pudo y el banner avisa de que el rango quedó incompleto.
+     */
+    fun selectRange(anchorId: String, targetId: String) {
+        val buckets = _state.value.buckets
+        val anchorBucket = buckets.indexOfFirst { b -> b.items?.any { it.id == anchorId } == true }
+        val targetBucket = buckets.indexOfFirst { b -> b.items?.any { it.id == targetId } == true }
+        if (anchorBucket < 0 || targetBucket < 0) return
+        val span = buckets.subList(minOf(anchorBucket, targetBucket), maxOf(anchorBucket, targetBucket) + 1)
+        viewModelScope.launch {
+            val contents = try {
+                store.contentsOf(span.filter { it.count > 0 }.map { it.key })
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _state.update {
+                    it.copy(error = errorFactory.from(error, "No se pudieron cargar todos los meses del rango"))
+                }
+                span.mapNotNull { b -> b.items?.let { b.key to it } }.toMap()
+            }
+            val ids = rangeIdsAcrossBuckets(span.map { it.key }, contents, anchorId, targetId)
+            if (ids.isNotEmpty()) setSelected(ids, selected = true)
+        }
+    }
+
     fun clearSelection() {
         _state.update { it.copy(selection = emptySet()) }
     }
@@ -367,4 +397,23 @@ class TimelineViewModel(
     fun clearError() {
         _state.update { it.copy(error = null) }
     }
+}
+
+/**
+ * Ids between [anchorId] and [targetId] (both included), walking the months
+ * in [keys] in display order and each month's items in [contents]. Months
+ * missing from [contents] (not loaded and not fetched) are skipped. Empty if
+ * either end can't be found.
+ */
+internal fun rangeIdsAcrossBuckets(
+    keys: List<String>,
+    contents: Map<String, List<TimelineItem>>,
+    anchorId: String,
+    targetId: String,
+): List<String> {
+    val flat = keys.flatMap { key -> contents[key].orEmpty() }.map { it.id }
+    val a = flat.indexOf(anchorId)
+    val t = flat.indexOf(targetId)
+    if (a < 0 || t < 0) return emptyList()
+    return flat.subList(minOf(a, t), maxOf(a, t) + 1)
 }
