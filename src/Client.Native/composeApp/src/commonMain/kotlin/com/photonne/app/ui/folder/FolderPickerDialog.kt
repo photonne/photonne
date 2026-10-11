@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,6 +22,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,7 +35,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import com.photonne.app.resources.folder_picker_recent
+import com.photonne.app.data.error.UiError
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.data.models.YearCount
 import com.photonne.app.ui.organize.YearBreakdownChips
 import com.photonne.app.resources.Res
@@ -74,9 +78,22 @@ fun FolderPickerDialog(
      * organización), donde "Mover" mentía.
      */
     confirmLabel: String? = null,
+    /** The destination list is still loading (shows a spinner instead of "no folders"). */
+    isLoading: Boolean = false,
+    /**
+     * Why the destination list couldn't load. With nothing to list it replaces
+     * the "no folders" message, with [onRetry]: telling a failed load from a
+     * real empty list.
+     */
+    loadError: UiError? = null,
+    /** Reloads the destinations; also called on open when they're empty or failed. */
+    onRetry: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     onConfirm: (targetFolderId: String?, organizeByYear: Boolean) -> Unit
 ) {
+    LaunchedEffect(Unit) {
+        if (onRetry != null && !isLoading && (folders.isEmpty() || loadError != null)) onRetry()
+    }
     // Prune the moved folder's own subtree so it can't be dropped into a descendant.
     val excluded = remember(folders, excludeFolderId, excludeFolderIds) {
         (excludeFolderIds + listOfNotNull(excludeFolderId))
@@ -183,9 +200,16 @@ fun FolderPickerDialog(
                 verticalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
                 val empty = personalNodes.isEmpty() && sharedNodes.isEmpty()
+                if (folders.isEmpty() && isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator() }
+                } else if (folders.isEmpty() && loadError != null) {
+                    ErrorBanner(error = loadError, onRetry = onRetry)
                 // The root row is hidden while searching, so an empty search must
                 // fall through to the "no results" message even when includeRoot.
-                if (empty && (!includeRoot || searching)) {
+                } else if (empty && (!includeRoot || searching)) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
                         contentAlignment = Alignment.Center

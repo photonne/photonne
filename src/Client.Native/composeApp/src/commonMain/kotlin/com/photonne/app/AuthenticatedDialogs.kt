@@ -702,6 +702,8 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
             AddToAlbumDialog(
                 albums = albumsState.albums,
                 isLoadingAlbums = albumsState.isLoading,
+                loadError = albumsState.error,
+                onRetry = albumsViewModel::refresh,
                 isSubmitting = timelineState.isBulkMutating,
                 errorMessage = timelineState.error?.userMessage,
                 onCreateNew = {
@@ -945,6 +947,7 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
         }
 
         if (appState.showMoveFolder && openedFolder != null) {
+            LaunchedEffect(Unit) { folderDetailViewModel.clearError() }
             com.photonne.app.ui.folder.FolderPickerDialog(
                 title = stringResource(Res.string.folder_move_title),
                 // Mismos destinos que los otros selectores (toda la profundidad,
@@ -952,6 +955,9 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                 // personales de primer nivel. La propia carpeta y su subárbol los
                 // poda excludeFolderId.
                 folders = foldersState.moveDestinations,
+                isLoading = foldersState.isLoading,
+                loadError = foldersState.error,
+                onRetry = foldersViewModel::refresh,
                 isSubmitting = folderDetailState.isMutating,
                 errorMessage = folderDetailState.error?.userMessage,
                 excludeFolderId = openedFolder.id,
@@ -1066,6 +1072,8 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             AddToAlbumDialog(
                 albums = albumsState.albums,
                 isLoadingAlbums = albumsState.isLoading,
+                loadError = albumsState.error,
+                onRetry = albumsViewModel::refresh,
                 isSubmitting = isSubmitting,
                 errorMessage = errorMessage,
                 onCreateNew = {
@@ -1104,9 +1112,14 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
         }
 
         if (appState.showMoveSelectedAssets && openedFolder != null) {
+            // Un error viejo de la pantalla no debe estrenar el selector.
+            LaunchedEffect(Unit) { folderDetailViewModel.clearError() }
             com.photonne.app.ui.folder.FolderPickerDialog(
                 title = stringResource(Res.string.folder_move_assets_title),
                 folders = foldersState.moveDestinations,
+                isLoading = foldersState.isLoading,
+                loadError = foldersState.error,
+                onRetry = foldersViewModel::refresh,
                 isSubmitting = folderDetailState.isBulkMutating,
                 errorMessage = folderDetailState.error?.userMessage,
                 excludeFolderId = openedFolder.id,
@@ -1149,6 +1162,9 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             com.photonne.app.ui.folder.FolderPickerDialog(
                 title = stringResource(Res.string.folder_move_assets_title),
                 folders = foldersState.moveDestinations,
+                isLoading = foldersState.isLoading,
+                loadError = foldersState.error,
+                onRetry = foldersViewModel::refresh,
                 isSubmitting = isSubmitting,
                 errorMessage = errorMessage,
                 includeRoot = false,
@@ -1167,6 +1183,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
         }
 
         if (appState.showMoveSelectedAssetsTimeline) {
+            LaunchedEffect(Unit) { timelineViewModel.clearError() }
             MoveAssetsToFolderDialog(
                 isSubmitting = timelineState.isBulkMutating,
                 errorMessage = timelineState.error?.userMessage,
@@ -1224,9 +1241,13 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
         }
 
         if (appState.showMoveSelectedAssetsInbox) {
+            LaunchedEffect(Unit) { organizeInboxViewModel.clearError() }
             com.photonne.app.ui.folder.FolderPickerDialog(
                 title = stringResource(Res.string.folder_move_assets_title),
                 folders = foldersState.moveDestinations,
+                isLoading = foldersState.isLoading,
+                loadError = foldersState.error,
+                onRetry = foldersViewModel::refresh,
                 isSubmitting = organizeInboxState.isBulkMutating,
                 errorMessage = organizeInboxState.error?.userMessage,
                 includeRoot = false,
@@ -1327,6 +1348,8 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             AddToAlbumDialog(
                 albums = albumsState.albums,
                 isLoadingAlbums = albumsState.isLoading,
+                loadError = albumsState.error,
+                onRetry = albumsViewModel::refresh,
                 isSubmitting = addToAlbumState.isSubmitting,
                 errorMessage = addToAlbumState.errorMessage,
                 onCreateNew = {

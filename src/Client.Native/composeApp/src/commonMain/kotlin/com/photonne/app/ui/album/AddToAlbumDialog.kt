@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,7 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.photonne.app.data.error.UiError
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.add_to_album_empty
@@ -57,8 +60,21 @@ fun AddToAlbumDialog(
     errorMessage: String?,
     onCreateNew: () -> Unit,
     onAlbumSelected: (AlbumSummary) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /**
+     * Why the album list couldn't load. Shown (with [onRetry]) instead of the
+     * "no albums" message when there's nothing to list: an empty list after a
+     * failed load said "you have no albums", which was a lie.
+     */
+    loadError: UiError? = null,
+    /** Reloads the album list; also called on open when it's empty or failed. */
+    onRetry: (() -> Unit)? = null
 ) {
+    // Opening the picker is the moment the list matters: refetch it if the
+    // last load failed or never brought anything.
+    LaunchedEffect(Unit) {
+        if (onRetry != null && !isLoadingAlbums && (albums.isEmpty() || loadError != null)) onRetry()
+    }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val apiBaseUrl = rememberApiBaseUrl()
     // Un álbum inteligente calcula su contenido con reglas: añadirle fotos a
@@ -111,6 +127,8 @@ fun AddToAlbumDialog(
                         modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
+                    loadError != null && manualAlbums.isEmpty() ->
+                        ErrorBanner(error = loadError, onRetry = onRetry)
                     visibleAlbums.isEmpty() -> Text(
                         stringResource(Res.string.add_to_album_empty),
                         style = MaterialTheme.typography.bodyMedium,
