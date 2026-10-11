@@ -388,5 +388,7 @@
 	],
 	"albums_bulk_partial": "Done with {done} of {total}. The ones that failed stay selected.",
 	"albums_clear_filters": "Clear filters",
-	"albums_rule_loading": "Loading the conditions…"
+	"albums_rule_loading": "Loading the conditions…",
+	"albums_load_failed": "The album couldn’t be loaded.",
+	"albums_retry": "Try again"
 }

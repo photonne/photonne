@@ -5,6 +5,7 @@
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import type { BatchActions } from '#lib/actions/batch-actions.svelte.js';
 	import {
+		apiErrorCode,
 		addAssetsToAlbumBatch,
 		deleteAlbum,
 		getAlbumAssets,
@@ -188,9 +189,18 @@
 </svelte:head>
 
 {#if albumQuery.isError}
+	<!-- Gone is final; anything else (offline, a server error) may pass, so it gets a retry. -->
+	{@const missing = apiErrorCode(albumQuery.error) === 'album_not_found'}
 	<div class="missing">
-		<p role="alert">{m.albums_not_found()}</p>
-		<a class="btn" href={appHref('/albums')}>{m.albums_back()}</a>
+		<p role="alert">{missing ? m.albums_not_found() : m.albums_load_failed()}</p>
+		<div class="missing-actions">
+			{#if !missing}
+				<button type="button" class="btn primary" onclick={() => albumQuery.refetch()}>
+					{m.albums_retry()}
+				</button>
+			{/if}
+			<a class="btn" href={appHref('/albums')}>{m.albums_back()}</a>
+		</div>
 	</div>
 {:else}
 	<CollectionView
@@ -412,5 +422,11 @@
 	.missing p {
 		margin: 0;
 		color: var(--color-text-muted);
+	}
+
+	.missing-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
 	}
 </style>
