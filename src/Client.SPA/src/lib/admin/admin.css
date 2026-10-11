@@ -7,21 +7,20 @@
  */
 
 .admin-page {
-	/* The growth chart and the photo/video split: gold photos, teal videos. */
-	--admin-chart-photos: #c8960a;
+	/* The growth chart and the photo/video split: brand gold photos, teal
+	   videos. The app has no teal of its own, so only that one is defined here. */
+	--admin-chart-photos: var(--color-brand);
 	--admin-chart-videos: #0f766e;
 }
 
 /* Dark like app.css: the system's, unless <html data-theme> pins one. */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) .admin-page {
-		--admin-chart-photos: #ffd166;
 		--admin-chart-videos: #5eead4;
 	}
 }
 
 :root[data-theme='dark'] .admin-page {
-	--admin-chart-photos: #ffd166;
 	--admin-chart-videos: #5eead4;
 }
 

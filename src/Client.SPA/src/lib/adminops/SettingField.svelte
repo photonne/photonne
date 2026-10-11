@@ -332,7 +332,8 @@
 		width: 16px;
 		height: 16px;
 		border-radius: 50%;
-		background: #fff;
+		/* White on both the off track and the accent, in either theme. */
+		background: var(--color-on-media);
 		box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
 		transition: transform var(--duration-fast);
 	}
