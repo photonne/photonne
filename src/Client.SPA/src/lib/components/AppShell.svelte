@@ -228,6 +228,23 @@
 		{/if}
 
 		<div class="tools">
+			{#if uploads.active}
+				<!-- Uploads keep going from any page: how far along, one click from the queue. -->
+				<a
+					class="uploading"
+					href={href('/upload')}
+					title={m.upload_indicator_title({ percent: Math.round(uploads.progress * 100) })}
+				>
+					<Icon name="upload" size={18} />
+					<span class="visually-hidden">{m.upload_indicator()}</span>
+					<span class="upload-count"
+						>{uploads.counts.total - uploads.counts.pending}/{uploads.counts.total}</span
+					>
+					<span class="upload-bar" aria-hidden="true"
+						><span style:width="{uploads.progress * 100}%"></span></span
+					>
+				</a>
+			{/if}
 			<a
 				class="icon bell"
 				href={href('/notifications')}
@@ -443,6 +460,40 @@
 
 	.bell {
 		position: relative;
+	}
+
+	.uploading {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		height: var(--control-h-sm);
+		padding: 0 var(--space-2);
+		border-radius: var(--radius-control);
+		background: var(--color-accent-soft);
+		color: var(--color-accent);
+		font-size: var(--font-size-xs);
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		text-decoration: none;
+		overflow: hidden;
+	}
+
+	.uploading:hover {
+		box-shadow: inset 0 0 0 100px var(--color-hover);
+	}
+
+	.upload-bar {
+		position: absolute;
+		inset: auto 0 0;
+		height: 3px;
+	}
+
+	.upload-bar span {
+		display: block;
+		height: 100%;
+		background: var(--color-accent);
+		transition: width var(--duration-normal) linear;
 	}
 
 	.badge {
