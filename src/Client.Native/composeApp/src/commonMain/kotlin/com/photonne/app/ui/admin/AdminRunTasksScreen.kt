@@ -130,6 +130,8 @@ import com.photonne.app.resources.admin_run_tasks_confirm_empty_trash_title
 import com.photonne.app.resources.admin_run_tasks_confirm_purge_message
 import com.photonne.app.resources.admin_run_tasks_confirm_purge_title
 import com.photonne.app.resources.admin_run_tasks_confirm_run
+import com.photonne.app.resources.admin_run_tasks_confirm_restore_dates_message
+import com.photonne.app.resources.admin_run_tasks_confirm_restore_dates_title
 import com.photonne.app.resources.admin_run_tasks_purge_dry_run
 import com.photonne.app.resources.admin_run_tasks_section_cleanup
 import com.photonne.app.resources.admin_run_tasks_section_cleanup_subtitle
@@ -617,6 +619,18 @@ data class AdminRunTasksUiState(
         )
     }
 
+    /** Restaurar fechas as configured would write dates it worked out (from
+     *  the path or the file's own timestamp) into the originals' EXIF. The
+     *  only setting of a non-cleanup task that changes the user's files. */
+    val dateRestoreWritesOriginals: Boolean
+        get() = (dateRestoreInferFromPath || dateRestoreUseFileDate) &&
+            dateRestoreWriteToFile && !dateRestoreDryRun
+
+    /** Whether ▶ on [task] asks first: the destructive tasks always, and
+     *  Restaurar fechas when it is about to write into the originals. */
+    fun needsConfirmation(task: AdminRunTask): Boolean =
+        task.isDestructive || (task == AdminRunTask.RestoreDates && dateRestoreWritesOriginals)
+
     val hasAiWorkInFlight: Boolean
         get() = triggering.any { it.backfillKind != null } ||
             pending.any { (task, count) -> task.backfillKind != null && count.inQueue > 0 } ||
@@ -688,13 +702,14 @@ class AdminRunTasksViewModel(
     }
 
     /**
-     * What a row's ▶ does. Destructive tasks divert to a dialog instead of
-     * running; everything else goes straight through. Keeping the fork here
+     * What a row's ▶ does. Destructive tasks — and a date restore that writes
+     * into the originals — divert to a dialog instead of running; everything
+     * else goes straight through. Keeping the fork here
      * rather than in the row means a new destructive task can't be added
      * without a confirmation by simply wiring up its button.
      */
     fun start(task: AdminRunTask) {
-        if (task.isDestructive) requestConfirm(task)
+        if (_state.value.needsConfirmation(task)) requestConfirm(task)
         else if (task.backfillKind != null && task.maintenanceKind == null) triggerMlBackfill(task)
         else triggerTask(task)
     }
@@ -1454,11 +1469,13 @@ private fun sectionSubtitleOf(section: AdminRunTaskSection): StringResource? = w
 
 private fun confirmTitleOf(task: AdminRunTask): StringResource = when (task) {
     AdminRunTask.EmptyTrash -> Res.string.admin_run_tasks_confirm_empty_trash_title
+    AdminRunTask.RestoreDates -> Res.string.admin_run_tasks_confirm_restore_dates_title
     else -> Res.string.admin_run_tasks_confirm_purge_title
 }
 
 private fun confirmMessageOf(task: AdminRunTask): StringResource = when (task) {
     AdminRunTask.EmptyTrash -> Res.string.admin_run_tasks_confirm_empty_trash_message
+    AdminRunTask.RestoreDates -> Res.string.admin_run_tasks_confirm_restore_dates_message
     else -> Res.string.admin_run_tasks_confirm_purge_message
 }
 

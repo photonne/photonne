@@ -2,6 +2,7 @@ package com.photonne.app.ui.admin
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -64,6 +65,24 @@ class AdminRunTaskCatalogTest {
         val destructive = AdminRunTask.entries.filter { it.isDestructive }.toSet()
 
         assertEquals(setOf(AdminRunTask.EmptyTrash, AdminRunTask.PurgeMissing), destructive)
+    }
+
+    @Test
+    fun restoringDatesAsksFirstOnlyWhenItWritesIntoTheOriginals() {
+        val writing = AdminRunTasksUiState(dateRestoreInferFromPath = true, dateRestoreWriteToFile = true)
+
+        assertTrue(writing.needsConfirmation(AdminRunTask.RestoreDates))
+        assertTrue(
+            writing.copy(dateRestoreInferFromPath = false, dateRestoreUseFileDate = true)
+                .needsConfirmation(AdminRunTask.RestoreDates)
+        )
+        // Nothing worked out to write, writing off, or only simulating: no dialog.
+        assertFalse(AdminRunTasksUiState(dateRestoreWriteToFile = true).needsConfirmation(AdminRunTask.RestoreDates))
+        assertFalse(writing.copy(dateRestoreWriteToFile = false).needsConfirmation(AdminRunTask.RestoreDates))
+        assertFalse(writing.copy(dateRestoreDryRun = true).needsConfirmation(AdminRunTask.RestoreDates))
+        // The setting is the date restore's alone.
+        assertFalse(writing.needsConfirmation(AdminRunTask.IndexAssets))
+        assertTrue(writing.needsConfirmation(AdminRunTask.EmptyTrash))
     }
 
     @Test
