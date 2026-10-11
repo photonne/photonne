@@ -59,6 +59,24 @@
 		background: var(--color-bg);
 	}
 
+	/* Narrow screens: a sheet over the lower part of the map, not a column
+	   that would leave the map a sliver. Above Leaflet's panes and controls. */
+	@media (max-width: 700px) {
+		.panel {
+			position: absolute;
+			inset: auto 0 0;
+			z-index: 1000;
+			width: auto;
+			min-width: 0;
+			height: 70%;
+			border-left: 0;
+			border-top: 1px solid var(--color-border);
+			border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+			box-shadow: var(--shadow-raised);
+			overflow: hidden;
+		}
+	}
+
 	.panel :global(h1) {
 		font-size: var(--font-size-lg);
 	}
