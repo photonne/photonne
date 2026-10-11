@@ -346,6 +346,10 @@
     <string name="people_recluster_done_none">Reagrupado: sin personas nuevas</string>
     <string name="logout_confirm_title">Cerrar sesión</string>
     <string name="logout_confirm_message">¿Seguro que quieres cerrar la sesión en este dispositivo?</string>
+    <plurals name="logout_confirm_pending_uploads">
+        <item quantity="one">Se está subiendo %1$d archivo que se perderá al cerrar la sesión.</item>
+        <item quantity="other">Se están subiendo %1$d archivos que se perderán al cerrar la sesión.</item>
+    </plurals>
     <plurals name="logout_confirm_pending_backup">
         <item quantity="one">Aún hay %1$d foto del dispositivo sin copiar al servidor.</item>
         <item quantity="other">Aún hay %1$d fotos del dispositivo sin copiar al servidor.</item>

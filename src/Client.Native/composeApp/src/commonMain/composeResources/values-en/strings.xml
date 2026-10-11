@@ -671,6 +671,10 @@
     <string name="people_recluster_done_none">Regrouped: no new people</string>
     <string name="logout_confirm_title">Log out</string>
     <string name="logout_confirm_message">Are you sure you want to log out on this device?</string>
+    <plurals name="logout_confirm_pending_uploads">
+        <item quantity="one">%1$d file is still uploading and will be lost if you log out.</item>
+        <item quantity="other">%1$d files are still uploading and will be lost if you log out.</item>
+    </plurals>
     <plurals name="logout_confirm_pending_backup">
         <item quantity="one">%1$d device photo has not been backed up to the server yet.</item>
         <item quantity="other">%1$d device photos have not been backed up to the server yet.</item>

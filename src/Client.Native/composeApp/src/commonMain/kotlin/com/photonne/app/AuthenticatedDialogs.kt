@@ -26,6 +26,7 @@ import com.photonne.app.resources.share_action_revoke
 import com.photonne.app.resources.share_revoke_confirm_message
 import com.photonne.app.resources.share_revoke_confirm_title
 import com.photonne.app.resources.logout_confirm_pending_backup
+import com.photonne.app.resources.logout_confirm_pending_uploads
 import com.photonne.app.resources.logout_confirm_title
 import com.photonne.app.resources.people_action_suggestions_accept_all
 import com.photonne.app.resources.people_action_suggestions_dismiss_all
@@ -1366,12 +1367,21 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
             val pendingBackup = if (deviceBackupState.isBackupEnabled) {
                 deviceBackupState.pendingEntries.size
             } else 0
-            val baseMessage = stringResource(Res.string.logout_confirm_message)
-            val message = if (pendingBackup > 0) {
-                baseMessage + "\n\n" + pluralStringResource(
-                    Res.plurals.logout_confirm_pending_backup, pendingBackup, pendingBackup
+            // Las subidas manuales de Subir también se pierden al salir.
+            val pendingUploads = uploadState.pendingCount
+            val message = buildList {
+                add(stringResource(Res.string.logout_confirm_message))
+                if (pendingUploads > 0) add(
+                    pluralStringResource(
+                        Res.plurals.logout_confirm_pending_uploads, pendingUploads, pendingUploads
+                    )
                 )
-            } else baseMessage
+                if (pendingBackup > 0) add(
+                    pluralStringResource(
+                        Res.plurals.logout_confirm_pending_backup, pendingBackup, pendingBackup
+                    )
+                )
+            }.joinToString("\n\n")
             com.photonne.app.ui.library.ConfirmActionDialog(
                 title = stringResource(Res.string.logout_confirm_title),
                 message = message,
