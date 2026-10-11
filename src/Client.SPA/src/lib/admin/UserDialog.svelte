@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		createUser,
 		getSetting,
@@ -71,9 +72,13 @@
 			: null
 	);
 
-	// Fill the form each time the dialog opens.
+	// Fill the form each time the dialog opens (or switches to another user).
+	// reset() reads the fields it writes, so it runs untracked: otherwise the
+	// effect would depend on them and re-run forever.
 	$effect(() => {
-		if (open) reset();
+		if (!open) return;
+		void user;
+		untrack(reset);
 	});
 
 	async function reset() {
