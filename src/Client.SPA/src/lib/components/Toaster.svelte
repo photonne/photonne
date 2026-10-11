@@ -7,9 +7,56 @@
 		toasts.dismiss(toast.id);
 		await toast.action?.run();
 	}
+
+	let toaster = $state<HTMLDivElement>();
+	/** Where the toaster goes back to when no modal dialog is open. */
+	let home: Element | null = null;
+	/** Modal dialogs in the order they opened: the last one is on top. */
+	let modals: HTMLDialogElement[] = [];
+
+	// The toaster is a manual popover, always open so its live region exists
+	// before a message arrives: in the top layer it shows above the page, and
+	// showing it again lifts it above whatever entered that layer since (a
+	// dialog, the fullscreen viewer). A modal dialog also makes everything
+	// outside it inert, popovers included, so while one is open the toaster
+	// moves inside it and its buttons (Undo) still work.
+	function place() {
+		if (!toaster?.showPopover) return;
+		modals = modals.filter((dialog) => dialog.isConnected && dialog.matches(':modal'));
+		const host = modals.at(-1) ?? [...document.querySelectorAll('dialog:modal')].at(-1);
+		// Moved as a whole and last in its parent: Svelte only updates what is inside it.
+		const parent = host ?? home;
+		if (parent && toaster.parentNode !== parent) parent.append(toaster);
+		if (toaster.matches(':popover-open')) toaster.hidePopover();
+		toaster.showPopover();
+	}
+
+	$effect(() => {
+		if (!toaster) return;
+		home ??= toaster.parentElement;
+		place();
+	});
+
+	// Browsers without `toggle` on <dialog> catch up when a toast arrives.
+	$effect(() => {
+		if (toasts.items.length === 0 || !toaster) return;
+		const inDialog = toaster.parentNode instanceof HTMLDialogElement;
+		if (inDialog !== !!document.querySelector('dialog:modal')) place();
+	});
+
+	function onToggle(event: Event) {
+		const target = event.target;
+		if (!(target instanceof HTMLDialogElement)) return;
+		modals = modals.filter((dialog) => dialog !== target);
+		if (target.matches(':modal')) modals.push(target);
+		place();
+	}
 </script>
 
-<div class="toaster" role="status" aria-live="polite">
+<!-- `toggle` and `close` don't bubble: captured, they report every dialog. -->
+<svelte:document ontogglecapture={onToggle} onclosecapture={onToggle} onfullscreenchange={place} />
+
+<div class="toaster" bind:this={toaster} popover="manual" role="status" aria-live="polite">
 	{#each toasts.items as toast (toast.id)}
 		<div class="toast" class:error={toast.tone === 'error'}>
 			<span>{toast.message}</span>
@@ -30,12 +77,21 @@
 </div>
 
 <style>
+	/* Reset the popover's UA box (centred, bordered, opaque). */
 	.toaster {
 		position: fixed;
-		left: 50%;
-		bottom: var(--space-6);
+		inset: auto auto var(--space-6) 50%;
 		z-index: 100;
 		transform: translateX(-50%);
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		overflow: visible;
+		color: inherit;
+	}
+
+	.toaster:popover-open {
 		display: grid;
 		gap: var(--space-2);
 		justify-items: center;
