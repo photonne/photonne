@@ -37,7 +37,12 @@ actual fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit
                 // OpenMultipleDocuments has no OS-imposed selection cap like
                 // the Photo Picker did; keep our own so a whole-folder
                 // selection can't queue an unbounded in-memory batch.
-                uris.take(MAX_SELECTION).mapNotNull { uri -> readPickedFile(context, uri) }
+                // Size is checked before reading: an oversize file isn't
+                // loaded into memory, and one that can't be read is reported.
+                uris.take(MAX_SELECTION).map { uri ->
+                    readPickedFile(context, uri, UploadViewModel.MAX_BYTES_PER_FILE)
+                        ?: unreadablePickedFile(uri.lastPathSegment ?: "upload")
+                }
             }
             currentOnPicked.value(files)
         }
@@ -67,7 +72,8 @@ actual fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit
  * Con [maxBytes], un archivo que ya se sabe más grande no se lee: vuelve sin
  * bytes y con su tamaño real, y la cola de subida lo descarta y lo cuenta en su
  * aviso de "superan el límite" (leerlo entero en memoria para eso no tiene
- * sentido).
+ * sentido). Si el proveedor no da el tamaño, la lectura se corta en cuanto pasa
+ * del tope. Null si no se ha podido leer.
  */
 internal fun readPickedFile(
     context: android.content.Context,
@@ -81,21 +87,15 @@ internal fun readPickedFile(
     val isVideo = mime.startsWith("video/")
     val knownSize = meta.size
     if (maxBytes != null && knownSize != null && knownSize > maxBytes) {
-        return@runCatching PickedFile(
-            name = name,
-            mimeType = mime,
-            sizeBytes = knownSize,
-            bytes = ByteArray(0),
-            lastModifiedMillis = meta.lastModified
-        )
+        return@runCatching oversizePickedFile(name, mime, knownSize, meta.lastModified)
     }
     // Original bytes (GPS intact) when the file is in MediaStore and the
     // permission is held; otherwise the plain SAF stream.
-    val bytes = MediaOriginalReader.openOriginalStream(
-        context, uri, name, isVideo, knownSize ?: 0L
-    )?.use { it.readBytes() }
-        ?: resolver.openInputStream(uri)?.use { it.readBytes() }
+    val stream = MediaOriginalReader.openOriginalStream(context, uri, name, isVideo, knownSize ?: 0L)
+        ?: resolver.openInputStream(uri)
         ?: return@runCatching null
+    val bytes = stream.use { it.readUpTo(maxBytes) }
+        ?: return@runCatching oversizePickedFile(name, mime, (maxBytes ?: 0L) + 1, meta.lastModified)
     PickedFile(
         name = name,
         mimeType = mime,
@@ -104,6 +104,25 @@ internal fun readPickedFile(
         lastModifiedMillis = meta.lastModified
     )
 }.getOrNull()
+
+/**
+ * Reads the whole stream, or gives up (null) as soon as it passes [maxBytes]
+ * so an unknown-size huge video never lands in memory just to be rejected.
+ */
+private fun java.io.InputStream.readUpTo(maxBytes: Long?): ByteArray? {
+    if (maxBytes == null) return readBytes()
+    val out = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    var total = 0L
+    while (true) {
+        val read = read(buffer)
+        if (read < 0) break
+        total += read
+        if (total > maxBytes) return null
+        out.write(buffer, 0, read)
+    }
+    return out.toByteArray()
+}
 
 private data class DocMeta(val name: String?, val size: Long?, val lastModified: Long?)
 

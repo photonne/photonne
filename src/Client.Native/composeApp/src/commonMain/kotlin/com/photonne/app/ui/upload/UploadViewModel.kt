@@ -79,8 +79,9 @@ class UploadViewModel(
      */
     fun enqueue(files: List<PickedFile>, onQueueDrained: () -> Unit = {}) {
         if (files.isEmpty()) return
+        val unreadable = files.count { it.unreadable }
         val newItems = files
-            .filter { it.sizeBytes <= MAX_BYTES_PER_FILE }
+            .filter { !it.unreadable && it.sizeBytes <= MAX_BYTES_PER_FILE }
             .map { picked ->
                 UploadItem(
                     id = ++nextId,
@@ -92,17 +93,15 @@ class UploadViewModel(
                     motionClip = picked.motionClip
                 )
             }
-        val tooBig = files.size - newItems.size
+        val tooBig = files.size - unreadable - newItems.size
         _state.update {
             it.copy(
                 items = it.items + newItems,
                 lastBatch = null,
-                pickerError = if (tooBig > 0)
-                    "$tooBig archivo(s) superan el límite de ${MAX_MB_PER_FILE} MB y se han omitido."
-                else it.pickerError
+                pickerError = skippedFilesMessage(tooBig, unreadable) ?: it.pickerError
             )
         }
-        ensureWorker(onQueueDrained)
+        if (newItems.isNotEmpty()) ensureWorker(onQueueDrained)
     }
 
     fun pickerErrorRaised(message: String) {
@@ -346,6 +345,16 @@ class UploadViewModel(
     }
 
     companion object {
+        /** Aviso de lo que se ha quedado fuera de una tanda; null si no falta nada. */
+        internal fun skippedFilesMessage(tooBig: Int, unreadable: Int): String? = when {
+            tooBig > 0 && unreadable > 0 ->
+                "Se han omitido $tooBig archivo(s) que superan el límite de $MAX_MB_PER_FILE MB " +
+                    "y $unreadable que no se han podido leer."
+            tooBig > 0 -> "$tooBig archivo(s) superan el límite de $MAX_MB_PER_FILE MB y se han omitido."
+            unreadable > 0 -> "$unreadable archivo(s) no se han podido leer y se han omitido."
+            else -> null
+        }
+
         const val MAX_MB_PER_FILE = 200
         const val MAX_BYTES_PER_FILE = MAX_MB_PER_FILE * 1024L * 1024L
     }
