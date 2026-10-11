@@ -922,6 +922,9 @@
     <string name="admin_run_tasks_action_stop">Detener</string>
     <string name="admin_run_tasks_action_recluster">Reagrupar caras</string>
     <string name="admin_run_tasks_last_run_format">Última ejecución hace %1$s</string>
+    <string name="admin_run_tasks_error_history">No se pudo leer el estado de las tareas</string>
+    <string name="admin_run_tasks_history_loading">Consultando el historial…</string>
+    <string name="admin_run_tasks_history_unavailable">Historial no disponible</string>
     <string name="admin_run_tasks_last_run_never">Nunca ejecutado en esta sesión</string>
     <string name="admin_run_tasks_status_queueing">Encolando todo lo pendiente…</string>
     <string name="admin_run_tasks_status_waiting">En cola, esperando turno…</string>

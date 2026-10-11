@@ -69,6 +69,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.resources.admin_run_tasks_error_history
+import com.photonne.app.resources.admin_run_tasks_history_loading
+import com.photonne.app.resources.admin_run_tasks_history_unavailable
 import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.models.BackgroundTaskDto
 import com.photonne.app.data.models.EnrichmentQueueCounts
@@ -528,6 +536,10 @@ private const val ActivePollIntervalMs = 3_000L
  *  kind shares. */
 private const val MaintenanceTaskType = "Maintenance"
 
+/** Task types whose run changes what the library shows (see
+ *  [AdminRunTasksViewModel.announceLibraryChanges]). */
+private val LibraryChangingTaskTypes = setOf("IndexAssets", "DateRestore", MaintenanceTaskType)
+
 // Maximum time we wait for the streaming endpoint's first event after a
 // Start tap before falling through to refresh. The server registers the
 // task entry as soon as the request hits the handler, well before any
@@ -545,6 +557,13 @@ data class AdminRunTasksUiState(
      *  Used to derive both "running now" rows and "Última ejecución hace X"
      *  subtitles. */
     val backgroundTasks: List<BackgroundTaskDto> = emptyList(),
+    /** The registry has answered at least once. Until then an empty
+     *  [backgroundTasks] means "don't know yet", not "never ran". */
+    val tasksLoaded: Boolean = false,
+    /** The last registry read failed. Running rows and "última ejecución"
+     *  come from it, so the screen says so and offers the retry instead of
+     *  quietly painting the previous answer (or none) as current. */
+    val tasksError: UiError? = null,
     /** Task groups currently unfolded. Persisted across visits — see
      *  [readExpandedSections]. */
     val expandedSections: Set<AdminRunTaskSection> = DefaultExpandedSections,
@@ -665,6 +684,8 @@ private data class LiveProgress(
 class AdminRunTasksViewModel(
     private val repository: AdminRepository,
     private val settings: Settings,
+    private val errorFactory: UiErrorFactory,
+    private val assetMutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -741,6 +762,16 @@ class AdminRunTasksViewModel(
         if (_state.value.isLoading) return
         viewModelScope.launch { refresh(showLoading = true) }
     }
+
+    /** The banner's retry after a failed registry read. */
+    fun retry() {
+        viewModelScope.launch { refresh(showLoading = false) }
+    }
+
+    // Finished task entries already accounted for, so each one tells the rest
+    // of the app about the library change once. The registry keeps finished
+    // entries for an hour, and every poll lists them again.
+    private val announcedFinished = mutableSetOf<String>()
 
     fun startPolling() {
         if (pollJob?.isActive == true) return
@@ -1110,6 +1141,27 @@ class AdminRunTasksViewModel(
         }
     }
 
+    /**
+     * Tells the timeline, albums and folders to reload when a task that
+     * rewrites the library has finished: indexing adds and moves assets, a date
+     * restore moves them in time, and maintenance can purge them or empty the
+     * trash. They used to keep showing the library as it was before the run
+     * until something else made them reload.
+     *
+     * The first read only records what had already finished: those runs
+     * predate this screen, and whatever showed the library since loaded it
+     * after them.
+     */
+    private fun announceLibraryChanges(tasks: List<BackgroundTaskDto>) {
+        val finished = tasks
+            .filter { !it.isRunning && it.type in LibraryChangingTaskTypes }
+            .map { it.id }
+        val fresh = finished.filterNot { it in announcedFinished }
+        val firstRead = !_state.value.tasksLoaded
+        announcedFinished += fresh
+        if (!firstRead && fresh.isNotEmpty()) assetMutationBus.emit(AssetMutation.AllChanged)
+    }
+
     private suspend fun refresh(showLoading: Boolean) {
         if (showLoading) _state.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
         // Each answer lands on the screen as it arrives. They used to be
@@ -1134,14 +1186,19 @@ class AdminRunTasksViewModel(
                     }
                 }
             }
-            val tasksDeferred = async {
-                runCatching { repository.listBackgroundTasks() }
-                    .getOrNull()
-                    ?: _state.value.backgroundTasks
-            }
-            tasksDeferred.await().also { fresh ->
-                _state.update { it.copy(backgroundTasks = fresh) }
-            }
+            val tasksDeferred = async { runCatching { repository.listBackgroundTasks() } }
+            tasksDeferred.await().fold(
+                onSuccess = { fresh ->
+                    announceLibraryChanges(fresh)
+                    _state.update { it.copy(backgroundTasks = fresh, tasksLoaded = true, tasksError = null) }
+                    fresh
+                },
+                onFailure = { error ->
+                    val uiError = errorFactory.from(error, getString(Res.string.admin_run_tasks_error_history))
+                    _state.update { it.copy(tasksError = uiError) }
+                    _state.value.backgroundTasks
+                }
+            )
         }
         _state.update { current ->
             // Drop any session baseline whose queue is now empty AND
@@ -1228,6 +1285,11 @@ fun AdminRunTasksScreen(
         contentPadding = PaddingValues(start = Spacing.lg, end = Spacing.lg, top = Spacing.lg + reservedTop, bottom = Spacing.lg + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
+        state.tasksError?.let { error ->
+            item(key = "banner-history-error") {
+                ErrorBanner(error = error, onRetry = viewModel::retry)
+            }
+        }
         // Every action here is fire-and-forget against a 10s poll, so the only
         // place an outcome can land is a line at the top of the list.
         state.errorMessage?.let { msg ->
@@ -1318,6 +1380,11 @@ fun AdminRunTasksScreen(
                     pending = if (task == AdminRunTask.MediaRecognition) null else pending,
                     sessionBaseline = state.aiSessionBaseline[task],
                     lastFinished = task.progressKey?.let { lastFinishedByKey[it] },
+                    historyState = when {
+                        state.tasksLoaded -> TaskHistoryState.Known
+                        state.tasksError != null -> TaskHistoryState.Unavailable
+                        else -> TaskHistoryState.Loading
+                    },
                     nowMs = nowMs,
                     isTriggering = task in state.triggering,
                     // Duplicates keeps its dedicated screen: it has toggles and
@@ -1655,6 +1722,7 @@ private fun TaskRow(
     waitingForWorker: Boolean,
     sessionBaseline: Int?,
     lastFinished: BackgroundTaskDto?,
+    historyState: TaskHistoryState,
     nowMs: Long,
     pending: PendingCountResponse?,
     isTriggering: Boolean,
@@ -1712,6 +1780,7 @@ private fun TaskRow(
                             waitingForWorker = waitingForWorker,
                             isTriggering = isTriggering,
                             lastFinished = lastFinished,
+                            historyState = historyState,
                             nowMs = nowMs,
                             pending = pending,
                             contentColor = contentColor
@@ -1827,6 +1896,7 @@ private fun TaskRowSubtitle(
     waitingForWorker: Boolean,
     isTriggering: Boolean,
     lastFinished: BackgroundTaskDto?,
+    historyState: TaskHistoryState,
     nowMs: Long,
     pending: PendingCountResponse?,
     contentColor: androidx.compose.ui.graphics.Color,
@@ -1885,6 +1955,12 @@ private fun TaskRowSubtitle(
                     )
                 } else stringResource(Res.string.admin_run_tasks_last_run_never)
             }
+            // "Nunca ejecutado" only once the registry has answered: before
+            // that, or when it can't be read, nobody knows.
+            task.progressKey != null && historyState == TaskHistoryState.Loading ->
+                stringResource(Res.string.admin_run_tasks_history_loading)
+            task.progressKey != null && historyState == TaskHistoryState.Unavailable ->
+                stringResource(Res.string.admin_run_tasks_history_unavailable)
             // Anything that reports a task entry can honestly say it never ran.
             // ML rows can't: their work is a queue of per-asset jobs with no
             // single "run", so they show their pending counters instead.
@@ -1902,6 +1978,10 @@ private fun TaskRowSubtitle(
         }
     }
 }
+
+/** What the rows can say about past runs: the registry hasn't answered yet,
+ *  it answered, or it couldn't be read and nothing has been learnt from it. */
+private enum class TaskHistoryState { Loading, Known, Unavailable }
 
 /** One labelled value of a running task: "Progreso   1.234 de 20.000 (12 %)". */
 private data class TaskDetailLine(
