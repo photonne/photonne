@@ -37,9 +37,9 @@ test('selects albums with Ctrl, Shift and the check, and Escape clears', async (
 	await expect(bar(page).getByRole('button', { name: 'Eliminar' })).toBeDisabled();
 	await expect(bar(page).getByRole('button', { name: 'Salir' })).toBeDisabled();
 
-	await page.getByRole('button', { name: 'Seleccionar «Perros»' }).click();
-	await expect(page.getByRole('button', { name: 'Seleccionar «Perros»' })).toHaveAttribute(
-		'aria-pressed',
+	await page.getByRole('checkbox', { name: 'Seleccionar «Perros»' }).click();
+	await expect(page.getByRole('checkbox', { name: 'Seleccionar «Perros»' })).toHaveAttribute(
+		'aria-checked',
 		'false'
 	);
 	await expect(bar(page).getByText('2 seleccionados')).toBeVisible();
@@ -51,8 +51,8 @@ test('selects albums with Ctrl, Shift and the check, and Escape clears', async (
 test('deletes several albums after confirming', async ({ page }) => {
 	const state = await open(page);
 
-	await page.getByRole('button', { name: 'Seleccionar «Vacaciones»' }).click();
-	await page.getByRole('button', { name: 'Seleccionar «Perros»' }).click();
+	await page.getByRole('checkbox', { name: 'Seleccionar «Vacaciones»' }).click();
+	await page.getByRole('checkbox', { name: 'Seleccionar «Perros»' }).click();
 	await bar(page).getByRole('button', { name: 'Eliminar' }).click();
 
 	const dialog = page.getByRole('dialog', { name: '¿Eliminar 2 álbumes?' });
@@ -71,7 +71,7 @@ test('deletes several albums after confirming', async ({ page }) => {
 test('leaves an album shared with me', async ({ page }) => {
 	const state = await open(page);
 
-	await page.getByRole('button', { name: 'Seleccionar «Boda de Lucía»' }).click();
+	await page.getByRole('checkbox', { name: 'Seleccionar «Boda de Lucía»' }).click();
 	await expect(bar(page).getByRole('button', { name: 'Eliminar' })).toBeDisabled();
 	await bar(page).getByRole('button', { name: 'Salir' }).click();
 	await page

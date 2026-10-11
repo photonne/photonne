@@ -57,7 +57,7 @@ test('searches at any depth, filters by scope, sorts and remembers the view', as
 test('deletes several folders after confirming, only if all can be deleted', async ({ page }) => {
 	const state = await open(page);
 
-	await page.getByRole('button', { name: 'Seleccionar «Camera»' }).click();
+	await page.getByRole('checkbox', { name: 'Seleccionar «Camera»' }).click();
 	await main(page)
 		.getByRole('link', { name: /Familia/ })
 		.click({ modifiers: ['ControlOrMeta'] });
@@ -67,7 +67,7 @@ test('deletes several folders after confirming, only if all can be deleted', asy
 	await main(page)
 		.getByRole('link', { name: /Familia/ })
 		.click();
-	await page.getByRole('button', { name: 'Seleccionar «Documentos»' }).click();
+	await page.getByRole('checkbox', { name: 'Seleccionar «Documentos»' }).click();
 	await bar(page).getByRole('button', { name: 'Eliminar' }).click();
 
 	const dialog = page.getByRole('dialog', { name: '¿Eliminar 2 carpetas?' });
@@ -84,7 +84,7 @@ test('deletes several folders after confirming, only if all can be deleted', asy
 test('moves the selected folders into another one', async ({ page }) => {
 	const state = await open(page);
 
-	await page.getByRole('button', { name: 'Seleccionar «Documentos»' }).click();
+	await page.getByRole('checkbox', { name: 'Seleccionar «Documentos»' }).click();
 	await bar(page).getByRole('button', { name: 'Mover' }).click();
 
 	const dialog = page.getByRole('dialog', { name: 'Mover 1 carpeta' });
