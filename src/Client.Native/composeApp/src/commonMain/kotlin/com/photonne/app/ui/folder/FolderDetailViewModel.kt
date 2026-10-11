@@ -83,6 +83,7 @@ class FolderDetailViewModel(
                     is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
                     // Lote L8: la foto cambia de sitio en el orden por fecha.
                     is AssetMutation.DateChanged -> refresh()
+                    is AssetMutation.Moved -> onAssetsMoved(event)
                 }
             }
         }
@@ -199,6 +200,24 @@ class FolderDetailViewModel(
                     if (item.id == assetId) item.copy(isFavorite = isFavorite) else item
                 }
             )
+        }
+    }
+
+    /**
+     * Assets moved anywhere in the app. The open folder reloads when it is the
+     * destination (they arrive) or when it still shows any of the requested
+     * ids: the server may have moved only some, and only a reload knows which.
+     */
+    private fun onAssetsMoved(event: AssetMutation.Moved) {
+        val current = _state.value
+        val folderId = current.folderId ?: return
+        val requested = event.assetIds.toHashSet()
+        if (folderId == event.targetFolderId ||
+            requested.isEmpty() ||
+            current.subFolders.any { it.id == event.targetFolderId } ||
+            current.items.any { it.id in requested }
+        ) {
+            refresh()
         }
     }
 

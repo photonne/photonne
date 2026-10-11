@@ -68,7 +68,8 @@ class UtilitiesDuplicatesViewModel(
                     is AssetMutation.Purged -> removeAssets(event.assetIds)
                     is AssetMutation.Restored, AssetMutation.AllChanged ->
                         if (_state.value.groups.isNotEmpty()) load()
-                    is AssetMutation.FavoriteChanged, is AssetMutation.DateChanged -> Unit
+                    is AssetMutation.FavoriteChanged, is AssetMutation.DateChanged,
+                    is AssetMutation.Moved -> Unit
                 }
             }
         }

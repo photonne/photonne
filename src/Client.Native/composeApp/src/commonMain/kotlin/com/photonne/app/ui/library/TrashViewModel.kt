@@ -71,6 +71,8 @@ class TrashViewModel(
                     is AssetMutation.Restored, AssetMutation.AllChanged -> refreshQuietly()
                     is AssetMutation.FavoriteChanged -> Unit
                     is AssetMutation.DateChanged -> Unit
+                    // Mover de carpeta no cambia esta lista.
+                    is AssetMutation.Moved -> Unit
                 }
             }
         }

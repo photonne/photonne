@@ -82,6 +82,8 @@ class TimelineViewModel(
                     is AssetMutation.FavoriteChanged ->
                         store.updateItem(event.assetId) { it.copy(isFavorite = event.isFavorite) }
                     is AssetMutation.DateChanged -> onDateChanged(event)
+                    // Mover de carpeta no cambia esta lista.
+                    is AssetMutation.Moved -> Unit
                 }
             }
         }

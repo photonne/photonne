@@ -37,6 +37,16 @@ sealed interface AssetMutation {
     data class DateChanged(val assetId: String, val capturedAt: Instant) : AssetMutation
 
     /**
+     * Assets movidos físicamente a [targetFolderId] (Mover a carpeta, bandeja
+     * "Para organizar", mover por condiciones). [assetIds] son los PEDIDOS: si
+     * el servidor solo movió una parte no sabemos cuáles, así que quien tenga
+     * alguno en pantalla debe recargar en vez de quitarlos. Vacío cuando el
+     * movimiento se resolvió en el servidor (por regla) sin lista de ids.
+     * Siguen existiendo: solo cambian las carpetas (recuentos y contenido).
+     */
+    data class Moved(val assetIds: List<String>, val targetFolderId: String) : AssetMutation
+
+    /**
      * Operación global sin lista de ids (vaciar papelera, restaurar todo,
      * desarchivar todo): los suscriptores deben recargar.
      */

@@ -136,6 +136,8 @@ class SearchViewModel(
                     is AssetMutation.FavoriteChanged -> setFavorite(event.assetId, event.isFavorite)
                     // Lote L8: la foto cambia de sitio en el orden por fecha.
                     is AssetMutation.DateChanged -> refresh()
+                    // Mover de carpeta no cambia esta lista.
+                    is AssetMutation.Moved -> Unit
                 }
             }
         }
