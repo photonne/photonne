@@ -10,14 +10,16 @@
 	interface Props {
 		token: string;
 		password: string | null;
-		/** Called after a batch with new photos, to show them in the album. */
-		onuploaded: () => void;
+		/**
+		 * Reloads the album to show the new photos. Only on the guest's request:
+		 * every open of the link counts as a visit (and can hit its limit).
+		 */
+		onrefresh: () => void;
 	}
 
-	let { token, password, onuploaded }: Props = $props();
+	let { token, password, onrefresh }: Props = $props();
 
 	let name = $state('');
-	let reported = 0;
 
 	// One file at a time: the server rate-limits guest uploads.
 	const queue = new UploadQueue(
@@ -26,14 +28,6 @@
 	);
 
 	const counts = $derived(queue.counts);
-
-	$effect(() => {
-		// A batch ended: thank the guest and refresh the album once.
-		if (!queue.active && counts.done > reported) {
-			reported = counts.done;
-			onuploaded();
-		}
-	});
 
 	onDestroy(() => queue.cancelAll());
 
@@ -66,7 +60,10 @@
 	</div>
 
 	{#if !queue.active && counts.done > 0}
-		<p class="thanks" role="status">{m.share_upload_thanks({ count: counts.done })}</p>
+		<div class="thanks">
+			<p role="status">{m.share_upload_thanks({ count: counts.done })}</p>
+			<button type="button" class="btn sm" onclick={onrefresh}>{m.share_upload_show()}</button>
+		</div>
 	{/if}
 	{#if counts.failed > 0 && !queue.active}
 		<div class="failed" role="alert">
@@ -127,12 +124,20 @@
 	}
 
 	.thanks {
-		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-md);
 		background: color-mix(in srgb, var(--color-success) 12%, transparent);
 		color: var(--color-text);
 		font-weight: 600;
+	}
+
+	.thanks p {
+		margin: 0;
 	}
 
 	.failed {
