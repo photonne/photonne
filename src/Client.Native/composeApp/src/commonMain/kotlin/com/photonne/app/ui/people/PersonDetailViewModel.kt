@@ -1,6 +1,8 @@
 package com.photonne.app.ui.people
 
 import com.photonne.app.ui.util.withRestored
+import com.photonne.app.ui.util.LoadedPage
+import com.photonne.app.ui.util.reloadLoadedPages
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
@@ -163,23 +165,41 @@ class PersonDetailViewModel(
         }
     }
 
-    /** Recarga la primera página conservando el contenido visible mientras. */
+    /**
+     * Recarga conservando el contenido visible mientras: vuelve a pedir tantas
+     * fotos como había cargadas (no solo la primera página, que tras un
+     * Deshacer devolvía al usuario arriba) y las cambia de una vez.
+     */
     fun refresh() {
         val personId = _state.value.personId ?: return
         if (_state.value.isInitialLoading || _state.value.isRefreshing) return
+        val loadedCount = _state.value.items.size
         _state.update { it.copy(isRefreshing = true, isAppending = false, error = null) }
         loadJob?.cancel()
         loadMemories(personId)
         loadJob = viewModelScope.launch {
-            suspendRunCatching { peopleRepository.assets(personId, limit = PAGE_SIZE, offset = 0) }
-                .onSuccess { page ->
+            suspendRunCatching {
+                var total = 0
+                val reloaded = reloadLoadedPages<TimelineItem, Int>(loadedCount, idOf = { it.id }) { offset ->
+                    val from = offset ?: 0
+                    val page = peopleRepository.assets(personId, limit = PAGE_SIZE, offset = from)
+                    total = page.total
+                    val next = from + page.items.size
+                    LoadedPage(
+                        items = page.items.map { p -> p.toTimelineItem() },
+                        hasMore = page.items.isNotEmpty() && next < page.total,
+                        nextCursor = next
+                    )
+                }
+                reloaded.items to total
+            }
+                .onSuccess { (items, total) ->
                     _state.update {
                         if (it.personId != personId) return@update it
-                        val items = page.items.map { p -> p.toTimelineItem() }
                         it.copy(
                             items = items,
-                            total = page.total,
-                            hasMore = items.size < page.total,
+                            total = total,
+                            hasMore = items.size < total,
                             isRefreshing = false,
                             // La selección puede apuntar a fotos que ya no están.
                             selection = it.selection.intersect(

@@ -1,6 +1,8 @@
 package com.photonne.app.ui.library
 
 import com.photonne.app.ui.util.withRestored
+import com.photonne.app.ui.util.LoadedPage
+import com.photonne.app.ui.util.reloadLoadedPages
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
@@ -78,10 +80,13 @@ class ArchivedViewModel(
     }
 
     /**
-     * Recarga la primera página sin spinner tras una mutación llegada por el
-     * bus: la lista visible sigue siendo válida mientras tanto y un fallo se
-     * queda en silencio (ya se reintentará en el siguiente refresh explícito).
-     * Solo si la pantalla llegó a cargar; si no, ensureLoaded() lo hará.
+     * Recarga sin spinner tras una mutación llegada por el bus (o un
+     * Deshacer): vuelve a pedir tantas páginas como había cargadas y las
+     * cambia de una vez, para no devolver al usuario a la primera página. La
+     * lista visible sigue siendo válida mientras tanto y un fallo se queda en
+     * silencio, conservando lo que había (ya se reintentará en el siguiente
+     * refresh explícito). Solo si la pantalla llegó a cargar; si no,
+     * ensureLoaded() lo hará.
      */
     private fun refreshQuietly() {
         if (!_state.value.loaded) return
@@ -89,8 +94,13 @@ class ArchivedViewModel(
         // flight would land on top of the replaced first page, so drop it.
         if (pagingJob?.isActive == true && !_state.value.isAppending) return
         cancelAppend()
+        val loadedCount = _state.value.items.size
         pagingJob = viewModelScope.launch {
-            suspendRunCatching { repository.listArchived(cursor = null) }
+            suspendRunCatching {
+                reloadLoadedPages<TimelineItem, Instant>(loadedCount, idOf = { it.id }) { cursor ->
+                    repository.listArchived(cursor = cursor).let { LoadedPage(it.items, it.hasMore, it.nextCursor) }
+                }
+            }
                 .onSuccess { page ->
                     _state.update {
                         it.copy(

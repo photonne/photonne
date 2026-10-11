@@ -2,6 +2,8 @@ package com.photonne.app.ui.search
 
 import com.photonne.app.ui.util.withRestored
 import androidx.lifecycle.ViewModel
+import com.photonne.app.ui.util.LoadedPage
+import com.photonne.app.ui.util.reloadLoadedPages
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
@@ -483,12 +485,19 @@ class SearchViewModel(
         }
     }
 
+    /**
+     * Repite la búsqueda actual (tras una restauración, un Deshacer…) pidiendo
+     * tantos resultados como había cargados, no solo la primera página.
+     */
     fun refresh() {
         ensureFacetsLoaded()
-        if (_state.value.hasAnyCriteria) scheduleSearch(immediate = true)
+        if (_state.value.hasAnyCriteria) {
+            scheduleSearch(immediate = true, keepLoaded = _state.value.results.size)
+        }
     }
 
-    private fun scheduleSearch(immediate: Boolean = false) {
+    /** [keepLoaded]: resultados de texto que la nueva búsqueda debe cubrir. */
+    private fun scheduleSearch(immediate: Boolean = false, keepLoaded: Int = 0) {
         pendingSearch?.cancel()
         val snapshot = _state.value
         if (!snapshot.hasAnyCriteria) {
@@ -505,24 +514,33 @@ class SearchViewModel(
         }
         pendingSearch = viewModelScope.launch {
             if (!immediate) delay(DEBOUNCE_MILLIS)
-            runSearch()
+            runSearch(keepLoaded)
         }
     }
 
-    private suspend fun runSearch() {
+    private suspend fun runSearch(keepLoaded: Int = 0) {
         val snapshot = _state.value
         _state.update { it.copy(isLoading = true, isAppending = false, error = null) }
         runCatching {
             when (snapshot.mode) {
-                SearchMode.Text -> repository.textSearch(
-                    query = snapshot.query.takeIf { it.isNotBlank() },
-                    from = snapshot.from,
-                    to = snapshot.to,
-                    personIds = snapshot.selectedPersonIds.toList(),
-                    objectLabels = snapshot.selectedObjectLabels.toList(),
-                    sceneLabels = snapshot.selectedSceneLabels.toList(),
-                    ocrText = snapshot.ocrText.takeIf { it.isNotBlank() }
-                ).let { it.items to it.hasMore }
+                SearchMode.Text -> reloadLoadedPages<TimelineItem, Int>(
+                    keepLoaded,
+                    idOf = { it.id }
+                ) { offset ->
+                    repository.textSearch(
+                        query = snapshot.query.takeIf { it.isNotBlank() },
+                        from = snapshot.from,
+                        to = snapshot.to,
+                        personIds = snapshot.selectedPersonIds.toList(),
+                        objectLabels = snapshot.selectedObjectLabels.toList(),
+                        sceneLabels = snapshot.selectedSceneLabels.toList(),
+                        ocrText = snapshot.ocrText.takeIf { it.isNotBlank() },
+                        offset = offset
+                    ).let { page ->
+                        val next = (offset ?: 0) + page.items.size
+                        LoadedPage(page.items, page.hasMore && page.items.isNotEmpty(), next)
+                    }
+                }.let { it.items to it.hasMore }
                 SearchMode.Semantic -> {
                     if (snapshot.query.isBlank()) {
                         emptyList<TimelineItem>() to false
