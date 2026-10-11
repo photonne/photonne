@@ -139,6 +139,8 @@ test('moves the selection with the folder picker and removes photos from the fol
 		.nth(0)
 		.click({ modifiers: ['ControlOrMeta'] });
 	await page.getByRole('button', { name: 'Quitar de la carpeta (sin borrar)' }).click();
+	// There's no undo for it, so it asks first.
+	await page.getByRole('dialog').getByRole('button', { name: 'Quitar de la carpeta' }).click();
 	await expect(page.getByText('1 quitada de la carpeta')).toBeVisible();
 	await expect(cells(page)).toHaveCount(17);
 	expect(calls(state, 'POST /api/folders/assets/remove')).toHaveLength(1);

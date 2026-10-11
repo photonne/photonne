@@ -72,6 +72,8 @@
 	let creatingSub = $state(false);
 	let sharing = $state(false);
 	let confirmingDelete = $state(false);
+	/** The selection waiting for "remove from folder" to be confirmed. */
+	let removing = $state<Selection | null>(null);
 	/** The photos the folder picker is open for. */
 	let moving = $state<string[] | null>(null);
 	let busy = $state(false);
@@ -127,12 +129,15 @@
 		return items;
 	});
 
-	async function removeFromFolder(selection: Selection) {
-		const assetIds = [...selection.ids];
+	// The server only unlinks the photos (the files stay where they are) and
+	// has no way to link them back, so there's no Undo: it asks first.
+	async function removeFromFolder() {
+		const assetIds = [...(removing?.ids ?? [])];
 		if (!assetIds.length || busy) return;
 		busy = true;
 		const { error } = await removeFolderAssets({ body: { folderId, assetIds } });
 		busy = false;
+		removing = null;
 		if (error) {
 			toasts.error(m.action_failed());
 			return;
@@ -304,7 +309,7 @@
 					title={m.folders_remove()}
 					aria-label={m.folders_remove()}
 					disabled={busy}
-					onclick={() => removeFromFolder(selection)}
+					onclick={() => (removing = selection)}
 				>
 					<Icon path={icons.remove} />
 				</button>
@@ -362,6 +367,17 @@
 	{busy}
 	onconfirm={remove}
 	onclose={() => (confirmingDelete = false)}
+/>
+
+<ConfirmDialog
+	danger
+	open={removing !== null}
+	title={m.folders_remove_title()}
+	message={m.folders_remove_message({ name: folder?.name ?? '', count: removing?.size ?? 0 })}
+	confirmLabel={m.folders_remove_confirm()}
+	{busy}
+	onconfirm={removeFromFolder}
+	onclose={() => (removing = null)}
 />
 
 <style>
