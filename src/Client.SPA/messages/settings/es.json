@@ -226,5 +226,6 @@
 	"settings_analysis_retry_failed": "No se ha podido reintentar. Vuelve a probar más tarde.",
 	"settings_analysis_more": "Cargar más",
 	"settings_analysis_retry_loaded": "Reintentar {n} de {total}",
-	"settings_analysis_retry_loaded_hint": "Vuelve a poner en cola las tareas fallidas de las fotos cargadas en la lista. Carga más para reintentar el resto."
+	"settings_analysis_retry_loaded_hint": "Vuelve a poner en cola las tareas fallidas de las fotos cargadas en la lista. Carga más para reintentar el resto.",
+	"settings_storage_over_quota": "{percent} de tu cuota: la has superado. Libera espacio o pide más a un administrador."
 }

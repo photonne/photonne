@@ -226,5 +226,6 @@
 	"settings_analysis_retry_failed": "Couldn't retry. Try again later.",
 	"settings_analysis_more": "Load more",
 	"settings_analysis_retry_loaded": "Retry {n} of {total}",
-	"settings_analysis_retry_loaded_hint": "Queues the failed tasks of the photos loaded in the list again. Load more to retry the rest."
+	"settings_analysis_retry_loaded_hint": "Queues the failed tasks of the photos loaded in the list again. Load more to retry the rest.",
+	"settings_storage_over_quota": "{percent} of your quota: you’ve gone over it. Free some space or ask an administrator for more."
 }

@@ -567,5 +567,6 @@
 	"admin_backup_demo": "Solo lectura en la demo: no se pueden exportar ni restaurar copias de seguridad.",
 	"admin_strash_summary_more": "Más de {n} elementos · {size} en lo cargado",
 	"admin_strash_partial_hint": "Cuenta solo lo cargado hasta ahora; al bajar se cargan más.",
-	"admin_dash_see_all_users": "Ver todos en Usuarios"
+	"admin_dash_see_all_users": "Ver todos en Usuarios",
+	"admin_users_quota_over": "Cuota superada"
 }
