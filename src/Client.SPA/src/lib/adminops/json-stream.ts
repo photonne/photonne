@@ -1,6 +1,7 @@
 /**
- * Splits a streamed response body into the JSON objects it carries, as they
- * arrive.
+ * The one reader for the server's streamed progress (admin tasks and library
+ * scans): splits a response body into the JSON objects it carries, as they
+ * arrive. A malformed object is skipped instead of failing the whole stream.
  *
  * The server streams progress in two shapes: NDJSON, one object per line
  * (maintenance kinds, face clustering), and a JSON array written element by
