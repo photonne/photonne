@@ -91,22 +91,35 @@
 		role = user?.role === 'Admin' ? 'Admin' : 'User';
 		isActive = user?.isActive ?? true;
 		quota = quotaToForm(user?.storageQuotaBytes);
-		if (!user) await loadDefaults();
+		if (user) opening++;
+		else await loadDefaults();
 	}
 
-	/** New accounts start from the server's defaults (Settings › Users). */
+	/** Bumped on every open, so defaults that arrive late from an earlier open are dropped. */
+	let opening = 0;
+
+	/**
+	 * New accounts start from the server's defaults (Settings › Users). They
+	 * arrive after the form shows, so a field the admin already changed keeps
+	 * the admin's choice.
+	 */
 	async function loadDefaults() {
-		const read = async (key: string) => (await getSetting({ query: { key } })).data?.value ?? '';
+		const current = ++opening;
+		const initial = { role, isActive, quota: { ...quota } };
+		const read = async (key: string) =>
+			(await getSetting({ query: { key } }).catch(() => undefined))?.data?.value ?? '';
 		const [defaultRole, defaultActive, defaultQuota] = await Promise.all([
 			read('UserSettings.DefaultRole'),
 			read('UserSettings.DefaultIsActive'),
 			read('UserSettings.DefaultStorageQuotaGb')
 		]);
-		if (user) return;
-		role = !demo && defaultRole === 'Admin' ? 'Admin' : 'User';
-		isActive = defaultActive.toLowerCase() !== 'false';
-		const gb = Number.parseInt(defaultQuota, 10);
-		quota = quotaToForm(Number.isFinite(gb) && gb > 0 ? gb * GIB : null);
+		if (user || current !== opening || !open) return;
+		if (role === initial.role) role = !demo && defaultRole === 'Admin' ? 'Admin' : 'User';
+		if (isActive === initial.isActive) isActive = defaultActive.toLowerCase() !== 'false';
+		if (quota.choice === initial.quota.choice && quota.customGb === initial.quota.customGb) {
+			const gb = Number.parseInt(defaultQuota, 10);
+			quota = quotaToForm(Number.isFinite(gb) && gb > 0 ? gb * GIB : null);
+		}
 	}
 
 	async function submit(event: SubmitEvent) {
