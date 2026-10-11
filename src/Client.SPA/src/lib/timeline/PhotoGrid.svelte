@@ -53,6 +53,12 @@
 		sectionSubtitle?: (key: string) => string;
 		/** The scroll offset and how far it can go, e.g. to fold a header above it. */
 		onscrolled?: (top: number, max: number) => void;
+		/**
+		 * Loads placeholder sections, so a Shift range or Select all covers the
+		 * photos of months not loaded yet. Without it (a paged list, which has
+		 * no placeholders for its unloaded pages) they cover the loaded ones.
+		 */
+		onloadsections?: (keys: string[]) => Promise<void>;
 	}
 
 	let {
@@ -70,7 +76,8 @@
 		reflowKey = '',
 		selectable = true,
 		sectionSubtitle,
-		onscrolled
+		onscrolled,
+		onloadsections
 	}: Props = $props();
 
 	const HEADER_HEIGHT = 52;
@@ -291,7 +298,7 @@
 	function onCellClick(event: MouseEvent, item: T) {
 		focusedId = item.id;
 		if (!selectable) onopen(item);
-		else if (event.shiftKey) selection.selectRange(item.id, order);
+		else if (event.shiftKey) selectRangeTo(item.id);
 		else if (event.ctrlKey || event.metaKey || selection.active) selection.toggle(item.id);
 		else onopen(item);
 	}
@@ -302,7 +309,7 @@
 		event.stopPropagation();
 		focusedId = item.id;
 		if (event.shiftKey) {
-			selection.selectRange(item.id, order);
+			selectRangeTo(item.id);
 			return;
 		}
 		// Drag painting: the first box decides whether the stroke selects or
@@ -310,6 +317,34 @@
 		painting = { selected: !selection.has(item.id) };
 		selection.toggle(item.id);
 		window.addEventListener('pointerup', () => (painting = null), { once: true });
+	}
+
+	/** The index of the section holding `id`, or -1 if it isn't loaded. */
+	function sectionIndexOf(id: string) {
+		return sections.findIndex((s) => s.items?.some((item) => item.id === id));
+	}
+
+	/** Loads the placeholder sections among these, then lets the layout catch up. */
+	async function loadSections(candidates: readonly GridSection<T>[]) {
+		const keys = candidates.filter((s) => s.items === null).map((s) => s.key);
+		if (keys.length === 0 || !onloadsections) return;
+		await onloadsections(keys);
+		await tick();
+	}
+
+	/** Shift: anchor → `target`, with the months between them loaded first. */
+	async function selectRangeTo(target: string) {
+		const anchor = selection.anchor;
+		if (anchor !== null) {
+			const [a, b] = [sectionIndexOf(anchor), sectionIndexOf(target)];
+			if (a >= 0 && b >= 0) await loadSections(sections.slice(Math.min(a, b), Math.max(a, b) + 1));
+		}
+		selection.selectRange(target, order);
+	}
+
+	async function selectAll() {
+		await loadSections(sections);
+		selection.set(order, true);
 	}
 
 	function onCellPointerEnter(item: T) {
@@ -343,10 +378,10 @@
 		if (!selectable) return;
 		if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
 			event.preventDefault();
-			selection.set(order, true);
+			await selectAll();
 		} else if (event.key === ' ' && focusedId) {
 			event.preventDefault();
-			if (event.shiftKey) selection.selectRange(focusedId, order);
+			if (event.shiftKey) await selectRangeTo(focusedId);
 			else selection.toggle(focusedId);
 		}
 	}

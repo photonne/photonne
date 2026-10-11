@@ -32,4 +32,11 @@ describe('TimelineStore', () => {
 		await store.load('2026-09');
 		expect(store.previousUnloadedBefore('b')).toBeNull();
 	});
+
+	it('loads several months for a selection that spans them', async () => {
+		const store = storeWith({ '2026-09': ['a'], '2026-08': ['b'], '2026-07': ['c', 'd'] });
+		await store.loadMany(['2026-09', '2026-08', '2026-07']);
+
+		expect(store.order).toEqual(['a', 'b', 'c', 'd']);
+	});
 });
