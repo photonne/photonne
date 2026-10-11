@@ -32,15 +32,28 @@
 	// The search can't change under a mounted view (the host keys it).
 	const search = untrack(() => ({ query, semantic }));
 
-	// Text results page in by offset, newest first, grouped by month.
-	const list = new PagedList(async (cursor) => {
-		const offset = Number(cursor ?? 0);
+	// Text results page in by offset, newest first, grouped by month. The next
+	// offset is what the grid holds: photos archived or trashed from here also
+	// left the server's results, so counting them would skip as many.
+	const list: PagedList = new PagedList(async (cursor) => {
+		const offset = cursor ? list.store.items.length : 0;
 		const { data } = await searchAssets({
 			query: textSearchRequest(search.query, offset, PAGE_SIZE)
 		});
 		if (data) more = data.hasMore;
-		return data && { ...data, nextCursor: String(offset + data.items.length) };
+		return (
+			data && {
+				...data,
+				items: unseen(data.items, cursor),
+				nextCursor: String(offset + data.items.length)
+			}
+		);
 	});
+
+	/** A next page never repeats a photo already shown (the list may shift under it). */
+	function unseen<T extends { id: string }>(items: T[], cursor: string | null) {
+		return cursor ? items.filter((item) => !list.store.byId[item.id]) : items;
+	}
 
 	// Semantic results come at once, ranked by likeness.
 	const ranked = new ListStore({ grouping: 'none', reload: () => loadSemantic() });

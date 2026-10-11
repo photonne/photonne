@@ -29,16 +29,29 @@
 	const name = $derived(displayName(person, m.people_unnamed()));
 
 	// The search endpoint with a person filter answers full timeline items
-	// (shape, favourite, Live Photo), which the photo grid needs; the offset
-	// travels as the PagedList cursor.
+	// (shape, favourite, Live Photo), which the photo grid needs. The next
+	// offset is what the grid holds: photos unlinked, archived or trashed here
+	// also left the server's list, so counting them would skip as many.
 	const personId = untrack(() => person.id);
-	const list = new PagedList(async (cursor) => {
-		const offset = cursor ? Number(cursor) : 0;
+	const list: PagedList = new PagedList(async (cursor) => {
+		const offset = cursor ? list.store.items.length : 0;
 		const { data } = await searchAssets({
 			query: { personId: [personId], pageSize: PAGE_SIZE, offset }
 		});
-		return data && { ...data, nextCursor: String(offset + data.items.length) };
+		return (
+			data && {
+				...data,
+				items: unseen(data.items, cursor),
+				nextCursor: String(offset + data.items.length)
+			}
+		);
 	});
+
+	/** A next page never repeats a photo already shown (the list may shift under it). */
+	function unseen<T extends { id: string }>(items: T[], cursor: string | null) {
+		return cursor ? items.filter((item) => !list.store.byId[item.id]) : items;
+	}
+
 	list.start();
 
 	let unlinking = $state<Selection | null>(null);
