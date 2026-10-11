@@ -5,6 +5,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarData
@@ -17,8 +23,12 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -36,7 +46,9 @@ import kotlinx.coroutines.launch
  * cualquier pantalla emite vía [LocalSnackbarController].
  *
  * `show` descarta el snackbar en curso antes de enseñar el siguiente para que
- * dos acciones seguidas no encolen mensajes viejos.
+ * dos acciones seguidas no encolen mensajes viejos. Excepción: un aviso
+ * informativo no tumba uno visible con acción (Deshacer); espera su turno,
+ * porque quitarlo consolidaba lo que el usuario aún podía deshacer.
  */
 @Stable
 class SnackbarController(
@@ -76,7 +88,11 @@ class SnackbarController(
         scope.launch {
             var acted = false
             try {
-                hostState.currentSnackbarData?.dismiss()
+                val visible = hostState.currentSnackbarData
+                if (visible != null && (onAction != null || visible.visuals.actionLabel == null)) {
+                    visible.dismiss()
+                }
+                // Si no, showSnackbar lo encola tras el que tiene Deshacer.
                 val result = hostState.showSnackbar(
                     message = message,
                     actionLabel = actionLabel.takeIf { onAction != null },
@@ -142,15 +158,34 @@ fun TopSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier)
     var shown by remember { mutableStateOf<SnackbarData?>(null) }
     if (current != null) shown = current
 
+    // The clock stops while the snackbar is pressed or (desktop) under the
+    // pointer: reaching for "Deshacer" must not race the timeout.
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    var pressed by remember { mutableStateOf(false) }
+    val paused by rememberUpdatedState(hovered || pressed)
+    // Accessibility settings (Android's "time to take action") may ask for
+    // longer timeouts, more so when there's an action to reach.
+    val accessibilityManager = LocalAccessibilityManager.current
+
     LaunchedEffect(current) {
         if (current != null) {
-            delay(
-                when (current.visuals.duration) {
-                    SnackbarDuration.Short -> 4_000L
-                    SnackbarDuration.Long -> 10_000L
-                    SnackbarDuration.Indefinite -> Long.MAX_VALUE
-                }
-            )
+            val base = when (current.visuals.duration) {
+                SnackbarDuration.Short -> 4_000L
+                SnackbarDuration.Long -> 10_000L
+                SnackbarDuration.Indefinite -> Long.MAX_VALUE
+            }
+            var remaining = accessibilityManager?.calculateRecommendedTimeoutMillis(
+                base,
+                containsIcons = false,
+                containsText = true,
+                containsControls = current.visuals.actionLabel != null
+            ) ?: base
+            while (remaining > 0) {
+                val step = minOf(remaining, TIMEOUT_TICK_MS)
+                delay(step)
+                if (!paused) remaining -= step
+            }
             current.dismiss()
         }
     }
@@ -166,8 +201,25 @@ fun TopSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier)
                 snackbarData = data,
                 modifier = Modifier
                     .padding(horizontal = Spacing.md)
+                    .hoverable(interaction)
+                    .pointerInput(Unit) {
+                        // Initial pass: watch the press without stealing it from
+                        // the action button underneath.
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            pressed = true
+                            try {
+                                waitForUpOrCancellation(PointerEventPass.Initial)
+                            } finally {
+                                pressed = false
+                            }
+                        }
+                    }
                     .semantics { liveRegion = LiveRegionMode.Polite }
             )
         }
     }
 }
+
+/** Granularity of the pausable snackbar timeout. */
+private const val TIMEOUT_TICK_MS = 100L

@@ -1,55 +1,54 @@
 package com.photonne.app.ui.main
 
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SnackbarControllerTest {
 
     @Test
-    fun trailingLambdaIsTheActionAndDoesNotRunWhenTheSnackbarExpires() = runTest {
-        val hostState = SnackbarHostState()
-        val controller = SnackbarController(
-            hostState,
-            CoroutineScope(UnconfinedTestDispatcher(testScheduler))
-        )
-        var undone = false
+    fun an_informative_message_waits_behind_a_visible_undo() = runTest(UnconfinedTestDispatcher()) {
+        val host = SnackbarHostState()
+        val controller = SnackbarController(host, backgroundScope)
+        var consolidated = false
 
-        controller.show("1 foto movida a la papelera", "Deshacer") { undone = true }
+        controller.show("Movida a la papelera", "Deshacer", onDismissed = { consolidated = true }) {}
+        controller.show("Ajustes guardados")
 
-        val data = hostState.currentSnackbarData!!
-        assertEquals("Deshacer", data.visuals.actionLabel)
-        assertEquals(SnackbarDuration.Long, data.visuals.duration)
-        data.dismiss()
-        assertFalse(undone)
+        // The undo stays up (and its deletion is not consolidated yet).
+        assertEquals("Movida a la papelera", host.currentSnackbarData?.visuals?.message)
+        assertFalse(consolidated)
+
+        host.currentSnackbarData?.dismiss()
+
+        assertEquals("Ajustes guardados", host.currentSnackbarData?.visuals?.message)
+        assertEquals(true, consolidated)
     }
 
     @Test
-    fun pressingTheActionRunsItAndSkipsOnDismissed() = runTest {
-        val hostState = SnackbarHostState()
-        val controller = SnackbarController(
-            hostState,
-            CoroutineScope(UnconfinedTestDispatcher(testScheduler))
-        )
-        var undone = false
-        var dismissed = false
+    fun a_new_message_with_action_replaces_the_visible_one() = runTest(UnconfinedTestDispatcher()) {
+        val host = SnackbarHostState()
+        val controller = SnackbarController(host, backgroundScope)
 
-        controller.show(
-            message = "Carpeta quitada",
-            actionLabel = "Deshacer",
-            onDismissed = { dismissed = true }
-        ) { undone = true }
+        controller.show("Movida a la papelera", "Deshacer") {}
+        controller.show("Archivada", "Deshacer") {}
 
-        hostState.currentSnackbarData!!.performAction()
-        assertTrue(undone)
-        assertFalse(dismissed)
+        assertEquals("Archivada", host.currentSnackbarData?.visuals?.message)
+    }
+
+    @Test
+    fun a_new_informative_message_replaces_another_informative_one() = runTest(UnconfinedTestDispatcher()) {
+        val host = SnackbarHostState()
+        val controller = SnackbarController(host, backgroundScope)
+
+        controller.show("Guardado")
+        controller.show("Copiado")
+
+        assertEquals("Copiado", host.currentSnackbarData?.visuals?.message)
     }
 }
