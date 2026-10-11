@@ -37,7 +37,9 @@
 		<div class="center">
 			<h1>{m.session_unreachable_title()}</h1>
 			<p>{m.session_unreachable_body()}</p>
-			<button type="button" onclick={() => session.restore()}>{m.session_retry()}</button>
+			<button type="button" class="btn primary" onclick={() => session.restore()}
+				>{m.session_retry()}</button
+			>
 		</div>
 	{:else}
 		{@render children()}
@@ -47,7 +49,7 @@
 
 <style>
 	.center {
-		min-height: 100vh;
+		min-height: 100dvh;
 		display: grid;
 		place-content: center;
 		justify-items: center;
@@ -65,13 +67,5 @@
 
 	.center p {
 		margin: 0;
-	}
-
-	button {
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-raised);
-		cursor: pointer;
 	}
 </style>
