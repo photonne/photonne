@@ -197,5 +197,21 @@
 	"folders_none_hint": "Las fotos que subes se guardan en carpetas. Sube algunas o crea una carpeta con el botón del árbol.",
 	"folders_load_failed": "No se ha podido cargar la carpeta.",
 	"folders_retry": "Reintentar",
-	"folders_tree_close": "Cerrar el árbol de carpetas"
+	"folders_tree_close": "Cerrar el árbol de carpetas",
+	"folders_remove_title": "¿Quitar de la carpeta?",
+	"folders_remove_message": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} foto dejará de estar en «{name}». Seguirá en tu biblioteca y en el disco, pero no se puede deshacer.",
+				"countPlural=other": "{countFormatted} fotos dejarán de estar en «{name}». Seguirán en tu biblioteca y en el disco, pero no se puede deshacer."
+			}
+		}
+	],
+	"folders_remove_confirm": "Quitar de la carpeta"
 }

@@ -197,5 +197,21 @@
 	"folders_none_hint": "The photos you upload are kept in folders. Upload some, or create a folder with the button above the tree.",
 	"folders_load_failed": "The folder couldn’t be loaded.",
 	"folders_retry": "Try again",
-	"folders_tree_close": "Close the folder tree"
+	"folders_tree_close": "Close the folder tree",
+	"folders_remove_title": "Remove from the folder?",
+	"folders_remove_message": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} photo will leave “{name}”. It stays in your library and on disk, but this can’t be undone.",
+				"countPlural=other": "{countFormatted} photos will leave “{name}”. They stay in your library and on disk, but this can’t be undone."
+			}
+		}
+	],
+	"folders_remove_confirm": "Remove from the folder"
 }
