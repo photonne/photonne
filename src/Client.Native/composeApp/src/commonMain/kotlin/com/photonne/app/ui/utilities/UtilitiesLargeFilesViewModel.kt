@@ -58,6 +58,8 @@ class UtilitiesLargeFilesViewModel(
                         })
                     }
                     is AssetMutation.DateChanged -> Unit
+                    // Mover de carpeta no cambia esta lista.
+                    is AssetMutation.Moved -> Unit
                 }
             }
         }

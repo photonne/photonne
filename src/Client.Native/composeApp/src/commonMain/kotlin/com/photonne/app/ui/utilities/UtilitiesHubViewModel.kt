@@ -42,6 +42,8 @@ class UtilitiesHubViewModel(
                     is AssetMutation.Removed,
                     is AssetMutation.Purged,
                     is AssetMutation.Restored,
+                    // El árbol de carpetas cambia de tamaños al mover.
+                    is AssetMutation.Moved,
                     AssetMutation.AllChanged -> if (loadedOnce) scheduleRefresh()
                     is AssetMutation.FavoriteChanged,
                     is AssetMutation.DateChanged -> Unit

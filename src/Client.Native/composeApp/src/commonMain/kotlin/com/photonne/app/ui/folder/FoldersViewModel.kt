@@ -142,6 +142,8 @@ class FoldersViewModel(
                     is com.photonne.app.data.events.AssetMutation.Removed,
                     is com.photonne.app.data.events.AssetMutation.Restored,
                     is com.photonne.app.data.events.AssetMutation.Purged,
+                    // Mover a carpeta: cambian los recuentos del origen y del destino.
+                    is com.photonne.app.data.events.AssetMutation.Moved,
                     com.photonne.app.data.events.AssetMutation.AllChanged ->
                         refreshQuietly()
                     is com.photonne.app.data.events.AssetMutation.FavoriteChanged,
