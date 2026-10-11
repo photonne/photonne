@@ -235,7 +235,7 @@
 		padding: 0 6px;
 		border-radius: 999px;
 		background: var(--color-badge);
-		color: #fff;
+		color: var(--color-badge-text);
 		font-size: var(--font-size-xs);
 		font-weight: 600;
 		line-height: 1.5;

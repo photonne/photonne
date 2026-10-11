@@ -367,7 +367,7 @@
 		padding: 0 5px;
 		border-radius: 9px;
 		background: var(--color-badge);
-		color: #fff;
+		color: var(--color-badge-text);
 		box-shadow: 0 0 0 2px var(--color-bg);
 		font-size: var(--font-size-2xs);
 		font-weight: 700;
