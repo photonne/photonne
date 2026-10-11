@@ -5,12 +5,14 @@
 		adminEnrichmentQueueSummaryOptions,
 		adminIndexingCoverageOptions,
 		adminIndexingCoverageQueryKey,
+		getAdminStatsQueryKey,
 		getApiAdminMaintenanceMlPendingTotalQueryKey,
 		getBackgroundTasksOptions,
 		getBackgroundTasksQueryKey,
 		getReverseGeocodePendingCountOptions,
 		getReverseGeocodePendingCountQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import { invalidateLibrary } from '#lib/api/query-client.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import '#lib/adminops/adminops.css';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -89,6 +91,10 @@
 		queryClient.invalidateQueries({ queryKey: adminIndexingCoverageQueryKey() });
 		queryClient.invalidateQueries({ queryKey: getReverseGeocodePendingCountQueryKey() });
 		queryClient.invalidateQueries({ queryKey: getApiAdminMaintenanceMlPendingTotalQueryKey() });
+		// Emptying the trash, purging, re-indexing or fixing dates changes the
+		// library itself: the Panel's totals, the trash stats and every photo view.
+		queryClient.invalidateQueries({ queryKey: getAdminStatsQueryKey() });
+		invalidateLibrary(queryClient);
 	}
 
 	let options = $state<Record<string, Options>>(
