@@ -73,6 +73,12 @@ class TimelineBucketStore(
      */
     private var generation = 0L
 
+    /**
+     * Month each asset dropped by [removeItems] lived in (insertion order,
+     * trimmed to [MAX_REMEMBERED_REMOVALS]) — see [monthsOfRemoved].
+     */
+    private val removedFrom = LinkedHashMap<String, String>()
+
     /** Monotonic recency stamps for LRU eviction. */
     private val lastTouched = mutableMapOf<String, Long>()
     private var touchCounter = 0L
@@ -130,13 +136,21 @@ class TimelineBucketStore(
      * with the visible keys both loads and protects them from eviction.
      * Unknown keys are ignored. Cancelling the caller cancels its fetches.
      */
-    suspend fun ensureLoaded(keys: List<String>) {
+    suspend fun ensureLoaded(keys: List<String>) = load(keys, force = false)
+
+    /**
+     * [ensureLoaded]'s body. With [force], loaded keys are fetched again too
+     * (their current content stays on screen until the fresh one lands);
+     * keys already in flight are still skipped — the generation bump of
+     * whoever forced the reload makes that fetch go round again.
+     */
+    private suspend fun load(keys: List<String>, force: Boolean) {
         val toFetch = mutex.withLock {
             val known = _buckets.value.associateBy { it.key }
             keys.forEach { key -> if (known.containsKey(key)) touch(key) }
             keys.filter { key ->
                 val bucket = known[key] ?: return@filter false
-                !bucket.isLoaded && key !in inFlight
+                (force || !bucket.isLoaded) && key !in inFlight
             }.also { inFlight += it }
         }
         if (toFetch.isEmpty()) return
@@ -166,28 +180,46 @@ class TimelineBucketStore(
     }
 
     /**
-     * Recarga solo [keys] (p. ej. los meses de origen y destino de una foto
-     * cuya fecha ha cambiado): trae el esqueleto de nuevo para los recuentos
-     * —el destino puede ser un mes que no existía— pero conserva el contenido
-     * cargado del resto de meses, a diferencia de [refresh].
+     * Recarga solo [keys] (los meses de origen y destino de una foto cuya
+     * fecha ha cambiado, o los de unas fotos restauradas con Deshacer): trae
+     * el esqueleto de nuevo para los recuentos —el destino puede ser un mes
+     * que no existía— pero conserva el contenido cargado del resto de meses,
+     * a diferencia de [refresh]. Los meses recargados que ya estaban cargados
+     * siguen en pantalla hasta que llega su contenido nuevo (sin parpadeo de
+     * esqueleto), y la vista por años, si estaba pedida, se vuelve a pedir
+     * con el mismo tamaño de muestra en vez de quedarse vacía.
      */
     suspend fun reloadBuckets(keys: Set<String>) {
         if (keys.isEmpty()) return
         val skeleton = fetchOffMain { api.getTimelineBuckets() }
-        mutex.withLock {
+        val yearSample = mutex.withLock {
             generation++
             val previous = _buckets.value.associateBy { it.key }
             _buckets.value = skeleton.map { entry ->
                 val prev = previous[entry.key]
-                if (prev != null && entry.key !in keys) prev
-                else TimelineBucketState(key = entry.key, count = entry.count)
+                when {
+                    prev == null -> TimelineBucketState(key = entry.key, count = entry.count)
+                    entry.key !in keys -> prev
+                    // Stale but on screen: keep it until the forced fetch lands.
+                    prev.isLoaded -> prev
+                    else -> TimelineBucketState(key = entry.key, count = entry.count)
+                }
             }
-            keys.forEach { lastTouched.remove(it) }
-            // La vista por años es una muestra de la misma biblioteca.
-            _yearSummaries.value = null
-            yearSampleSize = 0
+            // La vista por años es una muestra de la misma biblioteca: se
+            // marca para volver a pedirla, pero lo pintado se queda mientras.
+            yearSampleSize.also { yearSampleSize = 0 }
         }
-        ensureLoaded(keys.toList())
+        load(keys.toList(), force = true)
+        if (yearSample > 0) ensureYearSummaries(yearSample)
+    }
+
+    /**
+     * Months the given assets were removed from by [removeItems], or null if
+     * any of them is unknown (it was never loaded here, or the memory was
+     * trimmed). Lets a restore (Undo) reload just those months.
+     */
+    suspend fun monthsOfRemoved(assetIds: Collection<String>): Set<String>? = mutex.withLock {
+        assetIds.mapTo(HashSet()) { id -> removedFrom[id] ?: return@withLock null }
     }
 
     /**
@@ -217,12 +249,16 @@ class TimelineBucketStore(
                     val items = bucket.items ?: return@map bucket
                     val remaining = items.filterNot { it.id in ids }
                     if (remaining.size == items.size) return@map bucket
+                    val removed = items.filter { it.id in ids }
+                    removed.forEach { removedFrom[it.id] = bucket.key }
                     bucket.key.substringBefore('-').toIntOrNull()?.let { year ->
-                        items.filter { it.id in ids }
-                            .mapTo(removedPerYear.getOrPut(year) { mutableSetOf() }) { it.id }
+                        removed.mapTo(removedPerYear.getOrPut(year) { mutableSetOf() }) { it.id }
                     }
                     bucket.copy(items = remaining, count = remaining.size)
                 }
+            }
+            while (removedFrom.size > MAX_REMEMBERED_REMOVALS) {
+                removedFrom.remove(removedFrom.keys.first())
             }
             _yearSummaries.update { summaries ->
                 summaries?.map { summary ->
@@ -362,5 +398,8 @@ class TimelineBucketStore(
 
         /** Re-fetches of a response made stale by a concurrent mutation. */
         private const val MAX_STALE_RETRIES = 3
+
+        /** Removals remembered for [monthsOfRemoved] (an Undo is recent). */
+        private const val MAX_REMEMBERED_REMOVALS = 2000
     }
 }
