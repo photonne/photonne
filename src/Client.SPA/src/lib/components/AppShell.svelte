@@ -167,8 +167,14 @@
 	function submitSearch(event: SubmitEvent) {
 		event.preventDefault();
 		const query = search.trim();
-		if (query) goto(`${href('/search')}?q=${encodeURIComponent(query)}`);
+		if (!query) return;
+		// The search page takes the words over: nothing stale left here for later.
+		search = '';
+		goto(`${href('/search')}?q=${encodeURIComponent(query)}`);
 	}
+
+	// The search page has its own, fuller box: one is enough.
+	const onSearchPage = $derived(page.url.pathname === href('/search'));
 </script>
 
 <svelte:window {onkeydown} />
@@ -208,16 +214,18 @@
 			>
 		</div>
 
-		<form class="search" role="search" onsubmit={submitSearch}>
-			<Icon name="search" size={18} />
-			<input
-				type="search"
-				class="bare"
-				aria-label={m.nav_search()}
-				placeholder={m.nav_search()}
-				bind:value={search}
-			/>
-		</form>
+		{#if !onSearchPage}
+			<form class="search" role="search" onsubmit={submitSearch}>
+				<Icon name="search" size={18} />
+				<input
+					type="search"
+					class="bare"
+					aria-label={m.nav_search()}
+					placeholder={m.nav_search()}
+					bind:value={search}
+				/>
+			</form>
+		{/if}
 
 		<div class="tools">
 			<a

@@ -27,6 +27,11 @@ test('the top bar search asks the semantic search with the words in the URL', as
 	);
 	await expect(page.getByRole('switch', { name: 'Semántica' })).toBeChecked();
 	expect(state.semanticSearches).toEqual(['IMG_202608']);
+	// One search box on the search page, and the top one starts empty again.
+	const top = page.getByRole('searchbox', { name: 'Buscar', exact: true });
+	await expect(top).toBeHidden();
+	await page.getByRole('link', { name: 'Fotos' }).click();
+	await expect(top).toHaveValue('');
 });
 
 test('filters go into the URL and Back takes them off again', async ({ page }) => {
