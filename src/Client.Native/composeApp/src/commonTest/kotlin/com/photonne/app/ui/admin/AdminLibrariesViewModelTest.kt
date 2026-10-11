@@ -21,6 +21,7 @@ import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.writeStringUtf8
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -188,5 +189,55 @@ class AdminLibrariesViewModelTest {
 
         assertTrue("/api/tasks/T3/stream" in requested)
         assertFalse("/api/libraries/L3/scan/stream" in requested)
+    }
+
+    @Test
+    fun a_grant_that_lands_after_the_sheet_moved_on_is_dropped() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val vm = viewModel { request ->
+            val path = request.url.encodedPath
+            when {
+                request.method == HttpMethod.Post && path == "/api/libraries/A/permissions" -> {
+                    gate.await()
+                    json("""{"id":"p1","userId":"u1","username":"ana","email":"a@x","canRead":true}""")
+                }
+                else -> json("[]")
+            }
+        }
+        vm.openPermissions("A", emptyList())
+        vm.state.first { !it.permissionsLoading }
+
+        vm.grantPermission("u1")
+        vm.openPermissions("B", emptyList())
+        vm.state.first { !it.permissionsLoading }
+        gate.complete(Unit)
+        // Let the grant's response land: it comes back on the engine's thread.
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.delay(300) }
+
+        assertTrue(vm.state.value.permissions.isEmpty(), "library A's grant must not show under B")
+        assertNull(vm.state.value.statusMessage)
+    }
+
+    @Test
+    fun a_failed_revoke_with_the_sheet_closed_goes_to_the_snackbar() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val vm = viewModel { request ->
+            if (request.method == HttpMethod.Delete) {
+                gate.await()
+                respond("", HttpStatusCode.InternalServerError)
+            } else {
+                json("[]")
+            }
+        }
+        vm.openPermissions("A", emptyList())
+        vm.state.first { !it.permissionsLoading }
+
+        vm.revokePermission("u1")
+        vm.closePermissions()
+        gate.complete(Unit)
+        val state = vm.state.first { it.statusMessage != null }
+
+        assertNull(state.permissionsError)
+        assertNull(state.permissionsLibraryId)
     }
 }

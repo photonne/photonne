@@ -355,6 +355,7 @@ class AdminLibrariesViewModel(
             }
                 .onSuccess { perm ->
                     _state.update { current ->
+                        if (current.permissionsLibraryId != libraryId) return@update current
                         val list = current.permissions.filterNot { it.userId == perm.userId } + perm
                         current.copy(
                             permissions = list.sortedByNatural { it.username },
@@ -363,12 +364,7 @@ class AdminLibrariesViewModel(
                     }
                 }
                 .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            permissionsBusy = it.permissionsBusy - userId,
-                            permissionsError = errorFactory.from(error, getString(Res.string.admin_libraries_error_grant))
-                        )
-                    }
+                    failPermission(libraryId, userId, errorFactory.from(error, getString(Res.string.admin_libraries_error_grant)))
                 }
         }
     }
@@ -380,6 +376,7 @@ class AdminLibrariesViewModel(
             runCatching { repository.removeLibraryPermission(libraryId, userId) }
                 .onSuccess {
                     _state.update { current ->
+                        if (current.permissionsLibraryId != libraryId) return@update current
                         current.copy(
                             permissions = current.permissions.filterNot { it.userId == userId },
                             permissionsBusy = current.permissionsBusy - userId
@@ -387,13 +384,25 @@ class AdminLibrariesViewModel(
                     }
                 }
                 .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            permissionsBusy = it.permissionsBusy - userId,
-                            permissionsError = errorFactory.from(error, getString(Res.string.admin_libraries_error_revoke))
-                        )
-                    }
+                    failPermission(libraryId, userId, errorFactory.from(error, getString(Res.string.admin_libraries_error_revoke)))
                 }
+        }
+    }
+
+    /**
+     * A grant or revoke answers after the sheet may have moved on. Its result
+     * belongs to [libraryId] only: applied to whatever the sheet shows now it
+     * listed a user under the wrong library. A failure is still news, though —
+     * in the sheet when it is still that library's, otherwise in the snackbar,
+     * where it used to be dropped with the closed sheet.
+     */
+    private fun failPermission(libraryId: String, userId: String, error: UiError) {
+        _state.update {
+            if (it.permissionsLibraryId == libraryId) {
+                it.copy(permissionsBusy = it.permissionsBusy - userId, permissionsError = error)
+            } else {
+                it.copy(statusMessage = error.userMessage)
+            }
         }
     }
 
