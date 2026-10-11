@@ -3483,6 +3483,21 @@ internal fun extractServerMessage(body: String?): String? {
     return raw.takeIf { isReadableServerText(it) }
 }
 
+/**
+ * Código máquina que el servidor pone junto al mensaje (`ApiError.Code`, p. ej.
+ * `semantic_search_unavailable`), para que el cliente reaccione a un caso
+ * concreto sin depender del texto. `null` si el cuerpo no trae ninguno.
+ */
+val PhotonneApiException.serverCode: String?
+    get() = extractServerCode(responseBody)
+
+internal fun extractServerCode(body: String?): String? {
+    if (body.isNullOrBlank()) return null
+    val obj = runCatching { photonneJson.parseToJsonElement(body) as? JsonObject }.getOrNull()
+        ?: return null
+    return (obj["code"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
+}
+
 private fun isReadableServerText(text: String): Boolean {
     if (text.isBlank() || text.length > 300) return false
     if ('\n' in text) return false

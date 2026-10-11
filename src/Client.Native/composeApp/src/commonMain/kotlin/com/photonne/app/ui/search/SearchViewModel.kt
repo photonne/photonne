@@ -6,6 +6,8 @@ import com.photonne.app.ui.util.LoadedPage
 import com.photonne.app.ui.util.reloadLoadedPages
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.api.PhotonneApiException
+import com.photonne.app.data.api.serverCode
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
@@ -65,7 +67,10 @@ data class SearchUiState(
      *  (y poder quitarlo) aunque la búsqueda actual no las incluya. */
     val selectedPeopleCache: Map<String, Person> = emptyMap(),
     val selection: Set<String> = emptySet(),
-    val isBulkMutating: Boolean = false
+    val isBulkMutating: Boolean = false,
+    /** Aviso de una sola vez: la búsqueda con IA no está disponible en el
+     *  servidor y se ha pasado a texto. Lo consume [SearchViewModel.consumeSemanticUnavailable]. */
+    val semanticUnavailable: Boolean = false
 ) {
     val activeFilterCount: Int
         get() = listOf(
@@ -377,6 +382,10 @@ class SearchViewModel(
         _state.update { it.copy(error = null) }
     }
 
+    fun consumeSemanticUnavailable() {
+        _state.update { it.copy(semanticUnavailable = false) }
+    }
+
     fun loadMore() {
         val snapshot = _state.value
         if (snapshot.isLoading || snapshot.isAppending || !snapshot.hasMore ||
@@ -524,7 +533,7 @@ class SearchViewModel(
         _state.update { it.copy(isLoading = true, isAppending = false, error = null) }
         // A search cancelled by a newer one must not report an error nor wipe
         // the results the newer one is about to bring.
-        suspendRunCatching {
+        val result = suspendRunCatching {
             when (snapshot.mode) {
                 SearchMode.Text -> reloadLoadedPages<TimelineItem, Int>(
                     keepLoaded,
@@ -560,6 +569,26 @@ class SearchViewModel(
                 }
             }
         }
+        if (snapshot.mode == SearchMode.Semantic &&
+            isSemanticSearchUnavailable(result.exceptionOrNull())
+        ) {
+            // Server without the AI models: a generic error left the screen in
+            // AI mode with the filters locked. Fall back to text with the same
+            // criteria and say why.
+            _state.update {
+                it.copy(
+                    mode = SearchMode.Text,
+                    semanticUnavailable = true,
+                    results = emptyList(),
+                    hasMore = false,
+                    semanticCapped = false,
+                    selection = emptySet()
+                )
+            }
+            runSearch()
+            return
+        }
+        result
             .onSuccess { (items, hasMore) ->
                 _state.update {
                     it.copy(
@@ -607,6 +636,12 @@ class SearchViewModel(
     }
 
     companion object {
+        /** `ApiError.Code` del 503 de `/assets/search/semantic` sin modelos de IA. */
+        private const val SEMANTIC_UNAVAILABLE_CODE = "semantic_search_unavailable"
+
+        internal fun isSemanticSearchUnavailable(error: Throwable?): Boolean =
+            (error as? PhotonneApiException)?.serverCode == SEMANTIC_UNAVAILABLE_CODE
+
         private const val DEBOUNCE_MILLIS = 350L
         /** Tope de `/assets/search/semantic` (SemanticSearchEndpoint). */
         const val SEMANTIC_LIMIT = 200
