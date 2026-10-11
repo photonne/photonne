@@ -575,5 +575,7 @@
 	"admin_users_demo_locked": "Admin accounts can’t be changed in the demo",
 	"admin_user_demo_role": "In the demo you can only create and edit accounts with the user role.",
 	"admin_libs_demo": "Read-only in the demo: libraries can’t be created, edited, deleted or scanned, and who sees them can’t change.",
-	"admin_backup_demo": "Read-only in the demo: backups can’t be exported or restored."
+	"admin_backup_demo": "Read-only in the demo: backups can’t be exported or restored.",
+	"admin_strash_summary_more": "More than {n} items · {size} in what’s loaded",
+	"admin_strash_partial_hint": "Counts only what’s loaded so far; scrolling down loads more."
 }
