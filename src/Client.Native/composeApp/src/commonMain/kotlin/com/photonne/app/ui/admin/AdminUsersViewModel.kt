@@ -35,7 +35,37 @@ data class AdminUsersUiState(
     val error: UiError? = null,
     val statusMessage: String? = null,
     val isCurrentUserPrimaryAdmin: Boolean = false,
+    /** What the server will give a new account for every field the admin
+     *  leaves alone (Ajustes › Usuarios). Null until read, or if it can't be. */
+    val newUserDefaults: NewUserDefaults? = null,
 )
+
+/** The server's defaults for a new account, as the create form shows them. */
+data class NewUserDefaults(
+    val isAdmin: Boolean,
+    val isActive: Boolean,
+    /** Blank for no quota, as the form's field means it. */
+    val quotaMb: String,
+)
+
+internal val NewUserDefaultKeys = listOf(
+    "UserSettings.DefaultRole",
+    "UserSettings.DefaultIsActive",
+    "UserSettings.DefaultStorageQuotaGb",
+)
+
+/** Reads the settings the server's CreateUser falls back on, with the same
+ *  fallbacks it uses when one is unset (User, active, no quota). */
+internal fun newUserDefaultsFrom(settings: Map<String, String>): NewUserDefaults {
+    val role = settings["UserSettings.DefaultRole"].orEmpty().ifBlank { "User" }
+    val active = settings["UserSettings.DefaultIsActive"].orEmpty().ifBlank { "true" }
+    val quotaGb = settings["UserSettings.DefaultStorageQuotaGb"]?.trim()?.toLongOrNull()?.takeIf { it > 0 }
+    return NewUserDefaults(
+        isAdmin = role.equals("Admin", ignoreCase = true),
+        isActive = active.equals("true", ignoreCase = true),
+        quotaMb = quotaGb?.let { (it * 1024L).toString() }.orEmpty(),
+    )
+}
 
 class AdminUsersViewModel(
     private val repository: AdminRepository,
@@ -98,6 +128,23 @@ class AdminUsersViewModel(
         }
     }
 
+    /**
+     * For the create form: the defaults the server applies to the fields the
+     * admin doesn't set. The form used to start from its own (User, active, no
+     * quota) and send them as explicit values, so the defaults configured in
+     * Ajustes never applied to an account created from the app.
+     */
+    fun loadNewUserDefaults() {
+        viewModelScope.launch {
+            runCatching { repository.getSettings(NewUserDefaultKeys) }
+                .onSuccess { settings ->
+                    _state.update { it.copy(newUserDefaults = newUserDefaultsFrom(settings)) }
+                }
+            // On failure the form keeps its own starting values; the untouched
+            // ones still go out as "not set", so the server's defaults apply.
+        }
+    }
+
     /** The result was shown (snackbar): don't replay it on the next screen. */
     fun consumeStatus() {
         _state.update { it.copy(statusMessage = null) }
@@ -113,8 +160,9 @@ class AdminUsersViewModel(
         password: String,
         firstName: String?,
         lastName: String?,
-        role: String,
-        isActive: Boolean,
+        // Null: not set by the admin, so the server applies its default.
+        role: String?,
+        isActive: Boolean?,
         storageQuotaBytes: Long?,
         onDone: () -> Unit
     ) {
