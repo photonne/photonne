@@ -4,6 +4,7 @@ package com.photonne.app
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -87,6 +88,7 @@ import com.photonne.app.ui.main.subscreenChromeReservedTop
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
+import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.timeline.TimelineViewModel
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -1708,15 +1710,34 @@ private fun GlobalOverlays(host: AuthenticatedDialogsHost) {
         // Píldora de operación masiva (descarga/ZIP/compartir/enlace) con Cancelar,
         // por encima de la nav flotante. Antes el único indicio era la barra de
         // selección atenuada, sin forma de abortar.
-        if (actionsState.working != AssetActionWorking.Idle) {
+        // Encima, la de subidas manuales en curso fuera de Subir: la cola sigue
+        // al salir de la pantalla y nada lo decía.
+        val showUploadPill = uploadState.pendingCount > 0 &&
+            appState.moreSubscreen != MoreSubscreen.Upload &&
+            appState.assetDetail == null
+        if (actionsState.working != AssetActionWorking.Idle || showUploadPill) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                com.photonne.app.ui.actions.WorkingPill(
-                    working = actionsState.working,
-                    onCancel = actionsViewModel::cancelWorking,
+                Column(
                     modifier = Modifier.padding(
                         bottom = com.photonne.app.ui.main.floatingNavBarReservedHeight() + 16.dp
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    if (showUploadPill) {
+                        com.photonne.app.ui.upload.UploadProgressPill(
+                            pendingCount = uploadState.pendingCount,
+                            onClick = {
+                                appState.selectedTab = MainTab.More
+                                appState.moreSubscreen = MoreSubscreen.Upload
+                            }
+                        )
+                    }
+                    com.photonne.app.ui.actions.WorkingPill(
+                        working = actionsState.working,
+                        onCancel = actionsViewModel::cancelWorking
                     )
-                )
+                }
             }
         }
     }

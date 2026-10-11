@@ -618,13 +618,10 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
             )
             MoreSubscreen.Upload -> com.photonne.app.ui.upload.UploadScreen(
                 state = uploadState,
-                onPicked = { files ->
-                    uploadViewModel.enqueue(files) { timelineViewModel.refresh() }
-                },
+                // Al vaciarse la cola, el ViewModel avisa por el AssetMutationBus.
+                onPicked = uploadViewModel::enqueue,
                 onPickerError = uploadViewModel::pickerErrorRaised,
-                onRetry = { id ->
-                    uploadViewModel.retry(id) { timelineViewModel.refresh() }
-                },
+                onRetry = uploadViewModel::retry,
                 onRemove = uploadViewModel::remove,
                 onCancelAll = uploadViewModel::cancelAll,
                 onClearFinished = uploadViewModel::clearFinished,

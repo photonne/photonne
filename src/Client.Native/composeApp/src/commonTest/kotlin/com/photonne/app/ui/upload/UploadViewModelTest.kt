@@ -7,6 +7,8 @@ import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.upload.UploadRepository
 import com.photonne.app.data.version.AppVersionStore
 import com.russhwolf.settings.MapSettings
@@ -20,7 +22,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -34,7 +38,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 private class UploadStubTokenStorage : TokenStorage {
     override fun getAccessToken(): String? = "token"
@@ -53,6 +56,8 @@ class UploadViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
+    private val bus = AssetMutationBus()
+
     private fun viewModel(
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
     ): UploadViewModel {
@@ -66,7 +71,8 @@ class UploadViewModelTest {
         return UploadViewModel(
             UploadRepository(api),
             AlbumsRepository(api),
-            UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api))
+            UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api)),
+            bus
         )
     }
 
@@ -127,13 +133,8 @@ class UploadViewModelTest {
 
     @Test
     fun removing_the_upload_in_flight_aborts_it_and_moves_on() = runTest {
-        val firstGate = CompletableDeferred<Unit>()
-        var calls = 0
-        val vm = viewModel {
-            calls++
-            if (calls == 1) firstGate.await()
-            uploaded("a-$calls")
-        }
+        val neverAnswers = CompletableDeferred<Unit>()
+        val vm = viewModel { neverAnswers.await(); uploaded("a-1") }
 
         vm.enqueue(listOf(picked("one.jpg"), picked("two.jpg")))
         val first = vm.state.value.items.first()
@@ -141,15 +142,32 @@ class UploadViewModelTest {
 
         vm.remove(first.id)
 
-        // The mock engine answers on its own threads: wait in real time, off
-        // the test's virtual clock, for the second upload to land.
+        // The first request never answers: the queue only gets to the second
+        // one because removing the first aborted it. Waited in real time, off
+        // the test's virtual clock, since the mock engine runs on its own threads.
         val state = withContext(Dispatchers.Default) {
             withTimeout(5_000) {
-                vm.state.first { st -> st.items.singleOrNull()?.status == UploadStatus.Done }
+                vm.state.first { st -> st.items.singleOrNull()?.status == UploadStatus.Uploading }
             }
         }
         assertEquals(listOf("two.jpg"), state.items.map { it.name })
-        assertEquals(UploadStatus.Done, state.items.single().status)
-        assertTrue(firstGate.isActive, "the first request never got its response")
+        vm.cancelAll()
+    }
+
+    @Test
+    fun a_drained_batch_reports_its_count_and_tells_the_app() = runTest {
+        val vm = viewModel { uploaded("a-1") }
+        // Subscribed before enqueueing: neither flow replays.
+        val landed = async(start = CoroutineStart.UNDISPATCHED) { vm.batchLanded.first() }
+        val mutation = async(start = CoroutineStart.UNDISPATCHED) { bus.events.first() }
+
+        vm.enqueue(listOf(picked("one.jpg")))
+
+        withContext(Dispatchers.Default) {
+            withTimeout(5_000) {
+                assertEquals(1, landed.await())
+                assertEquals(AssetMutation.AllChanged, mutation.await())
+            }
+        }
     }
 }
