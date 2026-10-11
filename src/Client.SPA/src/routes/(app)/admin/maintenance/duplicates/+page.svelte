@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { deletePhysicalDuplicates, detectDuplicatesStream } from '#lib/api/index.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import '#lib/adminops/adminops.css';
@@ -48,6 +49,24 @@
 
 	// The scan is tied to this connection: leaving the page stops it.
 	$effect(() => () => controller?.abort());
+
+	// Leaving stops the scan and forgets the files picked for deletion: ask first.
+	let leaving = $state<URL | null>(null);
+	let allowLeave = false;
+	beforeNavigate((navigation) => {
+		if (allowLeave || (!running && pendingDelete.length === 0)) return;
+		navigation.cancel();
+		// Closing the tab: the browser asks on its own once cancelled.
+		if (!navigation.willUnload && navigation.to) leaving = navigation.to.url;
+	});
+
+	function leave() {
+		const target = leaving;
+		leaving = null;
+		if (!target) return;
+		allowLeave = true;
+		goto(target.pathname + target.search + target.hash);
+	}
 
 	function requestStart() {
 		if (mode === 'cleanup') confirmCleanup = true;
@@ -334,6 +353,18 @@
 	busy={deleting}
 	onconfirm={remove}
 	onclose={() => (confirmDelete = false)}
+/>
+
+<ConfirmDialog
+	open={leaving !== null}
+	title={m.ops_dup_leave_title()}
+	message={running
+		? m.ops_dup_leave_running()
+		: m.ops_dup_leave_selected({ count: pendingDelete.length })}
+	confirmLabel={m.ops_dup_leave()}
+	danger
+	onconfirm={leave}
+	onclose={() => (leaving = null)}
 />
 
 <style>

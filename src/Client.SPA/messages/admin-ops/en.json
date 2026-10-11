@@ -854,5 +854,22 @@
 	"ops_param_file_date": "File date",
 	"ops_param_write_file": "Writes to files",
 	"ops_param_regenerate": "Regenerate all",
-	"ops_param_overwrite": "Reread all"
+	"ops_param_overwrite": "Reread all",
+	"ops_dup_leave_title": "Leave Duplicates?",
+	"ops_dup_leave_running": "The scan is running and will stop if you leave the page.",
+	"ops_dup_leave_selected": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "You have {countFormatted} file marked for deletion. If you leave, the selection is lost.",
+				"countPlural=other": "You have {countFormatted} files marked for deletion. If you leave, the selection is lost."
+			}
+		}
+	],
+	"ops_dup_leave": "Leave"
 }
