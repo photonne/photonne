@@ -19,8 +19,12 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -30,6 +34,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 private class UploadStubTokenStorage : TokenStorage {
     override fun getAccessToken(): String? = "token"
@@ -102,5 +107,49 @@ class UploadViewModelTest {
             "1 archivo(s) no se han podido leer y se han omitido.",
             UploadViewModel.skippedFilesMessage(0, 1)
         )
+    }
+
+    @Test
+    fun cancel_all_marks_the_upload_cancelled_not_failed() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val vm = viewModel { gate.await(); uploaded("a-1") }
+
+        vm.enqueue(listOf(picked("one.jpg"), picked("two.jpg")))
+        assertEquals(UploadStatus.Uploading, vm.state.value.items.first().status)
+
+        vm.cancelAll()
+
+        val state = vm.state.value
+        assertEquals(listOf(UploadStatus.Cancelled, UploadStatus.Cancelled), state.items.map { it.status })
+        assertNull(state.lastBatch)
+        assertEquals(false, state.isUploading)
+    }
+
+    @Test
+    fun removing_the_upload_in_flight_aborts_it_and_moves_on() = runTest {
+        val firstGate = CompletableDeferred<Unit>()
+        var calls = 0
+        val vm = viewModel {
+            calls++
+            if (calls == 1) firstGate.await()
+            uploaded("a-$calls")
+        }
+
+        vm.enqueue(listOf(picked("one.jpg"), picked("two.jpg")))
+        val first = vm.state.value.items.first()
+        assertEquals(UploadStatus.Uploading, first.status)
+
+        vm.remove(first.id)
+
+        // The mock engine answers on its own threads: wait in real time, off
+        // the test's virtual clock, for the second upload to land.
+        val state = withContext(Dispatchers.Default) {
+            withTimeout(5_000) {
+                vm.state.first { st -> st.items.singleOrNull()?.status == UploadStatus.Done }
+            }
+        }
+        assertEquals(listOf("two.jpg"), state.items.map { it.name })
+        assertEquals(UploadStatus.Done, state.items.single().status)
+        assertTrue(firstGate.isActive, "the first request never got its response")
     }
 }

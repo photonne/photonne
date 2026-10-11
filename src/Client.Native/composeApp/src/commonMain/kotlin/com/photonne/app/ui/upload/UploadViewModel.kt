@@ -11,6 +11,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,6 +73,9 @@ class UploadViewModel(
     private var nextId = 0L
     private var worker: Job? = null
 
+    /** The item being uploaded and its request, so [remove] can abort just that one. */
+    private var inFlight: Pair<Long, Job>? = null
+
     /**
      * [onQueueDrained] corre UNA vez cuando la cola se vacía y algo nuevo ha
      * entrado en el servidor (lote L12): antes el timeline se recargaba
@@ -128,20 +132,12 @@ class UploadViewModel(
     }
 
     fun remove(id: Long) {
+        // Quitar el que se está subiendo aborta su petición (antes seguía
+        // subiendo en segundo plano y acababa en el servidor igualmente); el
+        // trabajador sigue con el siguiente.
+        inFlight?.takeIf { it.first == id }?.second?.cancel()
         _state.update { previous ->
-            // Don't yank an item out from under the worker; mark it
-            // cancelled instead so the in-flight request gets a
-            // chance to settle before we drop it from the list.
-            val items = previous.items.toMutableList()
-            val index = items.indexOfFirst { it.id == id }
-            if (index < 0) return@update previous
-            val item = items[index]
-            if (item.status == UploadStatus.Uploading) {
-                items[index] = item.copy(status = UploadStatus.Cancelled, bytes = null, motionClip = null)
-            } else {
-                items.removeAt(index)
-            }
-            previous.copy(items = items)
+            previous.copy(items = previous.items.filterNot { it.id == id })
         }
     }
 
@@ -214,7 +210,20 @@ class UploadViewModel(
                 while (isActive) {
                     val pick = _state.value.items.firstOrNull { it.status == UploadStatus.Queued }
                         ?: break
-                    if (runOne(pick.id)) {
+                    val upload = async { runOne(pick.id) }
+                    inFlight = pick.id to upload
+                    val landed = try {
+                        upload.await()
+                    } catch (ex: CancellationException) {
+                        // "Cancelar todo" cancela el trabajador entero: se corta
+                        // aquí, sin resumen. Quitar un solo elemento cancela solo
+                        // su petición: se sigue con la cola.
+                        if (!isActive) throw ex
+                        false
+                    } finally {
+                        inFlight = null
+                    }
+                    if (landed) {
                         uploadedAny = true
                         landedIds += pick.id
                     }
@@ -262,13 +271,21 @@ class UploadViewModel(
                 }
             )
         }
-        val outcome = runCatching {
-            repository.upload(
-                current.name,
-                current.mimeType,
-                bytes,
-                fileModifiedAtMillis = current.lastModifiedMillis
+        val outcome = try {
+            Result.success(
+                repository.upload(
+                    current.name,
+                    current.mimeType,
+                    bytes,
+                    fileModifiedAtMillis = current.lastModifiedMillis
+                )
             )
+        } catch (ex: CancellationException) {
+            // Cancelled (remove / "Cancelar todo"), not failed: whoever cancelled
+            // already set the item's state; marking it Failed here was wrong.
+            throw ex
+        } catch (ex: Throwable) {
+            Result.failure(ex)
         }
         outcome.onSuccess { response ->
             val alreadyExisted = response.message.contains("already exists", ignoreCase = true)
