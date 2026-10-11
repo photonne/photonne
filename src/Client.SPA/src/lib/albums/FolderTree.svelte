@@ -59,10 +59,16 @@
 	let list = $state<HTMLUListElement>();
 	let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 
-	// Opening a folder (from a card, a link…) reveals it in the tree.
+	// Opening a folder (from a card, a link…) reveals it in the tree, once: a
+	// refetch of the tree mustn't reopen the branches the user closed since.
+	let revealed: string | null = null;
 	$effect(() => {
-		if (!currentId) return;
-		for (const ancestor of pathTo(nodes, currentId).slice(0, -1)) expanded.add(ancestor.id);
+		if (!currentId || currentId === revealed) return;
+		const path = pathTo(nodes, currentId);
+		// Not in the tree (yet): try again when it loads.
+		if (path.length === 0) return;
+		revealed = currentId;
+		for (const ancestor of path.slice(0, -1)) expanded.add(ancestor.id);
 		focusId = currentId;
 	});
 
