@@ -176,6 +176,50 @@ class BucketTimelineEntriesTest {
     }
 
     @Test
+    fun run_follower_prepends_the_newer_month_once_it_loads() {
+        val mar = item("mar-1", "2026-03-05T10:00:00Z")
+        val feb1 = item("feb-1", "2026-02-20T10:00:00Z")
+        val feb2 = item("feb-2", "2026-02-10T10:00:00Z")
+        val before = buildBucketEntries(
+            buckets = listOf(skeleton("2026-03", 1), loaded("2026-02", feb1, feb2)),
+            localItems = emptyList(),
+            grouping = TimelineGrouping.Month
+        )
+        val follower = TimelineRunFollower(listOf(feb1, feb2))
+
+        // March isn't loaded yet: nothing to prepend, but it's the one to ask for.
+        assertTrue(follower.followBefore(before).isEmpty())
+        assertEquals("2026-03", follower.previousBucketKey)
+
+        val after = buildBucketEntries(
+            buckets = listOf(loaded("2026-03", mar), loaded("2026-02", feb1, feb2)),
+            localItems = emptyList(),
+            grouping = TimelineGrouping.Month
+        )
+        assertEquals(listOf("mar-1"), follower.followBefore(after).map { it.id })
+        // Newest month reached: nothing more before it.
+        assertNull(follower.previousBucketKey)
+        // The forward side is untouched.
+        assertTrue(follower.follow(after).isEmpty())
+    }
+
+    @Test
+    fun run_continuation_before_skips_what_was_already_opened() {
+        val mar = item("mar-1", "2026-03-05T10:00:00Z")
+        val feb = item("feb-1", "2026-02-20T10:00:00Z")
+        val result = buildBucketEntries(
+            buckets = listOf(loaded("2026-03", mar), loaded("2026-02", feb)),
+            localItems = emptyList(),
+            grouping = TimelineGrouping.Month
+        )
+
+        val continuation = runContinuationBefore(listOf(mar, feb), result)
+
+        assertTrue(continuation.items.isEmpty())
+        assertNull(continuation.nextBucketKey)
+    }
+
+    @Test
     fun contiguous_run_is_bounded_by_unloaded_buckets() {
         val result = buildBucketEntries(
             buckets = listOf(

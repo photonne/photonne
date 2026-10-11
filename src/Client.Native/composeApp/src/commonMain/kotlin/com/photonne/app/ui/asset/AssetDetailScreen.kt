@@ -262,6 +262,9 @@ fun AssetDetailScreen(
     hasMore: Boolean,
     onLoadMore: () -> Unit,
     onBack: () -> Unit,
+    /** Hay elementos ANTES del primero (meses más recientes del timeline). */
+    hasPrevious: Boolean = false,
+    onLoadPrevious: () -> Unit = {},
     onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit,
     onAddToAlbum: (TimelineItem) -> Unit = {},
     onAssetTrashed: (assetId: String) -> Unit = {},
@@ -328,6 +331,11 @@ fun AssetDetailScreen(
 
     val pagerState = rememberPagerState(initialPage = startIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) {
         items.size
+    }
+
+    val pageKey: ((Int) -> Any)? = remember(items) {
+        val unique = items.mapTo(HashSet(items.size)) { it.id }.size == items.size
+        if (unique) { page -> items[page].id } else null
     }
 
     var currentScale by remember { mutableStateOf(1f) }
@@ -428,6 +436,8 @@ fun AssetDetailScreen(
     // viva que carga páginas o meses): el efecto lee siempre el valor actual.
     val currentHasMore by androidx.compose.runtime.rememberUpdatedState(hasMore)
     val currentOnLoadMore by androidx.compose.runtime.rememberUpdatedState(onLoadMore)
+    val currentHasPrevious by androidx.compose.runtime.rememberUpdatedState(hasPrevious)
+    val currentOnLoadPrevious by androidx.compose.runtime.rememberUpdatedState(onLoadPrevious)
     LaunchedEffect(pagerState, items) {
         snapshotFlow { pagerState.currentPage }
             .distinctUntilChanged()
@@ -447,6 +457,9 @@ fun AssetDetailScreen(
                 )
                 if (currentHasMore && index >= items.size - PAGER_PREFETCH_THRESHOLD) {
                     currentOnLoadMore()
+                }
+                if (currentHasPrevious && index < PAGER_PREFETCH_THRESHOLD) {
+                    currentOnLoadPrevious()
                 }
             }
     }
@@ -684,6 +697,11 @@ fun AssetDetailScreen(
             // and the close gesture live per page.
             HorizontalPager(
                 state = pagerState,
+                // Pages keyed by asset id: when the timeline prepends a newer
+                // month, the pager keeps the current photo (its index shifts)
+                // instead of showing whatever now sits at the old index. Only
+                // with unique ids — a duplicate key would crash the layout.
+                key = pageKey,
                 // Paging stays enabled in info mode (the whole page slides);
                 // only disabled while zoomed.
                 userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
@@ -1184,13 +1202,17 @@ enum class AssetViewerMode { Default, Archive, Trash }
  * Fuente viva del visor: la lista de origen sigue creciendo (páginas, meses del
  * timeline) después de abrirlo. [items] y [hasMore] leen estado de Compose, así
  * que quien los invoque en composición se recompone al llegar datos nuevos; el
- * anfitrión solo AÑADE al final lo que no estaba, para que el índice actual no
- * se mueva.
+ * anfitrión AÑADE al final lo que no estaba. [prepended] (solo el timeline, al
+ * ir hacia meses más recientes) se antepone: el pager sigue la página por id,
+ * así que la foto actual no se mueve aunque cambie su índice.
  */
 class AssetViewerFeed(
     val items: () -> List<com.photonne.app.data.models.TimelineItem>,
     val hasMore: () -> Boolean,
-    val loadMore: () -> Unit
+    val loadMore: () -> Unit,
+    val prepended: () -> List<com.photonne.app.data.models.TimelineItem> = { emptyList() },
+    val hasPrevious: () -> Boolean = { false },
+    val loadPrevious: () -> Unit = {}
 )
 
 /**
