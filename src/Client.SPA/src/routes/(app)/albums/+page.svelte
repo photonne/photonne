@@ -36,6 +36,7 @@
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
+	import type { Snapshot } from './$types';
 
 	const STORAGE_KEY = 'photonne.albums.list';
 
@@ -45,6 +46,15 @@
 	const folders = createQuery(() => getAllFoldersOptions());
 
 	let options = $state(parseListOptions(readSaved()));
+
+	// Back from an album lands on the same search and scope.
+	export const snapshot: Snapshot<{ query: string; scope: AlbumScope }> = {
+		capture: () => ({ query: options.query, scope: options.scope }),
+		restore: (value) => {
+			options.query = value.query ?? '';
+			options.scope = parseListOptions(JSON.stringify({ scope: value.scope })).scope;
+		}
+	};
 	let creating = $state<'manual' | 'smart' | null>(null);
 
 	function readSaved() {

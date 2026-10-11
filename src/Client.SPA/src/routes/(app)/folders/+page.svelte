@@ -12,6 +12,7 @@
 		arrangeFolders,
 		folderScopeCounts,
 		folderSelectionActions,
+		isFolderScope,
 		parseFolderListOptions,
 		topmostFolders,
 		type FolderScope,
@@ -37,6 +38,7 @@
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
+	import type { Snapshot } from './$types';
 
 	const STORAGE_KEY = 'photonne.folders.list';
 
@@ -50,6 +52,15 @@
 
 	let options = $state(parseFolderListOptions(readSaved()));
 
+	// Back from a folder lands on the same search and scope.
+	export const snapshot: Snapshot<{ query: string; scope: FolderScope }> = {
+		capture: () => ({ query: options.query, scope: options.scope }),
+		restore: (value) => {
+			options.query = value.query ?? '';
+			if (isFolderScope(value.scope)) options.scope = value.scope;
+		}
+	};
+
 	function readSaved() {
 		try {
 			return localStorage.getItem(STORAGE_KEY);
@@ -58,10 +69,11 @@
 		}
 	}
 
+	// Remember how the list was arranged (not the search text).
 	$effect(() => {
-		const { sort, descending, view } = options;
+		const { scope, sort, descending, view } = options;
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({ sort, descending, view }));
+			localStorage.setItem(STORAGE_KEY, JSON.stringify({ scope, sort, descending, view }));
 		} catch {
 			// Storage may be unavailable (private mode); the defaults are fine.
 		}

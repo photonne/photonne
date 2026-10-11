@@ -116,10 +116,19 @@ describe('arrangeFolders', () => {
 });
 
 describe('parseFolderListOptions', () => {
-	it('keeps sort, direction and view, never the scope', () => {
+	it('keeps scope, sort, direction and view, never the search', () => {
 		expect(
-			parseFolderListOptions('{"sort":"count","descending":true,"view":"list","scope":"shared"}')
-		).toEqual({ ...defaultFolderListOptions, sort: 'count', descending: true, view: 'list' });
+			parseFolderListOptions(
+				'{"sort":"count","descending":true,"view":"list","scope":"shared","query":"x"}'
+			)
+		).toEqual({
+			...defaultFolderListOptions,
+			scope: 'shared',
+			sort: 'count',
+			descending: true,
+			view: 'list'
+		});
+		expect(parseFolderListOptions('{"scope":"elsewhere"}').scope).toBe('all');
 		expect(parseFolderListOptions('nope')).toEqual(defaultFolderListOptions);
 	});
 });
