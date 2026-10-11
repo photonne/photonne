@@ -16,9 +16,21 @@
 		 * Gets the zoom scale, to keep strokes the same width on screen.
 		 */
 		overlay?: Snippet<[number]>;
+		/** A horizontal swipe at the fitted size: 1 for the next photo, -1 for the previous. */
+		onswipe?: (direction: 1 | -1) => void;
+		/** A swipe down at the fitted size. */
+		ondismiss?: () => void;
 	}
 
-	let { previewSrc, fullSrc, alt, zoom = $bindable(IDENTITY), overlay }: Props = $props();
+	let {
+		previewSrc,
+		fullSrc,
+		alt,
+		zoom = $bindable(IDENTITY),
+		overlay,
+		onswipe,
+		ondismiss
+	}: Props = $props();
 
 	let stageWidth = $state(0);
 	let stageHeight = $state(0);
@@ -49,7 +61,7 @@
 		natural = { width: image.naturalWidth, height: image.naturalHeight };
 	}
 
-	function focusPoint(event: MouseEvent) {
+	function focusPoint(event: { clientX: number; clientY: number }) {
 		const box = stage!.getBoundingClientRect();
 		return {
 			x: event.clientX - box.left - box.width / 2,
@@ -91,23 +103,98 @@
 
 	let drag = $state<{ x: number; y: number; startX: number; startY: number } | null>(null);
 
+	// Touch gestures: two fingers pinch to zoom; one finger at the fitted size
+	// swipes sideways to the neighbours or down to close, the photo following
+	// the finger until it lifts.
+	const SWIPE_DISTANCE = 60;
+	const DISMISS_DISTANCE = 100;
+	// Bookkeeping for the handlers, never drawn: no need for it to be reactive.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
+	const pointers = new Map<number, { x: number; y: number }>();
+	let pinch = $state<{ distance: number } | null>(null);
+	let swipe = $state<{ startX: number; startY: number; dx: number; dy: number } | null>(null);
+	/** How far the photo follows a swipe: sideways, or down only. */
+	const swipeShift = $derived.by(() => {
+		if (!swipe) return { x: 0, y: 0 };
+		return Math.abs(swipe.dx) >= swipe.dy ? { x: swipe.dx, y: 0 } : { x: 0, y: swipe.dy };
+	});
+
+	function spread() {
+		const [a, b] = [...pointers.values()];
+		return {
+			distance: Math.hypot(a.x - b.x, a.y - b.y),
+			center: { clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }
+		};
+	}
+
 	function onpointerdown(event: PointerEvent) {
-		if (zoom.scale === 1 || event.button !== 0) return;
+		if (event.pointerType === 'mouse' && event.button !== 0) return;
+		pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 		stage!.setPointerCapture(event.pointerId);
-		drag = { x: zoom.x, y: zoom.y, startX: event.clientX, startY: event.clientY };
+		if (pointers.size === 2) {
+			// A second finger: whatever the first was doing becomes a pinch.
+			drag = null;
+			swipe = null;
+			pinch = { distance: spread().distance };
+			return;
+		}
+		if (pointers.size > 2) return;
+		if (zoom.scale > 1) {
+			drag = { x: zoom.x, y: zoom.y, startX: event.clientX, startY: event.clientY };
+		} else if (event.pointerType !== 'mouse' && (onswipe || ondismiss)) {
+			swipe = { startX: event.clientX, startY: event.clientY, dx: 0, dy: 0 };
+		}
 	}
 
 	function onpointermove(event: PointerEvent) {
-		if (!drag) return;
-		zoom = clampPan(
-			{ ...zoom, x: drag.x + event.clientX - drag.startX, y: drag.y + event.clientY - drag.startY },
-			fitted,
-			stageSize
-		);
+		if (!pointers.has(event.pointerId)) return;
+		pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+		if (pinch && pointers.size === 2) {
+			const { distance, center } = spread();
+			zoom = zoomAt(
+				zoom,
+				(zoom.scale * distance) / pinch.distance,
+				focusPoint(center),
+				fitted,
+				stageSize
+			);
+			pinch = { distance };
+		} else if (drag) {
+			zoom = clampPan(
+				{
+					...zoom,
+					x: drag.x + event.clientX - drag.startX,
+					y: drag.y + event.clientY - drag.startY
+				},
+				fitted,
+				stageSize
+			);
+		} else if (swipe) {
+			swipe = {
+				...swipe,
+				dx: event.clientX - swipe.startX,
+				dy: Math.max(0, event.clientY - swipe.startY)
+			};
+		}
 	}
 
-	function onpointerup() {
+	function onpointerup(event: PointerEvent) {
+		pointers.delete(event.pointerId);
+		if (pinch) {
+			if (pointers.size < 2) pinch = null;
+			// The finger left on the glass carries on panning from here.
+			const [rest] = [...pointers.values()];
+			drag =
+				rest && zoom.scale > 1 ? { x: zoom.x, y: zoom.y, startX: rest.x, startY: rest.y } : null;
+			return;
+		}
 		drag = null;
+		const done = swipe;
+		swipe = null;
+		if (!done || event.type === 'pointercancel') return;
+		const { dx, dy } = done;
+		if (Math.abs(dx) >= SWIPE_DISTANCE && Math.abs(dx) > dy) onswipe?.(dx < 0 ? 1 : -1);
+		else if (dy >= DISMISS_DISTANCE && dy > Math.abs(dx)) ondismiss?.();
 	}
 </script>
 
@@ -115,7 +202,7 @@
 <div
 	class="stage"
 	class:zoomed={zoom.scale > 1}
-	class:dragging={drag !== null}
+	class:dragging={drag !== null || swipe !== null || pinch !== null}
 	bind:this={stage}
 	bind:clientWidth={stageWidth}
 	bind:clientHeight={stageHeight}
@@ -133,14 +220,14 @@
 		{onload}
 		style:width="{fitted.width}px"
 		style:height="{fitted.height}px"
-		style:transform="translate({zoom.x}px, {zoom.y}px) scale({zoom.scale})"
+		style:transform="translate({zoom.x + swipeShift.x}px, {zoom.y + swipeShift.y}px) scale({zoom.scale})"
 	/>
 	{#if overlay && natural.width > 0}
 		<div
 			class="overlay"
 			style:width="{fitted.width}px"
 			style:height="{fitted.height}px"
-			style:transform="translate({zoom.x}px, {zoom.y}px) scale({zoom.scale})"
+			style:transform="translate({zoom.x + swipeShift.x}px, {zoom.y + swipeShift.y}px) scale({zoom.scale})"
 		>
 			{@render overlay(zoom.scale)}
 		</div>
