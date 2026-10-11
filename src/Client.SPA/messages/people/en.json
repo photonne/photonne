@@ -323,5 +323,6 @@
 	"people_empty_title": "No people yet",
 	"people_empty_hint": "Once face recognition has gone through your photos, similar faces are grouped here.",
 	"people_more_failed": "Couldn’t load more.",
-	"people_retry": "Try again"
+	"people_retry": "Try again",
+	"people_faces_emptied": "{name} has no faces left and was removed."
 }
