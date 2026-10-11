@@ -365,10 +365,11 @@ class TimelineViewModel(
      * check write permission per asset. On success we re-sync from the server:
      * moved items stay on the timeline if the destination is timeline-visible
      * and leave it if it's an excluded/shared folder, and only a refresh knows
-     * which. [onComplete] receives the moved ids so callers can refresh the
+     * which. [onComplete] receives how many the server actually moved (it may
+     * be fewer than selected) so callers can report it and refresh the
      * "Para organizar" count.
      */
-    fun moveSelectedAssets(targetFolderId: String, onComplete: (List<String>) -> Unit = {}) {
+    fun moveSelectedAssets(targetFolderId: String, onComplete: (moved: Int) -> Unit = {}) {
         val ids = selectedIds()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         _state.update { it.copy(isBulkMutating = true, error = null) }
@@ -380,10 +381,10 @@ class TimelineViewModel(
                     assetIds = ids
                 )
             }
-                .onSuccess {
+                .onSuccess { outcome ->
                     runCatching { store.refresh() }
                     _state.update { it.copy(isBulkMutating = false, selection = emptySet()) }
-                    onComplete(ids)
+                    onComplete(outcome.moved)
                 }
                 .onFailure { error ->
                     _state.update {

@@ -302,7 +302,7 @@ class OrganizeInboxViewModel(
         targetFolderId: String,
         organizeByYear: Boolean = false,
         onlyIds: List<String>? = null,
-        onComplete: (List<String>) -> Unit = {}
+        onComplete: (moved: Int) -> Unit = {}
     ) {
         val selected = _state.value.selection
         val ids = onlyIds?.filter { it in selected } ?: selected.toList()
@@ -311,19 +311,23 @@ class OrganizeInboxViewModel(
         viewModelScope.launch {
             runCatching { repository.moveAssets(targetFolderId, ids, organizeByYear) }
                 .onSuccess { outcome ->
-                    val moved = ids.toHashSet()
+                    val requested = ids.toHashSet()
+                    // Movimiento parcial: no sabemos cuáles se quedaron, así
+                    // que la bandeja se recarga en vez de quitarlos todos.
+                    val partial = outcome.moved < ids.size
                     _state.update {
                         it.copy(
-                            items = it.items.filterNot { item -> item.id in moved },
+                            items = if (partial) it.items else it.items.filterNot { item -> item.id in requested },
                             // Lo apartado en la revisión sigue seleccionado,
                             // listo para mandarlo a otro sitio sin re-marcarlo.
-                            selection = it.selection - moved,
+                            selection = it.selection - requested,
                             isBulkMutating = false,
                             moveYearGroups = emptyList(),
                             lastMoveSummary = outcome.takeIf { o -> o.yearBreakdown.isNotEmpty() },
                         )
                     }
-                    onComplete(ids)
+                    if (partial) refresh()
+                    onComplete(outcome.moved)
                 }
                 .onFailure { error ->
                     _state.update {

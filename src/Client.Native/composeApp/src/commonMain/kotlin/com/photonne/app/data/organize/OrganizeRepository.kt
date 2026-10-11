@@ -1,6 +1,8 @@
 package com.photonne.app.data.organize
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.OrganizeSuggestion
 import com.photonne.app.data.models.OrganizeSummary
@@ -16,7 +18,10 @@ import kotlin.time.Instant
  * MobileBackup is what marks it organized, so the inbox drains to zero.
  */
 class OrganizeRepository(
-    private val api: PhotonneApi
+    private val api: PhotonneApi,
+    // Own bus by default so tests can build the repo bare; Koin injects the
+    // shared singleton in the app.
+    private val mutationBus: AssetMutationBus = AssetMutationBus(),
 ) {
     suspend fun inbox(cursor: Instant? = null): TimelinePage =
         api.getOrganizeInbox(cursor)
@@ -57,7 +62,9 @@ class OrganizeRepository(
             targetFolderId = targetFolderId,
             assetIds = assetIds,
             organizeByCaptureYear = organizeByYear
-        )
+        ).also { outcome ->
+            if (outcome.moved > 0) mutationBus.emit(AssetMutation.Moved(assetIds, targetFolderId))
+        }
 
     /** [assetIds] grouped by capture year (server-computed from CapturedAt), for
      *  the manual move's chips and "Revisar" grid. */
@@ -78,5 +85,8 @@ class OrganizeRepository(
      *  (resolved server-side); returns the moved count + real per-year split. When
      *  [organizeByYear] is set the server files each match into a Year subfolder. */
     suspend fun moveByRule(rule: SmartRule, targetFolderId: String, organizeByYear: Boolean = false): MoveOutcome =
-        api.moveOrganizeRule(rule, targetFolderId, organizeByCaptureYear = organizeByYear)
+        api.moveOrganizeRule(rule, targetFolderId, organizeByCaptureYear = organizeByYear).also { outcome ->
+            // No ids: the server resolved the rule, so subscribers just reload.
+            if (outcome.moved > 0) mutationBus.emit(AssetMutation.Moved(emptyList(), targetFolderId))
+        }
 }
