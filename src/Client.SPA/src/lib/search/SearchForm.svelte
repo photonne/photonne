@@ -336,7 +336,7 @@
 					<button
 						type="button"
 						class="btn ghost sm"
-						onclick={() => onsearch({ ...emptySearch, q: query.q })}
+						onclick={() => onsearch({ ...emptySearch, q: query.q, semantic: false })}
 					>
 						{m.search_clear_filters()}
 					</button>
@@ -363,7 +363,6 @@
 		position: relative;
 		flex: 1 1 320px;
 		display: flex;
-		max-width: 720px;
 		color: var(--color-text-muted);
 	}
 

@@ -45,6 +45,7 @@ describe('search query', () => {
 	it('writes a canonical URL that round-trips', () => {
 		const query = {
 			...emptySearch,
+			semantic: false,
 			folder: 'Viajes',
 			q: 'perro, gato',
 			scenes: ['beach & sea'],
@@ -58,9 +59,24 @@ describe('search query', () => {
 		expect(searchKey(emptySearch)).toBe('');
 	});
 
+	it('searches with AI by default unless filters or sem=0 say otherwise', () => {
+		expect(parseSearch(new URLSearchParams('q=perro')).semantic).toBe(true);
+		expect(parseSearch(new URLSearchParams('q=perro&sem=0')).semantic).toBe(false);
+		expect(parseSearch(new URLSearchParams('scene=beach')).semantic).toBe(false);
+		expect(parseSearch(new URLSearchParams('q=perro&scene=beach&sem=1')).semantic).toBe(true);
+
+		const text = { ...emptySearch, q: 'perro', semantic: false };
+		expect(searchKey(text)).toBe('q=perro&sem=0');
+		expect(searchKey({ ...text, semantic: true })).toBe('q=perro');
+		expect(searchKey({ ...text, scenes: ['beach'] })).toBe('q=perro&scene=beach');
+		expect(searchKey({ ...text, semantic: true, scenes: ['beach'] })).toBe(
+			'q=perro&sem=1&scene=beach'
+		);
+	});
+
 	it('counts filters and knows when there is something to search', () => {
 		expect(hasCriteria(emptySearch)).toBe(false);
-		expect(hasCriteria({ ...emptySearch, objects: ['dog'] })).toBe(true);
+		expect(hasCriteria({ ...emptySearch, semantic: false, objects: ['dog'] })).toBe(true);
 		expect(filterCount({ ...emptySearch, from: '2024-01-01', to: '2024-02-01', ocr: 'x' })).toBe(2);
 		// The semantic search reads only the words.
 		expect(hasCriteria({ ...emptySearch, semantic: true, objects: ['dog'] })).toBe(false);

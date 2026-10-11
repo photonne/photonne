@@ -6,6 +6,11 @@ import type { SearchAssetsData } from '#lib/api/index.js';
  *
  * Dates are calendar days (`yyyy-MM-dd`); lists repeat their parameter
  * (`object=dog&object=cat`) so a label can hold any character.
+ *
+ * The words go to the semantic (AI) search unless `sem=0` says otherwise.
+ * A URL with filters and no `sem` is a text search: the semantic search
+ * ignores filters, so a link to a person or a label (Discover, older links)
+ * keeps meaning what it says.
  */
 export interface SearchQuery {
 	q: string;
@@ -24,7 +29,7 @@ export interface SearchQuery {
 
 export const emptySearch: SearchQuery = {
 	q: '',
-	semantic: false,
+	semantic: true,
 	from: null,
 	to: null,
 	people: [],
@@ -46,9 +51,9 @@ function list(params: URLSearchParams, key: string) {
 
 /** Reads a search from the URL; anything malformed is ignored, never thrown. */
 export function parseSearch(params: URLSearchParams): SearchQuery {
-	return {
+	const query: SearchQuery = {
 		q: params.get('q')?.trim() ?? '',
-		semantic: params.get('sem') === '1',
+		semantic: false,
 		from: day(params.get('from')),
 		to: day(params.get('to')),
 		people: list(params, 'person'),
@@ -57,6 +62,9 @@ export function parseSearch(params: URLSearchParams): SearchQuery {
 		ocr: params.get('ocr')?.trim() ?? '',
 		folder: params.get('folder')?.trim() ?? ''
 	};
+	const sem = params.get('sem');
+	query.semantic = sem === '1' || (sem !== '0' && filterCount(query) === 0);
+	return query;
 }
 
 /**
@@ -69,7 +77,10 @@ export function searchParams(query: SearchQuery): URLSearchParams {
 		if (value?.trim()) params.set(key, value.trim());
 	};
 	text('q', query.q);
-	if (query.semantic) params.set('sem', '1');
+	// Only what the default (see parseSearch) wouldn't say on its own.
+	const filtered = filterCount(query) > 0;
+	if (query.semantic && filtered) params.set('sem', '1');
+	if (!query.semantic && !filtered) params.set('sem', '0');
 	text('from', query.from);
 	text('to', query.to);
 	for (const id of query.people) params.append('person', id);

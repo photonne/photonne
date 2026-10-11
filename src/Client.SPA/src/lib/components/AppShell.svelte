@@ -102,6 +102,7 @@
 			<Icon name="search" size={18} />
 			<input
 				type="search"
+				class="bare"
 				aria-label={m.nav_search()}
 				placeholder={m.nav_search()}
 				bind:value={search}
@@ -276,7 +277,6 @@
 
 	.search {
 		flex: 1;
-		max-width: 640px;
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);

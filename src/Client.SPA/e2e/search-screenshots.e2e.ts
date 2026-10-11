@@ -12,7 +12,7 @@ const pages: [string, string, ((page: Page) => Promise<void>)?][] = [
 	['search-results', '/search?q=IMG_2026&object=dog'],
 	[
 		'search-filter-menu',
-		'/search?q=IMG',
+		'/search?q=IMG&sem=0',
 		async (page) => {
 			await page.getByRole('button', { name: 'Personas' }).click();
 		}

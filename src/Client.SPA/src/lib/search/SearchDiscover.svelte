@@ -38,7 +38,7 @@
 	const pending = $derived(people.isPending && objects.isPending && scenes.isPending);
 
 	function link(query: Partial<SearchQuery>) {
-		return `${appHref('/search')}?${searchParams({ ...emptySearch, ...query })}`;
+		return `${appHref('/search')}?${searchParams({ ...emptySearch, semantic: false, ...query })}`;
 	}
 </script>
 

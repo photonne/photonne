@@ -13,7 +13,7 @@ async function open(page: Page, path: string) {
 	return api.state as { searches?: string[]; semanticSearches?: string[]; semanticOff?: boolean };
 }
 
-test('the top bar search opens the results with the words in the URL', async ({ page }) => {
+test('the top bar search asks the semantic search with the words in the URL', async ({ page }) => {
 	const state = await open(page, '/');
 
 	await page.getByRole('search').getByRole('searchbox', { name: 'Buscar' }).fill('IMG_202608');
@@ -21,15 +21,16 @@ test('the top bar search opens the results with the words in the URL', async ({ 
 
 	await expect(page).toHaveURL(/\/search\?q=IMG_202608$/);
 	await expect(page.getByRole('heading', { name: 'Resultados', level: 1 })).toBeVisible();
-	await expect(cells(page)).toHaveCount(9);
+	await expect(cells(page)).toHaveCount(7);
 	await expect(page.getByRole('searchbox', { name: 'Buscar en tu biblioteca' })).toHaveValue(
 		'IMG_202608'
 	);
-	expect(state.searches?.at(-1)).toContain('q=IMG_202608');
+	await expect(page.getByRole('switch', { name: 'Semántica' })).toBeChecked();
+	expect(state.semanticSearches).toEqual(['IMG_202608']);
 });
 
 test('filters go into the URL and Back takes them off again', async ({ page }) => {
-	const state = await open(page, '/search?q=IMG_2026');
+	const state = await open(page, '/search?q=IMG_2026&sem=0');
 	await expect(cells(page).first()).toBeVisible();
 
 	await page.getByRole('button', { name: 'Objetos' }).click();
@@ -55,12 +56,12 @@ test('filters go into the URL and Back takes them off again', async ({ page }) =
 	await expect(chips.getByText('Lucía')).toHaveCount(0);
 
 	await page.getByRole('button', { name: 'Quitar el filtro Dog' }).click();
-	await expect(page).toHaveURL(/\/search\?q=IMG_2026$/);
+	await expect(page).toHaveURL(/\/search\?q=IMG_2026&sem=0$/);
 	await expect(page.getByRole('list', { name: 'Filtros activos' })).toHaveCount(0);
 });
 
 test('dates and text in the image narrow the search', async ({ page }) => {
-	const state = await open(page, '/search?q=IMG');
+	const state = await open(page, '/search?q=IMG&sem=0');
 
 	await page.getByRole('button', { name: 'Fechas' }).click();
 	await page.getByLabel('Desde').fill('2026-06-01');
@@ -82,7 +83,7 @@ test('dates and text in the image narrow the search', async ({ page }) => {
 });
 
 test('semantic search shows the closest photos', async ({ page }) => {
-	const state = await open(page, '/search?q=perro+en+la+playa&sem=1');
+	const state = await open(page, '/search?q=perro+en+la+playa');
 
 	await expect(cells(page)).toHaveCount(7);
 	await expect(page.getByRole('switch', { name: 'Semántica' })).toBeChecked();
@@ -105,10 +106,10 @@ test('without ML the semantic search falls back to the text search', async ({ pa
 });
 
 test('turning semantic on and off keeps the words', async ({ page }) => {
-	await open(page, '/search?q=perro');
+	await open(page, '/search?q=perro&sem=0');
 
 	await page.getByRole('switch', { name: 'Semántica' }).check();
-	await expect(page).toHaveURL(/q=perro&sem=1/);
+	await expect(page).toHaveURL(/\/search\?q=perro$/);
 	await expect(cells(page)).toHaveCount(7);
 
 	await page.goBack();
@@ -139,5 +140,5 @@ test('a result opens in the viewer and Back returns to the results', async ({ pa
 
 	await page.goBack();
 	await expect(page.getByRole('dialog')).toHaveCount(0);
-	await expect(cells(page)).toHaveCount(9);
+	await expect(cells(page)).toHaveCount(7);
 });
