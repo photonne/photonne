@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.io.Source
 import kotlinx.io.asSource
@@ -262,7 +263,7 @@ actual class DeviceGallery(private val context: Context) {
             if (original != null) {
                 val stream = context.contentResolver.openInputStream(original.uri)
                 if (stream != null) {
-                    stream.use { hashUpTo(it, original.sizeBytes, digest) }
+                    stream.use { hashUpTo(it, original.sizeBytes, digest, coroutineContext) }
                     return@withContext digest.digest().toHexLower()
                 }
             }
@@ -274,7 +275,7 @@ actual class DeviceGallery(private val context: Context) {
             }.getOrNull()?.takeIf { it >= 0 } ?: media.sizeBytes
             val input = context.contentResolver.openInputStream(uri)
                 ?: throw DeviceGalleryUnavailable("Cannot open ${media.displayName} for hashing")
-            input.use { hashUpTo(it, sizeBytes, digest) }
+            input.use { hashUpTo(it, sizeBytes, digest, coroutineContext) }
             digest.digest().toHexLower()
         }
 
@@ -287,11 +288,19 @@ actual class DeviceGallery(private val context: Context) {
     }
 
     /** Feeds at most [limit] bytes of [stream] into [digest] (or the whole
-     *  stream when [limit] <= 0), matching the upload's Content-Length bound. */
-    private fun hashUpTo(stream: java.io.InputStream, limit: Long, digest: MessageDigest) {
+     *  stream when [limit] <= 0), matching the upload's Content-Length bound.
+     *  Checks [context] per chunk so stopping a verification stops hashing a
+     *  multi-GB video now instead of after its last byte. */
+    private fun hashUpTo(
+        stream: java.io.InputStream,
+        limit: Long,
+        digest: MessageDigest,
+        context: kotlin.coroutines.CoroutineContext
+    ) {
         val buf = ByteArray(64 * 1024)
         var remaining = limit
         while (limit <= 0 || remaining > 0) {
+            context.ensureActive()
             val toRead = if (limit <= 0) buf.size
                 else minOf(buf.size.toLong(), remaining).toInt()
             val n = stream.read(buf, 0, toRead)
