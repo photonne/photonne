@@ -568,5 +568,6 @@
 	"admin_strash_summary_more": "More than {n} items · {size} in what’s loaded",
 	"admin_strash_partial_hint": "Counts only what’s loaded so far; scrolling down loads more.",
 	"admin_dash_see_all_users": "See all in Users",
-	"admin_users_quota_over": "Quota exceeded"
+	"admin_users_quota_over": "Quota exceeded",
+	"admin_sys_server_address_unset": "This tab’s: there’s no public address in Settings › Server."
 }

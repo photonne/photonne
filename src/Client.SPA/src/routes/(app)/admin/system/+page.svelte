@@ -6,12 +6,14 @@
 		getDemoInfoOptions,
 		getPublicVersionOptions,
 		getServerInfoOptions,
+		getSettingOptions,
 		getVersionOptions,
 		getVersionQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import { count, localDate, localDateTime, relativeTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
+	import { parseMarkdown, type Inline } from '#lib/admin/markdown.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
@@ -24,7 +26,14 @@
 	const demoQuery = createQuery(() => getDemoInfoOptions());
 	const attributionsQuery = createQuery(() => getAttributionsOptions());
 
+	// The address people reach the server at (Settings › Server); this tab's origin when unset.
+	const publicUrlQuery = createQuery(() =>
+		getSettingOptions({ query: { key: 'ServerSettings.PublicUrl' } })
+	);
+	const publicUrl = $derived(publicUrlQuery.data?.value?.trim() || null);
+
 	const version = $derived(versionQuery.data);
+	const notes = $derived(parseMarkdown(version?.releaseNotes ?? ''));
 	let checking = $state(false);
 
 	/** Asks GitHub again instead of the server's one-hour cache. */
@@ -103,7 +112,23 @@
 				</dl>
 				{#if version.releaseNotes?.trim()}
 					<h3>{m.admin_sys_release_notes()}</h3>
-					<pre class="notes">{version.releaseNotes}</pre>
+					<div class="notes">
+						{#each notes as block, i (i)}
+							{#if block.kind === 'heading'}
+								<svelte:element this={`h${block.level}`}
+									>{@render inline(block.content)}</svelte:element
+								>
+							{:else if block.kind === 'list'}
+								<svelte:element this={block.ordered ? 'ol' : 'ul'}>
+									{#each block.items as item, j (j)}
+										<li>{@render inline(item)}</li>
+									{/each}
+								</svelte:element>
+							{:else}
+								<p>{@render inline(block.content)}</p>
+							{/if}
+						{/each}
+					</div>
 				{/if}
 				{#if version.latestReleaseUrl}
 					<div class="foot">
@@ -137,7 +162,12 @@
 				<dt>{m.admin_sys_server_cpus()}</dt>
 				<dd>{serverQuery.data ? count(serverQuery.data.processorCount) : '—'}</dd>
 				<dt>{m.admin_sys_server_address()}</dt>
-				<dd><code>{location.origin}</code></dd>
+				<dd>
+					<code>{publicUrl ?? location.origin}</code>
+					{#if !publicUrl && publicUrlQuery.isSuccess}
+						<span class="muted small">{m.admin_sys_server_address_unset()}</span>
+					{/if}
+				</dd>
 			</dl>
 		</section>
 
@@ -212,6 +242,16 @@
 	</section>
 </AdminPage>
 
+{#snippet inline(content: Inline[])}
+	{#each content as piece, i (i)}
+		{#if piece.kind === 'bold'}<strong>{piece.text}</strong>{:else if piece.kind === 'link'}<a
+				href={piece.href}
+				target="_blank"
+				rel="noreferrer noopener">{piece.text}</a
+			>{:else}{piece.text}{/if}
+	{/each}
+{/snippet}
+
 <style>
 	h2 {
 		margin: 0 0 var(--space-3);
@@ -282,9 +322,26 @@
 		padding: var(--space-3);
 		border-radius: var(--radius-sm);
 		background: var(--color-surface);
-		font: inherit;
 		font-size: var(--font-size-sm);
-		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.notes :is(h3, h4, h5) {
+		margin: var(--space-3) 0 var(--space-1);
+		font-size: var(--font-size-sm);
+	}
+
+	.notes > :first-child {
+		margin-top: 0;
+	}
+
+	.notes p {
+		margin: 0 0 var(--space-2);
+	}
+
+	.notes :is(ul, ol) {
+		margin: 0 0 var(--space-2);
+		padding-left: var(--space-6);
 	}
 
 	code {
