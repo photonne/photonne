@@ -372,8 +372,8 @@
 		bottom: var(--space-1);
 		padding: 1px var(--space-2);
 		border-radius: 999px;
-		background: rgb(0 0 0 / 0.6);
-		color: #fff;
+		background: var(--color-scrim);
+		color: var(--color-on-media);
 		font-size: var(--font-size-2xs);
 		font-weight: 600;
 	}

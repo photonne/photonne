@@ -42,7 +42,7 @@
 		overflow: hidden;
 		border-radius: var(--radius-md);
 		background: var(--color-placeholder);
-		color: #fff;
+		color: var(--color-on-media);
 		text-decoration: none;
 		isolation: isolate;
 	}
@@ -96,7 +96,7 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(to top, rgb(0 0 0 / 0.65), rgb(0 0 0 / 0) 60%);
+		background: linear-gradient(to top, var(--color-scrim), transparent 60%);
 	}
 
 	.text {
@@ -114,7 +114,7 @@
 	.title {
 		font-weight: 600;
 		line-height: 1.25;
-		text-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+		text-shadow: 0 1px 2px var(--color-scrim-soft);
 	}
 
 	.large .title {

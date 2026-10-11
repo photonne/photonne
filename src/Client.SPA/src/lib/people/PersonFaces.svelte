@@ -340,9 +340,9 @@
 		place-items: center;
 		width: 22px;
 		height: 22px;
-		border: 2px solid #fff;
+		border: 2px solid var(--color-on-media);
 		border-radius: 50%;
-		background: rgb(0 0 0 / 0.35);
+		background: var(--color-scrim-soft);
 		color: transparent;
 		opacity: 0;
 	}
@@ -368,8 +368,8 @@
 		gap: 2px;
 		padding: 0 var(--space-1);
 		border-radius: var(--radius-sm);
-		background: rgb(0 0 0 / 0.6);
-		color: #fff;
+		background: var(--color-scrim);
+		color: var(--color-on-media);
 		font-size: var(--font-size-xs);
 	}
 
@@ -384,8 +384,8 @@
 		padding: 0;
 		border: 0;
 		border-radius: 50%;
-		background: rgb(0 0 0 / 0.55);
-		color: #fff;
+		background: var(--color-scrim);
+		color: var(--color-on-media);
 		opacity: 0;
 		cursor: pointer;
 	}

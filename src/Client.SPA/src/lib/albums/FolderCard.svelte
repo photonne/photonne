@@ -204,8 +204,8 @@
 	.check {
 		width: 26px;
 		height: 26px;
-		border: 2px solid #fff;
-		background: rgb(0 0 0 / 0.25);
+		border: 2px solid var(--color-on-media);
+		background: var(--color-scrim-soft);
 		color: transparent;
 	}
 
@@ -215,8 +215,8 @@
 		width: var(--control-h-sm);
 		height: var(--control-h-sm);
 		border: 0;
-		background: rgb(0 0 0 / 0.6);
-		color: #fff;
+		background: var(--color-scrim);
+		color: var(--color-on-media);
 	}
 
 	.pin.on {
@@ -285,8 +285,8 @@
 		min-height: 28px;
 		justify-content: center;
 		padding: 0;
-		background: rgb(0 0 0 / 0.6);
-		color: #fff;
+		background: var(--color-scrim);
+		color: var(--color-on-media);
 		backdrop-filter: blur(6px);
 	}
 
