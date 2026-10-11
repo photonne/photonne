@@ -70,6 +70,8 @@
 	--color-toast: #1d1d1f;
 	--color-toast-text: #ffffff;
 	--color-toast-danger: #7f1d1d;
+	/* The toast's action (Undo): gold on the dark toast in both themes. */
+	--color-toast-action: #ffd166;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
 
 	--header-height: 56px;

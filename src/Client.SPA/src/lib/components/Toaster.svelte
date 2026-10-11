@@ -44,6 +44,19 @@
 		if (inDialog !== !!document.querySelector('dialog:modal')) place();
 	});
 
+	// Ctrl/Cmd+Z runs the Undo on screen, unless a field is taking the keys
+	// (its own undo) or someone else already handled them.
+	function onkeydown(event: KeyboardEvent) {
+		if (event.defaultPrevented || event.shiftKey || event.altKey) return;
+		if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') return;
+		const target = event.target as HTMLElement | null;
+		if (
+			target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+		)
+			return;
+		if (toasts.undoLatest()) event.preventDefault();
+	}
+
 	function onToggle(event: Event) {
 		const target = event.target;
 		if (!(target instanceof HTMLDialogElement)) return;
@@ -56,24 +69,59 @@
 <!-- `toggle` and `close` don't bubble: captured, they report every dialog. -->
 <svelte:document ontogglecapture={onToggle} onclosecapture={onToggle} onfullscreenchange={place} />
 
-<div class="toaster" bind:this={toaster} popover="manual" role="status" aria-live="polite">
-	{#each toasts.items as toast (toast.id)}
-		<div class="toast" class:error={toast.tone === 'error'}>
-			<span>{toast.message}</span>
-			{#if toast.action}
-				<button type="button" class="action" onclick={() => run(toast)}>{toast.action.label}</button
-				>
-			{/if}
+{#snippet item(toast: Toast)}
+	<!-- Pointer or focus on a toast stops its countdown: there is time to read it and reach Undo. -->
+	<div
+		class="toast"
+		class:error={toast.tone === 'error'}
+		style:order={toast.id}
+		role="group"
+		onmouseenter={() => toasts.pause(toast.id)}
+		onmouseleave={(event) => {
+			if (!event.currentTarget.contains(document.activeElement)) toasts.resume(toast.id);
+		}}
+		onfocusin={() => toasts.pause(toast.id)}
+		onfocusout={(event) => {
+			const element = event.currentTarget;
+			if (!element.contains(event.relatedTarget as Node | null) && !element.matches(':hover'))
+				toasts.resume(toast.id);
+		}}
+	>
+		<span>{toast.message}</span>
+		{#if toast.action}
 			<button
 				type="button"
-				class="close"
-				aria-label={m.toast_dismiss()}
-				onclick={() => toasts.dismiss(toast.id)}
+				class="action"
+				aria-keyshortcuts={toast.action.label === m.action_undo() ? 'Control+Z Meta+Z' : undefined}
+				onclick={() => run(toast)}>{toast.action.label}</button
 			>
-				<Icon name="close" size={16} />
-			</button>
-		</div>
-	{/each}
+		{/if}
+		<button
+			type="button"
+			class="close"
+			aria-label={m.toast_dismiss()}
+			onclick={() => toasts.dismiss(toast.id)}
+		>
+			<Icon name="close" size={16} />
+		</button>
+	</div>
+{/snippet}
+
+<svelte:window {onkeydown} />
+
+<!-- Two live regions: errors interrupt (alert), the rest wait their turn
+     (status). Both lay their toasts out in the toaster's own grid. -->
+<div class="toaster" bind:this={toaster} popover="manual">
+	<div class="region" role="status">
+		{#each toasts.items.filter((toast) => toast.tone !== 'error') as toast (toast.id)}
+			{@render item(toast)}
+		{/each}
+	</div>
+	<div class="region" role="alert">
+		{#each toasts.items.filter((toast) => toast.tone === 'error') as toast (toast.id)}
+			{@render item(toast)}
+		{/each}
+	</div>
 </div>
 
 <style>
@@ -98,6 +146,10 @@
 		pointer-events: none;
 	}
 
+	.region {
+		display: contents;
+	}
+
 	.toast {
 		display: flex;
 		align-items: center;
@@ -106,14 +158,14 @@
 		max-width: min(560px, calc(100vw - 2 * var(--space-4)));
 		padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
 		border-radius: var(--radius-md);
-		background: #1d1d1f;
-		color: #f4f4f5;
+		background: var(--color-toast);
+		color: var(--color-toast-text);
 		box-shadow: var(--shadow-raised);
 		pointer-events: auto;
 	}
 
 	.toast.error {
-		background: #7f1d1d;
+		background: var(--color-toast-danger);
 	}
 
 	span {
@@ -130,7 +182,7 @@
 	.action {
 		padding: var(--space-1) var(--space-2);
 		border-radius: var(--radius-sm);
-		color: #ffd166;
+		color: var(--color-toast-action);
 		font-weight: 600;
 	}
 
