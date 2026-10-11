@@ -196,5 +196,6 @@
 	"folders_upload": "Subir fotos",
 	"folders_none_hint": "Las fotos que subes se guardan en carpetas. Sube algunas o crea una carpeta con el botón del árbol.",
 	"folders_load_failed": "No se ha podido cargar la carpeta.",
-	"folders_retry": "Reintentar"
+	"folders_retry": "Reintentar",
+	"folders_tree_close": "Cerrar el árbol de carpetas"
 }

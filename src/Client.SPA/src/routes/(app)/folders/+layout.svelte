@@ -2,6 +2,8 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { tick } from 'svelte';
+	import { MediaQuery } from 'svelte/reactivity';
 	import { getFolderTreeOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { invalidateFolders } from '#lib/albums/cache.js';
 	import FolderFormDialog from '#lib/albums/FolderFormDialog.svelte';
@@ -36,10 +38,45 @@
 	// The tree pane is as wide as the user leaves it: deep trees need room.
 	const TREE = { initial: 280, min: 200, max: 640, key: 'photonne.folders.treeWidth' };
 	let treeWidth = $state(savedWidth(TREE.key, TREE.initial, TREE.min, TREE.max));
+
+	// On a phone the tree and the folder can't share the width: the tree becomes
+	// a drawer behind a button, and opening a folder puts it away.
+	const narrow = new MediaQuery('max-width: 720px');
+	let treeOpen = $state(false);
+	$effect(() => {
+		void currentId;
+		treeOpen = false;
+	});
+
+	async function openTree() {
+		treeOpen = true;
+		await tick();
+		// The tree's own tab stop (the open folder), else the heading's link.
+		const tree = document.getElementById('folders-tree');
+		(tree?.querySelector<HTMLElement>('[tabindex="0"]') ?? tree?.querySelector('a'))?.focus();
+	}
+
+	function onkeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && treeOpen && narrow.current) {
+			event.preventDefault();
+			treeOpen = false;
+		}
+	}
 </script>
 
-<div class="folders" style:--tree-width="{treeWidth}px">
-	<aside id="folders-tree" class="pane" aria-labelledby="folders-tree-title">
+<svelte:window {onkeydown} />
+
+<div class="folders" class:narrow={narrow.current} style:--tree-width="{treeWidth}px">
+	{#if narrow.current && treeOpen}
+		<button
+			type="button"
+			class="scrim"
+			tabindex="-1"
+			aria-label={m.folders_tree_close()}
+			onclick={() => (treeOpen = false)}
+		></button>
+	{/if}
+	<aside id="folders-tree" class="pane" class:open={treeOpen} aria-labelledby="folders-tree-title">
 		<div class="pane-head">
 			<h2 id="folders-tree-title"><a href={appHref('/folders')}>{m.nav_folders()}</a></h2>
 			<button
@@ -51,6 +88,17 @@
 			>
 				<Icon path={icons.newFolder} size={20} />
 			</button>
+			{#if narrow.current}
+				<button
+					type="button"
+					class="icon-btn"
+					aria-label={m.folders_tree_close()}
+					title={m.folders_tree_close()}
+					onclick={() => (treeOpen = false)}
+				>
+					<Icon name="close" size={20} />
+				</button>
+			{/if}
 		</div>
 		{#if treeQuery.isPending}
 			<div class="loading"><Skeleton variant="text" count={4} /></div>
@@ -72,14 +120,29 @@
 		<p class="tip">{m.folders_drag_tip()}</p>
 	</aside>
 
-	<PaneResizer
-		bind:width={treeWidth}
-		min={TREE.min}
-		max={TREE.max}
-		initial={TREE.initial}
-		storageKey={TREE.key}
-		controls="folders-tree"
-	/>
+	{#if narrow.current}
+		<div class="tree-bar">
+			<button
+				type="button"
+				class="btn sm"
+				aria-expanded={treeOpen}
+				aria-controls="folders-tree"
+				onclick={openTree}
+			>
+				<Icon name="folder" size={18} />
+				{m.folders_tree()}
+			</button>
+		</div>
+	{:else}
+		<PaneResizer
+			bind:width={treeWidth}
+			min={TREE.min}
+			max={TREE.max}
+			initial={TREE.initial}
+			storageKey={TREE.key}
+			controls="folders-tree"
+		/>
+	{/if}
 
 	<div class="main">
 		{@render children()}
@@ -120,8 +183,12 @@
 	.pane-head {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		gap: var(--space-1);
 		padding-left: var(--space-1);
+	}
+
+	.pane-head h2 {
+		margin-right: auto;
 	}
 
 	h2 {
@@ -161,5 +228,44 @@
 		min-width: 0;
 		height: 100%;
 		overflow: auto;
+	}
+
+	/* Phone: one column, the tree slides over it as a drawer. */
+	.folders.narrow {
+		position: relative;
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: auto minmax(0, 1fr);
+	}
+
+	.narrow .pane {
+		position: absolute;
+		inset: 0 auto 0 0;
+		z-index: 20;
+		width: min(320px, 85%);
+		background: var(--color-bg);
+		box-shadow: var(--shadow-raised);
+	}
+
+	.narrow .pane:not(.open) {
+		display: none;
+	}
+
+	.scrim {
+		position: absolute;
+		inset: 0;
+		z-index: 19;
+		padding: 0;
+		border: 0;
+		background: var(--color-scrim-soft);
+	}
+
+	.tree-bar {
+		padding: var(--space-2) var(--page-gutter) 0;
+	}
+
+	.tree-bar .btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
 </style>
