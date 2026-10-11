@@ -6,6 +6,7 @@ import {
 	refreshToken,
 	type UserDto
 } from '#lib/api/index.js';
+import { queryClient } from '#lib/api/query-client.js';
 import { getDeviceId } from './device-id.js';
 
 /**
@@ -34,6 +35,7 @@ export class Session {
 
 	#accessToken: string | null = null;
 	#refreshing: Promise<string | null> | null = null;
+	#signOutListeners: (() => void)[] = [];
 
 	get accessToken() {
 		return this.#accessToken;
@@ -121,10 +123,26 @@ export class Session {
 		return null;
 	}
 
+	/**
+	 * Called when the session ends (logout, or it expired), for state that
+	 * belongs to the user who was signed in (the upload queue).
+	 */
+	onsignout(listener: () => void) {
+		this.#signOutListeners = [...this.#signOutListeners, listener];
+		return () => {
+			this.#signOutListeners = this.#signOutListeners.filter((l) => l !== listener);
+		};
+	}
+
 	#signOutLocally() {
+		const wasSignedIn = this.user !== null;
 		this.#accessToken = null;
 		this.user = null;
 		this.status = 'signedOut';
+		// Whoever signs in next in this tab must not see the last user's
+		// albums, folders or photos from the cache.
+		queryClient.clear();
+		if (wasSignedIn) for (const listener of this.#signOutListeners) listener();
 	}
 }
 

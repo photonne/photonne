@@ -18,6 +18,8 @@
 	"nav_photos": "Photos",
 	"account_menu": "Account",
 	"account_logout": "Sign out",
+	"account_logout_uploads_title": "Sign out with uploads in progress?",
+	"account_logout_uploads_body": "Photos that haven’t finished uploading will be cancelled.",
 	"language": "Language",
 	"photos_title": "Photos",
 	"photos_empty": "No photos yet.",

@@ -1,4 +1,5 @@
 import { queryClient } from '#lib/api/query-client.js';
+import { session } from '#lib/auth/session.svelte.js';
 import { toasts } from '#lib/components/toasts.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 import { libraryTransport } from './library-transport.js';
@@ -24,3 +25,7 @@ uploads.ondrained((assetIds) => {
 	queryClient.invalidateQueries();
 	toasts.show(m.upload_batch_done({ count: assetIds.length }));
 });
+
+// Files still waiting were the last user's: they must not go up with the
+// next one's session.
+session.onsignout(() => uploads.cancelAll());
