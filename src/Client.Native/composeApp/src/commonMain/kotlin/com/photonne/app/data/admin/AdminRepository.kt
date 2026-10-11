@@ -296,6 +296,9 @@ class AdminRepository(private val api: PhotonneApi) {
     suspend fun resumeMaintenanceTaskStream(id: String): Flow<MaintenanceStreamEvent> =
         api.resumeMaintenanceTaskStream(id)
 
+    suspend fun resumeLibraryScanTaskStream(id: String): Flow<LibraryScanProgress> =
+        api.resumeLibraryScanTaskStream(id)
+
     // --- Enrichment failures registry ---
 
     suspend fun enrichmentFailures(

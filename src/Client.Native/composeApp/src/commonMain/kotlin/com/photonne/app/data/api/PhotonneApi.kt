@@ -908,6 +908,9 @@ interface PhotonneApi {
     suspend fun resumeMaintenanceTaskStream(
         id: String
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MaintenanceStreamEvent>
+    suspend fun resumeLibraryScanTaskStream(
+        id: String
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.LibraryScanProgress>
 
     // Database backup / restore --------------------------------------------
     suspend fun adminDownloadBackup(level: String): com.photonne.app.data.models.AssetContentBytes
@@ -3042,6 +3045,11 @@ class PhotonneApiClient(
     override suspend fun resumeDateRestoreTaskStream(
         id: String
     ): Flow<com.photonne.app.data.models.MetadataStreamEvent> =
+        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+
+    override suspend fun resumeLibraryScanTaskStream(
+        id: String
+    ): Flow<com.photonne.app.data.models.LibraryScanProgress> =
         streamJsonLines("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun adminDuplicatesStream(

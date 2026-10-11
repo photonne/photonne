@@ -75,7 +75,10 @@ fun AdminLibrariesScreen(
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+        viewModel.attachToRunningScan()
+    }
 
     val scan = state.scanProgress
     AdminListScaffold(
@@ -101,7 +104,11 @@ fun AdminLibrariesScreen(
         // First row of the list rather than a strip above it: up there it sat
         // behind the chrome, cancel button and all.
         header = if (scan != null) {
-            { item(key = "scan-progress") { ScanProgressCard(scan, onCancel = viewModel::cancelScan) } }
+            { item(key = "scan-progress") { ScanProgressCard(
+                    scan,
+                    isCancelling = state.isCancellingScan,
+                    onCancel = viewModel::cancelScan
+                ) } }
         } else null
     ) {
         items(state.libraries, key = { it.id }) { lib ->
@@ -130,7 +137,11 @@ fun AdminLibrariesScreen(
 }
 
 @Composable
-private fun ScanProgressCard(progress: LibraryScanProgress, onCancel: () -> Unit) {
+private fun ScanProgressCard(
+    progress: LibraryScanProgress,
+    isCancelling: Boolean,
+    onCancel: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -144,7 +155,7 @@ private fun ScanProgressCard(progress: LibraryScanProgress, onCancel: () -> Unit
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onCancel) {
+                IconButton(onClick = onCancel, enabled = !isCancelling) {
                     Icon(
                         PhotonneIcons.Close,
                         contentDescription = stringResource(Res.string.admin_libraries_scan_cancel)
