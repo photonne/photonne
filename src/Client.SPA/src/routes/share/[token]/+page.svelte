@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { createQuery } from '@tanstack/svelte-query';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { page } from '$app/state';
 	import {
 		ICON_BROKEN_IMAGE,
@@ -47,6 +47,20 @@
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false
 	}));
+
+	const queryClient = useQueryClient();
+
+	/**
+	 * After a guest upload: opens the link again for the new photos (a visit
+	 * more, so only when asked). Anything but the album (the visit limit just
+	 * reached…) leaves the page as it was.
+	 */
+	async function showUploads() {
+		const key = ['share', token, password];
+		const next = await openShare(token, password ?? undefined);
+		if (next.kind === 'content') queryClient.setQueryData(key, next);
+		else toasts.error(m.share_refresh_failed());
+	}
 
 	const outcome = $derived(share.data);
 	const content = $derived(outcome?.kind === 'content' ? outcome.content : null);
@@ -179,7 +193,7 @@
 
 		<div class="body">
 			{#if content.allowUpload}
-				<ShareUploadCard {token} {password} onuploaded={() => share.refetch()} />
+				<ShareUploadCard {token} {password} onrefresh={showUploads} />
 			{/if}
 
 			{#if assets.length === 0}
