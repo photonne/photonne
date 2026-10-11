@@ -17,7 +17,7 @@
 <script lang="ts">
 	import { onMount, tick, type Snippet } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { toggleFavorite } from '#lib/api/index.js';
+	import { toggleFavorite, type AssetDetailResponse } from '#lib/api/index.js';
 	import { invalidateLibrary } from '#lib/api/query-client.js';
 	import {
 		getApiAssetsByIdFacesOptions,
@@ -275,16 +275,31 @@
 		if (selectedFaceId) openTab('faces');
 	}
 
+	// One toggle at a time: a second press while the first is on its way
+	// would flip the heart back on the server.
+	let favoriting = false;
+
 	async function favorite() {
-		if (!asset) return;
-		const { data } = await toggleFavorite({ path: { assetId: asset.id } });
-		if (!data) return;
-		queryClient.setQueryData(getAssetDetailQueryKey({ path: { assetId: asset.id } }), {
-			...asset,
-			isFavorite: data.isFavorite
-		});
-		onchanged(asset.id, 'favorite');
-		invalidateLibrary();
+		if (!asset || favoriting) return;
+		const id = asset.id;
+		favoriting = true;
+		try {
+			const { data } = await toggleFavorite({ path: { assetId: id } });
+			if (!data) {
+				toasts.error(m.action_failed());
+				return;
+			}
+			queryClient.setQueryData<AssetDetailResponse>(
+				getAssetDetailQueryKey({ path: { assetId: id } }),
+				(detail) => detail && { ...detail, isFavorite: data.isFavorite }
+			);
+			onchanged(id, 'favorite');
+			invalidateLibrary();
+		} catch {
+			toasts.error(m.action_failed());
+		} finally {
+			favoriting = false;
+		}
 	}
 
 	function changed(change: AssetChange) {
