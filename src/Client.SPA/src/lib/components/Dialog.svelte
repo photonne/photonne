@@ -28,9 +28,17 @@
 		else if (!open && dialog.open) dialog.close();
 	});
 
+	// A press on the backdrop lands on the dialog element itself. Both ends
+	// must: a press inside (selecting text…) released outside is no click away.
+	let pressedBackdrop = false;
+
+	function onpointerdown(event: PointerEvent) {
+		pressedBackdrop = event.target === dialog;
+	}
+
 	function onclick(event: MouseEvent) {
-		// A click on the backdrop lands on the dialog element itself.
-		if (event.target === dialog) onclose();
+		if (pressedBackdrop && event.target === dialog) onclose();
+		pressedBackdrop = false;
 	}
 </script>
 
@@ -42,6 +50,7 @@
 		event.preventDefault();
 		onclose();
 	}}
+	{onpointerdown}
 	{onclick}
 >
 	{#if open}
@@ -63,7 +72,7 @@
 <style>
 	dialog {
 		max-width: calc(100vw - 2 * var(--space-4));
-		max-height: calc(100vh - 2 * var(--space-8));
+		max-height: calc(100dvh - 2 * var(--space-8));
 		padding: 0;
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
