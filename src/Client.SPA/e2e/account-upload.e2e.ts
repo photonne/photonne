@@ -93,3 +93,26 @@ test('files dropped on the drop zone are queued', async ({ page }) => {
 	);
 	expect(accountState(state).uploaded).toEqual(['arrastrada.heic']);
 });
+
+test('the header shows uploads in progress from any page', async ({ page }) => {
+	await fakeApi(page, { signedIn: true });
+	let release = () => {};
+	const held = new Promise<void>((resolve) => (release = resolve));
+	await page.route('**/api/assets/upload', async (route) => {
+		await held;
+		await route.fallback();
+	});
+
+	await page.goto('/upload');
+	await page
+		.locator('input[type="file"][multiple]')
+		.setInputFiles([{ name: 'lenta.jpg', mimeType: 'image/jpeg', buffer: jpeg('slow') }]);
+	await page.getByRole('link', { name: 'Fotos' }).click();
+
+	const indicator = page.getByRole('link', { name: 'Subiendo 0/1' });
+	await expect(indicator).toBeVisible();
+	await expect(indicator).toHaveAttribute('href', '/upload');
+
+	release();
+	await expect(indicator).toBeHidden();
+});

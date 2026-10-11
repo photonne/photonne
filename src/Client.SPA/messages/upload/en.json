@@ -1,6 +1,8 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"upload_title": "Upload",
+	"upload_indicator": "Uploading",
+	"upload_indicator_title": "Uploading: {percent}%. See the upload queue",
 	"upload_subtitle": "Add photos and videos to your library. Original dates are kept, and what you already have isn't uploaded again.",
 	"upload_drop_title": "Drag photos, videos or folders here",
 	"upload_drop_hint": "Or pick them from your computer. JPEG, HEIC, RAW, MP4, MOV and more.",

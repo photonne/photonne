@@ -1,6 +1,8 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"upload_title": "Subir",
+	"upload_indicator": "Subiendo",
+	"upload_indicator_title": "Subiendo: {percent} %. Ver la cola de subida",
 	"upload_subtitle": "Añade fotos y vídeos a tu biblioteca. Se conservan las fechas originales y lo que ya tienes no se vuelve a subir.",
 	"upload_drop_title": "Arrastra aquí fotos, vídeos o carpetas",
 	"upload_drop_hint": "O elígelos desde tu equipo. JPEG, HEIC, RAW, MP4, MOV y más.",
