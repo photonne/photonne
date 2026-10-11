@@ -565,7 +565,6 @@
 	],
 	"ops_queues_hint": "Trabajos por foto: metadatos, miniaturas y modelos de IA.",
 	"ops_queues_title": "Colas de análisis",
-	"ops_refresh": "Actualizar",
 	"ops_retry": "Reintentar",
 	"ops_run": "Ejecutar",
 	"ops_select_all": "Seleccionar todo",

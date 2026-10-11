@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import RefreshButton from './RefreshButton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import './admin.css';
 
@@ -9,8 +10,12 @@
 		description?: string;
 		/** The browser tab's title, when it differs from the heading. */
 		documentTitle?: string;
-		/** Page-level buttons next to the title (New user, Refresh…). */
+		/** Page-level buttons next to the title (New user…). */
 		actions?: Snippet;
+		/** Reloads the page's data: adds the shared Refresh button at the end of the action bar. */
+		onrefresh?: () => unknown;
+		/** A refresh is under way: the button waits. */
+		refreshing?: boolean;
 		/** Filters under the title (search, chips…). */
 		toolbar?: Snippet;
 		children: Snippet;
@@ -23,6 +28,8 @@
 		description,
 		documentTitle,
 		actions,
+		onrefresh,
+		refreshing = false,
 		toolbar,
 		children,
 		narrow = false
@@ -35,9 +42,19 @@
 
 <!-- The shared page header: the h1 sits where every other page has it. -->
 <div class="admin-page" class:narrow>
-	<PageHeader {title} subtitle={description ?? null} {actions} {toolbar} />
+	<PageHeader
+		{title}
+		subtitle={description ?? null}
+		actions={actions || onrefresh ? actionBar : undefined}
+		{toolbar}
+	/>
 	<div class="admin-body">{@render children()}</div>
 </div>
+
+{#snippet actionBar()}
+	{@render actions?.()}
+	{#if onrefresh}<RefreshButton onclick={onrefresh} busy={refreshing} />{/if}
+{/snippet}
 
 <style>
 	.admin-page {

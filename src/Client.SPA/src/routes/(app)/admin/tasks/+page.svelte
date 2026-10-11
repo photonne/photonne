@@ -9,6 +9,7 @@
 		adminEnrichmentQueueSummaryOptions,
 		adminEnrichmentQueueSummaryQueryKey,
 		getApiAdminMaintenanceMlPendingTotalOptions,
+		getApiAdminMaintenanceMlPendingTotalQueryKey,
 		getBackgroundTasksOptions,
 		getBackgroundTasksQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
@@ -56,6 +57,17 @@
 
 	const refreshTasks = () =>
 		queryClient.invalidateQueries({ queryKey: getBackgroundTasksQueryKey() });
+
+	let refreshing = $state(false);
+	async function refreshAll() {
+		refreshing = true;
+		await Promise.all([
+			refreshTasks(),
+			queryClient.invalidateQueries({ queryKey: adminEnrichmentQueueSummaryQueryKey() }),
+			queryClient.invalidateQueries({ queryKey: getApiAdminMaintenanceMlPendingTotalQueryKey() })
+		]);
+		refreshing = false;
+	}
 
 	const live = new LiveTasks(refreshTasks);
 	$effect(() => live.sync(tasks.data ?? []));
@@ -125,6 +137,8 @@
 	title={m.ops_tasks_title()}
 	description={m.ops_tasks_intro()}
 	documentTitle={m.admin_tasks()}
+	onrefresh={refreshAll}
+	{refreshing}
 >
 	{#snippet actions()}
 		<a class="btn" href={appHref('/admin/maintenance')}>
@@ -141,17 +155,6 @@
 					? m.ops_tasks_running_count({ count: runningCount })
 					: m.ops_tasks_background_hint()}
 			</p>
-			<div class="ops-actions">
-				<button
-					type="button"
-					class="icon-btn"
-					onclick={refreshTasks}
-					aria-label={m.ops_refresh()}
-					title={m.ops_refresh()}
-				>
-					<Icon name="refresh" size={18} />
-				</button>
-			</div>
 		</header>
 
 		<div class="ops-card ops-table-wrap">

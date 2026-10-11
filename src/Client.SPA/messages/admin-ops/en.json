@@ -565,7 +565,6 @@
 	],
 	"ops_queues_hint": "Per-photo jobs: metadata, thumbnails and AI models.",
 	"ops_queues_title": "Analysis queues",
-	"ops_refresh": "Refresh",
 	"ops_retry": "Retry",
 	"ops_run": "Run",
 	"ops_select_all": "Select all",
