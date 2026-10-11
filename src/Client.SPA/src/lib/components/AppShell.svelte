@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import type { Snippet } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
@@ -27,7 +28,6 @@
 
 	let { children }: { children: Snippet } = $props();
 
-	let accountOpen = $state(false);
 	const fullName = $derived(
 		[session.user?.firstName, session.user?.lastName].filter(Boolean).join(' ')
 	);
@@ -73,8 +73,12 @@
 
 	let confirmingLogout = $state(false);
 
+	const accountItems: MenuEntry[] = $derived([
+		{ kind: 'link', label: m.nav_settings(), icon: 'settings', href: href('/settings') },
+		{ label: m.account_logout(), icon: 'logout', run: requestLogout }
+	]);
+
 	function requestLogout() {
-		accountOpen = false;
 		if (uploads.active) confirmingLogout = true;
 		else logout();
 	}
@@ -150,28 +154,24 @@
 						>{unreadCount > 99 ? '99+' : unreadCount}</span
 					>{/if}
 			</a>
-			<details class="account" bind:open={accountOpen}>
-				<summary aria-label={m.account_menu()}>
+			<PopupMenu
+				label={m.account_menu_label({ name: session.user?.username ?? '' })}
+				items={accountItems}
+				triggerClass="account"
+			>
+				{#snippet trigger()}
 					<span class="avatar" aria-hidden="true"
 						>{(session.user?.firstName || session.user?.username || '?').charAt(0)}</span
 					>
-					<span>{session.user?.username}</span>
-				</summary>
-				<div class="menu">
+					<span class="username">{session.user?.username}</span>
+				{/snippet}
+				{#snippet header()}
 					<div class="identity">
 						<strong>{fullName || session.user?.username}</strong>
 						<span>{session.user?.email}</span>
 					</div>
-					<a href={href('/settings')} onclick={() => (accountOpen = false)}>
-						<Icon name="settings" />
-						{m.nav_settings()}
-					</a>
-					<button type="button" onclick={requestLogout}>
-						<Icon name="logout" />
-						{m.account_logout()}
-					</button>
-				</div>
-			</details>
+				{/snippet}
+			</PopupMenu>
 		</div>
 	</header>
 
@@ -367,25 +367,22 @@
 		text-align: center;
 	}
 
-	.account {
-		position: relative;
-	}
-
-	.account summary {
+	/* The account menu's trigger: an avatar and the user's name. */
+	.tools :global(.account) {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		list-style: none;
-		cursor: pointer;
 		padding: var(--space-1) var(--space-3);
+		border: 0;
 		border-radius: var(--radius-sm);
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
 	}
 
-	.account summary::-webkit-details-marker {
-		display: none;
-	}
-
-	.account summary:hover {
+	.tools :global(.account:hover),
+	.tools :global(.account.open) {
 		background: var(--color-surface);
 	}
 
@@ -402,27 +399,11 @@
 		text-transform: uppercase;
 	}
 
-	.menu {
-		position: absolute;
-		right: 0;
-		top: calc(100% + var(--space-1));
-		z-index: 5;
-		display: grid;
-		min-width: 240px;
-		padding: var(--space-1);
-		background: var(--color-surface-raised);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-raised);
-	}
-
 	.identity {
 		display: grid;
 		gap: 2px;
-		padding: var(--space-2) var(--space-3) var(--space-3);
-		margin-bottom: var(--space-1);
-		border-bottom: 1px solid var(--color-border);
 		min-width: 0;
+		max-width: 260px;
 	}
 
 	.identity span {
@@ -431,27 +412,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	}
-
-	.menu a,
-	.menu button {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-2) var(--space-3);
-		border: 0;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		text-decoration: none;
-		text-align: left;
-		cursor: pointer;
-	}
-
-	.menu a:hover,
-	.menu button:hover {
-		background: var(--color-surface);
 	}
 
 	.sidebar {
