@@ -31,11 +31,13 @@
 		/** The user to edit; null creates a new one. */
 		user: UserDto | null;
 		me: UserDto | null;
+		/** The public demo: new and edited accounts can only be regular users. */
+		demo?: boolean;
 		onclose: () => void;
 		onsaved: (user: UserDto, created: boolean) => void;
 	}
 
-	let { open, user, me, onclose, onsaved }: Props = $props();
+	let { open, user, me, demo = false, onclose, onsaved }: Props = $props();
 
 	let username = $state('');
 	let email = $state('');
@@ -101,7 +103,7 @@
 			read('UserSettings.DefaultStorageQuotaGb')
 		]);
 		if (user) return;
-		role = defaultRole === 'Admin' ? 'Admin' : 'User';
+		role = !demo && defaultRole === 'Admin' ? 'Admin' : 'User';
 		isActive = defaultActive.toLowerCase() !== 'false';
 		const gb = Number.parseInt(defaultQuota, 10);
 		quota = quotaToForm(Number.isFinite(gb) && gb > 0 ? gb * GIB : null);
@@ -264,7 +266,7 @@
 				<div class="form-row">
 					<label class="field">
 						<span>{m.admin_user_role()}</span>
-						<select bind:value={role} disabled={protectedUser}>
+						<select bind:value={role} disabled={protectedUser || demo}>
 							<option value="User">{m.admin_core_role_user()}</option>
 							<option value="Admin">{m.admin_core_role_admin()}</option>
 						</select>
@@ -288,6 +290,9 @@
 					<input type="checkbox" bind:checked={isActive} disabled={protectedUser} />
 					{m.admin_user_active()}
 				</label>
+				{#if demo}
+					<p class="hint">{m.admin_user_demo_role()}</p>
+				{/if}
 				{#if protectedUser}
 					<p class="hint">
 						{user?.isPrimaryAdmin ? m.admin_user_primary_locked() : m.admin_user_self_locked()}

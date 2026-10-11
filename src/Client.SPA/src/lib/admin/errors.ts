@@ -18,8 +18,25 @@ const KNOWN: Record<string, () => string> = {
 	backup_file_missing: m.admin_core_error_invalid_backup
 };
 
+/**
+ * The explanation in the 403 the public demo answers to a blocked action (a
+ * ProblemDetails with the `demoMode` extension, see DemoModeGuardMiddleware),
+ * or null when `error` is something else.
+ */
+export function demoRefusal(error: unknown): string | null {
+	if (typeof error !== 'object' || error === null) return null;
+	const problem = error as { demoMode?: unknown; detail?: unknown; title?: unknown };
+	if (problem.demoMode !== true) return null;
+	if (typeof problem.detail === 'string' && problem.detail) return problem.detail;
+	return typeof problem.title === 'string' && problem.title
+		? problem.title
+		: m.admin_core_demo_blocked();
+}
+
 /** A sentence for the user from an API error, or the fallback. */
 export function errorText(error: unknown, fallback: () => string = m.admin_core_error_generic) {
+	const demo = demoRefusal(error);
+	if (demo) return demo;
 	const code = apiErrorCode(error);
 	if (code && KNOWN[code]) return KNOWN[code]();
 	if (code && EXPLAINED_BY_SERVER.has(code)) return (error as { error: string }).error;

@@ -18,7 +18,16 @@
 	import { errorText } from './errors.js';
 	import { localDate } from './format.js';
 
-	let { library, onclose }: { library: ExternalLibraryDto | null; onclose: () => void } = $props();
+	let {
+		library,
+		readOnly = false,
+		onclose
+	}: {
+		library: ExternalLibraryDto | null;
+		/** The public demo: the list shows, but access can't change. */
+		readOnly?: boolean;
+		onclose: () => void;
+	} = $props();
 
 	const queryClient = useQueryClient();
 	const id = $derived(library?.id ?? '');
@@ -126,7 +135,7 @@
 							class="icon-btn danger"
 							aria-label={m.admin_libs_access_revoke({ name: permission.username })}
 							title={m.admin_libs_access_revoke({ name: permission.username })}
-							disabled={busy}
+							disabled={busy || readOnly}
 							onclick={() => revoke(permission.userId, permission.username)}
 						>
 							<Icon name="close" size={18} />
@@ -138,10 +147,13 @@
 			</ul>
 		{/if}
 
+		{#if readOnly}
+			<p class="notice warning small"><Icon name="lock" size={18} />{m.admin_libs_demo()}</p>
+		{/if}
 		<form class="grant" onsubmit={grant}>
 			<label class="field">
 				<span>{m.admin_libs_access_add()}</span>
-				<select bind:value={selected} disabled={!candidates.length}>
+				<select bind:value={selected} disabled={!candidates.length || readOnly}>
 					<option value="" disabled
 						>{candidates.length
 							? m.admin_libs_access_pick()
@@ -152,7 +164,7 @@
 					{/each}
 				</select>
 			</label>
-			<button type="submit" class="btn primary" disabled={!selected || busy}
+			<button type="submit" class="btn primary" disabled={!selected || busy || readOnly}
 				>{m.admin_libs_access_grant()}</button
 			>
 		</form>

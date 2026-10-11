@@ -569,5 +569,11 @@
 		}
 	],
 	"admin_users_more": "Más acciones para {name}",
-	"admin_strash_empty_hint": "Cuando alguien borre algo de una carpeta compartida, aparecerá aquí."
+	"admin_strash_empty_hint": "Cuando alguien borre algo de una carpeta compartida, aparecerá aquí.",
+	"admin_core_demo_blocked": "Esta acción está desactivada en la demo.",
+	"admin_users_demo": "Demo: puedes crear y gestionar cuentas de usuario, pero las de administrador están protegidas.",
+	"admin_users_demo_locked": "Las cuentas de administrador no se pueden cambiar en la demo",
+	"admin_user_demo_role": "En la demo solo se pueden crear y editar cuentas con rol de usuario.",
+	"admin_libs_demo": "Solo lectura en la demo: no se pueden crear, editar, borrar ni escanear bibliotecas, ni cambiar quién las ve.",
+	"admin_backup_demo": "Solo lectura en la demo: no se pueden exportar ni restaurar copias de seguridad."
 }

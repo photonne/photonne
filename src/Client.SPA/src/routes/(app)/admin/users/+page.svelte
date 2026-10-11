@@ -10,6 +10,7 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import { useDemoMode } from '#lib/admin/demo.svelte.js';
 	import { errorText } from '#lib/admin/errors.js';
 	import { count, localDate, localDateTime, relativeTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
@@ -46,6 +47,9 @@
 	// A fresh "me": whether I'm the primary admin can change while signed in.
 	const meQuery = createQuery(() => getCurrentUserOptions());
 	const me = $derived(meQuery.data ?? session.user);
+	// The public demo lets visitors manage regular accounts only; admins stay as they are.
+	const demo = useDemoMode();
+	const locked = (user: UserDto) => demo.readOnly && user.role === 'Admin';
 
 	let search = $state('');
 	let filter = $state<Filter>('all');
@@ -164,6 +168,16 @@
 
 	/** The row's secondary actions, in the "⋮" menu: only what applies to this user. */
 	function menuItems(user: AdminUser): MenuEntry[] {
+		if (locked(user)) {
+			return [
+				{
+					label: m.admin_users_demo_locked(),
+					icon: 'lock',
+					disabled: true,
+					run: () => {}
+				}
+			];
+		}
 		const items: MenuEntry[] = [
 			{
 				label: m.admin_users_reset(),
@@ -231,6 +245,10 @@
 		</div>
 	{/snippet}
 
+	{#if demo.readOnly}
+		<p class="notice warning"><Icon name="lock" size={18} />{m.admin_users_demo()}</p>
+	{/if}
+
 	{#if usersQuery.isPending}
 		<div class="table-wrap"><Skeleton variant="rows" count={4} /></div>
 	{:else if usersQuery.isError}
@@ -277,7 +295,10 @@
 										<button
 											type="button"
 											class="name"
-											title={m.admin_users_edit_named({ name: user.username })}
+											title={locked(user)
+												? m.admin_users_demo_locked()
+												: m.admin_users_edit_named({ name: user.username })}
+											disabled={locked(user)}
 											onclick={() => (editing = { user })}
 										>
 											{displayName(user)}
@@ -366,6 +387,8 @@
 										type="button"
 										class="btn sm ghost"
 										aria-label={m.admin_users_edit_named({ name: user.username })}
+										title={locked(user) ? m.admin_users_demo_locked() : undefined}
+										disabled={locked(user)}
 										onclick={() => (editing = { user })}
 									>
 										<Icon name="edit" size={18} />
@@ -398,6 +421,7 @@
 		open={editing !== null}
 		user={editing?.user ?? null}
 		{me}
+		demo={demo.readOnly}
 		onclose={() => (editing = null)}
 		onsaved={saved}
 	/>
@@ -553,8 +577,13 @@
 		cursor: pointer;
 	}
 
-	.name:hover {
+	.name:hover:not(:disabled) {
 		text-decoration: underline;
+	}
+
+	.name:disabled {
+		color: inherit;
+		cursor: default;
 	}
 
 	.sub {

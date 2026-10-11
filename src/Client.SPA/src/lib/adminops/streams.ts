@@ -1,3 +1,4 @@
+import { demoRefusal } from '#lib/admin/errors.js';
 import { apiErrorCode, streamBackgroundTask } from '#lib/api/index.js';
 import { readJsonObjects } from './json-stream.js';
 import { toProgressEvent, type ProgressEvent } from './progress.js';
@@ -24,6 +25,8 @@ export class StreamError extends Error {
 }
 
 function errorText(error: unknown) {
+	const demo = demoRefusal(error);
+	if (demo) return demo;
 	if (typeof error === 'object' && error !== null && 'error' in error) {
 		const text = (error as { error: unknown }).error;
 		if (typeof text === 'string') return text;
