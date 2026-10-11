@@ -151,6 +151,7 @@ class FavoritesViewModel(
                             selection = emptySet()
                         )
                     }
+                    unfavorited.clear()
                 }
                 .onFailure { error ->
                     _state.update {
@@ -220,16 +221,30 @@ class FavoritesViewModel(
         }
     }
 
+    /**
+     * Snapshot of the list taken when each asset lost its heart, so that
+     * giving it back (the viewer keeps showing the photo after the toggle)
+     * puts it back where it was instead of losing it until the next refresh.
+     */
+    private val unfavorited = mutableMapOf<String, List<TimelineItem>>()
+
     fun setFavorite(assetId: String, isFavorite: Boolean) {
         // When the user unfavorites an asset from the viewer while the
         // Favorites screen is hosting the list, it disappears from the
-        // grid; otherwise we just mirror the flag locally.
+        // grid; favoriting it again brings it back at its old position.
+        // Both the viewer callback and the bus land here: idempotent.
         if (!isFavorite) {
+            val snapshot = _state.value.items
+            if (snapshot.any { it.id == assetId }) unfavorited[assetId] = snapshot
             applyAssetRemovedLocal(assetId)
         } else {
+            val snapshot = unfavorited.remove(assetId)
             _state.update { previous ->
+                val restored = if (snapshot != null) {
+                    previous.items.withRestored(snapshot, setOf(assetId))
+                } else previous.items
                 previous.copy(
-                    items = previous.items.map { item ->
+                    items = restored.map { item ->
                         if (item.id == assetId) item.copy(isFavorite = true) else item
                     }
                 )
