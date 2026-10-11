@@ -116,11 +116,20 @@
 		return item.isVideo ? m.grid_item_video({ date }) : m.grid_item_photo({ date });
 	}
 
-	async function close() {
-		const last = await viewer.close();
-		await tick();
-		if (last) grid?.focusItem(last);
+	function close() {
+		viewer.close();
 	}
+
+	// However the viewer closes (its button, Escape, the browser's Back),
+	// focus goes back to the cell of the last photo shown.
+	let lastOpen: string | null = null;
+	$effect(() => {
+		const id = viewer.openId;
+		const before = lastOpen;
+		lastOpen = id;
+		if (id || !before) return;
+		tick().then(() => grid?.focusItem(before));
+	});
 
 	function removeFromViewer(remove: (ids: readonly string[]) => Promise<void>) {
 		return leaveViewerThen(viewer, store.order, remove);

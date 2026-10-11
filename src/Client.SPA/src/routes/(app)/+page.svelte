@@ -129,11 +129,20 @@
 	const openViewer = (item: GridAsset) => viewer.open(item.id);
 	const navigateViewer = (assetId: string) => viewer.navigate(assetId);
 
-	async function closeViewer() {
-		const last = await viewer.close();
-		await tick();
-		if (last) grid?.focusItem(last);
+	function closeViewer() {
+		viewer.close();
 	}
+
+	// However the viewer closes (its button, Escape, the browser's Back),
+	// focus goes back to the cell of the last photo shown.
+	let lastOpen: string | null = null;
+	$effect(() => {
+		const id = openId;
+		const before = lastOpen;
+		lastOpen = id;
+		if (id || !before) return;
+		tick().then(() => grid?.focusItem(before));
+	});
 
 	/** After the shown photo leaves the timeline: next, else previous, else close. */
 	function removeFromViewer(remove: (ids: readonly string[]) => Promise<void>) {
