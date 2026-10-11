@@ -38,6 +38,13 @@ import com.photonne.app.resources.admin_users_empty
 import com.photonne.app.ui.main.CreateAction
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.format.humanBytes
+import com.photonne.app.ui.format.StorageQuotaLevel
+import com.photonne.app.ui.format.storageQuotaFraction
+import com.photonne.app.ui.format.storageQuotaLevel
+import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.resources.admin_user_quota_exceeded
+import com.photonne.app.resources.admin_user_quota_usage_format
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,13 +83,21 @@ fun AdminUsersScreen(
         }
     ) {
         items(state.users, key = { it.id }) { user ->
-            UserRow(user = user, onClick = { onEdit(user) })
+            UserRow(
+                user = user,
+                // Stats cover every user; one missing from them has nothing stored.
+                usedBytes = state.usedBytesByUser?.let { it[user.id] ?: 0L },
+                onClick = { onEdit(user) }
+            )
         }
     }
 }
 
 @Composable
-private fun UserRow(user: UserDto, onClick: () -> Unit) {
+private fun UserRow(user: UserDto, usedBytes: Long?, onClick: () -> Unit) {
+    val quota = user.storageQuotaBytes?.takeIf { it > 0 }
+    val quotaFraction = usedBytes?.let { storageQuotaFraction(it, quota) }
+    val quotaLevel = quotaFraction?.let { storageQuotaLevel(it) }
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
@@ -128,6 +143,13 @@ private fun UserRow(user: UserDto, onClick: () -> Unit) {
                         content = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
+                if (quotaLevel == StorageQuotaLevel.Exceeded) {
+                    MetricPill(
+                        stringResource(Res.string.admin_user_quota_exceeded),
+                        container = MaterialTheme.colorScheme.errorContainer,
+                        content = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
             val lastLogin = adminDateTime(user.lastLoginAt)
             Text(
@@ -139,14 +161,23 @@ private fun UserRow(user: UserDto, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            user.storageQuotaBytes?.let { quota ->
-                if (quota > 0) {
-                    Text(
-                        stringResource(Res.string.admin_user_quota_format, humanBytes(quota)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            if (quota != null) {
+                // With the usage known, how full the quota is — in amber from
+                // 90 % and in red past it, like the account's own storage page.
+                Text(
+                    if (usedBytes != null && quotaFraction != null) stringResource(
+                        Res.string.admin_user_quota_usage_format,
+                        humanBytes(usedBytes),
+                        humanBytes(quota),
+                        (quotaFraction * 100).roundToInt()
+                    ) else stringResource(Res.string.admin_user_quota_format, humanBytes(quota)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (quotaLevel) {
+                        StorageQuotaLevel.Exceeded -> MaterialTheme.colorScheme.error
+                        StorageQuotaLevel.Warning -> PhotonneColors.warning
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
             }
         }
     }

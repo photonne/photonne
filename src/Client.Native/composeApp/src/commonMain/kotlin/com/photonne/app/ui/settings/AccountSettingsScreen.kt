@@ -22,6 +22,10 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.storage_quota_summary
 import com.photonne.app.resources.storage_used_unbounded_format
 import com.photonne.app.ui.format.humanBytes
+import com.photonne.app.ui.format.StorageQuotaLevel
+import com.photonne.app.ui.format.storageQuotaFraction
+import com.photonne.app.ui.format.storageQuotaLevel
+import com.photonne.app.resources.storage_quota_exceeded_summary
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.ProgressHeight
 import kotlin.math.roundToInt
@@ -143,36 +147,44 @@ fun AccountSettingsScreen(
 
 /** Fracción de la cuota usada, o null si no hay cuota. */
 private fun storageFraction(info: StorageInfoDto): Float? =
-    info.quotaBytes?.takeIf { it > 0 }?.let { quota ->
-        (info.usedBytes.toDouble() / quota.toDouble()).toFloat().coerceIn(0f, 1f)
-    }
+    storageQuotaFraction(info.usedBytes, info.quotaBytes)
 
 /** "62 % de 100 GB" con cuota; "12,4 GB usados" sin ella. */
 @Composable
 private fun storageSummary(info: StorageInfoDto): String {
     val quota = info.quotaBytes?.takeIf { it > 0 }
     return if (quota != null) {
-        val percent = ((info.usedBytes.toDouble() / quota.toDouble()) * 100)
-            .roundToInt().coerceIn(0, 100)
-        stringResource(Res.string.storage_quota_summary, percent, humanBytes(quota))
+        // Not capped at 100: "120 %" is how an overrun quota shows it is one.
+        val fraction = storageQuotaFraction(info.usedBytes, quota) ?: 0f
+        val percent = (fraction * 100).roundToInt().coerceAtLeast(0)
+        if (storageQuotaLevel(fraction) == StorageQuotaLevel.Exceeded) {
+            stringResource(Res.string.storage_quota_exceeded_summary, percent, humanBytes(quota))
+        } else {
+            stringResource(Res.string.storage_quota_summary, percent, humanBytes(quota))
+        }
     } else {
         stringResource(Res.string.storage_used_unbounded_format, humanBytes(info.usedBytes))
     }
 }
 
 /**
- * Mini barra de cuota bajo el resumen: primaria y en `warning` desde el 90 %,
- * cuando ya conviene liberar espacio antes de que la copia se corte.
+ * Mini barra de cuota bajo el resumen: primaria, en `warning` desde el 90 %
+ * (cuando ya conviene liberar espacio antes de que la copia se corte) y en
+ * rojo pasada la cuota. La barra se queda llena; el exceso lo dice el texto.
  */
 @Composable
 private fun StorageQuotaBar(fraction: Float) {
     LinearProgressIndicator(
-        progress = { fraction },
+        progress = { fraction.coerceIn(0f, 1f) },
         modifier = Modifier
             .padding(top = Spacing.xs)
             .fillMaxWidth()
             .height(ProgressHeight.inline),
-        color = if (fraction >= 0.9f) PhotonneColors.warning else MaterialTheme.colorScheme.primary,
+        color = when (storageQuotaLevel(fraction)) {
+            StorageQuotaLevel.Exceeded -> MaterialTheme.colorScheme.error
+            StorageQuotaLevel.Warning -> PhotonneColors.warning
+            StorageQuotaLevel.Normal -> MaterialTheme.colorScheme.primary
+        },
         trackColor = MaterialTheme.colorScheme.surface
     )
 }

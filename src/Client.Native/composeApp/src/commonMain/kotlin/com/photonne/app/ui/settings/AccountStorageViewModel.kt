@@ -6,6 +6,7 @@ import com.photonne.app.data.account.AccountRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.StorageInfoDto
+import com.photonne.app.ui.format.storageQuotaFraction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,12 +18,9 @@ data class AccountStorageUiState(
     val isLoading: Boolean = false,
     val error: UiError? = null,
 ) {
+    /** Not capped at 1: past the quota it says by how much. */
     val usagePercent: Float?
-        get() = info?.let { stored ->
-            stored.quotaBytes?.takeIf { it > 0 }?.let { quota ->
-                (stored.usedBytes.toFloat() / quota.toFloat()).coerceIn(0f, 1f)
-            }
-        }
+        get() = info?.let { stored -> storageQuotaFraction(stored.usedBytes, stored.quotaBytes) }
 }
 
 class AccountStorageViewModel(

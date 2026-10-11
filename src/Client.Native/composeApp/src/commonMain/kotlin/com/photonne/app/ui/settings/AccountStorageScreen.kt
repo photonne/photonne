@@ -52,6 +52,10 @@ import com.photonne.app.ui.charts.StackedBar
 import com.photonne.app.ui.charts.StackedSegment
 import com.photonne.app.ui.charts.rememberChartPalette
 import com.photonne.app.ui.format.humanBytes
+import com.photonne.app.ui.format.StorageQuotaLevel
+import com.photonne.app.ui.format.storageQuotaLevel
+import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.resources.storage_quota_exceeded_format
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -92,7 +96,8 @@ fun AccountStorageScreen(
             )
         state.info != null -> {
             val info = state.info!!
-            val percentInt = state.usagePercent?.let { (it * 100f).toInt().coerceIn(0, 100) }
+            // Not capped at 100: an overrun quota reads as 120 %, not as full.
+            val percentInt = state.usagePercent?.let { (it * 100f).toInt().coerceAtLeast(0) }
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().hazeSource(hazeState),
@@ -210,13 +215,22 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
                         style = MaterialTheme.typography.titleMedium
                     )
                     val remaining = (quota - info.usedBytes).coerceAtLeast(0L)
+                    val level = storageQuotaLevel(percentFraction ?: 0f)
                     Text(
-                        stringResource(
+                        if (level == StorageQuotaLevel.Exceeded) stringResource(
+                            Res.string.storage_quota_exceeded_format,
+                            humanBytes(info.usedBytes - quota)
+                        ) else stringResource(
                             Res.string.storage_remaining_format,
                             humanBytes(remaining)
                         ),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        // Same thresholds as the bar in Ajustes and the web.
+                        color = when (level) {
+                            StorageQuotaLevel.Exceeded -> MaterialTheme.colorScheme.error
+                            StorageQuotaLevel.Warning -> PhotonneColors.warning
+                            StorageQuotaLevel.Normal -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
                     ChartLegend(
                         items = listOf(

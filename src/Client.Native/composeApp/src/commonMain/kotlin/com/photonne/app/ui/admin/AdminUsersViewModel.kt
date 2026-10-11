@@ -38,6 +38,10 @@ data class AdminUsersUiState(
     /** What the server will give a new account for every field the admin
      *  leaves alone (Ajustes › Usuarios). Null until read, or if it can't be. */
     val newUserDefaults: NewUserDefaults? = null,
+    /** Bytes each user's library takes, by user id, from the admin stats.
+     *  Null until they arrive (or if they can't): the rows then show the
+     *  quota alone, as they always did. */
+    val usedBytesByUser: Map<String, Long>? = null,
 )
 
 /** The server's defaults for a new account, as the create form shows them. */
@@ -103,6 +107,18 @@ class AdminUsersViewModel(
         viewModelScope.launch {
             // Fire both calls and apply each result independently so a transient
             // failure in one doesn't abort the other.
+            // What each account uses, so a quota can say how full it is. Its own
+            // request: a failure costs the usage line, not the list.
+            launch {
+                runCatching { repository.getStats() }
+                    .onSuccess { stats ->
+                        _state.update { state ->
+                            state.copy(
+                                usedBytesByUser = stats.users.associate { it.userId to it.photoBytes + it.videoBytes }
+                            )
+                        }
+                    }
+            }
             launch {
                 runCatching { accountRepository.refreshCurrentUser() }
                     .onSuccess { freshUser ->

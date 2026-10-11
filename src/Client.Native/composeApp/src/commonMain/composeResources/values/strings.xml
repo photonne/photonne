@@ -765,6 +765,8 @@
     <string name="storage_used_format">%1$s usados de %2$s</string>
     <string name="storage_used_unbounded_format">%1$s usados</string>
     <string name="storage_quota_summary">%1$d %% de %2$s</string>
+    <string name="storage_quota_exceeded_summary">Cuota superada · %1$d %% de %2$s</string>
+    <string name="storage_quota_exceeded_format">Cuota superada en %1$s</string>
     <string name="storage_no_quota">Sin límite de cuota</string>
     <string name="storage_used_percent_format">%1$s usados de %2$s (%3$d%%)</string>
     <string name="storage_remaining_format">Quedan %1$s</string>
@@ -803,6 +805,8 @@
     <string name="admin_user_last_login">Último acceso: %1$s</string>
     <string name="admin_user_never_logged_in">Nunca ha accedido</string>
     <string name="admin_user_quota_format">Cuota: %1$s</string>
+    <string name="admin_user_quota_exceeded">Cuota superada</string>
+    <string name="admin_user_quota_usage_format">Cuota: %1$s de %2$s (%3$d %%)</string>
     <string name="admin_user_action_reset_password">Restablecer contraseña</string>
     <string name="admin_user_action_reset_password_title">Restablecer contraseña</string>
     <string name="admin_user_action_reset_password_message">Define una nueva contraseña para "%1$s". El usuario deberá iniciar sesión con la nueva contraseña.</string>
