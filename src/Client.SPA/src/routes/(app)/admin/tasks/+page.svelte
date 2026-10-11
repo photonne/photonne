@@ -256,33 +256,40 @@
 			<p>{m.ops_queues_hint()}</p>
 		</header>
 
-		<div class="summary">
-			<div class="ops-card tile">
-				<span class="value">{count(totals.inQueue)}</span>
-				<span class="muted small">{m.ops_queue_in_queue()}</span>
-			</div>
-			<div class="ops-card tile">
-				<span class="value">{count(totals.processing)}</span>
-				<span class="muted small">{m.ops_queue_processing()}</span>
-			</div>
-			<div class="ops-card tile">
-				<span class="value">{count(totals.retrying)}</span>
-				<span class="muted small">{m.ops_queue_retrying()}</span>
-			</div>
-			<a class="ops-card tile link" class:alert={totals.failed > 0} href={failuresHref()}>
-				<span class="value">{count(totals.failed)}</span>
-				<span class="small">{m.ops_queue_failed_link()}</span>
-			</a>
-			{#if mlPending.data}
-				<a class="ops-card tile link" href={appHref('/admin/maintenance')}>
-					<span class="value">{count(mlPending.data.count)}</span>
-					<span class="small">{m.ops_ml_pending_total()}</span>
+		{#if queues.isPending}
+			<!-- Zeros would read as "nothing queued" before the counts arrive. -->
+			<Skeleton variant="tiles" count={4} flush />
+		{:else}
+			<div class="summary">
+				<div class="ops-card tile">
+					<span class="value">{count(totals.inQueue)}</span>
+					<span class="muted small">{m.ops_queue_in_queue()}</span>
+				</div>
+				<div class="ops-card tile">
+					<span class="value">{count(totals.processing)}</span>
+					<span class="muted small">{m.ops_queue_processing()}</span>
+				</div>
+				<div class="ops-card tile">
+					<span class="value">{count(totals.retrying)}</span>
+					<span class="muted small">{m.ops_queue_retrying()}</span>
+				</div>
+				<a class="ops-card tile link" class:alert={totals.failed > 0} href={failuresHref()}>
+					<span class="value">{count(totals.failed)}</span>
+					<span class="small">{m.ops_queue_failed_link()}</span>
 				</a>
-			{/if}
-		</div>
+				{#if mlPending.data}
+					<a class="ops-card tile link" href={appHref('/admin/maintenance')}>
+						<span class="value">{count(mlPending.data.count)}</span>
+						<span class="small">{m.ops_ml_pending_total()}</span>
+					</a>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="ops-card ops-table-wrap">
-			{#if queues.isError && !queues.data}
+			{#if queues.isPending}
+				<Skeleton variant="rows" count={4} />
+			{:else if queues.isError && !queues.data}
 				<p class="empty" role="alert">{m.ops_load_failed()}</p>
 			{:else}
 				<table class="ops-table">
