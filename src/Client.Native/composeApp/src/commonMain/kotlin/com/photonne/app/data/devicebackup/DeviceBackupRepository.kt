@@ -207,7 +207,17 @@ class DeviceBackupRepository(
                         permits.withPermit {
                             if (!shouldContinue()) return@withPermit
                             val media = mediaByUri[entry.uri] ?: return@withPermit
-                            val hashResult = runCatching { gallery.computeSha256(media) }
+                            // Not runCatching: stopping the verification cancels
+                            // these hashes, and a cancelled hash is not an
+                            // unreadable file — catching it marked healthy files
+                            // FAILED/FileUnreadable on every cancel.
+                            val hashResult = try {
+                                Result.success(gallery.computeSha256(media))
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Throwable) {
+                                Result.failure(ex)
+                            }
                             val hash = hashResult.getOrNull()
                             if (hash == null) {
                                 // A file we can't read (deleted mid-scan, codec

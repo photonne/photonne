@@ -5,6 +5,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.io.Source
 import kotlinx.io.asSource
@@ -77,6 +78,8 @@ actual class DeviceGallery {
             file.inputStream().use { input ->
                 val buf = ByteArray(64 * 1024)
                 while (true) {
+                    // Stopping the verification stops a big file mid-hash.
+                    ensureActive()
                     val n = input.read(buf)
                     if (n <= 0) break
                     digest.update(buf, 0, n)
