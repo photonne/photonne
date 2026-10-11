@@ -61,9 +61,17 @@
 	}
 	let search = $state('');
 
-	function isCurrent(path: string) {
+	/**
+	 * aria-current for a link: "page" when it is the page on screen, "true"
+	 * when the page is inside its section (Álbumes on /albums/123), so only
+	 * one link claims to be the page itself.
+	 */
+	function current(path: string): 'page' | 'true' | undefined {
 		const target = href(path);
-		return path === '/' ? page.url.pathname === target : page.url.pathname.startsWith(target);
+		const here = page.url.pathname;
+		if (here === target) return 'page';
+		if (path !== '/' && here.startsWith(`${target.replace(/\/$/, '')}/`)) return 'true';
+		return undefined;
 	}
 
 	function addUploads(files: File[]) {
@@ -185,7 +193,7 @@
 					<li>
 						<a
 							href={href(item.path)}
-							aria-current={isCurrent(item.path) ? 'page' : undefined}
+							aria-current={current(item.path)}
 							title={collapsed ? item.label() : undefined}
 						>
 							<Icon name={item.icon} size={18} />
@@ -204,7 +212,7 @@
 								<a
 									href={href(path)}
 									class:drop={dropTarget === item.id}
-									aria-current={isCurrent(path) ? 'page' : undefined}
+									aria-current={current(path)}
 									title={item.smart
 										? item.name
 										: item.kind === 'album'
@@ -458,7 +466,7 @@
 		background: var(--color-surface);
 	}
 
-	.sidebar a[aria-current='page'] {
+	.sidebar a[aria-current] {
 		background: var(--color-accent-soft);
 		color: var(--color-accent);
 		font-weight: 600;
