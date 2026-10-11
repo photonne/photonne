@@ -174,5 +174,8 @@
 				"countPlural=other": "{countFormatted} recuerdos"
 			}
 		}
-	]
+	],
+	"explore_themes": "Temas",
+	"explore_row_failed": "No se ha podido cargar esta fila.",
+	"explore_retry": "Reintentar"
 }

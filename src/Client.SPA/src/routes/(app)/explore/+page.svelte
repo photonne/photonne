@@ -30,13 +30,34 @@
 	const tags = createQuery(() => getUserTagsOptions());
 
 	const themes = $derived(themeRows(feed.data ?? []));
+	// Each row loads (and fails) on its own: a slow or broken one keeps its
+	// place with a placeholder instead of holding the whole page.
 	const queries = [feed, scenes, objects, tags];
-	const pending = $derived(queries.some((query) => query.isPending));
 	const failed = $derived(queries.every((query) => query.isError));
 	const empty = $derived(
-		themes.length === 0 && !scenes.data?.length && !objects.data?.length && !tags.data?.length
+		queries.every((query) => query.isSuccess) &&
+			themes.length === 0 &&
+			!scenes.data?.length &&
+			!objects.data?.length &&
+			!tags.data?.length
 	);
 </script>
+
+{#snippet waiting(id: string, title: string, query: { isPending: boolean; refetch: () => unknown })}
+	<section class="waiting" aria-labelledby={id}>
+		<div class="head"><SectionTitle {id} {title} /></div>
+		{#if query.isPending}
+			<Skeleton variant="tiles" count={6} />
+		{:else}
+			<p class="failed" role="alert">
+				{m.explore_row_failed()}
+				<button type="button" class="btn sm" onclick={() => query.refetch()}>
+					{m.explore_retry()}
+				</button>
+			</p>
+		{/if}
+	</section>
+{/snippet}
 
 <svelte:head>
 	<title>{m.nav_explore()} · {m.app_name()}</title>
@@ -49,13 +70,14 @@
 		{/snippet}
 	</PageHeader>
 
-	{#if pending}
-		<Skeleton variant="cards" count={12} />
-	{:else if failed}
+	{#if failed}
 		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
 	{:else if empty}
 		<EmptyState icon="explore" title={m.explore_empty()} hint={m.explore_empty_hint()} />
 	{:else}
+		{#if !feed.isSuccess}
+			{@render waiting('explore-themes', m.explore_themes(), feed)}
+		{/if}
 		{#each themes as row (row.key)}
 			<ExploreRow
 				id="theme-{row.key}"
@@ -77,7 +99,9 @@
 			</ExploreRow>
 		{/each}
 
-		{#if scenes.data?.length}
+		{#if !scenes.isSuccess}
+			{@render waiting('explore-scenes', m.explore_scenes(), scenes)}
+		{:else if scenes.data.length}
 			<ExploreRow
 				id="explore-scenes"
 				title={m.explore_scenes()}
@@ -96,7 +120,9 @@
 			</ExploreRow>
 		{/if}
 
-		{#if objects.data?.length}
+		{#if !objects.isSuccess}
+			{@render waiting('explore-objects', m.explore_objects(), objects)}
+		{:else if objects.data.length}
 			<ExploreRow
 				id="explore-objects"
 				title={m.explore_objects()}
@@ -115,7 +141,9 @@
 			</ExploreRow>
 		{/if}
 
-		{#if tags.data?.length}
+		{#if !tags.isSuccess}
+			{@render waiting('explore-tags', m.explore_tags(), tags)}
+		{:else if tags.data.length}
 			<section class="tags" aria-labelledby="explore-tags">
 				<SectionTitle id="explore-tags" title={m.explore_tags()} />
 				<ul role="list">
@@ -136,6 +164,27 @@
 <style>
 	.page {
 		padding-bottom: var(--space-8);
+	}
+
+	.waiting {
+		display: grid;
+		gap: var(--space-2);
+		margin-top: var(--space-4);
+	}
+
+	.waiting .head {
+		padding: 0 var(--page-gutter);
+	}
+
+	.failed {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-3);
+		margin: 0;
+		padding: 0 var(--page-gutter);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
 	}
 
 	.tags {

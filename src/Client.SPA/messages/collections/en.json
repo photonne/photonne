@@ -174,5 +174,8 @@
 				"countPlural=other": "{countFormatted} memories"
 			}
 		}
-	]
+	],
+	"explore_themes": "Themes",
+	"explore_row_failed": "This row couldn’t be loaded.",
+	"explore_retry": "Try again"
 }
