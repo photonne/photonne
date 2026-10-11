@@ -1577,6 +1577,9 @@
     <string name="admin_shared_trash_purged_format">%1$d item(s) permanently deleted</string>
     <string name="admin_settings_save_failed">Couldn\'t save the settings</string>
     <string name="admin_settings_saved">Settings saved</string>
+    <string name="admin_libraries_demo_locked">Libraries are read-only in the demo: they can\'t be created, edited, deleted or scanned, and who has access can\'t be changed.</string>
+    <string name="admin_backup_demo_locked">The database backup can\'t be downloaded in the demo.</string>
+    <string name="admin_users_demo_locked">Only regular user accounts can be managed in the demo: administrator accounts can\'t be created, edited or deleted.</string>
     <string name="admin_settings_demo_locked">Read-only in the demo: server settings can\'t be changed and their private data is hidden.</string>
     <string name="admin_users_error_load">Couldn\'t load the users</string>
     <string name="admin_users_created_format">User “%1$s” created</string>

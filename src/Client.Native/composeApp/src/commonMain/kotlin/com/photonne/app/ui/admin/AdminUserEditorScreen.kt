@@ -35,6 +35,8 @@ import com.photonne.app.resources.admin_user_field_quota_mb
 import com.photonne.app.resources.admin_user_field_quota_mb_hint
 import com.photonne.app.resources.admin_user_promote_success
 import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.demo.LocalDemoMode
+import com.photonne.app.resources.admin_users_demo_locked
 import com.photonne.app.resources.admin_user_not_found
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -92,8 +94,14 @@ fun AdminUserEditorScreen(
         ""
     }
 
+    // The demo server lets visitors manage regular accounts only (UsersEndpoint):
+    // no admin can be created, promoted, edited, reset or deleted. An admin's
+    // editor is read-only there, and nobody can be made admin.
+    val isDemo = LocalDemoMode.current
+    val demoLocksAccount = isDemo && existing != null && !existing.role.equals("User", ignoreCase = true)
+
     val isSubmitting = state.isMutating
-    val canSubmit = !isSubmitting &&
+    val canSubmit = !isSubmitting && !demoLocksAccount &&
         username.isNotBlank() &&
         email.isNotBlank() &&
         (isEdit || password.length >= ADMIN_USER_MIN_PASSWORD_LENGTH)
@@ -109,12 +117,13 @@ fun AdminUserEditorScreen(
         resultMessage = state.statusMessage,
         onResultShown = viewModel::consumeStatus,
     ) {
+        if (isDemo) AdminDemoNotice(stringResource(Res.string.admin_users_demo_locked))
         OutlinedTextField(
             value = username,
             onValueChange = { username = it },
             label = { Text(stringResource(Res.string.account_profile_username)) },
             singleLine = true,
-            enabled = !isSubmitting,
+            enabled = !isSubmitting && !demoLocksAccount,
             keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth()
         )
@@ -123,7 +132,7 @@ fun AdminUserEditorScreen(
             onValueChange = { email = it },
             label = { Text(stringResource(Res.string.account_profile_email)) },
             singleLine = true,
-            enabled = !isSubmitting,
+            enabled = !isSubmitting && !demoLocksAccount,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
@@ -132,7 +141,7 @@ fun AdminUserEditorScreen(
             onValueChange = { firstName = it },
             label = { Text(stringResource(Res.string.account_profile_first_name)) },
             singleLine = true,
-            enabled = !isSubmitting,
+            enabled = !isSubmitting && !demoLocksAccount,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth()
         )
@@ -141,7 +150,7 @@ fun AdminUserEditorScreen(
             onValueChange = { lastName = it },
             label = { Text(stringResource(Res.string.account_profile_last_name)) },
             singleLine = true,
-            enabled = !isSubmitting,
+            enabled = !isSubmitting && !demoLocksAccount,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth()
         )
@@ -151,7 +160,7 @@ fun AdminUserEditorScreen(
                 onValueChange = { password = it },
                 label = { Text(stringResource(Res.string.admin_user_field_password)) },
                 singleLine = true,
-                enabled = !isSubmitting,
+                enabled = !isSubmitting && !demoLocksAccount,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 supportingText = {
@@ -170,7 +179,7 @@ fun AdminUserEditorScreen(
             onValueChange = { input -> quotaMb = input.filter { it.isDigit() } },
             label = { Text(stringResource(Res.string.admin_user_field_quota_mb)) },
             singleLine = true,
-            enabled = !isSubmitting,
+            enabled = !isSubmitting && !demoLocksAccount,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             supportingText = {
                 Text(stringResource(Res.string.admin_user_field_quota_mb_hint))
@@ -182,13 +191,13 @@ fun AdminUserEditorScreen(
             label = stringResource(Res.string.admin_user_field_admin),
             checked = isAdmin,
             onChange = { isAdmin = it },
-            enabled = !isSubmitting && existing?.isPrimaryAdmin != true
+            enabled = !isSubmitting && !isDemo && existing?.isPrimaryAdmin != true
         )
         SettingSwitch(
             label = stringResource(Res.string.admin_user_field_active),
             checked = isActive,
             onChange = { isActive = it },
-            enabled = !isSubmitting && existing?.isPrimaryAdmin != true
+            enabled = !isSubmitting && !demoLocksAccount && existing?.isPrimaryAdmin != true
         )
 
         // One error slot in the view model, two places that draw it: while a
@@ -239,7 +248,7 @@ fun AdminUserEditorScreen(
                     viewModel.clearMessages()
                     showResetPassword = true
                 },
-                enabled = !isSubmitting,
+                enabled = !isSubmitting && !demoLocksAccount,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(Res.string.admin_user_action_reset_password))
@@ -261,7 +270,7 @@ fun AdminUserEditorScreen(
                     viewModel.clearMessages()
                     showDelete = true
                 },
-                enabled = !isSubmitting && existing?.isPrimaryAdmin != true,
+                enabled = !isSubmitting && !demoLocksAccount && existing?.isPrimaryAdmin != true,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(

@@ -173,14 +173,25 @@ private val LocalSettingsLocked = staticCompositionLocalOf { false }
 
 @Composable
 private fun DemoLockedNotice() {
+    AdminDemoNotice(stringResource(Res.string.admin_settings_demo_locked))
+}
+
+/**
+ * What the public demo won't let an admin do on this page, said before they
+ * try: the server refuses those requests with a 403, and a row of buttons that
+ * only ever answer "bloqueado" reads as a broken page. The controls it covers
+ * are disabled alongside.
+ */
+@Composable
+fun AdminDemoNotice(text: String, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer
         )
     ) {
         Text(
-            stringResource(Res.string.admin_settings_demo_locked),
+            text,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = Spacing.md)

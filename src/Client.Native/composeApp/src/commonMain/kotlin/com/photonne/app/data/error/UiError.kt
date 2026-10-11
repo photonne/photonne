@@ -113,7 +113,7 @@ private const val CONNECTION_FAILED_MESSAGE =
     "No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo."
 
 /**
- * En los errores de validación/estado (400, 404, 409, 422) el servidor suele
+ * En los errores de validación/estado (400, 403, 404, 409, 422) el servidor suele
  * explicar el motivo exacto ("La contraseña actual no es correcta"); ese texto
  * gana al genérico de la pantalla. [PhotonneApiException.serverMessage] ya
  * viene filtrado: si el cuerpo no traía un texto legible es `null` y se usa
@@ -123,7 +123,9 @@ private fun userMessageFor(api: PhotonneApiException?, fallback: String): String
     when (api?.status) {
         null -> fallback
         401 -> "Sesión expirada. Vuelve a iniciar sesión."
-        403 -> "No tienes permiso para esta acción."
+        // El servidor explica algunos 403 (las acciones bloqueadas en la demo
+        // pública dicen por qué); los demás siguen con el texto genérico.
+        403 -> api.serverMessage ?: "No tienes permiso para esta acción."
         400, 404, 409, 422 -> api.serverMessage ?: fallback
         in 500..599 -> "El servidor no pudo procesar la petición."
         else -> fallback

@@ -42,7 +42,9 @@ import com.photonne.app.resources.admin_libraries_action_new
 import com.photonne.app.resources.admin_libraries_action_permissions
 import com.photonne.app.resources.admin_libraries_action_scan
 import com.photonne.app.resources.admin_libraries_asset_count
+import com.photonne.app.resources.admin_libraries_demo_locked
 import com.photonne.app.resources.admin_libraries_empty
+import com.photonne.app.ui.demo.LocalDemoMode
 import com.photonne.app.resources.admin_libraries_last_scan
 import com.photonne.app.resources.admin_libraries_no_scan
 import com.photonne.app.resources.admin_libraries_permissions_empty
@@ -81,6 +83,9 @@ fun AdminLibrariesScreen(
     }
 
     val scan = state.scanProgress
+    // The demo server refuses every library change (DemoModeGuardMiddleware):
+    // creating, editing, deleting, scanning and permissions. Reading stays.
+    val isDemo = LocalDemoMode.current
     AdminListScaffold(
         title = title,
         onBack = onBack,
@@ -94,27 +99,37 @@ fun AdminLibrariesScreen(
         resultMessage = state.statusMessage,
         onResultShown = viewModel::consumeStatus,
         onDismissError = viewModel::clearMessages,
-        actions = {
-            CreateAction(
-                icon = PhotonneIcons.NewFolder,
-                contentDescription = stringResource(Res.string.admin_libraries_action_new),
-                onClick = onCreateNew
-            )
+        actions = if (isDemo) null else {
+            {
+                CreateAction(
+                    icon = PhotonneIcons.NewFolder,
+                    contentDescription = stringResource(Res.string.admin_libraries_action_new),
+                    onClick = onCreateNew
+                )
+            }
         },
         // First row of the list rather than a strip above it: up there it sat
         // behind the chrome, cancel button and all.
-        header = if (scan != null) {
-            { item(key = "scan-progress") { ScanProgressCard(
-                    scan,
-                    isCancelling = state.isCancellingScan,
-                    onCancel = viewModel::cancelScan
-                ) } }
+        header = if (scan != null || isDemo) {
+            {
+                if (isDemo) item(key = "demo-locked") {
+                    AdminDemoNotice(stringResource(Res.string.admin_libraries_demo_locked))
+                }
+                if (scan != null) item(key = "scan-progress") {
+                    ScanProgressCard(
+                        scan,
+                        isCancelling = state.isCancellingScan,
+                        onCancel = viewModel::cancelScan
+                    )
+                }
+            }
         } else null
     ) {
         items(state.libraries, key = { it.id }) { lib ->
             LibraryCard(
                 library = lib,
-                scanEnabled = state.scanningLibraryId == null,
+                scanEnabled = state.scanningLibraryId == null && !isDemo,
+                permissionsEnabled = !isDemo,
                 onEdit = { onEdit(lib) },
                 onScan = { viewModel.startScan(lib.id) },
                 onPermissions = { viewModel.openPermissions(lib.id, knownUsers) }
@@ -179,6 +194,7 @@ private fun ScanProgressCard(
 private fun LibraryCard(
     library: ExternalLibraryDto,
     scanEnabled: Boolean,
+    permissionsEnabled: Boolean,
     onEdit: () -> Unit,
     onScan: () -> Unit,
     onPermissions: () -> Unit
@@ -228,7 +244,11 @@ private fun LibraryCard(
                 OutlinedButton(onClick = onScan, enabled = scanEnabled, modifier = Modifier.weight(1f)) {
                     Text(stringResource(Res.string.admin_libraries_action_scan))
                 }
-                OutlinedButton(onClick = onPermissions, modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = onPermissions,
+                    enabled = permissionsEnabled,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(stringResource(Res.string.admin_libraries_action_permissions))
                 }
             }

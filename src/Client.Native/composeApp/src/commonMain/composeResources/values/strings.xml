@@ -1689,6 +1689,9 @@
     <string name="admin_shared_trash_purged_format">%1$d elemento(s) eliminados definitivamente</string>
     <string name="admin_settings_save_failed">No se pudieron guardar los ajustes</string>
     <string name="admin_settings_saved">Ajustes guardados</string>
+    <string name="admin_libraries_demo_locked">En la demo las bibliotecas son de solo lectura: no se pueden crear, editar, borrar ni escanear, ni cambiar quién tiene acceso.</string>
+    <string name="admin_backup_demo_locked">En la demo no se puede descargar la copia de seguridad de la base de datos.</string>
+    <string name="admin_users_demo_locked">En la demo solo se pueden gestionar cuentas de usuario normales: las cuentas de administrador no se pueden crear, editar ni borrar.</string>
     <string name="admin_settings_demo_locked">Solo lectura en la demo: los ajustes del servidor no se pueden cambiar y sus datos privados aparecen ocultos.</string>
     <string name="admin_users_error_load">No se pudieron cargar los usuarios</string>
     <string name="admin_users_created_format">Usuario «%1$s» creado</string>
