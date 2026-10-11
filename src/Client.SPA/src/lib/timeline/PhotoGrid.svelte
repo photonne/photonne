@@ -339,7 +339,41 @@
 
 	let painting: { selected: boolean } | null = null;
 
+	// A long press on a touch screen toggles the cell, the way a phone's
+	// gallery starts selecting; the click that follows it is swallowed.
+	const LONG_PRESS_MS = 450;
+	let press: { id: string; x: number; y: number; timer: number } | null = null;
+	let pressed: string | null = null;
+
+	function onCellPointerDown(event: PointerEvent, item: T) {
+		cancelPress();
+		pressed = null;
+		if (!selectable || event.pointerType !== 'touch') return;
+		const timer = window.setTimeout(() => {
+			press = null;
+			pressed = item.id;
+			focusedId = item.id;
+			selection.toggle(item.id);
+			navigator.vibrate?.(10);
+		}, LONG_PRESS_MS);
+		press = { id: item.id, x: event.clientX, y: event.clientY, timer };
+	}
+
+	function onCellPointerMove(event: PointerEvent) {
+		// A finger that moves is scrolling, not pressing.
+		if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10) cancelPress();
+	}
+
+	function cancelPress() {
+		if (press) window.clearTimeout(press.timer);
+		press = null;
+	}
+
 	function onCellClick(event: MouseEvent, item: T) {
+		if (pressed === item.id) {
+			pressed = null;
+			return;
+		}
 		focusedId = item.id;
 		if (!selectable) onopen(item);
 		else if (event.shiftKey) selectRangeTo(item.id);
@@ -563,9 +597,19 @@
 								aria-label={itemLabel(item)}
 								aria-pressed={selection.active ? selected : undefined}
 								draggable="true"
-								ondragstart={(event) =>
-									startAssetDrag(event, selected ? [...selection.ids] : [item.id])}
+								ondragstart={(event) => {
+									cancelPress();
+									startAssetDrag(event, selected ? [...selection.ids] : [item.id]);
+								}}
 								onclick={(event) => onCellClick(event, item)}
+								onpointerdown={(event) => onCellPointerDown(event, item)}
+								onpointermove={onCellPointerMove}
+								onpointerup={cancelPress}
+								onpointercancel={cancelPress}
+								oncontextmenu={(event) => {
+									// The long press selected: no context menu over it.
+									if (pressed === item.id || press?.id === item.id) event.preventDefault();
+								}}
 								onfocus={() => (focusedId = item.id)}
 							>
 								<img
@@ -727,6 +771,7 @@
 
 	.open {
 		display: block;
+		-webkit-touch-callout: none;
 		width: 100%;
 		height: 100%;
 		padding: 0;
@@ -815,6 +860,13 @@
 			opacity var(--duration-fast),
 			background var(--duration-fast);
 		touch-action: none;
+	}
+
+	/* Without hover (a touch screen) the check is always there to tap. */
+	@media (hover: none) {
+		.check {
+			opacity: 1;
+		}
 	}
 
 	.check:hover {
