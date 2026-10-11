@@ -15,6 +15,12 @@ export interface FolderListOptions {
 	query: string;
 }
 
+const FOLDER_SCOPES: readonly FolderScope[] = ['all', 'personal', 'shared', 'external'];
+
+export function isFolderScope(value: unknown): value is FolderScope {
+	return FOLDER_SCOPES.includes(value as FolderScope);
+}
+
 export const defaultFolderListOptions: FolderListOptions = {
 	scope: 'all',
 	sort: 'name',
@@ -88,6 +94,7 @@ export function parseFolderListOptions(raw: string | null): FolderListOptions {
 		const saved = JSON.parse(raw ?? '{}') as Partial<FolderListOptions>;
 		return {
 			...defaultFolderListOptions,
+			scope: isFolderScope(saved.scope) ? saved.scope : defaultFolderListOptions.scope,
 			sort: saved.sort === 'count' ? 'count' : 'name',
 			descending: saved.descending === true,
 			view: saved.view === 'list' ? 'list' : 'grid'
