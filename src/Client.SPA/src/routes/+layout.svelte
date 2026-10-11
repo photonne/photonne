@@ -2,7 +2,8 @@
 	import '@fontsource-variable/inter';
 	import '../app.css';
 	import '#lib/styles/ui.css';
-	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
+	import { QueryClientProvider } from '@tanstack/svelte-query';
+	import { queryClient } from '#lib/api/query-client.js';
 	import { configureApiClient } from '#lib/api/index.js';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import { session } from '#lib/auth/session.svelte.js';
@@ -16,18 +17,6 @@
 	configureApiClient({
 		accessToken: () => session.accessToken,
 		refresh: () => session.refresh()
-	});
-
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {
-				// Library data changes when the user acts on it, and those actions
-				// invalidate what they touch; no need to refetch on every focus.
-				staleTime: 60_000,
-				refetchOnWindowFocus: false,
-				retry: 1
-			}
-		}
 	});
 
 	document.documentElement.lang = getLocale();

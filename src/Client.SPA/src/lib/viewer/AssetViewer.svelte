@@ -18,11 +18,11 @@
 	import { onMount, tick, type Snippet } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { toggleFavorite } from '#lib/api/index.js';
+	import { invalidateLibrary } from '#lib/api/query-client.js';
 	import {
 		getApiAssetsByIdFacesOptions,
 		getAssetDetailOptions,
-		getAssetDetailQueryKey,
-		getTimelineBucketsQueryKey
+		getAssetDetailQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
@@ -284,6 +284,7 @@
 			isFavorite: data.isFavorite
 		});
 		onchanged(asset.id, 'favorite');
+		invalidateLibrary();
 	}
 
 	function changed(change: AssetChange) {
@@ -291,12 +292,14 @@
 			queryKey: getAssetDetailQueryKey({ path: { assetId } })
 		});
 		onchanged(assetId, change);
+		// A new date moves the photo in every view (months, map, memories).
+		if (change === 'date') invalidateLibrary();
 	}
 
 	function frameSaved(newAssetId: string) {
 		const original = assetId;
 		pickingFrame = false;
-		queryClient.invalidateQueries({ queryKey: getTimelineBucketsQueryKey() });
+		invalidateLibrary();
 		onchanged(original, 'added');
 		toasts.show(m.viewer_frame_saved(), {
 			action: { label: m.viewer_frame_open(), run: () => onnavigate(newAssetId) }

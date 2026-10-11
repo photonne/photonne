@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { toasts } from '#lib/components/toasts.svelte.js';
 	import type { Snippet } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
@@ -64,6 +65,11 @@
 		return path === '/' ? page.url.pathname === target : page.url.pathname.startsWith(target);
 	}
 
+	function addUploads(files: File[]) {
+		const { ignored } = uploads.add(files);
+		if (ignored > 0) toasts.show(m.upload_ignored({ count: ignored }));
+	}
+
 	async function logout() {
 		accountOpen = false;
 		await session.logout();
@@ -80,7 +86,7 @@
 <a class="skip-link" href="#content">{m.skip_to_content()}</a>
 
 <!-- Files dropped anywhere in the app go to the upload queue. -->
-<DropZone mode="window" onfiles={(files) => uploads.add(files)} />
+<DropZone mode="window" onfiles={addUploads} />
 
 <div class="shell" class:collapsed>
 	<header class="topbar">

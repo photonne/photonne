@@ -3,6 +3,7 @@ import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { TimelineBucketResponse } from '#lib/api/index.js';
 import {
 	getTimelineBucketItemsOptions,
+	getTimelineBucketItemsQueryKey,
 	getTimelineBucketsOptions
 } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 import type { GridSection } from './grid-model.js';
@@ -45,6 +46,8 @@ export class TimelineStore implements GridHost {
 	// The request of each month in flight or done, so a caller that needs the
 	// items (jumping into a month) can wait for the one already running.
 	#loading: Record<string, Promise<void>> = {};
+	// Bumped by reload(), so a month fetched before it doesn't land after it.
+	#generation = 0;
 
 	load(key: string): Promise<void> {
 		if (this.#requested.has(key)) return this.#loading[key] ?? Promise.resolve();
@@ -55,15 +58,30 @@ export class TimelineStore implements GridHost {
 	}
 
 	async #fetch(key: string) {
+		const generation = this.#generation;
 		try {
 			const items = await this.#queryClient.fetchQuery(
 				getTimelineBucketItemsOptions({ path: { yearMonth: key } })
 			);
-			this.#months.set(key, items.map(toGridAsset));
+			if (generation === this.#generation) this.#months.set(key, items.map(toGridAsset));
 		} catch {
+			if (generation !== this.#generation) return;
 			// Retried the next time the month scrolls into reach.
 			this.#requested.delete(key);
 			delete this.#loading[key];
+		}
+	}
+
+	/**
+	 * The cached items of these months no longer match what is shown: the
+	 * next visit (or reload) fetches them again instead of reusing them.
+	 */
+	#staleMonths(keys: Iterable<string>) {
+		for (const yearMonth of keys) {
+			this.#queryClient.invalidateQueries({
+				queryKey: getTimelineBucketItemsQueryKey({ path: { yearMonth } }),
+				refetchType: 'none'
+			});
 		}
 	}
 
@@ -86,6 +104,7 @@ export class TimelineStore implements GridHost {
 	remove(ids: readonly string[]) {
 		const changed = withoutItems(this.#months, ids);
 		for (const { key, items } of changed) this.#months.set(key, items);
+		this.#staleMonths(changed.map((c) => c.key));
 		const removed = Object.fromEntries(changed.map((c) => [c.key, c.removed]));
 		// Keep the skeleton's counts in step, so months that empty out vanish.
 		this.#queryClient.setQueryData<TimelineBucketResponse[]>(
@@ -98,16 +117,21 @@ export class TimelineStore implements GridHost {
 	}
 
 	update(ids: readonly string[], change: (item: GridAsset) => GridAsset) {
-		for (const { key, items } of withChangedItems(this.#months, ids, change)) {
-			this.#months.set(key, items);
-		}
+		const changed = withChangedItems(this.#months, ids, change);
+		for (const { key, items } of changed) this.#months.set(key, items);
+		this.#staleMonths(changed.map((c) => c.key));
 	}
 
-	/** Drops everything loaded and refetches the skeleton. */
+	/** Drops everything loaded and refetches the skeleton and each month. */
 	reload() {
+		this.#generation++;
 		this.#months.clear();
 		this.#requested.clear();
 		this.#loading = {};
+		this.#queryClient.invalidateQueries({
+			queryKey: [{ _id: 'getTimelineBucketItems' }],
+			refetchType: 'none'
+		});
 		this.#queryClient.invalidateQueries({ queryKey: getTimelineBucketsOptions().queryKey });
 	}
 }

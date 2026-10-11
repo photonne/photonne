@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateLibrary } from '#lib/api/query-client.js';
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import { getArchived, unarchiveAll } from '#lib/api/index.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
@@ -30,6 +31,7 @@
 			const { error } = await unarchiveAll();
 			if (error) throw error;
 			toasts.show(m.archive_unarchived_all());
+			invalidateLibrary();
 			await list.start();
 		} catch {
 			toasts.error(m.action_failed());

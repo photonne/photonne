@@ -60,8 +60,9 @@
 
 	onDestroy(
 		onAssetsMoved((event) => {
-			if (event.from === folderId) list.store.remove(event.assetIds);
-			else if (event.to === folderId) list.store.reload();
+			// A photo lives in one folder: moved anywhere else, it left this one.
+			if (event.to === folderId || !event.exact) list.store.reload();
+			else list.store.remove(event.assetIds);
 			invalidateFolders(queryClient, folderId);
 		})
 	);

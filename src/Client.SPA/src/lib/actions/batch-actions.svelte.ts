@@ -7,6 +7,8 @@ import {
 	toggleFavorite,
 	unarchiveAssets
 } from '#lib/api/index.js';
+import { invalidateLibrary } from '#lib/api/query-client.js';
+import { announceAssetsMoved } from '#lib/albums/folder-moves.js';
 import { toasts } from '#lib/components/toasts.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { GridHost } from '#lib/timeline/grid-host.js';
@@ -70,6 +72,7 @@ export class BatchActions {
 				if (error) throw error;
 			}
 			this.#host.update(changing, (item) => ({ ...item, isFavorite: marking }));
+			invalidateLibrary();
 			toasts.show(
 				marking
 					? m.action_favorited({ count: changing.length })
@@ -99,13 +102,17 @@ export class BatchActions {
 			if (error) throw error;
 			this.#host.remove(assetIds);
 			this.#selection.set(assetIds, false);
+			invalidateLibrary();
 			toasts.show(message({ count: assetIds.length }), {
 				action: {
 					label: m.action_undo(),
 					run: async () => {
 						const { error } = await revert({ body: { assetIds } });
 						if (error) toasts.error(m.action_failed());
-						else this.#host.reload();
+						else {
+							invalidateLibrary();
+							this.#host.reload();
+						}
 					}
 				}
 			});
@@ -121,6 +128,7 @@ export class BatchActions {
 			});
 			if (error) throw error;
 			this.#selection.clear();
+			invalidateLibrary();
 			toasts.show(m.action_added_to_album({ count: assetIds.length, album: album.name }));
 		});
 	}
@@ -132,11 +140,18 @@ export class BatchActions {
 	) {
 		return this.#run(async () => {
 			const assetIds = this.#targets(ids);
-			const { error } = await moveFolderAssets({
+			const { data, error } = await moveFolderAssets({
 				body: { sourceFolderId: null, targetFolderId: folder.id, assetIds, organizeByCaptureYear }
 			});
 			if (error) throw error;
 			this.#selection.clear();
+			announceAssetsMoved({
+				assetIds,
+				from: null,
+				to: folder.id,
+				exact: data?.moved === assetIds.length
+			});
+			invalidateLibrary();
 			toasts.show(m.action_moved({ count: assetIds.length, folder: folder.name }));
 		});
 	}

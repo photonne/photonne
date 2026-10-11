@@ -1,3 +1,6 @@
+import { queryClient } from '#lib/api/query-client.js';
+import { toasts } from '#lib/components/toasts.svelte.js';
+import { m } from '#lib/paraglide/messages.js';
 import { libraryTransport } from './library-transport.js';
 import { UploadQueue } from './upload-queue.svelte.js';
 
@@ -14,3 +17,10 @@ if (typeof window !== 'undefined') {
 		if (uploads.active) event.preventDefault();
 	});
 }
+
+// New photos change the timeline, months, folders, storage…: everything
+// cached is stale once a batch lands, whichever page the files were dropped on.
+uploads.ondrained((assetIds) => {
+	queryClient.invalidateQueries();
+	toasts.show(m.upload_batch_done({ count: assetIds.length }));
+});

@@ -17,15 +17,6 @@
 	const counts = $derived(uploads.counts);
 	const finished = $derived(counts.total - counts.pending);
 
-	// New photos change the timeline, months, folders, storage…: everything
-	// cached is stale once a batch lands.
-	$effect(() =>
-		uploads.ondrained((assetIds) => {
-			queryClient.invalidateQueries();
-			toasts.show(m.upload_batch_done({ count: assetIds.length }));
-		})
-	);
-
 	function add(files: File[]) {
 		const { ignored } = uploads.add(files);
 		if (ignored > 0) toasts.show(m.upload_ignored({ count: ignored }));

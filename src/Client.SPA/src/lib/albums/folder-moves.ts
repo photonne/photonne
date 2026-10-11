@@ -10,6 +10,8 @@ export interface AssetsMoved {
 	/** The folder they left, when known (a folder page's own photos). */
 	from: string | null;
 	to: string;
+	/** False when only some of them moved: which ones isn't known, so pages reload. */
+	exact: boolean;
 }
 
 type Listener = (event: AssetsMoved) => void;
@@ -17,7 +19,8 @@ const listeners = new Set<Listener>();
 
 /**
  * Photos can leave a folder from outside its page (dropped on the tree in
- * the folders layout); the page listens to take them off its grid.
+ * the folders layout or on a pinned folder, moved from another grid); the
+ * page listens to take them off its grid.
  */
 export function onAssetsMoved(listener: Listener) {
 	listeners.add(listener);
@@ -26,7 +29,7 @@ export function onAssetsMoved(listener: Listener) {
 	};
 }
 
-function emit(event: AssetsMoved) {
+export function announceAssetsMoved(event: AssetsMoved) {
 	for (const listener of listeners) listener(event);
 }
 
@@ -58,7 +61,12 @@ export async function moveAssets(
 		toasts.error(m.action_failed());
 		return false;
 	}
-	emit({ assetIds, from: from?.id ?? null, to: to.id });
+	announceAssetsMoved({
+		assetIds,
+		from: from?.id ?? null,
+		to: to.id,
+		exact: data.moved === assetIds.length
+	});
 	invalidateFolders(queryClient);
 	const message = byYear
 		? m.folders_moved_by_year({
