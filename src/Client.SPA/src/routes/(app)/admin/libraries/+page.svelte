@@ -41,6 +41,15 @@
 		return queryClient.invalidateQueries({ queryKey: getExternalLibrariesQueryKey() });
 	}
 
+	let refreshing = $state(false);
+	async function refreshPage() {
+		refreshing = true;
+		await refresh();
+		refreshing = false;
+		// A scan started elsewhere since the page opened shows up too.
+		scanner.resume();
+	}
+
 	function nameOf(id: string) {
 		return libraries.data?.find((l) => l.id === id)?.name ?? '';
 	}
@@ -102,7 +111,12 @@
 	};
 </script>
 
-<AdminPage title={m.admin_libraries()} description={m.admin_libs_description()}>
+<AdminPage
+	title={m.admin_libraries()}
+	description={m.admin_libs_description()}
+	onrefresh={refreshPage}
+	{refreshing}
+>
 	{#snippet actions()}
 		<button
 			type="button"

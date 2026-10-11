@@ -8,6 +8,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { errorText } from '#lib/admin/errors.js';
 	import { adminIcons } from '#lib/admin/icons.js';
+	import RefreshButton from '#lib/admin/RefreshButton.svelte';
 	import { deleters, sharedTrashAsset } from '#lib/admin/shared-trash.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
@@ -135,10 +136,7 @@
 		<!-- Nothing to review: say so the way every empty page does. -->
 		<PageHeader title={m.admin_shared_trash()} subtitle={m.admin_strash_description()}>
 			{#snippet actions()}
-				<button type="button" class="btn" onclick={load}>
-					<Icon name="refresh" size={18} />
-					{m.admin_core_refresh()}
-				</button>
+				<RefreshButton onclick={load} />
 			{/snippet}
 		</PageHeader>
 		<EmptyState icon="restore" title={m.admin_strash_empty()} hint={m.admin_strash_empty_hint()} />
@@ -152,10 +150,7 @@
 			onnearend={more}
 		>
 			{#snippet toolbar()}
-				<button type="button" class="btn" onclick={load} disabled={status === 'pending'}>
-					<Icon name="refresh" size={18} />
-					{m.admin_core_refresh()}
-				</button>
+				<RefreshButton onclick={load} busy={status === 'pending'} />
 			{/snippet}
 			{#snippet header()}
 				<div class="intro">

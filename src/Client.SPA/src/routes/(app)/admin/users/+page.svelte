@@ -3,6 +3,7 @@
 	import { deleteUser, promoteToPrimaryAdmin, updateUser, type UserDto } from '#lib/api/index.js';
 	import {
 		getAdminStatsOptions,
+		getAdminStatsQueryKey,
 		getAllUsersOptions,
 		getAllUsersQueryKey,
 		getCurrentUserOptions,
@@ -114,8 +115,20 @@
 	];
 
 	function refresh() {
-		queryClient.invalidateQueries({ queryKey: getAllUsersQueryKey() });
-		queryClient.invalidateQueries({ queryKey: getCurrentUserQueryKey() });
+		return Promise.all([
+			queryClient.invalidateQueries({ queryKey: getAllUsersQueryKey() }),
+			queryClient.invalidateQueries({ queryKey: getCurrentUserQueryKey() })
+		]);
+	}
+
+	let refreshing = $state(false);
+	async function refreshPage() {
+		refreshing = true;
+		await Promise.all([
+			refresh(),
+			queryClient.invalidateQueries({ queryKey: getAdminStatsQueryKey() })
+		]);
+		refreshing = false;
 	}
 
 	function saved(user: UserDto, created: boolean) {
@@ -219,7 +232,12 @@
 	}
 </script>
 
-<AdminPage title={m.admin_users()} description={m.admin_users_description()}>
+<AdminPage
+	title={m.admin_users()}
+	description={m.admin_users_description()}
+	onrefresh={refreshPage}
+	{refreshing}
+>
 	{#snippet actions()}
 		<button type="button" class="btn primary" onclick={() => (editing = { user: null })}>
 			<Icon path={adminIcons.personAdd} size={18} />
