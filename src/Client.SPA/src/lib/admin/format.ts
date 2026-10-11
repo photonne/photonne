@@ -65,6 +65,20 @@ export function shortMonth(key: string) {
 	}).format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
+/**
+ * "8 oct 2026" for a calendar date the server stores as `yyyy-MM-dd` (no
+ * time, no zone): read and shown in UTC so it never shifts a day. Anything
+ * else comes back as is.
+ */
+export function calendarDate(value: string) {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+	if (!match) return value;
+	const [, year, month, day] = match.map(Number);
+	return new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeZone: 'UTC' }).format(
+		new Date(Date.UTC(year, month - 1, day))
+	);
+}
+
 /** "1,2 k" style compact numbers for chart axes and tiles. */
 export function compact(value: number) {
 	return new Intl.NumberFormat(getLocale(), {
