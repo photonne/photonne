@@ -1,8 +1,10 @@
 /**
- * Files above this are not hashed in the browser: SubtleCrypto needs the whole
- * file in memory. The server still deduplicates them on arrival.
+ * Files above this are not hashed in the browser: SubtleCrypto can't hash in
+ * pieces, so the whole file sits in memory while it does. 128 MB covers any
+ * photo and most phone clips; longer videos skip the lookup and the server
+ * still deduplicates them on arrival.
  */
-export const MAX_HASH_BYTES = 512 * 1024 ** 2;
+export const MAX_HASH_BYTES = 128 * 1024 ** 2;
 
 /** Lowercase hex, the format the server stores (FileHashService). */
 export function toHex(buffer: ArrayBuffer): string {

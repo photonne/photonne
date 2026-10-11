@@ -200,11 +200,17 @@ export class UploadQueue {
 
 				const sums: Record<number, string> = {};
 				for (const entry of batch) {
+					// Cancelled (Cancel all included) while the batch was hashing: skip it.
+					if (this.#find(entry.id)?.status !== 'checking') continue;
 					const sum = await this.#options.hash(entry.file).catch(() => null);
 					if (sum) sums[entry.id] = sum;
 				}
 				let existing: Record<string, string> = {};
-				const unique = Object.values(sums).filter((sum, i, all) => all.indexOf(sum) === i);
+				// Only those still waiting: the rest were cancelled while hashing.
+				const unique = batch
+					.filter((entry) => this.#find(entry.id)?.status === 'checking' && sums[entry.id])
+					.map((entry) => sums[entry.id])
+					.filter((sum, i, all) => all.indexOf(sum) === i);
 				if (unique.length > 0) {
 					existing = await precheck(unique).catch(() => ({}));
 				}
