@@ -158,8 +158,12 @@
 						aria-label={m.albums_level_for({ name: permission.username })}
 						value={level}
 						disabled={busy}
-						onchange={(event) =>
-							save(permission.userId, grantsFor(event.currentTarget.value as AccessLevel))}
+						onchange={async (event) => {
+							const select = event.currentTarget;
+							const saved = await save(permission.userId, grantsFor(select.value as AccessLevel));
+							// The data didn't change, so nothing re-renders: put the old level back by hand.
+							if (!saved) select.value = level;
+						}}
 					>
 						{#if level === 'custom'}
 							<option value="custom" disabled>{m.albums_level_custom()}</option>
