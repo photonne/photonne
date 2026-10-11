@@ -487,4 +487,19 @@ class TimelineBucketStoreTest {
         assertTrue(store.yearSummaries.value != null)
         assertEquals(2, requests.count { it.endsWith("/timeline/years?sample=20") })
     }
+
+    @Test
+    fun contentsOf_fetches_unloaded_months_without_storing_them() = runTest {
+        val (store, requests) = buildStore()
+        store.refresh()
+        store.ensureLoaded(listOf("2026-02"))
+
+        val contents = store.contentsOf(listOf("2026-02", "2026-01", "1999-01"))
+
+        assertEquals(setOf("2026-02", "2026-01"), contents.keys)
+        assertEquals(listOf("jan-1"), contents["2026-01"]?.map { it.id })
+        // February came from memory; January was fetched but not stored.
+        assertEquals(1, requests.count { it.endsWith("/buckets/2026-02") })
+        assertNull(store.buckets.value.first { it.key == "2026-01" }.items)
+    }
 }

@@ -365,7 +365,10 @@ internal fun GroupedAssetGrid(
             { ordinal ->
                 val anchor = rangeAnchor
                 val anchorValid = anchor != null && dragSelect.idAt(anchor.first) == anchor.second
-                if (anchorValid) {
+                val targetId = dragSelect.idAt(ordinal)
+                if (anchorValid && dragSelect.onRangeSelect != null && targetId != null) {
+                    dragSelect.onRangeSelect.invoke(anchor.second, targetId)
+                } else if (anchorValid) {
                     val ids = rangeSelectionIds(anchor.first, ordinal, dragSelect.idAt)
                     if (ids.isNotEmpty()) dragSelect.onPatch(SelectionPatch(select = ids))
                 } else {
@@ -498,7 +501,14 @@ internal data class GroupedGridDragSelect(
     val headerCount: Int,
     val idAt: (ordinal: Int) -> String?,
     val enabled: Boolean = true,
-    val config: DragSelectConfig = DragSelectConfig.Default
+    val config: DragSelectConfig = DragSelectConfig.Default,
+    /**
+     * Shift+clic resuelto por el dueño de los datos, por ids: el timeline lo
+     * usa para cargar antes los meses intermedios que la rejilla no tiene
+     * (sus ordinales solo cubren lo cargado). Null → el rango se calcula aquí
+     * con [idAt], sobre lo que hay en pantalla.
+     */
+    val onRangeSelect: ((anchorId: String, targetId: String) -> Unit)? = null
 )
 
 /** One sticky header plus its run of row entries. */

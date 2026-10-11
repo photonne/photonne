@@ -173,6 +173,8 @@ fun TimelineScreen(
     onSetSelected: ((ids: Collection<String>, selected: Boolean) -> Unit)? = null,
     /** Aplica un frame del arrastre en banda de una sola vez. */
     onApplySelection: ((SelectionPatch) -> Unit)? = null,
+    /** Shift+clic por ids, con los meses intermedios cargados (escritorio). */
+    onSelectRange: ((anchorId: String, targetId: String) -> Unit)? = null,
     /** Only the empty state offers this — uploading otherwise lives in Más. */
     onOpenUpload: (() -> Unit)? = null,
     /** Opens the "jump to date" picker from the floating top bar. */
@@ -1063,7 +1065,8 @@ fun TimelineScreen(
                                     idAt = { ordinal ->
                                         mergedItems.getOrNull(ordinal)
                                             ?.takeIf { !it.isLocalOnly }?.id
-                                    }
+                                    },
+                                    onRangeSelect = onSelectRange
                                 )
                             },
                             suppressThumbnails = isScrubbing,

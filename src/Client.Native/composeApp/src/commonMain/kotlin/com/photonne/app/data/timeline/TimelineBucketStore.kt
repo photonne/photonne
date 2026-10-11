@@ -5,6 +5,8 @@ import com.photonne.app.data.models.TimelineBucket
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelineYearSummary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
@@ -214,6 +218,27 @@ class TimelineBucketStore(
     }
 
     /**
+     * Content of every month in [keys]: loaded months straight from memory,
+     * the rest fetched ([CONTENTS_PARALLELISM] at a time) WITHOUT storing
+     * them — an operation spanning many months (Shift+click range selection)
+     * would otherwise push the visible months out of the LRU cap. Unknown
+     * keys are left out. A failed fetch propagates.
+     */
+    suspend fun contentsOf(keys: List<String>): Map<String, List<TimelineItem>> {
+        val known = _buckets.value.associateBy { it.key }
+        val loaded = keys.mapNotNull { key -> known[key]?.items?.let { key to it } }.toMap()
+        val missing = keys.filter { it in known && it !in loaded }
+        if (missing.isEmpty()) return loaded
+        val gate = Semaphore(CONTENTS_PARALLELISM)
+        val fetched = coroutineScope {
+            missing.map { key ->
+                async { gate.withPermit { key to fetchOffMain { api.getTimelineBucketItems(key) } } }
+            }.awaitAll()
+        }
+        return loaded + fetched
+    }
+
+    /**
      * Months the given assets were removed from by [removeItems], or null if
      * any of them is unknown (it was never loaded here, or the memory was
      * trimmed). Lets a restore (Undo) reload just those months.
@@ -398,6 +423,9 @@ class TimelineBucketStore(
 
         /** Re-fetches of a response made stale by a concurrent mutation. */
         private const val MAX_STALE_RETRIES = 3
+
+        /** Concurrent month fetches of [contentsOf]. */
+        private const val CONTENTS_PARALLELISM = 4
 
         /** Removals remembered for [monthsOfRemoved] (an Undo is recent). */
         private const val MAX_REMEMBERED_REMOVALS = 2000
