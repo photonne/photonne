@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
 	import {
 		deleteApiFacesById,
@@ -13,6 +14,7 @@
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
+	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
@@ -77,9 +79,20 @@
 		if (busy) return;
 		busy = true;
 		const ids = [...selection.ids];
+		const total = faces.data?.pages.at(-1)?.total ?? items.length;
 		const done = await eachUntilError(ids, call);
 		const changed = ids.slice(0, done);
 		selection.clear();
+		// The server deletes a person left without faces: there's no page to stay
+		// on, and no person for Undo to give them back to.
+		if (done > 0 && done >= total) {
+			const name = displayName(person, m.people_unnamed());
+			await goto(appHref('/people'), { replace: true });
+			await invalidatePeople(queryClient);
+			busy = false;
+			toasts.show(m.people_faces_emptied({ name }));
+			return;
+		}
 		await invalidatePeople(queryClient);
 		busy = false;
 		if (done < ids.length) toasts.error(m.action_failed());
