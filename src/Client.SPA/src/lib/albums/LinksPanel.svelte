@@ -8,6 +8,7 @@
 		type ShareLinkResponse
 	} from '#lib/api/index.js';
 	import {
+		getSentShareLinksQueryKey,
 		listShareLinksOptions,
 		listShareLinksQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
@@ -64,7 +65,9 @@
 		editing = link?.token ?? 'new';
 	}
 
+	/** This panel, the "My links" page and, through the host, the album. */
 	async function refresh() {
+		queryClient.invalidateQueries({ queryKey: getSentShareLinksQueryKey() });
 		await queryClient.invalidateQueries({ queryKey: key });
 		onchanged();
 	}
