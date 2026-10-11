@@ -4,6 +4,7 @@
 		restoreDatabaseBackup,
 		type RestoreBackupResponse
 	} from '#lib/api/index.js';
+	import { queryClient } from '#lib/api/query-client.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import {
 		BACKUP_LEVELS,
@@ -106,6 +107,8 @@
 		}
 		result = data;
 		clear();
+		// The whole database changed underneath: every cached answer is stale.
+		queryClient.invalidateQueries();
 		toasts.show(m.admin_backup_restored());
 	}
 </script>
