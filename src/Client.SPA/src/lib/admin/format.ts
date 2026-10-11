@@ -1,9 +1,9 @@
 import { getLocale } from '#lib/paraglide/runtime.js';
 
 /**
- * Formatting for server-side timestamps (last login, scans, backups…). Unlike
- * capture times, these are real instants, so they are shown in the viewer's
- * time zone.
+ * Number and date formatting for every admin page (admin and adminops alike).
+ * Timestamps here are server-side instants (last login, scans, backups,
+ * tasks…): unlike capture times, they are shown in the viewer's time zone.
  */
 
 /** "1.234" in the user's language. */
@@ -11,12 +11,17 @@ export function count(value: number) {
 	return new Intl.NumberFormat(getLocale()).format(value);
 }
 
-/** "42 %" (or "99,9 %") for a 0–1 share. */
-export function percent(share: number, digits = 0) {
+/** "42 %" (or "99,9 %") for a 0–1 share (0.42). */
+export function percentOfOne(share: number, digits = 0) {
 	return new Intl.NumberFormat(getLocale(), {
 		style: 'percent',
 		maximumFractionDigits: digits
 	}).format(share);
+}
+
+/** "42 %" for a 0–100 value (42), as task and scan progress come from the server. */
+export function percentOfHundred(value: number, digits = 0) {
+	return percentOfOne(value / 100, digits);
 }
 
 /** "8 oct 2026, 14:05" in local time. */

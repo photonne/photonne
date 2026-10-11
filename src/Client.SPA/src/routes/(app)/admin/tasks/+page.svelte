@@ -27,7 +27,8 @@
 	} from '#lib/adminops/labels.js';
 	import { LiveTasks } from '#lib/adminops/live-tasks.svelte.js';
 	import { elapsedMs, isRunning, remainingMs, sortTasks } from '#lib/adminops/tasks.js';
-	import { count, duration, localDateTime, percent, timeAgo } from '#lib/adminops/time.js';
+	import { count, localDateTime, percentOfHundred } from '#lib/admin/format.js';
+	import { duration, timeAgo } from '#lib/adminops/time.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
@@ -210,7 +211,7 @@
 											label={m.ops_progress_of({ task: taskTitle(task) })}
 											tone={task.status === 'Failed' ? 'danger' : 'accent'}
 										/>
-										<span class="pct">{percent(task.percentage)}</span>
+										<span class="pct">{percentOfHundred(task.percentage)}</span>
 									</div>
 									{#if task.lastMessage}
 										<p class="message" title={task.lastMessage}>{task.lastMessage}</p>

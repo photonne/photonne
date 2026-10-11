@@ -10,7 +10,7 @@
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { toastError } from './feedback.svelte.js';
-	import { count, localDateTime } from './time.js';
+	import { count, localDateTime } from '#lib/admin/format.js';
 
 	let { readOnly }: { readOnly: boolean } = $props();
 

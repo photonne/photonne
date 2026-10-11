@@ -24,22 +24,3 @@ export function duration(ms: number) {
 	if (min > 0) return `${min} min ${String(s).padStart(2, '0')} s`;
 	return `${s} s`;
 }
-
-/** "3 sept 2026, 14:05" in the browser's time zone (server instants, not capture times). */
-export function localDateTime(iso: string) {
-	return new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(
-		new Date(iso)
-	);
-}
-
-/** "1.234" in the user's language. */
-export function count(value: number) {
-	return new Intl.NumberFormat(getLocale()).format(value);
-}
-
-/** "42 %" in the user's language. */
-export function percent(value: number) {
-	return new Intl.NumberFormat(getLocale(), { style: 'percent', maximumFractionDigits: 0 }).format(
-		value / 100
-	);
-}

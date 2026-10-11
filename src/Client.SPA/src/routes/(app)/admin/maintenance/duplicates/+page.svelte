@@ -16,7 +16,8 @@
 	import { icons } from '#lib/adminops/icons.js';
 	import { stat, type ProgressEvent } from '#lib/adminops/progress.js';
 	import { follow } from '#lib/adminops/streams.js';
-	import { count, duration, localDateTime, percent } from '#lib/adminops/time.js';
+	import { count, localDateTime, percentOfHundred } from '#lib/admin/format.js';
+	import { duration } from '#lib/adminops/time.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
@@ -199,7 +200,7 @@
 			<div class="ops-card result" aria-live="polite">
 				<div class="line">
 					<ProgressBar value={last ? last.percentage : null} label={m.ops_mt_duplicates_active()} />
-					<span class="pct">{last ? percent(last.percentage) : ''}</span>
+					<span class="pct">{last ? percentOfHundred(last.percentage) : ''}</span>
 				</div>
 				<p class="message">{last?.message || m.ops_starting()}</p>
 				{#if tiles.length}

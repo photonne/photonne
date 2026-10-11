@@ -4,7 +4,8 @@
 	import ProgressBar from './ProgressBar.svelte';
 	import { statusLabel } from './labels.js';
 	import { elapsedMs, isRunning, remainingMs } from './tasks.js';
-	import { duration, localDateTime, percent, timeAgo } from './time.js';
+	import { localDateTime, percentOfHundred } from '#lib/admin/format.js';
+	import { duration, timeAgo } from './time.js';
 
 	interface Props {
 		/** The latest background task of this job, live progress applied. */
@@ -26,7 +27,7 @@
 	{#if task && running}
 		<div class="line">
 			<ProgressBar value={task.percentage} label={active} />
-			<span class="pct">{percent(task.percentage)}</span>
+			<span class="pct">{percentOfHundred(task.percentage)}</span>
 		</div>
 		<p class="meta">
 			<strong>{active}</strong>

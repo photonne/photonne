@@ -34,7 +34,8 @@
 	import { LiveTasks } from '#lib/adminops/live-tasks.svelte.js';
 	import { trigger, type StreamStarter } from '#lib/adminops/streams.js';
 	import { isRunning, latestByKey } from '#lib/adminops/tasks.js';
-	import { count, localDateTime, timeAgo } from '#lib/adminops/time.js';
+	import { count, localDateTime } from '#lib/admin/format.js';
+	import { timeAgo } from '#lib/adminops/time.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
