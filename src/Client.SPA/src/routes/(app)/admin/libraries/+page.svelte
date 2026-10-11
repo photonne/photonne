@@ -8,6 +8,7 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import { useDemoMode } from '#lib/admin/demo.svelte.js';
 	import { errorText } from '#lib/admin/errors.js';
 	import { count, localDateTime, percent, relativeTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
@@ -23,6 +24,9 @@
 
 	const queryClient = useQueryClient();
 	const libraries = createQuery(() => getExternalLibrariesOptions());
+	// The public demo refuses every change to external libraries, scans included.
+	const demo = useDemoMode();
+	const demoTitle = $derived(demo.readOnly ? m.admin_libs_demo() : undefined);
 
 	let editing = $state<{ library: ExternalLibraryDto | null } | null>(null);
 	let sharing = $state<ExternalLibraryDto | null>(null);
@@ -100,11 +104,21 @@
 
 <AdminPage title={m.admin_libraries()} description={m.admin_libs_description()}>
 	{#snippet actions()}
-		<button type="button" class="btn primary" onclick={() => (editing = { library: null })}>
+		<button
+			type="button"
+			class="btn primary"
+			disabled={demo.readOnly}
+			title={demoTitle}
+			onclick={() => (editing = { library: null })}
+		>
 			<Icon name="add" size={18} />
 			{m.admin_libs_new()}
 		</button>
 	{/snippet}
+
+	{#if demo.readOnly}
+		<p class="notice warning"><Icon name="lock" size={18} />{m.admin_libs_demo()}</p>
+	{/if}
 
 	{#if libraries.isPending}
 		<div class="loading"><Skeleton variant="rows" count={3} /></div>
@@ -118,7 +132,13 @@
 				hint={m.admin_libs_empty_body()}
 			>
 				{#snippet action()}
-					<button type="button" class="btn primary" onclick={() => (editing = { library: null })}>
+					<button
+						type="button"
+						class="btn primary"
+						disabled={demo.readOnly}
+						title={demoTitle}
+						onclick={() => (editing = { library: null })}
+					>
 						<Icon name="add" size={18} />
 						{m.admin_libs_new()}
 					</button>
@@ -151,8 +171,8 @@
 									type="button"
 									class="icon-btn sm"
 									aria-label={m.admin_libs_edit_named({ name: library.name })}
-									title={m.admin_core_edit()}
-									disabled={!!scan}
+									title={demoTitle ?? m.admin_core_edit()}
+									disabled={!!scan || demo.readOnly}
 									onclick={() => (editing = { library })}
 								>
 									<Icon name="edit" size={18} />
@@ -161,8 +181,8 @@
 									type="button"
 									class="icon-btn sm"
 									aria-label={m.admin_libs_delete_named({ name: library.name })}
-									title={m.admin_core_delete()}
-									disabled={!!scan}
+									title={demoTitle ?? m.admin_core_delete()}
+									disabled={!!scan || demo.readOnly}
 									onclick={() => (deleting = library)}
 								>
 									<Icon name="delete" size={18} />
@@ -273,8 +293,8 @@
 								<button
 									type="button"
 									class="btn"
-									disabled={scanner.running}
-									title={scanner.running ? m.admin_libs_scan_busy() : undefined}
+									disabled={scanner.running || demo.readOnly}
+									title={demoTitle ?? (scanner.running ? m.admin_libs_scan_busy() : undefined)}
 									onclick={() => scanner.start(library.id)}
 								>
 									<Icon path={adminIcons.sync} size={18} />
@@ -295,7 +315,11 @@
 		onsaved={saved}
 	/>
 
-	<LibraryPermissionsDialog library={sharing} onclose={() => (sharing = null)} />
+	<LibraryPermissionsDialog
+		library={sharing}
+		readOnly={demo.readOnly}
+		onclose={() => (sharing = null)}
+	/>
 
 	<ConfirmDialog
 		danger

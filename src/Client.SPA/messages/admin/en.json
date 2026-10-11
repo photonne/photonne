@@ -569,5 +569,11 @@
 		}
 	],
 	"admin_users_more": "More actions for {name}",
-	"admin_strash_empty_hint": "When someone deletes something from a shared folder, it shows up here."
+	"admin_strash_empty_hint": "When someone deletes something from a shared folder, it shows up here.",
+	"admin_core_demo_blocked": "This action is disabled in the demo.",
+	"admin_users_demo": "Demo: you can create and manage user accounts, but admin accounts are protected.",
+	"admin_users_demo_locked": "Admin accounts can’t be changed in the demo",
+	"admin_user_demo_role": "In the demo you can only create and edit accounts with the user role.",
+	"admin_libs_demo": "Read-only in the demo: libraries can’t be created, edited, deleted or scanned, and who sees them can’t change.",
+	"admin_backup_demo": "Read-only in the demo: backups can’t be exported or restored."
 }

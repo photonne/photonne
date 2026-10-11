@@ -13,6 +13,7 @@
 		type BackupSummary
 	} from '#lib/admin/backup.js';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import { useDemoMode } from '#lib/admin/demo.svelte.js';
 	import { errorText } from '#lib/admin/errors.js';
 	import { count, localDateTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
@@ -35,6 +36,9 @@
 	let result = $state<RestoreBackupResponse | null>(null);
 	let input = $state<HTMLInputElement>();
 
+	// The public demo refuses both the export and the restore.
+	const demo = useDemoMode();
+
 	const levelText: Record<BackupLevel, { title: () => string; text: () => string }> = {
 		config: { title: m.admin_backup_level_config, text: m.admin_backup_level_config_text },
 		essential: { title: m.admin_backup_level_essential, text: m.admin_backup_level_essential_text },
@@ -49,7 +53,7 @@
 		});
 		exporting = false;
 		if (error || !(data instanceof Blob)) {
-			toasts.error(m.admin_backup_export_failed());
+			toasts.error(errorText(error, m.admin_backup_export_failed));
 			return;
 		}
 		const name =
@@ -107,6 +111,9 @@
 </script>
 
 <AdminPage title={m.admin_backup()} description={m.admin_backup_description()} narrow>
+	{#if demo.readOnly}
+		<p class="notice warning"><Icon name="lock" size={18} />{m.admin_backup_demo()}</p>
+	{/if}
 	<p class="notice">
 		<Icon name="info" />
 		<span>{m.admin_backup_media_note()}</span>
@@ -131,7 +138,12 @@
 				{/each}
 			</fieldset>
 			<div class="foot">
-				<button type="button" class="btn primary" onclick={download} disabled={exporting}>
+				<button
+					type="button"
+					class="btn primary"
+					onclick={download}
+					disabled={exporting || demo.readOnly}
+				>
 					<Icon name="download" size={18} />
 					{exporting ? m.admin_backup_exporting() : m.admin_backup_export()}
 				</button>
@@ -220,7 +232,7 @@
 				<button
 					type="button"
 					class="btn danger"
-					disabled={!summary || restoring}
+					disabled={!summary || restoring || demo.readOnly}
 					onclick={() => {
 						understood = false;
 						confirming = true;

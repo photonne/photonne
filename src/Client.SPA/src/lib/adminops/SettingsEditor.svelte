@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { useQueryClient } from '@tanstack/svelte-query';
 	import { beforeNavigate, goto } from '$app/navigation';
-	import { getDemoInfoOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
@@ -9,6 +8,7 @@
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { useDemoMode } from '#lib/admin/demo.svelte.js';
 	import NightlyPanel from './NightlyPanel.svelte';
 	import NotificationsPanel from './NotificationsPanel.svelte';
 	import PerformancePanel from './PerformancePanel.svelte';
@@ -28,8 +28,8 @@
 	form.load();
 
 	// The public demo keeps server settings read-only (the server refuses the save).
-	const demo = createQuery(() => getDemoInfoOptions());
-	const readOnly = $derived(demo.data?.enabled === true);
+	const demo = useDemoMode();
+	const readOnly = $derived(demo.readOnly);
 
 	const modelChanged = $derived(
 		section.id === 'embedding' &&
