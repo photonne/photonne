@@ -278,11 +278,11 @@
 								/>
 							</th>
 							<th scope="col">{m.ops_col_file()}</th>
-							<th scope="col">{m.ops_col_task()}</th>
-							<th scope="col">{m.ops_col_cause()}</th>
+							<th scope="col" class="narrow">{m.ops_col_task()}</th>
+							<th scope="col" class="narrow">{m.ops_col_cause()}</th>
 							<th scope="col">{m.ops_col_error()}</th>
-							<th scope="col" class="num">{m.ops_col_attempts()}</th>
-							<th scope="col">{m.ops_col_last_attempt()}</th>
+							<th scope="col" class="num wide">{m.ops_col_attempts()}</th>
+							<th scope="col" class="wider">{m.ops_col_last_attempt()}</th>
 							<th scope="col"><span class="visually-hidden">{m.ops_col_actions()}</span></th>
 						</tr>
 					</thead>
@@ -311,11 +311,18 @@
 										<div>
 											<span class="file-name" title={item.fileName}>{item.fileName}</span>
 											<span class="muted small">{item.ownerName ?? '—'}</span>
+											<!-- On a phone the task and cause columns are hidden: they show here. -->
+											<span class="inline small">
+												{enrichmentLabel(item.taskType)} ·
+												<span title={failureKindHint(item.failureKind)}
+													>{failureKindLabel(item.failureKind)}</span
+												>
+											</span>
 										</div>
 									</div>
 								</td>
-								<td class="nowrap">{enrichmentLabel(item.taskType)}</td>
-								<td>
+								<td class="nowrap narrow">{enrichmentLabel(item.taskType)}</td>
+								<td class="narrow">
 									<span class="chip tag" title={failureKindHint(item.failureKind)}
 										>{failureKindLabel(item.failureKind)}</span
 									>
@@ -346,8 +353,8 @@
 										<span class="muted">—</span>
 									{/if}
 								</td>
-								<td class="num">{count(item.attemptCount)}</td>
-								<td class="nowrap">
+								<td class="num wide">{count(item.attemptCount)}</td>
+								<td class="nowrap wider">
 									{#if item.lastAttemptAt}
 										<time datetime={item.lastAttemptAt} title={localDateTime(item.lastAttemptAt)}
 											>{timeAgo(item.lastAttemptAt, clock.now)}</time
@@ -532,5 +539,47 @@
 	.more {
 		display: flex;
 		justify-content: center;
+	}
+
+	.inline {
+		display: none;
+	}
+
+	@media (max-width: 1280px) {
+		.wider {
+			display: none;
+		}
+	}
+
+	@media (max-width: 1100px) {
+		.wide {
+			display: none;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.narrow {
+			display: none;
+		}
+
+		.inline {
+			display: block;
+		}
+
+		.file {
+			min-width: 0;
+		}
+
+		.file-name {
+			max-width: 18ch;
+		}
+
+		.error-cell {
+			min-width: 16ch;
+		}
+
+		.ops-table :is(th, td) {
+			padding-inline: var(--space-2);
+		}
 	}
 </style>

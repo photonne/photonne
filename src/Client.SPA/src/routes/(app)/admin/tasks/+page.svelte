@@ -171,10 +171,10 @@
 					<thead>
 						<tr>
 							<th scope="col">{m.ops_col_task()}</th>
-							<th scope="col">{m.ops_col_status()}</th>
+							<th scope="col" class="narrow">{m.ops_col_status()}</th>
 							<th scope="col" class="progress-col">{m.ops_col_progress()}</th>
-							<th scope="col">{m.ops_col_started()}</th>
-							<th scope="col">{m.ops_col_duration()}</th>
+							<th scope="col" class="wide">{m.ops_col_started()}</th>
+							<th scope="col" class="narrow">{m.ops_col_duration()}</th>
 							<th scope="col"><span class="visually-hidden">{m.ops_col_actions()}</span></th>
 						</tr>
 					</thead>
@@ -188,16 +188,10 @@
 									{#each parameterChips(task.parameters) as chip (chip)}
 										<span class="chip tag param">{chip}</span>
 									{/each}
+									<!-- On a phone the status column is hidden: it shows under the name. -->
+									<span class="inline">{@render status(task, running)}</span>
 								</th>
-								<td>
-									<span
-										class="chip tag"
-										class:accent={running}
-										class:success={task.status === 'Completed'}
-										class:danger={task.status === 'Failed'}
-										class:warning={task.status === 'Cancelled'}>{statusLabel(task.status)}</span
-									>
-								</td>
+								<td class="narrow">{@render status(task, running)}</td>
 								<td class="progress-col">
 									<div class="progress">
 										<ProgressBar
@@ -211,12 +205,12 @@
 										<p class="message" title={task.lastMessage}>{task.lastMessage}</p>
 									{/if}
 								</td>
-								<td class="nowrap">
+								<td class="nowrap wide">
 									<time datetime={task.startedAt} title={localDateTime(task.startedAt)}
 										>{timeAgo(task.startedAt, clock.now)}</time
 									>
 								</td>
-								<td class="duration">
+								<td class="duration narrow">
 									{duration(elapsedMs(task, clock.now))}
 									{#if left !== null}
 										<span class="muted small"
@@ -292,8 +286,8 @@
 						<tr>
 							<th scope="col">{m.ops_col_queue()}</th>
 							<th scope="col" class="num">{m.ops_queue_in_queue()}</th>
-							<th scope="col" class="num">{m.ops_queue_processing()}</th>
-							<th scope="col" class="num">{m.ops_queue_retrying()}</th>
+							<th scope="col" class="num narrow">{m.ops_queue_processing()}</th>
+							<th scope="col" class="num narrow">{m.ops_queue_retrying()}</th>
 							<th scope="col" class="num">{m.ops_queue_failed()}</th>
 							<th scope="col"><span class="visually-hidden">{m.ops_col_actions()}</span></th>
 						</tr>
@@ -304,14 +298,14 @@
 							<tr class:idle={row.counts.inQueue + row.counts.processing === 0}>
 								<th scope="row" class="name">{enrichmentLabel(row.type)}</th>
 								<td class="num">{count(row.counts.inQueue)}</td>
-								<td class="num">
+								<td class="num narrow">
 									{#if row.counts.processing > 0}
 										<span class="chip tag accent">{count(row.counts.processing)}</span>
 									{:else}
 										0
 									{/if}
 								</td>
-								<td class="num">{count(row.counts.retrying)}</td>
+								<td class="num narrow">{count(row.counts.retrying)}</td>
 								<td class="num">
 									{#if row.counts.failed > 0}
 										<a href={failuresHref(row.type)}>{count(row.counts.failed)}</a>
@@ -350,6 +344,16 @@
 	onconfirm={emptyQueue}
 	onclose={() => (emptying = null)}
 />
+
+{#snippet status(task: BackgroundTaskResponse, running: boolean)}
+	<span
+		class="chip tag"
+		class:accent={running}
+		class:success={task.status === 'Completed'}
+		class:danger={task.status === 'Failed'}
+		class:warning={task.status === 'Cancelled'}>{statusLabel(task.status)}</span
+	>
+{/snippet}
 
 <style>
 	.empty {
@@ -459,5 +463,39 @@
 
 	.tile.alert .value {
 		color: var(--color-danger);
+	}
+
+	.inline {
+		display: none;
+		margin-left: var(--space-1);
+	}
+
+	@media (max-width: 1100px) {
+		.wide {
+			display: none;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.narrow {
+			display: none;
+		}
+
+		.inline {
+			display: inline;
+		}
+
+		.name {
+			white-space: normal;
+		}
+
+		.progress-col {
+			width: auto;
+			min-width: 140px;
+		}
+
+		.ops-table :is(th, td) {
+			padding-inline: var(--space-2);
+		}
 	}
 </style>
