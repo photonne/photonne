@@ -11,7 +11,7 @@
 	import { runBulk } from '#lib/albums/bulk.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
-	import { dateTime } from '#lib/format.js';
+	import { dateTime, formatCount } from '#lib/format.js';
 	import { thumbnailUrl } from '#lib/media.js';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
@@ -29,6 +29,9 @@
 	const items = $derived(pendingItems(pending.data?.pages ?? []));
 	const summary = $derived(pendingSummary(pending.data?.pages[0]));
 	const failing = $derived(retryable(items));
+	// There is no "retry all of mine" endpoint: the button covers the photos
+	// loaded so far, and says so when the list has more failing ones.
+	const partialRetry = $derived(failing.length > 0 && failing.length < summary.failed);
 
 	/** Retries running, by photo id: the whole photo ('all') or one task type. */
 	let busy = $state<Record<string, string[]>>({});
@@ -131,13 +134,20 @@
 						type="button"
 						class="btn primary"
 						disabled={failing.length === 0 || retryingEverything}
-						title={m.settings_analysis_retry_everything_hint()}
+						title={partialRetry
+							? m.settings_analysis_retry_loaded_hint()
+							: m.settings_analysis_retry_everything_hint()}
 						onclick={retryEverything}
 					>
 						<Icon name="refresh" size={18} />
 						{retryingEverything
 							? m.settings_analysis_retrying()
-							: m.settings_analysis_retry_everything()}
+							: partialRetry
+								? m.settings_analysis_retry_loaded({
+										n: formatCount(failing.length),
+										total: formatCount(summary.failed)
+									})
+								: m.settings_analysis_retry_everything()}
 					</button>
 					<button type="button" class="btn" disabled={pending.isFetching} onclick={refresh}>
 						{m.settings_analysis_refresh()}
