@@ -57,3 +57,11 @@ test('pages through older notifications', async ({ page }) => {
 	).toHaveCount(5);
 	await expect(page.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
 });
+
+test('a page past the last one goes back to the first', async ({ page }) => {
+	await fakeApi(page, { signedIn: true });
+
+	await page.goto('/notifications?page=7');
+	await expect(page).toHaveURL(/\/notifications$/);
+	await expect(page.getByText('Página 1 de 2')).toBeVisible();
+});
