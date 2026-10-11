@@ -1703,6 +1703,7 @@
     <string name="admin_libraries_deleted">Biblioteca eliminada</string>
     <string name="admin_libraries_error_delete">No se pudo eliminar la biblioteca</string>
     <string name="admin_libraries_error_scan">Falló el escaneo de la biblioteca</string>
+    <string name="admin_libraries_error_scan_cancel">No se pudo cancelar el escaneo</string>
     <string name="admin_libraries_scan_starting">Iniciando…</string>
     <string name="admin_libraries_error_permissions_load">No se pudieron cargar los permisos</string>
     <string name="admin_libraries_error_grant">No se pudo conceder el acceso</string>

@@ -1591,6 +1591,7 @@
     <string name="admin_libraries_deleted">Library deleted</string>
     <string name="admin_libraries_error_delete">Couldn\'t delete the library</string>
     <string name="admin_libraries_error_scan">The library scan failed</string>
+    <string name="admin_libraries_error_scan_cancel">The scan could not be cancelled</string>
     <string name="admin_libraries_scan_starting">Starting…</string>
     <string name="admin_libraries_error_permissions_load">Couldn\'t load the permissions</string>
     <string name="admin_libraries_error_grant">Couldn\'t grant access</string>
