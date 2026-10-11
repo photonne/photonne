@@ -36,12 +36,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,8 +86,6 @@ import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.onSecondaryClick
 import org.jetbrains.compose.resources.stringResource
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import com.photonne.app.ui.theme.SelectionCheck
 
 private const val PREFETCH_THRESHOLD = 12
@@ -113,6 +109,9 @@ fun AssetGrid(
     isAppending: Boolean = false,
     isInitialLoading: Boolean = false,
     onLoadMore: () -> Unit = {},
+    /** The last page failed: shows [LoadMoreErrorFooter] and stops the trigger. */
+    appendFailed: Boolean = false,
+    onRetryAppend: () -> Unit = onLoadMore,
     onItemLongClick: ((Int) -> Unit)? = null,
     selectedIds: Set<String> = emptySet(),
     /**
@@ -123,21 +122,13 @@ fun AssetGrid(
     dragSelect: AssetGridDragSelect? = null,
     header: (@Composable () -> Unit)? = null
 ) {
-    val shouldLoadMore by remember(hasMore, isAppending, isInitialLoading) {
-        derivedStateOf {
-            val total = gridState.layoutInfo.totalItemsCount
-            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            total > 0 && lastVisible >= total - PREFETCH_THRESHOLD &&
-                hasMore && !isAppending && !isInitialLoading
-        }
-    }
-
-    LaunchedEffect(gridState) {
-        snapshotFlow { shouldLoadMore }
-            .distinctUntilChanged()
-            .filter { it }
-            .collect { onLoadMore() }
-    }
+    LoadMoreEffect(
+        gridState = gridState,
+        threshold = PREFETCH_THRESHOLD,
+        canLoadMore = hasMore && !isAppending && !isInitialLoading && !appendFailed,
+        items = items,
+        onLoadMore = onLoadMore
+    )
 
     val headerCount = if (header != null) 1 else 0
     // Al cerrar el visor abierto desde aquí, la última foto vista vuelve a
@@ -262,6 +253,15 @@ fun AssetGrid(
                 },
                 isSelected = asset.id in selectedIds
             )
+        }
+        if (appendFailed) {
+            item(
+                key = "asset-grid-append-error",
+                span = { GridItemSpan(maxLineSpan) },
+                contentType = "asset-grid-append-error"
+            ) {
+                LoadMoreErrorFooter(onRetry = onRetryAppend)
+            }
         }
     }
 }

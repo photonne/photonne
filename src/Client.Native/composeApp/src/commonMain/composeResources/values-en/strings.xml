@@ -37,6 +37,7 @@
     <string name="action_leave">Leave</string>
     <string name="action_remove">Remove</string>
     <string name="action_retry">Retry</string>
+    <string name="load_more_failed">Couldn't load more</string>
     <string name="action_share">Share</string>
     <string name="action_edit">Edit</string>
     <string name="action_invite">Invite</string>

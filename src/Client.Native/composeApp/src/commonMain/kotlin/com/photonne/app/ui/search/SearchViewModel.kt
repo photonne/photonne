@@ -53,6 +53,9 @@ data class SearchUiState(
     val isLoading: Boolean = false,
     val isAppending: Boolean = false,
     val error: UiError? = null,
+    /** La página siguiente falló: pie con reintento bajo los resultados. Va
+     *  aparte de [error] para no colarse en el diálogo «Añadir a álbum». */
+    val appendError: UiError? = null,
     val facetsLoaded: Boolean = false,
     val facetsLoading: Boolean = false,
     val objectLabels: List<ObjectLabel> = emptyList(),
@@ -390,9 +393,9 @@ class SearchViewModel(
         val snapshot = _state.value
         if (snapshot.isLoading || snapshot.isAppending || !snapshot.hasMore ||
             snapshot.mode != SearchMode.Text) return
-        _state.update { it.copy(isAppending = true) }
+        _state.update { it.copy(isAppending = true, appendError = null) }
         viewModelScope.launch {
-            runCatching {
+            suspendRunCatching {
                 repository.textSearch(
                     query = snapshot.query.takeIf { it.isNotBlank() },
                     from = snapshot.from,
@@ -423,10 +426,13 @@ class SearchViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
-                            isAppending = false,
-                            error = errorFactory.from(error, "No se pudo buscar")
-                        )
+                        // Same guard as above: a new search owns the state now.
+                        if (it.isAppending) {
+                            it.copy(
+                                isAppending = false,
+                                appendError = errorFactory.from(error, "No se pudo cargar más")
+                            )
+                        } else it
                     }
                 }
         }
@@ -530,7 +536,9 @@ class SearchViewModel(
 
     private suspend fun runSearch(keepLoaded: Int = 0) {
         val snapshot = _state.value
-        _state.update { it.copy(isLoading = true, isAppending = false, error = null) }
+        _state.update {
+            it.copy(isLoading = true, isAppending = false, error = null, appendError = null)
+        }
         // A search cancelled by a newer one must not report an error nor wipe
         // the results the newer one is about to bring.
         val result = suspendRunCatching {

@@ -126,6 +126,7 @@ fun PersonDetailScreen(
                 isAppending = state.isAppending,
                 isInitialLoading = state.isInitialLoading,
                 onLoadMore = onLoadMore,
+                appendFailed = state.appendError != null,
                 dragSelect = gestures.dragSelect,
                 contentPadding = PaddingValues(
                     top = reservedTop,

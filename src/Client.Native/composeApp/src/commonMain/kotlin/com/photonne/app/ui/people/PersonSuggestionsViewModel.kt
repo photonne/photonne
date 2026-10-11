@@ -24,6 +24,8 @@ data class PersonSuggestionsUiState(
     val isAppending: Boolean = false,
     val isBulkMutating: Boolean = false,
     val error: UiError? = null,
+    /** La página siguiente falló: pie con reintento bajo la rejilla. */
+    val appendError: UiError? = null,
     /** Per-face flag while we're posting accept/dismiss for that row. */
     val pendingFaceIds: Set<String> = emptySet(),
 ) {
@@ -63,7 +65,8 @@ class PersonSuggestionsViewModel(
             it.copy(
                 isInitialLoading = it.items.isEmpty(),
                 isRefreshing = it.items.isNotEmpty(),
-                error = null
+                error = null,
+                appendError = null
             )
         }
         viewModelScope.launch { loadInternal(append = false) }
@@ -72,7 +75,7 @@ class PersonSuggestionsViewModel(
     fun loadMore() {
         val snapshot = _state.value
         if (snapshot.isAppending || snapshot.isInitialLoading || !snapshot.hasMore) return
-        _state.update { it.copy(isAppending = true) }
+        _state.update { it.copy(isAppending = true, appendError = null) }
         viewModelScope.launch { loadInternal(append = true) }
     }
 
@@ -98,12 +101,19 @@ class PersonSuggestionsViewModel(
             }
             .onFailure { error ->
                 _state.update {
-                    it.copy(
-                        isInitialLoading = false,
-                        isRefreshing = false,
-                        isAppending = false,
-                        error = errorFactory.from(error, "No se pudieron cargar las sugerencias")
-                    )
+                    if (append) {
+                        it.copy(
+                            isAppending = false,
+                            appendError = errorFactory.from(error, "No se pudo cargar más")
+                        )
+                    } else {
+                        it.copy(
+                            isInitialLoading = false,
+                            isRefreshing = false,
+                            isAppending = false,
+                            error = errorFactory.from(error, "No se pudieron cargar las sugerencias")
+                        )
+                    }
                 }
             }
     }

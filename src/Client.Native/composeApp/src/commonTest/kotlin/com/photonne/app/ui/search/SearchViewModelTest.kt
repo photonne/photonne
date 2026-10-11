@@ -107,4 +107,30 @@ class SearchViewModelTest {
         assertEquals(SearchMode.Semantic, state.mode)
         assertFalse(state.semanticUnavailable)
     }
+
+    @Test
+    fun `a failed next page is an append error - keeps the results and retries`() = runTest {
+        var call = 0
+        val vm = viewModel {
+            call++
+            when (call) {
+                1 -> json("""{"items":[${timelineItemJson("a")}],"hasMore":true}""")
+                2 -> respond("", HttpStatusCode.InternalServerError)
+                else -> json("""{"items":[${timelineItemJson("b")}],"hasMore":false}""")
+            }
+        }
+        vm.toggleObjectLabel("dog")
+        vm.settled()
+
+        vm.loadMore()
+        val failed = vm.settled()
+        assertEquals(listOf("a"), failed.results.map { it.id })
+        assertNotNull(failed.appendError)
+        assertEquals(null, failed.error, "must not leak into the add-to-album dialog")
+
+        vm.loadMore()
+        val retried = vm.state.first { !it.isAppending && it.results.size == 2 }
+        assertEquals(listOf("a", "b"), retried.results.map { it.id })
+        assertEquals(null, retried.appendError)
+    }
 }
