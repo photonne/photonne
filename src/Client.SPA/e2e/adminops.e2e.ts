@@ -253,7 +253,8 @@ test.describe('server settings', () => {
 		expect(state.trashCleaned).toBe(1);
 
 		await settingsNav(page).getByRole('link', { name: 'Tareas nocturnas' }).click();
-		await expect(page.getByText('Último ciclo: 2026-10-07')).toBeVisible();
+		// The stored yyyy-MM-dd shows as a readable date, on the same day.
+		await expect(page.getByText(/^Último ciclo: 7 oct\.? 2026/)).toBeVisible();
 		await page.getByRole('button', { name: 'Forzar la siguiente ejecución' }).click();
 		await expect(page.getByText(/El ciclo volverá a ejecutarse/)).toBeVisible();
 		expect(state.saved).toContainEqual(['NightlyTaskSettings.LastRunDate', '']);
