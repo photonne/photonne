@@ -1785,16 +1785,27 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     // Con fuente viva, lo nuevo se AÑADE al final de la lista
                     // con la que se abrió: nada se reordena ni desaparece bajo
                     // el dedo, y el índice actual no se mueve.
+                    // Lo que se antepone (meses más recientes del timeline) va
+                    // delante; el pager sigue la foto actual por id.
                     val feed = displayCtx.feed
                     val liveItems = feed?.items?.invoke()
-                    val viewerItems = remember(displayCtx.items, liveItems) {
-                        if (liveItems == null) {
+                    val leadingItems = feed?.prepended?.invoke()
+                    val viewerLeading = remember(displayCtx.items, liveItems, leadingItems) {
+                        if (leadingItems.isNullOrEmpty()) emptyList() else {
+                            val known = displayCtx.items.mapTo(HashSet()) { it.id }
+                            liveItems?.forEach { known += it.id }
+                            leadingItems.filterNot { it.id in known }
+                        }
+                    }
+                    val viewerItems = remember(displayCtx.items, liveItems, viewerLeading) {
+                        val base = if (liveItems == null) {
                             displayCtx.items
                         } else {
                             val known = displayCtx.items.mapTo(HashSet()) { it.id }
                             val extra = liveItems.filterNot { it.id in known }
                             if (extra.isEmpty()) displayCtx.items else displayCtx.items + extra
                         }
+                        if (viewerLeading.isEmpty()) base else viewerLeading + base
                     }
                     // La clave de teselas (un ajuste) para que el mapa de la
                     // ubicación tenga el estilo de la página Mapa.
@@ -1803,9 +1814,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     AssetDetailScreen(
                         items = viewerItems,
                         mapTileApiKey = mapState.tileApiKey,
-                        startIndex = displayCtx.startIndex,
+                        startIndex = displayCtx.startIndex + viewerLeading.size,
                         hasMore = feed?.hasMore?.invoke() ?: displayCtx.hasMore,
                         onLoadMore = feed?.loadMore ?: displayCtx.onLoadMore,
+                        hasPrevious = feed?.hasPrevious?.invoke() ?: false,
+                        onLoadPrevious = feed?.loadPrevious ?: {},
                         onBack = { appState.closeAssetDetail() },
                         onPageChanged = { id -> appState.currentDetailAssetId = id },
                         animatedVisibilityScope = this@AnimatedVisibility,

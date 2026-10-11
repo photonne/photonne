@@ -998,11 +998,11 @@ fun TimelineScreen(
                                         val run = contiguousRunAround(mergedIndex, bucketEntries)
                                         if (run != null) {
                                             val (runItems, runStart) = run
-                                            // Al llegar al final de la tanda el
-                                            // visor pide el mes siguiente y
-                                            // sigue: ya no se para en el último
-                                            // mes cargado (solo hacia meses más
-                                            // antiguos; ver TimelineRunFollower).
+                                            // Al llegar a un extremo de la tanda
+                                            // el visor pide el mes siguiente (o
+                                            // el anterior, más reciente) y sigue:
+                                            // ya no se para en el último mes
+                                            // cargado; ver TimelineRunFollower.
                                             val follower = TimelineRunFollower(runItems)
                                             val feed = com.photonne.app.ui.asset.AssetViewerFeed(
                                                 items = { follower.follow(packed?.entries) },
@@ -1012,6 +1012,16 @@ fun TimelineScreen(
                                                 },
                                                 loadMore = {
                                                     follower.nextBucketKey?.let { key ->
+                                                        onBucketsVisible(listOf(key))
+                                                    }
+                                                },
+                                                prepended = { follower.followBefore(packed?.entries) },
+                                                hasPrevious = {
+                                                    follower.followBefore(packed?.entries)
+                                                    follower.previousBucketKey != null
+                                                },
+                                                loadPrevious = {
+                                                    follower.previousBucketKey?.let { key ->
                                                         onBucketsVisible(listOf(key))
                                                     }
                                                 }

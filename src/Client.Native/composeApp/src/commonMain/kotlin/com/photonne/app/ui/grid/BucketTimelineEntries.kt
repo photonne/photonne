@@ -233,8 +233,7 @@ internal fun contiguousRunAround(
  * de [opened] que aún existe, más la clave del siguiente mes que hay que cargar
  * para seguir (null cuando la tanda ya llega al mes más antiguo). Al cargar ese
  * mes, [buildBucketEntries] lo une a la misma tanda y aparece en la siguiente
- * llamada. Solo hacia delante: anteponer meses más recientes desplazaría el
- * índice del pager bajo el dedo.
+ * llamada. Hacia atrás, ver [runContinuationBefore].
  */
 internal data class RunContinuation(
     val items: List<TimelineItem>,
@@ -262,27 +261,73 @@ internal fun runContinuationAfter(
 }
 
 /**
+ * Continuación hacia atrás (meses más recientes) de una tanda de visor: los
+ * elementos de la tanda viva que preceden al primero de [opened] que aún
+ * existe, más la clave del mes anterior que hay que cargar para seguir (null
+ * cuando la tanda ya empieza en el mes más reciente). El visor los antepone y
+ * compensa el índice del pager (las páginas van por id), así que la foto bajo
+ * el dedo no se mueve.
+ */
+internal fun runContinuationBefore(
+    opened: List<TimelineItem>,
+    result: BucketEntriesResult
+): RunContinuation {
+    val none = RunContinuation(emptyList(), null)
+    if (opened.isEmpty() || result.loadedRanges.isEmpty()) return none
+    val indexById = HashMap<String, Int>(result.mergedItems.size)
+    result.mergedItems.forEachIndexed { i, item -> indexById[item.id] = i }
+    // El primero abierto puede haberse borrado; vale cualquiera posterior.
+    val anchor = opened.firstNotNullOfOrNull { indexById[it.id] } ?: return none
+    val clicked = result.loadedRanges.firstOrNull { anchor in it.range } ?: return none
+    val run = result.loadedRanges.filter { it.runId == clicked.runId }
+    val start = run.first().range.first
+    val openedIds = opened.mapTo(HashSet()) { it.id }
+    val head = result.mergedItems.subList(start, anchor).filterNot { it.id in openedIds }
+    val firstKeyIndex = result.bucketOrder.indexOf(run.first().bucketKey)
+    val previous = if (firstKeyIndex > 0) result.bucketOrder[firstKeyIndex - 1] else null
+    return RunContinuation(head, previous)
+}
+
+/**
  * Sigue una tanda de visor abierta desde el timeline a medida que llegan meses:
- * acumula lo que se va añadiendo al final (nunca lo retira, aunque el almacén
- * descargue luego esos meses) y recuerda qué mes toca pedir a continuación.
- * Se crea una por apertura del visor; [follow] es barata si el resultado no ha
- * cambiado.
+ * acumula lo que se va añadiendo al final y al principio (nunca lo retira,
+ * aunque el almacén descargue luego esos meses) y recuerda qué meses tocan
+ * pedir a continuación por cada lado. Se crea una por apertura del visor;
+ * [follow] y [followBefore] son baratas si el resultado no ha cambiado.
  */
 internal class TimelineRunFollower(private val opened: List<TimelineItem>) {
     private var appended: List<TimelineItem> = emptyList()
+    private var prepended: List<TimelineItem> = emptyList()
     private var lastResult: BucketEntriesResult? = null
 
     var nextBucketKey: String? = null
         private set
 
+    /** Mes más reciente que falta por cargar antes de la tanda. */
+    var previousBucketKey: String? = null
+        private set
+
+    /** Lo añadido al final de la tanda (meses más antiguos). */
     fun follow(result: BucketEntriesResult?): List<TimelineItem> {
-        if (result != null && result !== lastResult) {
-            lastResult = result
-            val continuation = runContinuationAfter(opened + appended, result)
-            if (continuation.items.isNotEmpty()) appended = appended + continuation.items
-            nextBucketKey = continuation.nextBucketKey
-        }
+        update(result)
         return appended
+    }
+
+    /** Lo antepuesto a la tanda (meses más recientes), en orden de visor. */
+    fun followBefore(result: BucketEntriesResult?): List<TimelineItem> {
+        update(result)
+        return prepended
+    }
+
+    private fun update(result: BucketEntriesResult?) {
+        if (result == null || result === lastResult) return
+        lastResult = result
+        val after = runContinuationAfter(opened + appended, result)
+        if (after.items.isNotEmpty()) appended = appended + after.items
+        nextBucketKey = after.nextBucketKey
+        val before = runContinuationBefore(prepended + opened, result)
+        if (before.items.isNotEmpty()) prepended = before.items + prepended
+        previousBucketKey = before.nextBucketKey
     }
 }
 
