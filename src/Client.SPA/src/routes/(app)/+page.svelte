@@ -9,6 +9,7 @@
 	import ShareAssetsDialog from '#lib/actions/ShareAssetsDialog.svelte';
 	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import {
+		getAssetDetailOptions,
 		getAssetDetailQueryKey,
 		getTimelineBucketsOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
@@ -96,12 +97,33 @@
 		openId ? neighborsIn(store.order, openId) : { previous: null, next: null }
 	);
 
-	// Reaching the last loaded photo pulls in the next month, so the arrow
-	// keeps going across month boundaries.
+	// Reaching the last (or first) loaded photo pulls in the next (or
+	// previous) month, so the arrows keep going across month boundaries.
 	$effect(() => {
 		if (!openId || neighbors.next) return;
 		const following = store.nextUnloadedAfter(openId);
 		if (following) store.load(following);
+	});
+
+	$effect(() => {
+		if (!openId || neighbors.previous) return;
+		const preceding = store.previousUnloadedBefore(openId);
+		if (preceding) store.load(preceding);
+	});
+
+	// A link to a photo (?asset=…) whose month isn't loaded: load that month,
+	// found from the photo's capture date, so it gets its neighbours.
+	let linkedMonthFor: string | null = null;
+	$effect(() => {
+		const id = openId;
+		if (!id || !buckets.data || store.byId.has(id) || linkedMonthFor === id) return;
+		linkedMonthFor = id;
+		queryClient
+			.fetchQuery(getAssetDetailOptions({ path: { assetId: id } }))
+			.then((detail) => store.load(detail.capturedAt.slice(0, 7)))
+			.catch(() => {
+				// The viewer shows its own error for a photo that can't be read.
+			});
 	});
 
 	const openViewer = (item: GridAsset) => viewer.open(item.id);

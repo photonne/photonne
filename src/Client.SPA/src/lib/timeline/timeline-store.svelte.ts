@@ -92,6 +92,13 @@ export class TimelineStore implements GridHost {
 		return this.sections.slice(index + 1).find((s) => s.items === null)?.key ?? null;
 	}
 
+	/** The nearest month before the one holding `assetId` that isn't loaded yet. */
+	previousUnloadedBefore(assetId: string) {
+		const index = this.sections.findIndex((s) => s.items?.some((item) => item.id === assetId));
+		if (index < 0) return null;
+		return this.sections.slice(0, index).findLast((s) => s.items === null)?.key ?? null;
+	}
+
 	itemsByIds(ids: Iterable<string>) {
 		const found: GridAsset[] = [];
 		for (const id of ids) {
