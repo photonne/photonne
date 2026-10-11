@@ -31,9 +31,13 @@ test.describe('dashboard', () => {
 		await expect(page.getByText('/mnt/nas/fotos/2019/IMG_0001.HEIC')).toBeVisible();
 		await expect(page.getByText('Se muestran los primeros 3.')).toBeVisible();
 
-		await expect(page.getByRole('cell', { name: /Luis Martín/ })).toBeVisible();
+		// The top 5 of who takes the most space links to the full list in Usuarios.
+		const distribution = page.getByRole('region', { name: 'Distribución' });
+		await expect(
+			distribution.getByRole('listitem').filter({ hasText: 'Luis Martín' })
+		).toContainText('160 GB');
 
-		await page.getByRole('link', { name: /Usuarios Crear cuentas/ }).click();
+		await distribution.getByRole('link', { name: 'Ver todos en Usuarios' }).click();
 		await expect(page).toHaveURL(/\/admin\/users$/);
 	});
 });
