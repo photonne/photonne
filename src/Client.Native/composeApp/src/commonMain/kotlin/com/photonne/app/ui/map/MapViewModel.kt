@@ -7,6 +7,8 @@ import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.map.MapRepository
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.models.TimelineItem
@@ -15,7 +17,9 @@ import com.photonne.app.ui.selection.applying
 import com.photonne.app.ui.selection.toggled
 import com.photonne.app.ui.selection.toggledAll
 import com.photonne.app.ui.selection.withSelection
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -88,13 +92,33 @@ class MapViewModel(
     private val albumsRepository: AlbumsRepository,
     private val settingsRepository: com.photonne.app.data.admin.AdminRepository,
     private val errorFactory: UiErrorFactory,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
     val state: StateFlow<MapUiState> = _state.asStateFlow()
 
+    private var refreshJob: Job? = null
+
     init {
         observeViewport()
+        // Lo que se archiva, se borra o se restaura desde otra pantalla (o
+        // desde el visor abierto en el mapa) llega por el bus: sin esto, el
+        // mapa seguía enseñando puntos de fotos que ya no están.
+        viewModelScope.launch {
+            mutationBus.events.collect { event ->
+                when (event) {
+                    is AssetMutation.Removed -> dropPoints(event.assetIds)
+                    is AssetMutation.Purged -> dropPoints(event.assetIds)
+                    is AssetMutation.Restored, AssetMutation.AllChanged ->
+                        // Sin carga previa no hay nada rancio: la primera
+                        // visita ya pedirá los puntos.
+                        if (_state.value.firstLoadComplete) refresh()
+                    is AssetMutation.DateChanged -> redatePoint(event.assetId, event.capturedAt)
+                    is AssetMutation.FavoriteChanged -> Unit
+                }
+            }
+        }
     }
 
     /**
@@ -166,9 +190,11 @@ class MapViewModel(
         }
     }
 
+    /** Una recarga nueva cancela la anterior: la respuesta vieja no pisa la nueva. */
     fun refresh() {
+        refreshJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
+        refreshJob = viewModelScope.launch {
             runCatching { repository.points() }
                 .onSuccess { points ->
                     val (lat, lng, zoom) = pickInitialView(points)
@@ -184,6 +210,8 @@ class MapViewModel(
                     }
                 }
                 .onFailure { error ->
+                    // Cancelada por otra recarga: no es un error de carga.
+                    if (error is CancellationException) throw error
                     // firstLoadComplete se queda como esté: marcarlo en el
                     // fallo hacía que "no hay fotos con ubicación" saliera
                     // junto al aviso de error.
@@ -355,19 +383,10 @@ class MapViewModel(
         viewModelScope.launch {
             runCatching { action(ids) }
                 .onSuccess { _ ->
-                    val idSet = ids.toHashSet()
-                    _state.update { previous ->
-                        val newPoints = previous.points.filterNot { p -> p.id in idSet }
-                        val newFocus = previous.focusedPoints?.filterNot { p -> p.id in idSet }
-                        previous.copy(
-                            isBulkMutating = false,
-                            selection = emptySet(),
-                            points = newPoints,
-                            viewportPoints = previous.viewportPoints.filterNot { p -> p.id in idSet },
-                            // Clúster vaciado: vuelve a todo el viewport.
-                            focusedPoints = newFocus?.takeIf { it.isNotEmpty() }
-                        )
-                    }
+                    // El bus también lo quita (dropPoints es idempotente);
+                    // aquí va de inmediato, junto con el fin de la acción.
+                    dropPoints(ids)
+                    _state.update { it.copy(isBulkMutating = false, selection = emptySet()) }
                 }
                 .onFailure { error ->
                     _state.update {
@@ -377,6 +396,35 @@ class MapViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    /** Quita [ids] de los puntos, la hoja y el clúster tocado. */
+    private fun dropPoints(ids: List<String>) {
+        if (ids.isEmpty()) return
+        val idSet = ids.toHashSet()
+        _state.update { previous ->
+            val newFocus = previous.focusedPoints?.filterNot { p -> p.id in idSet }
+            previous.copy(
+                points = previous.points.filterNot { p -> p.id in idSet },
+                viewportPoints = previous.viewportPoints.filterNot { p -> p.id in idSet },
+                selection = previous.selection - idSet,
+                // Clúster vaciado: vuelve a todo el viewport.
+                focusedPoints = newFocus?.takeIf { it.isNotEmpty() }
+            )
+        }
+    }
+
+    /** Fecha cambiada: el punto se queda donde está, pero se reordena en la hoja. */
+    private fun redatePoint(assetId: String, date: kotlin.time.Instant) {
+        _state.update { previous ->
+            if (previous.points.none { it.id == assetId }) return@update previous
+            fun List<MapPoint>.redated() = map { if (it.id == assetId) it.copy(date = date) else it }
+            previous.copy(
+                points = previous.points.redated(),
+                viewportPoints = previous.viewportPoints.redated().newestFirst(),
+                focusedPoints = previous.focusedPoints?.redated()?.newestFirst()
+            )
         }
     }
 
