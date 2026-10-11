@@ -553,6 +553,7 @@
     <string name="people_empty_subtitle">Cuando el servidor termine de reconocer caras aparecerán aquí.</string>
     <string name="people_detail_empty_title">Sin fotos de esta persona</string>
     <string name="people_detail_empty_subtitle">Las fotos en las que el servidor reconozca su cara aparecerán aquí.</string>
+    <string name="people_unlink_person_emptied">La persona se ha quedado sin fotos y se ha eliminado</string>
     <string name="people_unnamed">Sin nombre</string>
     <string name="people_rename_title">Renombrar persona</string>
     <string name="people_rename_field">Nombre</string>
