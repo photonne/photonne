@@ -618,6 +618,11 @@
 							fullSrc={contentSrc}
 							alt={asset?.caption || asset?.fileName || ''}
 							overlay={boxes.length ? faceOverlay : undefined}
+							onswipe={(direction) => {
+								const target = direction > 0 ? next : previous;
+								if (target) onnavigate(target);
+							}}
+							ondismiss={slideshow ? stopSlideshow : onclose}
 						/>
 						{#if playingLive}
 							<video
