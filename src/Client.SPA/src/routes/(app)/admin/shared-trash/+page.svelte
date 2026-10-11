@@ -27,8 +27,12 @@
 	let all = $state<SharedTrashItemResponse[]>([]);
 	let status = $state<'pending' | 'error' | 'ready'>('pending');
 	let cursor: string | null = null;
-	let hasMore = false;
+	// The server pages the list and sends no totals: with more to load, the
+	// counts below are a lower bound ("200+").
+	let hasMore = $state(false);
 	let loadingMore = false;
+	// Bumped by every reload, so a page that arrives late from an older list is dropped.
+	let generation = 0;
 	let who = $state<string | null>(null);
 	let busy = $state(false);
 	let purging = $state<{ ids: string[]; selection: Selection | null } | null>(null);
@@ -45,9 +49,12 @@
 	});
 
 	async function load() {
+		const current = ++generation;
 		status = 'pending';
 		cursor = null;
-		const page = await fetchPage();
+		loadingMore = false;
+		const page = await fetchPage(current);
+		if (current !== generation) return;
 		if (!page) {
 			status = 'error';
 			return;
@@ -58,17 +65,19 @@
 
 	async function more() {
 		if (!hasMore || loadingMore) return;
+		const current = generation;
 		loadingMore = true;
-		const page = await fetchPage();
+		const page = await fetchPage(current);
+		if (current !== generation) return;
 		loadingMore = false;
 		if (page) all = [...all, ...page];
 	}
 
-	async function fetchPage() {
+	async function fetchPage(current: number) {
 		const { data } = await getSharedTrash({
 			query: { pageSize: 200, cursor: cursor ?? undefined }
 		});
-		if (!data) return null;
+		if (!data || current !== generation) return null;
 		hasMore = data.hasMore;
 		cursor = data.nextCursor ?? null;
 		return data.items;
@@ -153,8 +162,13 @@
 					<p class="muted">{m.admin_strash_description()}</p>
 					{#if all.length}
 						<div class="who" role="group" aria-label={m.admin_strash_filter()}>
-							<span class="small muted">
-								{m.admin_strash_summary({ count: all.length, size: formatBytes(totalBytes) })}
+							<span class="small muted" title={hasMore ? m.admin_strash_partial_hint() : undefined}>
+								{hasMore
+									? m.admin_strash_summary_more({
+											n: formatCount(all.length),
+											size: formatBytes(totalBytes)
+										})
+									: m.admin_strash_summary({ count: all.length, size: formatBytes(totalBytes) })}
 							</span>
 							<button
 								type="button"
@@ -167,10 +181,11 @@
 									type="button"
 									class="chip"
 									aria-pressed={who === person.name}
+									title={hasMore ? m.admin_strash_partial_hint() : undefined}
 									onclick={() => (who = person.name)}
 								>
 									{person.name || m.admin_strash_unknown()}
-									<span class="num">{formatCount(person.count)}</span>
+									<span class="num">{formatCount(person.count)}{hasMore ? '+' : ''}</span>
 								</button>
 							{/each}
 						</div>
