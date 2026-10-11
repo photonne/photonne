@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { invalidateFolders } from '#lib/albums/cache.js';
 	import { isValidEmail, isValidUsername } from '#lib/account/settings/validation.js';
 	import {
 		apiErrorCode,
@@ -92,6 +93,7 @@
 	async function save() {
 		preview = null;
 		saving = true;
+		const renamed = username.trim() !== me.data?.username;
 		const { data, error, response } = await updateProfile({
 			body: {
 				username: username.trim(),
@@ -105,6 +107,8 @@
 			session.user = data;
 			loadedFor = null;
 			queryClient.setQueryData(getCurrentUserOptions().queryKey, data);
+			// The user's folder moved on disk: its path and name changed in the tree.
+			if (renamed) invalidateFolders(queryClient);
 			toasts.show(m.settings_saved());
 			return;
 		}
