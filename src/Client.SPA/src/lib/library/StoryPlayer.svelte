@@ -150,7 +150,7 @@
 <svelte:window {onkeydowncapture} />
 
 <div
-	class="story"
+	class="story dark-surface"
 	role="dialog"
 	aria-modal="true"
 	aria-label={title}
@@ -255,8 +255,8 @@
 		z-index: 60;
 		display: flex;
 		flex-direction: column;
-		background: #000;
-		color: #fff;
+		background: var(--color-bg);
+		color: var(--color-on-media);
 		outline: none;
 	}
 
@@ -271,13 +271,13 @@
 		height: 3px;
 		overflow: hidden;
 		border-radius: 2px;
-		background: rgb(255 255 255 / 0.3);
+		background: color-mix(in srgb, var(--color-on-media) 30%, transparent);
 	}
 
 	.fill {
 		display: block;
 		height: 100%;
-		background: #fff;
+		background: var(--color-on-media);
 		transform-origin: left;
 	}
 
@@ -305,7 +305,7 @@
 	.meta,
 	.counter {
 		font-size: var(--font-size-sm);
-		color: rgb(255 255 255 / 0.75);
+		color: color-mix(in srgb, var(--color-on-media) 75%, transparent);
 	}
 
 	.icon {
@@ -322,7 +322,7 @@
 	}
 
 	.icon:hover {
-		background: rgb(255 255 255 / 0.12);
+		background: var(--color-hover);
 	}
 
 	.stage {
@@ -370,7 +370,7 @@
 		padding: 0 var(--space-4);
 		border: 0;
 		background: transparent;
-		color: #fff;
+		color: var(--color-on-media);
 		cursor: pointer;
 		opacity: 0;
 		transition: opacity var(--duration-normal);

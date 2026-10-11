@@ -154,7 +154,7 @@
 		overflow: hidden;
 		border-radius: var(--radius-md);
 		background: var(--color-placeholder);
-		color: #fff;
+		color: var(--color-on-media);
 		text-decoration: none;
 	}
 
@@ -189,7 +189,7 @@
 		justify-content: space-between;
 		gap: var(--space-2);
 		padding: var(--space-4) var(--space-2) var(--space-2);
-		background: linear-gradient(transparent, rgb(0 0 0 / 0.65));
+		background: linear-gradient(transparent, var(--color-scrim));
 		font-size: var(--font-size-sm);
 		font-weight: 600;
 	}

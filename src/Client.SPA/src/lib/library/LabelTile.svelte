@@ -40,7 +40,7 @@
 		overflow: hidden;
 		border-radius: var(--radius-md);
 		background: var(--color-placeholder);
-		color: #fff;
+		color: var(--color-on-media);
 		text-decoration: none;
 		isolation: isolate;
 	}
@@ -63,7 +63,7 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(to top, rgb(0 0 0 / 0.7), rgb(0 0 0 / 0) 55%);
+		background: linear-gradient(to top, var(--color-scrim), transparent 55%);
 	}
 
 	/* Without a cover: a tinted tile with the label's mark, dark text. */

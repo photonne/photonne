@@ -222,8 +222,8 @@
 		min-height: 24px;
 		padding: 0 var(--space-2);
 		border-radius: 999px;
-		background: rgb(0 0 0 / 0.6);
-		color: #fff;
+		background: var(--color-scrim);
+		color: var(--color-on-media);
 		font-size: var(--font-size-xs);
 		font-weight: 600;
 		backdrop-filter: blur(6px);
@@ -247,8 +247,8 @@
 		padding: 0;
 		border: 0;
 		border-radius: 50%;
-		background: rgb(0 0 0 / 0.6);
-		color: #fff;
+		background: var(--color-scrim);
+		color: var(--color-on-media);
 		cursor: pointer;
 		opacity: 0;
 		transition:
@@ -264,8 +264,8 @@
 		left: var(--space-2);
 		width: 26px;
 		height: 26px;
-		border: 2px solid #fff;
-		background: rgb(0 0 0 / 0.25);
+		border: 2px solid var(--color-on-media);
+		background: var(--color-scrim-soft);
 		color: transparent;
 	}
 
