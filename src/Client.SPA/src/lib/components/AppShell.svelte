@@ -296,8 +296,10 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		/* Lines the search box up with the content column. */
+		/* Lines the search box up with the content column; on the rail the
+		   button and the logo need more than its width, so it grows to fit. */
 		width: calc(var(--nav-width) - var(--space-4));
+		min-width: max-content;
 		flex: none;
 		transition: width var(--duration-normal) ease;
 	}
