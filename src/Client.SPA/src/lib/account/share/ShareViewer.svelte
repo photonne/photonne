@@ -78,7 +78,7 @@
 </script>
 
 <dialog
-	class="viewer"
+	class="viewer dark-surface"
 	bind:this={dialog}
 	aria-label={asset?.fileName ?? m.viewer_title()}
 	{oncancel}
@@ -158,16 +158,8 @@
 </dialog>
 
 <style>
-	/* Always dark, like the library viewer: the photo is the light. */
+	/* Always dark (.dark-surface), like the library viewer: the photo is the light. */
 	.viewer {
-		--color-bg: #111214;
-		--color-surface: #26282c;
-		--color-text: #e8e8ea;
-		--color-text-muted: #a0a3a8;
-		--color-focus: #ffd166;
-		--color-accent: #ffd166;
-		--color-accent-text: #1a1a2e;
-		color-scheme: dark;
 		position: fixed;
 		inset: 0;
 		width: 100vw;

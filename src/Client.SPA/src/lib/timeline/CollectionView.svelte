@@ -154,7 +154,7 @@
 
 	{#if cover}
 		<section
-			class="banner"
+			class="banner dark-surface"
 			class:folded={scrolled}
 			aria-labelledby="collection-title"
 			bind:clientHeight={bannerHeight}
@@ -286,7 +286,7 @@
 		margin: var(--space-3) var(--page-gutter) 0;
 		overflow: hidden;
 		border-radius: var(--radius-lg);
-		background: #1d1d1f;
+		background: var(--color-surface-raised);
 		color: #fff;
 		transition: height var(--duration-normal) ease;
 		/* What the header snippet draws (description, badges) reads on the photo. */

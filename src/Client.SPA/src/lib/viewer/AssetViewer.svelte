@@ -512,7 +512,7 @@
 <svelte:window {onkeydown} />
 
 <div
-	class="viewer"
+	class="viewer dark-surface"
 	class:slideshow
 	class:idle={slideshow && controlsIdle}
 	role="dialog"
@@ -748,27 +748,8 @@
 {/snippet}
 
 <style>
-	/* The viewer is always dark, whatever the app theme: the photo is the light. */
+	/* The viewer is always dark, whatever the app theme (.dark-surface): the photo is the light. */
 	.viewer {
-		--color-bg: #111214;
-		--color-surface: #26282c;
-		--color-surface-raised: #1b1c1f;
-		--color-border: #34363b;
-		--color-border-strong: #70747c;
-		--color-hover: rgb(255 255 255 / 0.12);
-		--color-text: #e8e8ea;
-		--color-text-muted: #a0a3a8;
-		--color-brand: #ffd166;
-		--color-accent: #ffd166;
-		--color-accent-text: #1a1a2e;
-		--color-accent-soft: rgb(255 209 102 / 0.14);
-		--color-focus: #ffd166;
-		--color-danger: #ef9a9a;
-		--color-success: #7bd88f;
-		--color-warning: #f6b35a;
-		--color-placeholder: #26282c;
-		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.5);
-		color-scheme: dark;
 		position: fixed;
 		inset: 0;
 		z-index: 50;
