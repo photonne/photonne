@@ -27,6 +27,21 @@ describe('JsonObjectSplitter', () => {
 		expect(splitter.push('{"m":"a } \\" { b"}')).toEqual([{ m: 'a } " { b' }]);
 	});
 
+	it('ignores brackets and escaped backslashes inside strings, fed one character at a time', () => {
+		const splitter = new JsonObjectSplitter();
+		const text = '[{"m":"a } ] \\" {","a":[1,[2]]},{"m":"\\\\"}]';
+		const out = [...text].flatMap((char) => splitter.push(char));
+		expect(out).toEqual([{ m: 'a } ] " {', a: [1, [2]] }, { m: '\\' }]);
+	});
+
+	it('handles whitespace, newlines and an empty array', () => {
+		expect(new JsonObjectSplitter().push(' [ ]')).toEqual([]);
+		expect(new JsonObjectSplitter().push('[\n  {"a": 1},\n  {"b": 2}\n]')).toEqual([
+			{ a: 1 },
+			{ b: 2 }
+		]);
+	});
+
 	it('skips a malformed object and keeps going', () => {
 		const splitter = new JsonObjectSplitter();
 		expect(splitter.push('{bad}\n{"ok":1}')).toEqual([{ ok: 1 }]);

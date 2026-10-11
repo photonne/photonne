@@ -4,8 +4,8 @@ import {
 	scanLibraryStream,
 	streamBackgroundTask
 } from '#lib/api/index.js';
+import { readJsonObjects } from '#lib/adminops/json-stream.js';
 import { errorText } from './errors.js';
-import { readJsonArray } from './json-stream.js';
 import { applyScanUpdate, startScan, type ScanState, type ScanUpdate } from './libraries.js';
 
 /**
@@ -97,16 +97,16 @@ export class LibraryScanner {
 		let cancelSent = !!this.scan?.cancelled && !!this.scan.taskId;
 		if (body instanceof ReadableStream) {
 			try {
-				for await (const update of readJsonArray<ScanUpdate>(body)) {
-					if (!this.scan) break;
-					this.scan = applyScanUpdate(this.scan, update);
-					if (this.scan.done) break;
+				await readJsonObjects(body, (value) => {
+					if (!this.scan) return false;
+					this.scan = applyScanUpdate(this.scan, value as ScanUpdate);
+					if (this.scan.done) return false;
 					// Stop asked for before the server had named the task.
 					if (this.scan.cancelled && !cancelSent && this.scan.taskId) {
 						cancelSent = true;
 						void this.#cancelLate(this.scan.taskId);
 					}
-				}
+				});
 			} catch {
 				// Aborted or the connection dropped: handled below.
 			}
