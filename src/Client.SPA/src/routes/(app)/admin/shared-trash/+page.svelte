@@ -315,7 +315,7 @@
 	}
 
 	.viewer-action:hover:not(:disabled) {
-		background: rgb(255 255 255 / 0.12);
+		background: var(--color-hover);
 	}
 
 	.viewer-action:disabled,
