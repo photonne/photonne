@@ -3,6 +3,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
 	import { PagedList } from '#lib/timeline/paged-list.svelte.js';
+	import { ViewerRoute } from '#lib/viewer/viewer-route.svelte.js';
 
 	const list = new PagedList(
 		async (cursor) =>
@@ -10,8 +11,12 @@
 	);
 	list.start();
 
-	// Un-hearting a photo here takes it off the page.
+	const viewer = new ViewerRoute();
+
+	// Un-hearting a photo here takes it off the page, once the viewer closes:
+	// while it's open the photo keeps its place, and the arrows their way.
 	$effect(() => {
+		if (viewer.openId) return;
 		const notFavorite = list.store.items.filter((item) => !item.isFavorite).map((i) => i.id);
 		if (notFavorite.length) list.store.remove(notFavorite);
 	});
