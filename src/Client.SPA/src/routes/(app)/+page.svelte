@@ -205,6 +205,7 @@
 				sectionSubtitle={view.sectionSubtitle}
 				itemLabel={view.yearView ? yearItemLabel : itemLabel}
 				onneedsection={(key) => store.load(key)}
+				onloadsections={(keys) => store.loadMany(keys)}
 				onopen={view.yearView ? openMonthOf : openViewer}
 				zoom={view.zoom}
 				onzoom={(direction) => view.step(direction)}

@@ -57,6 +57,15 @@ export class TimelineStore implements GridHost {
 		return loading;
 	}
 
+	/** Loads these months a few at a time (a selection that spans them). */
+	async loadMany(keys: readonly string[]) {
+		const queue = [...keys];
+		const worker = async () => {
+			for (let key = queue.shift(); key !== undefined; key = queue.shift()) await this.load(key);
+		};
+		await Promise.all(Array.from({ length: Math.min(4, queue.length) }, worker));
+	}
+
 	async #fetch(key: string) {
 		const generation = this.#generation;
 		try {
