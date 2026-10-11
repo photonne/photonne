@@ -45,7 +45,7 @@
 		<PageHeader title={m.nav_search()} />
 	{/if}
 	<div class="bar" class:solo={hasCriteria(query)}>
-		<SearchForm {query} onsearch={search} autofocus={!hasCriteria(query)} />
+		<SearchForm {query} {semantic} onsearch={search} autofocus={!hasCriteria(query)} />
 	</div>
 
 	<div class="body">

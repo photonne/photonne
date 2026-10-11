@@ -22,9 +22,16 @@
 		onsearch: (query: SearchQuery) => void;
 		/** Focus the words field on mount (the empty search page). */
 		autofocus?: boolean;
+		/** The search actually running: false once the semantic one turned out to be
+		 *  off, although the URL still asks for it. Defaults to what the URL asks. */
+		semantic?: boolean;
 	}
 
-	let { query, onsearch, autofocus = false }: Props = $props();
+	let { query, onsearch, autofocus = false, semantic: running }: Props = $props();
+
+	const semantic = $derived(running ?? query.semantic);
+	// Asked for but off on the server: the words run through the text search.
+	const semanticDown = $derived(query.semantic && !semantic);
 
 	// The field follows the URL (Back, a link) but is the user's while typing.
 	let text = $derived(query.q);
@@ -78,7 +85,7 @@
 		flatten(folders.data ?? []).filter((folder) => matches(folder.path, folderFilter))
 	);
 
-	const filtersOff = $derived(query.semantic);
+	const filtersOff = $derived(semantic);
 
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -161,18 +168,22 @@
 				type="search"
 				name="q"
 				aria-label={m.search_field_label()}
-				placeholder={query.semantic
+				placeholder={semantic
 					? m.search_field_placeholder_semantic()
 					: m.search_field_placeholder()}
 				bind:value={text}
 				bind:this={input}
 			/>
 		</div>
-		<label class="switch" title={m.search_semantic_hint()}>
+		<label
+			class="switch"
+			title={semanticDown ? m.search_semantic_unavailable() : m.search_semantic_hint()}
+		>
 			<input
 				type="checkbox"
 				role="switch"
-				checked={query.semantic}
+				checked={semantic}
+				disabled={semanticDown}
 				onchange={(event) =>
 					onsearch({ ...query, q: text.trim(), semantic: event.currentTarget.checked })}
 			/>
@@ -421,6 +432,11 @@
 
 	.switch input:checked::after {
 		transform: translateX(16px);
+	}
+
+	.switch:has(input:disabled) {
+		color: var(--color-text-muted);
+		cursor: not-allowed;
 	}
 
 	form[role='search'] .btn {
