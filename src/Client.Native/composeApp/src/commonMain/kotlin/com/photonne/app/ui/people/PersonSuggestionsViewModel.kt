@@ -118,7 +118,15 @@ class PersonSuggestionsViewModel(
             }
     }
 
-    fun acceptFace(faceId: String, onSuccess: () -> Unit = {}) {
+    /**
+     * [onError] carries a per-face failure to a snackbar: the face stays in the
+     * list, so `state.error` (painted only over an empty list) never showed it.
+     */
+    fun acceptFace(
+        faceId: String,
+        onError: (UiError) -> Unit = {},
+        onSuccess: () -> Unit = {}
+    ) {
         markPending(faceId, true)
         viewModelScope.launch {
             runCatching { repository.acceptFaceSuggestion(faceId) }
@@ -126,11 +134,15 @@ class PersonSuggestionsViewModel(
                     dropItem(faceId)
                     onSuccess()
                 }
-                .onFailure { error -> setError(faceId, error, "No se pudo aceptar") }
+                .onFailure { error -> onError(faceFailed(faceId, error, "No se pudo aceptar")) }
         }
     }
 
-    fun dismissFace(faceId: String, onSuccess: () -> Unit = {}) {
+    fun dismissFace(
+        faceId: String,
+        onError: (UiError) -> Unit = {},
+        onSuccess: () -> Unit = {}
+    ) {
         markPending(faceId, true)
         viewModelScope.launch {
             runCatching { repository.dismissFaceSuggestion(faceId) }
@@ -138,7 +150,7 @@ class PersonSuggestionsViewModel(
                     dropItem(faceId)
                     onSuccess()
                 }
-                .onFailure { error -> setError(faceId, error, "No se pudo descartar") }
+                .onFailure { error -> onError(faceFailed(faceId, error, "No se pudo descartar")) }
         }
     }
 
@@ -221,12 +233,8 @@ class PersonSuggestionsViewModel(
         }
     }
 
-    private fun setError(faceId: String, throwable: Throwable, fallback: String) {
-        _state.update {
-            it.copy(
-                pendingFaceIds = it.pendingFaceIds - faceId,
-                error = errorFactory.from(throwable, fallback)
-            )
-        }
+    private fun faceFailed(faceId: String, throwable: Throwable, fallback: String): UiError {
+        markPending(faceId, false)
+        return errorFactory.from(throwable, fallback)
     }
 }
