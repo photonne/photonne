@@ -116,5 +116,20 @@
 	"viewer_text_title": "Texto reconocido",
 	"viewer_more": "Más acciones",
 	"viewer_date_change": "Cambiar la fecha",
-	"viewer_key_delete": "Supr"
+	"viewer_key_delete": "Supr",
+	"viewer_live": "LIVE",
+	"viewer_key_backspace": "Retroceso",
+	"viewer_key_space": "Espacio",
+	"viewer_shortcuts_title": "Atajos de teclado",
+	"viewer_shortcuts_navigate": "Foto anterior o siguiente",
+	"viewer_shortcuts_close": "Quitar el zoom o cerrar el visor",
+	"viewer_shortcuts_info": "Mostrar u ocultar la información",
+	"viewer_shortcuts_favorite": "Marcar o desmarcar como favorita",
+	"viewer_shortcuts_faces": "Mostrar u ocultar las caras",
+	"viewer_shortcuts_slideshow": "Empezar la presentación",
+	"viewer_shortcuts_zoom": "Acercar, alejar o volver al tamaño de pantalla",
+	"viewer_shortcuts_play": "Reproducir o pausar el vídeo",
+	"viewer_shortcuts_archive": "Archivar la foto",
+	"viewer_shortcuts_trash": "Mover la foto a la papelera",
+	"viewer_shortcuts_help": "Mostrar esta ayuda"
 }

@@ -24,6 +24,7 @@
 		getAssetDetailOptions,
 		getAssetDetailQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import Dialog from '#lib/components/Dialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { dateTime } from '#lib/format.js';
@@ -102,6 +103,8 @@
 	let showFaces = $state(false);
 	let selectedFaceId = $state<string | null>(null);
 	let pickingFrame = $state(false);
+	let showingKeys = $state(false);
+	let video = $state<HTMLVideoElement>();
 
 	// Slideshow: `paused` keeps the chrome hidden; Space resumes.
 	let slideshow = $state(false);
@@ -156,7 +159,8 @@
 		if (canPickFrame)
 			items.push({ label: m.viewer_frame_title(), icon: { path: framePath }, run: pickFrame });
 		if (onarchive || ontrash) items.push({ kind: 'separator', id: 'remove' });
-		if (onarchive) items.push({ label: m.action_archive(), icon: 'archive', run: onarchive });
+		if (onarchive)
+			items.push({ label: m.action_archive(), icon: 'archive', shortcut: 'A', run: onarchive });
 		if (ontrash)
 			items.push({
 				label: m.action_trash(),
@@ -166,6 +170,13 @@
 				danger: true,
 				run: ontrash
 			});
+		items.push({ kind: 'separator', id: 'help' });
+		items.push({
+			label: m.viewer_shortcuts_title(),
+			icon: 'info',
+			shortcut: '?',
+			run: () => (showingKeys = true)
+		});
 		return items;
 	});
 
@@ -377,11 +388,37 @@
 		controlsIdle = false;
 	}
 
+	function togglePlayback() {
+		if (!video) return;
+		if (video.paused) video.play().catch(() => {});
+		else video.pause();
+	}
+
 	function videoEnded() {
 		if (slideshow && !paused) advance();
 	}
 
 	// --- Keyboard --------------------------------------------------------
+
+	/** The help dialog (?): only the keys this viewer answers right now. */
+	const shortcutHelp = $derived(
+		[
+			{ keys: ['←', '→'], label: m.viewer_shortcuts_navigate() },
+			{ keys: ['Esc'], label: m.viewer_shortcuts_close() },
+			{ keys: ['I'], label: m.viewer_shortcuts_info() },
+			{ keys: ['F'], label: m.viewer_shortcuts_favorite() },
+			!isVideo && { keys: [m.viewer_key_faces()], label: m.viewer_shortcuts_faces() },
+			{ keys: ['S'], label: m.viewer_shortcuts_slideshow() },
+			!isVideo && { keys: ['+', '−', '0'], label: m.viewer_shortcuts_zoom() },
+			isVideo && { keys: [m.viewer_key_space(), 'K'], label: m.viewer_shortcuts_play() },
+			onarchive && { keys: ['A'], label: m.viewer_shortcuts_archive() },
+			ontrash && {
+				keys: [m.viewer_key_delete(), m.viewer_key_backspace()],
+				label: m.viewer_shortcuts_trash()
+			},
+			{ keys: ['?'], label: m.viewer_shortcuts_help() }
+		].filter((row) => !!row)
+	);
 
 	function onkeydown(event: KeyboardEvent) {
 		const target = event.target as HTMLElement;
@@ -407,6 +444,8 @@
 		if (event.key === 'Tab') return trapFocus(event);
 		if (event.defaultPrevented) return;
 		if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
+		// The video's own controls already answer Space while they have focus.
+		if (event.key === ' ' && target.closest('video')) return;
 
 		const shortcuts: Record<string, () => void> = {
 			ArrowLeft: () => previous && zoom.scale === 1 && onnavigate(previous),
@@ -419,7 +458,13 @@
 			'=': () => image?.zoomBy(1.5),
 			'-': () => image?.zoomBy(1 / 1.5),
 			'0': () => image?.reset(),
-			Delete: () => ontrash?.()
+			Delete: () => ontrash?.(),
+			// A Mac keyboard's "delete" key.
+			Backspace: () => ontrash?.(),
+			a: () => onarchive?.(),
+			' ': togglePlayback,
+			k: togglePlayback,
+			'?': () => (showingKeys = true)
 		};
 		const action = shortcuts[event.key];
 		if (action) {
@@ -507,7 +552,7 @@
 							onclick={() => (playingLive = !playingLive)}
 						>
 							<Icon name="livePhoto" size={18} />
-							LIVE
+							{m.viewer_live()}
 						</button>
 					{/if}
 					{#if onshare}
@@ -555,6 +600,7 @@
 					{#if isVideo}
 						<!-- svelte-ignore a11y_media_has_caption -->
 						<video
+							bind:this={video}
 							src={contentSrc}
 							poster={previewSrc}
 							controls={!slideshow}
@@ -683,6 +729,19 @@
 		/>
 	{/if}
 </div>
+
+<Dialog open={showingKeys} title={m.viewer_shortcuts_title()} onclose={() => (showingKeys = false)}>
+	<dl class="keys">
+		{#each shortcutHelp as row (row.label)}
+			<dt>
+				{#each row.keys as key, index (key)}{#if index > 0}
+						/
+					{/if}<kbd>{key}</kbd>{/each}
+			</dt>
+			<dd>{row.label}</dd>
+		{/each}
+	</dl>
+</Dialog>
 
 {#snippet faceOverlay(scale: number)}
 	<FaceBoxes faces={boxes} selectedId={selectedFaceId} {scale} onselect={selectFace} />
@@ -908,5 +967,34 @@
 
 	.state:empty {
 		padding: 0;
+	}
+
+	.keys {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: var(--space-2) var(--space-4);
+		align-items: center;
+		margin: 0;
+	}
+
+	.keys dt {
+		white-space: nowrap;
+		color: var(--color-text-muted);
+	}
+
+	.keys dd {
+		margin: 0;
+	}
+
+	kbd {
+		display: inline-block;
+		min-width: 1.6em;
+		padding: 0 var(--space-1);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-sm);
+		font: inherit;
+		font-size: var(--font-size-sm);
+		text-align: center;
+		color: var(--color-text);
 	}
 </style>
