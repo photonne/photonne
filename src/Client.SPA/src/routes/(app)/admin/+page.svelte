@@ -137,7 +137,8 @@
 			value: trashQuery.data ? count(trashQuery.data.totalItems) : dash,
 			pending: trashQuery.isPending,
 			icon: 'delete',
-			href: appHref('/admin/maintenance'),
+			// Retention and quota live there, next to the usage panel that cleans up what expired.
+			href: appHref('/admin/settings/trash'),
 			badge: trashQuery.data?.expiredItems
 				? m.admin_dash_trash_expired({
 						count: trashQuery.data.expiredItems,
