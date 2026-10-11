@@ -46,6 +46,8 @@ export interface ScanState {
 	resumed: boolean;
 	/** The admin asked to stop it. */
 	cancelled: boolean;
+	/** The server refused to run it; `error` is the sentence to show. */
+	rejected?: boolean;
 }
 
 export interface ScanUpdate {

@@ -342,6 +342,7 @@
 	],
 	"admin_libs_scan_cancelled": "The scan of “{name}” was stopped",
 	"admin_libs_scan_failed": "The scan of “{name}” failed: {error}",
+	"admin_libs_scan_cancel_lost": "Couldn’t stop the scan of “{name}”: the connection dropped before it started; it carries on on the server.",
 	"admin_libs_scan_lost": "Lost the connection to the scan of “{name}”; it carries on on the server.",
 	"admin_libs_created": "“{name}” created",
 	"admin_libs_updated": "Changes to “{name}” saved",
