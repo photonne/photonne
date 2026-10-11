@@ -79,6 +79,9 @@ fun FoldersBulkMoveDialog(
         title = if (count == 1) stringResource(Res.string.folder_move_title)
         else pluralStringResource(Res.plurals.folder_bulk_move_title, count, count),
         folders = state.moveDestinations,
+        isLoading = state.isLoading,
+        loadError = state.error,
+        onRetry = viewModel::refresh,
         isSubmitting = state.isMutating,
         excludeFolderIds = sources.mapTo(mutableSetOf()) { it.id },
         includeRoot = true,
