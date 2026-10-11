@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PasswordInput from '#lib/account/settings/PasswordInput.svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -58,9 +59,8 @@
 
 		<label>
 			<span>{m.login_password()}</span>
-			<input
+			<PasswordInput
 				name="password"
-				type="password"
 				autocomplete="current-password"
 				required
 				bind:value={password}
@@ -79,7 +79,7 @@
 
 <style>
 	.page {
-		min-height: 100vh;
+		min-height: 100dvh;
 		display: grid;
 		place-items: center;
 		padding: var(--space-6);
@@ -118,11 +118,9 @@
 		color: var(--color-text-muted);
 	}
 
-	input {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
+	/* The shared fields (ui.css), a size up; the password's is PasswordInput's. */
+	label :global(input) {
+		min-height: var(--control-h-lg);
 		font-size: var(--font-size-md);
 	}
 

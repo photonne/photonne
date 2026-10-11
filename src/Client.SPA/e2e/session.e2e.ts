@@ -10,11 +10,11 @@ test('sends a visitor to the login page and back after signing in', async ({ pag
 	await expect(page).toHaveURL(/\/login\?returnTo=%2F$/);
 
 	await page.getByLabel('Usuario o correo').fill('ana');
-	await page.getByLabel('Contraseña').fill('mal');
+	await page.getByLabel('Contraseña', { exact: true }).fill('mal');
 	await page.getByRole('button', { name: 'Entrar' }).click();
 	await expect(page.getByRole('alert')).toHaveText('Usuario o contraseña incorrectos.');
 
-	await page.getByLabel('Contraseña').fill('secreto');
+	await page.getByLabel('Contraseña', { exact: true }).fill('secreto');
 	await page.getByRole('button', { name: 'Entrar' }).click();
 
 	await expect(page).toHaveURL(/\/$/);
