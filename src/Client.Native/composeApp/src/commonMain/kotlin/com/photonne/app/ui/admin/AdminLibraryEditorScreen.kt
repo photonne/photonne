@@ -21,6 +21,7 @@ import com.photonne.app.resources.action_create
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.admin_libraries_action_delete
+import com.photonne.app.resources.admin_libraries_demo_locked
 import com.photonne.app.resources.admin_libraries_cron_hint
 import com.photonne.app.resources.admin_libraries_delete_message
 import com.photonne.app.resources.admin_libraries_delete_title
@@ -64,7 +65,9 @@ fun AdminLibraryEditorScreen(
     var showDelete by remember(existing?.id) { mutableStateOf(false) }
 
     val isSubmitting = state.isMutating
-    val canSubmit = !isSubmitting && name.isNotBlank() && path.isNotBlank()
+    // Read-only in the demo: the server refuses to create, save or delete one.
+    val isDemo = com.photonne.app.ui.demo.LocalDemoMode.current
+    val canSubmit = !isSubmitting && !isDemo && name.isNotBlank() && path.isNotBlank()
 
     AdminEditorScaffold(
         title = title,
@@ -77,6 +80,7 @@ fun AdminLibraryEditorScreen(
         resultMessage = state.statusMessage,
         onResultShown = viewModel::consumeStatus,
     ) {
+        if (isDemo) AdminDemoNotice(stringResource(Res.string.admin_libraries_demo_locked))
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
@@ -92,7 +96,7 @@ fun AdminLibraryEditorScreen(
             label = { Text(stringResource(Res.string.admin_libraries_field_path)) },
             singleLine = true,
             // En la demo se ve enmascarada: editar la máscara no tiene sentido.
-            enabled = !isSubmitting && !com.photonne.app.ui.demo.LocalDemoMode.current,
+            enabled = !isSubmitting && !isDemo,
             keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth()
         )
@@ -150,7 +154,7 @@ fun AdminLibraryEditorScreen(
                     viewModel.clearMessages()
                     showDelete = true
                 },
-                enabled = !isSubmitting,
+                enabled = !isSubmitting && !isDemo,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(

@@ -23,6 +23,21 @@ class UiErrorTest {
     }
 
     @Test
+    fun a_forbidden_action_says_why_when_the_server_does() {
+        val demo = PhotonneApiException(
+            status = 403,
+            message = "Esta acción está bloqueada en la demo pública de Photonne.",
+            serverMessage = "Esta acción está bloqueada en la demo pública de Photonne.",
+        )
+        assertEquals(
+            "Esta acción está bloqueada en la demo pública de Photonne.",
+            demo.toUiError(fallback = "No se pudo guardar").userMessage
+        )
+        val bare = PhotonneApiException(status = 403, message = "Forbidden (403)")
+        assertEquals("No tienes permiso para esta acción.", bare.toUiError(fallback = "x").userMessage)
+    }
+
+    @Test
     fun falls_back_without_server_message() {
         val ex = PhotonneApiException(status = 409, message = "Conflict (409)")
         assertEquals("No se pudo guardar", ex.toUiError(fallback = "No se pudo guardar").userMessage)

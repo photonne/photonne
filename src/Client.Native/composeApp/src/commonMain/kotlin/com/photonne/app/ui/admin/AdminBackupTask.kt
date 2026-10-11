@@ -41,6 +41,8 @@ import com.photonne.app.resources.admin_backup_level_essential_desc
 import com.photonne.app.resources.admin_backup_level_full
 import com.photonne.app.resources.admin_backup_level_full_desc
 import com.photonne.app.resources.admin_backup_media_warning
+import com.photonne.app.resources.admin_backup_demo_locked
+import com.photonne.app.ui.demo.LocalDemoMode
 import com.photonne.app.resources.admin_backup_restore_only_pwa
 import com.photonne.app.resources.admin_backup_section_download
 import com.photonne.app.resources.admin_backup_section_restore
@@ -176,8 +178,13 @@ fun AdminBackupScreen(
             onSelect = viewModel::setLevel
         )
 
+        // The demo server refuses the download (DemoModeGuardMiddleware): the
+        // button would only ever come back with a 403.
+        val isDemo = LocalDemoMode.current
+        if (isDemo) AdminDemoNotice(stringResource(Res.string.admin_backup_demo_locked))
         PrimaryActionButton(
             label = stringResource(Res.string.admin_backup_action_download),
+            enabled = !isDemo,
             isLoading = state.isDownloading,
             onClick = viewModel::downloadBackup
         )
