@@ -87,3 +87,20 @@ test('the menu follows the native app: photos, collections, actions', async ({ p
 			'Utilidades'
 		]);
 });
+
+test('only the link of the page on screen is the current page', async ({ page }) => {
+	await page.setViewportSize({ width: 1400, height: 900 });
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/albums/album-1');
+
+	const sidebar = page.getByRole('navigation', { name: 'Navegación principal' });
+	await expect(sidebar.getByRole('link', { name: 'Vacaciones' })).toHaveAttribute(
+		'aria-current',
+		'page'
+	);
+	await expect(sidebar.getByRole('link', { name: 'Álbumes' })).toHaveAttribute(
+		'aria-current',
+		'true'
+	);
+	await expect(sidebar.getByRole('link', { name: 'Fotos' })).not.toHaveAttribute('aria-current');
+});
