@@ -128,9 +128,15 @@
 	}
 
 	function onpointerdown(event: PointerEvent) {
-		if (event.pointerType === 'mouse' && event.button !== 0) return;
+		const mouse = event.pointerType === 'mouse';
+		// A mouse only drags the zoomed photo; at the fitted size its clicks are
+		// left alone (a face box under it still gets them).
+		if (mouse && (event.button !== 0 || zoom.scale === 1)) return;
 		pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-		stage!.setPointerCapture(event.pointerId);
+		// Touch and pen are captured implicitly by the element they land on and
+		// their events bubble here; capturing them to the stage would retarget
+		// the click of a tap away from a face box.
+		if (mouse) stage!.setPointerCapture(event.pointerId);
 		if (pointers.size === 2) {
 			// A second finger: whatever the first was doing becomes a pinch.
 			drag = null;
