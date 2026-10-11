@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { calendarDate } from '#lib/admin/format.js';
 	import { saveSetting } from '#lib/api/index.js';
 	import {
 		getSettingOptions,
@@ -33,7 +34,7 @@
 	{#if lastRun.isPending}
 		<div class="loading"><Skeleton variant="text" count={3} /></div>
 	{:else if lastRun.data?.value}
-		<p>{m.ops_nightly_last_value({ date: lastRun.data.value })}</p>
+		<p>{m.ops_nightly_last_value({ date: calendarDate(lastRun.data.value) })}</p>
 		<p class="small muted">{m.ops_nightly_last_hint()}</p>
 	{:else}
 		<p class="muted">{m.ops_nightly_never()}</p>
