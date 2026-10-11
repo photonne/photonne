@@ -10,7 +10,7 @@
 		getVersionOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
-	import { count, localDateTime, percent } from '#lib/admin/format.js';
+	import { count, localDateTime, percentOfOne } from '#lib/admin/format.js';
 	import GrowthChart from '#lib/admin/GrowthChart.svelte';
 	import { adminIcons } from '#lib/admin/icons.js';
 	import { coverageShare, coverageTone, growthSeries, type Tone } from '#lib/admin/stats.js';
@@ -194,7 +194,7 @@
 		})}
 		{@render metric({
 			label: m.admin_dash_coverage(),
-			value: share !== null ? percent(share, 1) : dash,
+			value: share !== null ? percentOfOne(share, 1) : dash,
 			pending: coverageQuery.isPending,
 			iconPath: adminIcons.checkCircle,
 			href: '#coverage',
@@ -393,7 +393,7 @@
 											></span></span
 										>
 										<span class="num muted small"
-											>{percent(stats?.totalBytes ? user.bytes / stats.totalBytes : 0)}</span
+											>{percentOfOne(stats?.totalBytes ? user.bytes / stats.totalBytes : 0)}</span
 										>
 									</div>
 								</td>

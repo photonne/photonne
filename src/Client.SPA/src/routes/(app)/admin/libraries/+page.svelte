@@ -10,7 +10,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { useDemoMode } from '#lib/admin/demo.svelte.js';
 	import { errorText } from '#lib/admin/errors.js';
-	import { count, localDateTime, percent, relativeTime } from '#lib/admin/format.js';
+	import { count, localDateTime, percentOfHundred, relativeTime } from '#lib/admin/format.js';
 	import { adminIcons } from '#lib/admin/icons.js';
 	import { scheduleOf, type ScanState } from '#lib/admin/libraries.js';
 	import LibraryDialog from '#lib/admin/LibraryDialog.svelte';
@@ -211,7 +211,7 @@
 									<strong
 										>{scan.resumed ? m.admin_libs_scan_resumed() : m.admin_libs_scanning()}</strong
 									>
-									<span class="num">{percent(scan.percentage / 100)}</span>
+									<span class="num">{percentOfHundred(scan.percentage)}</span>
 								</div>
 								<div
 									class="bar"

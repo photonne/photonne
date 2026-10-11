@@ -14,7 +14,8 @@
 	import { toastError } from './feedback.svelte.js';
 	import { icons } from './icons.js';
 	import { queueProgress } from './queue-progress.js';
-	import { count, duration, percent } from './time.js';
+	import { count, percentOfHundred } from '#lib/admin/format.js';
+	import { duration } from './time.js';
 
 	interface Props {
 		task: MaintenanceTask & { queue: BackfillKind };
@@ -167,7 +168,7 @@
 	{:else if progress !== null}
 		<div class="line">
 			<ProgressBar value={progress} label={task.active()} />
-			<span class="pct">{percent(progress)}</span>
+			<span class="pct">{percentOfHundred(progress)}</span>
 		</div>
 		<p class="meta"><strong>{task.active()}</strong></p>
 	{:else if working}

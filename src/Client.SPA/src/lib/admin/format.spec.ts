@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('#lib/paraglide/runtime.js', () => ({ getLocale: () => 'es' }));
 
-const { compact, count, percent, relativeTime, shortMonth } = await import('./format.js');
+const { compact, count, percentOfHundred, percentOfOne, relativeTime, shortMonth } =
+	await import('./format.js');
 
 describe('admin format', () => {
 	it('formats numbers in the user language', () => {
 		expect(count(12345)).toBe('12.345');
-		expect(percent(0.999, 1)).toMatch(/^99,9\s%$/);
+		expect(percentOfOne(0.999, 1)).toMatch(/^99,9\s%$/);
+		expect(percentOfHundred(42)).toMatch(/^42\s%$/);
 		expect(compact(1500)).toMatch(/^1,5\smil$/);
 	});
 

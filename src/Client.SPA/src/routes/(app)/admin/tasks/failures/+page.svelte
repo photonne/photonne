@@ -24,7 +24,8 @@
 		failureKindLabel,
 		failureKinds
 	} from '#lib/adminops/labels.js';
-	import { count, localDateTime, timeAgo } from '#lib/adminops/time.js';
+	import { count, localDateTime } from '#lib/admin/format.js';
+	import { timeAgo } from '#lib/adminops/time.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
