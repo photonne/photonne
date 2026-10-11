@@ -102,7 +102,8 @@ test('the "more" menu holds the other actions and works with the keyboard', asyn
 		/Descargar original/,
 		/Presentación\s*S/,
 		/Archivar/,
-		/Mover a la papelera\s*Supr/
+		/Mover a la papelera\s*Supr/,
+		/^\s*Atajos de teclado\s*\?$/
 	]);
 	await expect(menu.getByRole('menuitemcheckbox', { name: 'Recuadros de caras' })).toHaveAttribute(
 		'aria-checked',
@@ -110,7 +111,7 @@ test('the "more" menu holds the other actions and works with the keyboard', asyn
 	);
 	await expect(menu.getByRole('menuitem', { name: 'Añadir a un álbum' })).toBeFocused();
 	await page.keyboard.press('End');
-	await expect(menu.getByRole('menuitem', { name: 'Mover a la papelera' })).toBeFocused();
+	await expect(menu.getByRole('menuitem', { name: 'Atajos de teclado' })).toBeFocused();
 	await page.keyboard.press('ArrowDown');
 	await expect(menu.getByRole('menuitem', { name: 'Añadir a un álbum' })).toBeFocused();
 
