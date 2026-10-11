@@ -342,6 +342,7 @@
 	],
 	"admin_libs_scan_cancelled": "Se ha detenido el escaneo de «{name}»",
 	"admin_libs_scan_failed": "El escaneo de «{name}» ha fallado: {error}",
+	"admin_libs_scan_cancel_lost": "No se ha podido detener el escaneo de «{name}»: se perdió la conexión antes de que empezara; sigue en el servidor.",
 	"admin_libs_scan_lost": "Se ha perdido la conexión con el escaneo de «{name}»; sigue en el servidor.",
 	"admin_libs_created": "Se ha creado «{name}»",
 	"admin_libs_updated": "Se han guardado los cambios de «{name}»",

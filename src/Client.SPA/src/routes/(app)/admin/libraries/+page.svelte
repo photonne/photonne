@@ -43,7 +43,9 @@
 
 	function finished(scan: ScanState) {
 		const name = nameOf(scan.libraryId);
-		if (scan.cancelled) toasts.show(m.admin_libs_scan_cancelled({ name }));
+		if (scan.rejected) toasts.error(scan.error ?? m.admin_core_error_generic());
+		else if (scan.cancelled) toasts.show(m.admin_libs_scan_cancelled({ name }));
+		else if (scan.error === 'cancel-lost') toasts.error(m.admin_libs_scan_cancel_lost({ name }));
 		else if (scan.error === 'connection') toasts.error(m.admin_libs_scan_lost({ name }));
 		else if (scan.error) toasts.error(m.admin_libs_scan_failed({ name, error: scan.error }));
 		else toasts.show(m.admin_libs_scan_done({ name, count: scan.indexed, n: count(scan.indexed) }));
@@ -259,7 +261,10 @@
 									type="button"
 									class="btn"
 									disabled={scan.cancelled}
-									onclick={() => scanner.cancel()}
+									onclick={async () => {
+										const error = await scanner.cancel();
+										if (error) toasts.error(error);
+									}}
 								>
 									<Icon path={adminIcons.stop} size={18} />
 									{m.admin_libs_scan_cancel()}
