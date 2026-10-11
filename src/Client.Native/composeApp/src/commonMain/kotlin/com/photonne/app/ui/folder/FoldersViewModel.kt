@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -150,6 +153,17 @@ class FoldersViewModel(
                     is com.photonne.app.data.events.AssetMutation.DateChanged -> Unit
                 }
             }
+        }
+        // Renaming the account (Ajustes → Perfil) renames the home folder on
+        // the server and changes which roots are "mine": the split by username
+        // in [repartition] went stale until a manual reload. Reload quietly
+        // whenever the signed-in username changes.
+        viewModelScope.launch {
+            authState.state
+                .map { (it as? AuthState.Authenticated)?.user?.username }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { refreshQuietly() }
         }
     }
 
