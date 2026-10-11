@@ -854,5 +854,22 @@
 	"ops_param_file_date": "Fecha del archivo",
 	"ops_param_write_file": "Escribe en los archivos",
 	"ops_param_regenerate": "Regenerar todas",
-	"ops_param_overwrite": "Releer todos"
+	"ops_param_overwrite": "Releer todos",
+	"ops_dup_leave_title": "¿Salir de Duplicados?",
+	"ops_dup_leave_running": "El análisis está en curso y se detendrá si sales de la página.",
+	"ops_dup_leave_selected": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Tienes {countFormatted} archivo marcado para borrar. Si sales, se pierde la selección.",
+				"countPlural=other": "Tienes {countFormatted} archivos marcados para borrar. Si sales, se pierde la selección."
+			}
+		}
+	],
+	"ops_dup_leave": "Salir"
 }
