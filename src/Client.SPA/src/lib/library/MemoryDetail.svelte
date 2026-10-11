@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { apiErrorCode, getMemory, type MemoryDetailResponse } from '#lib/api/index.js';
-	import { dateRange } from './dates.js';
+	import { dateRange, singleDay } from './dates.js';
 	import { icons } from './icons.js';
 	import { memoryArea } from './memories.js';
 	import PageCrumbs from './PageCrumbs.svelte';
@@ -35,7 +35,24 @@
 			: { href: appHref('/memories'), label: m.nav_memories() }
 	);
 	const title = $derived(memory?.title ?? m.nav_memories());
+	// The story dates each photo; for a one-day memory the subtitle is that same
+	// day (or a count the story's counter already gives), so it would repeat.
+	const storySubtitle = $derived(
+		memory && !singleDay(memory.windowStart, memory.windowEnd) ? memory.subtitle : null
+	);
+
+	// The story starts on the photo the user last focused or picked in the grid.
+	let focusedId = $state<string | null>(null);
+
+	function onfocusin(event: FocusEvent) {
+		const cell = (event.target as HTMLElement).closest?.<HTMLElement>('[data-id]');
+		if (cell?.dataset.id && list.store.byId[cell.dataset.id]) focusedId = cell.dataset.id;
+	}
+
+	const start = $derived(focusedId ? Math.max(0, list.store.order.indexOf(focusedId)) : 0);
 </script>
+
+<svelte:document {onfocusin} />
 
 <svelte:head>
 	<title>{title} · {m.app_name()}</title>
@@ -70,8 +87,9 @@
 {#if playing}
 	<StoryPlayer
 		{title}
-		subtitle={memory?.subtitle}
+		subtitle={storySubtitle}
 		items={list.store.items}
+		{start}
 		onclose={() => (playing = false)}
 	/>
 {/if}
