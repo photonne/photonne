@@ -14,6 +14,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import platform.Foundation.NSData
 import platform.Foundation.NSError
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSFileSize
+import platform.Foundation.NSNumber
 import platform.Foundation.NSItemProvider
 import platform.Foundation.NSMutableData
 import platform.Foundation.NSURL
@@ -131,7 +134,7 @@ private class PhotoPickerDelegate(
         val results = didFinishPicking.mapNotNull { it as? PHPickerResult }
         scope.launch {
             val files = withContext(Dispatchers.Default) {
-                results.mapNotNull { result ->
+                results.map { result ->
                     // Prefer the original PHAsset resource (GPS intact); fall
                     // back to the file representation if that's unavailable.
                     val viaAsset = if (authorized) {
@@ -139,7 +142,9 @@ private class PhotoPickerDelegate(
                             runCatching { loadFromAsset(id) }.getOrNull()
                         }
                     } else null
+                    // Neither path could read it: reported, not silently dropped.
                     viaAsset ?: runCatching { loadPickedFile(result.itemProvider) }.getOrNull()
+                        ?: unreadablePickedFile(result.itemProvider.suggestedName ?: "upload")
                 }
             }
             onComplete(files)
@@ -154,11 +159,15 @@ private suspend fun loadFromAsset(localIdentifier: String): PickedFile? {
     val fetch = PHAsset.fetchAssetsWithLocalIdentifiers(listOf(localIdentifier), options = null)
     val asset = fetch.firstObject as? PHAsset ?: return null
     val resource = primaryResource(asset) ?: return null
-    val data = readResourceData(resource) ?: return null
     val filename = resource.originalFilename ?: "upload"
     val uti = resource.uniformTypeIdentifier
     val mime = uti?.let { UTType.typeWithIdentifier(it)?.preferredMIMEType }
         ?: "application/octet-stream"
+    val data = when (val read = readResourceData(resource, UploadViewModel.MAX_BYTES_PER_FILE)) {
+        is ResourceRead.Complete -> read.data
+        is ResourceRead.TooBig -> return oversizePickedFile(filename, mime, read.bytesSeen)
+        null -> return null
+    }
     return PickedFile(
         name = filename,
         mimeType = mime,
@@ -179,7 +188,8 @@ private suspend fun loadMotionClip(asset: PHAsset): PickedMotionClip? {
         (asset.mediaSubtypes and PHAssetMediaSubtypePhotoLive) == 0uL
     ) return null
     val resource = pairedVideoResource(asset) ?: return null
-    val data = runCatching { readResourceData(resource) }.getOrNull() ?: return null
+    val read = runCatching { readResourceData(resource, UploadViewModel.MAX_BYTES_PER_FILE) }.getOrNull()
+    val data = (read as? ResourceRead.Complete)?.data ?: return null
     if (data.length == 0uL) return null
     return PickedMotionClip(
         name = resource.originalFilename,
@@ -207,20 +217,54 @@ private fun primaryResource(asset: PHAsset): PHAssetResource? {
     return fullSize
 }
 
+/** Outcome of a capped resource read; null from the reader means it failed. */
+private sealed interface ResourceRead {
+    class Complete(val data: NSData) : ResourceRead
+
+    /** Passed the cap: the request was cancelled after [bytesSeen] bytes. */
+    class TooBig(val bytesSeen: Long) : ResourceRead
+}
+
+/**
+ * Reads [resource] whole, unless it grows past [maxBytes]: PhotoKit doesn't
+ * expose the size up front, so the request is cancelled as soon as the chunks
+ * pass the cap instead of buffering a huge video only to reject it.
+ */
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun readResourceData(resource: PHAssetResource): NSData? =
+private suspend fun readResourceData(resource: PHAssetResource, maxBytes: Long): ResourceRead? =
     suspendCancellableCoroutine { cont ->
         val options = PHAssetResourceRequestOptions().apply {
             // iCloud-optimised devices need a download for unsynced originals.
             networkAccessAllowed = true
         }
+        val manager = PHAssetResourceManager.defaultManager()
         val accumulator = NSMutableData()
-        PHAssetResourceManager.defaultManager().requestDataForAssetResource(
+        var requestId = 0
+        var seen = 0L
+        var tooBig = false
+        requestId = manager.requestDataForAssetResource(
             resource = resource,
             options = options,
-            dataReceivedHandler = { data -> if (data != null) accumulator.appendData(data) },
+            dataReceivedHandler = { data ->
+                if (data != null && !tooBig) {
+                    seen += data.length.toLong()
+                    if (seen > maxBytes) {
+                        tooBig = true
+                        accumulator.setLength(0u)
+                        manager.cancelDataRequest(requestId)
+                    } else {
+                        accumulator.appendData(data)
+                    }
+                }
+            },
             completionHandler = { error: NSError? ->
-                cont.resume(if (error != null) null else accumulator)
+                cont.resume(
+                    when {
+                        tooBig -> ResourceRead.TooBig(seen)
+                        error != null -> null
+                        else -> ResourceRead.Complete(accumulator)
+                    }
+                )
             }
         )
     }
@@ -256,12 +300,16 @@ private suspend fun loadPickedFile(provider: NSItemProvider): PickedFile? {
     // The first registered type identifier is the item's native representation
     // (e.g. public.heic, com.apple.quicktime-movie) — what we want verbatim.
     val typeId = provider.registeredTypeIdentifiers.firstOrNull() as? String ?: return null
-    val data = loadFileData(provider, typeId) ?: return null
 
     val utType = UTType.typeWithIdentifier(typeId)
     val ext = utType?.preferredFilenameExtension ?: "dat"
     val mime = utType?.preferredMIMEType ?: "application/octet-stream"
     val baseName = provider.suggestedName ?: "upload"
+    val data = when (val read = loadFileData(provider, typeId, UploadViewModel.MAX_BYTES_PER_FILE)) {
+        is ResourceRead.Complete -> read.data
+        is ResourceRead.TooBig -> return oversizePickedFile("$baseName.$ext", mime, read.bytesSeen)
+        null -> return null
+    }
 
     return PickedFile(
         name = "$baseName.$ext",
@@ -274,14 +322,23 @@ private suspend fun loadPickedFile(provider: NSItemProvider): PickedFile? {
 /**
  * `loadFileRepresentation` hands back a temporary URL that iOS deletes the
  * instant the completion handler returns, so we must read the bytes
- * synchronously inside the handler before resuming.
+ * synchronously inside the handler before resuming. The file's size is
+ * checked first: one over [maxBytes] isn't read at all.
  */
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun loadFileData(provider: NSItemProvider, typeId: String): NSData? =
+private suspend fun loadFileData(provider: NSItemProvider, typeId: String, maxBytes: Long): ResourceRead? =
     suspendCancellableCoroutine { cont ->
         provider.loadFileRepresentationForTypeIdentifier(typeId) { url: NSURL?, _: NSError? ->
-            val data = url?.let { NSData.dataWithContentsOfURL(it) }
-            cont.resume(data)
+            val size = url?.path?.let { path ->
+                (NSFileManager.defaultManager.attributesOfItemAtPath(path, error = null)
+                    ?.get(NSFileSize) as? NSNumber)?.longLongValue
+            }
+            val read = when {
+                url == null -> null
+                size != null && size > maxBytes -> ResourceRead.TooBig(size)
+                else -> NSData.dataWithContentsOfURL(url)?.let { ResourceRead.Complete(it) }
+            }
+            cont.resume(read)
         }
     }
 

@@ -14,6 +14,7 @@ import com.photonne.app.ui.platform.OrientationController
 import com.photonne.app.ui.upload.MAX_SELECTION
 import com.photonne.app.ui.upload.UploadViewModel
 import com.photonne.app.ui.upload.readPickedFile
+import com.photonne.app.ui.upload.unreadablePickedFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,8 +82,9 @@ class MainActivity : ComponentActivity() {
         if (uris.isEmpty()) return
         lifecycleScope.launch {
             val files = withContext(Dispatchers.IO) {
-                uris.mapNotNull { uri ->
+                uris.map { uri ->
                     readPickedFile(this@MainActivity, uri, UploadViewModel.MAX_BYTES_PER_FILE)
+                        ?: unreadablePickedFile(uri.lastPathSegment ?: "upload")
                 }
             }
             ExternalNavigation.requestUpload(files)

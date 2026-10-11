@@ -5,8 +5,11 @@ import androidx.compose.runtime.Composable
 /**
  * Lightweight value type produced by the platform-specific picker and
  * fed to the upload pipeline. `bytes` holds the entire payload in memory
- * — fine for typical photos (a few MB), but we cap the per-file size
- * client-side in the view-model before queuing.
+ * — fine for typical photos (a few MB). Pickers check the size BEFORE
+ * reading: a file over [UploadViewModel.MAX_BYTES_PER_FILE] comes back
+ * with empty `bytes` and its real `sizeBytes` (see [oversizePickedFile]),
+ * and one that can't be read comes back flagged [unreadable], so the
+ * view-model can tell the user what was left out instead of dropping it.
  */
 data class PickedFile(
     val name: String,
@@ -25,11 +28,27 @@ data class PickedFile(
      * a motion photo. Null everywhere else (Android motion photos carry the
      * clip inside the JPEG).
      */
-    val motionClip: PickedMotionClip? = null
+    val motionClip: PickedMotionClip? = null,
+    /** The picker couldn't read it (permission, iCloud download, I/O…): not queued, only reported. */
+    val unreadable: Boolean = false
 ) {
     override fun equals(other: Any?): Boolean = this === other
     override fun hashCode(): Int = (name.hashCode() * 31 + mimeType.hashCode()) * 31 + sizeBytes.hashCode()
 }
+
+/** A picked file left unread because it's over the upload cap; the queue skips and reports it. */
+fun oversizePickedFile(name: String, mimeType: String, sizeBytes: Long, lastModifiedMillis: Long? = null) =
+    PickedFile(
+        name = name,
+        mimeType = mimeType,
+        sizeBytes = sizeBytes,
+        bytes = ByteArray(0),
+        lastModifiedMillis = lastModifiedMillis
+    )
+
+/** A picked file the platform couldn't read; the queue skips and reports it. */
+fun unreadablePickedFile(name: String) =
+    PickedFile(name = name, mimeType = "", sizeBytes = 0L, bytes = ByteArray(0), unreadable = true)
 
 /** The motion clip of a picked Live Photo, read whole like its still. */
 class PickedMotionClip(

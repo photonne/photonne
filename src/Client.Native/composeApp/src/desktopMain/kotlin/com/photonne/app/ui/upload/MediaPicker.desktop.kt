@@ -33,19 +33,29 @@ private fun runPicker(): List<PickedFile> {
     }
     val result = chooser.showOpenDialog(null)
     if (result != JFileChooser.APPROVE_OPTION) return emptyList()
-    return chooser.selectedFiles.orEmpty().mapNotNull { file -> file.toPickedFile() }
+    return chooser.selectedFiles.orEmpty().map { file -> file.toPickedFile() }
 }
 
-private fun File.toPickedFile(): PickedFile? = runCatching {
+/**
+ * Size is checked before reading, so an oversize video never lands in memory
+ * just to be rejected by the queue; a read failure is reported, not dropped.
+ */
+private fun File.toPickedFile(): PickedFile = runCatching {
+    val mime = guessMimeType(extension.lowercase())
+    val modified = lastModified().takeIf { it > 0 }
+    val size = length()
+    if (size > UploadViewModel.MAX_BYTES_PER_FILE) {
+        return@runCatching oversizePickedFile(name, mime, size, modified)
+    }
     val bytes = readBytes()
     PickedFile(
         name = name,
-        mimeType = guessMimeType(extension.lowercase()),
+        mimeType = mime,
         sizeBytes = bytes.size.toLong(),
         bytes = bytes,
-        lastModifiedMillis = lastModified().takeIf { it > 0 }
+        lastModifiedMillis = modified
     )
-}.getOrNull()
+}.getOrElse { unreadablePickedFile(name) }
 
 private fun guessMimeType(ext: String): String = when (ext) {
     "jpg", "jpeg" -> "image/jpeg"
