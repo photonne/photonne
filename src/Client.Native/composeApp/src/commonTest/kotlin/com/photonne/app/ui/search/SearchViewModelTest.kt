@@ -71,4 +71,40 @@ class SearchViewModelTest {
         assertFalse(state.hasMore)
         assertNotNull(state.error)
     }
+
+    @Test
+    fun ai_search_unavailable_falls_back_to_text_and_says_so() = runTest {
+        val paths = mutableListOf<String>()
+        val vm = viewModel { request ->
+            paths += request.url.encodedPath
+            if (request.url.encodedPath.endsWith("/semantic")) {
+                json(
+                    """{"error":"Semantic search unavailable","code":"semantic_search_unavailable"}""",
+                    HttpStatusCode.ServiceUnavailable
+                )
+            } else json("""{"items":[${timelineItemJson("t")}],"hasMore":false}""")
+        }
+        vm.setMode(SearchMode.Semantic)
+        vm.setQuery("playa")
+        val state = vm.state.first { it.semanticUnavailable && !it.isLoading }
+
+        assertEquals(SearchMode.Text, state.mode)
+        assertEquals(listOf("t"), state.results.map { it.id })
+        assertEquals(null, state.error, "the fallback is not an error")
+        assertEquals(listOf("/api/assets/search/semantic", "/api/assets/search"), paths)
+
+        vm.consumeSemanticUnavailable()
+        assertFalse(vm.state.value.semanticUnavailable)
+    }
+
+    @Test
+    fun other_ai_search_errors_stay_errors() = runTest {
+        val vm = viewModel { respond("", HttpStatusCode.ServiceUnavailable) }
+        vm.setMode(SearchMode.Semantic)
+        vm.setQuery("playa")
+        val state = vm.state.first { it.error != null }
+
+        assertEquals(SearchMode.Semantic, state.mode)
+        assertFalse(state.semanticUnavailable)
+    }
 }

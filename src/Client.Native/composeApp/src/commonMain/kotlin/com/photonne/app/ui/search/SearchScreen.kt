@@ -51,6 +51,7 @@ import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_more
 import com.photonne.app.resources.search_filters_only_text
 import com.photonne.app.resources.search_semantic_capped
+import com.photonne.app.resources.search_semantic_unavailable
 import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -95,6 +96,12 @@ fun SearchScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.ensureFacetsLoaded() }
+    com.photonne.app.ui.main.ResultSnackbar(
+        message = if (state.semanticUnavailable) {
+            stringResource(Res.string.search_semantic_unavailable)
+        } else null,
+        onShown = viewModel::consumeSemanticUnavailable
+    )
 
     val gridState = rememberLazyGridState()
     val hazeState = remember { HazeState() }

@@ -379,6 +379,7 @@
     <string name="search_filters">Filters</string>
     <string name="search_filters_only_text">Filters only apply to text search</string>
     <string name="search_semantic_capped">Showing the %1$d closest matches</string>
+    <string name="search_semantic_unavailable">AI search isn't available</string>
     <string name="search_clear_all">Clear</string>
     <string name="search_empty_results">No matches for those criteria.</string>
     <string name="search_filters_loading">Loading filters…</string>

@@ -458,6 +458,7 @@
     <string name="search_filters">Filtros</string>
     <string name="search_filters_only_text">Los filtros solo aplican a la búsqueda de texto</string>
     <string name="search_semantic_capped">Mostrando los %1$d más parecidos</string>
+    <string name="search_semantic_unavailable">La búsqueda con IA no está disponible</string>
     <string name="search_clear_all">Limpiar</string>
     <string name="search_empty_results">Sin resultados con esos criterios.</string>
     <string name="search_no_results">Sin resultados</string>
