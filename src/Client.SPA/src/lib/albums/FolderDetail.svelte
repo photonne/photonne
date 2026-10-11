@@ -6,6 +6,7 @@
 	import type { BatchActions } from '#lib/actions/batch-actions.svelte.js';
 	import FolderPickerDialog from '#lib/actions/FolderPickerDialog.svelte';
 	import {
+		apiErrorCode,
 		deleteFolder,
 		getFolderAssets,
 		removeFolderAssets,
@@ -175,9 +176,18 @@
 </svelte:head>
 
 {#if folderQuery.isError}
+	<!-- Gone is final; anything else (offline, a server error) may pass, so it gets a retry. -->
+	{@const missing = apiErrorCode(folderQuery.error) === 'folder_not_found'}
 	<div class="missing">
-		<p role="alert">{m.folders_not_found()}</p>
-		<a class="btn" href={appHref('/folders')}>{m.folders_back()}</a>
+		<p role="alert">{missing ? m.folders_not_found() : m.folders_load_failed()}</p>
+		<div class="missing-actions">
+			{#if !missing}
+				<button type="button" class="btn primary" onclick={() => folderQuery.refetch()}>
+					{m.folders_retry()}
+				</button>
+			{/if}
+			<a class="btn" href={appHref('/folders')}>{m.folders_back()}</a>
+		</div>
 	</div>
 {:else}
 	<CollectionView
@@ -451,5 +461,11 @@
 	.missing p {
 		margin: 0;
 		color: var(--color-text-muted);
+	}
+
+	.missing-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
 	}
 </style>
