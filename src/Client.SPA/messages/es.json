@@ -18,6 +18,8 @@
 	"nav_photos": "Fotos",
 	"account_menu": "Cuenta",
 	"account_logout": "Cerrar sesión",
+	"account_logout_uploads_title": "¿Cerrar sesión con subidas en curso?",
+	"account_logout_uploads_body": "Las fotos que aún no se han subido se cancelarán.",
 	"language": "Idioma",
 	"photos_title": "Fotos",
 	"photos_empty": "Todavía no hay fotos.",

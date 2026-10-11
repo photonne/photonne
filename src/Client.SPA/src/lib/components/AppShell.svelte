@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import type { Snippet } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
@@ -70,8 +71,16 @@
 		if (ignored > 0) toasts.show(m.upload_ignored({ count: ignored }));
 	}
 
-	async function logout() {
+	let confirmingLogout = $state(false);
+
+	function requestLogout() {
 		accountOpen = false;
+		if (uploads.active) confirmingLogout = true;
+		else logout();
+	}
+
+	async function logout() {
+		confirmingLogout = false;
 		await session.logout();
 		await goto(resolve('/login'), { replace: true });
 	}
@@ -87,6 +96,16 @@
 
 <!-- Files dropped anywhere in the app go to the upload queue. -->
 <DropZone mode="window" onfiles={addUploads} />
+
+<ConfirmDialog
+	open={confirmingLogout}
+	title={m.account_logout_uploads_title()}
+	message={m.account_logout_uploads_body()}
+	confirmLabel={m.account_logout()}
+	danger
+	onconfirm={logout}
+	onclose={() => (confirmingLogout = false)}
+/>
 
 <div class="shell" class:collapsed>
 	<header class="topbar">
@@ -147,7 +166,7 @@
 						<Icon name="settings" />
 						{m.nav_settings()}
 					</a>
-					<button type="button" onclick={logout}>
+					<button type="button" onclick={requestLogout}>
 						<Icon name="logout" />
 						{m.account_logout()}
 					</button>
