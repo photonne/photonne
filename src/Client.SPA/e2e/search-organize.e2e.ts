@@ -59,7 +59,7 @@ test('moves the selection to a folder and takes it out of the inbox', async ({ p
 
 	await page.getByRole('button', { name: 'Mover a una carpeta' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Mover a una carpeta' });
-	await dialog.getByRole('button', { name: 'Camera' }).click();
+	await dialog.getByText('Camera', { exact: true }).click();
 	await dialog.getByRole('checkbox', { name: 'Organizar por año de captura' }).check();
 	await dialog.getByRole('button', { name: 'Mover', exact: true }).click();
 
@@ -86,7 +86,7 @@ test('reviews a suggestion, leaves a photo out and moves the rest', async ({ pag
 	await review.getByRole('button', { name: 'Elegir destino' }).click();
 
 	const picker = page.getByRole('dialog', { name: 'Mover a una carpeta' });
-	await picker.getByRole('button', { name: 'Camera' }).click();
+	await picker.getByText('Camera', { exact: true }).click();
 	await picker.getByRole('button', { name: 'Mover', exact: true }).click();
 
 	await expect(page.getByText('5 movidas a «Camera»')).toBeVisible();
