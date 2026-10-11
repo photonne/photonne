@@ -513,16 +513,13 @@ class AlbumsViewModel(
         }
     }
 
-    fun applyAssetAdded(albumId: String) {
-        _state.update { previous ->
-            previous.copy(
-                albums = previous.albums.map {
-                    if (it.id == albumId) it.copy(assetCount = it.assetCount + 1) else it
-                }
-            )
-        }
-    }
+    fun applyAssetAdded(albumId: String) = applyAssetsAdded(albumId, 1)
 
+    /**
+     * Bumps the count right away for instant feedback, then reloads quietly:
+     * the server skips photos already in the album (a blind +N overcounted)
+     * and an album that was empty gets its cover only from the server.
+     */
     fun applyAssetsAdded(albumId: String, addedCount: Int) {
         if (addedCount <= 0) return
         _state.update { previous ->
@@ -532,6 +529,7 @@ class AlbumsViewModel(
                 }
             )
         }
+        refreshQuietly()
     }
 
     fun applyAssetRemoved(albumId: String) {
