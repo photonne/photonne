@@ -77,6 +77,7 @@ internal class AuthenticatedChromeHost(
     val organizeInboxViewModel: com.photonne.app.ui.organize.OrganizeInboxViewModel,
     val organizeExcludedViewModel: com.photonne.app.ui.organize.OrganizeExcludedViewModel,
     val personDetailViewModel: com.photonne.app.ui.people.PersonDetailViewModel,
+    val peopleViewModel: com.photonne.app.ui.people.PeopleViewModel,
     val deviceBackupViewModel: com.photonne.app.ui.devicebackup.DeviceBackupViewModel,
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel,
     val albumsRepository: AlbumsRepository,

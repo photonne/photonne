@@ -12,6 +12,7 @@ import com.photonne.app.resources.selection_move_blocked_read_only
 import com.photonne.app.resources.selection_trash_blocked_folder
 import com.photonne.app.resources.selection_removed_from_album_done
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.people_unlink_person_emptied
 import com.photonne.app.resources.album_bulk_delete_not_allowed
 import com.photonne.app.resources.folder_bulk_delete_not_allowed
 import com.photonne.app.resources.utilities_duplicates_action_delete
@@ -358,15 +359,33 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                         onUndo = { kind, ids ->
                             actionsViewModel.undoBulk(kind, ids)
                         },
-                        onUnlink = {
-                            personDetailViewModel.bulkUnlinkFromPerson { detached ->
-                                // Local fan-out: faces removed from a person also
-                                // shrink that person's face count in the list.
-                                appState.selectedPerson?.let { p ->
-                                    val newCount = (p.faceCount - detached).coerceAtLeast(0)
-                                    appState.selectedPerson = p.copy(faceCount = newCount)
+                        onUnlink = run {
+                            val unlinkSnackbar = LocalSnackbarController.current
+                            val emptiedMessage = stringResource(Res.string.people_unlink_person_emptied)
+                            val unlink: () -> Unit = {
+                                personDetailViewModel.bulkUnlinkFromPerson { outcome ->
+                                    // Local fan-out: faces removed from a person also
+                                    // shrink that person's face count in the list.
+                                    appState.selectedPerson?.let { p ->
+                                        val newCount = (p.faceCount - outcome.facesDetached).coerceAtLeast(0)
+                                        appState.selectedPerson = p.copy(faceCount = newCount)
+                                    }
+                                    // Counts and covers change in People (and the row in
+                                    // Colecciones), and an emptied person disappears there.
+                                    if (outcome.unlinked > 0) peopleViewModel.refresh()
+                                    when {
+                                        // The server deleted the person: its page would be
+                                        // a ghost that fails on every action.
+                                        outcome.personEmptied -> {
+                                            appState.personBack()
+                                            unlinkSnackbar?.show(emptiedMessage)
+                                        }
+                                        outcome.error != null ->
+                                            unlinkSnackbar?.show(outcome.error.userMessage)
+                                    }
                                 }
                             }
+                            unlink
                         }
                     )
                 }

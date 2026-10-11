@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.photonne.app.util.suspendRunCatching
+import kotlinx.coroutines.CancellationException
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
 
@@ -50,6 +51,20 @@ data class PersonDetailUiState(
     val openingMemoryId: String? = null,
 ) {
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
+}
+
+/** Resultado de [PersonDetailViewModel.bulkUnlinkFromPerson]. */
+data class UnlinkOutcome(
+    val unlinked: Int,
+    val failed: Int,
+    val facesDetached: Int,
+    /** Fotos que le quedan a la persona según el recuento del servidor. */
+    val remaining: Int,
+    /** El primer fallo, si alguna foto no se pudo desvincular. */
+    val error: UiError?,
+) {
+    /** Se quedó sin fotos: el servidor borra la persona (CleanupEmptyPersonsAsync). */
+    val personEmptied: Boolean get() = unlinked > 0 && failed == 0 && remaining == 0
 }
 
 class PersonDetailViewModel(
@@ -355,9 +370,14 @@ class PersonDetailViewModel(
      * Detach every selected asset from this person without rejecting any
      * face. Each asset may carry several faces tied to the person, so the
      * server operates at asset granularity — we forward one request per
-     * selected asset.
+     * selected asset, one at a time.
+     *
+     * A failure no longer aborts the batch nor brings back every photo: the
+     * ones the server did unlink stay out, and only the ones that failed
+     * return to the grid. [onDone] gets the tally, including whether the
+     * person was left without photos (the server then deletes it).
      */
-    fun bulkUnlinkFromPerson(onSuccess: (detached: Int) -> Unit = {}) {
+    fun bulkUnlinkFromPerson(onDone: (UnlinkOutcome) -> Unit = {}) {
         val personId = _state.value.personId ?: return
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
@@ -371,32 +391,40 @@ class PersonDetailViewModel(
             )
         }
         viewModelScope.launch {
-            runCatching {
-                var detached = 0
-                for (id in ids) {
-                    val res = peopleRepository.unlinkAsset(personId, id)
-                    detached += res.facesDetached
+            var facesDetached = 0
+            var firstError: Throwable? = null
+            // Sequential, as before: the server tidies the person up after
+            // each unlink and parallel requests would race that cleanup.
+            val outcome = com.photonne.app.ui.selection.runBulk(ids, concurrency = 1) { id ->
+                try {
+                    facesDetached += peopleRepository.unlinkAsset(personId, id).facesDetached
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    if (firstError == null) firstError = e
+                    throw e
                 }
-                detached
             }
-                .onSuccess { detached ->
-                    _state.update {
-                        it.copy(
-                            isBulkMutating = false,
-                            total = (it.total - ids.size).coerceAtLeast(0)
-                        )
-                    }
-                    onSuccess(detached)
-                }
-                .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            items = previous,
-                            isBulkMutating = false,
-                            error = errorFactory.from(error, "No se pudo desvincular")
-                        )
-                    }
-                }
+            var remaining = 0
+            _state.update {
+                if (it.personId != personId) return@update it.copy(isBulkMutating = false)
+                val total = (it.total - outcome.succeeded.size).coerceAtLeast(0)
+                remaining = total
+                it.copy(
+                    items = it.items.withRestored(previous, outcome.failed.toSet()),
+                    isBulkMutating = false,
+                    total = total
+                )
+            }
+            onDone(
+                UnlinkOutcome(
+                    unlinked = outcome.succeeded.size,
+                    failed = outcome.failed.size,
+                    facesDetached = facesDetached,
+                    remaining = remaining,
+                    error = firstError?.let { errorFactory.from(it, "No se pudo desvincular") }
+                )
+            )
         }
     }
 

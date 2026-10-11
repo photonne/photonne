@@ -1277,6 +1277,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         organizeInboxViewModel = organizeInboxViewModel,
         organizeExcludedViewModel = organizeExcludedViewModel,
         personDetailViewModel = personDetailViewModel,
+        peopleViewModel = peopleViewModel,
         deviceBackupViewModel = deviceBackupViewModel,
         actionsViewModel = actionsViewModel,
         albumsRepository = albumsRepository,
