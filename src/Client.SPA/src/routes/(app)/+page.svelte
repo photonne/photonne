@@ -17,6 +17,7 @@
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { longDate, monthTitle } from '#lib/format.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import { leaveViewerThen } from '#lib/library/viewer-flow.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import PhotoGrid from '#lib/timeline/PhotoGrid.svelte';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
@@ -113,17 +114,8 @@
 	}
 
 	/** After the shown photo leaves the timeline: next, else previous, else close. */
-	function leaveViewer() {
-		const target = neighbors.next ?? neighbors.previous;
-		if (target) navigateViewer(target);
-		else closeViewer();
-	}
-
-	async function removeFromViewer(remove: (ids: readonly string[]) => Promise<void>) {
-		if (!openId) return;
-		const id = openId;
-		leaveViewer();
-		await remove([id]);
+	function removeFromViewer(remove: (ids: readonly string[]) => Promise<void>) {
+		return leaveViewerThen(viewer, store.order, remove);
 	}
 
 	function assetChanged(assetId: string, change: AssetChange) {

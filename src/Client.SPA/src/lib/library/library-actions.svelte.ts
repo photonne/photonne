@@ -22,10 +22,12 @@ type Call = (options: { body: { assetIds: string[] } }) => Promise<{ error?: unk
  * The actions of the archive and the trash on the selected photos (pass the
  * selection, they leave it) or on the one open in the viewer. Like
  * BatchActions, they take the photos out of view at once; the reversible ones
- * offer Undo, and one runs at a time.
+ * offer Undo, and one runs at a time (the next ones wait their turn).
  */
 export class LibraryActions {
 	busy = $state(false);
+	#queue: Promise<void> = Promise.resolve();
+	#queued = 0;
 	#host: GridHost;
 
 	constructor(host: GridHost) {
@@ -71,9 +73,10 @@ export class LibraryActions {
 	) {
 		const selection = 'ids' in target ? target : null;
 		const assetIds = [...(selection ? selection.ids : (target as readonly string[]))];
-		if (this.busy || assetIds.length === 0) return Promise.resolve();
+		if (assetIds.length === 0) return Promise.resolve();
+		this.#queued++;
 		this.busy = true;
-		return (async () => {
+		const run = this.#queue.then(async () => {
 			try {
 				const { error } = await call({ body: { assetIds } });
 				if (error) throw error;
@@ -96,8 +99,10 @@ export class LibraryActions {
 			} catch {
 				toasts.error(m.action_failed());
 			} finally {
-				this.busy = false;
+				if (--this.#queued === 0) this.busy = false;
 			}
-		})();
+		});
+		this.#queue = run;
+		return run;
 	}
 }

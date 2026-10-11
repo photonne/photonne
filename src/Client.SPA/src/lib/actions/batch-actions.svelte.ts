@@ -5,9 +5,11 @@ import {
 	moveFolderAssets,
 	restoreAssets,
 	toggleFavorite,
-	unarchiveAssets
+	unarchiveAssets,
+	type AssetDetailResponse
 } from '#lib/api/index.js';
-import { invalidateLibrary } from '#lib/api/query-client.js';
+import { getAssetDetailQueryKey } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+import { invalidateLibrary, queryClient } from '#lib/api/query-client.js';
 import { announceAssetsMoved } from '#lib/albums/folder-moves.js';
 import { toasts } from '#lib/components/toasts.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
@@ -18,7 +20,8 @@ import { AssetDownloader } from './asset-downloader.svelte.js';
 /**
  * Actions on the selected photos, shared by every grid (see GridHost).
  * Removing actions (archive, trash) take the photos out of view at once and
- * offer Undo; one action runs at a time.
+ * offer Undo. One action runs at a time; the ones asked for meanwhile (a
+ * second Delete in the viewer) wait their turn instead of being dropped.
  */
 export class BatchActions {
 	busy = $state(false);
@@ -31,6 +34,8 @@ export class BatchActions {
 	 */
 	sharing = $state<string[] | null>(null);
 	#sharingSelection = false;
+	#queue: Promise<void> = Promise.resolve();
+	#queued = 0;
 	#host: GridHost;
 	#selection: Selection;
 
@@ -44,16 +49,20 @@ export class BatchActions {
 		return ids ? [...ids] : [...this.#selection.ids];
 	}
 
-	async #run(action: () => Promise<void>) {
-		if (this.busy) return;
+	#run(action: () => Promise<void>) {
+		this.#queued++;
 		this.busy = true;
-		try {
-			await action();
-		} catch {
-			toasts.error(m.action_failed());
-		} finally {
-			this.busy = false;
-		}
+		const run = this.#queue.then(async () => {
+			try {
+				await action();
+			} catch {
+				toasts.error(m.action_failed());
+			} finally {
+				if (--this.#queued === 0) this.busy = false;
+			}
+		});
+		this.#queue = run;
+		return run;
 	}
 
 	/**
@@ -62,23 +71,42 @@ export class BatchActions {
 	 * called.
 	 */
 	toggleFavorites(ids?: readonly string[]) {
+		const targets = this.#targets(ids);
 		return this.#run(async () => {
-			const items = this.#host.itemsByIds(this.#targets(ids));
+			const items = this.#host.itemsByIds(targets);
 			if (items.length === 0) return;
 			const marking = items.some((item) => !item.isFavorite);
 			const changing = items.filter((item) => item.isFavorite !== marking).map((item) => item.id);
-			for (const id of changing) {
-				const { error } = await toggleFavorite({ path: { assetId: id } });
-				if (error) throw error;
+			const changed: string[] = [];
+			try {
+				for (const id of changing) {
+					const { error } = await toggleFavorite({ path: { assetId: id } });
+					if (error) throw error;
+					changed.push(id);
+				}
+			} finally {
+				// Those already toggled on the server show it, even when a later one failed.
+				this.#markFavorite(changed, marking);
 			}
-			this.#host.update(changing, (item) => ({ ...item, isFavorite: marking }));
-			invalidateLibrary();
 			toasts.show(
 				marking
 					? m.action_favorited({ count: changing.length })
 					: m.action_unfavorited({ count: changing.length })
 			);
 		});
+	}
+
+	#markFavorite(ids: readonly string[], isFavorite: boolean) {
+		if (ids.length === 0) return;
+		this.#host.update(ids, (item) => ({ ...item, isFavorite }));
+		// The viewer reads the heart from the photo's detail.
+		for (const assetId of ids) {
+			queryClient.setQueryData<AssetDetailResponse>(
+				getAssetDetailQueryKey({ path: { assetId } }),
+				(detail) => detail && { ...detail, isFavorite }
+			);
+		}
+		invalidateLibrary();
 	}
 
 	archive(ids?: readonly string[]) {
@@ -95,8 +123,8 @@ export class BatchActions {
 		revert: (options: { body: { assetIds: string[] } }) => Promise<{ error?: unknown }>,
 		message: (inputs: { count: number }) => string
 	) {
+		const assetIds = this.#targets(ids);
 		return this.#run(async () => {
-			const assetIds = this.#targets(ids);
 			if (assetIds.length === 0) return;
 			const { error } = await apply({ body: { assetIds } });
 			if (error) throw error;
@@ -120,8 +148,8 @@ export class BatchActions {
 	}
 
 	addToAlbum(album: { id: string; name: string }, ids?: readonly string[]) {
+		const assetIds = this.#targets(ids);
 		return this.#run(async () => {
-			const assetIds = this.#targets(ids);
 			const { error } = await addAssetsToAlbumBatch({
 				path: { albumId: album.id },
 				body: { assetIds }
@@ -138,8 +166,8 @@ export class BatchActions {
 		organizeByCaptureYear: boolean,
 		ids?: readonly string[]
 	) {
+		const assetIds = this.#targets(ids);
 		return this.#run(async () => {
-			const assetIds = this.#targets(ids);
 			const { data, error } = await moveFolderAssets({
 				body: { sourceFolderId: null, targetFolderId: folder.id, assetIds, organizeByCaptureYear }
 			});
