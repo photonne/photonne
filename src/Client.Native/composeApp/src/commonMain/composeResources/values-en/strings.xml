@@ -904,6 +904,8 @@
     <string name="admin_run_tasks_confirm_empty_trash_message">This permanently deletes everything in every user's trash, not just yours. It cannot be undone.</string>
     <string name="admin_run_tasks_confirm_purge_title">Purge assets with no file?</string>
     <string name="admin_run_tasks_confirm_purge_message">This deletes from the database the assets marked as missing and the folders whose directory no longer exists, along with their albums and faces. It cannot be undone. If in doubt, run it with "Dry run" first.</string>
+    <string name="admin_run_tasks_confirm_restore_dates_title">Write the dates into the files?</string>
+    <string name="admin_run_tasks_confirm_restore_dates_message">Dates worked out from the name, the folder or the file date will be written into the originals\' EXIF, on disk. Photonne cannot undo it. If in doubt, run it with "Simulate only" first.</string>
     <string name="admin_run_tasks_confirm_run">Run</string>
     <string name="admin_run_tasks_ai_enqueued_format">queued %1$s of %2$s in %3$s. The processor will work through them.</string>
     <string name="admin_run_tasks_ai_nothing_to_enqueue">there was nothing to queue.</string>
