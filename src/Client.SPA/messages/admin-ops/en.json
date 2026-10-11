@@ -847,5 +847,12 @@
 	"ops_type_thumbnails": "Thumbnails",
 	"ops_unit_days": "days",
 	"ops_mt_dates_confirm": "Write the dates into the files?",
-	"ops_mt_dates_confirm_text": "Dates deduced from the path or from the file date will be written into the metadata of the original files themselves. This can’t be undone. If in doubt, run it first with “Count only” or untick “Write the inferred date into the file”."
+	"ops_mt_dates_confirm_text": "Dates deduced from the path or from the file date will be written into the metadata of the original files themselves. This can’t be undone. If in doubt, run it first with “Count only” or untick “Write the inferred date into the file”.",
+	"ops_param_dry_run": "Simulation",
+	"ops_param_from_file": "EXIF reread",
+	"ops_param_infer_path": "Date inferred from path",
+	"ops_param_file_date": "File date",
+	"ops_param_write_file": "Writes to files",
+	"ops_param_regenerate": "Regenerate all",
+	"ops_param_overwrite": "Reread all"
 }

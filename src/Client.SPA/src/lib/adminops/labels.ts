@@ -20,6 +20,33 @@ export function taskTitle(task: Pick<BackgroundTaskResponse, 'type' | 'parameter
 	}
 }
 
+/**
+ * The options a task ran with, as chips. The server keeps them as strings
+ * (`"True"`, a GUID…): a switch that is off says nothing, ids mean nothing to
+ * the admin, and a key this client doesn't know is left out rather than shown
+ * raw.
+ */
+const parameterLabels: Record<string, () => string> = {
+	dryRun: m.ops_param_dry_run,
+	fromFile: m.ops_param_from_file,
+	inferFromPath: m.ops_param_infer_path,
+	useFileDate: m.ops_param_file_date,
+	writeToFile: m.ops_param_write_file,
+	regenerate: m.ops_param_regenerate,
+	overwrite: m.ops_param_overwrite
+};
+
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function parameterChips(parameters: Record<string, string> | null | undefined) {
+	return Object.entries(parameters ?? {}).flatMap(([key, value]) => {
+		const label = parameterLabels[key];
+		const text = value.trim().toLowerCase();
+		if (!label || text === 'false' || text === '' || GUID.test(text)) return [];
+		return [text === 'true' ? label() : `${label()}: ${value}`];
+	});
+}
+
 export function statusLabel(status: string) {
 	switch (status) {
 		case 'Running':

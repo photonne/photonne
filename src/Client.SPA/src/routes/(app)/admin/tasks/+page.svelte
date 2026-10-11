@@ -21,6 +21,7 @@
 	import {
 		enrichmentLabel,
 		enrichmentTypes,
+		parameterChips,
 		queueKinds,
 		statusLabel,
 		taskTitle
@@ -118,13 +119,6 @@
 	function failuresHref(type?: string) {
 		return appHref('/admin/tasks/failures') + (type ? `?type=${encodeURIComponent(type)}` : '');
 	}
-
-	/** The options a task ran with, as the server keeps them: a switch that is off says nothing. */
-	function parameterChips(task: BackgroundTaskResponse) {
-		return Object.entries(task.parameters ?? {})
-			.filter(([key, value]) => key !== 'kind' && value.toLowerCase() !== 'false')
-			.map(([key, value]) => (value.toLowerCase() === 'true' ? key : `${key}: ${value}`));
-	}
 </script>
 
 <AdminPage
@@ -191,7 +185,7 @@
 							<tr>
 								<th scope="row" class="name">
 									{taskTitle(task)}
-									{#each parameterChips(task) as chip (chip)}
+									{#each parameterChips(task.parameters) as chip (chip)}
 										<span class="chip tag param">{chip}</span>
 									{/each}
 								</th>
