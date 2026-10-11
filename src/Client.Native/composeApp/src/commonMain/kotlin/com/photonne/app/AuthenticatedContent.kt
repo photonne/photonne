@@ -1044,8 +1044,18 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     state = suggestionsState,
                     title = (suggestionsState.personName ?: appState.selectedPerson?.name).orEmpty(),
                     isBulkMutating = suggestionsState.isBulkMutating,
-                    onAccept = personSuggestionsViewModel::acceptFace,
-                    onDismissFace = personSuggestionsViewModel::dismissFace,
+                    onAccept = { faceId ->
+                        personSuggestionsViewModel.acceptFace(
+                            faceId,
+                            onError = { error -> snackbarController.show(error.userMessage) }
+                        )
+                    },
+                    onDismissFace = { faceId ->
+                        personSuggestionsViewModel.dismissFace(
+                            faceId,
+                            onError = { error -> snackbarController.show(error.userMessage) }
+                        )
+                    },
                     onLoadMore = personSuggestionsViewModel::loadMore,
                     onOpen = {
                         appState.selectedPerson?.let {
