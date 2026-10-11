@@ -140,7 +140,10 @@ fun AdminServerScreen(
                                 stringResource(Res.string.admin_server_release_url),
                                 style = MaterialTheme.typography.titleSmall
                             )
-                            Text(url, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                linkAnnotatedString(url, MaterialTheme.colorScheme.primary),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 }
@@ -159,7 +162,7 @@ fun AdminServerScreen(
                                 stringResource(Res.string.admin_server_release_notes),
                                 style = MaterialTheme.typography.titleSmall
                             )
-                            Text(notes, style = MaterialTheme.typography.bodySmall)
+                            ReleaseNotesText(notes)
                         }
                     }
                 }
