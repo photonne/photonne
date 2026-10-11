@@ -20,13 +20,15 @@
 	import { navigation } from '#lib/navigation/sections.js';
 	import { initialCollapsed, saveCollapsed } from '#lib/navigation/sidebar.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import { getLocale, locales, setLocale, type Locale } from '#lib/paraglide/runtime.js';
 	import Icon from './Icon.svelte';
 	import Logo from './Logo.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
-	const localeNames: Record<Locale, string> = { es: 'Español', en: 'English' };
+	let accountOpen = $state(false);
+	const fullName = $derived(
+		[session.user?.firstName, session.user?.lastName].filter(Boolean).join(' ')
+	);
 
 	const albums = createQuery(() => getAllAlbumsOptions());
 	const folders = createQuery(() => getAllFoldersOptions());
@@ -63,6 +65,7 @@
 	}
 
 	async function logout() {
+		accountOpen = false;
 		await session.logout();
 		await goto(resolve('/login'), { replace: true });
 	}
@@ -122,7 +125,7 @@
 						>{unreadCount > 99 ? '99+' : unreadCount}</span
 					>{/if}
 			</a>
-			<details class="account">
+			<details class="account" bind:open={accountOpen}>
 				<summary aria-label={m.account_menu()}>
 					<span class="avatar" aria-hidden="true"
 						>{(session.user?.firstName || session.user?.username || '?').charAt(0)}</span
@@ -130,19 +133,18 @@
 					<span>{session.user?.username}</span>
 				</summary>
 				<div class="menu">
-					<a href={href('/settings')}>{m.nav_settings()}</a>
-					<label>
-						<span>{m.language()}</span>
-						<select
-							value={getLocale()}
-							onchange={(event) => setLocale(event.currentTarget.value as Locale)}
-						>
-							{#each locales as locale (locale)}
-								<option value={locale}>{localeNames[locale]}</option>
-							{/each}
-						</select>
-					</label>
-					<button type="button" onclick={logout}>{m.account_logout()}</button>
+					<div class="identity">
+						<strong>{fullName || session.user?.username}</strong>
+						<span>{session.user?.email}</span>
+					</div>
+					<a href={href('/settings')} onclick={() => (accountOpen = false)}>
+						<Icon name="settings" />
+						{m.nav_settings()}
+					</a>
+					<button type="button" onclick={logout}>
+						<Icon name="logout" />
+						{m.account_logout()}
+					</button>
 				</div>
 			</details>
 		</div>
@@ -381,35 +383,50 @@
 		top: calc(100% + var(--space-1));
 		z-index: 5;
 		display: grid;
-		gap: var(--space-3);
-		min-width: 220px;
-		padding: var(--space-3);
+		min-width: 240px;
+		padding: var(--space-1);
 		background: var(--color-surface-raised);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-raised);
 	}
 
-	.menu a {
-		color: inherit;
-		text-decoration: none;
-		padding: var(--space-1) 0;
+	.identity {
+		display: grid;
+		gap: 2px;
+		padding: var(--space-2) var(--space-3) var(--space-3);
+		margin-bottom: var(--space-1);
+		border-bottom: 1px solid var(--color-border);
+		min-width: 0;
 	}
 
-	.menu label {
-		display: grid;
-		gap: var(--space-1);
+	.identity span {
 		font-size: var(--font-size-sm);
 		color: var(--color-text-muted);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
+	.menu a,
 	.menu button {
-		padding: var(--space-2);
-		border: 1px solid var(--color-border);
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
+		border: 0;
 		border-radius: var(--radius-sm);
 		background: transparent;
-		cursor: pointer;
+		color: inherit;
+		font: inherit;
+		text-decoration: none;
 		text-align: left;
+		cursor: pointer;
+	}
+
+	.menu a:hover,
+	.menu button:hover {
+		background: var(--color-surface);
 	}
 
 	.sidebar {
