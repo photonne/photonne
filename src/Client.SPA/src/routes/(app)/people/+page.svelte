@@ -458,4 +458,11 @@
 		color: var(--color-accent-text);
 		opacity: 1;
 	}
+
+	/* No hover on touch: the box has to show to be found. */
+	@media (hover: none) {
+		.pick {
+			opacity: 1;
+		}
+	}
 </style>
