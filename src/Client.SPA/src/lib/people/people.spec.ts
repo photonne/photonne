@@ -7,7 +7,8 @@ import {
 	initials,
 	nextOffset,
 	parseSort,
-	peopleQuery
+	peopleQuery,
+	uniqueById
 } from './people';
 
 describe('peopleQuery', () => {
@@ -90,6 +91,18 @@ describe('nextOffset', () => {
 		expect(nextOffset([page(50), page(0)], 120)).toBeUndefined();
 		expect(nextOffset([], 0)).toBeUndefined();
 	});
+
+	it('leaves out the loaded items that already left the list', () => {
+		const page = (from: number, n: number) => ({
+			items: Array.from({ length: n }, (_, i) => from + i)
+		});
+		const answered = new Set([3, 7, 60]);
+		// 100 loaded, 3 answered: the server's list now starts its third page at 97.
+		expect(nextOffset([page(0, 50), page(50, 50)], 117, (item) => answered.has(item))).toBe(97);
+		// Everything left is loaded.
+		const gone = (item: number) => answered.has(item);
+		expect(nextOffset([page(0, 50), page(50, 50)], 97, gone)).toBeUndefined();
+	});
 });
 
 describe('faceThumbnailUrl', () => {
@@ -106,5 +119,12 @@ describe('companions', () => {
 			{ id: 'c', kind: 'PeopleTogether' }
 		];
 		expect(companions(memories).map((memory) => memory.id)).toEqual(['a', 'c']);
+	});
+});
+
+describe('uniqueById', () => {
+	it('keeps the first of each id in order', () => {
+		const items = [{ id: 'a' }, { id: 'b' }, { id: 'a' }, { id: 'c' }];
+		expect(uniqueById(items).map((item) => item.id)).toEqual(['a', 'b', 'c']);
 	});
 });

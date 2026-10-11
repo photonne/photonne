@@ -94,10 +94,23 @@ export function initials(name: string | null | undefined) {
 /**
  * Pagination over an offset endpoint: the next offset, or undefined when the
  * pages already hold `total` items (TanStack's getNextPageParam contract).
+ * Loaded items for which `gone` holds already left the server's list (answered,
+ * moved), so they don't count: counting them would skip as many unseen ones.
  */
-export function nextOffset(pages: readonly { items: readonly unknown[] }[], total: number) {
-	const loaded = pages.reduce((sum, page) => sum + page.items.length, 0);
+export function nextOffset<T>(
+	pages: readonly { items: readonly T[] }[],
+	total: number,
+	gone?: (item: T) => boolean
+) {
+	const items = pages.flatMap((page) => page.items);
+	const offset = items.length - (gone ? items.filter(gone).length : 0);
 	const last = pages.at(-1);
-	if (!last || last.items.length === 0 || loaded >= total) return undefined;
-	return loaded;
+	if (!last || last.items.length === 0 || offset >= total) return undefined;
+	return offset;
+}
+
+/** The items without repeats (a page fetched while the list shifted may bring one again). */
+export function uniqueById<T extends { id: string }>(items: readonly T[]): T[] {
+	const seen = new Set<string>();
+	return items.filter((item) => !seen.has(item.id) && !!seen.add(item.id));
 }

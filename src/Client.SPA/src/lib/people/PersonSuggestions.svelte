@@ -24,7 +24,7 @@
 	import { ViewerRoute } from '#lib/viewer/viewer-route.svelte.js';
 	import { invalidatePeople } from './cache.js';
 	import { gridKeys } from './grid-keys.js';
-	import { displayName, faceThumbnailUrl, nextOffset } from './people.js';
+	import { displayName, faceThumbnailUrl, nextOffset, uniqueById } from './people.js';
 	import { whenVisible } from './visible.js';
 
 	let { person }: { person: PersonDto } = $props();
@@ -36,13 +36,16 @@
 			query: { limit: 120 }
 		}),
 		initialPageParam: 0,
-		getNextPageParam: (last, pages) => nextOffset(pages, last.total)
+		// Faces the server took off the list don't count towards the next offset.
+		getNextPageParam: (last, pages) => nextOffset(pages, last.total, (face) => settled.has(face.id))
 	}));
 
 	// Answered faces leave at once; the list itself refetches only when the
 	// loaded ones run out, so reviewing doesn't reshuffle what's on screen.
 	const answered = new SvelteSet<string>();
-	const all = $derived(suggestions.data?.pages.flatMap((page) => page.items) ?? []);
+	/** Answers the server confirmed (no longer among its suggestions). */
+	const settled = new SvelteSet<string>();
+	const all = $derived(uniqueById(suggestions.data?.pages.flatMap((page) => page.items) ?? []));
 	const items = $derived(all.filter((face) => !answered.has(face.id)));
 	const total = $derived(suggestions.data?.pages[0]?.total ?? 0);
 	const remaining = $derived(Math.max(0, total - answered.size));
@@ -90,6 +93,7 @@
 			toasts.error(m.action_failed());
 			return;
 		}
+		settled.add(faceId);
 		if (accept) accepted++;
 		else dismissed++;
 		summarize();
@@ -103,6 +107,7 @@
 	async function refresh() {
 		await invalidatePeople(queryClient);
 		answered.clear();
+		settled.clear();
 	}
 
 	async function bulk() {
