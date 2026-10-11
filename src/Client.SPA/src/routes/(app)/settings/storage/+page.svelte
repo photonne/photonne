@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import { getStorageInfoOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import { quotaLevel } from '#lib/admin/users.js';
 	import { formatBytes } from '#lib/format.js';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
@@ -13,11 +14,13 @@
 	const fraction = $derived(
 		info?.quotaBytes ? Math.min(1, info.usedBytes / Math.max(1, info.quotaBytes)) : null
 	);
+	const level = $derived(info ? quotaLevel(info.usedBytes, info.quotaBytes) : null);
+	// The real share, past 100 % when the quota is exceeded (the bar stops at full).
 	const percent = $derived(
-		fraction === null
+		fraction === null || !info?.quotaBytes
 			? ''
 			: new Intl.NumberFormat(getLocale(), { style: 'percent', maximumFractionDigits: 0 }).format(
-					fraction
+					info.usedBytes / info.quotaBytes
 				)
 	);
 	const count = (n: number) => new Intl.NumberFormat(getLocale()).format(n);
@@ -53,7 +56,7 @@
 				{#if fraction !== null}
 					<div
 						class="meter"
-						class:warn={fraction >= 0.9}
+						class:warn={level !== 'ok'}
 						role="meter"
 						aria-label={m.settings_storage_usage()}
 						aria-valuemin={0}
@@ -64,9 +67,11 @@
 						<span style:width="{fraction * 100}%"></span>
 					</div>
 					<p class="hint">
-						{fraction >= 0.9
-							? m.settings_storage_almost_full({ percent })
-							: m.settings_storage_percent({ percent })}
+						{level === 'over'
+							? m.settings_storage_over_quota({ percent })
+							: level === 'warning'
+								? m.settings_storage_almost_full({ percent })
+								: m.settings_storage_percent({ percent })}
 					</p>
 				{:else}
 					<p class="hint">{m.settings_storage_no_quota()}</p>

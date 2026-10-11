@@ -24,6 +24,7 @@
 		initials,
 		matchesQuery,
 		nextSort,
+		quotaLevel,
 		quotaShare,
 		sortUsers,
 		type AdminUser,
@@ -284,6 +285,7 @@
 				<tbody>
 					{#each rows as user (user.id)}
 						{@const share = quotaShare(user.usedBytes, user.storageQuotaBytes)}
+						{@const level = quotaLevel(user.usedBytes, user.storageQuotaBytes)}
 						{@const isMe = user.id === me?.id}
 						<tr class:inactive={!user.isActive}>
 							<td>
@@ -353,8 +355,8 @@
 								{#if share !== null}
 									<div
 										class="bar"
-										class:warning={share >= 0.8 && share < 1}
-										class:danger={share >= 1}
+										class:warning={level === 'warning'}
+										class:danger={level === 'over'}
 										role="meter"
 										aria-valuemin="0"
 										aria-valuemax="100"
@@ -363,6 +365,9 @@
 									>
 										<span style:width="{share * 100}%"></span>
 									</div>
+									{#if level === 'over'}
+										<span class="small danger-text">{m.admin_users_quota_over()}</span>
+									{/if}
 								{:else if user.usedBytes !== null}
 									<span class="muted small"> · {m.admin_users_no_quota()}</span>
 								{/if}
@@ -606,6 +611,11 @@
 	.storage .bar {
 		margin-top: 4px;
 		max-width: 160px;
+	}
+
+	.danger-text {
+		display: block;
+		color: var(--color-danger);
 	}
 
 	.role {

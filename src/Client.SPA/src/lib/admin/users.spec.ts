@@ -11,6 +11,7 @@ import {
 	matchesQuery,
 	nextSort,
 	passwordChecks,
+	quotaLevel,
 	quotaShare,
 	quotaToForm,
 	sortUsers,
@@ -96,6 +97,14 @@ describe('users', () => {
 		expect(quotaShare(null, 10)).toBeNull();
 		expect(quotaShare(5, 10)).toBe(0.5);
 		expect(quotaShare(20, 10)).toBe(1);
+	});
+
+	it('tells a nearly full quota from an exceeded one', () => {
+		expect(quotaLevel(5, null)).toBeNull();
+		expect(quotaLevel(5, 10)).toBe('ok');
+		expect(quotaLevel(9, 10)).toBe('warning');
+		expect(quotaLevel(10, 10)).toBe('warning');
+		expect(quotaLevel(11, 10)).toBe('over');
 	});
 
 	it('checks usernames and passwords like the server', () => {

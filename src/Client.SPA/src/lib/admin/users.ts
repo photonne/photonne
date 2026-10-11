@@ -122,6 +122,23 @@ export function formToQuota(form: QuotaForm): number | null {
 	return Number.isFinite(gb) && gb > 0 ? Math.round(gb * GIB) : null;
 }
 
+/**
+ * From this share of the quota on, usage shows as a warning: the same line
+ * for the admin (Users) and for the user (Settings › Storage).
+ */
+export const QUOTA_WARNING_SHARE = 0.9;
+
+/** How full a quota is: 'over' only past 100 %, which the server allows to happen. */
+export function quotaLevel(
+	used: number | null,
+	quota: number | null | undefined
+): 'ok' | 'warning' | 'over' | null {
+	if (!quota || quota <= 0 || used === null) return null;
+	const share = used / quota;
+	if (share > 1) return 'over';
+	return share >= QUOTA_WARNING_SHARE ? 'warning' : 'ok';
+}
+
 /** 0–1 share of the quota in use, or null when there is no quota. */
 export function quotaShare(used: number | null, quota: number | null | undefined) {
 	if (!quota || quota <= 0 || used === null) return null;
