@@ -27,7 +27,7 @@ fun ExploreScenesScreen(
     ExploreLabelGridScreen(
         tiles = tiles,
         isLoading = state.isLoading,
-        error = state.error,
+        error = state.scenesError,
         emptyText = stringResource(Res.string.explore_scenes_empty),
         baseUrl = baseUrl,
         title = stringResource(Res.string.explore_section_scenes),

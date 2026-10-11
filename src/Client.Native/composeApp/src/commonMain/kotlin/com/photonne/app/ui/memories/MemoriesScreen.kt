@@ -291,7 +291,9 @@ internal fun MemoryFeedScaffold(
                         cardSpacing = Spacing.md
                     )
 
-                state.error != null && state.rows.isEmpty() ->
+                // Solo sin nada que enseñar: en Explorar las escenas y los
+                // objetos cargan aparte, y un fallo del feed no debe taparlos.
+                state.error != null && isEmpty(state) ->
                     com.photonne.app.ui.error.FullScreenError(
                         error = state.error,
                         onRetry = viewModel::refresh,
@@ -316,6 +318,17 @@ internal fun MemoryFeedScaffold(
                         bottom = 24.dp + floatingNavBarReservedHeight()
                     ),
                 ) {
+                    // El feed falló pero hay algo que enseñar (lo de antes o
+                    // las filas que sí cargaron): el error va encima.
+                    state.error?.let { error ->
+                        item(key = "feed-error") {
+                            com.photonne.app.ui.error.ErrorBanner(
+                                error = error,
+                                onRetry = onRefresh,
+                                modifier = Modifier.contentWidth().padding(bottom = Spacing.sm)
+                            )
+                        }
+                    }
                     content(state, open)
                 }
             }

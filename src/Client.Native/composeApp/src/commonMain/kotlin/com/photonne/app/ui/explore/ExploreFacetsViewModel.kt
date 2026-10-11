@@ -9,6 +9,7 @@ import com.photonne.app.data.models.SceneLabel
 import com.photonne.app.data.search.SearchRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.photonne.app.ui.util.sortedByNatural
 import com.russhwolf.settings.Settings
+import com.photonne.app.util.suspendRunCatching
 
 /** Orden de las rejillas de Escenas y Objetos (y de sus filas en Colecciones). */
 enum class LabelSort { Count, Name }
@@ -36,7 +38,9 @@ data class ExploreFacetsUiState(
     val objects: List<ObjectLabel> = emptyList(),
     val scenes: List<SceneLabel> = emptyList(),
     val isLoading: Boolean = false,
-    val error: UiError? = null,
+    /** Objetos y escenas cargan por separado: el fallo de uno no tapa al otro. */
+    val objectsError: UiError? = null,
+    val scenesError: UiError? = null,
     val attempted: Boolean = false,
     /** Buscador de cada rejilla: filtra en el servidor (`q`), así que llega
      *  más allá de las 200 primeras etiquetas. */
@@ -83,40 +87,38 @@ class ExploreFacetsViewModel(
         val current = _state.value
         // Un intento FALLIDO no cuenta como cargado: si no, el error quedaba
         // clavado hasta reiniciar la app aunque se volviera a entrar.
-        if (current.isLoading || (current.attempted && current.error == null)) return
+        val failed = current.objectsError != null || current.scenesError != null
+        if (current.isLoading || (current.attempted && !failed)) return
         refresh()
     }
 
+    /**
+     * Objetos y escenas en paralelo y cada uno con su error: antes iban en un
+     * solo bloque y el fallo de uno dejaba sin nada a los dos (y a las filas de
+     * Explorar). Lo que falla conserva lo que ya tenía. La búsqueda en curso
+     * también se conserva: refrescar no borra el texto del buscador.
+     */
     fun refresh() {
-        _state.update { it.copy(isLoading = true, error = null) }
+        _state.update { it.copy(isLoading = true, objectsError = null, scenesError = null) }
         viewModelScope.launch {
-            runCatching {
-                val objects = repository.objectLabels(limit = 200)
-                val scenes = repository.sceneLabels(limit = 200)
-                objects to scenes
+            val objects = async { suspendRunCatching { repository.objectLabels(limit = 200) } }
+            val scenes = async { suspendRunCatching { repository.sceneLabels(limit = 200) } }
+            val objectsResult = objects.await()
+            val scenesResult = scenes.await()
+            _state.update {
+                it.copy(
+                    objects = objectsResult.getOrDefault(it.objects),
+                    scenes = scenesResult.getOrDefault(it.scenes),
+                    objectsError = objectsResult.exceptionOrNull()?.let { error ->
+                        errorFactory.from(error, "No se pudieron cargar los objetos")
+                    },
+                    scenesError = scenesResult.exceptionOrNull()?.let { error ->
+                        errorFactory.from(error, "No se pudieron cargar las escenas")
+                    },
+                    isLoading = false,
+                    attempted = true
+                )
             }
-                .onSuccess { (objects, scenes) ->
-                    // La búsqueda en curso se conserva: refrescar no borra el
-                    // texto del buscador.
-                    _state.update {
-                        it.copy(
-                            objects = objects,
-                            scenes = scenes,
-                            isLoading = false,
-                            error = null,
-                            attempted = true
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            attempted = true,
-                            error = errorFactory.from(error, "No se pudieron cargar las etiquetas")
-                        )
-                    }
-                }
         }
     }
 
