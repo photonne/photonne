@@ -79,6 +79,10 @@
 		deleting = true;
 	}
 
+	function closeDelete() {
+		if (!busy) deleting = false;
+	}
+
 	async function confirmDelete(event?: SubmitEvent) {
 		event?.preventDefault();
 		if (!deletePassword || busy) return;
@@ -205,7 +209,8 @@
 	</div>
 </div>
 
-<Dialog open={deleting} title={m.settings_delete_title()} onclose={() => (deleting = false)}>
+<!-- While the request runs the dialog stays: closing it would hide its outcome. -->
+<Dialog open={deleting} title={m.settings_delete_title()} onclose={closeDelete}>
 	<form id="delete-form" class="delete" onsubmit={confirmDelete}>
 		<p>{m.settings_delete_warning()}</p>
 		<label class="field">
@@ -222,9 +227,9 @@
 		{/if}
 	</form>
 	{#snippet actions()}
-		<button type="button" onclick={() => (deleting = false)}>{m.dialog_cancel()}</button>
+		<button type="button" disabled={busy} onclick={closeDelete}>{m.dialog_cancel()}</button>
 		<button type="submit" form="delete-form" class="danger" disabled={!deletePassword || busy}>
-			{m.settings_delete_confirm()}
+			{busy ? m.settings_delete_busy() : m.settings_delete_confirm()}
 		</button>
 	{/snippet}
 </Dialog>

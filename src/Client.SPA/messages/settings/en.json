@@ -88,6 +88,7 @@
 	"settings_delete_warning": "Everything of yours on this server will be deleted and you'll be signed out. Enter your password to confirm.",
 	"settings_delete_password": "Password",
 	"settings_delete_confirm": "Delete permanently",
+	"settings_delete_busy": "Deleting…",
 	"settings_delete_done": "Your account has been deleted",
 	"settings_delete_error_password": "The password is wrong.",
 	"settings_delete_primary_admin": "You're the primary administrator: hand that role to another administrator before deleting your account.",
