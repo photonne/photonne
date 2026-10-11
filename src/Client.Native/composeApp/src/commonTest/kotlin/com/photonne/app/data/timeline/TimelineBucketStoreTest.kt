@@ -445,4 +445,46 @@ class TimelineBucketStoreTest {
 
         assertTrue(store.yearSummaries.value!!.first { it.year == 2025 }.items.single().isFavorite)
     }
+
+    @Test
+    fun monthsOfRemoved_remembers_where_removed_assets_lived() = runTest {
+        val (store, _) = buildStore()
+        store.refresh()
+        store.ensureLoaded(listOf("2026-02", "2025-12"))
+
+        store.removeItems(listOf("feb-1", "dec-1"))
+
+        assertEquals(setOf("2026-02", "2025-12"), store.monthsOfRemoved(listOf("feb-1", "dec-1")))
+        // An asset never removed here: the caller must fall back to a refresh.
+        assertNull(store.monthsOfRemoved(listOf("feb-1", "unknown")))
+    }
+
+    @Test
+    fun reloadBuckets_refetches_only_the_given_months_and_keeps_the_rest() = runTest {
+        val (store, requests) = buildStore()
+        store.refresh()
+        store.ensureLoaded(listOf("2026-02", "2026-01"))
+        store.removeItems(listOf("feb-1"))
+
+        store.reloadBuckets(setOf("2026-02"))
+
+        val buckets = store.buckets.value
+        // The server still has feb-1 (an Undo restored it): it's back.
+        assertEquals(listOf("feb-1", "feb-2"), buckets.first { it.key == "2026-02" }.items?.map { it.id })
+        assertTrue(buckets.first { it.key == "2026-01" }.isLoaded)
+        assertEquals(2, requests.count { it.endsWith("/buckets/2026-02") })
+        assertEquals(1, requests.count { it.endsWith("/buckets/2026-01") })
+    }
+
+    @Test
+    fun reloadBuckets_refetches_year_summaries_that_were_on_screen() = runTest {
+        val (store, requests) = buildStore()
+        store.refresh()
+        store.ensureYearSummaries(20)
+
+        store.reloadBuckets(setOf("2026-02"))
+
+        assertTrue(store.yearSummaries.value != null)
+        assertEquals(2, requests.count { it.endsWith("/timeline/years?sample=20") })
+    }
 }

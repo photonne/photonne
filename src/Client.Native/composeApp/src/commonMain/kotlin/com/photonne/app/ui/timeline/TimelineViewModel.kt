@@ -77,7 +77,8 @@ class TimelineViewModel(
                 when (event) {
                     is AssetMutation.Removed -> removeItemsLocal(event.assetIds)
                     is AssetMutation.Purged -> removeItemsLocal(event.assetIds)
-                    is AssetMutation.Restored, AssetMutation.AllChanged -> refresh()
+                    is AssetMutation.Restored -> onRestored(event.assetIds)
+                    AssetMutation.AllChanged -> refresh()
                     is AssetMutation.FavoriteChanged ->
                         store.updateItem(event.assetId) { it.copy(isFavorite = event.isFavorite) }
                     is AssetMutation.DateChanged -> onDateChanged(event)
@@ -165,6 +166,30 @@ class TimelineViewModel(
         val newKey = com.photonne.app.ui.grid.bucketKeyOf(event.capturedAt)
         viewModelScope.launch {
             runCatching { store.reloadBuckets(setOfNotNull(oldKey, newKey)) }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    _state.update {
+                        it.copy(error = errorFactory.from(error, "Error al cargar el timeline"))
+                    }
+                }
+        }
+    }
+
+    /**
+     * Fotos restauradas (Deshacer de archivar o de la papelera, desarchivar…):
+     * si sabemos de qué meses salieron, se recargan solo esos, como con
+     * [onDateChanged]; recargar el timeline entero hacía parpadear la
+     * rejilla. Si alguna no salió de aquí (se archivó desde otra pantalla
+     * sin su mes cargado), no hay más remedio que el refresco completo.
+     */
+    private fun onRestored(assetIds: List<String>) {
+        viewModelScope.launch {
+            val keys = store.monthsOfRemoved(assetIds)
+            if (keys == null) {
+                refresh()
+                return@launch
+            }
+            runCatching { store.reloadBuckets(keys) }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     _state.update {
