@@ -164,7 +164,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { com.photonne.app.data.actions.ServerTrashPolicy(get()) }
     singleOf(::SessionBootstrapper)
     singleOf(::AdminRepository)
-    single { com.photonne.app.data.utilities.UtilitiesRepository(get()) }
+    single { com.photonne.app.data.utilities.UtilitiesRepository(get(), get()) }
     single { com.photonne.app.db.PhotonneDatabase(com.photonne.app.data.db.createPhotonneDatabaseDriver()) }
     single { com.photonne.app.data.devicebackup.BackupLedger(get()) }
     single { com.photonne.app.data.devicebackup.DeviceBackupStateStore(get()) }
