@@ -110,6 +110,21 @@
 		color: var(--color-text);
 	}
 
+	/* On a narrow screen a side column would squeeze the photo to nothing:
+	   the panel becomes a sheet over the lower part of it instead. */
+	@media (max-width: 700px) {
+		.panel {
+			position: absolute;
+			inset: auto 0 0;
+			z-index: 3;
+			width: auto;
+			height: min(60vh, 560px);
+			border-top: 1px solid var(--color-border);
+			border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+			box-shadow: var(--shadow-raised);
+		}
+	}
+
 	h2 {
 		margin: 0;
 		padding: var(--space-4) var(--space-4) var(--space-2);
