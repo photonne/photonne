@@ -113,9 +113,20 @@ test('chooses the theme and the language', async ({ page }) => {
 	await page.getByRole('radio', { name: /Oscuro/ }).check();
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 	expect(await page.evaluate(() => localStorage.getItem('photonne.theme'))).toBe('dark');
+	// The browser's bar follows the chosen theme, whatever the system's.
+	const barColors = () =>
+		page.evaluate(() =>
+			[...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].map(
+				(meta) => meta.content
+			)
+		);
+	expect(await barColors()).toEqual(['#111214', '#111214']);
+	await page.reload();
+	expect(await barColors()).toEqual(['#111214', '#111214']);
 
 	await page.getByRole('radio', { name: /Del sistema/ }).check();
 	await expect(page.locator('html')).not.toHaveAttribute('data-theme');
+	expect(await barColors()).toEqual(['#ffffff', '#111214']);
 
 	await page.getByRole('radio', { name: 'English' }).check();
 	await expect(

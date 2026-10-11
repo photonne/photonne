@@ -12,10 +12,16 @@
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
 		<title>Photonne</title>
 		<script>
-			// Saved theme before the first paint (src/lib/theme.ts keeps it in sync).
+			// Saved theme before the first paint (src/lib/theme.ts keeps it in sync),
+			// the browser's bar (theme-color) included.
 			try {
 				const theme = localStorage.getItem('photonne.theme');
-				if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+				if (theme === 'light' || theme === 'dark') {
+					document.documentElement.dataset.theme = theme;
+					const color = theme === 'dark' ? '#111214' : '#ffffff';
+					for (const meta of document.querySelectorAll('meta[name="theme-color"]'))
+						meta.content = color;
+				}
 			} catch {}
 		</script>
 		%sveltekit.head%

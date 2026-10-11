@@ -26,7 +26,16 @@ export function setTheme(theme: Theme) {
 	applyTheme(theme);
 }
 
+/** --color-bg of each theme (app.css), for the browser's own bar (theme-color). */
+const BAR_COLORS = { light: '#ffffff', dark: '#111214' } as const;
+
 export function applyTheme(theme: Theme) {
 	if (theme === 'system') delete document.documentElement.dataset.theme;
 	else document.documentElement.dataset.theme = theme;
+	// app.html has one theme-color per system scheme: a chosen theme gives
+	// both its colour; 'system' gives each its own back.
+	for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+		const scheme = meta.media.includes('dark') ? 'dark' : 'light';
+		meta.content = BAR_COLORS[theme === 'system' ? scheme : theme];
+	}
 }
