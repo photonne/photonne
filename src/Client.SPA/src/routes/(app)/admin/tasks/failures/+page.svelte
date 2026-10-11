@@ -13,6 +13,7 @@
 		adminListEnrichmentFailuresInfiniteOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AdminPage from '#lib/admin/AdminPage.svelte';
+	import { runBulk } from '#lib/albums/bulk.js';
 	import '#lib/adminops/adminops.css';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { Clock, describeError, toastError } from '#lib/adminops/feedback.svelte.js';
@@ -117,11 +118,16 @@
 	async function act(ids: string[], action: 'retry' | 'suppress') {
 		busy = [...busy, ...ids];
 		const call = action === 'retry' ? adminRetryEnrichmentFailure : adminSuppressEnrichmentFailure;
-		const results = await Promise.all(ids.map((taskId) => call({ path: { taskId } })));
+		// One request at a time: a bulk retry of a whole page used to fire them all at once.
+		let firstError: unknown;
+		const outcome = await runBulk(ids, async (taskId) => {
+			const { error } = await call({ path: { taskId } });
+			if (error && firstError === undefined) firstError = error;
+			return !error;
+		});
 		busy = busy.filter((id) => !ids.includes(id));
 		selected = selected.filter((id) => !ids.includes(id));
-		const failed = results.filter((result) => result.error);
-		const done = ids.length - failed.length;
+		const done = outcome.succeeded.length;
 		if (done > 0) {
 			toasts.show(
 				action === 'retry'
@@ -129,7 +135,7 @@
 					: m.ops_failures_suppressed({ count: done })
 			);
 		}
-		if (failed.length) toastError(failed[0].error, m.ops_failures_action_failed());
+		if (outcome.failed.length) toastError(firstError, m.ops_failures_action_failed());
 		refresh();
 	}
 
