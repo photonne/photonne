@@ -100,7 +100,7 @@
 				<legend>{m.albums_rule_title()}</legend>
 				{#if !loadedRule}
 					<p class="note" role="status">
-						{ruleQuery.isError ? m.albums_error_rule_load() : m.session_restoring()}
+						{ruleQuery.isError ? m.albums_error_rule_load() : m.albums_rule_loading()}
 					</p>
 				{:else}
 					<SmartRuleEditor
