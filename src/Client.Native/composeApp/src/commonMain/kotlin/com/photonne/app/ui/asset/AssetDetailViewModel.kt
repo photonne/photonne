@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.ErrorMessages
+import com.photonne.app.data.events.AssetMutation
+import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AssetDetail
@@ -46,10 +48,15 @@ data class AssetDetailUiState(
  * Holds the metadata for the *currently visible* asset in the pager.
  * Detail is fetched lazily and cached per asset id while the screen is
  * alive. Caller invokes [select] every time the visible page changes.
+ *
+ * The ViewModel outlives a single viewer session, so the cache listens to
+ * [AssetMutationBus]: a favorite set in bulk from a grid, an archive from a
+ * list or a date fixed elsewhere would otherwise reopen with the old state.
  */
 class AssetDetailViewModel(
     private val repository: AssetDetailRepository,
     private val errorFactory: UiErrorFactory,
+    mutationBus: AssetMutationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AssetDetailUiState())
@@ -85,6 +92,55 @@ class AssetDetailViewModel(
     private val extrasCache = mutableMapOf<String, Extras>()
     private var extrasJob: Job? = null
     private var facesRefreshJob: Job? = null
+
+    /** Assets with a favorite request out — see [toggleFavorite]. */
+    private val favoriteInFlight = mutableSetOf<String>()
+
+    init {
+        viewModelScope.launch {
+            mutationBus.events.collect(::onMutation)
+        }
+    }
+
+    private fun onMutation(event: AssetMutation) {
+        when (event) {
+            is AssetMutation.FavoriteChanged -> {
+                // Our own toggle reconciles in its onSuccess; while it's out,
+                // the intermediate echo of a double toggle must not flicker.
+                if (event.assetId !in favoriteInFlight) applyFavorite(event.assetId, event.isFavorite)
+            }
+            // The event carries the timeline's capture instant, not the EXIF
+            // date the panel shows: re-read the detail instead of patching.
+            is AssetMutation.DateChanged -> invalidate(listOf(event.assetId), refetchCurrent = true)
+            // Where the asset lives changed: the cached detail is stale. No
+            // refetch for the visible one — it's leaving the list it was
+            // opened from (or is gone for good).
+            is AssetMutation.Removed -> invalidate(event.assetIds, refetchCurrent = false)
+            is AssetMutation.Purged -> invalidate(event.assetIds, refetchCurrent = false)
+            is AssetMutation.Restored -> invalidate(event.assetIds, refetchCurrent = true)
+            AssetMutation.AllChanged -> invalidate(cache.keys.toList(), refetchCurrent = true)
+        }
+    }
+
+    /**
+     * Drops [assetIds] from the detail cache so the next [select] fetches
+     * them again. With [refetchCurrent], the visible asset (if among them)
+     * is re-read in place, without the loading state.
+     */
+    private fun invalidate(assetIds: List<String>, refetchCurrent: Boolean) {
+        val ids = assetIds.toSet()
+        if (cache.keys.removeAll(ids)) publishCache()
+        val current = currentId ?: return
+        if (!refetchCurrent || current !in ids || current.startsWith("device:")) return
+        viewModelScope.launch {
+            val fresh = fetchOrNull { repository.getDetail(current) } ?: return@launch
+            cache[current] = fresh
+            publishCache()
+            _state.update { state ->
+                if (state.detail?.id == current) state.copy(detail = fresh) else state
+            }
+        }
+    }
 
     private fun publishCache() {
         _details.value = cache.toMap()
@@ -379,27 +435,45 @@ class AssetDetailViewModel(
      * the state is reverted. The confirmed value is delivered through
      * [onCommitted] so callers (e.g. App) can propagate it to the
      * timeline grid.
+     *
+     * The server only offers a relative toggle (POST /favorite), so the
+     * heart the user saw is turned into an absolute target: if the server
+     * answers the opposite (our copy was stale), it's toggled once more —
+     * the same trick as the bulk favorite action. Taps while a request for
+     * the same asset is out are ignored: two toggles racing would cancel
+     * each other on the server.
      */
     fun toggleFavorite(assetId: String, onCommitted: (Boolean) -> Unit) {
+        if (assetId in favoriteInFlight) return
         val previous = cache[assetId]?.isFavorite
             ?: _state.value.detail?.takeIf { it.id == assetId }?.isFavorite
             ?: false
-        val optimistic = !previous
+        val target = !previous
 
-        applyFavorite(assetId, optimistic)
+        favoriteInFlight += assetId
+        applyFavorite(assetId, target)
 
         viewModelScope.launch {
-            runCatching { repository.toggleFavorite(assetId) }
-                .onSuccess { confirmed ->
-                    if (confirmed != optimistic) applyFavorite(assetId, confirmed)
-                    onCommitted(confirmed)
+            try {
+                runCatching {
+                    var now = repository.toggleFavorite(assetId)
+                    if (now != target) now = repository.toggleFavorite(assetId)
+                    now
                 }
-                .onFailure { error ->
-                    applyFavorite(assetId, previous)
-                    _state.update {
-                        it.copy(error = errorFactory.from(error, "No se pudo actualizar el favorito"))
+                    .onSuccess { confirmed ->
+                        if (confirmed != target) applyFavorite(assetId, confirmed)
+                        onCommitted(confirmed)
                     }
-                }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        applyFavorite(assetId, previous)
+                        _state.update {
+                            it.copy(error = errorFactory.from(error, "No se pudo actualizar el favorito"))
+                        }
+                    }
+            } finally {
+                favoriteInFlight -= assetId
+            }
         }
     }
 
