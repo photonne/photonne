@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { updateAssetCaptureDate, type AssetDetailResponse } from '#lib/api/index.js';
 	import { getAssetCaptureDateSuggestionOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
@@ -33,11 +33,21 @@
 	let editing = $state(false);
 	let editButton = $state<HTMLButtonElement>();
 
+	// Another photo starts afresh. Only the id counts: the same photo's detail
+	// refetched (after any action on it) must not undo a date being typed.
 	$effect(() => {
-		date = toDateTimeLocal(asUtc(asset.capturedAt));
-		suggesting = false;
-		editing = false;
+		void asset.id;
+		untrack(() => {
+			date = initial;
+			suggesting = false;
+			editing = false;
+		});
 	});
+
+	function edit() {
+		date = initial;
+		editing = true;
+	}
 
 	async function cancel() {
 		date = initial;
@@ -135,7 +145,7 @@
 				title={m.viewer_date_change()}
 				aria-label={m.viewer_date_change()}
 				bind:this={editButton}
-				onclick={() => (editing = true)}
+				onclick={edit}
 			>
 				<Icon name="edit" size={18} />
 			</button>

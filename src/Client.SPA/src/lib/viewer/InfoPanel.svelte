@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import {
 		addAssetTags,
@@ -47,11 +48,15 @@
 	let tags = $state<string[]>([]);
 	let status = $state<'idle' | 'saved' | 'failed'>('idle');
 
-	// Reset the editable copies whenever another asset is shown.
+	// Reset the editable copies whenever another asset is shown. Only the id
+	// counts: the same photo's detail refetched must not undo what is typed.
 	$effect(() => {
-		caption = asset.caption ?? '';
-		tags = [...asset.userTags];
-		status = 'idle';
+		void asset.id;
+		untrack(() => {
+			caption = asset.caption ?? '';
+			tags = [...asset.userTags];
+			status = 'idle';
+		});
 	});
 
 	const knownTags = createQuery(() => ({ ...getUserTagsOptions(), enabled: asset.canEdit }));
