@@ -62,6 +62,17 @@ class TimelineBucketStore(
     private var yearSampleSize = 0
     private var yearSampleInFlight = 0
 
+    /**
+     * Bumped (under [mutex]) by every local mutation of the store's state —
+     * [refresh], [reloadBuckets], [removeItems], [updateItem]. A bucket or
+     * year fetch captures it before hitting the network and only stores its
+     * response if nothing changed meanwhile: otherwise a month requested
+     * before a trash would land after it and resurrect the trashed photo
+     * (or undo a favorite toggle). A stale response is re-fetched instead
+     * of dropped, so the key stays in [inFlight] until fresh data lands.
+     */
+    private var generation = 0L
+
     /** Monotonic recency stamps for LRU eviction. */
     private val lastTouched = mutableMapOf<String, Long>()
     private var touchCounter = 0L
@@ -74,6 +85,7 @@ class TimelineBucketStore(
     suspend fun refresh() {
         val skeleton = fetchOffMain { api.getTimelineBuckets() }
         mutex.withLock {
+            generation++
             lastTouched.clear()
             _buckets.value = skeleton.map { TimelineBucketState(key = it.key, count = it.count) }
             // Year summaries are a snapshot of the same library — refetch on
@@ -98,11 +110,13 @@ class TimelineBucketStore(
             yearSampleInFlight = needed
         }
         try {
-            val summaries = fetchOffMain { api.getTimelineYears(needed) }
-            mutex.withLock {
-                _yearSummaries.value = summaries
-                yearSampleSize = needed
-            }
+            fetchUntilCurrent(
+                fetch = { api.getTimelineYears(needed) },
+                store = { summaries ->
+                    _yearSummaries.value = summaries
+                    yearSampleSize = needed
+                }
+            )
         } finally {
             mutex.withLock {
                 if (yearSampleInFlight == needed) yearSampleInFlight = 0
@@ -133,8 +147,10 @@ class TimelineBucketStore(
                 toFetch.forEach { key ->
                     launch {
                         try {
-                            val items = fetchOffMain { api.getTimelineBucketItems(key) }
-                            storeItems(key, items)
+                            fetchUntilCurrent(
+                                fetch = { api.getTimelineBucketItems(key) },
+                                store = { items -> storeItemsLocked(key, items) }
+                            )
                         } finally {
                             mutex.withLock { inFlight -= key }
                         }
@@ -143,7 +159,7 @@ class TimelineBucketStore(
             }
         } finally {
             // Clears the spinner on the keys this call failed to load (its
-            // own successes already flipped isLoading in storeItems).
+            // own successes already flipped isLoading in storeItemsLocked).
             setLoading(toFetch, loading = false)
         }
         evictBeyondCap()
@@ -159,6 +175,7 @@ class TimelineBucketStore(
         if (keys.isEmpty()) return
         val skeleton = fetchOffMain { api.getTimelineBuckets() }
         mutex.withLock {
+            generation++
             val previous = _buckets.value.associateBy { it.key }
             _buckets.value = skeleton.map { entry ->
                 val prev = previous[entry.key]
@@ -181,25 +198,53 @@ class TimelineBucketStore(
      */
     suspend fun removeItem(assetId: String) = removeItems(setOf(assetId))
 
-    /** Bulk variant of [removeItem] — one state pass for the whole set. */
+    /**
+     * Bulk variant of [removeItem] — one state pass for the whole set. Also
+     * prunes the year summaries: sampled items go, and each year's count
+     * drops by the removed assets we can place in it (via their loaded
+     * month or the sample). An asset found in neither leaves its year's
+     * count one high until the next refetch — there's no way to know which
+     * year it belonged to.
+     */
     suspend fun removeItems(assetIds: Collection<String>) {
         if (assetIds.isEmpty()) return
         val ids = assetIds.toSet()
         mutex.withLock {
+            generation++
+            val removedPerYear = mutableMapOf<Int, MutableSet<String>>()
             _buckets.update { buckets ->
                 buckets.map { bucket ->
                     val items = bucket.items ?: return@map bucket
                     val remaining = items.filterNot { it.id in ids }
                     if (remaining.size == items.size) return@map bucket
+                    bucket.key.substringBefore('-').toIntOrNull()?.let { year ->
+                        items.filter { it.id in ids }
+                            .mapTo(removedPerYear.getOrPut(year) { mutableSetOf() }) { it.id }
+                    }
                     bucket.copy(items = remaining, count = remaining.size)
+                }
+            }
+            _yearSummaries.update { summaries ->
+                summaries?.map { summary ->
+                    val removed = removedPerYear[summary.year].orEmpty() +
+                        summary.items.filter { it.id in ids }.map { it.id }
+                    if (removed.isEmpty()) summary
+                    else summary.copy(
+                        count = (summary.count - removed.size).coerceAtLeast(0),
+                        items = summary.items.filterNot { it.id in ids }
+                    )
                 }
             }
         }
     }
 
-    /** Applies [transform] to the asset wherever it's loaded (e.g. favorite). */
+    /**
+     * Applies [transform] to the asset wherever it's loaded (e.g. favorite),
+     * year-view samples included.
+     */
     suspend fun updateItem(assetId: String, transform: (TimelineItem) -> TimelineItem) {
         mutex.withLock {
+            generation++
             _buckets.update { buckets ->
                 buckets.map { bucket ->
                     val items = bucket.items ?: return@map bucket
@@ -207,6 +252,41 @@ class TimelineBucketStore(
                     bucket.copy(items = items.map { if (it.id == assetId) transform(it) else it })
                 }
             }
+            _yearSummaries.update { summaries ->
+                summaries?.map { summary ->
+                    if (summary.items.none { it.id == assetId }) summary
+                    else summary.copy(
+                        items = summary.items.map { if (it.id == assetId) transform(it) else it }
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Fetches with [fetch] and hands the result to [store] (under [mutex])
+     * only if no local mutation bumped [generation] while the request was
+     * out; otherwise fetches again. After [MAX_STALE_RETRIES] stale rounds
+     * the last response is stored anyway — a mutation storm shouldn't leave
+     * the month as a skeleton forever, and the bus re-applies confirmed
+     * removals on top.
+     */
+    private suspend fun <T> fetchUntilCurrent(
+        fetch: suspend () -> T,
+        store: (T) -> Unit
+    ) {
+        var attempt = 0
+        while (true) {
+            val startedAt = mutex.withLock { generation }
+            val result = fetchOffMain { fetch() }
+            val stored = mutex.withLock {
+                if (generation == startedAt || attempt >= MAX_STALE_RETRIES) {
+                    store(result)
+                    true
+                } else false
+            }
+            if (stored) return
+            attempt++
         }
     }
 
@@ -234,17 +314,16 @@ class TimelineBucketStore(
         }
     }
 
-    private suspend fun storeItems(key: String, items: List<TimelineItem>) {
-        mutex.withLock {
-            touch(key)
-            _buckets.update { buckets ->
-                buckets.map { bucket ->
-                    if (bucket.key == key) {
-                        // The server's count is authoritative at skeleton
-                        // time, but the content fetch is newer — trust it.
-                        bucket.copy(items = items, count = items.size, isLoading = false)
-                    } else bucket
-                }
+    /** Caller holds [mutex] — see [fetchUntilCurrent]. */
+    private fun storeItemsLocked(key: String, items: List<TimelineItem>) {
+        touch(key)
+        _buckets.update { buckets ->
+            buckets.map { bucket ->
+                if (bucket.key == key) {
+                    // The server's count is authoritative at skeleton
+                    // time, but the content fetch is newer — trust it.
+                    bucket.copy(items = items, count = items.size, isLoading = false)
+                } else bucket
             }
         }
     }
@@ -280,5 +359,8 @@ class TimelineBucketStore(
 
         /** Mirrors the server-side clamp on /timeline/years?sample. */
         const val MAX_YEAR_SAMPLE = 100
+
+        /** Re-fetches of a response made stale by a concurrent mutation. */
+        private const val MAX_STALE_RETRIES = 3
     }
 }

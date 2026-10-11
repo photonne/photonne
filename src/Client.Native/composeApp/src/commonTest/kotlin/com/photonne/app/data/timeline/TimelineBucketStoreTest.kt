@@ -10,6 +10,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
@@ -309,5 +310,139 @@ class TimelineBucketStoreTest {
 
         store.ensureLoaded(listOf("2026-02"))
         assertTrue(store.buckets.value.first { it.key == "2026-02" }.isLoaded)
+    }
+
+    /**
+     * Store whose FIRST request for February parks until [release] completes
+     * (signalling [firstFebStarted] once it's out); later requests answer at
+     * once. February's content leaves out every id in [serverRemoved], so a
+     * test can "trash" a photo on the server while the old fetch is pending.
+     */
+    private class GatedStore(
+        val store: TimelineBucketStore,
+        val requests: MutableList<String>,
+        val firstFebStarted: CompletableDeferred<Unit>,
+        val release: CompletableDeferred<Unit>,
+        val serverRemoved: MutableSet<String>
+    )
+
+    private fun buildGatedStore(): GatedStore {
+        val requests = mutableListOf<String>()
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val serverRemoved = mutableSetOf<String>()
+        var febRequests = 0
+        val engine = MockEngine { request ->
+            val path = request.url.encodedPath
+            requests += path
+            val body = when {
+                path.endsWith("/timeline/buckets") -> skeletonJson
+                path.endsWith("/buckets/2026-02") -> {
+                    // Snapshot the server state when the request "hits the DB",
+                    // before parking: a stale response stays stale.
+                    val ids = listOf("feb-1", "feb-2").filterNot { it in serverRemoved }
+                    febRequests++
+                    if (febRequests == 1) {
+                        started.complete(Unit)
+                        release.await()
+                    }
+                    ids.joinToString(",", "[", "]") { itemJson(it, "2026-02-10T10:00:00Z") }
+                }
+                else -> bucketBodies.getValue(path.substringAfterLast('/'))
+            }
+            respond(
+                content = ByteReadChannel(body),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrl = "http://test.local",
+            tokenStorage = BucketStubTokenStorage(),
+            authState = AuthStateHolder()
+        )
+        val store = TimelineBucketStore(api = PhotonneApiClient(client, "http://test.local"))
+        return GatedStore(store, requests, started, release, serverRemoved)
+    }
+
+    @Test
+    fun response_older_than_removeItems_is_refetched_instead_of_resurrecting_the_photo() = runTest {
+        val gated = buildGatedStore()
+        gated.store.refresh()
+
+        val load = async { gated.store.ensureLoaded(listOf("2026-02")) }
+        gated.firstFebStarted.await()
+        // Trashed while the month was in flight: the parked response still
+        // carries feb-1.
+        gated.serverRemoved += "feb-1"
+        gated.store.removeItems(listOf("feb-1"))
+        gated.release.complete(Unit)
+        load.await()
+
+        val bucket = gated.store.buckets.value.first { it.key == "2026-02" }
+        assertEquals(listOf("feb-2"), bucket.items?.map { it.id })
+        assertFalse(bucket.isLoading)
+        assertEquals(2, gated.requests.count { it.endsWith("/buckets/2026-02") })
+    }
+
+    @Test
+    fun response_older_than_a_refresh_is_not_stored_as_is() = runTest {
+        val gated = buildGatedStore()
+        gated.store.refresh()
+
+        val load = async { gated.store.ensureLoaded(listOf("2026-02")) }
+        gated.firstFebStarted.await()
+        gated.serverRemoved += "feb-2"
+        gated.store.refresh()
+        gated.release.complete(Unit)
+        load.await()
+
+        val bucket = gated.store.buckets.value.first { it.key == "2026-02" }
+        assertEquals(listOf("feb-1"), bucket.items?.map { it.id })
+    }
+
+    @Test
+    fun reloadBuckets_during_an_in_flight_fetch_still_ends_with_fresh_content() = runTest {
+        val gated = buildGatedStore()
+        gated.store.refresh()
+
+        val load = async { gated.store.ensureLoaded(listOf("2026-02")) }
+        gated.firstFebStarted.await()
+        gated.serverRemoved += "feb-1"
+        // The key is in flight, so reloadBuckets' own ensureLoaded is a no-op:
+        // the in-flight fetch must notice and re-fetch by itself.
+        gated.store.reloadBuckets(setOf("2026-02"))
+        gated.release.complete(Unit)
+        load.await()
+
+        val bucket = gated.store.buckets.value.first { it.key == "2026-02" }
+        assertEquals(listOf("feb-2"), bucket.items?.map { it.id })
+    }
+
+    @Test
+    fun removeItems_prunes_year_summaries() = runTest {
+        val (store, _) = buildStore()
+        store.refresh()
+        store.ensureYearSummaries(20)
+        store.ensureLoaded(listOf("2026-02"))
+
+        store.removeItems(listOf("feb-1", "feb-2"))
+
+        val y2026 = store.yearSummaries.value!!.first { it.year == 2026 }
+        assertEquals(1, y2026.count)
+        assertTrue(y2026.items.none { it.id == "feb-1" })
+        assertEquals(1, store.yearSummaries.value!!.first { it.year == 2025 }.count)
+    }
+
+    @Test
+    fun updateItem_also_updates_year_summary_samples() = runTest {
+        val (store, _) = buildStore()
+        store.refresh()
+        store.ensureYearSummaries(20)
+
+        store.updateItem("dec-1") { it.copy(isFavorite = true) }
+
+        assertTrue(store.yearSummaries.value!!.first { it.year == 2025 }.items.single().isFavorite)
     }
 }
