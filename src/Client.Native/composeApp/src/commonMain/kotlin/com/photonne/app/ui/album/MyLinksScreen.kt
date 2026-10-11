@@ -117,7 +117,7 @@ fun MyLinksScreen(
     Box(modifier = Modifier.fillMaxSize()) {
     PhotonneRefreshableScreen(
         indicatorTopPadding = reservedTop,
-        isRefreshing = state.isLoading && state.links.isNotEmpty(),
+        isRefreshing = state.isRefreshing,
         onRefresh = viewModel::refresh,
         modifier = modifier.fillMaxSize()
     ) {
