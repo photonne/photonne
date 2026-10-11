@@ -140,4 +140,21 @@ describe('UploadQueue', () => {
 		queue.remove(queue.entries[0].id);
 		expect(queue.entries).toEqual([]);
 	});
+
+	it('stops hashing the batch once everything is cancelled', async () => {
+		const { transport } = manualTransport();
+		const hashed: string[] = [];
+		const slowHash = async (f: File) => {
+			hashed.push(f.name);
+			await flush();
+			return `sum-${f.name}`;
+		};
+		const queue = new UploadQueue(transport, { hash: slowHash });
+		queue.add([file('a.jpg'), file('b.jpg'), file('c.jpg')]);
+		queue.cancelAll();
+		await flush();
+		await flush();
+		expect(hashed).toEqual(['a.jpg']);
+		expect(transport.precheck).not.toHaveBeenCalled();
+	});
 });
