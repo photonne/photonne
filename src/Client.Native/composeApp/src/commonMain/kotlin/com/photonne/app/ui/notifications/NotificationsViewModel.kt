@@ -7,6 +7,8 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.NotificationDto
 import com.photonne.app.data.notifications.ActivityNotifications
 import com.photonne.app.data.notifications.NotificationsRepository
+import com.photonne.app.util.suspendRunCatching
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +54,15 @@ class NotificationsViewModel(
     private val _state = MutableStateFlow(NotificationsUiState())
     val state: StateFlow<NotificationsUiState> = _state.asStateFlow()
 
+    /**
+     * The page load and the infinite-scroll append in flight. A new load or a
+     * filter change cancels both, and every response is dropped unless its
+     * filter is still the active one: a slow "All" answer landing after
+     * switching to "Unread" used to overwrite the unread list.
+     */
+    private var loadJob: Job? = null
+    private var appendJob: Job? = null
+
     init {
         startUnreadPolling()
     }
@@ -67,13 +78,18 @@ class NotificationsViewModel(
         load(page = 1)
     }
 
+    /**
+     * Pull-to-refresh: back to page 1. Reloading the current page REPLACED the
+     * list with just that page (after scrolling to page 3, refresh left only
+     * page 3's items), and could ask for a page that no longer exists.
+     */
     fun refresh() {
-        load(page = _state.value.page.coerceAtLeast(1))
+        load(page = 1)
     }
 
     fun setUnreadOnly(unreadOnly: Boolean) {
         if (_state.value.unreadOnly == unreadOnly) return
-        _state.update { it.copy(unreadOnly = unreadOnly, page = 1, loaded = false) }
+        _state.update { it.copy(unreadOnly = unreadOnly, page = 1, loaded = false, isAppending = false) }
         load(page = 1)
     }
 
@@ -90,17 +106,19 @@ class NotificationsViewModel(
     fun loadMore() {
         val snapshot = _state.value
         if (snapshot.isLoading || snapshot.isAppending || !snapshot.hasMorePages) return
+        val filter = snapshot.unreadOnly
         _state.update { it.copy(isAppending = true) }
-        viewModelScope.launch {
-            runCatching {
+        appendJob = viewModelScope.launch {
+            suspendRunCatching {
                 repository.list(
                     page = snapshot.page + 1,
                     pageSize = NotificationsUiState.PAGE_SIZE,
-                    unreadOnly = snapshot.unreadOnly
+                    unreadOnly = filter
                 )
             }
                 .onSuccess { result ->
                     _state.update { current ->
+                        if (current.unreadOnly != filter) return@update current
                         val existing = current.items.mapTo(HashSet()) { it.id }
                         current.copy(
                             items = current.items +
@@ -115,7 +133,8 @@ class NotificationsViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.unreadOnly != filter) it
+                        else it.copy(
                             isAppending = false,
                             error = errorFactory.from(
                                 error, "No se pudieron cargar más notificaciones"
@@ -130,8 +149,8 @@ class NotificationsViewModel(
         val target = _state.value.items.firstOrNull { it.id == id } ?: return
         if (target.isRead) return
         // Optimistic: flip the flag locally and decrement the unread badge so
-        // the UI feels instant. We rely on the next poll/refresh to catch any
-        // server-side divergence.
+        // the UI feels instant; undone below if the server says no (before, a
+        // failure left it looking read until the next reload).
         _state.update { snapshot ->
             snapshot.copy(
                 items = snapshot.items.map {
@@ -141,10 +160,22 @@ class NotificationsViewModel(
             )
         }
         viewModelScope.launch {
-            runCatching { repository.markRead(id) }
+            suspendRunCatching { repository.markRead(id) }
                 .onFailure { error ->
-                    _state.update {
-                        it.copy(error = errorFactory.from(error, "No se pudo marcar como leída"))
+                    // The badge goes back to the server's count when it can be
+                    // read (the poll may have landed in between, so a blind +1
+                    // could double count); otherwise just undo our -1.
+                    val serverCount = suspendRunCatching { repository.unreadCount() }.getOrNull()
+                    _state.update { current ->
+                        val flipped = current.items.any { it.id == id && it.isRead }
+                        current.copy(
+                            items = current.items.map {
+                                if (it.id == id) it.copy(isRead = false) else it
+                            },
+                            unreadCount = serverCount
+                                ?: if (flipped) current.unreadCount + 1 else current.unreadCount,
+                            error = errorFactory.from(error, "No se pudo marcar como leída")
+                        )
                     }
                 }
         }
@@ -184,17 +215,26 @@ class NotificationsViewModel(
     }
 
     private fun load(page: Int) {
-        _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
-            runCatching {
+        loadJob?.cancel()
+        appendJob?.cancel()
+        val filter = _state.value.unreadOnly
+        _state.update { it.copy(isLoading = true, isAppending = false, error = null) }
+        loadJob = viewModelScope.launch {
+            suspendRunCatching {
                 repository.list(
                     page = page,
                     pageSize = NotificationsUiState.PAGE_SIZE,
-                    unreadOnly = _state.value.unreadOnly
+                    unreadOnly = filter
                 )
             }
                 .onSuccess { result ->
+                    // Past the end (the list shrank since): start over at page 1.
+                    if (page > 1 && result.totalPages in 1 until page) {
+                        load(page = 1)
+                        return@onSuccess
+                    }
                     _state.update {
+                        if (it.unreadOnly != filter) return@update it
                         it.copy(
                             items = result.items,
                             totalCount = result.totalCount,
@@ -209,7 +249,8 @@ class NotificationsViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(
+                        if (it.unreadOnly != filter) it
+                        else it.copy(
                             isLoading = false,
                             error = errorFactory.from(error, "No se pudieron cargar las notificaciones")
                         )

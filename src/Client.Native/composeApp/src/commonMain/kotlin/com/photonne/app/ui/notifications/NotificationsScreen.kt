@@ -81,6 +81,7 @@ import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.datetime.TimeZone
@@ -103,6 +104,15 @@ fun NotificationsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
+    // "Hace 2 min" has to keep counting while the screen stays open: a single
+    // clock for every row, ticked once a minute.
+    var now by remember { mutableStateOf(Clock.System.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000L)
+            now = Clock.System.now()
+        }
+    }
 
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
@@ -189,6 +199,7 @@ fun NotificationsScreen(
                         NotificationRow(
                             modifier = Modifier.animateItem(),
                             notification = notification,
+                            now = now,
                             onClick = if (actionable) {
                                 {
                                     viewModel.markRead(notification.id)
@@ -315,6 +326,7 @@ private fun NotificationsFilterMenu(
 @Composable
 private fun NotificationRow(
     notification: NotificationDto,
+    now: Instant,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
@@ -359,7 +371,7 @@ private fun NotificationRow(
                 )
             }
             Text(
-                text = formatRelativeTime(notification.createdAt),
+                text = formatRelativeTime(notification.createdAt, now),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -389,8 +401,7 @@ private fun iconFor(type: Int): Pair<ImageVector, Color> = when (type) {
 }
 
 @Composable
-private fun formatRelativeTime(instant: Instant): String {
-    val now = Clock.System.now()
+private fun formatRelativeTime(instant: Instant, now: Instant): String {
     val diff = now - instant
     val minutes = diff.inWholeMinutes
     val hours = diff.inWholeHours
