@@ -116,5 +116,20 @@
 	"viewer_text_title": "Recognised text",
 	"viewer_more": "More actions",
 	"viewer_date_change": "Change the date",
-	"viewer_key_delete": "Del"
+	"viewer_key_delete": "Del",
+	"viewer_live": "LIVE",
+	"viewer_key_backspace": "Backspace",
+	"viewer_key_space": "Space",
+	"viewer_shortcuts_title": "Keyboard shortcuts",
+	"viewer_shortcuts_navigate": "Previous or next photo",
+	"viewer_shortcuts_close": "Reset the zoom or close the viewer",
+	"viewer_shortcuts_info": "Show or hide the info",
+	"viewer_shortcuts_favorite": "Add to or remove from favorites",
+	"viewer_shortcuts_faces": "Show or hide faces",
+	"viewer_shortcuts_slideshow": "Start the slideshow",
+	"viewer_shortcuts_zoom": "Zoom in, zoom out or fit to screen",
+	"viewer_shortcuts_play": "Play or pause the video",
+	"viewer_shortcuts_archive": "Archive the photo",
+	"viewer_shortcuts_trash": "Move the photo to the trash",
+	"viewer_shortcuts_help": "Show this help"
 }
