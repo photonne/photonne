@@ -8,6 +8,8 @@ import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.utilities.UtilitiesRepository
+import com.photonne.app.util.suspendRunCatching
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -79,12 +81,19 @@ class UtilitiesLargeFilesViewModel(
 
     fun refresh() = load()
 
+    private var loadJob: Job? = null
+
+    /**
+     * Cancels the load in flight and starts over. It used to return while
+     * loading, so picking another count during a load was dropped: the chip
+     * showed the new count over the list of the old one.
+     */
     private fun load() {
-        if (_state.value.isLoading) return
+        loadJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null) }
         val count = _state.value.count
-        viewModelScope.launch {
-            runCatching { repository.largeFiles(count) }
+        loadJob = viewModelScope.launch {
+            suspendRunCatching { repository.largeFiles(count) }
                 .onSuccess { items ->
                     _state.update { it.copy(items = items, isLoading = false) }
                 }
