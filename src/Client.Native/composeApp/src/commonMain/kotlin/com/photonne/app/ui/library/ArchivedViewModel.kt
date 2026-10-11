@@ -253,7 +253,9 @@ class ArchivedViewModel(
                     val uiError = errorFactory.from(error, ErrorMessages.UNARCHIVE_FAILED)
                     _state.update {
                         it.copy(
-                            items = previous,
+                            // Solo vuelven las rechazadas: lo que haya
+                            // cambiado mientras tanto (bus, refresco) se queda.
+                            items = it.items.withRestored(previous, ids.toSet()),
                             isBulkMutating = false,
                             error = uiError
                         )
