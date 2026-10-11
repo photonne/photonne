@@ -40,6 +40,9 @@ data class PersonDetailUiState(
     val isAppending: Boolean = false,
     val isBulkMutating: Boolean = false,
     val error: UiError? = null,
+    /** La página siguiente falló: pie con reintento bajo las fotos. Va aparte
+     *  de [error] para no colarse en el diálogo «Añadir a álbum». */
+    val appendError: UiError? = null,
     val selection: Set<String> = emptySet(),
     /** Sus parejas ("personas con más fotos juntas"), en el orden del servidor. */
     val memories: List<com.photonne.app.data.models.Memory> = emptyList(),
@@ -174,7 +177,7 @@ class PersonDetailViewModel(
         val personId = _state.value.personId ?: return
         if (_state.value.isInitialLoading || _state.value.isRefreshing) return
         val loadedCount = _state.value.items.size
-        _state.update { it.copy(isRefreshing = true, isAppending = false, error = null) }
+        _state.update { it.copy(isRefreshing = true, isAppending = false, error = null, appendError = null) }
         loadJob?.cancel()
         loadMemories(personId)
         loadJob = viewModelScope.launch {
@@ -225,7 +228,7 @@ class PersonDetailViewModel(
         val personId = snapshot.personId ?: return
         if (snapshot.isAppending || !snapshot.hasMore || snapshot.isInitialLoading) return
         if (loadJob?.isActive == true) return
-        _state.update { it.copy(isAppending = true) }
+        _state.update { it.copy(isAppending = true, appendError = null) }
         loadJob = viewModelScope.launch {
             suspendRunCatching {
                 peopleRepository.assets(
@@ -255,7 +258,7 @@ class PersonDetailViewModel(
                         if (it.personId != personId) it
                         else it.copy(
                             isAppending = false,
-                            error = errorFactory.from(error, "No se pudo cargar más")
+                            appendError = errorFactory.from(error, "No se pudo cargar más")
                         )
                     }
                 }

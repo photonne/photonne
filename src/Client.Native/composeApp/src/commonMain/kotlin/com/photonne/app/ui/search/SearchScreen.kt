@@ -176,6 +176,7 @@ fun SearchScreen(
                         isAppending = state.isAppending,
                         isInitialLoading = state.isLoading,
                         onLoadMore = viewModel::loadMore,
+                        appendFailed = state.appendError != null,
                         dragSelect = gestures.dragSelect,
                         contentPadding = PaddingValues(
                             top = reservedTop,

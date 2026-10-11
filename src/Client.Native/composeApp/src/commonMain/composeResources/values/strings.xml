@@ -37,6 +37,7 @@
     <string name="action_leave">Salir</string>
     <string name="action_remove">Quitar</string>
     <string name="action_retry">Reintentar</string>
+    <string name="load_more_failed">No se han podido cargar más</string>
     <string name="action_share">Compartir</string>
     <string name="action_edit">Editar</string>
     <string name="action_invite">Invitar</string>

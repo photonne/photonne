@@ -25,13 +25,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,8 +56,9 @@ import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneIcons
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
+import com.photonne.app.ui.grid.LoadMoreEffect
+import com.photonne.app.ui.grid.LoadMoreErrorFooter
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.GridCirclesSkeleton
 import com.photonne.app.ui.theme.Spacing
@@ -119,21 +118,14 @@ fun PersonSuggestionsScreen(
                     modifier = Modifier.padding(top = reservedTop)
                 )
             else -> {
-                val shouldLoadMore by remember(state.hasMore, state.isAppending) {
-                    derivedStateOf {
-                        val total = gridState.layoutInfo.totalItemsCount
-                        val lastVisible = gridState.layoutInfo
-                            .visibleItemsInfo.lastOrNull()?.index ?: 0
-                        total > 0 && lastVisible >= total - 6 &&
-                            state.hasMore && !state.isAppending
-                    }
-                }
-                LaunchedEffect(gridState) {
-                    snapshotFlow { shouldLoadMore }
-                        .distinctUntilChanged()
-                        .filter { it }
-                        .collect { onLoadMore() }
-                }
+                LoadMoreEffect(
+                    gridState = gridState,
+                    threshold = 6,
+                    canLoadMore = state.hasMore && !state.isAppending &&
+                        state.appendError == null,
+                    items = state.items,
+                    onLoadMore = onLoadMore
+                )
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 130.dp),
                     state = gridState,
@@ -155,6 +147,11 @@ fun PersonSuggestionsScreen(
                             onAccept = { onAccept(suggestion.id) },
                             onDismiss = { onDismissFace(suggestion.id) }
                         )
+                    }
+                    if (state.appendError != null) {
+                        item(key = "append-error", span = { GridItemSpan(maxLineSpan) }) {
+                            LoadMoreErrorFooter(onRetry = onLoadMore)
+                        }
                     }
                 }
             }
