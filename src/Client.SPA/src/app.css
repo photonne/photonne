@@ -60,6 +60,16 @@
 	--color-badge: #d32f2f;
 	--color-focus: #8a6400;
 	--color-placeholder: #e8eaed;
+	/* Text on a solid badge (--color-badge). */
+	--color-badge-text: #ffffff;
+	/* Over photos, in any theme: text and icons, and the shade behind them. */
+	--color-on-media: #ffffff;
+	--color-scrim: rgb(0 0 0 / 0.6);
+	--color-scrim-soft: rgb(0 0 0 / 0.35);
+	/* Toasts stand out from the page in both themes. */
+	--color-toast: #1d1d1f;
+	--color-toast-text: #ffffff;
+	--color-toast-danger: #7f1d1d;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
 
 	--header-height: 56px;
@@ -91,6 +101,9 @@
 		--color-warning: #f6b35a;
 		--color-focus: #ffd166;
 		--color-placeholder: #26282c;
+		--color-toast: #3a3c42;
+		--color-toast-text: #f2f2f4;
+		--color-toast-danger: #8c2a2a;
 		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 		color-scheme: dark;
 	}
@@ -116,6 +129,9 @@
 	--color-warning: #f6b35a;
 	--color-focus: #ffd166;
 	--color-placeholder: #26282c;
+	--color-toast: #3a3c42;
+	--color-toast-text: #f2f2f4;
+	--color-toast-danger: #8c2a2a;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 	color-scheme: dark;
 }
@@ -155,6 +171,29 @@ body {
 		--duration-fast: 0ms;
 		--duration-normal: 0ms;
 	}
+}
+
+/* Always dark, whatever the app theme (the photo viewers): the photo is the light. */
+.dark-surface {
+	--color-bg: #111214;
+	--color-surface: #26282c;
+	--color-surface-raised: #1b1c1f;
+	--color-border: #34363b;
+	--color-border-strong: #70747c;
+	--color-hover: rgb(255 255 255 / 0.12);
+	--color-text: #e8e8ea;
+	--color-text-muted: #a0a3a8;
+	--color-brand: #ffd166;
+	--color-accent: #ffd166;
+	--color-accent-text: #1a1a2e;
+	--color-accent-soft: rgb(255 209 102 / 0.14);
+	--color-focus: #ffd166;
+	--color-danger: #ef9a9a;
+	--color-success: #7bd88f;
+	--color-warning: #f6b35a;
+	--color-placeholder: #26282c;
+	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.5);
+	color-scheme: dark;
 }
 
 .visually-hidden {
