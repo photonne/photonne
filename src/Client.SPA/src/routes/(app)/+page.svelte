@@ -20,7 +20,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import { leaveViewerThen } from '#lib/library/viewer-flow.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import PhotoGrid from '#lib/timeline/PhotoGrid.svelte';
+	import PhotoGrid, { type GridPosition } from '#lib/timeline/PhotoGrid.svelte';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
 	import { TimelineStore } from '#lib/timeline/timeline-store.svelte.js';
@@ -30,6 +30,7 @@
 	import AssetViewer, { type AssetChange } from '#lib/viewer/AssetViewer.svelte';
 	import { neighborsIn } from '#lib/viewer/neighbors.js';
 	import { ViewerRoute } from '#lib/viewer/viewer-route.svelte.js';
+	import type { Snapshot } from './$types';
 
 	const queryClient = useQueryClient();
 	const buckets = createQuery(() => getTimelineBucketsOptions());
@@ -85,6 +86,20 @@
 		const shown = grid?.scrollToSection(monthKey);
 		if (shown && shown.length === 7) await store.load(shown);
 	}
+
+	// Back from another page lands where the timeline was, not at the top.
+	let restoring = $state<GridPosition | null>(null);
+
+	export const snapshot: Snapshot<GridPosition | null> = {
+		capture: () => grid?.position() ?? null,
+		restore: (value) => (restoring = value)
+	};
+
+	$effect(() => {
+		if (!grid || !restoring) return;
+		grid.restorePosition(restoring);
+		restoring = null;
+	});
 
 	// --- Viewer (its place in the URL: see ViewerRoute) -----------------
 

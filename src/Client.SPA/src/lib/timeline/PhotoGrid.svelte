@@ -1,3 +1,11 @@
+<script lang="ts" module>
+	/** A scroll position that survives a relayout: a section and an offset into it. */
+	export interface GridPosition {
+		key: string;
+		offset: number;
+	}
+</script>
+
 <script lang="ts" generics="T extends GridAsset">
 	import { tick, untrack } from 'svelte';
 	import { startAssetDrag } from '#lib/actions/drag-assets.js';
@@ -266,6 +274,42 @@
 		rememberAnchor();
 		return key;
 	}
+
+	/** Where the view is: the section at the top and how far into it. */
+	export function position(): GridPosition | null {
+		const y = scrollTop - PADDING;
+		const key = sectionAt(layout, y);
+		return key === null ? null : { key, offset: y - layout.sectionTops.get(key)! };
+	}
+
+	// A position to go back to (Back to the page), applied once the grid has
+	// its size and that section is laid out.
+	let pendingPosition: GridPosition | null = null;
+
+	export function restorePosition(target: GridPosition) {
+		pendingPosition = target;
+		applyPosition();
+	}
+
+	function applyPosition() {
+		const target = pendingPosition;
+		if (!target || !scroller || options.containerWidth <= 0 || viewportHeight <= 0) return;
+		pendingPosition = null;
+		const top = layout.sectionTops.get(target.key);
+		if (top === undefined) {
+			scrollToSection(target.key);
+			return;
+		}
+		scroller.scrollTop = top + target.offset + PADDING;
+		scrollTop = scroller.scrollTop;
+		rememberAnchor();
+	}
+
+	$effect(() => {
+		void layout;
+		void viewportHeight;
+		untrack(applyPosition);
+	});
 
 	/** The section at the top of the view. */
 	export function currentSection() {
