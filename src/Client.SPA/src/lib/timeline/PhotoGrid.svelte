@@ -341,10 +341,7 @@
 		}
 
 		if (!selectable) return;
-		if (event.key === 'Escape' && selection.active) {
-			event.preventDefault();
-			selection.clear();
-		} else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+		if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
 			event.preventDefault();
 			selection.set(order, true);
 		} else if (event.key === ' ' && focusedId) {
@@ -352,6 +349,18 @@
 			if (event.shiftKey) selection.selectRange(focusedId, order);
 			else selection.toggle(focusedId);
 		}
+	}
+
+	// Escape clears the selection wherever the focus is (the selection bar, the
+	// page), unless a dialog, a menu or the viewer is open: Escape is theirs.
+	function onWindowKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Escape' || !selectable || !selection.active || event.defaultPrevented)
+			return;
+		if (document.querySelector('dialog[open], [role="dialog"], [role="menu"]')) return;
+		const target = event.target as HTMLElement | null;
+		if (target?.closest('input, textarea, select')) return;
+		event.preventDefault();
+		selection.clear();
 	}
 
 	/** Scrolls an item into view if needed, then moves DOM focus to it. */
@@ -397,6 +406,8 @@
 		<Icon name="check" size={16} />
 	</button>
 {/snippet}
+
+<svelte:window onkeydown={onWindowKeydown} />
 
 <div class="frame" bind:clientWidth={outerWidth}>
 	<div
