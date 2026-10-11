@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { createQuery, keepPreviousData, useQueryClient } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ICON_DONE_ALL } from '#lib/account/icons.js';
@@ -39,8 +39,26 @@
 		query: { page: pageNumber, pageSize: PAGE_SIZE, unreadOnly }
 	});
 
-	const notifications = createQuery(() => getNotificationsOptions(options));
+	// The page on screen stays while the next one loads, instead of a skeleton flash.
+	const notifications = createQuery(() => ({
+		...getNotificationsOptions(options),
+		placeholderData: keepPreviousData
+	}));
 	const data = $derived(notifications.data);
+
+	// Past the last page (after "mark all as read" in Unread, or an old link):
+	// back to the first one rather than an empty page.
+	$effect(() => {
+		if (!data || notifications.isPlaceholderData) return;
+		if (pageNumber > 1 && pageNumber > data.totalPages) navigateTo(unreadOnly ? 'unread' : 'all');
+	});
+
+	// "Hace 2 minutos" moves on while the page is open.
+	let now = $state(Date.now());
+	$effect(() => {
+		const timer = setInterval(() => (now = Date.now()), 60_000);
+		return () => clearInterval(timer);
+	});
 
 	function navigateTo(filter: 'all' | 'unread', target = 1) {
 		const query = [filter === 'unread' ? 'filter=unread' : '', target > 1 ? `page=${target}` : '']
@@ -139,7 +157,7 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
-		<ul class="list" aria-label={m.nav_notifications()}>
+		<ul class="list" aria-label={m.nav_notifications()} aria-busy={notifications.isPlaceholderData}>
 			{#each data.items as item (item.id)}
 				{@const icon = notificationIcon(item.type)}
 				{@const target = notificationTarget(item.actionUrl)}
@@ -156,7 +174,7 @@
 						<p class="message">{item.message}</p>
 						<p class="meta">
 							<time datetime={item.createdAt} title={dateTime(item.createdAt)}>
-								{relativeTime(item.createdAt, locale)}
+								{relativeTime(item.createdAt, locale, now)}
 							</time>
 							{#if item.groupCount > 1}
 								· {m.notifications_grouped({ count: item.groupCount })}
@@ -253,11 +271,12 @@
 	}
 
 	li.unread {
-		background: color-mix(in srgb, var(--color-accent-soft) 60%, transparent);
+		background-color: color-mix(in srgb, var(--color-accent-soft) 60%, transparent);
 	}
 
+	/* Over the unread tint, not instead of it. */
 	li:hover {
-		background: var(--color-hover);
+		background-image: linear-gradient(var(--color-hover), var(--color-hover));
 	}
 
 	.icon {
