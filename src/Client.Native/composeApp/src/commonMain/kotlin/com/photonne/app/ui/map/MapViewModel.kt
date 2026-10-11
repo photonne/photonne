@@ -115,7 +115,8 @@ class MapViewModel(
                         // visita ya pedirá los puntos.
                         if (_state.value.firstLoadComplete) refresh()
                     is AssetMutation.DateChanged -> redatePoint(event.assetId, event.capturedAt)
-                    is AssetMutation.FavoriteChanged -> Unit
+                    // Ni el favorito ni la carpeta cambian dónde está la foto.
+                    is AssetMutation.FavoriteChanged, is AssetMutation.Moved -> Unit
                 }
             }
         }

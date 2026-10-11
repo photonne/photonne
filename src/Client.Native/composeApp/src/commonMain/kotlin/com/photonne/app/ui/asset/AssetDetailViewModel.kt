@@ -118,6 +118,8 @@ class AssetDetailViewModel(
             is AssetMutation.Removed -> invalidate(event.assetIds, refetchCurrent = false)
             is AssetMutation.Purged -> invalidate(event.assetIds, refetchCurrent = false)
             is AssetMutation.Restored -> invalidate(event.assetIds, refetchCurrent = true)
+            // The detail names the folder the asset is in.
+            is AssetMutation.Moved -> invalidate(event.assetIds, refetchCurrent = true)
             AssetMutation.AllChanged -> invalidate(cache.keys.toList(), refetchCurrent = true)
         }
     }
