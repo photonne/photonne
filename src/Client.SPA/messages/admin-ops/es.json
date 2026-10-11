@@ -847,5 +847,12 @@
 	"ops_type_thumbnails": "Miniaturas",
 	"ops_unit_days": "días",
 	"ops_mt_dates_confirm": "¿Escribir las fechas en los archivos?",
-	"ops_mt_dates_confirm_text": "Las fechas deducidas de la ruta o de la fecha del archivo se escribirán en los metadatos de los propios archivos originales. No se puede deshacer. Si dudas, ejecútalo antes con «Solo contar» o desmarca «Escribir la fecha deducida en el archivo»."
+	"ops_mt_dates_confirm_text": "Las fechas deducidas de la ruta o de la fecha del archivo se escribirán en los metadatos de los propios archivos originales. No se puede deshacer. Si dudas, ejecútalo antes con «Solo contar» o desmarca «Escribir la fecha deducida en el archivo».",
+	"ops_param_dry_run": "Simulación",
+	"ops_param_from_file": "EXIF releído",
+	"ops_param_infer_path": "Fecha deducida de la ruta",
+	"ops_param_file_date": "Fecha del archivo",
+	"ops_param_write_file": "Escribe en los archivos",
+	"ops_param_regenerate": "Regenerar todas",
+	"ops_param_overwrite": "Releer todos"
 }
