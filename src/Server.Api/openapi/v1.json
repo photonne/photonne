@@ -4072,6 +4072,61 @@
       }
     },
     "/api/assets/{assetId}/favorite": {
+      "put": {
+        "tags": [
+          "Assets"
+        ],
+        "description": "Sets the favorite state of an asset and returns it",
+        "operationId": "SetFavorite",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFavoriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoriteToggleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      },
       "post": {
         "tags": [
           "Assets"
@@ -4102,6 +4157,52 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/assets/favorite": {
+      "put": {
+        "tags": [
+          "Assets"
+        ],
+        "description": "Sets the favorite state of several assets. Returns the ids that now have it; ids that don\u0027t exist or the caller can\u0027t read are left out",
+        "operationId": "SetFavorites",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFavoritesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetFavoritesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -15139,6 +15240,55 @@
             "format": "uuid"
           },
           "canRead": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SetFavoriteRequest": {
+        "required": [
+          "isFavorite"
+        ],
+        "type": "object",
+        "properties": {
+          "isFavorite": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SetFavoritesRequest": {
+        "required": [
+          "assetIds",
+          "isFavorite"
+        ],
+        "type": "object",
+        "properties": {
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "isFavorite": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SetFavoritesResponse": {
+        "required": [
+          "assetIds",
+          "isFavorite"
+        ],
+        "type": "object",
+        "properties": {
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "isFavorite": {
             "type": "boolean"
           }
         }
