@@ -57,6 +57,8 @@ data class PickerResults<T>(
     val results: List<T> = emptyList(),
     val isLoading: Boolean = false,
     val loadedOnce: Boolean = false,
+    /** Why the last load failed; the sheet shows it with Reintentar, not "no hay…". */
+    val error: UiError? = null,
 )
 
 data class SmartPickerData(
@@ -69,6 +71,7 @@ data class SmartPickerData(
     val folderRoots: List<FolderNode> = emptyList(),
     val foldersLoading: Boolean = false,
     val foldersLoaded: Boolean = false,
+    val foldersError: UiError? = null,
 )
 
 class SmartAlbumEditorViewModel(
@@ -82,7 +85,7 @@ class SmartAlbumEditorViewModel(
     private val _state = MutableStateFlow(SmartAlbumEditorUiState())
     val state: StateFlow<SmartAlbumEditorUiState> = _state.asStateFlow()
 
-    private val pickersController = ConditionPickersController(search, folders, authState, viewModelScope)
+    private val pickersController = ConditionPickersController(search, folders, authState, errorFactory, viewModelScope)
     val pickers: StateFlow<SmartPickerData> = pickersController.pickers
 
     private var previewJob: Job? = null

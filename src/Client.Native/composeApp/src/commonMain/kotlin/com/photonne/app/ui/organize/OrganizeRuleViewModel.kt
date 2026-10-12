@@ -77,7 +77,7 @@ class OrganizeRuleViewModel(
     private val _state = MutableStateFlow(OrganizeRuleUiState())
     val state: StateFlow<OrganizeRuleUiState> = _state.asStateFlow()
 
-    private val pickersController = ConditionPickersController(search, folders, authState, viewModelScope)
+    private val pickersController = ConditionPickersController(search, folders, authState, errorFactory, viewModelScope)
     val pickers: StateFlow<SmartPickerData> = pickersController.pickers
 
     private var previewJob: Job? = null
