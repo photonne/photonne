@@ -1,5 +1,7 @@
 package com.photonne.app.ui.album.smart
 
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.data.error.UiError
 import com.photonne.app.ui.theme.FieldGroupLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -213,9 +215,10 @@ fun RuleConditionsEditor(
     // top-N); reopening a loaded picker keeps its previous results/query.
     LaunchedEffect(sheet) {
         when (sheet) {
-            EditorSheet.People -> if (!pickers.people.loadedOnce) onPeopleQuery("")
-            EditorSheet.Scenes -> if (!pickers.scenes.loadedOnce) onSceneQuery("")
-            EditorSheet.Objects -> if (!pickers.objects.loadedOnce) onObjectQuery("")
+            // A failed load isn't "loaded": reopening the picker asks again.
+            EditorSheet.People -> pickers.people.let { if (!it.loadedOnce || it.error != null) onPeopleQuery(it.query) }
+            EditorSheet.Scenes -> pickers.scenes.let { if (!it.loadedOnce || it.error != null) onSceneQuery(it.query) }
+            EditorSheet.Objects -> pickers.objects.let { if (!it.loadedOnce || it.error != null) onObjectQuery(it.query) }
             EditorSheet.Folders -> onEnsureFolders()
             else -> Unit
         }
@@ -238,6 +241,8 @@ fun RuleConditionsEditor(
             roots = pickers.folderRoots,
             all = pickers.folders,
             isLoading = pickers.foldersLoading,
+            error = pickers.foldersError,
+            onRetry = onEnsureFolders,
             existing = conditions.filterIsInstance<SmartCondition.Folders>().firstOrNull(),
             onDismiss = { sheet = null },
             onConfirm = { onUpsertCondition(it); sheet = null },
@@ -463,7 +468,7 @@ private fun PeopleSelectSheet(
             )
         },
         body = {
-            PickerListBody(results.isLoading, results.loadedOnce, results.results.isEmpty()) {
+            PickerListBody(results, onRetry = { onQueryChange(results.query) }) {
                 items(results.results, key = { it.id }) { person ->
                     val isSel = person.id in selected
                     PersonSelectRow(person, baseUrl, isSel) {
@@ -483,6 +488,8 @@ private fun FolderSelectSheet(
     roots: List<FolderNode>,
     all: List<FolderRef>,
     isLoading: Boolean,
+    error: UiError?,
+    onRetry: () -> Unit,
     existing: SmartCondition.Folders?,
     onDismiss: () -> Unit,
     onConfirm: (SmartCondition.Folders) -> Unit,
@@ -547,6 +554,8 @@ private fun FolderSelectSheet(
             when {
                 isLoading && all.isEmpty() ->
                     Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                error != null && all.isEmpty() ->
+                    PickerError(error, onRetry)
                 personalNodes.isEmpty() && sharedNodes.isEmpty() ->
                     Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                         Text(
@@ -605,7 +614,7 @@ private fun LabelSelectSheet(
             SelectedChipsHeader(items = picked.map { it to it }, onRemove = { picked = picked - it })
         },
         body = {
-            PickerListBody(results.isLoading, results.loadedOnce, results.results.isEmpty()) {
+            PickerListBody(results, onRetry = { onQueryChange(results.query) }) {
                 items(results.results, key = { it.label }) { label ->
                     val isSel = label.label in picked
                     LabelRow(label, baseUrl, isSel) {
@@ -652,22 +661,33 @@ private fun SearchSelectScaffold(
     }
 }
 
-/** Loading / empty / list body that fills the remaining sheet height. */
+/** Loading / error / empty / list body that fills the remaining sheet height. */
 @Composable
 private fun ColumnScope.PickerListBody(
-    isLoading: Boolean,
-    loadedOnce: Boolean,
-    isEmpty: Boolean,
+    results: PickerResults<*>,
+    onRetry: () -> Unit,
     content: LazyListScope.() -> Unit,
 ) {
+    val isEmpty = results.results.isEmpty()
     when {
-        isLoading && isEmpty ->
+        results.isLoading && isEmpty ->
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        loadedOnce && isEmpty ->
+        // Before "no results": a failed load says why, not that there are none.
+        results.error != null && !results.isLoading ->
+            PickerError(results.error, onRetry)
+        results.loadedOnce && isEmpty ->
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Text(stringResource(Res.string.search_no_results), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         else -> LazyColumn(Modifier.fillMaxWidth().weight(1f)) { content() }
+    }
+}
+
+/** A picker's failed load: the cause with Reintentar, filling the body. */
+@Composable
+private fun ColumnScope.PickerError(error: UiError, onRetry: () -> Unit) {
+    Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.TopCenter) {
+        ErrorBanner(error = error, onRetry = onRetry)
     }
 }
 
