@@ -83,6 +83,10 @@ public class AssetIndexingService
                     .Include(a => a.Thumbnails)
                     .Include(a => a.Exif)
                     .Where(a => a.Checksum == checksum && a.DeletedAt == null && a.ExternalLibraryId == null)
+                    // A file moved by its owner stays theirs: with a known owner,
+                    // another user's row whose file is gone isn't this file.
+                    // Guid.Empty (the full index) still matches any owner.
+                    .Where(a => userId == Guid.Empty || a.OwnerId == userId)
                     .ToListAsync(ct);
 
                 foreach (var candidate in checksumMatches)

@@ -107,11 +107,14 @@ public class SyncAssetEndpoint : IEndpoint
                 await settingsService.VirtualizePathAsync(path)));
         }
 
-        // Checksum-based dedup against the whole library.
+        // Checksum-based dedup against the user's own library. Another user's
+        // copy doesn't count: answering with it would hand over its id and
+        // path (their username and folders), and the file would never reach
+        // this user's library.
         var sourceChecksum = await hashService.CalculateFileHashAsync(path, cancellationToken);
 
         var existingAsset = await dbContext.Assets
-            .FirstOrDefaultAsync(a => a.Checksum == sourceChecksum, cancellationToken);
+            .FirstOrDefaultAsync(a => a.Checksum == sourceChecksum && a.OwnerId == userId, cancellationToken);
         if (existingAsset != null)
         {
             var existingPhysicalPath = await settingsService.ResolvePhysicalPathAsync(existingAsset.FullPath);
