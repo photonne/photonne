@@ -131,19 +131,22 @@ public class ShareUploadEndpoint : IEndpoint
 
             var checksum = await hashService.CalculateFileHashAsync(tempPath, cancellationToken);
 
+            // Solo cuentan como duplicado las fotos vivas del dueño del enlace.
+            // Si se buscara en todo el servidor, la respuesta diría a cualquiera
+            // con el enlace, sin cuenta, si un archivo existe en la biblioteca de
+            // otro usuario, y la foto del invitado no llegaría al álbum. Un
+            // duplicado ajeno o en la papelera se guarda como una foto nueva.
             var existingAsset = await dbContext.Assets
-                .FirstOrDefaultAsync(a => a.Checksum == checksum, cancellationToken);
+                .FirstOrDefaultAsync(a => a.Checksum == checksum
+                    && a.OwnerId == owner.Id
+                    && a.DeletedAt == null, cancellationToken);
             if (existingAsset != null)
             {
                 File.Delete(tempPath);
 
-                // Duplicado exacto. Si el asset ya es del dueño del enlace, lo
-                // enlazamos igualmente al álbum para que el invitado lo vea; si
-                // pertenece a OTRO usuario no lo tocamos (enlazarlo expondría
-                // contenido ajeno en una página pública). La respuesta solo
-                // describe lo que la página del enlace ya puede mostrar.
-                if (existingAsset.OwnerId == owner.Id && existingAsset.DeletedAt == null)
-                    await AddToAlbumAsync(dbContext, cache, link, existingAsset.Id, owner.Id, cancellationToken);
+                // Ya está en la biblioteca del dueño: se enlaza al álbum para que
+                // el invitado la vea, sin guardarla dos veces.
+                await AddToAlbumAsync(dbContext, cache, link, existingAsset.Id, owner.Id, cancellationToken);
 
                 return TypedResults.Ok(new ShareUploadResponse("Asset already exists",
                     await SharedAssetAsync(dbContext, smartResolver, link, existingAsset.Id, pw, cancellationToken)));
@@ -274,8 +277,7 @@ public class ShareUploadEndpoint : IEndpoint
     /// so the page can add it without opening the link again, which would count
     /// a visit. Only when the link shows it: that page already hands its photos'
     /// ids to whoever has the token and password, so this reveals nothing new.
-    /// A duplicate of someone else's photo, or one a smart album's rule leaves
-    /// out, gets null.
+    /// One a smart album's rule leaves out gets null.
     /// </summary>
     private static async Task<SharedAssetDto?> SharedAssetAsync(
         ApplicationDbContext dbContext,
@@ -299,5 +301,5 @@ public class ShareUploadEndpoint : IEndpoint
 }
 
 /// <param name="Asset">The photo as the link's page shows it, or null when the
-/// page doesn't show it (a duplicate of a photo the link's owner doesn't own).</param>
+/// page doesn't show it (a smart album whose rules leave it out).</param>
 public sealed record ShareUploadResponse(string Message, SharedAssetDto? Asset);
