@@ -2,6 +2,13 @@ package com.photonne.app.data.models
 
 import kotlinx.serialization.Serializable
 
+/**
+ * The `storageQuotaBytes` that means "no quota" on purpose, in both
+ * `POST /api/users` and `PUT /api/users/{id}`. Null means something else in
+ * each: "use the server's default" on create, "leave it as it is" on update.
+ */
+const val NO_STORAGE_QUOTA = -1L
+
 @Serializable
 data class CreateUserRequest(
     val username: String,

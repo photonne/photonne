@@ -797,7 +797,7 @@
     <string name="admin_user_field_admin">Administrator</string>
     <string name="admin_user_field_active">Account active</string>
     <string name="admin_user_field_quota_mb">Quota (MB)</string>
-    <string name="admin_user_field_quota_mb_hint">Leave blank to use the default value.</string>
+    <string name="admin_user_field_quota_mb_hint">Starts at the default quota. Leave blank to create it without a quota (unlimited space).</string>
     <string name="admin_user_field_quota_mb_hint_edit">Leave blank to remove the quota (unlimited space).</string>
     <string name="admin_user_role_admin">Administrator</string>
     <string name="admin_user_role_user">User</string>

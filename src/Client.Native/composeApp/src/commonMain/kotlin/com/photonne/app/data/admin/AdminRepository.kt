@@ -18,6 +18,7 @@ import com.photonne.app.data.models.BackupRestoreResponse
 import com.photonne.app.data.models.CancelQueueResponse
 import com.photonne.app.data.models.CreateLibraryRequest
 import com.photonne.app.data.models.CreateUserRequest
+import com.photonne.app.data.models.NO_STORAGE_QUOTA
 import com.photonne.app.data.models.DuplicatesStreamEvent
 import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.GlobalReclusterResponse
@@ -59,18 +60,28 @@ class AdminRepository(private val api: PhotonneApi) {
         role: String?,
         isActive: Boolean?,
         storageQuotaBytes: Long?
-    ): UserDto = api.adminCreateUser(
-        CreateUserRequest(
-            username = username,
-            email = email,
-            password = password,
-            firstName = firstName?.takeIf { it.isNotBlank() },
-            lastName = lastName?.takeIf { it.isNotBlank() },
-            role = role?.takeIf { it.isNotBlank() },
-            isActive = isActive,
-            storageQuotaBytes = storageQuotaBytes
+    ): UserDto {
+        val created = api.adminCreateUser(
+            CreateUserRequest(
+                username = username,
+                email = email,
+                password = password,
+                firstName = firstName?.takeIf { it.isNotBlank() },
+                lastName = lastName?.takeIf { it.isNotBlank() },
+                role = role?.takeIf { it.isNotBlank() },
+                isActive = isActive,
+                storageQuotaBytes = storageQuotaBytes
+            )
         )
-    )
+        // A server from before -1 meant "no quota" on create stores it as a
+        // quota of -1 bytes, which no upload fits in. Its edit has always read
+        // -1 as "no quota", so the account is put right there.
+        val storedAsIs = (created.storageQuotaBytes ?: 0) < 0
+        if (storageQuotaBytes == NO_STORAGE_QUOTA && storedAsIs) {
+            return api.adminUpdateUser(created.id, UpdateUserRequest(storageQuotaBytes = NO_STORAGE_QUOTA))
+        }
+        return created
+    }
 
     suspend fun updateUser(
         id: String,

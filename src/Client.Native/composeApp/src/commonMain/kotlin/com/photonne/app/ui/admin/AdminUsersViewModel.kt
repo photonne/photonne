@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.data.models.NO_STORAGE_QUOTA
 import com.photonne.app.resources.admin_users_error_load
 import com.photonne.app.resources.admin_users_created_format
 import com.photonne.app.resources.admin_users_error_create
@@ -70,6 +71,18 @@ internal fun newUserDefaultsFrom(settings: Map<String, String>): NewUserDefaults
         quotaMb = quotaGb?.let { (it * 1024L).toString() }.orEmpty(),
     )
 }
+
+/** The form's quota field (MB) in bytes, or null when blank or zero. */
+internal fun quotaMbToBytes(quotaMb: String): Long? =
+    quotaMb.toLongOrNull()?.takeIf { it > 0 }?.let { it * 1024L * 1024L }
+
+/**
+ * The quota a new account is created with. Untouched, the field shows the
+ * server's default and null lets the server apply it; emptied on purpose, it
+ * goes as [NO_STORAGE_QUOTA] so the server doesn't put its default back.
+ */
+internal fun newUserQuotaBytes(quotaMb: String, touched: Boolean): Long? =
+    if (!touched) null else quotaMbToBytes(quotaMb) ?: NO_STORAGE_QUOTA
 
 class AdminUsersViewModel(
     private val repository: AdminRepository,

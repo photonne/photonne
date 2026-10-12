@@ -804,7 +804,7 @@
     <string name="admin_user_field_admin">Administrador</string>
     <string name="admin_user_field_active">Cuenta activa</string>
     <string name="admin_user_field_quota_mb">Cuota (MB)</string>
-    <string name="admin_user_field_quota_mb_hint">Deja en blanco para usar el valor por defecto.</string>
+    <string name="admin_user_field_quota_mb_hint">Empieza con la cuota por defecto. Déjalo en blanco para crearlo sin cuota (espacio ilimitado).</string>
     <string name="admin_user_field_quota_mb_hint_edit">Deja en blanco para quitar la cuota (espacio ilimitado).</string>
     <string name="admin_user_role_admin">Administrador</string>
     <string name="admin_user_role_user">Usuario</string>
