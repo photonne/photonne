@@ -11,6 +11,12 @@ public class DemoModeOptions
     public const string SectionName = "DemoMode";
 
     /// <summary>
+    /// Kestrel's request body cap in demo mode, so a single visitor can't fill
+    /// the host disk with a giant upload.
+    /// </summary>
+    public const long MaxRequestBodyBytes = 25L * 1024 * 1024;
+
+    /// <summary>
     /// Path where the seed media lives. In Docker this is the in-container mount
     /// point (default <c>/data/demo-seed</c>); outside Docker, point it at a host
     /// folder via <c>DemoMode:SeedPath</c> in appsettings.
