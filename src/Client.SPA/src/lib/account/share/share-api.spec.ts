@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { SharedContentResponse } from '#lib/api/index.js';
-import { aspectOf, outcomeOf, shareMediaUrl } from './share-api.js';
+import type { SharedAssetDto, SharedContentResponse } from '#lib/api/index.js';
+import { aspectOf, outcomeOf, shareMediaUrl, withUploaded } from './share-api.js';
 
 const content: SharedContentResponse = {
 	token: 't',
@@ -69,5 +69,34 @@ describe('aspectOf', () => {
 		};
 		expect(aspectOf(asset)).toBeNull();
 		expect(aspectOf({ ...asset, width: 6 })).toBe(2);
+	});
+});
+
+describe('withUploaded', () => {
+	const photo = (id: string): SharedAssetDto => ({
+		id,
+		fileName: `${id}.jpg`,
+		type: 'Image',
+		fileCreatedAt: '2026-06-10T12:00:00Z',
+		fileSize: 1,
+		width: null,
+		height: null,
+		thumbnailUrl: '',
+		contentUrl: ''
+	});
+
+	it('adds a guest photo at the end of the album', () => {
+		const album = { ...content.album!, assetCount: 1 };
+		const open = { kind: 'content' as const, content: { ...content, album, assets: [photo('a')] } };
+		const next = withUploaded(open, photo('b'));
+		expect(next.kind === 'content' && next.content.assets?.map((a) => a.id)).toEqual(['a', 'b']);
+		expect(next.kind === 'content' && next.content.album?.assetCount).toBe(2);
+	});
+
+	it('leaves a photo the album already had, and screens without content', () => {
+		const open = { kind: 'content' as const, content: { ...content, assets: [photo('a')] } };
+		expect(withUploaded(open, photo('a'))).toBe(open);
+		const gate = { kind: 'password' as const, wrong: false };
+		expect(withUploaded(gate, photo('a'))).toBe(gate);
 	});
 });

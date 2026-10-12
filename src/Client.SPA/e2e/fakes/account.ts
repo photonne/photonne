@@ -16,6 +16,8 @@ export interface AccountState {
 	accountDeleted: boolean;
 	discovery: { folderId: string; included: boolean }[];
 	guestUploads: { token: string; name: string | null; pw: string | null; file: string }[];
+	/** Times a share link was opened: each one is a visit on the server. */
+	shareOpens: number;
 }
 
 interface Notification {
@@ -40,7 +42,8 @@ export function accountState(state: Record<string, unknown>): AccountState {
 		passwordChanges: [],
 		accountDeleted: false,
 		discovery: [],
-		guestUploads: []
+		guestUploads: [],
+		shareOpens: 0
 	} satisfies AccountState;
 	return state.account as AccountState;
 }
@@ -205,11 +208,27 @@ const handle: FakeHandler = async (context) => {
 			pw: fields.pw ?? null,
 			file: fileName
 		});
-		await json(200, { message: 'Asset uploaded' });
+		// The photo as the link's page lists it (ShareUploadEndpoint).
+		const id = `00000000-0000-0000-0000-0000000002${String(account.guestUploads.length).padStart(2, '0')}`;
+		await json(200, {
+			message: 'Asset uploaded successfully',
+			asset: {
+				id,
+				fileName,
+				type: 'Image',
+				fileCreatedAt: '2026-06-12T18:00:00Z',
+				fileSize: 1,
+				width: null,
+				height: null,
+				thumbnailUrl: '',
+				contentUrl: ''
+			}
+		});
 		return true;
 	}
 	const share = /^\/api\/share\/([^/]+)$/.exec(path);
 	if (share && method === 'GET') {
+		account.shareOpens++;
 		await shareLink(context, decodeURIComponent(share[1]));
 		return true;
 	}

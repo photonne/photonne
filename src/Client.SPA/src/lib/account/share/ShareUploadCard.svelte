@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import type { SharedAssetDto } from '#lib/api/index.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import DropZone from '../upload/DropZone.svelte';
@@ -10,20 +11,20 @@
 	interface Props {
 		token: string;
 		password: string | null;
-		/**
-		 * Reloads the album to show the new photos. Only on the guest's request:
-		 * every open of the link counts as a visit (and can hit its limit).
-		 */
-		onrefresh: () => void;
+		/** Each photo the album now shows, as it arrives, to add it to the grid. */
+		onuploaded: (asset: SharedAssetDto) => void;
 	}
 
-	let { token, password, onrefresh }: Props = $props();
+	let { token, password, onuploaded }: Props = $props();
 
 	let name = $state('');
 
 	// One file at a time: the server rate-limits guest uploads.
 	const queue = new UploadQueue(
-		shareTransport(() => ({ token, password, name })),
+		shareTransport(
+			() => ({ token, password, name }),
+			(asset) => onuploaded(asset)
+		),
 		{ concurrency: 1 }
 	);
 
@@ -62,7 +63,6 @@
 	{#if !queue.active && counts.done > 0}
 		<div class="thanks">
 			<p role="status">{m.share_upload_thanks({ count: counts.done })}</p>
-			<button type="button" class="btn sm" onclick={onrefresh}>{m.share_upload_show()}</button>
 		</div>
 	{/if}
 	{#if counts.failed > 0 && !queue.active}

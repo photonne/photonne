@@ -12,8 +12,10 @@
 	import {
 		openShare,
 		rememberedPassword,
+		withUploaded,
 		rememberPassword,
-		shareMediaUrl
+		shareMediaUrl,
+		type ShareOutcome
 	} from '#lib/account/share/share-api.js';
 	import ShareGrid from '#lib/account/share/ShareGrid.svelte';
 	import ShareUploadCard from '#lib/account/share/ShareUploadCard.svelte';
@@ -37,8 +39,10 @@
 	let password = $state<string | null>(rememberedPassword(page.params.token ?? ''));
 	let typed = $state('');
 
+	const queryClient = useQueryClient();
+
 	// Every open counts as a view on the server: fetched once per password,
-	// never refetched in the background.
+	// never refetched in the background, nor after a guest uploads.
 	const share = createQuery(() => ({
 		queryKey: ['share', token, password],
 		queryFn: () => openShare(token, password ?? undefined),
@@ -47,20 +51,6 @@
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false
 	}));
-
-	const queryClient = useQueryClient();
-
-	/**
-	 * After a guest upload: opens the link again for the new photos (a visit
-	 * more, so only when asked). Anything but the album (the visit limit just
-	 * reached…) leaves the page as it was.
-	 */
-	async function showUploads() {
-		const key = ['share', token, password];
-		const next = await openShare(token, password ?? undefined);
-		if (next.kind === 'content') queryClient.setQueryData(key, next);
-		else toasts.error(m.share_refresh_failed());
-	}
 
 	const outcome = $derived(share.data);
 	const content = $derived(outcome?.kind === 'content' ? outcome.content : null);
@@ -78,6 +68,13 @@
 		const last = await viewer.close();
 		await tick();
 		if (last) grid?.focusItem(last);
+	}
+
+	/** A guest's photo: into the cached album, as opening the link again would list it. */
+	function uploaded(asset: SharedAssetDto) {
+		queryClient.setQueryData<ShareOutcome>(['share', token, password], (current) =>
+			current ? withUploaded(current, asset) : current
+		);
 	}
 
 	function submitPassword(event: SubmitEvent) {
@@ -193,7 +190,7 @@
 
 		<div class="body">
 			{#if content.allowUpload}
-				<ShareUploadCard {token} {password} onrefresh={showUploads} />
+				<ShareUploadCard {token} {password} onuploaded={uploaded} />
 			{/if}
 
 			{#if assets.length === 0}
