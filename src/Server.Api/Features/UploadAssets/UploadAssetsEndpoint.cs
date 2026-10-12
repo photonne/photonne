@@ -82,8 +82,14 @@ public class UploadAssetsEndpoint : IEndpoint
             // 2. Calculate hash
             var checksum = await hashService.CalculateFileHashAsync(tempPath, cancellationToken);
 
-            // 3. Check if it already exists
-            var existingAsset = await dbContext.Assets.FirstOrDefaultAsync(a => a.Checksum == checksum, cancellationToken);
+            // 3. Check if it already exists in the user's own library. Another
+            // user's copy doesn't count: answering with it would tell the
+            // uploader that someone else has the file (and its id), and the
+            // upload would be dropped without ever reaching their library.
+            // A copy in their own trash does count, so a backup doesn't bring
+            // back what they deleted.
+            var existingAsset = await dbContext.Assets
+                .FirstOrDefaultAsync(a => a.Checksum == checksum && a.OwnerId == userId, cancellationToken);
             if (existingAsset != null)
             {
                 File.Delete(tempPath);

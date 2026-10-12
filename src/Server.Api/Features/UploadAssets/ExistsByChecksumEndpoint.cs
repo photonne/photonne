@@ -32,7 +32,9 @@ public class ExistsByChecksumEndpoint : IEndpoint
             return TypedResults.BadRequest(new ApiError("Checksum is required", "checksum_required"));
 
         var asset = await dbContext.Assets
-            .Where(a => a.DeletedAt == null && a.Checksum == checksum)
+            // Only the user's own library, like check-checksums: a hit on
+            // another user's copy would tell them someone has the file.
+            .Where(a => a.DeletedAt == null && a.OwnerId == userId && a.Checksum == checksum)
             .Select(a => new { a.Id })
             .FirstOrDefaultAsync(cancellationToken);
 

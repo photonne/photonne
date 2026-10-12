@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Tests.Fixtures;
 using Photonne.Server.Api.Tests.Infrastructure;
 
@@ -304,6 +305,72 @@ public sealed class UploadPipelineTests : IntegrationTestBase
         var assetCount = await WithDbContextAsync(db =>
             db.Assets.AsNoTracking().CountAsync());
         Assert.Equal(1, assetCount);
+    }
+
+    private async Task<Guid> SeedFixtureCopyAsync(TestUser owner, DateTime? deletedAt = null)
+    {
+        var checksum = await new FileHashService().CalculateFileHashAsync(FixturePaths.WithExif);
+        return await WithDbContextAsync(async db =>
+        {
+            var asset = new Asset
+            {
+                FileName = "copy.jpg",
+                FullPath = $"/assets/users/{owner.Username}/copy.jpg",
+                FileSize = 1,
+                Checksum = checksum,
+                Type = AssetType.Image,
+                Extension = ".jpg",
+                FileCreatedAt = DateTime.UtcNow,
+                FileModifiedAt = DateTime.UtcNow,
+                OwnerId = owner.Id,
+                DeletedAt = deletedAt
+            };
+            db.Assets.Add(asset);
+            await db.SaveChangesAsync();
+            return asset.Id;
+        });
+    }
+
+    [Fact]
+    public async Task Upload_SameFileAsAnotherUser_IsStoredInTheUploadersLibrary()
+    {
+        var other = await CreateUserAsync();
+        var theirs = await SeedFixtureCopyAsync(other);
+        var (user, client) = await CreateAuthenticatedUserAsync();
+
+        using var form = BuildMultipart(FixturePaths.WithExif);
+        var response = await client.PostAsync("/api/assets/upload", form);
+        response.EnsureSuccessStatusCode();
+
+        // Neither the other user's copy nor a hint that it exists: the answer
+        // of a file nobody had.
+        var body = await response.Content.ReadFromJsonAsync<UploadResp>();
+        Assert.Equal("Asset uploaded successfully", body!.Message);
+        Assert.NotNull(body.AssetId);
+        Assert.NotEqual(theirs, body.AssetId);
+
+        var stored = await WithDbContextAsync(db =>
+            db.Assets.AsNoTracking().SingleAsync(a => a.Id == body.AssetId));
+        Assert.Equal(user.Id, stored.OwnerId);
+        Assert.StartsWith($"/assets/users/{user.Username}/Uploads/", stored.FullPath);
+    }
+
+    [Fact]
+    public async Task Upload_SameFileAsOneInTheUsersTrash_IsNotStoredAgain()
+    {
+        // A backup of a phone that still has the photo mustn't bring back what
+        // the user deleted on the server.
+        var (user, client) = await CreateAuthenticatedUserAsync();
+        var trashed = await SeedFixtureCopyAsync(user, deletedAt: DateTime.UtcNow);
+
+        using var form = BuildMultipart(FixturePaths.WithExif);
+        var response = await client.PostAsync("/api/assets/upload", form);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<UploadResp>();
+        Assert.Contains("already exists", body!.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(trashed, body.AssetId);
+        Assert.Equal(1, await WithDbContextAsync(db => db.Assets.AsNoTracking().CountAsync()));
     }
 
     [Fact]
