@@ -20,9 +20,8 @@ package com.photonne.app.ui.actions
  *   Desktop). Several photos go as several files, never a ZIP: chat
  *   apps show a ZIP as a document, not as photos.
  *
- * iOS does not have a real implementation yet; the actual just
- * throws so the surrounding view-model can surface a localized
- * "not implemented" banner.
+ * iOS has no Downloads folder: a finished download opens the share
+ * sheet so the user saves it where they want.
  */
 expect class AssetSharing {
     /**
