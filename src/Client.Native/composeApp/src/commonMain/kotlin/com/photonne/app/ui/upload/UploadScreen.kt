@@ -1,6 +1,7 @@
 package com.photonne.app.ui.upload
 
 import androidx.compose.foundation.background
+import com.photonne.app.ui.devicebackup.uploadErrorHint
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.ProgressHeight
 import androidx.compose.foundation.clickable
@@ -324,12 +325,13 @@ private fun UploadRow(
                         .height(ProgressHeight.inline)
                 )
             }
-            item.errorMessage?.takeIf { item.status == UploadStatus.Failed }?.let { message ->
+            val failureText = item.failureReason?.let { uploadErrorHint(it) } ?: item.errorMessage
+            failureText?.takeIf { item.status == UploadStatus.Failed }?.let { message ->
                 Text(
                     message,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
-                    maxLines = 2,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
             }

@@ -52,7 +52,6 @@ class UploadFailureReasonTest {
     @Test
     fun httpStatusesMapToTypedReasons() {
         assertEquals(UploadFailureReason.QuotaExceeded, apiError(409).toUploadFailureReason())
-        assertEquals(UploadFailureReason.FileTooLarge, apiError(413).toUploadFailureReason())
         assertEquals(UploadFailureReason.Unauthorized, apiError(401).toUploadFailureReason())
         assertEquals(UploadFailureReason.ServerError, apiError(503).toUploadFailureReason())
     }
@@ -61,6 +60,7 @@ class UploadFailureReasonTest {
     fun permanentReasonsAreNotRetried() {
         assertFalse(UploadFailureReason.QuotaExceeded.isRetryable)
         assertFalse(UploadFailureReason.FileTooLarge.isRetryable)
+        assertFalse(UploadFailureReason.ProxyTooLarge.isRetryable)
         assertFalse(UploadFailureReason.NotAllowed.isRetryable)
         assertFalse(UploadFailureReason.Unauthorized.isRetryable)
         // A file we can't even read won't get better by retrying the upload —
@@ -68,6 +68,63 @@ class UploadFailureReasonTest {
         assertFalse(UploadFailureReason.FileUnreadable.isRetryable)
     }
 
-    private fun apiError(status: Int) =
-        PhotonneApiException(status = status, message = "HTTP $status")
+    @Test
+    fun photonne413WithItsCodeIsFileTooLarge() {
+        val upload = apiError(413, PHOTONNE_413, serverMessage = "El archivo supera el tamaño máximo permitido (100 MB).")
+        assertEquals(UploadFailureReason.FileTooLarge, upload.toUploadFailureReason())
+        // The guest upload of a request link uses its own code for the same limit.
+        val guest = apiError(413, """{"error":"El archivo supera el tamaño máximo permitido (5 MB).","code":"file_too_large"}""")
+        assertEquals(UploadFailureReason.FileTooLarge, guest.toUploadFailureReason())
+    }
+
+    @Test
+    fun proxy413WithHtmlPageIsProxyTooLarge() {
+        assertEquals(UploadFailureReason.ProxyTooLarge, apiError(413, NGINX_413).toUploadFailureReason())
+    }
+
+    @Test
+    fun proxy413WithEmptyBodyIsProxyTooLarge() {
+        assertEquals(UploadFailureReason.ProxyTooLarge, apiError(413, "").toUploadFailureReason())
+        assertEquals(UploadFailureReason.ProxyTooLarge, apiError(413, null).toUploadFailureReason())
+    }
+
+    @Test
+    fun photonne413DetailIsItsMessageOnceNotTheRawJson() {
+        val message = "El archivo supera el tamaño máximo permitido (100 MB)."
+        val detail = apiError(413, PHOTONNE_413, serverMessage = message, message = message).toUploadFailureDetail()
+        assertEquals(message, detail)
+    }
+
+    @Test
+    fun proxyHtmlPageDetailIsReducedToItsTitle() {
+        val detail = apiError(413, NGINX_413, message = "Upload failed (413)").toUploadFailureDetail()
+        assertEquals("Upload failed (413)\n413 Request Entity Too Large", detail)
+    }
+
+    @Test
+    fun htmlWithoutTitleOrHeadingAddsNothing() {
+        val detail = apiError(413, "<html><body><p>nope</p></body></html>", message = "Upload failed (413)")
+            .toUploadFailureDetail()
+        assertEquals("Upload failed (413)", detail)
+    }
+
+    @Test
+    fun longPlainTextBodyIsCapped() {
+        val summary = summarizeNonJsonBody("x".repeat(1_000))
+        assertEquals(301, summary?.length)
+    }
+
+    private fun apiError(
+        status: Int,
+        body: String? = null,
+        serverMessage: String? = null,
+        message: String = "HTTP $status",
+    ) = PhotonneApiException(status = status, message = message, responseBody = body, serverMessage = serverMessage)
+
+    private companion object {
+        const val PHOTONNE_413 =
+            """{"error":"El archivo supera el tamaño máximo permitido (100 MB).","code":"upload_too_large"}"""
+        const val NGINX_413 =
+            "<html>\r\n<head><title>413 Request Entity Too Large</title></head>\r\n<body>\r\n<center><h1>413 Request Entity Too Large</h1></center>\r\n<hr><center>nginx/1.25.3</center>\r\n</body>\r\n</html>\r\n"
+    }
 }

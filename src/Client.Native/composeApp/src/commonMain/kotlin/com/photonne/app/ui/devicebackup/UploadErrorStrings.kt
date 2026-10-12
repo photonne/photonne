@@ -7,6 +7,8 @@ import com.photonne.app.resources.upload_error_file_too_large
 import com.photonne.app.resources.upload_error_file_unreadable
 import com.photonne.app.resources.upload_error_network_error
 import com.photonne.app.resources.upload_error_not_allowed
+import com.photonne.app.resources.upload_error_proxy_too_large
+import com.photonne.app.resources.upload_error_proxy_too_large_hint
 import com.photonne.app.resources.upload_error_quota_exceeded
 import com.photonne.app.resources.upload_error_rate_limited
 import com.photonne.app.resources.upload_error_server_error
@@ -22,6 +24,7 @@ import org.jetbrains.compose.resources.stringResource
 fun uploadErrorLabel(reason: UploadFailureReason): String = when (reason) {
     UploadFailureReason.QuotaExceeded -> stringResource(Res.string.upload_error_quota_exceeded)
     UploadFailureReason.FileTooLarge -> stringResource(Res.string.upload_error_file_too_large)
+    UploadFailureReason.ProxyTooLarge -> stringResource(Res.string.upload_error_proxy_too_large)
     UploadFailureReason.NotAllowed -> stringResource(Res.string.upload_error_not_allowed)
     UploadFailureReason.Unauthorized -> stringResource(Res.string.upload_error_unauthorized)
     UploadFailureReason.RateLimited -> stringResource(Res.string.upload_error_rate_limited)
@@ -29,4 +32,15 @@ fun uploadErrorLabel(reason: UploadFailureReason): String = when (reason) {
     UploadFailureReason.NetworkError -> stringResource(Res.string.upload_error_network_error)
     UploadFailureReason.FileUnreadable -> stringResource(Res.string.upload_error_file_unreadable)
     UploadFailureReason.Unknown -> stringResource(Res.string.upload_error_unknown)
+}
+
+/**
+ * What the user can do about a failure whose short [uploadErrorLabel] isn't
+ * enough on its own; `null` when the label (plus the server's detail) says it
+ * all. A proxy's 413 isn't a Photonne setting, so it points at the proxy.
+ */
+@Composable
+fun uploadErrorHint(reason: UploadFailureReason): String? = when (reason) {
+    UploadFailureReason.ProxyTooLarge -> stringResource(Res.string.upload_error_proxy_too_large_hint)
+    else -> null
 }

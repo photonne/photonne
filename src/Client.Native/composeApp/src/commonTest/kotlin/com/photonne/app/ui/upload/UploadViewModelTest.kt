@@ -6,6 +6,7 @@ import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.data.devicebackup.UploadFailureReason
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
@@ -196,5 +197,42 @@ class UploadViewModelTest {
                 assertEquals(AssetMutation.AllChanged, mutation.await())
             }
         }
+    }
+
+    private suspend fun failedItemAfter(status: HttpStatusCode, body: String, contentType: String): UploadItem {
+        val vm = viewModel {
+            respond(
+                content = ByteReadChannel(body),
+                status = status,
+                headers = headersOf(HttpHeaders.ContentType, contentType)
+            )
+        }
+        vm.enqueue(listOf(picked("big.mov")))
+        return withContext(Dispatchers.Default) {
+            withTimeout(5_000) {
+                vm.state.first { st -> !st.isUploading && st.items.single().status == UploadStatus.Failed }
+            }
+        }.items.single()
+    }
+
+    @Test
+    fun photonne_size_limit_shows_its_own_message_with_the_megabytes() = runTest {
+        val item = failedItemAfter(
+            HttpStatusCode.PayloadTooLarge,
+            """{"error":"El archivo supera el tamaño máximo permitido (100 MB).","code":"upload_too_large"}""",
+            "application/json"
+        )
+        assertEquals(UploadFailureReason.FileTooLarge, item.failureReason)
+        assertEquals("El archivo supera el tamaño máximo permitido (100 MB).", item.errorMessage)
+    }
+
+    @Test
+    fun a_proxy_413_is_told_apart_from_the_photonne_limit() = runTest {
+        val item = failedItemAfter(
+            HttpStatusCode.PayloadTooLarge,
+            "<html><head><title>413 Request Entity Too Large</title></head><body><center><h1>413 Request Entity Too Large</h1></center><hr><center>nginx</center></body></html>",
+            "text/html"
+        )
+        assertEquals(UploadFailureReason.ProxyTooLarge, item.failureReason)
     }
 }
