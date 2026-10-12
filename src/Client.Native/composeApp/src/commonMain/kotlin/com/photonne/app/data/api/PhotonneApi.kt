@@ -84,7 +84,7 @@ import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
@@ -2936,7 +2936,7 @@ class PhotonneApiClient(
 
     override suspend fun adminThumbnailsStream(
         regenerate: Boolean
-    ): Flow<com.photonne.app.data.models.ThumbnailStreamEvent> = flow {
+    ): Flow<com.photonne.app.data.models.ThumbnailStreamEvent> = channelFlow {
         client.prepareGet("$baseUrl/api/assets/thumbnails/stream") {
             disableStreamTimeouts()
             parameter("regenerate", regenerate)
@@ -2951,14 +2951,14 @@ class PhotonneApiClient(
                         com.photonne.app.data.models.ThumbnailStreamEvent.serializer(),
                         line
                     )
-                }.getOrNull()?.let { emit(it) }
+                }.getOrNull()?.let { send(it) }
             }
         }
     }
 
     override suspend fun adminMetadataStream(
         overwrite: Boolean
-    ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = flow {
+    ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = channelFlow {
         client.prepareGet("$baseUrl/api/assets/metadata/stream") {
             disableStreamTimeouts()
             parameter("overwrite", overwrite)
@@ -2973,7 +2973,7 @@ class PhotonneApiClient(
                         com.photonne.app.data.models.MetadataStreamEvent.serializer(),
                         line
                     )
-                }.getOrNull()?.let { emit(it) }
+                }.getOrNull()?.let { send(it) }
             }
         }
     }
@@ -2984,7 +2984,7 @@ class PhotonneApiClient(
         useFileDate: Boolean,
         writeToFile: Boolean,
         dryRun: Boolean
-    ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = flow {
+    ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = channelFlow {
         client.prepareGet("$baseUrl/api/assets/dates/restore/stream") {
             disableStreamTimeouts()
             parameter("fromFile", fromFile)
@@ -3003,7 +3003,7 @@ class PhotonneApiClient(
                         com.photonne.app.data.models.MetadataStreamEvent.serializer(),
                         line
                     )
-                }.getOrNull()?.let { emit(it) }
+                }.getOrNull()?.let { send(it) }
             }
         }
     }
@@ -3056,7 +3056,7 @@ class PhotonneApiClient(
     override suspend fun adminDuplicatesStream(
         cleanup: Boolean,
         physical: Boolean
-    ): Flow<com.photonne.app.data.models.DuplicatesStreamEvent> = flow {
+    ): Flow<com.photonne.app.data.models.DuplicatesStreamEvent> = channelFlow {
         client.prepareGet("$baseUrl/api/assets/duplicates/stream") {
             disableStreamTimeouts()
             parameter("cleanup", cleanup)
@@ -3072,7 +3072,7 @@ class PhotonneApiClient(
                         com.photonne.app.data.models.DuplicatesStreamEvent.serializer(),
                         line
                     )
-                }.getOrNull()?.let { emit(it) }
+                }.getOrNull()?.let { send(it) }
             }
         }
     }
@@ -3080,7 +3080,7 @@ class PhotonneApiClient(
     override suspend fun adminMaintenanceStream(
         kind: String,
         dryRun: Boolean
-    ): Flow<com.photonne.app.data.models.MaintenanceStreamEvent> = flow {
+    ): Flow<com.photonne.app.data.models.MaintenanceStreamEvent> = channelFlow {
         client.prepareGet("$baseUrl/api/admin/maintenance/$kind/stream") {
             disableStreamTimeouts()
             parameter("dryRun", dryRun)
@@ -3095,13 +3095,13 @@ class PhotonneApiClient(
                         com.photonne.app.data.models.MaintenanceStreamEvent.serializer(),
                         line
                     )
-                }.getOrNull()?.let { emit(it) }
+                }.getOrNull()?.let { send(it) }
             }
         }
     }
 
     override suspend fun adminFaceClusteringStream():
-        Flow<com.photonne.app.data.models.MaintenanceStreamEvent> = flow {
+        Flow<com.photonne.app.data.models.MaintenanceStreamEvent> = channelFlow {
         client.prepareGet("$baseUrl/api/admin/maintenance/face-clustering/stream") {
             disableStreamTimeouts()
         }.execute { response ->
@@ -3115,7 +3115,7 @@ class PhotonneApiClient(
                         com.photonne.app.data.models.MaintenanceStreamEvent.serializer(),
                         line
                     )
-                }.getOrNull()?.let { emit(it) }
+                }.getOrNull()?.let { send(it) }
             }
         }
     }
@@ -3175,8 +3175,13 @@ class PhotonneApiClient(
     }
 
     /** Shared streaming helper for endpoints that emit one JSON object
-     *  per line via `IAsyncEnumerable<T>` on the server side. */
-    private inline fun <reified T> streamJsonLines(url: String): Flow<T> = flow {
+     *  per line via `IAsyncEnumerable<T>` on the server side.
+     *
+     *  The streams are channelFlows, not flows: Ktor may run the
+     *  `execute { }` block in another coroutine context (it does on
+     *  Kotlin/Native), and a plain `flow { }` refuses to emit from there
+     *  ("Flow invariant is violated"), which failed every stream on iOS. */
+    private inline fun <reified T> streamJsonLines(url: String): Flow<T> = channelFlow {
         client.prepareGet(url) { disableStreamTimeouts() }.execute { response ->
             ensureStreamSuccess(response, "Stream failed")
             val channel = response.bodyAsChannel()
@@ -3185,7 +3190,7 @@ class PhotonneApiClient(
                 if (line.isBlank()) continue
                 runCatching { streamJson.decodeFromString<T>(line) }
                     .getOrNull()
-                    ?.let { emit(it) }
+                    ?.let { send(it) }
             }
         }
     }
