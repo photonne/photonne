@@ -17,7 +17,7 @@
 <script lang="ts">
 	import { onMount, tick, type Snippet } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { toggleFavorite, type AssetDetailResponse } from '#lib/api/index.js';
+	import { setFavorite, type AssetDetailResponse } from '#lib/api/index.js';
 	import { invalidateLibrary } from '#lib/api/query-client.js';
 	import {
 		getApiAssetsByIdFacesOptions,
@@ -286,8 +286,8 @@
 		if (selectedFaceId) openTab('faces');
 	}
 
-	// One toggle at a time: a second press while the first is on its way
-	// would flip the heart back on the server.
+	// One request at a time: a second press while the first is on its way
+	// would ask for the state the heart showed before it.
 	let favoriting = false;
 
 	async function favorite() {
@@ -295,7 +295,10 @@
 		const id = asset.id;
 		favoriting = true;
 		try {
-			const { data } = await toggleFavorite({ path: { assetId: id } });
+			const { data } = await setFavorite({
+				path: { assetId: id },
+				body: { isFavorite: !asset.isFavorite }
+			});
 			if (!data) {
 				toasts.error(m.action_failed());
 				return;

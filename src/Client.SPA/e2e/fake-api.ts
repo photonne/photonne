@@ -64,7 +64,7 @@ export async function fakeApi(
 		isPrimaryAdmin: options.role === 'Admin'
 	};
 	let signedIn = options.signedIn ?? false;
-	const favorites = new Set<string>();
+	const favorites = new Map<string, boolean>();
 	const descriptions: string[] = [];
 	const added: string[] = [];
 	const removed: string[] = [];
@@ -102,11 +102,15 @@ export async function fakeApi(
 			case 'GET /api/assets/timeline/buckets':
 				return authorized ? json(route, 200, library.buckets) : json(route, 401);
 			default:
-				if (/^\/api\/assets\/[^/]+\/favorite$/.test(path) && request.method() === 'POST') {
-					const id = path.split('/')[3];
-					if (favorites.has(id)) favorites.delete(id);
-					else favorites.add(id);
-					return json(route, 200, { isFavorite: favorites.has(id) });
+				if (path === '/api/assets/favorite' && request.method() === 'PUT') {
+					const { assetIds, isFavorite } = request.postDataJSON();
+					for (const id of assetIds) favorites.set(id, isFavorite);
+					return json(route, 200, { assetIds, isFavorite });
+				}
+				if (/^\/api\/assets\/[^/]+\/favorite$/.test(path) && request.method() === 'PUT') {
+					const { isFavorite } = request.postDataJSON();
+					favorites.set(path.split('/')[3], isFavorite);
+					return json(route, 200, { isFavorite });
 				}
 				if (/^\/api\/assets\/[^/]+\/description$/.test(path)) {
 					descriptions.push(request.postDataJSON().caption);
@@ -211,7 +215,7 @@ function thumbnail(id: string) {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="300" height="200" fill="hsl(${hue} 55% 55%)"/><circle cx="210" cy="70" r="28" fill="hsl(${(hue + 40) % 360} 80% 80%)"/><path d="M0 200 L90 110 L150 160 L210 120 L300 200Z" fill="hsl(${(hue + 180) % 360} 35% 35%)"/></svg>`;
 }
 
-function detail(id: string, favorites: Set<string>) {
+function detail(id: string, favorites: Map<string, boolean>) {
 	const [year, month, index] = id.split('-');
 	const item = library.items(`${year}-${month}`)[Number(index)];
 	return {
@@ -251,7 +255,7 @@ function detail(id: string, favorites: Set<string>) {
 		userTags: ['familia'],
 		autoTags: ['playa'],
 		syncStatus: 'Synced',
-		isFavorite: favorites.has(id) || item.isFavorite,
+		isFavorite: favorites.get(id) ?? item.isFavorite,
 		isArchived: false,
 		isFileMissing: false,
 		caption: null,
