@@ -1,20 +1,14 @@
 package com.photonne.app.ui.actions
 
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.convert
 import kotlinx.cinterop.useContents
-import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import platform.CoreGraphics.CGRectMake
-import platform.Foundation.NSData
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
-import platform.Foundation.create
-import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIViewController
@@ -51,13 +45,10 @@ actual class AssetSharing {
 
     /** Same private temp directory the share sheet already fed from: iOS
      *  never writes to Photos unless the user picks "Save Image" there. */
-    actual suspend fun stageForShare(
-        bytes: ByteArray,
+    actual suspend fun openShareStage(
         fileName: String,
         mimeType: String
-    ): SavedAssetFile = withContext(Dispatchers.Default) {
-        writeToShareDir(bytes = bytes, fileName = fileName, mimeType = mimeType)
-    }
+    ): DownloadSink = openDownload(fileName, mimeType)
 
     actual suspend fun clearShareCache() = withContext(Dispatchers.Default) {
         val manager = NSFileManager.defaultManager
@@ -135,29 +126,6 @@ actual class AssetSharing {
     // Keep the suggested name (apps show it) but neutralise path separators.
     private fun safeFileName(fileName: String): String =
         fileName.replace('/', '_').ifBlank { "shared" }
-
-    private fun writeToShareDir(
-        bytes: ByteArray,
-        fileName: String,
-        mimeType: String
-    ): SavedAssetFile {
-        ensureShareDir()
-        val safeName = safeFileName(fileName)
-        val path = "${shareDirPath()}/$safeName"
-        val data = bytes.toNSData()
-        if (!data.writeToFile(path, atomically = true)) {
-            throw AssetSharingUnavailable("Could not stage $safeName for sharing")
-        }
-        return SavedAssetFile(path = path, displayName = safeName, mimeType = mimeType)
-    }
-}
-
-@OptIn(ExperimentalForeignApi::class)
-private fun ByteArray.toNSData(): NSData {
-    if (isEmpty()) return NSData()
-    return usePinned { pinned ->
-        NSData.create(bytes = pinned.addressOf(0), length = size.convert())
-    }
 }
 
 @OptIn(ExperimentalForeignApi::class)

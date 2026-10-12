@@ -572,7 +572,15 @@ interface PhotonneApi {
         format: DownloadFormat? = null,
         consume: suspend (DownloadHead, ByteReadChannel) -> T
     ): T
-    suspend fun getAssetContent(assetId: String, format: DownloadFormat? = null): AssetContentBytes
+    /**
+     * Streams one asset's file into [consume], like [streamAssetsZip]: a
+     * video original never sits whole in memory.
+     */
+    suspend fun <T> streamAssetContent(
+        assetId: String,
+        format: DownloadFormat? = null,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T
     suspend fun getDownloadOptions(assetIds: List<String>): DownloadOptions
     suspend fun uploadAsset(
         fileName: String,
@@ -1328,24 +1336,23 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun getAssetContent(assetId: String, format: DownloadFormat?): AssetContentBytes {
-        val response: HttpResponse =
-            client.get("$baseUrl/api/assets/$assetId/content") {
-                parameter("download", true)
-                format?.let { parameter("format", it.apiValue) }
-            }
+    override suspend fun <T> streamAssetContent(
+        assetId: String,
+        format: DownloadFormat?,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T = client.prepareGet("$baseUrl/api/assets/$assetId/content") {
+        parameter("download", true)
+        format?.let { parameter("format", it.apiValue) }
+    }.execute { response ->
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Asset content fetch failed (${response.status.value})")
         }
-        val contentType = response.headers[HttpHeaders.ContentType]
-            ?: "application/octet-stream"
-        val suggested = response.headers[HttpHeaders.ContentDisposition]
-            ?.let(::parseContentDispositionFilename)
-            ?: "photonne_$assetId"
-        return AssetContentBytes(
-            bytes = response.body(),
-            mimeType = contentType,
-            suggestedFileName = suggested
+        consume(
+            response.downloadHead(
+                fallbackName = "photonne_$assetId",
+                fallbackMimeType = "application/octet-stream"
+            ),
+            response.bodyAsChannel()
         )
     }
 

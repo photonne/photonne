@@ -2,7 +2,6 @@ package com.photonne.app.data.actions
 
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.api.PhotonneApi
-import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.DownloadFormat
 import com.photonne.app.data.models.DownloadHead
 import com.photonne.app.data.models.DownloadOptions
@@ -40,11 +39,15 @@ class AssetActionsRepository(
     ): T = api.streamAssetsZip(assetIds, fileName, format, consume)
 
     /**
-     * One asset's file. [format] only matters for a RAW or HEIC/HEIF; null is
-     * what the server did before there was a choice (HEIC as JPG, RAW as it is).
+     * Streams one asset's file into [consume]. [format] only matters for a
+     * RAW or HEIC/HEIF; null is what the server did before there was a choice
+     * (HEIC as JPG, RAW as it is).
      */
-    suspend fun downloadAsset(assetId: String, format: DownloadFormat? = null): AssetContentBytes =
-        api.getAssetContent(assetId, format)
+    suspend fun <T> downloadAsset(
+        assetId: String,
+        format: DownloadFormat? = null,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T = api.streamAssetContent(assetId, format, consume)
 
     /**
      * Creates a brand-new album with the given assets and returns a
