@@ -147,8 +147,8 @@ public sealed class TimelineBucketsTests : IntegrationTestBase
             "/api/assets/timeline/buckets/2026-02");
 
         // 2026-01-31T23:59:59Z belongs to January; 2026-02-01T00:00:00Z to February.
-        Assert.Single(january!);
-        Assert.Equal(new DateTime(2026, 1, 31, 23, 59, 59, DateTimeKind.Utc), january[0].FileCreatedAt);
+        var lastOfJanuary = Assert.Single(january!);
+        Assert.Equal(new DateTime(2026, 1, 31, 23, 59, 59, DateTimeKind.Utc), lastOfJanuary.FileCreatedAt);
         Assert.Contains(february!, i => i.FileCreatedAt == new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc));
     }
 

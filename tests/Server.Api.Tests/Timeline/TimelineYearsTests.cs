@@ -74,7 +74,8 @@ public sealed class TimelineYearsTests : IntegrationTestBase
 
         var years = await client.GetFromJsonAsync<List<YearEntry>>("/api/assets/timeline/years");
 
-        Assert.Equal(new[] { 2026, 2025 }, years!.Select(y => y.Year));
+        Assert.NotNull(years);
+        Assert.Equal(new[] { 2026, 2025 }, years.Select(y => y.Year));
         var y2026 = years[0];
         Assert.Equal(2, y2026.Count);
         // Newest first within the year.
