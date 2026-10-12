@@ -9,6 +9,7 @@ import {
 	isStrongPassword,
 	isValidUsername,
 	matchesQuery,
+	newUserQuota,
 	nextSort,
 	passwordChecks,
 	quotaLevel,
@@ -90,6 +91,18 @@ describe('users', () => {
 		expect(formToQuota({ choice: '50', customGb: 3 })).toBe(50 * GIB);
 		expect(formToQuota({ choice: 'custom', customGb: 3 })).toBe(3 * GIB);
 		expect(formToQuota({ choice: 'custom', customGb: 0 })).toBeNull();
+	});
+
+	it('creates with the default quota unless the admin moved it', () => {
+		const fiveGb = quotaToForm(5 * GIB);
+		const unlimited = quotaToForm(null);
+
+		expect(newUserQuota(fiveGb, fiveGb)).toBeNull();
+		expect(newUserQuota(unlimited, unlimited)).toBeNull();
+		expect(newUserQuota(unlimited, fiveGb)).toBe(-1);
+		expect(newUserQuota({ choice: 'custom', customGb: 0 }, fiveGb)).toBe(-1);
+		expect(newUserQuota(quotaToForm(10 * GIB), fiveGb)).toBe(10 * GIB);
+		expect(newUserQuota(fiveGb, unlimited)).toBe(5 * GIB);
 	});
 
 	it('measures quota use', () => {

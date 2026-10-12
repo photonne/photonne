@@ -378,7 +378,9 @@ const handle: FakeHandler = async (context) => {
 			isPrimaryAdmin: false,
 			createdAt: new Date().toISOString(),
 			lastLoginAt: null,
-			storageQuotaBytes: request.storageQuotaBytes ?? null
+			// Like the server: null takes the default (10 GB), -1 is no quota.
+			storageQuotaBytes:
+				request.storageQuotaBytes === -1 ? null : (request.storageQuotaBytes ?? 10 * GIB)
 		};
 		data.users.push(created);
 		return ok(context, 201, created);

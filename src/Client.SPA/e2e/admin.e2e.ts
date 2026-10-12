@@ -97,8 +97,27 @@ test.describe('users', () => {
 			username: 'pablo',
 			role: 'Admin',
 			isActive: true,
-			storageQuotaBytes: 10 * 1024 ** 3
+			// Left at the default, so the server applies its own.
+			storageQuotaBytes: null
 		});
+	});
+
+	test('creates a user without quota even when there is a default', async ({ page }) => {
+		const api = await fakeAdminApi(page);
+		await page.goto('/admin/users');
+
+		await page.getByRole('button', { name: 'Nuevo usuario' }).click();
+		const dialog = page.getByRole('dialog', { name: 'Nuevo usuario' });
+		await expect(dialog.getByLabel('Cuota de almacenamiento')).toHaveValue('10');
+		await dialog.getByLabel('Nombre de usuario').fill('nuria');
+		await dialog.getByLabel('Correo electrónico').fill('nuria@photonne.test');
+		await dialog.getByLabel('Contraseña', { exact: true }).fill('Secreto-2026');
+		await dialog.getByLabel('Cuota de almacenamiento').selectOption('unlimited');
+		await dialog.getByRole('button', { name: 'Crear usuario' }).click();
+
+		await expect(page.getByText('Se ha creado «nuria»')).toBeVisible();
+		const sent = admin(api.state).sent.find((r) => r.method === 'POST' && r.path === '/api/users');
+		expect(sent?.body).toMatchObject({ username: 'nuria', storageQuotaBytes: -1 });
 	});
 
 	test('renames a user after showing what changes', async ({ page }) => {
