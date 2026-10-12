@@ -220,28 +220,64 @@ public sealed class ShareUploadTests : IntegrationTestBase
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(uploaded!.ThumbnailUrl)).StatusCode);
     }
 
-    [Fact]
-    public async Task GuestUpload_DuplicateOfAnotherUsersPhoto_ReturnsNoAsset()
+    private async Task<Guid> SeedAssetWithFixtureChecksumAsync(TestUser user, DateTime? deletedAt = null)
     {
-        var (_, _, token) = await CreateUploadLinkAsync();
-        var stranger = await CreateUserAsync();
         var checksum = await new FileHashService().CalculateFileHashAsync(FixturePaths.WithExif);
-        await WithDbContextAsync(async db =>
+        return await WithDbContextAsync(async db =>
         {
-            db.Assets.Add(new Asset
+            var asset = new Asset
             {
                 FileName = "theirs.jpg",
-                FullPath = $"/assets/users/{stranger.Username}/theirs.jpg",
+                FullPath = $"/assets/users/{user.Username}/theirs.jpg",
                 FileSize = 1,
                 Checksum = checksum,
                 Type = AssetType.Image,
                 Extension = ".jpg",
                 FileCreatedAt = DateTime.UtcNow,
                 FileModifiedAt = DateTime.UtcNow,
-                OwnerId = stranger.Id
-            });
+                OwnerId = user.Id,
+                DeletedAt = deletedAt
+            };
+            db.Assets.Add(asset);
             await db.SaveChangesAsync();
+            return asset.Id;
         });
+    }
+
+    [Fact]
+    public async Task GuestUpload_DuplicateOfAnotherUsersPhoto_IsStoredForTheOwner_AndSaysNothingAboutIt()
+    {
+        var (owner, albumId, token) = await CreateUploadLinkAsync();
+        var stranger = await CreateUserAsync();
+        var theirs = await SeedAssetWithFixtureChecksumAsync(stranger);
+
+        var client = CreateClient();
+        using var form = BuildMultipart(FixturePaths.WithExif);
+        var response = await client.PostAsync($"/api/share/{token}/upload", form);
+        response.EnsureSuccessStatusCode();
+
+        // The same answer as a file nobody had: whoever holds the link can't
+        // tell that another library has it.
+        var body = await response.Content.ReadFromJsonAsync<UploadBody>();
+        Assert.Equal("Asset uploaded successfully", body!.Message);
+        Assert.NotNull(body.Asset);
+        Assert.NotEqual(theirs, body.Asset!.Id);
+
+        await WithDbContextAsync(async db =>
+        {
+            var stored = await db.Assets.AsNoTracking().SingleAsync(a => a.Id == body.Asset.Id);
+            Assert.Equal(owner.Id, stored.OwnerId);
+            var inAlbum = await db.AlbumAssets.AsNoTracking()
+                .Where(aa => aa.AlbumId == albumId).Select(aa => aa.AssetId).ToListAsync();
+            Assert.Equal([stored.Id], inAlbum);
+        });
+    }
+
+    [Fact]
+    public async Task GuestUpload_DuplicateOfAPhotoTheOwnerTrashed_IsStoredAgain()
+    {
+        var (owner, albumId, token) = await CreateUploadLinkAsync();
+        var trashed = await SeedAssetWithFixtureChecksumAsync(owner, deletedAt: DateTime.UtcNow);
 
         var client = CreateClient();
         using var form = BuildMultipart(FixturePaths.WithExif);
@@ -249,7 +285,9 @@ public sealed class ShareUploadTests : IntegrationTestBase
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadFromJsonAsync<UploadBody>();
-        Assert.Null(body!.Asset);
-        Assert.Equal(0, await WithDbContextAsync(db => db.AlbumAssets.AsNoTracking().CountAsync()));
+        Assert.NotNull(body!.Asset);
+        Assert.NotEqual(trashed, body.Asset!.Id);
+        Assert.Equal(1, await WithDbContextAsync(db =>
+            db.AlbumAssets.AsNoTracking().CountAsync(aa => aa.AlbumId == albumId)));
     }
 }

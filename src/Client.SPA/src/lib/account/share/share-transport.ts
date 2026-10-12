@@ -12,7 +12,7 @@ import {
  * Guest uploads through a photo-request link (`/api/share/{token}/upload`):
  * no session, the link's password in the form, and an optional name the
  * owner files the photos under. There is no checksum lookup for guests; the
- * server still drops exact duplicates on arrival.
+ * server still drops exact duplicates of the owner's own photos on arrival.
  *
  * The server answers with the photo as the link's page lists it, when the
  * page shows it: [onshown] gets it, so the page adds it without opening the
