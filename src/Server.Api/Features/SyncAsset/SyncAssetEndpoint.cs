@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.UploadAssets;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
@@ -61,33 +62,11 @@ public class SyncAssetEndpoint : IEndpoint
 
         var currentFileInfo = new FileInfo(path);
 
-        // Enforce global max upload size (ServerSettings.MaxUploadSizeMb). 0 = unlimited.
-        var maxUploadRaw = await settingsService.GetSettingAsync(
-            "ServerSettings.MaxUploadSizeMb", Guid.Empty, "0");
-        if (int.TryParse(maxUploadRaw, out var maxUploadMb) && maxUploadMb > 0)
-        {
-            var maxBytes = (long)maxUploadMb * 1024L * 1024L;
-            if (currentFileInfo.Length > maxBytes)
-            {
-                return TypedResults.Json(
-                    new ApiError($"File exceeds the maximum allowed size ({maxUploadMb} MB).", "upload_too_large"),
-                    statusCode: StatusCodes.Status413PayloadTooLarge);
-            }
-        }
-
-        // Enforce per-user storage quota.
-        var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
-        if (dbUser?.StorageQuotaBytes.HasValue == true)
-        {
-            var usedBytes = await dbContext.Assets
-                .Where(a => a.OwnerId == userId && a.DeletedAt == null)
-                .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
-
-            if (usedBytes + currentFileInfo.Length > dbUser.StorageQuotaBytes.Value)
-                return TypedResults.Json(
-                    new ApiError("Storage quota exceeded.", "storage_quota_exceeded"),
-                    statusCode: StatusCodes.Status409Conflict);
-        }
+        // Same limits (and messages) as /upload: global max size and the
+        // user's storage quota.
+        var limitError = await UploadAssetsEndpoint.CheckUploadLimitsAsync(
+            dbContext, settingsService, userId, currentFileInfo.Length, cancellationToken);
+        if (limitError != null) return limitError;
 
         // Resolve and prepare the destination folder (mirrors /upload's MobileBackup branch).
         // Optional per-device subfolder keeps multi-phone backups visually grouped.
