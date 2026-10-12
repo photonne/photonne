@@ -252,16 +252,36 @@ chown -R 1654:1654 /ruta/del/volumen/assets   # o tu PUID:PGID
 
 ### "Archivo demasiado grande" (413) al subir vídeos
 
-Tres límites posibles, en orden de comprobación:
+La app distingue quién rechaza el archivo:
 
-1. **`ServerSettings.MaxUploadSizeMb`** (Admin → Servidor): el único límite de
-   producto. `0` = sin límite (default).
-2. **Plataforma ASP.NET**: en imágenes anteriores a este fix, Kestrel cortaba
-   en ~28,6 MB y multipart en 128 MB aunque `MaxUploadSizeMb` fuera 0.
-   Corregido: fuera del modo demo ambos quedan sin límite. Requiere la imagen
-   actualizada.
-3. **Reverse proxy**: si tienes nginx/traefik/Caddy delante, su límite de body
-   aplica antes de llegar a Photonne (`client_max_body_size` en nginx, p. ej.).
+- **"Supera el tamaño máximo de Photonne"**: lo ha rechazado Photonne. El
+  detalle trae su mensaje con los MB. Hay dos orígenes posibles:
+  1. **`ServerSettings.MaxUploadSizeMb`** (Admin → Servidor): el único límite de
+     producto. `0` = sin límite (default).
+  2. **Modo demo**: corta cualquier petición de más de 25 MB.
+- **"Rechazado por tamaño en un proxy"**: el 413 no viene de Photonne, sino de
+  lo que tengas delante (nginx, Nginx Proxy Manager, el proxy inverso de
+  Synology, Traefik, Caddy…). Se comprueba subiendo por la red local
+  (`http://IP:1107`): si así funciona, es el proxy.
+
+En nginx el límite es `client_max_body_size`, 1 MB por defecto. En el bloque que
+apunta a Photonne (en Nginx Proxy Manager: Proxy Host → Edit → Advanced →
+Custom Nginx Configuration):
+
+```nginx
+client_max_body_size 0;          # sin límite (o p. ej. 20G)
+proxy_request_buffering off;     # pasa el archivo a Photonne según llega
+proxy_read_timeout 3600s;
+proxy_send_timeout 3600s;
+```
+
+Cloudflare con el proxy activado (nube naranja) corta en 100 MB en el plan
+gratuito, y ningún ajuste del servidor lo evita: hay que poner ese registro en
+"solo DNS" o subir por la red local.
+
+En imágenes anteriores al fix de límites de plataforma, Kestrel cortaba en
+~28,6 MB y multipart en 128 MB aunque `MaxUploadSizeMb` fuera 0. Fuera del modo
+demo, ahora ambos quedan sin límite.
 
 ### "He subido una foto pero no veo el thumbnail"
 

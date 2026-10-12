@@ -146,7 +146,7 @@ Puntos con más de una salida, que piden diagnóstico y opciones antes de tocar:
 - [x] **35. Backup** (S-M). *Parcial (`733c4a0`): el aviso de permiso denegado sube a una tarjeta visible con Permitir y Abrir ajustes, y el permiso se relee en cada ON_RESUME. Pendiente: "esperando Wi-Fi y carga" sigue saliendo de las preferencias en vez del estado real del dispositivo.* Antes:
   - `devicebackup/BackupScreen.kt:343-351`: el aviso de permiso denegado está en la sección "Ajustes", plegada por defecto (`:194`). `androidMain/.../NotificationPermission.android.kt:22-35`: `granted` no se relee al volver. Sin enlace a los ajustes del sistema.
   - `BackupScreen.kt:749-761`: "esperando Wi-Fi y carga" sale de las preferencias, no del estado del dispositivo.
-- [x] **36. Subida manual** (M; L en streaming). *Parcial (`733c4a0` + `6a148d2`): el mensaje del límite ya no está en inglés, el banner privado pasa a `UploadErrorBanner` y los botones tienen descripción. Pendiente: progreso determinado por archivo y subida en streaming (el límite de 200 MB viene de cargar en RAM).* Antes: `upload/UploadScreen.kt:191-214` `ErrorBanner` privado; `:342,349,352,211` botones sin descripción; `:244-249` progreso indeterminado; `:292-299` Hecho y Omitido solo cambian de tinte; `UploadViewModel.kt:75` texto en inglés; `:220` límite de 200 MB porque va en RAM (`MediaPicker.kt:12`).
+- [x] **36. Subida manual** (M; L en streaming). *Parcial (`733c4a0` + `6a148d2`): el mensaje del límite ya no está en inglés, el banner privado pasa a `UploadErrorBanner` y los botones tienen descripción. Subida en streaming hecha (`a1255aa2`): el archivo se lee por trozos al subir y desaparece el límite de 200 MB, que venía de cargar en RAM; el límite real es `ServerSettings.MaxUploadSizeMb`. Pendiente: progreso determinado por archivo.* Antes: `upload/UploadScreen.kt:191-214` `ErrorBanner` privado; `:342,349,352,211` botones sin descripción; `:244-249` progreso indeterminado; `:292-299` Hecho y Omitido solo cambian de tinte; `UploadViewModel.kt:75` texto en inglés; `:220` límite de 200 MB porque va en RAM (`MediaPicker.kt:12`).
 - [x] **37. Notificaciones** (M, `733c4a0`). Scroll infinito con deduplicación en vez de Anterior/Siguiente; una fila leída y sin `actionUrl` deja de parecer tocable; una ruta sin pantalla nativa lo dice con snackbar; el icono de filtro se describe como "Filtrar notificaciones". *Cerrado (`f9dbf7b`): `GroupKey`/`GroupCount` viajan en la proyección del servidor y en los DTO nativo y web.* Antes: `NotificationsScreen.kt:164-174,332-366` paginación "Anterior / Siguiente"; `:154-157` y `App.kt:2816-2843` todas las filas clicables aunque la `actionUrl` no lleve a nada; `:243` icono de filtro descrito como "Todas"; `GroupCount`/`GroupKey` no existen en el DTO nativo (`data/models/NotificationModels.kt:20-29`).
 
 ## Lote H — Álbumes, carpetas y compartir
@@ -224,8 +224,8 @@ compila android y escritorio, pero no iOS).
 
 - **27 — vídeo**: silencio y estado de error del reproductor (tocar los tres
   `VideoPlayback` actuals). Mantener la pantalla encendida ya está (`b3687b6`).
-- **20 y 36 — streaming**: subida y descarga pasan por memoria, y de ahí sale el
-  límite de 200 MB por archivo.
+- **20 — streaming**: la descarga y el compartir masivos siguen guardando el ZIP
+  entero en memoria. La subida manual (36) ya va en streaming (`a1255aa2`).
 - **35 — backup**: "esperando Wi-Fi y carga" sale de las preferencias, no del
   estado real del dispositivo.
 - **31 — teselas @2x**: obliga a reescalar la matemática mundo↔píxel que el mapa
