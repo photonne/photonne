@@ -1,14 +1,12 @@
-using System.Diagnostics;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Photonne.Server.Api;
+using Photonne.Server.Api.Shared;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Services;
@@ -35,7 +33,7 @@ if (demoEnabled)
 {
     builder.WebHost.ConfigureKestrel(o =>
     {
-        o.Limits.MaxRequestBodySize = 25L * 1024 * 1024;
+        o.Limits.MaxRequestBodySize = DemoModeOptions.MaxRequestBodyBytes;
     });
 }
 else
@@ -183,36 +181,26 @@ if (app.Environment.IsDevelopment())
 // is served in every environment (JSON only; the Scalar UI stays dev-only).
 app.MapOpenApi();
 
+// Demo mode caps the request body (see ConfigureKestrel above); the cap goes
+// into the 413 message so the visitor sees the real figure.
+long? demoMaxRequestBodySize = demoEnabled ? DemoModeOptions.MaxRequestBodyBytes : null;
+
 app.Use(async (context, next) =>
 {
     try
     {
         await next();
+
+        // Minimal API form binding catches Kestrel's "request body too large"
+        // itself and leaves a bare 413. Give it Photonne's ApiError so the apps
+        // don't take it for a proxy's.
+        if (context.Response.StatusCode == StatusCodes.Status413PayloadTooLarge && !context.Response.HasStarted)
+            await ExceptionResponses.WriteRequestTooLargeAsync(context, demoMaxRequestBodySize);
     }
     catch (Exception ex)
     {
-        var problem = new ProblemDetails
-        {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = ex is DbUpdateException ? "Error de base de datos" : "Error interno del servidor"
-        };
-        problem.Extensions["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier;
-
-        if (app.Environment.IsDevelopment())
-        {
-            problem.Detail = ex is DbUpdateException dbEx ? BuildDbErrorDetail(dbEx) : ex.Message;
-            problem.Extensions["stackTrace"] = ex.ToString();
-        }
-        else
-        {
-            // Exception text can carry file paths, SQL and connection details:
-            // it goes to the log, and the client gets the trace id to match it.
-            app.Logger.LogError(ex, "Unhandled exception (traceId {TraceId})", problem.Extensions["traceId"]);
-        }
-
-        context.Response.StatusCode = problem.Status.Value;
-        context.Response.ContentType = "application/problem+json";
-        await context.Response.WriteAsJsonAsync(problem);
+        await ExceptionResponses.WriteAsync(
+            context, ex, demoMaxRequestBodySize, app.Environment.IsDevelopment(), app.Logger);
     }
 });
 
@@ -291,16 +279,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ready" }))
 app.MapSpaFallback();
 
 app.Run();
-
-static string BuildDbErrorDetail(DbUpdateException exception)
-{
-    if (exception.InnerException?.Message is { Length: > 0 } innerMessage)
-    {
-        return $"{exception.Message} | {innerMessage}";
-    }
-
-    return exception.Message;
-}
 
 // Exposes the implicit Program type so WebApplicationFactory<Program> in the
 // integration test project can spin up the real host.
