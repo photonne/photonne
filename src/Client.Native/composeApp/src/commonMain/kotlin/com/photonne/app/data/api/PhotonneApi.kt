@@ -96,6 +96,15 @@ import kotlinx.serialization.json.JsonPrimitive
 internal data class FavoriteResponse(val isFavorite: Boolean)
 
 @Serializable
+internal data class SetFavoriteRequest(val isFavorite: Boolean)
+
+@Serializable
+internal data class SetFavoritesRequest(val assetIds: List<String>, val isFavorite: Boolean)
+
+@Serializable
+internal data class SetFavoritesResponse(val assetIds: List<String>, val isFavorite: Boolean)
+
+@Serializable
 internal data class MotionFramesResponse(val frameCount: Int)
 
 @Serializable
@@ -468,7 +477,19 @@ interface PhotonneApi {
     /** One memory with its assets, in display order (index 0 is the cover). */
     suspend fun getMemory(id: String): MemoryDetail
     suspend fun getAssetDetail(assetId: String): AssetDetail
+    /** Flips the heart (`POST /favorite`). Kept for servers without [setFavorite]. */
     suspend fun toggleFavorite(assetId: String): Boolean
+    /**
+     * Sets the heart to [isFavorite] (`PUT /favorite`) and returns the
+     * server's state. Servers older than the endpoint answer 404/405.
+     */
+    suspend fun setFavorite(assetId: String, isFavorite: Boolean): Boolean
+    /**
+     * Sets the heart of several assets at once (`PUT /api/assets/favorite`).
+     * Returns the ids that now have it: the server leaves out the ones that
+     * are gone or unreadable. Servers older than the endpoint answer 404/405.
+     */
+    suspend fun setFavorites(assetIds: List<String>, isFavorite: Boolean): List<String>
     suspend fun updateAssetDescription(assetId: String, description: String?)
     /** Adds user tags to an asset. Returns the asset's full (merged) tag list. */
     suspend fun addAssetTags(assetId: String, tags: List<String>): List<String>
@@ -1346,6 +1367,29 @@ class PhotonneApiClient(
         }
         val body: FavoriteResponse = response.body()
         return body.isFavorite
+    }
+
+    override suspend fun setFavorite(assetId: String, isFavorite: Boolean): Boolean {
+        val response: HttpResponse = client.put("$baseUrl/api/assets/$assetId/favorite") {
+            contentType(ContentType.Application.Json)
+            setBody(SetFavoriteRequest(isFavorite))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Favorite update failed (${response.status.value})")
+        }
+        return response.body<FavoriteResponse>().isFavorite
+    }
+
+    override suspend fun setFavorites(assetIds: List<String>, isFavorite: Boolean): List<String> {
+        if (assetIds.isEmpty()) return emptyList()
+        val response: HttpResponse = client.put("$baseUrl/api/assets/favorite") {
+            contentType(ContentType.Application.Json)
+            setBody(SetFavoritesRequest(assetIds, isFavorite))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Favorites update failed (${response.status.value})")
+        }
+        return response.body<SetFavoritesResponse>().assetIds
     }
 
     override suspend fun getAlbums(): List<AlbumSummary> {
