@@ -20,6 +20,9 @@ public class UsersEndpoint : IEndpoint
     /// </summary>
     private const string DemoManageableRole = "User";
 
+    /// <summary>The <c>StorageQuotaBytes</c> that means "no quota" on create and update.</summary>
+    private const long UnlimitedQuota = -1;
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/users")
@@ -240,6 +243,11 @@ public class UsersEndpoint : IEndpoint
             return TypedResults.BadRequest(new ApiError(passwordValidation.ErrorMessage!, "invalid_password"));
         }
 
+        if (request.StorageQuotaBytes is < 0 and not UnlimitedQuota)
+        {
+            return TypedResults.BadRequest(new ApiError("The storage quota must be -1 (no quota) or zero or more bytes", "invalid_quota"));
+        }
+
         if (await dbContext.Users.AnyAsync(u => u.Username == request.Username || u.Email == request.Email, cancellationToken))
         {
             return TypedResults.BadRequest(new ApiError("Username or email already exists", "user_already_exists"));
@@ -263,7 +271,14 @@ public class UsersEndpoint : IEndpoint
             LastName = request.LastName,
             Role = isDemo ? DemoManageableRole : request.Role ?? defaultRole,
             IsActive = request.IsActive ?? defaultActive.Equals("true", StringComparison.OrdinalIgnoreCase),
-            StorageQuotaBytes = request.StorageQuotaBytes ?? defaultQuotaBytes,
+            // Same convention as UpdateUser: -1 is "no quota", on purpose, even
+            // when the server has a default; null is "not set", so the default.
+            StorageQuotaBytes = request.StorageQuotaBytes switch
+            {
+                null => defaultQuotaBytes,
+                UnlimitedQuota => null,
+                var bytes => bytes
+            },
             CreatedAt = DateTime.UtcNow
         };
 
@@ -339,7 +354,7 @@ public class UsersEndpoint : IEndpoint
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.Role != null) user.Role = request.Role;
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
-        if (request.StorageQuotaBytes.HasValue) user.StorageQuotaBytes = request.StorageQuotaBytes == -1 ? null : request.StorageQuotaBytes;
+        if (request.StorageQuotaBytes.HasValue) user.StorageQuotaBytes = request.StorageQuotaBytes == UnlimitedQuota ? null : request.StorageQuotaBytes;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -796,7 +811,7 @@ public class CreateUserRequest
     public string? LastName { get; set; }
     public string? Role { get; set; }
     public bool? IsActive { get; set; }
-    /// <summary>Storage quota in bytes. Null uses the global default from UserSettings.</summary>
+    /// <summary>Storage quota in bytes. Null uses the global default from UserSettings; -1 creates the user without a quota even when there is a default.</summary>
     public long? StorageQuotaBytes { get; set; }
 }
 
