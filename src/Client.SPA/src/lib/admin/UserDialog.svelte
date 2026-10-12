@@ -21,10 +21,12 @@
 		GIB,
 		isValidEmail,
 		isValidUsername,
+		newUserQuota,
 		passwordChecks,
 		QUOTA_PRESETS_GB,
 		quotaToForm,
-		type QuotaForm
+		type QuotaForm,
+		UNLIMITED_QUOTA
 	} from './users.js';
 
 	interface Props {
@@ -49,6 +51,8 @@
 	let role = $state<'User' | 'Admin'>('User');
 	let isActive = $state(true);
 	let quota = $state<QuotaForm>({ choice: 'unlimited', customGb: 10 });
+	/** What the quota started at: the server default for a new account. */
+	let initialQuota: QuotaForm = { choice: 'unlimited', customGb: 10 };
 
 	let step = $state<'form' | 'rename'>('form');
 	let preview = $state<RenamePreviewDto | null>(null);
@@ -95,6 +99,9 @@
 		lastName = user?.lastName ?? '';
 		role = user?.role === 'Admin' ? 'Admin' : 'User';
 		isActive = user?.isActive ?? true;
+		// Not read back from `quota`: reset runs inside an effect, and reading
+		// the state it writes would loop.
+		initialQuota = quotaToForm(user?.storageQuotaBytes);
 		quota = quotaToForm(user?.storageQuotaBytes);
 		if (user) opening++;
 		else await loadDefaults();
@@ -121,9 +128,12 @@
 		if (user || current !== opening || !open) return;
 		if (role === initial.role) role = !demo && defaultRole === 'Admin' ? 'Admin' : 'User';
 		if (isActive === initial.isActive) isActive = defaultActive.toLowerCase() !== 'false';
+		const gb = Number.parseInt(defaultQuota, 10);
+		const defaultBytes = Number.isFinite(gb) && gb > 0 ? gb * GIB : null;
+		// The baseline "left untouched" compares against: the server's default.
+		initialQuota = quotaToForm(defaultBytes);
 		if (quota.choice === initial.quota.choice && quota.customGb === initial.quota.customGb) {
-			const gb = Number.parseInt(defaultQuota, 10);
-			quota = quotaToForm(Number.isFinite(gb) && gb > 0 ? gb * GIB : null);
+			quota = quotaToForm(defaultBytes);
 		}
 	}
 
@@ -160,7 +170,6 @@
 			firstName: firstName.trim() || null,
 			lastName: lastName.trim() || null
 		};
-		const quotaBytes = formToQuota(quota);
 		const result = user
 			? await updateUser({
 					path: { id: user.id! },
@@ -169,11 +178,17 @@
 						// The server refuses these for the primary admin even unchanged.
 						role: protectedUser ? null : role,
 						isActive: protectedUser ? null : isActive,
-						storageQuotaBytes: quotaBytes ?? -1
+						storageQuotaBytes: formToQuota(quota) ?? UNLIMITED_QUOTA
 					}
 				})
 			: await createUser({
-					body: { ...common, password, role, isActive, storageQuotaBytes: quotaBytes }
+					body: {
+						...common,
+						password,
+						role,
+						isActive,
+						storageQuotaBytes: newUserQuota(quota, initialQuota)
+					}
 				});
 		saving = false;
 		if (result.data) {

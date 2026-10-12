@@ -139,6 +139,21 @@ export function quotaLevel(
 	return share >= QUOTA_WARNING_SHARE ? 'warning' : 'ok';
 }
 
+/** What `storageQuotaBytes` means "no quota" on create and update. */
+export const UNLIMITED_QUOTA = -1;
+
+/**
+ * The quota a new account is created with. The form starts at the server's
+ * default ([initial]); left there, null lets the server apply its default.
+ * Moved off it, the choice is sent, and "unlimited" goes as -1 so the server
+ * doesn't put its default back.
+ */
+export function newUserQuota(form: QuotaForm, initial: QuotaForm): number | null {
+	const bytes = formToQuota(form);
+	if (bytes === formToQuota(initial)) return null;
+	return bytes ?? UNLIMITED_QUOTA;
+}
+
 /** 0–1 share of the quota in use, or null when there is no quota. */
 export function quotaShare(used: number | null, quota: number | null | undefined) {
 	if (!quota || quota <= 0 || used === null) return null;
