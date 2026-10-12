@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.data.error.UiError
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.settings.RecentDestinationsStore
 import com.photonne.app.resources.Res
@@ -78,6 +79,9 @@ import com.photonne.app.ui.theme.Spacing
  * la nav flotante con su botón de confirmar inalcanzable.
  *
  * @param destinations writable move-destination folders (from the folders VM).
+ * @param destinationsLoading / [destinationsError] / [onRetryDestinations] let
+ *   the destination picker tell a load in progress or a failed one from a real
+ *   empty list, like the other folder pickers.
  * @param reviewOpen true mientras la revisión tapa la pantalla: el cromo se
  *   retira para no flotar sobre el overlay.
  */
@@ -86,6 +90,9 @@ fun OrganizeRuleScreen(
     title: String,
     onBack: () -> Unit,
     destinations: List<FolderSummary>,
+    destinationsLoading: Boolean = false,
+    destinationsError: UiError? = null,
+    onRetryDestinations: (() -> Unit)? = null,
     viewModel: OrganizeRuleViewModel = koinViewModel(),
     onChromeVisibleChange: (Boolean) -> Unit = {},
     reviewOpen: Boolean = false,
@@ -207,6 +214,9 @@ fun OrganizeRuleScreen(
         FolderPickerDialog(
             title = stringResource(Res.string.organize_move_destination_label),
             folders = destinations,
+            isLoading = destinationsLoading,
+            loadError = destinationsError,
+            onRetry = onRetryDestinations,
             isSubmitting = false,
             includeRoot = false,
             initialSelectionId = state.targetFolderId,

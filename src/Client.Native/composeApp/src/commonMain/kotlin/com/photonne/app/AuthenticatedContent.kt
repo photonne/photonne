@@ -797,6 +797,9 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     onBack = { appState.moreSubscreen = MoreSubscreen.OrganizeInbox },
                     onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                     destinations = foldersState.moveDestinations,
+                    destinationsLoading = foldersState.isLoading,
+                    destinationsError = foldersState.error,
+                    onRetryDestinations = foldersViewModel::refresh,
                     viewModel = organizeRuleViewModel,
                     reviewOpen = organizeRuleState.reviewGroups != null
                 )
