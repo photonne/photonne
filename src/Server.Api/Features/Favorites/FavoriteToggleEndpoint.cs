@@ -1,7 +1,7 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -21,14 +21,15 @@ public class FavoriteToggleEndpoint : IEndpoint
 
     private async Task<Results<Ok<FavoriteToggleResponse>, NotFound<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AssetVisibilityService visibility,
         [FromRoute] Guid assetId,
-        ClaimsPrincipal user,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var asset = await dbContext.Assets
             .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, cancellationToken);
 
-        if (asset == null)
+        if (asset == null || !await visibility.CanReadAsync(httpContext.User, asset, cancellationToken))
             return TypedResults.NotFound(new ApiError($"Asset {assetId} not found", "asset_not_found"));
 
         asset.IsFavorite = !asset.IsFavorite;
