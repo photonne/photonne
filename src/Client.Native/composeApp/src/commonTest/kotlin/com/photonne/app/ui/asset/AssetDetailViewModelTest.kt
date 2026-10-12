@@ -52,11 +52,17 @@ class AssetDetailViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    /** Fake server holding one asset's favorite flag; POST /favorite toggles it. */
+    /**
+     * Fake server holding one asset's favorite flag: PUT /favorite sets it,
+     * POST /favorite toggles it. Without [supportsPut] it's a server older
+     * than the PUT, which answers 405.
+     */
     private class FakeServer {
         var favorite = false
+        var supportsPut = true
         var favoritePosts = 0
-        /** When set, every POST /favorite parks until it completes. */
+        var favoritePuts = 0
+        /** When set, every favorite request parks until it completes. */
         var postGate: CompletableDeferred<Unit>? = null
     }
 
@@ -80,6 +86,18 @@ class AssetDetailViewModelTest {
             val path = request.url.encodedPath
             val json = headersOf(HttpHeaders.ContentType, "application/json")
             when {
+                request.method == HttpMethod.Put && path == "/api/assets/a/favorite" -> {
+                    server.postGate?.await()
+                    if (!server.supportsPut) {
+                        respond(ByteReadChannel(""), HttpStatusCode.MethodNotAllowed)
+                    } else {
+                        server.favoritePuts++
+                        val body = (request.body as io.ktor.http.content.OutgoingContent.ByteArrayContent)
+                            .bytes().decodeToString()
+                        server.favorite = "true" in body
+                        respond(ByteReadChannel("""{"isFavorite":${server.favorite}}"""), HttpStatusCode.OK, json)
+                    }
+                }
                 request.method == HttpMethod.Post && path == "/api/assets/a/favorite" -> {
                     server.postGate?.await()
                     server.favoritePosts++
@@ -137,6 +155,24 @@ class AssetDetailViewModelTest {
 
         assertTrue(committed.await())
         assertTrue(server.favorite)
+        assertEquals(1, server.favoritePuts)
+        assertEquals(0, server.favoritePosts)
+        assertTrue(vm.state.value.detail!!.isFavorite)
+    }
+
+    @Test
+    fun on_an_older_server_a_stale_copy_is_toggled_twice_to_the_asked_heart() = vms.runTest {
+        val server = FakeServer().apply { supportsPut = false }
+        val vm = build(server, AssetMutationBus())
+        vm.select("a")
+        vm.state.first { it.detail?.id == "a" }
+
+        server.favorite = true
+        val committed = CompletableDeferred<Boolean>()
+        vm.toggleFavorite("a") { committed.complete(it) }
+
+        assertTrue(committed.await())
+        assertTrue(server.favorite)
         assertEquals(2, server.favoritePosts)
         assertTrue(vm.state.value.detail!!.isFavorite)
     }
@@ -156,7 +192,7 @@ class AssetDetailViewModelTest {
         gate.complete(Unit)
 
         assertTrue(committed.await())
-        assertEquals(1, server.favoritePosts)
+        assertEquals(1, server.favoritePuts)
         assertTrue(server.favorite)
     }
 

@@ -1,12 +1,20 @@
 package com.photonne.app.data.asset
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.api.PhotonneApiException
+import com.photonne.app.data.api.serverCode
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PersonAssetsPage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Instant
 
 class AssetDetailRepository(
@@ -39,10 +47,81 @@ class AssetDetailRepository(
 
     suspend fun getUserTags(): List<String> = api.getUserTags()
 
-    suspend fun toggleFavorite(assetId: String): Boolean =
-        api.toggleFavorite(assetId).also { isFavorite ->
-            mutationBus.emit(AssetMutation.FavoriteChanged(assetId, isFavorite))
+    /**
+     * Whether the server has the absolute favorite endpoints. Starts hopeful;
+     * the first 404/405 from a server older than them switches to the toggle
+     * for the rest of this session, so each tap isn't two requests.
+     */
+    private var absoluteFavorite = true
+
+    /**
+     * Sets the heart of [assetId] to [isFavorite] and returns the server's
+     * state, which every list hears through `FavoriteChanged`.
+     *
+     * Servers without `PUT /favorite` only toggle: the heart the user saw is
+     * then the target, and if the server answers the opposite (our copy was
+     * stale) it's toggled once more.
+     */
+    suspend fun setFavorite(assetId: String, isFavorite: Boolean): Boolean {
+        val confirmed = if (absoluteFavorite) {
+            try {
+                api.setFavorite(assetId, isFavorite)
+            } catch (error: PhotonneApiException) {
+                if (!error.isMissingEndpoint()) throw error
+                absoluteFavorite = false
+                toggleTowards(assetId, isFavorite)
+            }
+        } else {
+            toggleTowards(assetId, isFavorite)
         }
+        mutationBus.emit(AssetMutation.FavoriteChanged(assetId, confirmed))
+        return confirmed
+    }
+
+    /**
+     * Sets the heart of several assets in one request and returns the ids
+     * that now have it; the rest failed (gone, unreadable, or a request that
+     * didn't go through on an older server, which goes one by one).
+     */
+    suspend fun setFavorites(assetIds: List<String>, isFavorite: Boolean): Set<String> {
+        if (assetIds.isEmpty()) return emptySet()
+        if (absoluteFavorite) {
+            try {
+                val confirmed = api.setFavorites(assetIds, isFavorite).toSet()
+                confirmed.forEach { mutationBus.emit(AssetMutation.FavoriteChanged(it, isFavorite)) }
+                return confirmed
+            } catch (error: PhotonneApiException) {
+                if (!error.isMissingEndpoint()) throw error
+                absoluteFavorite = false
+            }
+        }
+        val gate = Semaphore(4)
+        return coroutineScope {
+            assetIds.map { id ->
+                async {
+                    gate.withPermit {
+                        val now = runCatching { setFavorite(id, isFavorite) }
+                            .onFailure { if (it is CancellationException) throw it }
+                            .getOrNull()
+                        id.takeIf { now == isFavorite }
+                    }
+                }
+            }.awaitAll().filterNotNull().toSet()
+        }
+    }
+
+    private suspend fun toggleTowards(assetId: String, isFavorite: Boolean): Boolean {
+        val now = api.toggleFavorite(assetId)
+        return if (now == isFavorite) now else api.toggleFavorite(assetId)
+    }
+
+    /**
+     * A server older than the endpoint: 405 when the route exists for another
+     * method, 404 when it doesn't exist at all. A 404 that names the asset
+     * (`asset_not_found`) comes from a server that has it.
+     */
+    private fun PhotonneApiException.isMissingEndpoint(): Boolean =
+        status == 405 || (status == 404 && serverCode == null)
 
     suspend fun archive(assetIds: List<String>) {
         api.archiveAssets(assetIds)

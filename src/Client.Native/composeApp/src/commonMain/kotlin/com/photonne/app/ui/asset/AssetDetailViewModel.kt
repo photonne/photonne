@@ -105,8 +105,9 @@ class AssetDetailViewModel(
     private fun onMutation(event: AssetMutation) {
         when (event) {
             is AssetMutation.FavoriteChanged -> {
-                // Our own toggle reconciles in its onSuccess; while it's out,
-                // the intermediate echo of a double toggle must not flicker.
+                // Our own request reconciles in its onSuccess; while it's out,
+                // the intermediate echo of an older server's double toggle
+                // must not flicker.
                 if (event.assetId !in favoriteInFlight) applyFavorite(event.assetId, event.isFavorite)
             }
             // The event carries the timeline's capture instant, not the EXIF
@@ -438,12 +439,11 @@ class AssetDetailViewModel(
      * [onCommitted] so callers (e.g. App) can propagate it to the
      * timeline grid.
      *
-     * The server only offers a relative toggle (POST /favorite), so the
-     * heart the user saw is turned into an absolute target: if the server
-     * answers the opposite (our copy was stale), it's toggled once more —
-     * the same trick as the bulk favorite action. Taps while a request for
-     * the same asset is out are ignored: two toggles racing would cancel
-     * each other on the server.
+     * The heart the user saw is turned into an absolute target, so a stale
+     * copy still lands where they asked (the repository falls back to the
+     * toggle on servers without `PUT /favorite`). Taps while a request for
+     * the same asset is out are ignored: two requests racing could reach the
+     * server in either order.
      */
     fun toggleFavorite(assetId: String, onCommitted: (Boolean) -> Unit) {
         if (assetId in favoriteInFlight) return
@@ -457,11 +457,7 @@ class AssetDetailViewModel(
 
         viewModelScope.launch {
             try {
-                runCatching {
-                    var now = repository.toggleFavorite(assetId)
-                    if (now != target) now = repository.toggleFavorite(assetId)
-                    now
-                }
+                runCatching { repository.setFavorite(assetId, target) }
                     .onSuccess { confirmed ->
                         if (confirmed != target) applyFavorite(assetId, confirmed)
                         onCommitted(confirmed)
