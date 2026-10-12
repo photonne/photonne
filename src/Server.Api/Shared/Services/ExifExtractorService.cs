@@ -490,6 +490,10 @@ public class ExifExtractorService
     private static (long Start, long End)? FindBox(Stream stream, long start, long end, string type)
     {
         Span<byte> header = stackalloc byte[8];
+        // Out of the loop: stack space taken inside it is only given back when
+        // the method returns, so a file with enough 64-bit boxes would
+        // overflow the stack.
+        Span<byte> large = stackalloc byte[8];
         var target = System.Text.Encoding.Latin1.GetBytes(type);
         var position = start;
         while (position + 8 <= end)
@@ -500,7 +504,6 @@ public class ExifExtractorService
             var headerSize = 8L;
             if (size == 1)
             {
-                Span<byte> large = stackalloc byte[8];
                 if (stream.Read(large) < 8) return null;
                 size = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(large);
                 headerSize = 16;
