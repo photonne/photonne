@@ -8,6 +8,7 @@ using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
+using Photonne.Server.Api.Shared.Services.SmartAlbums;
 
 namespace Photonne.Server.Api.Features.Share;
 
@@ -50,6 +51,7 @@ public class ShareUploadEndpoint : IEndpoint
         [FromServices] SettingsService settingsService,
         [FromServices] INotificationService notificationService,
         [FromServices] IMemoryCache cache,
+        [FromServices] SmartAlbumResolver smartResolver,
         [FromServices] ILogger<ShareUploadEndpoint> logger,
         CancellationToken cancellationToken)
     {
@@ -138,12 +140,13 @@ public class ShareUploadEndpoint : IEndpoint
                 // Duplicado exacto. Si el asset ya es del dueño del enlace, lo
                 // enlazamos igualmente al álbum para que el invitado lo vea; si
                 // pertenece a OTRO usuario no lo tocamos (enlazarlo expondría
-                // contenido ajeno en una página pública). Sin assetId en la
-                // respuesta: un visitante anónimo no necesita ids internos.
+                // contenido ajeno en una página pública). La respuesta solo
+                // describe lo que la página del enlace ya puede mostrar.
                 if (existingAsset.OwnerId == owner.Id && existingAsset.DeletedAt == null)
                     await AddToAlbumAsync(dbContext, cache, link, existingAsset.Id, owner.Id, cancellationToken);
 
-                return TypedResults.Ok(new ShareUploadResponse("Asset already exists"));
+                return TypedResults.Ok(new ShareUploadResponse("Asset already exists",
+                    await SharedAssetAsync(dbContext, smartResolver, link, existingAsset.Id, pw, cancellationToken)));
             }
 
             var finalFileName = file.FileName;
@@ -210,7 +213,8 @@ public class ShareUploadEndpoint : IEndpoint
                     $"/albums/{link.AlbumId}");
             }
 
-            return TypedResults.Ok(new ShareUploadResponse("Asset uploaded successfully"));
+            return TypedResults.Ok(new ShareUploadResponse("Asset uploaded successfully",
+                await SharedAssetAsync(dbContext, smartResolver, link, asset.Id, pw, cancellationToken)));
         }
         catch (Exception ex)
         {
@@ -265,9 +269,35 @@ public class ShareUploadEndpoint : IEndpoint
         cache.Remove($"albums:{ownerId}");
     }
 
+    /// <summary>
+    /// The uploaded photo as the link's page lists it (GET /api/share/{token}),
+    /// so the page can add it without opening the link again, which would count
+    /// a visit. Only when the link shows it: that page already hands its photos'
+    /// ids to whoever has the token and password, so this reveals nothing new.
+    /// A duplicate of someone else's photo, or one a smart album's rule leaves
+    /// out, gets null.
+    /// </summary>
+    private static async Task<SharedAssetDto?> SharedAssetAsync(
+        ApplicationDbContext dbContext,
+        SmartAlbumResolver smartResolver,
+        SharedLink link,
+        Guid assetId,
+        string? pw,
+        CancellationToken ct)
+    {
+        if (!await SharedAlbumAssets.ContainsAsync(dbContext, smartResolver, link.Album!, assetId, ct))
+            return null;
+
+        var assets = await SharedAssetDto.ListAsync(
+            dbContext.Assets.AsNoTracking().Where(a => a.Id == assetId), link.Token, pw, ct);
+        return assets.SingleOrDefault();
+    }
+
     private static bool ShouldNotifyUpload(int uploadCount)
         => uploadCount is 1 or 5 or 10 or 25 or 50 or 100
            || (uploadCount > 100 && uploadCount % 100 == 0);
 }
 
-public sealed record ShareUploadResponse(string Message);
+/// <param name="Asset">The photo as the link's page shows it, or null when the
+/// page doesn't show it (a duplicate of a photo the link's owner doesn't own).</param>
+public sealed record ShareUploadResponse(string Message, SharedAssetDto? Asset);

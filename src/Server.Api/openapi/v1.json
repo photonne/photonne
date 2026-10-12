@@ -15659,12 +15659,23 @@
       },
       "ShareUploadResponse": {
         "required": [
-          "message"
+          "message",
+          "asset"
         ],
         "type": "object",
         "properties": {
           "message": {
             "type": "string"
+          },
+          "asset": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SharedAssetDto"
+              }
+            ]
           }
         }
       },
