@@ -103,12 +103,12 @@ class DownloadFormatTest {
             )
         }
 
-        val content = api.getAssetContent("a", DownloadFormat.Jpeg)
+        val head = api.streamAssetContent("a", DownloadFormat.Jpeg) { head, _ -> head }
 
         assertEquals("jpeg", format)
         assertEquals("true", download)
-        assertEquals("IMG_0042.jpg", content.suggestedFileName)
-        assertEquals("image/jpeg", content.mimeType)
+        assertEquals("IMG_0042.jpg", head.suggestedFileName)
+        assertEquals("image/jpeg", head.mimeType)
     }
 
     @Test
@@ -119,7 +119,7 @@ class DownloadFormatTest {
             respond(content = ByteReadChannel(byteArrayOf(1)), status = HttpStatusCode.OK)
         }
 
-        api.getAssetContent("a")
+        api.streamAssetContent("a") { _, _ -> }
 
         assertFalse(hasFormat)
     }

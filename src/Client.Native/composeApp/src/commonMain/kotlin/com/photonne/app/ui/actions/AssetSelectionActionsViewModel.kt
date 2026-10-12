@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.toLocalDateTime
 
 enum class AssetActionWorking { Idle, Downloading, Sharing, CreatingLink }
@@ -253,12 +256,15 @@ class AssetSelectionActionsViewModel(
     private suspend fun performDownload(assetIds: List<String>, format: DownloadFormat?) {
         runCatching {
             if (assetIds.size == 1) {
-                val content = repository.downloadAsset(assetIds.first(), format)
-                sharing.saveAsset(
-                    bytes = content.bytes,
-                    fileName = content.suggestedFileName,
-                    mimeType = content.mimeType
-                )
+                // Streamed like the ZIP: a video original in memory is just
+                // as able to run the phone out of it.
+                repository.downloadAsset(assetIds.first(), format) { head, body ->
+                    body.drainInto(
+                        sink = sharing.openDownload(head.suggestedFileName, head.mimeType),
+                        contentLength = head.contentLength,
+                        onProgress = ::reportBytes
+                    )
+                }
             } else {
                 // Straight from the socket to the file: the whole ZIP of a big
                 // selection held as a ByteArray could run the phone out of
@@ -315,17 +321,37 @@ class AssetSelectionActionsViewModel(
         runCatching {
             sharing.clearShareCache()
             val usedNames = HashSet<String>()
-            // One at a time: only one original is held in memory at once.
-            val files = assetIds.map { id ->
-                val content = repository.downloadAsset(id, format)
-                sharing.stageForShare(
-                    bytes = content.bytes,
-                    fileName = uniqueShareName(content.suggestedFileName, usedNames),
-                    mimeType = content.mimeType
-                )
+            try {
+                // One at a time, each streamed straight into its staged file:
+                // no original is ever held whole in memory. The pill counts
+                // files done plus the fraction of the current one.
+                val files = assetIds.mapIndexed { index, id ->
+                    repository.downloadAsset(id, format) { head, body ->
+                        body.drainInto(
+                            sink = sharing.openShareStage(
+                                fileName = uniqueShareName(head.suggestedFileName, usedNames),
+                                mimeType = head.mimeType
+                            ),
+                            contentLength = head.contentLength
+                        ) { written, total ->
+                            val current = if (total != null && total > 0) written.toFloat() / total else null
+                            reportProgress(
+                                when {
+                                    assetIds.size > 1 -> (index + (current ?: 0f)) / assetIds.size
+                                    else -> current
+                                }
+                            )
+                        }
+                    }
+                }
+                val mimeType = commonShareMimeType(files.map { it.mimeType })
+                sharing.shareFiles(files = files, mimeType = mimeType)
+            } catch (failure: Throwable) {
+                // A share that never reached the sheet leaves nothing worth
+                // keeping: drop what was already staged.
+                withContext(NonCancellable) { runCatching { sharing.clearShareCache() } }
+                throw failure
             }
-            val mimeType = commonShareMimeType(files.map { it.mimeType })
-            sharing.shareFiles(files = files, mimeType = mimeType)
         }
             .onSuccess {
                 _state.update { it.copy(working = AssetActionWorking.Idle) }

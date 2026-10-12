@@ -46,15 +46,13 @@ actual class AssetSharing(private val context: Context) {
      * FileProvider — and nowhere else: no MediaStore row, so sharing leaves
      * no copy in the gallery for the backup to pick up.
      */
-    actual suspend fun stageForShare(
-        bytes: ByteArray,
+    actual suspend fun openShareStage(
         fileName: String,
         mimeType: String
-    ): SavedAssetFile = withContext(Dispatchers.IO) {
+    ): DownloadSink = withContext(Dispatchers.IO) {
         val safeName = fileName.replace('/', '_').ifBlank { "shared" }
         val target = File(shareDir(), safeName)
-        target.writeBytes(bytes)
-        SavedAssetFile(path = target.absolutePath, displayName = safeName, mimeType = mimeType)
+        FileDownloadSink(target = Path(target.absolutePath), displayName = safeName, mimeType = mimeType)
     }
 
     /** The receiving app reads the files after we return, so the previous
@@ -77,7 +75,7 @@ actual class AssetSharing(private val context: Context) {
         for (file in files) {
             val source = File(file.path)
             val target = File(sharedDir, file.displayName)
-            // `stageForShare` already stages the bytes inside `shared/`,
+            // `openShareStage` already stages the bytes inside `shared/`,
             // so source and target are usually the SAME file. Copying a file
             // onto itself with overwrite=true would delete it first (via
             // `target.delete()`) and then fail to read the now-missing source —

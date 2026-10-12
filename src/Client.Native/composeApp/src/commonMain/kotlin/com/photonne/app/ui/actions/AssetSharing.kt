@@ -9,7 +9,7 @@ package com.photonne.app.ui.actions
  *   commit says where it landed so the caller can surface a snackbar.
  *   [saveAsset] is the same for a payload already in memory.
  * - [shareText] hands a link (plain text) to the same sheet.
- * - [stageForShare] writes one file into the app's PRIVATE share cache
+ * - [openShareStage] opens one file in the app's PRIVATE share cache
  *   (never the gallery nor Downloads): sharing must not leave a local
  *   copy behind — it duplicated the photo on the phone and the backup
  *   then picked it up as new. [clearShareCache] drops the previous
@@ -32,12 +32,8 @@ expect class AssetSharing {
      */
     suspend fun openDownload(fileName: String, mimeType: String): DownloadSink
 
-    /** Writes [bytes] into the private share cache and returns its location. */
-    suspend fun stageForShare(
-        bytes: ByteArray,
-        fileName: String,
-        mimeType: String
-    ): SavedAssetFile
+    /** Opens [fileName] in the private share cache, to be streamed into. */
+    suspend fun openShareStage(fileName: String, mimeType: String): DownloadSink
 
     /** Deletes whatever earlier shares left in the private share cache. */
     suspend fun clearShareCache()

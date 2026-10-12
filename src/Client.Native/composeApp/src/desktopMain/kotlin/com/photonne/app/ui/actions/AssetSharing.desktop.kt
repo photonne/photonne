@@ -37,15 +37,13 @@ actual class AssetSharing {
 
     /** Temp directory, not a save dialog: "share" stages, it doesn't ask
      *  where to keep a copy (that's what Download is for). */
-    actual suspend fun stageForShare(
-        bytes: ByteArray,
+    actual suspend fun openShareStage(
         fileName: String,
         mimeType: String
-    ): SavedAssetFile = withContext(Dispatchers.IO) {
+    ): DownloadSink = withContext(Dispatchers.IO) {
         val safeName = fileName.replace('/', '_').replace('\\', '_').ifBlank { "shared" }
         val target = File(shareDir(), safeName)
-        target.writeBytes(bytes)
-        SavedAssetFile(path = target.absolutePath, displayName = safeName, mimeType = mimeType)
+        FileDownloadSink(target = Path(target.absolutePath), displayName = safeName, mimeType = mimeType)
     }
 
     actual suspend fun clearShareCache() = withContext(Dispatchers.IO) {
