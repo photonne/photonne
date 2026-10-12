@@ -7,6 +7,12 @@ describe('failureOf', () => {
 	it.each([
 		[0, null, 'network'],
 		[413, { error: 'x', code: 'upload_too_large' }, 'tooLarge'],
+		// The guest upload of a request link names the same limit differently.
+		[413, { error: 'x', code: 'file_too_large' }, 'tooLarge'],
+		// nginx's HTML page doesn't parse (postForm leaves the body null), and
+		// some proxies answer with nothing at all: neither is Photonne's limit.
+		[413, null, 'proxyTooLarge'],
+		[413, { error: 'x', code: 'something_else' }, 'proxyTooLarge'],
 		[409, { error: 'x', code: 'storage_quota_exceeded' }, 'quota'],
 		[401, { error: 'x', code: 'invalid_password' }, 'password'],
 		[403, null, 'forbidden'],
