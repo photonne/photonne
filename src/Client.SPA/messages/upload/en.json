@@ -18,6 +18,8 @@
 	"upload_status_cancelled": "Cancelled",
 	"upload_status_too_large": "Too large",
 	"upload_failure_too_large": "Over the server's size limit",
+	"upload_failure_proxy_too_large": "Rejected for size by a proxy",
+	"upload_failure_proxy_too_large_hint": "A proxy between the browser and the server rejected the file because of its size. Check client_max_body_size in nginx.",
 	"upload_failure_quota": "No space: quota reached",
 	"upload_failure_password": "Wrong password",
 	"upload_failure_gone": "The link is no longer available",

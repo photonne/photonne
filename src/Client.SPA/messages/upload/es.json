@@ -18,6 +18,8 @@
 	"upload_status_cancelled": "Cancelada",
 	"upload_status_too_large": "Demasiado grande",
 	"upload_failure_too_large": "Supera el tamaño máximo del servidor",
+	"upload_failure_proxy_too_large": "Rechazado por tamaño en un proxy",
+	"upload_failure_proxy_too_large_hint": "Un proxy entre el navegador y el servidor rechazó el archivo por tamaño. Revisa client_max_body_size en nginx.",
 	"upload_failure_quota": "Sin espacio: cuota agotada",
 	"upload_failure_password": "Contraseña incorrecta",
 	"upload_failure_gone": "El enlace ya no está disponible",

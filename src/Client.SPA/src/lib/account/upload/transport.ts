@@ -2,7 +2,7 @@ import type { ApiError, UploadAssetResponse } from '#lib/api/index.js';
 
 /** Why an upload didn't make it, in terms the UI can explain. */
 export type UploadFailure =
-	'tooLarge' | 'quota' | 'password' | 'gone' | 'forbidden' | 'network' | 'server';
+	'tooLarge' | 'proxyTooLarge' | 'quota' | 'password' | 'gone' | 'forbidden' | 'network' | 'server';
 
 export class UploadError extends Error {
 	constructor(readonly failure: UploadFailure) {
@@ -70,11 +70,21 @@ export function postForm(
 	});
 }
 
+/**
+ * `ApiError.code` of Photonne's own 413s: `upload_too_large` from the library
+ * upload, `file_too_large` from the guest upload of a request link.
+ */
+const PHOTONNE_TOO_LARGE = new Set(['upload_too_large', 'file_too_large']);
+
 /** The failure a non-2xx answer stands for (see UploadAssetsEndpoint / ShareUploadEndpoint). */
 export function failureOf(response: XhrResponse): UploadFailure {
 	const code = (response.body as Partial<ApiError> | null)?.code;
 	if (response.status === 0) return 'network';
-	if (response.status === 413) return 'tooLarge';
+	// Any other 413 (nginx's HTML page, an empty body) came from a proxy in
+	// front of the server, not from the MaxUploadSizeMb setting.
+	if (response.status === 413) {
+		return code && PHOTONNE_TOO_LARGE.has(code) ? 'tooLarge' : 'proxyTooLarge';
+	}
 	if (response.status === 409 && code === 'storage_quota_exceeded') return 'quota';
 	if (response.status === 401) return 'password';
 	if (response.status === 403) return 'forbidden';

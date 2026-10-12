@@ -3,7 +3,7 @@
 	import { formatBytes } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { ICON_CLOUD_DONE, ICON_ERROR } from '../icons.js';
-	import { failureText } from './labels.js';
+	import { failureHint, failureText } from './labels.js';
 	import type { UploadEntry, UploadQueue } from './upload-queue.svelte.js';
 
 	interface Props {
@@ -63,6 +63,7 @@
 <ul class="list" aria-label={label}>
 	{#each queue.entries as entry (entry.id)}
 		{@const name = entry.file.name}
+		{@const hint = entry.status === 'failed' && entry.failure ? failureHint(entry.failure) : null}
 		<li class="row {entry.status}">
 			<span class="kind" aria-hidden="true">
 				{#if entry.status === 'done' || entry.status === 'duplicate'}
@@ -117,6 +118,9 @@
 					</button>
 				{/if}
 			</span>
+			{#if hint}
+				<span class="hint">{hint}</span>
+			{/if}
 			{#if entry.status === 'uploading'}
 				<progress
 					class="bar"
@@ -223,6 +227,15 @@
 	.status.bad {
 		background: color-mix(in srgb, var(--color-danger) 14%, transparent);
 		color: var(--color-danger);
+	}
+
+	/* A failure the pill can't explain (a proxy's 413): the fix, under the name. */
+	.hint {
+		grid-column: 2 / -1;
+		margin-top: calc(-1 * var(--space-2));
+		padding-bottom: var(--space-1);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-xs);
 	}
 
 	.cancelled .name {
