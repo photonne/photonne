@@ -13,9 +13,21 @@
 		storageKey: string;
 		/** Id of the pane it resizes (aria-controls). */
 		controls: string;
+		/** Which side of the separator the pane sits on: a pane on the right grows leftwards. */
+		side?: 'left' | 'right';
 	}
 
-	let { width = $bindable(), min, max, initial, storageKey, controls }: Props = $props();
+	let {
+		width = $bindable(),
+		min,
+		max,
+		initial,
+		storageKey,
+		controls,
+		side = 'left'
+	}: Props = $props();
+
+	const direction = $derived(side === 'left' ? 1 : -1);
 
 	let dragging = $state(false);
 	let startX = 0;
@@ -36,7 +48,7 @@
 	}
 
 	function onpointermove(event: PointerEvent) {
-		if (dragging) set(startWidth + event.clientX - startX);
+		if (dragging) set(startWidth + (event.clientX - startX) * direction);
 	}
 
 	function onpointerup() {
@@ -45,7 +57,7 @@
 
 	// The WAI-ARIA window splitter pattern: arrows move it, Home/End go to the ends.
 	function onkeydown(event: KeyboardEvent) {
-		const step = event.shiftKey ? 64 : 16;
+		const step = (event.shiftKey ? 64 : 16) * direction;
 		const next =
 			event.key === 'ArrowLeft'
 				? width - step

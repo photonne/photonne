@@ -5,7 +5,10 @@
 </script>
 
 <script lang="ts">
+	import { MediaQuery } from 'svelte/reactivity';
 	import type { AssetDetailResponse } from '#lib/api/index.js';
+	import PaneResizer from '#lib/components/PaneResizer.svelte';
+	import { clampWidth, savedWidth } from '#lib/components/pane-width.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import AiPanel from './AiPanel.svelte';
 	import FacesPanel from './FacesPanel.svelte';
@@ -38,6 +41,15 @@
 	const id = $props.id();
 	let tablist = $state<HTMLElement>();
 
+	const PANEL = { initial: 340, min: 280, max: 720, key: 'photonne.viewer.panelWidth' };
+	let width = $state(savedWidth(PANEL.key, PANEL.initial, PANEL.min, PANEL.max));
+	// Never so wide that the photo is left without room.
+	let innerWidth = $state(1280);
+	const max = $derived(Math.max(PANEL.min, Math.min(PANEL.max, innerWidth * 0.6)));
+	const shown = $derived(clampWidth(width, PANEL.min, max));
+	// On a phone the panel is a bottom sheet: nothing to resize.
+	const narrow = new MediaQuery('max-width: 700px');
+
 	const labels: Record<PanelTab, () => string> = {
 		info: m.viewer_tab_info,
 		faces: m.viewer_tab_faces,
@@ -62,7 +74,21 @@
 	}
 </script>
 
-<aside class="panel" aria-labelledby="info-title">
+<svelte:window bind:innerWidth />
+
+{#if !narrow.current}
+	<PaneResizer
+		bind:width={() => shown, (value) => (width = value)}
+		min={PANEL.min}
+		{max}
+		initial={PANEL.initial}
+		storageKey={PANEL.key}
+		controls="viewer-panel"
+		side="right"
+	/>
+{/if}
+
+<aside id="viewer-panel" class="panel" style:--panel-width="{shown}px" aria-labelledby="info-title">
 	<h2 id="info-title">{m.info_title()}</h2>
 
 	<!-- svelte-ignore a11y_interactive_supports_focus -->
@@ -102,7 +128,7 @@
 <style>
 	.panel {
 		flex: none;
-		width: 340px;
+		width: var(--panel-width);
 		height: 100%;
 		display: flex;
 		flex-direction: column;

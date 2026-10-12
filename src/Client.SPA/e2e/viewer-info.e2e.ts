@@ -117,3 +117,41 @@ test('reads the capture date in the app language and edits it on request', async
 		{ assetId: TEXT_PHOTO, dateTaken: '2026-09-24T08:30:00.000Z', writeToFile: false }
 	]);
 });
+
+test('resizes the panel by dragging or with the keyboard, and remembers it', async ({ page }) => {
+	const { panel } = await openPanel(page);
+	const handle = page.getByRole('separator', { name: 'Cambiar el ancho del panel' });
+	await expect(handle).toHaveAttribute('aria-valuenow', '340');
+
+	// The panel sits on the right: ArrowLeft widens it.
+	await handle.focus();
+	await page.keyboard.press('ArrowLeft');
+	await page.keyboard.press('ArrowLeft');
+	await expect(handle).toHaveAttribute('aria-valuenow', '372');
+	await expect(page).toHaveURL(new RegExp(`asset=${TEXT_PHOTO}$`));
+
+	const box = (await handle.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + 200);
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width / 2 - 100, box.y + 200, { steps: 4 });
+	await page.mouse.up();
+	await expect(handle).toHaveAttribute('aria-valuenow', '472');
+	expect(Math.round((await panel.boundingBox())!.width)).toBe(472);
+
+	await page.reload();
+	await expect(page.getByRole('dialog').first()).toBeVisible();
+	if (!(await handle.isVisible())) await page.keyboard.press('i');
+	await expect(handle).toHaveAttribute('aria-valuenow', '472');
+
+	// A narrower window caps it so the photo keeps most of the room.
+	await page.setViewportSize({ width: 900, height: 800 });
+	await expect(handle).toHaveAttribute('aria-valuemax', '540');
+	await handle.focus();
+	await page.keyboard.press('End');
+	await expect(handle).toHaveAttribute('aria-valuenow', '540');
+	await page.setViewportSize({ width: 800, height: 800 });
+	await expect(handle).toHaveAttribute('aria-valuenow', '480');
+
+	await handle.dblclick();
+	await expect(handle).toHaveAttribute('aria-valuenow', '340');
+});
