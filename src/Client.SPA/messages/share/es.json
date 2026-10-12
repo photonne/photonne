@@ -66,7 +66,5 @@
 				"countPlural=other": "¡Gracias! Se han añadido {countFormatted} archivos al álbum."
 			}
 		}
-	],
-	"share_upload_show": "Ver el álbum con tus fotos",
-	"share_refresh_failed": "No se ha podido actualizar el álbum."
+	]
 }

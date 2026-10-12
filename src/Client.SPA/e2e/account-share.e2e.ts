@@ -86,6 +86,10 @@ test('a guest adds photos to a photo-request album', async ({ page }) => {
 	const { state } = await fakeApi(page);
 
 	await page.goto('/share/boda');
+	const cells = page
+		.getByRole('list', { name: 'Boda de Marta y Joan' })
+		.getByRole('button', { name: /^(Foto|Vídeo), / });
+	await expect(cells).toHaveCount(14);
 	const card = page.getByRole('region', { name: '¿Tienes fotos de esto?' });
 	await card.getByLabel('Tu nombre (opcional)').fill('Laia');
 	// Guests can't pick folders.
@@ -100,6 +104,11 @@ test('a guest adds photos to a photo-request album', async ({ page }) => {
 		{ token: 'boda', name: 'Laia', pw: null, file: 'invitada-1.jpg' },
 		{ token: 'boda', name: 'Laia', pw: null, file: 'invitada-2.jpg' }
 	]);
+	// The photos join the album from the upload's answer: the link isn't opened
+	// again, which would count another visit.
+	await expect(cells).toHaveCount(16);
+	await expect(page.getByText('16 fotos y vídeos')).toBeVisible();
+	expect(accountState(state).shareOpens).toBe(1);
 });
 
 test('a signed-in user sees the shared album inside the app', async ({ page }) => {

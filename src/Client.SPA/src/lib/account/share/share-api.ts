@@ -35,6 +35,25 @@ export function outcomeOf(
 }
 
 /**
+ * The album with a guest's upload in it, at the end as the server adds it.
+ * A photo already there (a duplicate the album had) leaves it as it was.
+ */
+export function withUploaded(outcome: ShareOutcome, asset: SharedAssetDto): ShareOutcome {
+	if (outcome.kind !== 'content') return outcome;
+	const assets = outcome.content.assets ?? [];
+	if (assets.some((item) => item.id === asset.id)) return outcome;
+	const album = outcome.content.album;
+	return {
+		kind: 'content',
+		content: {
+			...outcome.content,
+			album: album ? { ...album, assetCount: (album.assetCount ?? assets.length) + 1 } : album,
+			assets: [...assets, asset]
+		}
+	};
+}
+
+/**
  * Opens a link (no session needed). Every successful open counts as a view
  * on the server, so callers should not refetch it needlessly.
  */
