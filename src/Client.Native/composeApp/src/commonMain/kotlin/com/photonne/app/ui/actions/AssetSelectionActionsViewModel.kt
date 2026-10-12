@@ -38,6 +38,11 @@ data class AssetActionsUiState(
     /** Non-null when the "original or JPG?" sheet should show. */
     val formatChooser: DownloadFormatChooser? = null,
     val working: AssetActionWorking = AssetActionWorking.Idle,
+    /**
+     * How far the [working] download has got, 0..1, rounded to whole
+     * percents; null while the size is unknown (indeterminate pill).
+     */
+    val progress: Float? = null,
     /** Resulting public-share URL when "Create a Photonne link" succeeds. */
     val createdLink: String? = null,
     /** Localized message surfaced as a toast/banner once an action settles. */
@@ -133,7 +138,7 @@ class AssetSelectionActionsViewModel(
     fun cancelWorking() {
         workingJob?.cancel()
         workingJob = null
-        _state.update { it.copy(working = AssetActionWorking.Idle) }
+        _state.update { it.copy(working = AssetActionWorking.Idle, progress = null) }
     }
 
     fun beginShare(assetIds: List<String>) {
@@ -174,7 +179,12 @@ class AssetSelectionActionsViewModel(
         val chooser = _state.value.formatChooser ?: return
         if (_state.value.working != AssetActionWorking.Idle) return
         _state.update {
-            it.copy(formatChooser = null, working = chooser.action.working(), error = null)
+            it.copy(
+                formatChooser = null,
+                working = chooser.action.working(),
+                progress = null,
+                error = null
+            )
         }
         workingJob = viewModelScope.launch {
             perform(chooser.action, chooser.assetIds, format)
@@ -193,7 +203,12 @@ class AssetSelectionActionsViewModel(
     private fun startWithFormatChoice(action: FormatChooserAction, assetIds: List<String>) {
         if (assetIds.isEmpty() || _state.value.working != AssetActionWorking.Idle) return
         _state.update {
-            it.copy(working = action.working(), shareChooserIds = null, error = null)
+            it.copy(
+                working = action.working(),
+                progress = null,
+                shareChooserIds = null,
+                error = null
+            )
         }
         workingJob = viewModelScope.launch {
             val options = try {
@@ -245,12 +260,21 @@ class AssetSelectionActionsViewModel(
                     mimeType = content.mimeType
                 )
             } else {
-                val zip = repository.downloadZip(
+                // Straight from the socket to the file: the whole ZIP of a big
+                // selection held as a ByteArray could run the phone out of
+                // memory. Cancelar (or a failure) deletes the half file.
+                val zipName = defaultZipName()
+                repository.downloadZip(
                     assetIds = assetIds,
-                    fileName = defaultZipName(),
+                    fileName = zipName,
                     format = format
-                )
-                sharing.saveZip(bytes = zip, fileName = "${defaultZipName()}.zip")
+                ) { head, body ->
+                    body.drainInto(
+                        sink = sharing.openDownload("$zipName.zip", "application/zip"),
+                        contentLength = head.contentLength,
+                        onProgress = ::reportBytes
+                    )
+                }
             }
         }
             .onSuccess { saved ->
@@ -323,6 +347,17 @@ class AssetSelectionActionsViewModel(
                     )
                 }
             }
+    }
+
+    private fun reportBytes(written: Long, total: Long?) {
+        reportProgress(if (total != null && total > 0) written.toFloat() / total else null)
+    }
+
+    /** Only whole-percent changes reach the state: a chunk every 64 KB would
+     *  otherwise recompose the pill thousands of times per download. */
+    private fun reportProgress(fraction: Float?) {
+        val rounded = fraction?.let { (it.coerceIn(0f, 1f) * 100).toInt() / 100f }
+        if (_state.value.progress != rounded) _state.update { it.copy(progress = rounded) }
     }
 
     /** Two originals called IMG_0001.jpg (different folders or cameras) would

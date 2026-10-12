@@ -523,6 +523,8 @@
     <string name="actions_working_download">Preparing the download…</string>
     <string name="actions_working_share">Preparing to share…</string>
     <string name="actions_working_link">Creating the link…</string>
+    <string name="actions_working_download_progress">Downloading · %1$d%%</string>
+    <string name="actions_working_share_progress">Preparing to share · %1$d%%</string>
     <string name="asset_action_show_original">View the original</string>
     <string name="asset_action_show_preview">Back to preview</string>
     <plurals name="selection_archive_confirm_message">

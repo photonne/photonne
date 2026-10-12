@@ -48,6 +48,7 @@ import com.photonne.app.data.models.OrganizeSuggestion
 import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.OrganizeRuleReviewResponse
 import com.photonne.app.data.models.YearGroup
+import com.photonne.app.data.models.DownloadHead
 import com.photonne.app.data.models.UnsupportedFilesPage
 import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
@@ -62,6 +63,7 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.prepareGet
+import io.ktor.client.request.preparePost
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -78,6 +80,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLPathPart
 import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.readUTF8Line
 import io.ktor.utils.io.writeFully
@@ -557,11 +560,18 @@ interface PhotonneApi {
         cursor: Instant? = null,
         pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
     ): AssetPage
-    suspend fun downloadAssetsZip(
+    /**
+     * Streams the ZIP of [assetIds] into [consume] while it arrives, so it
+     * never sits whole in memory: [consume] gets the response head and the
+     * open body and its result is returned. The connection closes when it
+     * returns or throws.
+     */
+    suspend fun <T> streamAssetsZip(
         assetIds: List<String>,
         fileName: String? = null,
-        format: DownloadFormat? = null
-    ): ByteArray
+        format: DownloadFormat? = null,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T
     suspend fun getAssetContent(assetId: String, format: DownloadFormat? = null): AssetContentBytes
     suspend fun getDownloadOptions(assetIds: List<String>): DownloadOptions
     suspend fun uploadAsset(
@@ -1265,13 +1275,16 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun downloadAssetsZip(
+    override suspend fun <T> streamAssetsZip(
         assetIds: List<String>,
         fileName: String?,
-        format: DownloadFormat?
-    ): ByteArray {
-        if (assetIds.isEmpty()) return ByteArray(0)
-        val response: HttpResponse = client.post("$baseUrl/api/assets/download-zip") {
+        format: DownloadFormat?,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T {
+        require(assetIds.isNotEmpty()) { "A ZIP needs at least one asset" }
+        // prepare/execute instead of post(): post() buffers the whole body
+        // before returning, which is what this endpoint must not do.
+        return client.preparePost("$baseUrl/api/assets/download-zip") {
             contentType(ContentType.Application.Json)
             setBody(
                 DownloadZipBody(
@@ -1280,12 +1293,28 @@ class PhotonneApiClient(
                     format = format?.apiValue
                 )
             )
+        }.execute { response ->
+            if (response.status != HttpStatusCode.OK) {
+                throw response.apiException("Download failed (${response.status.value})")
+            }
+            consume(
+                response.downloadHead(
+                    fallbackName = "${fileName ?: "photonne"}.zip",
+                    fallbackMimeType = "application/zip"
+                ),
+                response.bodyAsChannel()
+            )
         }
-        if (response.status != HttpStatusCode.OK) {
-            throw response.apiException("Download failed (${response.status.value})")
-        }
-        return response.body()
     }
+
+    private fun HttpResponse.downloadHead(fallbackName: String, fallbackMimeType: String) =
+        DownloadHead(
+            mimeType = headers[HttpHeaders.ContentType] ?: fallbackMimeType,
+            suggestedFileName = headers[HttpHeaders.ContentDisposition]
+                ?.let(::parseContentDispositionFilename)
+                ?: fallbackName,
+            contentLength = headers[HttpHeaders.ContentLength]?.toLongOrNull()?.takeIf { it >= 0 }
+        )
 
     override suspend fun getDownloadOptions(assetIds: List<String>): DownloadOptions {
         if (assetIds.isEmpty()) return DownloadOptions()

@@ -8,6 +8,7 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.files.Path
 
 /**
  * Desktop variant: "save to downloads" pops a JFileChooser asking
@@ -20,25 +21,18 @@ import kotlinx.coroutines.withContext
  */
 actual class AssetSharing {
 
-    actual suspend fun saveAsset(
-        bytes: ByteArray,
+    /**
+     * Asks where first (the dialog shows once the server has answered, so
+     * the suggested name is the real one) and then streams into that file.
+     */
+    actual suspend fun openDownload(
         fileName: String,
         mimeType: String
-    ): SavedAssetFile = withContext(Dispatchers.IO) {
-        val path = pickSavePath(fileName, allExtensions(mimeType))
+    ): DownloadSink = withContext(Dispatchers.IO) {
+        val extensions = if (mimeType == "application/zip") listOf("zip") else allExtensions(mimeType)
+        val path = pickSavePath(fileName, extensions)
             ?: throw AssetSharingUnavailable("Save cancelled")
-        File(path).writeBytes(bytes)
-        SavedAssetFile(path = path, displayName = File(path).name, mimeType = mimeType)
-    }
-
-    actual suspend fun saveZip(
-        bytes: ByteArray,
-        fileName: String
-    ): SavedAssetFile = withContext(Dispatchers.IO) {
-        val path = pickSavePath(fileName, listOf("zip"))
-            ?: throw AssetSharingUnavailable("Save cancelled")
-        File(path).writeBytes(bytes)
-        SavedAssetFile(path = path, displayName = File(path).name, mimeType = "application/zip")
+        FileDownloadSink(target = Path(path), displayName = File(path).name, mimeType = mimeType)
     }
 
     /** Temp directory, not a save dialog: "share" stages, it doesn't ask
