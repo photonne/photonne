@@ -164,8 +164,10 @@ public class ShareUploadEndpoint : IEndpoint
 
             var modifiedUtc = UploadAssetsEndpoint.ParseClientTimestamp(fileModifiedAt);
             var createdUtc = UploadAssetsEndpoint.ParseClientTimestamp(fileCreatedAt);
-            if (modifiedUtc.HasValue) File.SetLastWriteTimeUtc(targetPath, modifiedUtc.Value);
+            // Creación primero: en Linux SetCreationTimeUtc escribe la fecha de
+            // modificación (no hay forma de fijar la de creación) y la pisaría.
             if (createdUtc.HasValue) File.SetCreationTimeUtc(targetPath, createdUtc.Value);
+            if (modifiedUtc.HasValue) File.SetLastWriteTimeUtc(targetPath, modifiedUtc.Value);
 
             var fileInfo = new FileInfo(targetPath);
             var extension = Path.GetExtension(targetPath).ToLowerInvariant();
