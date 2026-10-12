@@ -227,6 +227,7 @@ fun BackupPendingScreen(
             FailedItemDialog(
                 fileName = entry.media.displayName,
                 reasonLabel = uploadErrorLabel(failedState.reason),
+                hint = uploadErrorHint(failedState.reason),
                 detail = failedState.detail,
                 onRetry = {
                     failedDialogUri = null
@@ -294,6 +295,7 @@ fun BackupPendingScreen(
 private fun FailedItemDialog(
     fileName: String,
     reasonLabel: String,
+    hint: String?,
     detail: String?,
     onRetry: () -> Unit,
     onIgnore: () -> Unit,
@@ -316,6 +318,10 @@ private fun FailedItemDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
+                hint?.let {
+                    Spacer(Modifier.size(8.dp))
+                    Text(it, style = MaterialTheme.typography.bodyMedium)
+                }
                 Spacer(Modifier.size(8.dp))
                 Text(
                     detail ?: stringResource(Res.string.backup_failed_dialog_no_detail),

@@ -3,6 +3,8 @@ package com.photonne.app.ui.upload
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.devicebackup.UploadFailureReason
+import com.photonne.app.data.devicebackup.toUploadFailureReason
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.events.AssetMutation
@@ -43,7 +45,14 @@ data class UploadItem(
     val motionClip: PickedMotionClip? = null,
     val status: UploadStatus = UploadStatus.Queued,
     val assetId: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /**
+     * Why it failed, when it came from the upload call. The screen prefers its
+     * localized hint for a size rejection by a proxy, whose HTML page says
+     * nothing useful; Photonne's own 413 already brings its text (with the MB)
+     * in [errorMessage].
+     */
+    val failureReason: UploadFailureReason? = null
 )
 
 data class UploadUiState(
@@ -138,7 +147,7 @@ class UploadViewModel(
                     if (item.id == id && (item.status == UploadStatus.Failed ||
                             item.status == UploadStatus.Cancelled)
                     ) {
-                        item.copy(status = UploadStatus.Queued, errorMessage = null)
+                        item.copy(status = UploadStatus.Queued, errorMessage = null, failureReason = null)
                     } else item
                 }
             )
@@ -339,7 +348,8 @@ class UploadViewModel(
                     items = it.items.map { item ->
                         if (item.id == itemId) item.copy(
                             status = UploadStatus.Failed,
-                            errorMessage = error.message ?: "No se pudo subir"
+                            errorMessage = error.message ?: "No se pudo subir",
+                            failureReason = error.toUploadFailureReason()
                         ) else item
                     }
                 )
@@ -415,7 +425,8 @@ class UploadViewModel(
          * nada. No hay tope de tamaño en el cliente: como la subida va en
          * streaming, el único límite es el del servidor
          * (ServerSettings.MaxUploadSizeMb), que responde 413 con su mensaje y
-         * ese mensaje sale en la fila del archivo.
+         * ese mensaje sale en la fila del archivo. Un 413 de un proxy de por
+         * medio sale con su propia explicación (ver [UploadItem.failureReason]).
          */
         internal fun skippedFilesMessage(unreadable: Int): String? =
             if (unreadable > 0) "$unreadable archivo(s) no se han podido leer y se han omitido." else null
