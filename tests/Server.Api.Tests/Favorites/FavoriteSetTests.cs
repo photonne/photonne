@@ -101,6 +101,19 @@ public sealed class FavoriteSetTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Toggle_ReturnsNotFound_ForAnAssetTheCallerCannotRead()
+    {
+        var (alice, _) = await CreateAuthenticatedUserAsync();
+        var (_, bobClient) = await CreateAuthenticatedUserAsync();
+        var assetId = await CreateAssetAsync(alice);
+
+        var response = await bobClient.PostAsync($"/api/assets/{assetId}/favorite", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.False(await IsFavoriteAsync(assetId));
+    }
+
+    [Fact]
     public async Task SetMany_RejectsAnEmptySelection()
     {
         var (_, client) = await CreateAuthenticatedUserAsync();
