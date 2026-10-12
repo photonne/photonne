@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
+using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.SmartAlbums;
@@ -977,7 +978,7 @@ public class AlbumsEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.UserId == userId && p.AlbumId == albumId, cancellationToken);
         if (existing == null)
         {
-            existing = new AlbumPin { UserId = userId, AlbumId = albumId, PinnedAt = DateTime.UtcNow };
+            existing = new AlbumPin { UserId = userId, AlbumId = albumId, PinnedAt = DateTime.UtcNow.ToDatabasePrecision() };
             dbContext.AlbumPins.Add(existing);
             try
             {

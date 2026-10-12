@@ -8,6 +8,7 @@ using Photonne.Server.Api.Features.Assets;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
+using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Models;
@@ -1072,7 +1073,7 @@ public class FoldersEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.UserId == userId && p.FolderId == folderId, cancellationToken);
         if (existing == null)
         {
-            existing = new FolderPin { UserId = userId, FolderId = folderId, PinnedAt = DateTime.UtcNow };
+            existing = new FolderPin { UserId = userId, FolderId = folderId, PinnedAt = DateTime.UtcNow.ToDatabasePrecision() };
             dbContext.FolderPins.Add(existing);
             try
             {
