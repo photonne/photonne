@@ -4,7 +4,7 @@ import {
 	deleteAssets,
 	moveFolderAssets,
 	restoreAssets,
-	toggleFavorite,
+	setFavorites,
 	unarchiveAssets,
 	type AssetDetailResponse
 } from '#lib/api/index.js';
@@ -67,8 +67,8 @@ export class BatchActions {
 
 	/**
 	 * Marks the ones missing a heart; only when all have it, clears them all.
-	 * The endpoint toggles one photo at a time, so only those that change are
-	 * called.
+	 * The server answers with the ids that now have the asked state: the ones
+	 * it left out (gone, or no longer readable) keep theirs.
 	 */
 	toggleFavorites(ids?: readonly string[]) {
 		const targets = this.#targets(ids);
@@ -77,21 +77,15 @@ export class BatchActions {
 			if (items.length === 0) return;
 			const marking = items.some((item) => !item.isFavorite);
 			const changing = items.filter((item) => item.isFavorite !== marking).map((item) => item.id);
-			const changed: string[] = [];
-			try {
-				for (const id of changing) {
-					const { error } = await toggleFavorite({ path: { assetId: id } });
-					if (error) throw error;
-					changed.push(id);
-				}
-			} finally {
-				// Those already toggled on the server show it, even when a later one failed.
-				this.#markFavorite(changed, marking);
-			}
+			const { data, error } = await setFavorites({
+				body: { assetIds: changing, isFavorite: marking }
+			});
+			if (error || !data) throw error;
+			this.#markFavorite(data.assetIds, marking);
 			toasts.show(
 				marking
-					? m.action_favorited({ count: changing.length })
-					: m.action_unfavorited({ count: changing.length })
+					? m.action_favorited({ count: data.assetIds.length })
+					: m.action_unfavorited({ count: data.assetIds.length })
 			);
 		});
 	}
