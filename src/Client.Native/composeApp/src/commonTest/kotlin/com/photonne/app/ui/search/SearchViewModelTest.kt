@@ -4,6 +4,7 @@ import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.search.SearchRepository
+import com.photonne.app.ui.TrackedViewModels
 import com.photonne.app.ui.json
 import com.photonne.app.ui.testApi
 import com.photonne.app.ui.testErrorFactory
@@ -18,7 +19,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -31,6 +31,8 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
 
+    private val vms = TrackedViewModels()
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -41,20 +43,20 @@ class SearchViewModelTest {
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
     ): SearchViewModel {
         val api = testApi(handler)
-        return SearchViewModel(
+        return vms.track(SearchViewModel(
             repository = SearchRepository(api),
             assetRepository = AssetDetailRepository(api),
             albumsRepository = AlbumsRepository(api),
             errorFactory = testErrorFactory(api),
             mutationBus = AssetMutationBus(),
-        )
+        ))
     }
 
     private suspend fun SearchViewModel.settled(): SearchUiState =
         state.first { !it.isLoading && !it.isAppending }
 
     @Test
-    fun a_failed_search_drops_the_results_of_the_previous_one() = runTest {
+    fun a_failed_search_drops_the_results_of_the_previous_one() = vms.runTest {
         var fail = false
         val vm = viewModel {
             if (fail) respond("", HttpStatusCode.InternalServerError)
@@ -73,7 +75,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun ai_search_unavailable_falls_back_to_text_and_says_so() = runTest {
+    fun ai_search_unavailable_falls_back_to_text_and_says_so() = vms.runTest {
         val paths = mutableListOf<String>()
         val vm = viewModel { request ->
             paths += request.url.encodedPath
@@ -98,7 +100,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun other_ai_search_errors_stay_errors() = runTest {
+    fun other_ai_search_errors_stay_errors() = vms.runTest {
         val vm = viewModel { respond("", HttpStatusCode.ServiceUnavailable) }
         vm.setMode(SearchMode.Semantic)
         vm.setQuery("playa")
@@ -109,7 +111,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `a failed next page is an append error - keeps the results and retries`() = runTest {
+    fun `a failed next page is an append error - keeps the results and retries`() = vms.runTest {
         var call = 0
         val vm = viewModel {
             call++

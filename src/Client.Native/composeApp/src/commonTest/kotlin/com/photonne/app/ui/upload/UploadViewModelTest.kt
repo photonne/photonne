@@ -12,6 +12,7 @@ import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.upload.UploadRepository
 import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.ui.TrackedViewModels
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -32,7 +33,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.io.Buffer
 import kotlinx.io.Source
@@ -53,6 +53,8 @@ private class UploadStubTokenStorage : TokenStorage {
 @OptIn(ExperimentalCoroutinesApi::class)
 class UploadViewModelTest {
 
+    private val vms = TrackedViewModels()
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -71,12 +73,12 @@ class UploadViewModelTest {
             authState = AuthStateHolder()
         )
         val api = PhotonneApiClient(client, "http://test.local")
-        return UploadViewModel(
+        return vms.track(UploadViewModel(
             UploadRepository(api),
             AlbumsRepository(api),
             UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api)),
             bus
-        )
+        ))
     }
 
     private fun MockRequestHandleScope.uploaded(assetId: String) = respond(
@@ -102,7 +104,7 @@ class UploadViewModelTest {
         PickedFile(name = name, mimeType = "image/jpeg", sizeBytes = 0L, content = content)
 
     @Test
-    fun unreadable_files_are_left_out_and_reported() = runTest {
+    fun unreadable_files_are_left_out_and_reported() = vms.runTest {
         val vm = viewModel { uploaded("a-1") }
 
         vm.enqueue(listOf(picked("ok.jpg"), unreadablePickedFile("icloud.heic")))
@@ -117,7 +119,7 @@ class UploadViewModelTest {
     }
 
     @Test
-    fun the_file_is_streamed_from_its_content_and_released_once_uploaded() = runTest {
+    fun the_file_is_streamed_from_its_content_and_released_once_uploaded() = vms.runTest {
         var sentBody = 0L
         val vm = viewModel { request ->
             sentBody = request.body.contentLength ?: -1L
@@ -140,7 +142,7 @@ class UploadViewModelTest {
     }
 
     @Test
-    fun cancel_all_marks_the_upload_cancelled_not_failed() = runTest {
+    fun cancel_all_marks_the_upload_cancelled_not_failed() = vms.runTest {
         val gate = CompletableDeferred<Unit>()
         val vm = viewModel { gate.await(); uploaded("a-1") }
 
@@ -160,7 +162,7 @@ class UploadViewModelTest {
     }
 
     @Test
-    fun removing_the_upload_in_flight_aborts_it_and_moves_on() = runTest {
+    fun removing_the_upload_in_flight_aborts_it_and_moves_on() = vms.runTest {
         val neverAnswers = CompletableDeferred<Unit>()
         val vm = viewModel { neverAnswers.await(); uploaded("a-1") }
 
@@ -183,7 +185,7 @@ class UploadViewModelTest {
     }
 
     @Test
-    fun a_drained_batch_reports_its_count_and_tells_the_app() = runTest {
+    fun a_drained_batch_reports_its_count_and_tells_the_app() = vms.runTest {
         val vm = viewModel { uploaded("a-1") }
         // Subscribed before enqueueing: neither flow replays.
         val landed = async(start = CoroutineStart.UNDISPATCHED) { vm.batchLanded.first() }
@@ -216,7 +218,7 @@ class UploadViewModelTest {
     }
 
     @Test
-    fun photonne_size_limit_shows_its_own_message_with_the_megabytes() = runTest {
+    fun photonne_size_limit_shows_its_own_message_with_the_megabytes() = vms.runTest {
         val item = failedItemAfter(
             HttpStatusCode.PayloadTooLarge,
             """{"error":"El archivo supera el tamaño máximo permitido (100 MB).","code":"upload_too_large"}""",
@@ -227,7 +229,7 @@ class UploadViewModelTest {
     }
 
     @Test
-    fun a_proxy_413_is_told_apart_from_the_photonne_limit() = runTest {
+    fun a_proxy_413_is_told_apart_from_the_photonne_limit() = vms.runTest {
         val item = failedItemAfter(
             HttpStatusCode.PayloadTooLarge,
             "<html><head><title>413 Request Entity Too Large</title></head><body><center><h1>413 Request Entity Too Large</h1></center><hr><center>nginx</center></body></html>",

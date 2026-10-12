@@ -1,6 +1,7 @@
 package com.photonne.app.ui.explore
 
 import com.photonne.app.data.search.SearchRepository
+import com.photonne.app.ui.TrackedViewModels
 import com.photonne.app.ui.json
 import com.photonne.app.ui.testApi
 import com.photonne.app.ui.testErrorFactory
@@ -12,7 +13,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -25,6 +25,8 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExploreFacetsViewModelTest {
 
+    private val vms = TrackedViewModels()
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -32,7 +34,7 @@ class ExploreFacetsViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `objects failing do not take the scenes down with them`() = runTest {
+    fun `objects failing do not take the scenes down with them`() = vms.runTest {
         var objectsFail = true
         var requests = 0
         val api = testApi { request ->
@@ -42,7 +44,7 @@ class ExploreFacetsViewModelTest {
                 else json("""[{"label":"dog","assetCount":3}]""")
             } else json("""[{"label":"beach","assetCount":5}]""")
         }
-        val vm = ExploreFacetsViewModel(SearchRepository(api), testErrorFactory(api), MapSettings())
+        val vm = vms.track(ExploreFacetsViewModel(SearchRepository(api), testErrorFactory(api), MapSettings()))
 
         vm.ensureLoaded()
         val failed = vm.state.first { it.attempted && !it.isLoading }

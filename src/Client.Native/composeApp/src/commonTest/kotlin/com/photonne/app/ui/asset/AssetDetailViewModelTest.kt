@@ -10,6 +10,7 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.ui.TrackedViewModels
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -24,7 +25,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -43,6 +43,8 @@ private class DetailStubTokenStorage : TokenStorage {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AssetDetailViewModelTest {
+
+    private val vms = TrackedViewModels()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -97,15 +99,15 @@ class AssetDetailViewModelTest {
             authState = AuthStateHolder()
         )
         val api = PhotonneApiClient(client, "http://test.local")
-        return AssetDetailViewModel(
+        return vms.track(AssetDetailViewModel(
             repository = AssetDetailRepository(api, bus),
             errorFactory = UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api)),
             mutationBus = bus,
-        )
+        ))
     }
 
     @Test
-    fun favorite_changed_on_the_bus_updates_the_cached_detail() = runTest {
+    fun favorite_changed_on_the_bus_updates_the_cached_detail() = vms.runTest {
         val server = FakeServer()
         val bus = AssetMutationBus()
         val vm = build(server, bus)
@@ -122,7 +124,7 @@ class AssetDetailViewModelTest {
     }
 
     @Test
-    fun toggle_on_a_stale_copy_still_lands_on_the_heart_the_user_asked_for() = runTest {
+    fun toggle_on_a_stale_copy_still_lands_on_the_heart_the_user_asked_for() = vms.runTest {
         val server = FakeServer()
         val vm = build(server, AssetMutationBus())
         vm.select("a")
@@ -140,7 +142,7 @@ class AssetDetailViewModelTest {
     }
 
     @Test
-    fun taps_while_a_favorite_request_is_out_are_ignored() = runTest {
+    fun taps_while_a_favorite_request_is_out_are_ignored() = vms.runTest {
         val server = FakeServer()
         val vm = build(server, AssetMutationBus())
         vm.select("a")
@@ -159,7 +161,7 @@ class AssetDetailViewModelTest {
     }
 
     @Test
-    fun restored_on_the_bus_refetches_the_visible_detail() = runTest {
+    fun restored_on_the_bus_refetches_the_visible_detail() = vms.runTest {
         val server = FakeServer()
         val bus = AssetMutationBus()
         val vm = build(server, bus)

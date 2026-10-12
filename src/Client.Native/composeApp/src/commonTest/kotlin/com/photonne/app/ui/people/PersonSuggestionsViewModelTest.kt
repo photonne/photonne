@@ -2,6 +2,7 @@ package com.photonne.app.ui.people
 
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.people.PeopleRepository
+import com.photonne.app.ui.TrackedViewModels
 import com.photonne.app.ui.json
 import com.photonne.app.ui.testApi
 import com.photonne.app.ui.testErrorFactory
@@ -14,7 +15,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -26,6 +26,8 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class PersonSuggestionsViewModelTest {
 
+    private val vms = TrackedViewModels()
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -33,13 +35,13 @@ class PersonSuggestionsViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `a failed accept reaches the caller and keeps the face`() = runTest {
+    fun `a failed accept reaches the caller and keeps the face`() = vms.runTest {
         val api = testApi { request ->
             if (request.method == HttpMethod.Get) {
                 json("""{"total":1,"items":[{"id":"f-1","assetId":"a-1"}]}""")
             } else respond("", HttpStatusCode.InternalServerError)
         }
-        val vm = PersonSuggestionsViewModel(PeopleRepository(api), testErrorFactory(api))
+        val vm = vms.track(PersonSuggestionsViewModel(PeopleRepository(api), testErrorFactory(api)))
         vm.open("p-1", "Marc")
         vm.state.first { !it.isInitialLoading }
 

@@ -6,6 +6,7 @@ import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.people.PeopleRepository
 import com.photonne.app.data.timeline.MemoriesRepository
 import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.ui.TrackedViewModels
 import com.photonne.app.ui.json
 import com.photonne.app.ui.testApi
 import com.photonne.app.ui.testErrorFactory
@@ -20,7 +21,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -34,6 +34,8 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class PersonDetailUnlinkTest {
 
+    private val vms = TrackedViewModels()
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -44,14 +46,14 @@ class PersonDetailUnlinkTest {
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
     ): PersonDetailViewModel {
         val api = testApi(handler)
-        return PersonDetailViewModel(
+        return vms.track(PersonDetailViewModel(
             peopleRepository = PeopleRepository(api),
             assetRepository = AssetDetailRepository(api),
             albumsRepository = AlbumsRepository(api),
             errorFactory = testErrorFactory(api),
             mutationBus = AssetMutationBus(),
             memoriesRepository = MemoriesRepository(api, PhotonneAppConfig(apiBaseUrl = "http://test.local")),
-        )
+        ))
     }
 
     private fun page(vararg ids: String) = ids.joinToString(",", """{"total":${ids.size},"items":[""", "]}") {
@@ -77,7 +79,7 @@ class PersonDetailUnlinkTest {
     }
 
     @Test
-    fun `a partial unlink brings back only the photos that failed`() = runTest {
+    fun `a partial unlink brings back only the photos that failed`() = vms.runTest {
         val vm = viewModel(handler("a", "b", "c") { assetId ->
             if (assetId == "b") respond("", HttpStatusCode.InternalServerError)
             else json("""{"facesDetached":1}""")
@@ -101,7 +103,7 @@ class PersonDetailUnlinkTest {
     }
 
     @Test
-    fun `unlinking every photo reports the person as emptied`() = runTest {
+    fun `unlinking every photo reports the person as emptied`() = vms.runTest {
         val vm = viewModel(handler("a", "b") { json("""{"facesDetached":1}""") })
         vm.openLoaded("p-1")
         vm.setSelected(listOf("a", "b"), selected = true)

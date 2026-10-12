@@ -11,6 +11,7 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.events.AssetMutation
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.ui.TrackedViewModels
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -23,7 +24,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -40,6 +40,8 @@ private class FavoritesStubTokenStorage : TokenStorage {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FavoritesViewModelTest {
+
+    private val vms = TrackedViewModels()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -94,12 +96,12 @@ class FavoritesViewModelTest {
             authState = AuthStateHolder()
         )
         val api = PhotonneApiClient(client, "http://test.local")
-        val vm = FavoritesViewModel(
+        val vm = vms.track(FavoritesViewModel(
             assetRepository = AssetDetailRepository(api, bus),
             albumsRepository = AlbumsRepository(api),
             errorFactory = UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api)),
             mutationBus = bus,
-        )
+        ))
         return vm to cursors
     }
 
@@ -111,7 +113,7 @@ class FavoritesViewModelTest {
     }
 
     @Test
-    fun a_mutation_reloads_every_loaded_page_not_just_the_first() = runTest {
+    fun a_mutation_reloads_every_loaded_page_not_just_the_first() = vms.runTest {
         val bus = AssetMutationBus()
         val pageTwo = mutableListOf("c", "d")
         val (vm, cursors) = build(bus, pageTwo)
@@ -130,7 +132,7 @@ class FavoritesViewModelTest {
     }
 
     @Test
-    fun favoriting_again_puts_the_photo_back_where_it_was() = runTest {
+    fun favoriting_again_puts_the_photo_back_where_it_was() = vms.runTest {
         val (vm, _) = build(AssetMutationBus())
         vm.loadBothPages()
 
