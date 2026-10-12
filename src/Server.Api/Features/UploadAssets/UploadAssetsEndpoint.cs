@@ -112,13 +112,15 @@ public class UploadAssetsEndpoint : IEndpoint
             // Restore the original device timestamps the client sent along —
             // otherwise the moved temp file carries the upload time and the
             // library loses the real mtime forever. Same pattern as
-            // SyncAssetEndpoint. SetCreationTimeUtc is a silent no-op on
-            // filesystems without birth time; the Asset row below uses the
-            // parsed values directly so the database stays correct anyway.
+            // SyncAssetEndpoint, creation time first: on Linux, which has no
+            // way to set the birth time, SetCreationTimeUtc writes the mtime
+            // instead, so it has to go before the mtime it would overwrite.
+            // The Asset row below uses the parsed values directly so the
+            // database stays correct anyway.
             var modifiedUtc = ParseClientTimestamp(fileModifiedAt);
             var createdUtc = ParseClientTimestamp(fileCreatedAt);
-            if (modifiedUtc.HasValue) File.SetLastWriteTimeUtc(targetPath, modifiedUtc.Value);
             if (createdUtc.HasValue) File.SetCreationTimeUtc(targetPath, createdUtc.Value);
+            if (modifiedUtc.HasValue) File.SetLastWriteTimeUtc(targetPath, modifiedUtc.Value);
 
             // 5. Create Asset record with the minimum the backup contract requires:
             // file on disk + Asset row + checksum + owner/folder. Enrichment
