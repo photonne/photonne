@@ -60,6 +60,11 @@ jobs:
         with:
           global-json-file: global.json
 
+      # The video metadata goes through ffprobe, which the server's Docker
+      # image ships (src/Server.Api/Dockerfile) and the runner doesn't.
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
       # Same Testcontainers Postgres as snapshot; the tests snapshot runs are
       # left out so they don't run twice.
       - name: Server tests
