@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -192,5 +193,63 @@ public sealed class ShareUploadTests : IntegrationTestBase
             Assert.Equal(1, await db.AlbumAssets.AsNoTracking()
                 .CountAsync(aa => aa.AlbumId == albumId));
         });
+    }
+
+    private sealed record UploadedAsset(Guid Id, string FileName, string ThumbnailUrl, string ContentUrl);
+    private sealed record UploadBody(string Message, UploadedAsset? Asset);
+    private sealed record ShareBody(List<UploadedAsset>? Assets);
+
+    [Fact]
+    public async Task GuestUpload_ReturnsThePhotoAsTheLinkPageListsIt_WithoutCountingAVisit()
+    {
+        var (_, _, token) = await CreateUploadLinkAsync(password: "hunter2");
+
+        var client = CreateClient();
+        using var form = BuildMultipart(FixturePaths.WithExif, pw: "hunter2");
+        var response = await client.PostAsync($"/api/share/{token}/upload", form);
+        response.EnsureSuccessStatusCode();
+        var uploaded = (await response.Content.ReadFromJsonAsync<UploadBody>())!.Asset;
+
+        Assert.NotNull(uploaded);
+        Assert.Equal(0, await WithDbContextAsync(db =>
+            db.SharedLinks.AsNoTracking().Where(l => l.Token == token).Select(l => l.ViewCount).SingleAsync()));
+
+        // The same entry the page gets when it opens the link, password included.
+        var page = await client.GetFromJsonAsync<ShareBody>($"/api/share/{token}?pw=hunter2");
+        Assert.Equal(page!.Assets!.Single(), uploaded);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(uploaded!.ThumbnailUrl)).StatusCode);
+    }
+
+    [Fact]
+    public async Task GuestUpload_DuplicateOfAnotherUsersPhoto_ReturnsNoAsset()
+    {
+        var (_, _, token) = await CreateUploadLinkAsync();
+        var stranger = await CreateUserAsync();
+        var checksum = await new FileHashService().CalculateFileHashAsync(FixturePaths.WithExif);
+        await WithDbContextAsync(async db =>
+        {
+            db.Assets.Add(new Asset
+            {
+                FileName = "theirs.jpg",
+                FullPath = $"/assets/users/{stranger.Username}/theirs.jpg",
+                FileSize = 1,
+                Checksum = checksum,
+                Type = AssetType.Image,
+                Extension = ".jpg",
+                FileCreatedAt = DateTime.UtcNow,
+                FileModifiedAt = DateTime.UtcNow,
+                OwnerId = stranger.Id
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var client = CreateClient();
+        using var form = BuildMultipart(FixturePaths.WithExif);
+        var response = await client.PostAsync($"/api/share/{token}/upload", form);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<UploadBody>();
+        Assert.Null(body!.Asset);
+        Assert.Equal(0, await WithDbContextAsync(db => db.AlbumAssets.AsNoTracking().CountAsync()));
     }
 }

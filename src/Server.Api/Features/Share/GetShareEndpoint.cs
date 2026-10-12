@@ -71,38 +71,12 @@ public class GetShareEndpoint : IEndpoint
                 $"/albums/{link.AlbumId}");
         }
 
-        // Append password to media URLs so the media endpoints can also validate it
-        var pwSuffix = !string.IsNullOrEmpty(pw) ? $"?pw={Uri.EscapeDataString(pw)}" : string.Empty;
-
         if (link.AlbumId.HasValue && link.Album != null)
         {
             var album = link.Album;
             // Manual or smart: the same photos the album shows in the app.
-            var rows = await (await SharedAlbumAssets.QueryAsync(dbContext, smartResolver, album, ct))
-                .Select(a => new
-                {
-                    a.Id,
-                    a.FileName,
-                    a.Type,
-                    a.FileCreatedAt,
-                    a.FileSize,
-                    Width = a.Exif != null ? a.Exif.Width : null,
-                    Height = a.Exif != null ? a.Exif.Height : null
-                })
-                .ToListAsync(ct);
-            var assets = rows
-                .Select(a => new SharedAssetDto
-                {
-                    Id = a.Id,
-                    FileName = a.FileName,
-                    Type = a.Type.ToString(),
-                    FileCreatedAt = a.FileCreatedAt,
-                    FileSize = a.FileSize,
-                    Width = a.Width,
-                    Height = a.Height,
-                    ThumbnailUrl = $"/api/share/{token}/asset/{a.Id}/thumbnail{pwSuffix}",
-                    ContentUrl = $"/api/share/{token}/asset/{a.Id}/content{pwSuffix}"
-                }).ToList();
+            var assets = await SharedAssetDto.ListAsync(
+                await SharedAlbumAssets.QueryAsync(dbContext, smartResolver, album, ct), token, pw, ct);
 
             return TypedResults.Ok(new SharedContentResponse
             {
@@ -153,6 +127,43 @@ public class SharedAssetDto
     public int? Height { get; set; }
     public string ThumbnailUrl { get; set; } = string.Empty;
     public string ContentUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The photos of <paramref name="assets"/> as a link's page shows them, with
+    /// media URLs under the link. The password goes along in them so the media
+    /// endpoints can check it too.
+    /// </summary>
+    public static async Task<List<SharedAssetDto>> ListAsync(
+        IQueryable<Asset> assets, string token, string? pw, CancellationToken ct)
+    {
+        var rows = await assets
+            .Select(a => new
+            {
+                a.Id,
+                a.FileName,
+                a.Type,
+                a.FileCreatedAt,
+                a.FileSize,
+                Width = a.Exif != null ? a.Exif.Width : null,
+                Height = a.Exif != null ? a.Exif.Height : null
+            })
+            .ToListAsync(ct);
+
+        var pwSuffix = !string.IsNullOrEmpty(pw) ? $"?pw={Uri.EscapeDataString(pw)}" : string.Empty;
+        return rows
+            .Select(a => new SharedAssetDto
+            {
+                Id = a.Id,
+                FileName = a.FileName,
+                Type = a.Type.ToString(),
+                FileCreatedAt = a.FileCreatedAt,
+                FileSize = a.FileSize,
+                Width = a.Width,
+                Height = a.Height,
+                ThumbnailUrl = $"/api/share/{token}/asset/{a.Id}/thumbnail{pwSuffix}",
+                ContentUrl = $"/api/share/{token}/asset/{a.Id}/content{pwSuffix}"
+            }).ToList();
+    }
 }
 
 public class SharedAlbumDto
