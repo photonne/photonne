@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.toLocalDateTime
 
 enum class AssetActionWorking { Idle, Downloading, Sharing, CreatingLink }
