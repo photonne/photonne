@@ -1,7 +1,20 @@
+<script lang="ts" module>
+	const KEY = 'photonne.organize.suggestions.collapsed';
+
+	// Folded to make room for the inbox, remembered across visits.
+	function readCollapsed(): boolean {
+		try {
+			return localStorage.getItem(KEY) === '1';
+		} catch {
+			return false;
+		}
+	}
+</script>
+
 <script lang="ts">
 	import type { OrganizeSuggestionResponse } from '#lib/api/index.js';
 	import Icon from '#lib/components/Icon.svelte';
-	import SectionTitle from '#lib/library/SectionTitle.svelte';
+	import { formatCount } from '#lib/format.js';
 	import { thumbnailUrl } from '#lib/media.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { suggestionRange, suggestionTitle } from './suggestion.js';
@@ -21,11 +34,31 @@
 		scene: m.organize_kind_scene,
 		month: m.organize_kind_month
 	};
+
+	const listId = $props.id();
+	let open = $state(!readCollapsed());
+
+	function toggle() {
+		open = !open;
+		try {
+			localStorage.setItem(KEY, open ? '0' : '1');
+		} catch {
+			// Remembered for this page only.
+		}
+	}
 </script>
 
 <section class="suggestions" aria-labelledby="organize-suggestions">
-	<SectionTitle id="organize-suggestions" title={m.organize_suggestions()} />
-	<ul>
+	<h2 id="organize-suggestions">
+		<button type="button" aria-expanded={open} aria-controls={listId} onclick={toggle}>
+			<span class="chevron" class:open aria-hidden="true"
+				><Icon name="chevronRight" size={18} /></span
+			>
+			{m.organize_suggestions()}
+			<span class="count">{formatCount(suggestions.length)}</span>
+		</button>
+	</h2>
+	<ul id={listId} hidden={!open}>
 		{#each suggestions as suggestion (suggestion.key)}
 			{@const title = suggestionTitle(suggestion)}
 			<li>
@@ -77,6 +110,59 @@
 		display: grid;
 		gap: var(--space-2);
 		padding: var(--space-3) var(--page-gutter) var(--space-2);
+	}
+
+	h2 {
+		margin: 0;
+	}
+
+	h2 button {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+		min-height: var(--control-h-sm);
+		margin-left: calc(-1 * var(--space-1));
+		padding: 0 var(--space-2) 0 var(--space-1);
+		border: 0;
+		border-radius: var(--radius-control);
+		background: transparent;
+		color: var(--color-text);
+		font: inherit;
+		font-size: var(--font-size-md);
+		font-weight: 650;
+		line-height: 1.3;
+		cursor: pointer;
+	}
+
+	h2 button:hover {
+		background: var(--color-surface-raised);
+	}
+
+	.chevron {
+		display: grid;
+		color: var(--color-text-muted);
+		transition: transform var(--duration-fast);
+	}
+
+	.chevron.open {
+		transform: rotate(90deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.chevron {
+			transition: none;
+		}
+	}
+
+	.count {
+		margin-left: var(--space-1);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+		font-weight: 400;
+	}
+
+	ul[hidden] {
+		display: none;
 	}
 
 	ul {

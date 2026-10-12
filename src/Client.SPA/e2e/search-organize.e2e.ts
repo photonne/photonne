@@ -109,6 +109,25 @@ test('dismissing a suggestion sets it aside', async ({ page }) => {
 	expect(state.excludes?.[0].assetIds).toHaveLength(6);
 });
 
+test('the suggestions fold away and stay folded', async ({ page }) => {
+	await open(page, '/organize');
+	const toggle = page.getByRole('button', { name: /^Sugerencias/ });
+	const roma = page.getByRole('article', { name: 'Roma' });
+
+	await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+	await toggle.click();
+	await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+	await expect(roma).toBeHidden();
+
+	await page.reload();
+	await expect(page.getByRole('button', { name: /^Sugerencias/ })).toHaveAttribute(
+		'aria-expanded',
+		'false'
+	);
+	await page.getByRole('button', { name: /^Sugerencias/ }).click();
+	await expect(roma).toBeVisible();
+});
+
 test('a rule previews its matches, is reviewed and moves on the server', async ({ page }) => {
 	const state = await open(page, '/organize/rules');
 
