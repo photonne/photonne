@@ -1,21 +1,23 @@
 package com.photonne.app.ui.upload
 
 import androidx.compose.runtime.Composable
+import kotlinx.io.Source
 
 /**
  * Lightweight value type produced by the platform-specific picker and
- * fed to the upload pipeline. `bytes` holds the entire payload in memory
- * — fine for typical photos (a few MB). Pickers check the size BEFORE
- * reading: a file over [UploadViewModel.MAX_BYTES_PER_FILE] comes back
- * with empty `bytes` and its real `sizeBytes` (see [oversizePickedFile]),
- * and one that can't be read comes back flagged [unreadable], so the
- * view-model can tell the user what was left out instead of dropping it.
+ * fed to the upload pipeline. It holds a reference to the file, never its
+ * payload: [content] is opened when the queue uploads it and streamed to the
+ * server, so a batch of large videos doesn't sit in memory. One that can't be
+ * read comes back flagged [unreadable], so the view-model can tell the user
+ * what was left out instead of dropping it.
  */
 data class PickedFile(
     val name: String,
     val mimeType: String,
+    /** Best size known when picking; 0 when the platform only learns it on read (PhotoKit). */
     val sizeBytes: Long,
-    val bytes: ByteArray,
+    /** Null only for an [unreadable] file. */
+    val content: PickedContent?,
     /**
      * Original last-modified timestamp (epoch millis UTC) when the
      * platform picker exposes it; sent with the upload so the server
@@ -36,25 +38,34 @@ data class PickedFile(
     override fun hashCode(): Int = (name.hashCode() * 31 + mimeType.hashCode()) * 31 + sizeBytes.hashCode()
 }
 
-/** A picked file left unread because it's over the upload cap; the queue skips and reports it. */
-fun oversizePickedFile(name: String, mimeType: String, sizeBytes: Long, lastModifiedMillis: Long? = null) =
-    PickedFile(
-        name = name,
-        mimeType = mimeType,
-        sizeBytes = sizeBytes,
-        bytes = ByteArray(0),
-        lastModifiedMillis = lastModifiedMillis
-    )
+/**
+ * Where a picked file's bytes live (a content URI, a path, a PhotoKit
+ * resource…). [open] can run more than once: a retry reopens it from scratch.
+ */
+interface PickedContent {
+    /**
+     * Opens the content for one upload and runs [block] over it with its
+     * exact byte count (the upload's Content-Length); the source is closed
+     * afterwards. Throws when the file can no longer be read.
+     */
+    suspend fun <T> open(block: suspend (source: Source, sizeBytes: Long) -> T): T
+
+    /** What the upload list hands to the image loader as a thumbnail; null shows an icon. */
+    val thumbnailModel: Any? get() = null
+
+    /** Frees anything kept on disk for this file (iOS temp copies). Safe to call twice. */
+    fun release() {}
+}
 
 /** A picked file the platform couldn't read; the queue skips and reports it. */
 fun unreadablePickedFile(name: String) =
-    PickedFile(name = name, mimeType = "", sizeBytes = 0L, bytes = ByteArray(0), unreadable = true)
+    PickedFile(name = name, mimeType = "", sizeBytes = 0L, content = null, unreadable = true)
 
-/** The motion clip of a picked Live Photo, read whole like its still. */
+/** The motion clip of a picked Live Photo, streamed like its still. */
 class PickedMotionClip(
     val name: String,
     val mimeType: String,
-    val bytes: ByteArray
+    val content: PickedContent
 )
 
 /**

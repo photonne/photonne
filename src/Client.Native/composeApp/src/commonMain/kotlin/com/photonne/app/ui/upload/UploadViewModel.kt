@@ -30,15 +30,16 @@ data class UploadItem(
     val id: Long,
     val name: String,
     val mimeType: String,
+    /** 0 until known: PhotoKit only tells the size once the file is read for upload. */
     val sizeBytes: Long,
     /**
-     * Held while the item is Queued or Uploading. Cleared once it
-     * leaves the active queue so we don't keep the whole batch
-     * resident in memory after a successful upload.
+     * Where the file lives, opened and streamed only while it uploads. Kept
+     * for a retry while Queued, Uploading or Failed; released once the item
+     * leaves the queue (on iOS that deletes the picker's temp copy).
      */
-    val bytes: ByteArray?,
+    val content: PickedContent?,
     val lastModifiedMillis: Long? = null,
-    /** A Live Photo's paired video; released together with [bytes]. */
+    /** A Live Photo's paired video; released together with [content]. */
     val motionClip: PickedMotionClip? = null,
     val status: UploadStatus = UploadStatus.Queued,
     val assetId: String? = null,
@@ -100,24 +101,23 @@ class UploadViewModel(
         if (files.isEmpty()) return
         val unreadable = files.count { it.unreadable }
         val newItems = files
-            .filter { !it.unreadable && it.sizeBytes <= MAX_BYTES_PER_FILE }
+            .filter { !it.unreadable && it.content != null }
             .map { picked ->
                 UploadItem(
                     id = ++nextId,
                     name = picked.name,
                     mimeType = picked.mimeType.ifBlank { "application/octet-stream" },
                     sizeBytes = picked.sizeBytes,
-                    bytes = picked.bytes,
+                    content = picked.content,
                     lastModifiedMillis = picked.lastModifiedMillis,
                     motionClip = picked.motionClip
                 )
             }
-        val tooBig = files.size - unreadable - newItems.size
         _state.update {
             it.copy(
                 items = it.items + newItems,
                 lastBatch = null,
-                pickerError = skippedFilesMessage(tooBig, unreadable) ?: it.pickerError
+                pickerError = skippedFilesMessage(unreadable) ?: it.pickerError
             )
         }
         if (newItems.isNotEmpty()) ensureWorker()
@@ -151,31 +151,36 @@ class UploadViewModel(
         // subiendo en segundo plano y acababa en el servidor igualmente); el
         // trabajador sigue con el siguiente.
         inFlight?.takeIf { it.first == id }?.second?.cancel()
+        val removed = _state.value.items.firstOrNull { it.id == id }
         _state.update { previous ->
             previous.copy(items = previous.items.filterNot { it.id == id })
         }
+        removed?.releaseContent()
     }
 
     fun clearFinished() {
-        _state.update { previous ->
-            previous.copy(
-                lastBatch = null,
-                items = previous.items.filter {
-                    it.status == UploadStatus.Queued || it.status == UploadStatus.Uploading
-                }
-            )
+        val active = { item: UploadItem ->
+            item.status == UploadStatus.Queued || item.status == UploadStatus.Uploading
         }
+        val cleared = _state.value.items.filterNot(active)
+        _state.update { previous ->
+            previous.copy(lastBatch = null, items = previous.items.filter(active))
+        }
+        cleared.forEach { it.releaseContent() }
     }
 
     fun cancelAll() {
         worker?.cancel()
         worker = null
+        _state.value.items
+            .filter { it.status == UploadStatus.Queued || it.status == UploadStatus.Uploading }
+            .forEach { it.releaseContent() }
         _state.update { previous ->
             previous.copy(
                 isUploading = false,
                 items = previous.items.map { item ->
                     if (item.status == UploadStatus.Queued || item.status == UploadStatus.Uploading) {
-                        item.copy(status = UploadStatus.Cancelled, bytes = null, motionClip = null)
+                        item.copy(status = UploadStatus.Cancelled, content = null, motionClip = null)
                     } else item
                 }
             )
@@ -267,8 +272,8 @@ class UploadViewModel(
     /** Sube un elemento; true si ha entrado algo nuevo en el servidor. */
     private suspend fun runOne(itemId: Long): Boolean {
         val current = _state.value.items.firstOrNull { it.id == itemId } ?: return false
-        val bytes = current.bytes
-        if (bytes == null) {
+        val content = current.content
+        if (content == null) {
             _state.update {
                 it.copy(
                     items = it.items.map { item ->
@@ -289,12 +294,19 @@ class UploadViewModel(
         }
         val outcome = try {
             Result.success(
-                repository.upload(
-                    current.name,
-                    current.mimeType,
-                    bytes,
-                    fileModifiedAtMillis = current.lastModifiedMillis
-                )
+                // Streamed from the file as it goes out: memory stays flat
+                // whatever the size. The real size replaces the picker's guess
+                // (PhotoKit only knows it once read).
+                content.open { source, sizeBytes ->
+                    if (sizeBytes != current.sizeBytes) setSize(itemId, sizeBytes)
+                    repository.uploadStream(
+                        current.name,
+                        current.mimeType,
+                        source,
+                        sizeBytes,
+                        fileModifiedAtMillis = current.lastModifiedMillis
+                    )
+                }
             )
         } catch (ex: CancellationException) {
             // Cancelled (remove / "Cancelar todo"), not failed: whoever cancelled
@@ -314,12 +326,13 @@ class UploadViewModel(
                         if (item.id == itemId) item.copy(
                             status = if (alreadyExisted) UploadStatus.Skipped else UploadStatus.Done,
                             assetId = response.assetId,
-                            bytes = null,
+                            content = null,
                             motionClip = null
                         ) else item
                     }
                 )
             }
+            current.releaseContent()
         }.onFailure { error ->
             _state.update {
                 it.copy(
@@ -348,11 +361,30 @@ class UploadViewModel(
     private suspend fun attachMotionClip(assetId: String, clip: PickedMotionClip, alreadyExisted: Boolean) {
         try {
             if (alreadyExisted && !repository.motionClipMissing(assetId)) return
-            repository.attachMotionClip(assetId, clip.name, clip.mimeType, clip.bytes)
+            clip.content.open { source, sizeBytes ->
+                repository.attachMotionClip(assetId, clip.name, clip.mimeType, source, sizeBytes)
+            }
         } catch (ex: CancellationException) {
             throw ex
         } catch (_: Throwable) {
         }
+    }
+
+    private fun setSize(itemId: Long, sizeBytes: Long) {
+        _state.update {
+            it.copy(items = it.items.map { item -> if (item.id == itemId) item.copy(sizeBytes = sizeBytes) else item })
+        }
+    }
+
+    /** Frees what the picker kept for this item (iOS temp copies); idempotent. */
+    private fun UploadItem.releaseContent() {
+        content?.release()
+        motionClip?.content?.release()
+    }
+
+    override fun onCleared() {
+        _state.value.items.forEach { it.releaseContent() }
+        super.onCleared()
     }
 
     /**
@@ -378,17 +410,14 @@ class UploadViewModel(
     }
 
     companion object {
-        /** Aviso de lo que se ha quedado fuera de una tanda; null si no falta nada. */
-        internal fun skippedFilesMessage(tooBig: Int, unreadable: Int): String? = when {
-            tooBig > 0 && unreadable > 0 ->
-                "Se han omitido $tooBig archivo(s) que superan el límite de $MAX_MB_PER_FILE MB " +
-                    "y $unreadable que no se han podido leer."
-            tooBig > 0 -> "$tooBig archivo(s) superan el límite de $MAX_MB_PER_FILE MB y se han omitido."
-            unreadable > 0 -> "$unreadable archivo(s) no se han podido leer y se han omitido."
-            else -> null
-        }
-
-        const val MAX_MB_PER_FILE = 200
-        const val MAX_BYTES_PER_FILE = MAX_MB_PER_FILE * 1024L * 1024L
+        /**
+         * Aviso de lo que se ha quedado fuera de una tanda; null si no falta
+         * nada. No hay tope de tamaño en el cliente: como la subida va en
+         * streaming, el único límite es el del servidor
+         * (ServerSettings.MaxUploadSizeMb), que responde 413 con su mensaje y
+         * ese mensaje sale en la fila del archivo.
+         */
+        internal fun skippedFilesMessage(unreadable: Int): String? =
+            if (unreadable > 0) "$unreadable archivo(s) no se han podido leer y se han omitido." else null
     }
 }

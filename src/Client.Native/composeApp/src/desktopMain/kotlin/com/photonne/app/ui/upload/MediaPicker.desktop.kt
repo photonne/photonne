@@ -5,6 +5,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.Source
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -37,25 +41,31 @@ private fun runPicker(): List<PickedFile> {
 }
 
 /**
- * Size is checked before reading, so an oversize video never lands in memory
- * just to be rejected by the queue; a read failure is reported, not dropped.
+ * Only the file's reference and metadata: its bytes are streamed from disk
+ * when the queue uploads it. One that can't be read is reported, not dropped.
  */
 private fun File.toPickedFile(): PickedFile = runCatching {
-    val mime = guessMimeType(extension.lowercase())
-    val modified = lastModified().takeIf { it > 0 }
-    val size = length()
-    if (size > UploadViewModel.MAX_BYTES_PER_FILE) {
-        return@runCatching oversizePickedFile(name, mime, size, modified)
-    }
-    val bytes = readBytes()
+    if (!isFile || !canRead()) return@runCatching unreadablePickedFile(name)
     PickedFile(
         name = name,
-        mimeType = mime,
-        sizeBytes = bytes.size.toLong(),
-        bytes = bytes,
-        lastModifiedMillis = modified
+        mimeType = guessMimeType(extension.lowercase()),
+        sizeBytes = length(),
+        content = FileContent(this),
+        lastModifiedMillis = lastModified().takeIf { it > 0 }
     )
 }.getOrElse { unreadablePickedFile(name) }
+
+/** Streams [file] from disk; its size is re-read on open in case it changed since picking. */
+private class FileContent(private val file: File) : PickedContent {
+    override suspend fun <T> open(block: suspend (source: Source, sizeBytes: Long) -> T): T {
+        val path = Path(file.absolutePath)
+        val size = SystemFileSystem.metadataOrNull(path)?.size
+            ?: throw java.io.FileNotFoundException(file.absolutePath)
+        return SystemFileSystem.source(path).buffered().use { block(it, size) }
+    }
+
+    override val thumbnailModel: Any get() = file
+}
 
 private fun guessMimeType(ext: String): String = when (ext) {
     "jpg", "jpeg" -> "image/jpeg"

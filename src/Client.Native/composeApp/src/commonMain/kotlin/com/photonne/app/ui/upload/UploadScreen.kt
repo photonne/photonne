@@ -308,11 +308,14 @@ private fun UploadRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                humanBytes(item.sizeBytes),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // PhotoKit only tells the size once the file is read for upload.
+            if (item.sizeBytes > 0) {
+                Text(
+                    humanBytes(item.sizeBytes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             if (item.status == UploadStatus.Uploading) {
                 LinearProgressIndicator(
                     modifier = Modifier
@@ -344,9 +347,10 @@ private fun Thumbnail(item: UploadItem) {
             .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        if (isImage && item.bytes != null) {
+        val thumbnail = item.content?.thumbnailModel
+        if (isImage && thumbnail != null) {
             AsyncImage(
-                model = item.bytes,
+                model = thumbnail,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()

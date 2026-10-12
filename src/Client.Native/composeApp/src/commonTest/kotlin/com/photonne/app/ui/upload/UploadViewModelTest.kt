@@ -33,6 +33,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.io.Buffer
+import kotlinx.io.Source
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -82,37 +84,58 @@ class UploadViewModelTest {
         headers = headersOf(HttpHeaders.ContentType, "application/json")
     )
 
-    private fun picked(name: String, size: Int = 3) =
-        PickedFile(name = name, mimeType = "image/jpeg", sizeBytes = size.toLong(), bytes = ByteArray(size))
+    /** In-memory stand-in for a picked file, counting how it's opened and released. */
+    private class FakeContent(private val bytes: ByteArray) : PickedContent {
+        var opened = 0
+        var released = 0
+        override suspend fun <T> open(block: suspend (source: Source, sizeBytes: Long) -> T): T {
+            opened++
+            return block(Buffer().apply { write(bytes) }, bytes.size.toLong())
+        }
+        override fun release() {
+            released++
+        }
+    }
+
+    private fun picked(name: String, size: Int = 3, content: PickedContent = FakeContent(ByteArray(size))) =
+        PickedFile(name = name, mimeType = "image/jpeg", sizeBytes = 0L, content = content)
 
     @Test
-    fun oversize_and_unreadable_files_are_left_out_and_reported() = runTest {
+    fun unreadable_files_are_left_out_and_reported() = runTest {
         val vm = viewModel { uploaded("a-1") }
 
-        vm.enqueue(
-            listOf(
-                picked("ok.jpg"),
-                oversizePickedFile("huge.mov", "video/quicktime", UploadViewModel.MAX_BYTES_PER_FILE + 1),
-                unreadablePickedFile("icloud.heic")
-            )
-        )
+        vm.enqueue(listOf(picked("ok.jpg"), unreadablePickedFile("icloud.heic")))
 
         val state = vm.state.value
         assertEquals(listOf("ok.jpg"), state.items.map { it.name })
-        assertEquals(UploadViewModel.skippedFilesMessage(tooBig = 1, unreadable = 1), state.pickerError)
+        assertEquals("1 archivo(s) no se han podido leer y se han omitido.", state.pickerError)
+        assertNull(UploadViewModel.skippedFilesMessage(0))
+        // The streamed upload finishes off the test thread: let the queue
+        // drain before tearDown swaps Dispatchers.Main back.
+        withContext(Dispatchers.Default) { withTimeout(5_000) { vm.state.first { !it.isUploading } } }
     }
 
     @Test
-    fun skipped_message_covers_each_case() {
-        assertNull(UploadViewModel.skippedFilesMessage(0, 0))
-        assertEquals(
-            "2 archivo(s) superan el límite de 200 MB y se han omitido.",
-            UploadViewModel.skippedFilesMessage(2, 0)
-        )
-        assertEquals(
-            "1 archivo(s) no se han podido leer y se han omitido.",
-            UploadViewModel.skippedFilesMessage(0, 1)
-        )
+    fun the_file_is_streamed_from_its_content_and_released_once_uploaded() = runTest {
+        var sentBody = 0L
+        val vm = viewModel { request ->
+            sentBody = request.body.contentLength ?: -1L
+            uploaded("a-1")
+        }
+        val content = FakeContent(ByteArray(5))
+
+        vm.enqueue(listOf(picked("ok.jpg", content = content)))
+
+        val state = withContext(Dispatchers.Default) {
+            withTimeout(5_000) {
+                vm.state.first { st -> !st.isUploading && st.items.single().status == UploadStatus.Done }
+            }
+        }
+        assertEquals(1, content.opened)
+        assertEquals(1, content.released)
+        // The size the content reports replaces the picker's unknown 0.
+        assertEquals(5L, state.items.single().sizeBytes)
+        assertEquals(true, sentBody > 5L)
     }
 
     @Test
@@ -120,10 +143,14 @@ class UploadViewModelTest {
         val gate = CompletableDeferred<Unit>()
         val vm = viewModel { gate.await(); uploaded("a-1") }
 
-        vm.enqueue(listOf(picked("one.jpg"), picked("two.jpg")))
+        val contents = listOf(FakeContent(ByteArray(3)), FakeContent(ByteArray(3)))
+        vm.enqueue(listOf(picked("one.jpg", content = contents[0]), picked("two.jpg", content = contents[1])))
         assertEquals(UploadStatus.Uploading, vm.state.value.items.first().status)
 
         vm.cancelAll()
+
+        // Cancelled items can't be retried, so what the picker kept goes now.
+        assertEquals(listOf(1, 1), contents.map { it.released })
 
         val state = vm.state.value
         assertEquals(listOf(UploadStatus.Cancelled, UploadStatus.Cancelled), state.items.map { it.status })

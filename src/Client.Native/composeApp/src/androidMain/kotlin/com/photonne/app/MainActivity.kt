@@ -12,8 +12,7 @@ import com.photonne.app.ui.main.ExternalDestination
 import com.photonne.app.ui.main.ExternalNavigation
 import com.photonne.app.ui.platform.OrientationController
 import com.photonne.app.ui.upload.MAX_SELECTION
-import com.photonne.app.ui.upload.UploadViewModel
-import com.photonne.app.ui.upload.readPickedFile
+import com.photonne.app.ui.upload.describePickedFile
 import com.photonne.app.ui.upload.unreadablePickedFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -67,9 +66,11 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Lo compartido desde otra app se lee YA, mientras dura el permiso temporal
-     * que el intent concede sobre esas URI (se pierde al acabar esta Activity),
-     * y entra en la cola de Subida. Sin sesión, el buzón lo guarda hasta el login.
+     * Lo compartido desde otra app entra en la cola de Subida como referencia y
+     * se lee en streaming al subirlo, mientras dura el permiso temporal que el
+     * intent concede sobre esas URI: dura lo que esta Activity, igual que la
+     * cola (su view model vive en ella). Aquí solo se abre para avisar ya de lo
+     * que no se puede leer. Sin sesión, el buzón lo guarda hasta el login.
      */
     private fun receiveSharedMedia(intent: Intent) {
         val uris = sharedUris(intent)
@@ -83,7 +84,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val files = withContext(Dispatchers.IO) {
                 uris.map { uri ->
-                    readPickedFile(this@MainActivity, uri, UploadViewModel.MAX_BYTES_PER_FILE)
+                    describePickedFile(this@MainActivity, uri)
                         ?: unreadablePickedFile(uri.lastPathSegment ?: "upload")
                 }
             }
