@@ -2,7 +2,7 @@ name: API contract
 
 # The published apps can't be forced to update, so the API is a public
 # contract (docs/api-compatibilidad.md). Two jobs guard it on every PR that
-# touches the server:
+# touches the server, and a third runs the rest of the server's tests:
 #
 # - snapshot: the committed src/Server.Api/openapi/v1.json must be
 #   what the code generates (OpenApiContractTests), and every endpoint must
@@ -11,6 +11,9 @@ name: API contract
 #   breaking change only passes if the same PR raises PhotonneMinClientVersion
 #   in Directory.Build.props, which makes the older apps tell their users
 #   to update.
+# - tests: every other test in tests/Server.Api.Tests (uploads, albums,
+#   sharing, indexing...), in its own job so a red contract and a red
+#   behaviour read apart.
 
 on:
   pull_request:
@@ -45,6 +48,24 @@ jobs:
         run: >-
           dotnet test tests/Server.Api.Tests
           --filter "FullyQualifiedName~Contract|FullyQualifiedName~Security"
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # Same Testcontainers Postgres as snapshot; the tests snapshot runs are
+      # left out so they don't run twice.
+      - name: Server tests
+        run: >-
+          dotnet test tests/Server.Api.Tests
+          --filter "FullyQualifiedName!~Contract&FullyQualifiedName!~Security"
 
   breaking:
     runs-on: ubuntu-latest
