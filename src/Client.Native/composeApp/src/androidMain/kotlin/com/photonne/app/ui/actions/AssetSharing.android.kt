@@ -11,28 +11,34 @@ import androidx.core.content.FileProvider
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.files.Path
 
 actual class AssetSharing(private val context: Context) {
 
     /**
-     * Writes [bytes] into `Downloads/Photonne/[fileName]` via the
-     * MediaStore API on Android 10+ and the legacy public Downloads
-     * directory on older OS versions. Returns the location for the
-     * subsequent share-sheet call.
+     * Opens `Downloads/Photonne/[fileName]`: a pending MediaStore row on
+     * Android 10+ (invisible to other apps until committed, deleted if the
+     * download fails or is cancelled) and the legacy public Downloads
+     * directory on older OS versions.
      */
-    actual suspend fun saveAsset(
-        bytes: ByteArray,
+    actual suspend fun openDownload(
         fileName: String,
         mimeType: String
-    ): SavedAssetFile = withContext(Dispatchers.IO) {
-        writeToDownloads(bytes = bytes, fileName = fileName, mimeType = mimeType)
-    }
-
-    actual suspend fun saveZip(
-        bytes: ByteArray,
-        fileName: String
-    ): SavedAssetFile = withContext(Dispatchers.IO) {
-        writeToDownloads(bytes = bytes, fileName = fileName, mimeType = "application/zip")
+    ): DownloadSink = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            openMediaStoreDownload(fileName = fileName, mimeType = mimeType)
+        } else {
+            @Suppress("DEPRECATION")
+            val downloads = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            )
+            val target = File(File(downloads, "Photonne").apply { mkdirs() }, fileName)
+            FileDownloadSink(
+                target = Path(target.absolutePath),
+                displayName = fileName,
+                mimeType = mimeType
+            )
+        }
     }
 
     /**
@@ -71,7 +77,7 @@ actual class AssetSharing(private val context: Context) {
         for (file in files) {
             val source = File(file.path)
             val target = File(sharedDir, file.displayName)
-            // `saveAsset`/`saveZip` already stage the bytes inside `shared/`,
+            // `stageForShare` already stages the bytes inside `shared/`,
             // so source and target are usually the SAME file. Copying a file
             // onto itself with overwrite=true would delete it first (via
             // `target.delete()`) and then fail to read the now-missing source —
@@ -114,45 +120,64 @@ actual class AssetSharing(private val context: Context) {
         context.startActivity(chooser)
     }
 
-    private fun writeToDownloads(
-        bytes: ByteArray,
-        fileName: String,
-        mimeType: String
-    ): SavedAssetFile {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val resolver = context.contentResolver
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                put(
-                    MediaStore.MediaColumns.RELATIVE_PATH,
-                    Environment.DIRECTORY_DOWNLOADS + "/Photonne"
-                )
-                put(MediaStore.MediaColumns.IS_PENDING, 1)
-            }
-            val uri = resolver.insert(
-                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                values
-            ) ?: error("MediaStore insert returned null for $fileName")
-            resolver.openOutputStream(uri)?.use { it.write(bytes) }
-                ?: error("Could not open MediaStore stream for $fileName")
-            values.clear()
-            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
-            resolver.update(uri, values, null, null)
-            // We still need a path-style address for the share-sheet copy
-            // step. Mirror the bytes into a private cache file to use as
-            // the source for FileProvider.
-            val cacheCopy = File(File(context.cacheDir, "shared").apply { mkdirs() }, fileName)
-            cacheCopy.writeBytes(bytes)
-            SavedAssetFile(path = cacheCopy.absolutePath, displayName = fileName, mimeType = mimeType)
-        } else {
-            @Suppress("DEPRECATION")
-            val downloads = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DOWNLOADS
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    private fun openMediaStoreDownload(fileName: String, mimeType: String): DownloadSink {
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(
+                MediaStore.MediaColumns.RELATIVE_PATH,
+                Environment.DIRECTORY_DOWNLOADS + "/Photonne"
             )
-            val target = File(File(downloads, "Photonne").apply { mkdirs() }, fileName)
-            target.writeBytes(bytes)
-            SavedAssetFile(path = target.absolutePath, displayName = fileName, mimeType = mimeType)
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            values
+        ) ?: error("MediaStore insert returned null for $fileName")
+        val out = try {
+            resolver.openOutputStream(uri)?.buffered()
+                ?: error("Could not open MediaStore stream for $fileName")
+        } catch (failure: Throwable) {
+            resolver.delete(uri, null, null)
+            throw failure
+        }
+        return object : DownloadSink {
+            override fun write(buffer: ByteArray, offset: Int, length: Int) {
+                out.write(buffer, offset, length)
+            }
+
+            override suspend fun commit(): SavedAssetFile = withContext(Dispatchers.IO) {
+                out.close()
+                resolver.update(
+                    uri,
+                    ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
+                    null,
+                    null
+                )
+                // MediaStore renames on a clash ("x (1).zip"): say the real name.
+                val name = resolver.query(
+                    uri,
+                    arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null
+                )?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+                    ?: fileName
+                SavedAssetFile(
+                    path = "${Environment.DIRECTORY_DOWNLOADS}/Photonne/$name",
+                    displayName = name,
+                    mimeType = mimeType
+                )
+            }
+
+            override suspend fun discard() {
+                withContext(Dispatchers.IO) {
+                    runCatching { out.close() }
+                    runCatching { resolver.delete(uri, null, null) }
+                }
+            }
         }
     }
 }

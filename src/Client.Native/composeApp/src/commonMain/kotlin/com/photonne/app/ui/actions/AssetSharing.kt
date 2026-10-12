@@ -4,11 +4,10 @@ package com.photonne.app.ui.actions
  * Platform glue for the "Share" and "Download" actions on the asset
  * selection top bar.
  *
- * - [saveAsset] writes a single asset (image or video original) into
- *   the OS-managed downloads location, returning where it landed so
- *   the caller can surface a snackbar.
- * - [saveZip] writes a multi-asset zip into the same place; same
- *   contract.
+ * - [openDownload] opens a file in the OS-managed downloads location
+ *   (an asset, a multi-asset ZIP) that the caller streams into; its
+ *   commit says where it landed so the caller can surface a snackbar.
+ *   [saveAsset] is the same for a payload already in memory.
  * - [shareText] hands a link (plain text) to the same sheet.
  * - [stageForShare] writes one file into the app's PRIVATE share cache
  *   (never the gallery nor Downloads): sharing must not leave a local
@@ -26,16 +25,12 @@ package com.photonne.app.ui.actions
  * "not implemented" banner.
  */
 expect class AssetSharing {
-    suspend fun saveAsset(
-        bytes: ByteArray,
-        fileName: String,
-        mimeType: String
-    ): SavedAssetFile
-
-    suspend fun saveZip(
-        bytes: ByteArray,
-        fileName: String
-    ): SavedAssetFile
+    /**
+     * Opens [fileName] where downloads go, ready to be written while the
+     * bytes arrive (see [drainInto]). Throws [AssetSharingUnavailable] when
+     * the user backs out of choosing where (desktop).
+     */
+    suspend fun openDownload(fileName: String, mimeType: String): DownloadSink
 
     /** Writes [bytes] into the private share cache and returns its location. */
     suspend fun stageForShare(

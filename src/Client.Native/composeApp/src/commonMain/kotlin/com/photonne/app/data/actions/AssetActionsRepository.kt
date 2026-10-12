@@ -4,7 +4,9 @@ import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.DownloadFormat
+import com.photonne.app.data.models.DownloadHead
 import com.photonne.app.data.models.DownloadOptions
+import io.ktor.utils.io.ByteReadChannel
 
 /**
  * Wraps the endpoints we need for the selection action bar:
@@ -25,12 +27,17 @@ class AssetActionsRepository(
     suspend fun downloadOptions(assetIds: List<String>): DownloadOptions =
         api.getDownloadOptions(assetIds)
 
-    /** [format] only changes the RAW and HEIC/HEIF entries; null leaves every original. */
-    suspend fun downloadZip(
+    /**
+     * Streams the ZIP into [consume] (see [PhotonneApi.streamAssetsZip]).
+     * [format] only changes the RAW and HEIC/HEIF entries; null leaves every
+     * original.
+     */
+    suspend fun <T> downloadZip(
         assetIds: List<String>,
         fileName: String? = null,
-        format: DownloadFormat? = null
-    ): ByteArray = api.downloadAssetsZip(assetIds, fileName, format)
+        format: DownloadFormat? = null,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T = api.streamAssetsZip(assetIds, fileName, format, consume)
 
     /**
      * One asset's file. [format] only matters for a RAW or HEIC/HEIF; null is

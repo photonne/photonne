@@ -1768,6 +1768,7 @@ private fun GlobalOverlays(host: AuthenticatedDialogsHost) {
                     }
                     com.photonne.app.ui.actions.WorkingPill(
                         working = actionsState.working,
+                        progress = actionsState.progress,
                         onCancel = actionsViewModel::cancelWorking
                     )
                 }

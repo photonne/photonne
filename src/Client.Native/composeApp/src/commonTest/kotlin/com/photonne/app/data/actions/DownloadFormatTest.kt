@@ -16,6 +16,8 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -130,7 +132,7 @@ class DownloadFormatTest {
             respond(content = ByteReadChannel(byteArrayOf(1)), status = HttpStatusCode.OK)
         }
 
-        api.downloadAssetsZip(listOf("a", "b"), fileName = "sel", format = DownloadFormat.Original)
+        api.streamAssetsZip(listOf("a", "b"), fileName = "sel", format = DownloadFormat.Original) { _, _ -> }
 
         assertTrue(body.contains(""""format":"original""""), body)
     }
@@ -144,8 +146,43 @@ class DownloadFormatTest {
             respond(content = ByteReadChannel(byteArrayOf(1)), status = HttpStatusCode.OK)
         }
 
-        api.downloadAssetsZip(listOf("a", "b"), fileName = "sel")
+        api.streamAssetsZip(listOf("a", "b"), fileName = "sel") { _, _ -> }
 
         assertFalse(body!!.contains("format"), body)
+    }
+
+    @Test
+    fun a_zip_streams_its_head_and_body() = runTest {
+        val api = api {
+            respond(
+                content = ByteReadChannel(byteArrayOf(1, 2, 3, 4)),
+                status = HttpStatusCode.OK,
+                headers = headersOf(
+                    HttpHeaders.ContentType to listOf("application/zip"),
+                    HttpHeaders.ContentLength to listOf("4"),
+                    HttpHeaders.ContentDisposition to listOf("attachment; filename=sel.zip")
+                )
+            )
+        }
+
+        val (head, body) = api.streamAssetsZip(listOf("a", "b"), fileName = "sel") { head, channel ->
+            head to channel.readRemaining().readByteArray()
+        }
+
+        assertEquals("application/zip", head.mimeType)
+        assertEquals("sel.zip", head.suggestedFileName)
+        assertEquals(4L, head.contentLength)
+        assertEquals(listOf<Byte>(1, 2, 3, 4), body.toList())
+    }
+
+    @Test
+    fun a_failed_zip_never_reaches_the_consumer() = runTest {
+        var consumed = false
+        val api = api { respond(content = ByteReadChannel(""), status = HttpStatusCode.Forbidden) }
+
+        assertFailsWith<Throwable> {
+            api.streamAssetsZip(listOf("a", "b")) { _, _ -> consumed = true }
+        }
+        assertFalse(consumed)
     }
 }

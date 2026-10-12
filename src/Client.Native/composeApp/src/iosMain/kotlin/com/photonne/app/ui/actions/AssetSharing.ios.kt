@@ -7,6 +7,7 @@ import kotlinx.cinterop.useContents
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.files.Path
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSData
 import platform.Foundation.NSFileManager
@@ -23,7 +24,7 @@ import platform.UIKit.popoverPresentationController
 /**
  * iOS bridge for the share/download glue.
  *
- * - [saveAsset] / [saveZip] write the bytes into a private temp directory
+ * - [openDownload] streams into a private temp directory
  *   (`<tmp>/photonne-share/`) and hand back the file path. iOS has no shared
  *   "Downloads" folder, so for the standalone *download* action the user picks
  *   the destination through the share sheet ("Save to Files", "Save Image"),
@@ -35,19 +36,17 @@ import platform.UIKit.popoverPresentationController
 @OptIn(ExperimentalForeignApi::class)
 actual class AssetSharing {
 
-    actual suspend fun saveAsset(
-        bytes: ByteArray,
+    actual suspend fun openDownload(
         fileName: String,
         mimeType: String
-    ): SavedAssetFile = withContext(Dispatchers.Default) {
-        writeToShareDir(bytes = bytes, fileName = fileName, mimeType = mimeType)
-    }
-
-    actual suspend fun saveZip(
-        bytes: ByteArray,
-        fileName: String
-    ): SavedAssetFile = withContext(Dispatchers.Default) {
-        writeToShareDir(bytes = bytes, fileName = fileName, mimeType = "application/zip")
+    ): DownloadSink = withContext(Dispatchers.Default) {
+        ensureShareDir()
+        val safeName = safeFileName(fileName)
+        FileDownloadSink(
+            target = Path(shareDirPath(), safeName),
+            displayName = safeName,
+            mimeType = mimeType
+        )
     }
 
     /** Same private temp directory the share sheet already fed from: iOS
@@ -124,21 +123,27 @@ actual class AssetSharing {
 
     private fun shareDirPath(): String = NSTemporaryDirectory() + "photonne-share"
 
+    private fun ensureShareDir() {
+        NSFileManager.defaultManager.createDirectoryAtPath(
+            path = shareDirPath(),
+            withIntermediateDirectories = true,
+            attributes = null,
+            error = null
+        )
+    }
+
+    // Keep the suggested name (apps show it) but neutralise path separators.
+    private fun safeFileName(fileName: String): String =
+        fileName.replace('/', '_').ifBlank { "shared" }
+
     private fun writeToShareDir(
         bytes: ByteArray,
         fileName: String,
         mimeType: String
     ): SavedAssetFile {
-        val dir = shareDirPath()
-        NSFileManager.defaultManager.createDirectoryAtPath(
-            path = dir,
-            withIntermediateDirectories = true,
-            attributes = null,
-            error = null
-        )
-        // Keep the suggested name (apps show it) but neutralise path separators.
-        val safeName = fileName.replace('/', '_').ifBlank { "shared" }
-        val path = "$dir/$safeName"
+        ensureShareDir()
+        val safeName = safeFileName(fileName)
+        val path = "${shareDirPath()}/$safeName"
         val data = bytes.toNSData()
         if (!data.writeToFile(path, atomically = true)) {
             throw AssetSharingUnavailable("Could not stage $safeName for sharing")
