@@ -2,6 +2,7 @@ package com.photonne.app.ui.utilities
 
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.utilities.UtilitiesRepository
+import com.photonne.app.ui.TrackedViewModels
 import com.photonne.app.ui.json
 import com.photonne.app.ui.testApi
 import com.photonne.app.ui.testErrorFactory
@@ -12,7 +13,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -22,6 +22,8 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalCoroutinesApi::class)
 class UtilitiesLargeFilesViewModelTest {
 
+    private val vms = TrackedViewModels()
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -29,7 +31,7 @@ class UtilitiesLargeFilesViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `a count picked while loading replaces the load in flight`() = runTest {
+    fun `a count picked while loading replaces the load in flight`() = vms.runTest {
         val firstStarted = CompletableDeferred<Unit>()
         val neverAnswered = CompletableDeferred<Unit>()
         val counts = mutableListOf<String?>()
@@ -42,9 +44,9 @@ class UtilitiesLargeFilesViewModelTest {
             }
             json("[${timelineItemJson("big-$count")}]")
         }
-        val vm = UtilitiesLargeFilesViewModel(
+        val vm = vms.track(UtilitiesLargeFilesViewModel(
             UtilitiesRepository(api), testErrorFactory(api), AssetMutationBus()
-        )
+        ))
 
         vm.ensureLoaded()
         firstStarted.await()

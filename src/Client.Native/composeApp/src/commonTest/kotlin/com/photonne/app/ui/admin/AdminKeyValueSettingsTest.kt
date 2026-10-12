@@ -8,6 +8,7 @@ import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.ui.TrackedViewModels
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -26,7 +27,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -55,6 +55,8 @@ private class TwoKeyViewModel(
 @OptIn(ExperimentalCoroutinesApi::class)
 class AdminKeyValueSettingsTest {
 
+    private val vms = TrackedViewModels()
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -71,10 +73,10 @@ class AdminKeyValueSettingsTest {
             authState = AuthStateHolder()
         )
         val api = PhotonneApiClient(client, "http://test.local")
-        return TwoKeyViewModel(
+        return vms.track(TwoKeyViewModel(
             AdminRepository(api),
             UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api))
-        )
+        ))
     }
 
     private fun MockRequestHandleScope.json(body: String) = respond(
@@ -87,7 +89,7 @@ class AdminKeyValueSettingsTest {
         state.first { !it.isLoading && !it.isSubmitting }
 
     @Test
-    fun a_failed_read_fails_the_load_instead_of_showing_defaults() = runTest {
+    fun a_failed_read_fails_the_load_instead_of_showing_defaults() = vms.runTest {
         val vm = viewModel { respond("", HttpStatusCode.InternalServerError) }
 
         vm.load()
@@ -99,7 +101,7 @@ class AdminKeyValueSettingsTest {
     }
 
     @Test
-    fun an_unset_key_falls_back_to_the_default() = runTest {
+    fun an_unset_key_falls_back_to_the_default() = vms.runTest {
         val vm = viewModel { json("""{"key":"k","value":""}""") }
 
         vm.load()
@@ -111,7 +113,7 @@ class AdminKeyValueSettingsTest {
     }
 
     @Test
-    fun an_edit_made_while_saving_stays_unsaved() = runTest {
+    fun an_edit_made_while_saving_stays_unsaved() = vms.runTest {
         val gate = CompletableDeferred<Unit>()
         val posted = mutableListOf<String>()
         val vm = viewModel { request ->
@@ -138,7 +140,7 @@ class AdminKeyValueSettingsTest {
     }
 
     @Test
-    fun out_of_range_and_empty_numbers_hold_save_back() = runTest {
+    fun out_of_range_and_empty_numbers_hold_save_back() = vms.runTest {
         val vm = viewModel { json("""{"key":"k","value":""}""") }
         vm.load()
         vm.settled()
