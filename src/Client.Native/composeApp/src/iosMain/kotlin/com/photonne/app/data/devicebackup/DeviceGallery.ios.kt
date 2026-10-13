@@ -224,7 +224,11 @@ private fun assetToMedia(asset: PHAsset): DeviceMedia? {
         type = type,
         dateCreatedMillis = created,
         isLivePhoto = type == DeviceMediaType.Image &&
-            (asset.mediaSubtypes and PHAssetMediaSubtypePhotoLive) != 0uL
+            (asset.mediaSubtypes and PHAssetMediaSubtypePhotoLive) != 0uL,
+        // Only the original resource is never rewritten; the edited-only
+        // fallback in primaryResource follows the user's edits.
+        contentImmutable = resource?.type == PHAssetResourceTypePhoto ||
+            resource?.type == PHAssetResourceTypeVideo
     )
 }
 

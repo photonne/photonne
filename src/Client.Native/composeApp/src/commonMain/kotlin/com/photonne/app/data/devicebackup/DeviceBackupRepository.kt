@@ -383,8 +383,8 @@ class DeviceBackupRepository(
             // Seconds precision on the mtime — SAF carries millis, MediaStore
             // only seconds; same normalization as the store's ledger bridge.
             val identity = identities[entry.uri]?.takeIf {
-                it.sha256 != null && it.sizeBytes == media.sizeBytes &&
-                    it.dateModifiedMillis / 1000 == media.dateModifiedMillis / 1000
+                it.sha256 != null &&
+                    media.sameFingerprint(it.sizeBytes, it.dateModifiedMillis, secondsPrecision = true)
             } ?: byFingerprint[
                 "${media.sizeBytes}|${media.dateModifiedMillis / 1000}|${media.displayName}"
             ]

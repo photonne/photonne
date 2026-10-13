@@ -21,11 +21,11 @@ data class DeviceIdentity(
 ) {
     /**
      * True while the row still describes the on-disk file. iOS never
-     * exposes sizes cheaply (both sides stay 0), so the modification
-     * date carries the invalidation alone there.
+     * exposes sizes cheaply (both sides stay 0) and its originals never
+     * change ([DeviceMedia.contentImmutable]), so a row there holds for good.
      */
     fun matchesFingerprint(media: DeviceMedia): Boolean =
-        sizeBytes == media.sizeBytes && dateModifiedMillis == media.dateModifiedMillis
+        media.sameFingerprint(sizeBytes, dateModifiedMillis)
 }
 
 /**

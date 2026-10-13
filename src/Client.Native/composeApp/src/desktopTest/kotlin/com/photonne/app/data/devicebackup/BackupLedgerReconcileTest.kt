@@ -17,15 +17,45 @@ class BackupLedgerReconcileTest {
         return BackupLedger(PhotonneDatabase(driver))
     }
 
-    private fun media(uri: String, modified: Long) = DeviceMedia(
+    private fun media(uri: String, modified: Long, contentImmutable: Boolean = false) = DeviceMedia(
         uri = uri,
         displayName = "IMG_0001.HEIC",
         relativePath = "",
         mimeType = "image/heic",
         sizeBytes = 0L, // iOS: PhotoKit gives no size
         dateModifiedMillis = modified,
-        type = DeviceMediaType.Image
+        type = DeviceMediaType.Image,
+        contentImmutable = contentImmutable
     )
+
+    @Test
+    fun an_immutable_original_keeps_its_hash_when_the_date_moves() {
+        val ledger = ledger()
+        ledger.reconcile(folder, listOf(media("photokit:a", 1_000, contentImmutable = true)))
+        ledger.setHash(folder, "photokit:a", "hash-1")
+        ledger.markUploaded(folder, "photokit:a", "asset-1")
+
+        // A favorite or a date adjustment in Photos bumps modificationDate.
+        val entry = ledger.reconcile(folder, listOf(media("photokit:a", 2_000, contentImmutable = true)))
+            .getValue("photokit:a")
+
+        assertEquals(LedgerState.Synced, entry.state)
+        assertEquals("hash-1", entry.sha256) // no re-hash, no iCloud download
+        assertEquals("asset-1", entry.assetId)
+    }
+
+    @Test
+    fun an_immutable_original_uploaded_without_a_hash_stays_synced() {
+        val ledger = ledger()
+        ledger.reconcile(folder, listOf(media("photokit:a", 1_000, contentImmutable = true)))
+        ledger.markUploaded(folder, "photokit:a", "asset-1")
+
+        val entry = ledger.reconcile(folder, listOf(media("photokit:a", 2_000, contentImmutable = true)))
+            .getValue("photokit:a")
+
+        assertEquals(LedgerState.Synced, entry.state)
+        assertEquals("asset-1", entry.assetId)
+    }
 
     @Test
     fun a_skip_survives_a_fingerprint_change() {

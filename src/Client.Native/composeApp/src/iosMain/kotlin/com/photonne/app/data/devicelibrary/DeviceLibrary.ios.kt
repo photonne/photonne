@@ -100,7 +100,10 @@ actual class DeviceLibrary {
                     type = type,
                     dateCreatedMillis = created,
                     width = asset.pixelWidth.toInt().takeIf { it > 0 },
-                    height = asset.pixelHeight.toInt().takeIf { it > 0 }
+                    height = asset.pixelHeight.toInt().takeIf { it > 0 },
+                    // Hashing reads the original resource (DeviceGallery's
+                    // primaryResource), which PhotoKit never rewrites.
+                    contentImmutable = true
                 )
             }
             out

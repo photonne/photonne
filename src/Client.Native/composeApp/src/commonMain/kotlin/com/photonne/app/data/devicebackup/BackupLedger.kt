@@ -45,7 +45,7 @@ data class LedgerEntry(
     val previousSha256: String? = null
 ) {
     fun matchesFingerprint(media: DeviceMedia): Boolean =
-        sizeBytes == media.sizeBytes && dateModifiedMillis == media.dateModifiedMillis
+        media.sameFingerprint(sizeBytes, dateModifiedMillis)
 
     fun toSyncState(): DeviceMediaSyncState = when (state) {
         LedgerState.Unknown -> DeviceMediaSyncState.Unknown
@@ -192,9 +192,9 @@ class BackupLedger(private val database: PhotonneDatabase) {
                     continue
                 }
                 // The fingerprint moved, which doesn't always mean the file
-                // did: on iOS it is only PhotoKit's modificationDate, bumped
-                // by a favorite or a hide. A skip is the user's call about
-                // this photo, so it stays whatever happened to it.
+                // did (iOS skips the date altogether, see
+                // DeviceMedia.contentImmutable). A skip is the user's call
+                // about this photo, so it stays whatever happened to it.
                 if (row != null && row.state == LedgerState.Ignored) {
                     // Its hash is set aside, not kept: under the new
                     // fingerprint it would pass for current, and after an

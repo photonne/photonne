@@ -57,8 +57,32 @@ data class DeviceMedia(
      * still ([DeviceGallery.withMotionClipSource]). Android motion photos carry
      * the clip inside the JPEG itself, so it stays false there.
      */
-    val isLivePhoto: Boolean = false
-)
+    val isLivePhoto: Boolean = false,
+    /**
+     * The bytes behind [uri] never change, so a new [dateModifiedMillis]
+     * doesn't mean new content. iOS: the backup reads the asset's original
+     * resource, which PhotoKit never rewrites — an edit, a date adjustment or
+     * a favorite only bumps `modificationDate`. Fingerprints skip the date for
+     * these ([sameFingerprint]); otherwise every bump re-hashed the photo,
+     * downloading an iCloud original again just to get the same hash.
+     */
+    val contentImmutable: Boolean = false
+) {
+    /** True while a stored (size, date) fingerprint still describes this file.
+     *  The date is compared to the second when [secondsPrecision]: SAF carries
+     *  millis, MediaStore only seconds. */
+    fun sameFingerprint(
+        sizeBytes: Long,
+        dateModifiedMillis: Long,
+        secondsPrecision: Boolean = false
+    ): Boolean = sizeBytes == this.sizeBytes && (
+        contentImmutable || if (secondsPrecision) {
+            dateModifiedMillis / 1000 == this.dateModifiedMillis / 1000
+        } else {
+            dateModifiedMillis == this.dateModifiedMillis
+        }
+    )
+}
 
 /**
  * The sync verdict for a single [DeviceMedia] item against the
