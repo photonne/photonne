@@ -3,16 +3,21 @@
 -- One row per file under the user-picked backup folder. The
 -- (sizeBytes, dateModifiedMillis) pair is the fingerprint: while it
 -- matches the on-disk file we trust the stored sha256 + verdict and
--- never re-hash. When it changes, the row is reset to UNKNOWN and the
--- file re-enters the verification pipeline.
+-- never re-hash. When it changes, the file is re-hashed: a user skip
+-- (IGNORED) survives it, a SYNCED verdict survives only if the content
+-- turns out the same, and anything else is reset to UNKNOWN.
 --
 -- syncState values: 'UNKNOWN' | 'NOT_SYNCED' | 'SYNCED' | 'FAILED' | 'IGNORED'
 -- ('IGNORED' is a user-skipped file; it carries no schema change since
 --  syncState is a plain TEXT column.)
 
--- NOTE: failureDetail is declared last because it arrived via migration
--- (1.sqm) and ALTER TABLE appends columns — the declared order here must
--- match the on-disk order of migrated databases.
+-- NOTE: failureDetail and previousSha256 are declared last because they
+-- arrived via migrations (1.sqm, 4.sqm) and ALTER TABLE appends columns —
+-- the declared order here must match the on-disk order of migrated databases.
+--
+-- previousSha256: the hash before the fingerprint last changed, kept until
+-- the file is re-hashed so an unchanged file keeps its verdict (see
+-- BackupLedger.reconcile).
 CREATE TABLE backupLedger (
     folderUri TEXT NOT NULL,
     uri TEXT NOT NULL,
@@ -24,6 +29,7 @@ CREATE TABLE backupLedger (
     failureReason TEXT,
     lastVerifiedAtMillis INTEGER,
     failureDetail TEXT,
+    previousSha256 TEXT,
     PRIMARY KEY (folderUri, uri)
 );
 
@@ -54,12 +60,13 @@ GROUP BY syncState;
 insertEntry:
 INSERT OR REPLACE INTO backupLedger(
     folderUri, uri, sizeBytes, dateModifiedMillis,
-    sha256, syncState, assetId, failureReason, lastVerifiedAtMillis, failureDetail
+    sha256, syncState, assetId, failureReason, lastVerifiedAtMillis, failureDetail,
+    previousSha256
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 setHash:
-UPDATE backupLedger SET sha256 = ? WHERE folderUri = ? AND uri = ?;
+UPDATE backupLedger SET sha256 = ?, previousSha256 = NULL WHERE folderUri = ? AND uri = ?;
 
 setVerdict:
 UPDATE backupLedger

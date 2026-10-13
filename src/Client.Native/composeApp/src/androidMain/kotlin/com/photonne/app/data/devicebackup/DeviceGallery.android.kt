@@ -318,15 +318,18 @@ actual class DeviceGallery(private val context: Context) {
         block: suspend (source: Source, sizeBytes: Long) -> T
     ): T = withContext(Dispatchers.IO) {
         val isVideo = media.type == DeviceMediaType.Video
-        // Prefer the original MediaStore bytes (location intact). Its SIZE is
-        // the authoritative content length for the upload.
+        // Prefer the original MediaStore bytes (location intact). The content
+        // length is what the file measures now: MediaStore's SIZE can lag
+        // behind the file, and a body that doesn't match the declared length
+        // fails as a network error, retried on every pass for nothing.
         val original = MediaOriginalReader.resolveOriginal(
             context, Uri.parse(media.uri), media.displayName, isVideo, media.sizeBytes
         )
         if (original != null) {
             val stream = context.contentResolver.openInputStream(original.uri)
             if (stream != null) {
-                return@withContext stream.use { block(it.asSource().buffered(), original.sizeBytes) }
+                val sizeBytes = statSize(original.uri) ?: original.sizeBytes
+                return@withContext stream.use { block(it.asSource().buffered(), sizeBytes) }
             }
         }
 
@@ -336,15 +339,19 @@ actual class DeviceGallery(private val context: Context) {
         // statSize gives the authoritative byte count even when the scan
         // metadata went stale; fall back to the scanned size for providers
         // that can't stat.
-        val sizeBytes = runCatching {
-            context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
-        }.getOrNull()?.takeIf { it >= 0 } ?: media.sizeBytes
+        val sizeBytes = statSize(uri) ?: media.sizeBytes
         val input = context.contentResolver.openInputStream(uri)
             ?: throw DeviceGalleryUnavailable("Cannot open ${media.displayName} for upload")
         input.use { stream ->
             block(stream.asSource().buffered(), sizeBytes)
         }
     }
+
+    /** The byte count the provider reports for [uri] right now, or null when
+     *  it can't stat (then the scanned size is the best there is). */
+    private fun statSize(uri: Uri): Long? = runCatching {
+        context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+    }.getOrNull()?.takeIf { it >= 0 }
 
     // Motion photos here embed the clip inside the still: nothing separate to send.
     actual suspend fun <T> withMotionClipSource(

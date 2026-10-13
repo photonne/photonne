@@ -39,7 +39,10 @@ data class LedgerEntry(
     val assetId: String?,
     val failureReason: String?,
     val failureDetail: String?,
-    val lastVerifiedAtMillis: Long?
+    val lastVerifiedAtMillis: Long?,
+    /** The hash before the fingerprint last changed, until the file is
+     *  re-hashed (see [BackupLedger.reconcile]). */
+    val previousSha256: String? = null
 ) {
     fun matchesFingerprint(media: DeviceMedia): Boolean =
         sizeBytes == media.sizeBytes && dateModifiedMillis == media.dateModifiedMillis
@@ -166,7 +169,9 @@ class BackupLedger(private val database: PhotonneDatabase) {
     /**
      * Aligns the ledger with a fresh folder scan:
      * - new files get an UNKNOWN row,
-     * - files whose fingerprint changed are reset (stale hash dropped),
+     * - files whose fingerprint changed are queued for a re-hash (stale hash
+ *   set aside); a skip stays, a SYNCED verdict stays until the new hash
+ *   says the content changed,
      * - rows whose file disappeared are deleted,
      * - untouched rows keep their hash + verdict (the whole point).
      *
@@ -186,17 +191,37 @@ class BackupLedger(private val database: PhotonneDatabase) {
                     result[media.uri] = row
                     continue
                 }
-                // New file, or contents changed since we hashed it.
+                // The fingerprint moved, which doesn't always mean the file
+                // did: on iOS it is only PhotoKit's modificationDate, bumped
+                // by a favorite or a hide. A skip is the user's call about
+                // this photo, so it stays whatever happened to it.
+                if (row != null && row.state == LedgerState.Ignored) {
+                    val moved = row.copy(
+                        sizeBytes = media.sizeBytes,
+                        dateModifiedMillis = media.dateModifiedMillis
+                    )
+                    insert(folderUri, moved)
+                    result[media.uri] = moved
+                    continue
+                }
+                // New file, or possibly changed since we hashed it: re-hash.
+                // A backed-up file keeps its verdict meanwhile, with the old
+                // hash aside: if the new one matches, nothing changed and the
+                // verdict stands; if not, it's reset then (see
+                // DeviceBackupRepository.applyHash). Without a hash it can't
+                // be freed or seeded in the meantime.
+                val keepsVerdict = row?.state == LedgerState.Synced
                 val fresh = LedgerEntry(
                     uri = media.uri,
                     sizeBytes = media.sizeBytes,
                     dateModifiedMillis = media.dateModifiedMillis,
                     sha256 = null,
-                    state = LedgerState.Unknown,
-                    assetId = null,
+                    state = if (keepsVerdict) LedgerState.Synced else LedgerState.Unknown,
+                    assetId = row?.assetId?.takeIf { keepsVerdict },
                     failureReason = null,
                     failureDetail = null,
-                    lastVerifiedAtMillis = null
+                    lastVerifiedAtMillis = row?.lastVerifiedAtMillis?.takeIf { keepsVerdict },
+                    previousSha256 = row?.sha256 ?: row?.previousSha256
                 )
                 insert(folderUri, fresh)
                 result[media.uri] = fresh
@@ -290,7 +315,8 @@ class BackupLedger(private val database: PhotonneDatabase) {
             assetId = entry.assetId,
             failureReason = entry.failureReason,
             lastVerifiedAtMillis = entry.lastVerifiedAtMillis,
-            failureDetail = entry.failureDetail
+            failureDetail = entry.failureDetail,
+            previousSha256 = entry.previousSha256
         )
     }
 
@@ -303,7 +329,8 @@ class BackupLedger(private val database: PhotonneDatabase) {
         assetId = assetId,
         failureReason = failureReason,
         failureDetail = failureDetail,
-        lastVerifiedAtMillis = lastVerifiedAtMillis
+        lastVerifiedAtMillis = lastVerifiedAtMillis,
+        previousSha256 = previousSha256
     )
 
     private companion object {

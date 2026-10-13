@@ -1,0 +1,5 @@
+-- v4 → v5: the hash a row had before its fingerprint changed. iOS can't read
+-- a file's size, so its fingerprint is only PhotoKit's modificationDate, which
+-- a favorite or a hide bumps without touching the file. Keeping the old hash
+-- lets the re-hash tell "same content" (verdict kept) from a real edit.
+ALTER TABLE backupLedger ADD COLUMN previousSha256 TEXT;

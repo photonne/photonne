@@ -1,6 +1,6 @@
 package com.photonne.app.ui.admin
 
-import com.photonne.app.ui.actions.saveAsset
+import com.photonne.app.ui.actions.drainInto
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
@@ -31,7 +31,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
-import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_backup_action_download
 import com.photonne.app.resources.admin_backup_downloaded
@@ -88,12 +87,14 @@ class AdminBackupViewModel(
         val level = _state.value.level
         viewModelScope.launch {
             runCatching {
-                val payload: AssetContentBytes = repository.downloadBackup(level.wireValue)
-                sharing.saveAsset(
-                    bytes = payload.bytes,
-                    fileName = payload.suggestedFileName,
-                    mimeType = "application/json"
-                )
+                // Written to the file as it arrives: a Full backup of a big
+                // library no longer has to fit in memory.
+                repository.downloadBackup(level.wireValue) { head, body ->
+                    body.drainInto(
+                        sink = sharing.openDownload(head.suggestedFileName, "application/json"),
+                        contentLength = head.contentLength
+                    )
+                }
             }
                 .onSuccess { saved ->
                     _state.update {

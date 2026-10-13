@@ -955,7 +955,11 @@ interface PhotonneApi {
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.LibraryScanProgress>
 
     // Database backup / restore --------------------------------------------
-    suspend fun adminDownloadBackup(level: String): com.photonne.app.data.models.AssetContentBytes
+    /** Streams the database backup into [consume] (it can be hundreds of MB). */
+    suspend fun <T> adminDownloadBackup(
+        level: String,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T
     suspend fun adminRestoreBackup(
         fileName: String,
         bytes: ByteArray
@@ -3206,28 +3210,28 @@ class PhotonneApiClient(
     ): Flow<com.photonne.app.data.models.MaintenanceStreamEvent> =
         streamJsonObjects("$baseUrl/api/tasks/$id/stream")
 
-    override suspend fun adminDownloadBackup(
-        level: String
-    ): AssetContentBytes {
-        val response: HttpResponse = client.get("$baseUrl/api/admin/database/backup") {
-            // The server builds the whole document before sending a byte; on
-            // a big library (Full includes the ML data) that took longer than
-            // the default 30 s socket timeout, the download failed and the
-            // disconnect cancelled the export.
-            disableStreamTimeouts()
-            parameter("level", level)
-        }
+    override suspend fun <T> adminDownloadBackup(
+        level: String,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T = client.prepareGet("$baseUrl/api/admin/database/backup") {
+        // The server builds the whole document before sending a byte; on a
+        // big library (Full includes the ML data) that took longer than the
+        // default 30 s socket timeout, the download failed and the
+        // disconnect cancelled the export.
+        disableStreamTimeouts()
+        parameter("level", level)
+    }.execute { response ->
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Backup download failed")
         }
-        val mime = response.headers[HttpHeaders.ContentType] ?: "application/json"
-        val suggested = response.headers[HttpHeaders.ContentDisposition]
-            ?.let(::parseContentDispositionFilename)
-            ?: "photonne_backup.json"
-        return AssetContentBytes(
-            bytes = response.body(),
-            mimeType = mime,
-            suggestedFileName = suggested
+        // Streamed, not read into a ByteArray: a Full backup of a big
+        // library is hundreds of MB, enough to run a phone out of memory.
+        consume(
+            response.downloadHead(
+                fallbackName = "photonne_backup.json",
+                fallbackMimeType = "application/json"
+            ),
+            response.bodyAsChannel()
         )
     }
 

@@ -53,7 +53,11 @@ actual class AssetSharing {
                     removeFile(saved.path)
                     throw failure
                 }
-                return saved
+                // The temp file is gone once the sheet closes, and where the
+                // copy ended up is whatever the user picked there: the name is
+                // all there is to show ("Guardado en …/tmp/photonne-download/…"
+                // pointed at a file that no longer existed).
+                return saved.copy(path = saved.displayName)
             }
         }
     }

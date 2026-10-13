@@ -1,5 +1,7 @@
 package com.photonne.app.data.admin
 
+import com.photonne.app.data.models.DownloadHead
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.async
@@ -10,7 +12,6 @@ import com.photonne.app.data.api.AdminRetryAllFailuresResponse
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.AdminResetPasswordRequest
 import com.photonne.app.data.models.AdminStatsResponse
-import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.BackfillRequest
 import com.photonne.app.data.models.BackfillResponse
 import com.photonne.app.data.models.BackgroundTaskDto
@@ -335,8 +336,10 @@ class AdminRepository(private val api: PhotonneApi) {
 
     // --- Backup / restore ---
 
-    suspend fun downloadBackup(level: String): AssetContentBytes =
-        api.adminDownloadBackup(level)
+    suspend fun <T> downloadBackup(
+        level: String,
+        consume: suspend (DownloadHead, ByteReadChannel) -> T
+    ): T = api.adminDownloadBackup(level, consume)
 
     suspend fun restoreBackup(fileName: String, bytes: ByteArray): BackupRestoreResponse =
         api.adminRestoreBackup(fileName, bytes)

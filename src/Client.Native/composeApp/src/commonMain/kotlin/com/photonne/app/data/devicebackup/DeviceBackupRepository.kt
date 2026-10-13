@@ -15,6 +15,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
+import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -241,7 +243,7 @@ class DeviceBackupRepository(
                                 return@withPermit
                             }
                             writes.withLock {
-                                ledger.setHash(folder.uri, entry.uri, hash)
+                                val withHash = applyHash(folder.uri, entry, hash)
                                 // It read this time: an earlier FileUnreadable
                                 // (iCloud download that failed, a transient
                                 // read error) no longer applies. Left FAILED,
@@ -252,13 +254,12 @@ class DeviceBackupRepository(
                                     entry.failureReason == UploadFailureReason.FileUnreadable.name
                                 if (recovered) ledger.clearFailure(folder.uri, entry.uri)
                                 entries[entry.uri] = if (recovered) {
-                                    entry.copy(
-                                        sha256 = hash,
+                                    withHash.copy(
                                         state = LedgerState.Unknown,
                                         failureReason = null,
                                         failureDetail = null
                                     )
-                                } else entry.copy(sha256 = hash)
+                                } else withHash
                                 hashed++
                                 onProgress?.invoke(VerificationProgress(hashed, needHash.size))
                             }
@@ -388,9 +389,29 @@ class DeviceBackupRepository(
                 "${media.sizeBytes}|${media.dateModifiedMillis / 1000}|${media.displayName}"
             ]
             val sha = identity?.sha256 ?: continue
-            ledger.setHash(folderUri, entry.uri, sha)
-            entries[entry.uri] = entry.copy(sha256 = sha)
+            entries[entry.uri] = applyHash(folderUri, entry, sha)
         }
+    }
+
+    /**
+     * Stores [hash] for [entry] and returns the updated entry. A row that
+     * kept its SYNCED verdict through a fingerprint change (see
+     * [BackupLedger.reconcile]) keeps it only if the content is the same as
+     * before; a real edit drops it back to UNKNOWN so the new version gets
+     * checked and uploaded.
+     */
+    private fun applyHash(folderUri: String, entry: LedgerEntry, hash: String): LedgerEntry {
+        ledger.setHash(folderUri, entry.uri, hash)
+        val edited = entry.state == LedgerState.Synced &&
+            entry.previousSha256 != null && entry.previousSha256 != hash
+        if (!edited) return entry.copy(sha256 = hash, previousSha256 = null)
+        ledger.setVerdict(folderUri, entry.uri, LedgerState.Unknown, null)
+        return entry.copy(
+            sha256 = hash,
+            previousSha256 = null,
+            state = LedgerState.Unknown,
+            assetId = null
+        )
     }
 
     /**
@@ -430,8 +451,12 @@ class DeviceBackupRepository(
     }
 
     fun stashSelection(uris: Collection<String>): String {
-        ledger.putMeta(SELECTION_META_KEY, uris.joinToString("\n"))
-        return SELECTION_META_KEY
+        // A slot of its own per request: a selection queued behind a pass
+        // still running (see requestForegroundBackup) must not overwrite the
+        // one that pass is using, nor be consumed when that pass ends.
+        val key = "$SELECTION_META_KEY:${Clock.System.now().toEpochMilliseconds()}:${Random.nextInt(0, Int.MAX_VALUE)}"
+        ledger.putMeta(key, uris.joinToString("\n"))
+        return key
     }
 
     /** Records a finished upload so the verdict survives restarts. */
@@ -748,8 +773,8 @@ class DeviceBackupRepository(
     companion object {
         const val MOBILE_BACKUP_DESTINATION = "mobile-backup"
 
-        // Single slot: only one foreground pass runs at a time (the worker is
-        // enqueued as unique work), and the worker consumes the row on read.
+        // Prefix of the per-request selection slots (see stashSelection); the
+        // worker that runs a selection consumes its row.
         const val SELECTION_META_KEY = "foregroundSelection"
 
         // When the last full server-wide reconcile ran, and how often it should.

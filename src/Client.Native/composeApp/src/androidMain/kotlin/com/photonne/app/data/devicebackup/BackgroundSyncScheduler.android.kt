@@ -157,9 +157,13 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
             .setInputData(input)
             .build()
 
+        // A full pass already running or queued covers another "Subir ahora"
+        // (KEEP). A selection ("Subir estos") is queued behind it instead:
+        // with KEEP it was dropped while this still answered true, so the
+        // files never went up and nothing said so.
         workManager.enqueueUniqueWork(
             BackupWorker.FOREGROUND_WORK_NAME,
-            ExistingWorkPolicy.KEEP,
+            if (selectionKey == null) ExistingWorkPolicy.KEEP else ExistingWorkPolicy.APPEND_OR_REPLACE,
             request
         )
         Log.i(TAG, "Enqueued foreground (prioritized) backup — selection=$selectionKey")
