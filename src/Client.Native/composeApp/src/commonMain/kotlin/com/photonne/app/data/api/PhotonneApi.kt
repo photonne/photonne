@@ -16,6 +16,7 @@ import com.photonne.app.data.models.Attribution
 import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.LoginRequest
+import com.photonne.app.data.models.LogoutRequest
 import com.photonne.app.data.models.LoginResponse
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.models.Memory
@@ -79,6 +80,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLPathPart
+import io.ktor.http.isSuccess
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.close
@@ -429,6 +431,8 @@ interface PhotonneApi {
     suspend fun getLatestRelease(): LatestReleaseResponse
 
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
+    /** Revokes [refreshToken] on the server (`POST /api/auth/logout`). */
+    suspend fun logout(refreshToken: String)
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
 
     /** Timeline skeleton: per-month visible-asset counts, newest first. */
@@ -1025,6 +1029,17 @@ class PhotonneApiClient(
             throw response.apiException("Login failed (${response.status.value})")
         }
         return response.body()
+    }
+
+    override suspend fun logout(refreshToken: String) {
+        val response: HttpResponse = client.post("$baseUrl/api/auth/logout") {
+            skipAuthRefresh()
+            contentType(ContentType.Application.Json)
+            setBody(LogoutRequest(refreshToken = refreshToken))
+        }
+        if (!response.status.isSuccess()) {
+            throw response.apiException("Logout failed (${response.status.value})")
+        }
     }
 
     override suspend fun getTimeline(cursor: Instant?, pageSize: Int): TimelinePage {
@@ -3090,12 +3105,17 @@ class PhotonneApiClient(
     override suspend fun cancelBackgroundTask(id: String) {
         val response: HttpResponse = client.delete("$baseUrl/api/tasks/$id")
         // 204 NoContent on success; 404 if task already gone (race with finish
-        // + 1h cleanup) — treat as a no-op rather than surfacing an error.
-        if (response.status != HttpStatusCode.NoContent &&
-            response.status != HttpStatusCode.NotFound
-        ) {
-            throw response.apiException("Cancel task failed")
-        }
+        // + 1h cleanup) and 400 `task_already_finished` if it ended between the
+        // last poll and the tap — all three leave it not running, so treat the
+        // last two as a no-op rather than surfacing an error.
+        if (response.status == HttpStatusCode.NoContent ||
+            response.status == HttpStatusCode.NotFound
+        ) return
+        val error = response.apiException("Cancel task failed")
+        if (response.status == HttpStatusCode.BadRequest &&
+            error.serverCode == "task_already_finished"
+        ) return
+        throw error
     }
 
     override suspend fun resumeIndexTaskStream(
@@ -3190,6 +3210,11 @@ class PhotonneApiClient(
         level: String
     ): AssetContentBytes {
         val response: HttpResponse = client.get("$baseUrl/api/admin/database/backup") {
+            // The server builds the whole document before sending a byte; on
+            // a big library (Full includes the ML data) that took longer than
+            // the default 30 s socket timeout, the download failed and the
+            // disconnect cancelled the export.
+            disableStreamTimeouts()
             parameter("level", level)
         }
         if (response.status != HttpStatusCode.OK) {

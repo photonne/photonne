@@ -103,6 +103,9 @@ internal object MediaOriginalReader {
         isVideo: Boolean,
         expectedSize: Long,
     ): Original? {
+        // hasMediaLocationAccess already says no below Q; spelled out here so
+        // the setRequireOriginal calls below sit behind a check lint can see.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         if (!hasMediaLocationAccess(context)) return null
 
         if (sourceUri != null && isMediaStoreItem(sourceUri)) {

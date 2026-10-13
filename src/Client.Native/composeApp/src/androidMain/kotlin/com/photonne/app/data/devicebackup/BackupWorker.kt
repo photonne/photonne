@@ -1,5 +1,6 @@
 package com.photonne.app.data.devicebackup
 
+import android.annotation.SuppressLint
 import org.jetbrains.compose.resources.getPluralString
 import android.Manifest
 import android.app.Notification
@@ -140,6 +141,10 @@ class BackupWorker(
         // A stop by the OS (constraints, quota, FGS timeout) gets the work
         // rescheduled, and that rerun still needs the selection; only the
         // user cancelling ("Detener") ends the run for good.
+        // stopReason is WorkManager's own field, set by it on every API level
+        // when it stops the worker (cancelUniqueWork → CANCELLED_BY_APP); the
+        // API 31 annotation only mirrors the platform JobParameters it echoes.
+        @SuppressLint("NewApi")
         fun endedForGood(): Boolean =
             !isStopped || stopReason == WorkInfo.STOP_REASON_CANCELLED_BY_APP
         if (selectionKey != null && selection.isNullOrEmpty()) {

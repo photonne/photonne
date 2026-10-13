@@ -6,9 +6,11 @@ import com.photonne.app.data.api.LocalReachabilityProbe
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.skipAuthRefresh
 import io.ktor.client.HttpClient
-import io.ktor.client.request.head
+import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Url
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -151,11 +153,16 @@ class DeviceConnectionViewModel(
         }
     }
 
+    // Only Photonne serves `/api/version` with a "version" field: a typo that
+    // resolves to some other web server, or a captive portal, must not pass
+    // the check that save() relies on to avoid locking the app out.
     private suspend fun probeOnce(url: String): Boolean = try {
-        val response: HttpResponse = httpClient.head("$url/api/auth/login") {
+        val response: HttpResponse = httpClient.get("$url/api/version") {
             skipAuthRefresh()
         }
-        response.status.value < 500
+        response.status.value == 200 && response.bodyAsText().contains("\"version\"")
+    } catch (e: CancellationException) {
+        throw e
     } catch (_: Throwable) {
         false
     }

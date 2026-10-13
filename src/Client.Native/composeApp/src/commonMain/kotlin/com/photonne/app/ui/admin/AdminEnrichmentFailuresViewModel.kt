@@ -84,7 +84,9 @@ class AdminEnrichmentFailuresViewModel(
      * requested type was ignored and the list was whatever it had been.
      */
     fun start(initialType: String?) {
-        _state.update { it.copy(typeFilter = initialType?.takeIf { t -> t.isNotBlank() }) }
+        // The cause filter goes too: kept from a previous visit, the list showed
+        // fewer rows than the "N con errores" the admin tapped.
+        _state.update { it.copy(typeFilter = initialType?.takeIf { t -> t.isNotBlank() }, kindFilter = null) }
         refresh()
     }
 

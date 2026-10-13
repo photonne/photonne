@@ -5,6 +5,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_backup_error_download
+import kotlinx.coroutines.CancellationException
 import org.jetbrains.compose.resources.getString
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
@@ -100,6 +101,11 @@ class AdminBackupViewModel(
                     }
                 }
                 .onFailure { error ->
+                    // Closing the save dialog (desktop) is not an error.
+                    if (error is CancellationException) {
+                        _state.update { it.copy(isDownloading = false) }
+                        return@onFailure
+                    }
                     _state.update {
                         it.copy(
                             isDownloading = false,

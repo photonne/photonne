@@ -298,7 +298,7 @@ data class IndexStreamStatistics(
     val hashesCalculated: Int? = null,
     val exifExtracted: Int? = null,
     val mediaTagsDetected: Int? = null,
-    val mlJobsQueued: Int? = null,
+    val enrichmentTasksQueued: Int? = null,
     val thumbnailsGenerated: Int? = null,
     val thumbnailsRegenerated: Int? = null,
     val duplicateAssetsRemoved: Int? = null,

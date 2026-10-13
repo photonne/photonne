@@ -145,7 +145,9 @@ public class AssetTagsEndpoint : IEndpoint
             return TypedResults.Forbid();
         }
 
-        var normalized = NormalizeTag(tag);
+        // El enrutado decodifica la ruta salvo %2F, así que una etiqueta con "/"
+        // llegaba como "viaje 2024%2F25" y no se podía quitar nunca.
+        var normalized = NormalizeTag(Uri.UnescapeDataString(tag));
         if (string.IsNullOrWhiteSpace(normalized))
         {
             return TypedResults.BadRequest(new ApiError("Etiqueta inválida.", "invalid_tag"));

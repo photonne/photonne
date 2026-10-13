@@ -32,6 +32,7 @@ import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Notifications
@@ -396,6 +397,8 @@ private fun iconFor(type: Int): Pair<ImageVector, Color> = when (type) {
         Icons.Filled.Visibility to MaterialTheme.colorScheme.primary
     NotificationKind.SharedAssetsDeleted ->
         Icons.Filled.DeleteSweep to PhotonneColors.warning
+    NotificationKind.ShareUploaded ->
+        Icons.Filled.CloudUpload to MaterialTheme.colorScheme.primary
     else ->
         Icons.Filled.Notifications to MaterialTheme.colorScheme.onSurfaceVariant
 }

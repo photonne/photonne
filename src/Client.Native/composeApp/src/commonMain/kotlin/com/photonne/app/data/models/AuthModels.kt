@@ -17,6 +17,12 @@ data class LoginResponse(
     val user: UserDto
 )
 
+/** Body of `POST /api/auth/logout`: the native app keeps its own refresh token. */
+@Serializable
+data class LogoutRequest(
+    val refreshToken: String
+)
+
 @Serializable
 data class RefreshTokenRequest(
     val refreshToken: String,

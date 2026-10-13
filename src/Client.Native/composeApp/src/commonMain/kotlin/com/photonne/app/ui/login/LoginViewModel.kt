@@ -11,6 +11,7 @@ import com.photonne.app.data.auth.RememberedCredentialsStore
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.version.AppVersionStore
 import com.photonne.app.di.PhotonneAppConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -46,6 +47,7 @@ class LoginViewModel(
     private val reachabilityProbe: LocalReachabilityProbe,
     config: PhotonneAppConfig,
     private val errorFactory: UiErrorFactory,
+    private val versionStore: AppVersionStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(initialState(config))
@@ -164,9 +166,20 @@ class LoginViewModel(
                 )
                 return@launch
             }
+            // Las credenciales recordadas son del servidor anterior: si este es
+            // otro, se olvidan. Si no, un toque en "Entrar" mandaba la
+            // contraseña de A al servidor B.
+            val previousPublic = serverUrlStore.getPublic()
+            val acceptedPublic = publicResult.getOrNull() ?: normalizedPublic
+            if (!previousPublic.isNullOrEmpty() && previousPublic != acceptedPublic) {
+                rememberedCredentialsStore.clear()
+                // Versión y compatibilidad eran las del servidor anterior; si
+                // el refresh de este falla, el aviso seguiría siendo aquel.
+                versionStore.clear()
+            }
             // Guarda la URL que respondió de verdad (puede ser la variante
             // http del reintento), no la normalizada a ciegas.
-            serverUrlStore.setPublic(publicResult.getOrNull() ?: normalizedPublic)
+            serverUrlStore.setPublic(acceptedPublic)
             serverUrlStore.setLocal(
                 localResult?.getOrNull() ?: normalizedLocal
             )

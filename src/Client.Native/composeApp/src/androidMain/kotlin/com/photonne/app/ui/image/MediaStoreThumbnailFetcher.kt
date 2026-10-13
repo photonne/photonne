@@ -39,9 +39,13 @@ internal class MediaStoreThumbnailFetcher(
         val resolver = options.context.contentResolver
         val uri = android.net.Uri.parse(data.toString())
 
-        val thumbnail = runCatching {
-            resolver.loadThumbnail(uri, Size(targetPx(), targetPx()), null)
-        }.getOrNull()
+        // loadThumbnail is API 29+; below it, the original streams through
+        // Coil's decoder chain as in the fallback further down.
+        val thumbnail = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            runCatching {
+                resolver.loadThumbnail(uri, Size(targetPx(), targetPx()), null)
+            }.getOrNull()
+        } else null
         if (thumbnail != null) {
             return ImageFetchResult(
                 image = thumbnail.asImage(),

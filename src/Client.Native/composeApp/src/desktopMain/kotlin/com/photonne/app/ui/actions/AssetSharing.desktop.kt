@@ -5,7 +5,9 @@ import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.io.File
 import javax.swing.JFileChooser
+import javax.swing.SwingUtilities
 import javax.swing.filechooser.FileNameExtensionFilter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
@@ -30,8 +32,11 @@ actual class AssetSharing {
         mimeType: String
     ): DownloadSink = withContext(Dispatchers.IO) {
         val extensions = if (mimeType == "application/zip") listOf("zip") else allExtensions(mimeType)
+        // Closing the dialog is the user cancelling, not a failure: callers
+        // treat a CancellationException as "stop quietly" instead of showing
+        // "No se pudo descargar".
         val path = pickSavePath(fileName, extensions)
-            ?: throw AssetSharingUnavailable("Save cancelled")
+            ?: throw CancellationException("Save cancelled")
         FileDownloadSink(target = Path(path), displayName = File(path).name, mimeType = mimeType)
     }
 
@@ -89,20 +94,26 @@ actual class AssetSharing {
         }
     }
 
+    /** Swing components belong on the event dispatch thread; callers come in
+     *  from Dispatchers.IO, so the dialog is shown there and waited for. */
     private fun pickSavePath(defaultName: String, extensions: List<String>): String? {
-        val chooser = JFileChooser().apply {
-            dialogTitle = "Save as"
-            selectedFile = File(defaultName)
-            if (extensions.isNotEmpty()) {
-                fileFilter = FileNameExtensionFilter(
-                    extensions.joinToString(", ") { ".$it" },
-                    *extensions.toTypedArray()
-                )
+        var picked: String? = null
+        val show = {
+            val chooser = JFileChooser().apply {
+                dialogTitle = "Save as"
+                selectedFile = File(defaultName)
+                if (extensions.isNotEmpty()) {
+                    fileFilter = FileNameExtensionFilter(
+                        extensions.joinToString(", ") { ".$it" },
+                        *extensions.toTypedArray()
+                    )
+                }
             }
+            val result = chooser.showSaveDialog(null)
+            if (result == JFileChooser.APPROVE_OPTION) picked = chooser.selectedFile.absolutePath
         }
-        val result = chooser.showSaveDialog(null)
-        return if (result == JFileChooser.APPROVE_OPTION) chooser.selectedFile.absolutePath
-        else null
+        if (SwingUtilities.isEventDispatchThread()) show() else SwingUtilities.invokeAndWait(show)
+        return picked
     }
 
     private fun allExtensions(mimeType: String): List<String> = when {

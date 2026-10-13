@@ -8,10 +8,11 @@ using Photonne.Server.Api.Shared.Interfaces;
 namespace Photonne.Server.Api.Features.Auth;
 
 /// <summary>
-/// Ends a web session: revokes the refresh token held in
-/// <see cref="RefreshTokenCookie"/>, if any, and deletes both session cookies so
-/// media stops loading. Anonymous on purpose — an expired access token must
-/// not stop a user from signing out. Native clients just forget their tokens.
+/// Ends a session: revokes the refresh token held in <see cref="RefreshTokenCookie"/>
+/// (web) or sent in the body (native apps, which keep it themselves), and deletes
+/// both session cookies so media stops loading. Anonymous on purpose — an expired
+/// access token must not stop a user from signing out. Without the body, a native
+/// sign-out only forgot the token on the device and it stayed valid for 30 days.
 /// </summary>
 public class LogoutEndpoint : IEndpoint
 {
@@ -27,9 +28,12 @@ public class LogoutEndpoint : IEndpoint
     private static async Task<NoContent> Handle(
         [FromServices] ApplicationDbContext dbContext,
         HttpContext httpContext,
+        [FromBody] LogoutRequest? request,
         CancellationToken cancellationToken)
     {
-        if (RefreshTokenCookie.Read(httpContext) is { } refreshToken)
+        var refreshToken = RefreshTokenCookie.Read(httpContext)
+            ?? (string.IsNullOrWhiteSpace(request?.RefreshToken) ? null : request.RefreshToken.Trim());
+        if (refreshToken is not null)
         {
             var hash = RefreshTokenHelper.HashToken(refreshToken);
             await dbContext.RefreshTokens
@@ -42,3 +46,5 @@ public class LogoutEndpoint : IEndpoint
         return TypedResults.NoContent();
     }
 }
+
+public sealed record LogoutRequest(string? RefreshToken);

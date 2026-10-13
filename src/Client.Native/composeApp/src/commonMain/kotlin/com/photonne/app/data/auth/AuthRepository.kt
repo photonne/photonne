@@ -8,6 +8,10 @@ import com.photonne.app.data.devicebackup.DeviceBackupStateStore
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.data.notifications.ActivityNotifications
 import com.photonne.app.data.timeline.TimelineBucketStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class AuthRepository(
     private val api: PhotonneApi,
@@ -61,8 +65,17 @@ class AuthRepository(
         backupScheduler.apply(backupStateStore.backgroundSyncPreferences())
     }
 
+    /** Outlives the screen that signed out, so the revoke still goes out. */
+    private val signOutScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     fun logout() {
         stopBackupForSignOut()
+        // Revoke the refresh token on the server too, best effort: forgetting
+        // it here alone left it valid for 30 days (a copy taken from a device
+        // backup kept working). Offline, the sign-out still goes through.
+        tokenStorage.getRefreshToken()?.let { refreshToken ->
+            signOutScope.launch { runCatching { api.logout(refreshToken) } }
+        }
         tokenStorage.clear()
         authStateHolder.update(AuthState.Unauthenticated)
     }
