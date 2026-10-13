@@ -7,6 +7,7 @@ import com.photonne.app.data.devicebackup.BackupLedger
 import com.photonne.app.data.devicebackup.DeviceBackupStateStore
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.data.notifications.ActivityNotifications
+import com.photonne.app.data.timeline.TimelineBucketStore
 
 class AuthRepository(
     private val api: PhotonneApi,
@@ -16,7 +17,8 @@ class AuthRepository(
     private val serverUrlStore: ServerUrlStore,
     private val backupStateStore: DeviceBackupStateStore,
     private val backupScheduler: BackgroundSyncScheduler,
-    private val activityNotifications: ActivityNotifications
+    private val activityNotifications: ActivityNotifications,
+    private val timelineStore: TimelineBucketStore
 ) {
     suspend fun login(username: String, password: String): Result<Unit> = runCatching {
         val deviceId = tokenStorage.getDeviceId()
@@ -29,6 +31,9 @@ class AuthRepository(
         runCatching { bindBackupToAccount(response.user) }
         // Avisos de actividad con la app cerrada: solo con sesión.
         activityNotifications.reconcile()
+        // The timeline store outlives the session; the new one must not open
+        // on the previous account's (or server's) grid.
+        timelineStore.clear()
         authStateHolder.update(AuthState.Authenticated(response.user))
     }
 

@@ -3,6 +3,7 @@ package com.photonne.app.data.account
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
+import com.photonne.app.data.auth.isSignedOut
 import com.photonne.app.data.auth.RememberedCredentialsStore
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.ChangePasswordRequest
@@ -26,6 +27,13 @@ class AccountRepository(
 ) {
     suspend fun refreshCurrentUser(): UserDto {
         val user = api.getCurrentUser()
+        // The session may have ended (or another account signed in) while
+        // the request was out; publishing the answer would bring the old
+        // user back over the login screen or the new session.
+        val current = authStateHolder.state.value
+        val sessionGone = tokenStorage.getRefreshToken() == null || current.isSignedOut ||
+            (current is AuthState.Authenticated && current.user.id != user.id)
+        if (sessionGone) return user
         tokenStorage.saveUser(user)
         authStateHolder.update(AuthState.Authenticated(user))
         return user

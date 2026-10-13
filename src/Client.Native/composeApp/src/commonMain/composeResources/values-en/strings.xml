@@ -1358,6 +1358,8 @@
     <string name="backup_section_settings">Backup settings</string>
     <string name="device_backup_free_space_done">Freed %1$s (%2$d files)</string>
     <string name="device_backup_free_space_partial">Freed %1$s · %2$d could not be deleted</string>
+    <string name="device_backup_free_space_unconfirmed">%1$d not confirmed by the server, kept on the device</string>
+    <string name="device_backup_free_space_check_failed">Couldn\'t check with the server; nothing was deleted</string>
     <string name="backup_error_refresh_folder">Could not refresh the folder</string>
     <string name="backup_error_verify">Could not verify the pending files</string>
     <string name="backup_error_list_folder">Could not list the folder</string>

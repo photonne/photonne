@@ -677,8 +677,57 @@ class DeviceBackupRepository(
 
     fun thumbnailModel(media: DeviceMedia): String = gallery.thumbnailModel(media)
 
+    // One pass uploads at a time, whoever started it (periodic, new-media,
+    // "Subir ahora" or foreground worker, the iOS BGTask, the screen's own
+    // pass): two concurrent passes pick the same pending files, and the
+    // server, which only dedups once a whole body is in, stores both.
+    private val passLock = Mutex()
+
+    /** Runs [block] once no other backup pass is uploading; see [passLock]. */
+    suspend fun <T> exclusivePass(block: suspend () -> T): T = passLock.withLock { block() }
+
     /** Deletes [media] from the device storage. */
     suspend fun deleteLocal(media: DeviceMedia): Boolean = gallery.deleteFile(media)
+
+    /**
+     * Of [urisByFolder] (folder uri → file uris), the files the server holds
+     * right now, asked by checksum just before their local copy is deleted.
+     *
+     * The ledger can't answer this: [verifyAgainstServer] keeps a confirmed
+     * upload Synced even when the lookup misses it, so an asset deleted on
+     * the server (trash, emptied trash) stays Synced on the device forever.
+     * Freeing space on that verdict would delete the only remaining copy, so
+     * anything without a hash or not found by checksum is left alone.
+     */
+    suspend fun confirmedOnServer(urisByFolder: Map<String, List<String>>): Set<String> {
+        val urisByChecksum = HashMap<String, MutableList<String>>()
+        urisByFolder.forEach { (folderUri, uris) ->
+            val rows = ledger.entries(folderUri)
+            uris.forEach { uri ->
+                val hash = rows[uri]?.sha256 ?: return@forEach
+                urisByChecksum.getOrPut(hash) { mutableListOf() }.add(uri)
+            }
+        }
+        val confirmed = HashSet<String>()
+        var bulkSupported = true
+        urisByChecksum.keys.chunked(CHECKSUM_BATCH).forEach { batch ->
+            val found: Map<String, String?> = if (bulkSupported) {
+                try {
+                    api.checkChecksums(batch)
+                } catch (ex: PhotonneApiException) {
+                    if (ex.status != 404) throw ex
+                    bulkSupported = false
+                    lookupChecksumsLegacy(batch) { true }
+                }
+            } else {
+                lookupChecksumsLegacy(batch) { true }
+            }
+            batch.forEach { checksum ->
+                if (found[checksum] != null) confirmed += urisByChecksum.getValue(checksum)
+            }
+        }
+        return confirmed
+    }
 
     companion object {
         const val MOBILE_BACKUP_DESTINATION = "mobile-backup"

@@ -1,8 +1,9 @@
 package com.photonne.app.data.api
 
 import io.ktor.client.HttpClient
-import io.ktor.client.request.head
+import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -27,8 +28,8 @@ private val PROBE_RETRY_DELAY = 200.milliseconds
 private val REPROBE_DEBOUNCE = 1_500.milliseconds
 
 /**
- * Decides whether to use the LAN URL or the public URL by HEAD-ing the local
- * URL on every network change. Result is flipped into [ServerUrlStore]; the
+ * Decides whether to use the LAN URL or the public URL by asking the local
+ * URL for `/api/version` on every network change. Result is flipped into [ServerUrlStore]; the
  * shared HttpClient reads the effective URL at request time so requests
  * already in flight aren't affected.
  *
@@ -102,10 +103,15 @@ class LocalReachabilityProbe(
         repeat(PROBE_ATTEMPTS) { attempt ->
             val ok = try {
                 withTimeoutOrNull(PROBE_TIMEOUT) {
-                    val response: HttpResponse = httpClient.head("$url/api/auth/login") {
+                    // Only Photonne serves `GET /api/version` with a "version"
+                    // field. Anything that merely answers (a router, a NAS
+                    // panel, another network's device on the same IP:port)
+                    // must not win: the bearer and refresh tokens go to
+                    // whatever this probe accepts.
+                    val response: HttpResponse = httpClient.get("$url/api/version") {
                         skipAuthRefresh()
                     }
-                    response.status.value < 500
+                    response.status.value == 200 && response.bodyAsText().contains("\"version\"")
                 } ?: false
             } catch (e: CancellationException) {
                 // Cancelled by collectLatest because a newer tick arrived (or

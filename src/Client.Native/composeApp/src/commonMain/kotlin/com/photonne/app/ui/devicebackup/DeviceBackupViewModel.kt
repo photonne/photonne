@@ -35,11 +35,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.photonne.app.resources.Res
+import com.photonne.app.util.suspendRunCatching
 import com.photonne.app.resources.backup_error_list_folder
 import com.photonne.app.resources.backup_error_refresh_folder
 import com.photonne.app.resources.backup_error_verify
 import com.photonne.app.resources.device_backup_free_space_done
 import com.photonne.app.resources.device_backup_free_space_partial
+import com.photonne.app.resources.device_backup_free_space_check_failed
+import com.photonne.app.resources.device_backup_free_space_unconfirmed
 import com.photonne.app.ui.format.humanBytes
 import kotlin.time.Instant
 import org.jetbrains.compose.resources.getString
@@ -1032,85 +1035,98 @@ class DeviceBackupViewModel(
             }
         }
 
-        // Upload with bounded concurrency. onItemStart/onItemDone run under
-        // the helper's mutex, so the counters and inFlight stay consistent
-        // and the StateFlow updates never race. Cancellation: cancelSync()
-        // flips isSyncing=false; in-flight uploads finish, no new ones start.
-        uploadInParallel(
-            pending = selected.map { it.media },
-            concurrency = repository.uploadConcurrency(),
-            upload = { media, report -> repository.upload(media, onProgress = report) },
-            shouldContinue = { _state.value.isSyncing && blockedBy == null },
-            onItemStart = { media ->
-                inFlight++
-                _state.update { current ->
-                    current.copy(
-                        entries = current.entries.map { e ->
-                            if (e.media.uri == media.uri) {
-                                e.copy(
-                                    syncState = DeviceMediaSyncState.Uploading,
-                                    uploadProgress = null
-                                )
-                            } else e
-                        },
-                        syncProgress = current.syncProgress?.copy(
-                            currentName = media.displayName,
-                            inFlight = inFlight
-                        )
-                    )
-                }
-            },
-            onItemProgress = { media, fraction ->
-                updateUploadProgress(media.uri, fraction)
-            },
-            onItemDone = { media, outcome, _ ->
-                inFlight--
-                bytesDone += media.sizeBytes
-                when (outcome) {
-                    is UploadOutcome.Uploaded -> {
-                        completed++
-                        landed++
-                        markSynced(media, outcome.assetId)
-                    }
-                    is UploadOutcome.Skipped -> {
-                        skipped++
-                        landed++
-                        markSynced(media, outcome.assetId)
-                    }
-                    is UploadOutcome.Failed -> {
-                        failed++
-                        if (outcome.reason.blocksPass && blockedBy == null) blockedBy = outcome.reason
-                        failureReasonCounts[outcome.reason] =
-                            (failureReasonCounts[outcome.reason] ?: 0) + 1
-                        folderUriOf(media.uri)?.let { folderUri ->
-                            repository.markUploadFailed(
-                                folderUri, media.uri, outcome.reason, outcome.detail
-                            )
-                        }
-                        _state.update { current ->
-                            current.copy(
-                                entries = current.entries.map { e ->
-                                    if (e.media.uri == media.uri) {
-                                        e.copy(
-                                            syncState = DeviceMediaSyncState.Failed(
-                                                reason = outcome.reason,
-                                                detail = outcome.detail
-                                            ),
-                                            uploadProgress = null
-                                        )
-                                    } else e
-                                },
-                                syncProgress = current.syncProgress?.copy(
-                                    failed = failed,
-                                    inFlight = inFlight,
-                                    bytesDone = bytesDone
-                                )
-                            )
-                        }
-                    }
-                }
+        // Waits out a pass already uploading (a worker, the BGTask); whatever
+        // it landed meanwhile is already Synced and isn't sent again.
+        repository.exclusivePass {
+            val synced = repository.syncStatesFor(_state.value.folders)
+            val toUpload = selected.filter { entry ->
+                val state = synced[entry.media.uri]
+                if (state is DeviceMediaSyncState.Synced) {
+                    skipped++
+                    markSynced(entry.media, state.assetId)
+                    false
+                } else true
             }
-        )
+            // Upload with bounded concurrency. onItemStart/onItemDone run under
+            // the helper's mutex, so the counters and inFlight stay consistent
+            // and the StateFlow updates never race. Cancellation: cancelSync()
+            // flips isSyncing=false; in-flight uploads finish, no new ones start.
+            uploadInParallel(
+                pending = toUpload.map { it.media },
+                concurrency = repository.uploadConcurrency(),
+                upload = { media, report -> repository.upload(media, onProgress = report) },
+                shouldContinue = { _state.value.isSyncing && blockedBy == null },
+                onItemStart = { media ->
+                    inFlight++
+                    _state.update { current ->
+                        current.copy(
+                            entries = current.entries.map { e ->
+                                if (e.media.uri == media.uri) {
+                                    e.copy(
+                                        syncState = DeviceMediaSyncState.Uploading,
+                                        uploadProgress = null
+                                    )
+                                } else e
+                            },
+                            syncProgress = current.syncProgress?.copy(
+                                currentName = media.displayName,
+                                inFlight = inFlight
+                            )
+                        )
+                    }
+                },
+                onItemProgress = { media, fraction ->
+                    updateUploadProgress(media.uri, fraction)
+                },
+                onItemDone = { media, outcome, _ ->
+                    inFlight--
+                    bytesDone += media.sizeBytes
+                    when (outcome) {
+                        is UploadOutcome.Uploaded -> {
+                            completed++
+                            landed++
+                            markSynced(media, outcome.assetId)
+                        }
+                        is UploadOutcome.Skipped -> {
+                            skipped++
+                            landed++
+                            markSynced(media, outcome.assetId)
+                        }
+                        is UploadOutcome.Failed -> {
+                            failed++
+                            if (outcome.reason.blocksPass && blockedBy == null) blockedBy = outcome.reason
+                            failureReasonCounts[outcome.reason] =
+                                (failureReasonCounts[outcome.reason] ?: 0) + 1
+                            folderUriOf(media.uri)?.let { folderUri ->
+                                repository.markUploadFailed(
+                                    folderUri, media.uri, outcome.reason, outcome.detail
+                                )
+                            }
+                            _state.update { current ->
+                                current.copy(
+                                    entries = current.entries.map { e ->
+                                        if (e.media.uri == media.uri) {
+                                            e.copy(
+                                                syncState = DeviceMediaSyncState.Failed(
+                                                    reason = outcome.reason,
+                                                    detail = outcome.detail
+                                                ),
+                                                uploadProgress = null
+                                            )
+                                        } else e
+                                    },
+                                    syncProgress = current.syncProgress?.copy(
+                                        failed = failed,
+                                        inFlight = inFlight,
+                                        bytesDone = bytesDone
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+        }
         val run = LastBackupRun(
             finishedAtMillis = Clock.System.now().toEpochMilliseconds(),
             uploaded = completed,
@@ -1171,24 +1187,6 @@ class DeviceBackupViewModel(
         _state.update { it.copy(isSyncing = false) }
     }
 
-    /**
-     * Deletes from local storage every entry that we've confirmed is
-     * already on the server. The "free up space" entry point assumes
-     * the caller has already shown a confirmation dialog — by the
-     * time this fires, the user has agreed to the deletion.
-     */
-    /** Synced entries whose files live in MediaStore (bucket sources) —
-     *  freeing THOSE goes through the system's consent flow
-     *  (rememberDeviceMediaDeleter), because API 29+ rejects a bare
-     *  delete on media the app doesn't own. */
-    fun syncedMediaStoreUris(): List<String> = _state.value.entries
-        .takeIf { _state.value.freeSpaceBlock == null }.orEmpty()
-        .filter {
-            it.syncState is DeviceMediaSyncState.Synced &&
-                it.media.uri.startsWith(MEDIASTORE_ITEM_URI_PREFIX)
-        }
-        .map { it.media.uri }
-
     /** The system's delete flow just removed [uris] (free-space on bucket
      *  sources): drop them from the grid and report the freed bytes. The
      *  next media-change rescan reconciles their ledger rows away. */
@@ -1214,16 +1212,21 @@ class DeviceBackupViewModel(
         }
     }
 
-    fun freeUpSyncedSpace() {
+    /**
+     * Deletes from the device every Synced entry the server confirms it
+     * still holds right now ([DeviceBackupRepository.confirmedOnServer]);
+     * the rest are kept and counted in the status message. The caller has
+     * already shown the confirmation dialog.
+     *
+     * Files in MediaStore (bucket sources) go to [deleteDeviceUris], the
+     * system's consent flow, because API 29+ rejects a bare delete on media
+     * the app doesn't own; it reports back through [applyFreedDeviceUris].
+     * Everything else is deleted in-process.
+     */
+    fun freeUpSyncedSpace(deleteDeviceUris: (List<String>) -> Unit) {
         if (_state.value.freeSpaceBlock != null) return
-        val targets = _state.value.entries.filter {
-            // MediaStore-backed entries are freed through the system consent
-            // flow (see syncedMediaStoreUris) — a bare delete would fail for
-            // every file the app doesn't own.
-            it.syncState is DeviceMediaSyncState.Synced &&
-                !it.media.uri.startsWith(MEDIASTORE_ITEM_URI_PREFIX)
-        }
-        if (targets.isEmpty()) return
+        val synced = _state.value.entries.filter { it.syncState is DeviceMediaSyncState.Synced }
+        if (synced.isEmpty()) return
 
         _state.update {
             it.copy(
@@ -1234,12 +1237,30 @@ class DeviceBackupViewModel(
         }
 
         viewModelScope.launch {
+            val confirmed = suspendRunCatching {
+                repository.confirmedOnServer(synced.groupBy({ it.folderUri }, { it.media.uri }))
+            }.getOrElse { error ->
+                _state.update {
+                    it.copy(
+                        isFreeingSpace = false,
+                        error = errorFactory.from(error, getString(Res.string.device_backup_free_space_check_failed))
+                    )
+                }
+                return@launch
+            }
+            val targets = synced.filter { it.media.uri in confirmed }
+            val unconfirmed = synced.size - targets.size
+            val (deviceTargets, localTargets) = targets.partition {
+                it.media.uri.startsWith(MEDIASTORE_ITEM_URI_PREFIX)
+            }
+            if (deviceTargets.isNotEmpty()) deleteDeviceUris(deviceTargets.map { it.media.uri })
+
             var deleted = 0
             var failed = 0
             var freedBytes = 0L
-            for (entry in targets) {
+            for (entry in localTargets) {
                 if (!_state.value.isFreeingSpace) break
-                val ok = runCatching {
+                val ok = suspendRunCatching {
                     repository.deleteLocal(entry.media)
                 }.getOrDefault(false)
                 if (ok) deleted++ else failed++
@@ -1254,13 +1275,27 @@ class DeviceBackupViewModel(
                     }
                 }
             }
-            val freed = humanBytes(freedBytes)
-            val message = if (failed == 0) {
-                getString(Res.string.device_backup_free_space_done, freed, deleted)
-            } else {
-                getString(Res.string.device_backup_free_space_partial, freed, failed)
+            val parts = buildList {
+                if (localTargets.isNotEmpty()) {
+                    val freed = humanBytes(freedBytes)
+                    add(
+                        if (failed == 0) {
+                            getString(Res.string.device_backup_free_space_done, freed, deleted)
+                        } else {
+                            getString(Res.string.device_backup_free_space_partial, freed, failed)
+                        }
+                    )
+                }
+                if (unconfirmed > 0) {
+                    add(getString(Res.string.device_backup_free_space_unconfirmed, unconfirmed))
+                }
             }
-            _state.update { it.copy(isFreeingSpace = false, statusMessage = message) }
+            _state.update {
+                it.copy(
+                    isFreeingSpace = false,
+                    statusMessage = parts.joinToString(" · ").ifEmpty { null }
+                )
+            }
         }
     }
 

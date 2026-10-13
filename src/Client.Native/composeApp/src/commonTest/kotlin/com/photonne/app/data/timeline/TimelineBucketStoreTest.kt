@@ -517,4 +517,17 @@ class TimelineBucketStoreTest {
         assertEquals(1, requests.count { it.endsWith("/buckets/2026-02") })
         assertNull(store.buckets.value.first { it.key == "2026-01" }.items)
     }
+
+    @Test
+    fun clear_forgets_skeleton_contents_and_year_summaries() = runTest {
+        val (store, _) = buildStore()
+        store.refresh()
+        store.ensureLoaded(listOf("2026-02"))
+        store.ensureYearSummaries(1)
+
+        store.clear()
+
+        assertTrue(store.buckets.value.isEmpty())
+        assertNull(store.yearSummaries.value)
+    }
 }

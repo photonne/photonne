@@ -1400,6 +1400,8 @@
     <string name="backup_section_settings">Ajustes de la copia</string>
     <string name="device_backup_free_space_done">Liberados %1$s (%2$d archivos)</string>
     <string name="device_backup_free_space_partial">Liberados %1$s · No se pudieron borrar %2$d</string>
+    <string name="device_backup_free_space_unconfirmed">%1$d sin confirmar en el servidor, no se han borrado</string>
+    <string name="device_backup_free_space_check_failed">No se pudo comprobar con el servidor; no se ha borrado nada</string>
     <string name="backup_error_refresh_folder">No se pudo actualizar la carpeta</string>
     <string name="backup_error_verify">No se pudieron verificar los archivos pendientes</string>
     <string name="backup_error_list_folder">No se pudo listar la carpeta</string>

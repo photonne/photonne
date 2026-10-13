@@ -27,6 +27,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // Koin before anything can reach the shared module: a launch just
+        // for the BGTask connects no scene, so ComposeView (which used to
+        // start it) never runs and the handler below would crash on get().
+        let baseUrl = Bundle.main.object(forInfoDictionaryKey: "PhotonneApiBaseUrl") as? String
+        MainViewControllerKt.startPhotonneKoin(apiBaseUrl: baseUrl, useFakeMemories: false)
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: AppDelegate.taskIdentifier,
             using: nil

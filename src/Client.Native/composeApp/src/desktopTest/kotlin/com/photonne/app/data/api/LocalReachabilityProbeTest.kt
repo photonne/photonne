@@ -12,6 +12,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+private const val VERSION_BODY = """{"version":"1.198.0"}"""
+
 private class FakeNetworkMonitor : NetworkMonitor {
     override val changes: Flow<Unit> = emptyFlow()
 }
@@ -35,7 +37,7 @@ class LocalReachabilityProbeTest {
     fun marks_unreachable_when_no_local_configured() = runBlocking {
         val store = store(local = null)
         var calls = 0
-        val client = HttpClient(MockEngine { calls++; respond("", HttpStatusCode.OK) })
+        val client = HttpClient(MockEngine { calls++; respond(VERSION_BODY, HttpStatusCode.OK) })
         val probe = LocalReachabilityProbe(client, store, FakeNetworkMonitor())
 
         assertFalse(probe.runProbe())
@@ -46,7 +48,7 @@ class LocalReachabilityProbeTest {
     @Test
     fun marks_reachable_when_head_succeeds() = runBlocking {
         val store = store(local = "http://192.168.1.10:5000")
-        val client = HttpClient(MockEngine { respond("", HttpStatusCode.OK) })
+        val client = HttpClient(MockEngine { respond(VERSION_BODY, HttpStatusCode.OK) })
         val probe = LocalReachabilityProbe(client, store, FakeNetworkMonitor())
 
         assertTrue(probe.runProbe())
@@ -62,7 +64,7 @@ class LocalReachabilityProbeTest {
         val client = HttpClient(MockEngine {
             calls++
             if (calls == 1) throw RuntimeException("slow first handshake")
-            respond("", HttpStatusCode.OK)
+            respond(VERSION_BODY, HttpStatusCode.OK)
         })
         val probe = LocalReachabilityProbe(client, store, FakeNetworkMonitor())
 
@@ -82,6 +84,17 @@ class LocalReachabilityProbeTest {
         assertFalse(store.isLocalReachable())
         assertEquals(3, calls) // PROBE_ATTEMPTS
         // Falls back to the public URL.
+        assertEquals("https://photos.example.com", store.requireBaseUrl())
+    }
+
+    @Test
+    fun rejects_a_server_that_is_not_photonne() = runBlocking {
+        val store = store(local = "http://192.168.1.10:5000")
+        val client = HttpClient(MockEngine { respond("Not Found", HttpStatusCode.NotFound) })
+        val probe = LocalReachabilityProbe(client, store, FakeNetworkMonitor())
+
+        assertFalse(probe.runProbe())
+        assertFalse(store.isLocalReachable())
         assertEquals("https://photos.example.com", store.requireBaseUrl())
     }
 }

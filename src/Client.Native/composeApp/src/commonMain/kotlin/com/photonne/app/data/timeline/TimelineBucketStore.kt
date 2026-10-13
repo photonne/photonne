@@ -106,6 +106,24 @@ class TimelineBucketStore(
     }
 
     /**
+     * Forgets everything loaded: skeleton, month contents and year summaries.
+     * The store is a process-wide singleton, so without this the next account
+     * (or server) would see the previous one's grid until its first refresh
+     * lands, and keep seeing it if that refresh fails. Bumping [generation]
+     * makes any fetch still in flight for the old session drop its response.
+     */
+    suspend fun clear() {
+        mutex.withLock {
+            generation++
+            lastTouched.clear()
+            removedFrom.clear()
+            _buckets.value = emptyList()
+            _yearSummaries.value = null
+            yearSampleSize = 0
+        }
+    }
+
+    /**
      * Fetches the compressed yearly view with at least [sample] items per
      * year. Cached summaries with an equal-or-larger sample are reused
      * (callers truncate client-side); a smaller cache triggers a refetch.

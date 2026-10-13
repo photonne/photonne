@@ -436,14 +436,13 @@ fun BackupScreen(
             onDismiss = { showFreeSpaceConfirm = false },
             onConfirm = {
                 showFreeSpaceConfirm = false
-                // MediaStore-backed entries → system consent flow;
-                // SAF/PhotoKit entries → the in-process path as always.
-                val deviceUris = viewModel.syncedMediaStoreUris()
-                if (deviceUris.isNotEmpty()) {
+                // Only what the server confirms goes; MediaStore-backed
+                // entries → system consent flow, SAF/PhotoKit entries →
+                // the in-process path.
+                viewModel.freeUpSyncedSpace { deviceUris ->
                     pendingFreeUris = deviceUris
                     freeSpaceDeleter(deviceUris)
                 }
-                viewModel.freeUpSyncedSpace()
             }
         )
     }

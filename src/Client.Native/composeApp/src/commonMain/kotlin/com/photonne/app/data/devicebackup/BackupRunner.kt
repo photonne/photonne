@@ -78,18 +78,19 @@ class BackupRunner(
         shouldContinue: () -> Boolean = { true },
         origin: BackupOrigin = BackupOrigin.Background,
         only: Set<String>? = null
-    ): Result {
+    ): Result = repository.exclusivePass {
         // Lote L11: una pasada programada no insiste mientras la cuenta siga
         // igual que cuando se cortó (misma sesión, misma cuota). Las que pide
         // el usuario sí prueban: es él quien dice que ya lo ha resuelto.
         if (origin == BackupOrigin.Background && repository.passBlockHolds()) {
-            return Result(
+            Result(
                 total = 0, uploaded = 0, skipped = 0, failed = 0,
                 failuresByReason = emptyMap(),
                 blockedBy = repository.passBlock()?.reason
             )
+        } else {
+            runPass(folders, shouldContinue, origin, only)
         }
-        return runPass(folders, shouldContinue, origin, only)
     }
 
     private suspend fun runPass(

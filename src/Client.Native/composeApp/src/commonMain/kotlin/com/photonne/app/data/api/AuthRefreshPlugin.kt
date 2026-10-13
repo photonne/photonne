@@ -267,8 +267,20 @@ private suspend fun attemptRefresh(
         when (response.status) {
             HttpStatusCode.OK -> {
                 val body: RefreshTokenResponse = response.body()
-                tokenStorage.saveTokens(body.token, body.refreshToken)
-                RefreshOutcome.Success
+                when (tokenStorage.getRefreshToken()) {
+                    // Still the session that asked: rotate its tokens.
+                    refreshToken -> {
+                        tokenStorage.saveTokens(body.token, body.refreshToken)
+                        RefreshOutcome.Success
+                    }
+                    // Signed out while the refresh was out. Saving now would
+                    // bring the session back on the next launch; the caller
+                    // treats this like the stray 401 of a logged-out session.
+                    null -> RefreshOutcome.AuthRejected
+                    // Another account signed in meanwhile: keep its tokens,
+                    // and the retry goes out with them.
+                    else -> RefreshOutcome.Success
+                }
             }
             // The server explicitly rejected the refresh token (expired/revoked).
             HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> RefreshOutcome.AuthRejected
