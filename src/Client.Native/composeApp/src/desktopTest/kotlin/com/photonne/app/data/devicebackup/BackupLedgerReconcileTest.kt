@@ -41,6 +41,33 @@ class BackupLedgerReconcileTest {
     }
 
     @Test
+    fun a_skipped_file_does_not_keep_its_old_hash_as_current() {
+        val ledger = ledger()
+        ledger.reconcile(folder, listOf(media("photokit:a", 1_000)))
+        ledger.setHash(folder, "photokit:a", "hash-1")
+        ledger.markIgnored(folder, "photokit:a")
+
+        val entry = ledger.reconcile(folder, listOf(media("photokit:a", 2_000))).getValue("photokit:a")
+
+        assertEquals(LedgerState.Ignored, entry.state)
+        assertNull(entry.sha256)
+        assertEquals("hash-1", entry.previousSha256)
+    }
+
+    @Test
+    fun a_synced_file_that_was_never_hashed_is_checked_again_when_it_changes() {
+        val ledger = ledger()
+        ledger.reconcile(folder, listOf(media("photokit:a", 1_000)))
+        // "Subir estos" uploads without hashing first.
+        ledger.markUploaded(folder, "photokit:a", "asset-1")
+
+        val entry = ledger.reconcile(folder, listOf(media("photokit:a", 2_000))).getValue("photokit:a")
+
+        assertEquals(LedgerState.Unknown, entry.state)
+        assertNull(entry.assetId)
+    }
+
+    @Test
     fun a_synced_file_keeps_its_verdict_with_the_old_hash_set_aside() {
         val ledger = ledger()
         ledger.reconcile(folder, listOf(media("photokit:a", 1_000)))

@@ -93,6 +93,9 @@ data class DeviceBackupUiState(
     val syncProgress: SyncProgress? = null,
     val error: UiError? = null,
     val statusMessage: String? = null,
+    /** MediaStore files the server confirmed, waiting for the screen to run
+     *  the system's delete consent flow ([consumeDeviceUrisToFree]). */
+    val deviceUrisToFree: List<String>? = null,
     val lastSyncSummary: SyncSummary? = null,
     val lastRun: LastBackupRun? = null,
     /** Lote L11: la última pasada se cortó por la cuenta (cuota, sesión). */
@@ -1037,7 +1040,10 @@ class DeviceBackupViewModel(
 
         // Waits out a pass already uploading (a worker, the BGTask); whatever
         // it landed meanwhile is already Synced and isn't sent again.
-        repository.exclusivePass {
+        val ran = repository.exclusivePass {
+            // "Detener" while waiting for the other pass: nothing to do, and
+            // recording an empty run would overwrite that pass's last-run card.
+            if (!_state.value.isSyncing) return@exclusivePass false
             val synced = repository.syncStatesFor(_state.value.folders)
             val toUpload = selected.filter { entry ->
                 val state = synced[entry.media.uri]
@@ -1126,6 +1132,11 @@ class DeviceBackupViewModel(
                     }
                 }
             )
+            true
+        }
+        if (!ran) {
+            ownPassActive = false
+            return
         }
         val run = LastBackupRun(
             finishedAtMillis = Clock.System.now().toEpochMilliseconds(),
@@ -1202,11 +1213,15 @@ class DeviceBackupViewModel(
         viewModelScope.launch {
             _state.update {
                 it.copy(
-                    statusMessage = getString(
-                        Res.string.device_backup_free_space_done,
-                        humanBytes(freedBytes),
-                        uris.size
-                    )
+                    // After the "N sin confirmar" of the same free-up, if any.
+                    statusMessage = listOfNotNull(
+                        getString(
+                            Res.string.device_backup_free_space_done,
+                            humanBytes(freedBytes),
+                            uris.size
+                        ),
+                        it.statusMessage
+                    ).joinToString(" · ")
                 )
             }
         }
@@ -1218,12 +1233,14 @@ class DeviceBackupViewModel(
      * the rest are kept and counted in the status message. The caller has
      * already shown the confirmation dialog.
      *
-     * Files in MediaStore (bucket sources) go to [deleteDeviceUris], the
-     * system's consent flow, because API 29+ rejects a bare delete on media
-     * the app doesn't own; it reports back through [applyFreedDeviceUris].
-     * Everything else is deleted in-process.
+     * Files in MediaStore (bucket sources) go to the system's consent flow,
+     * because API 29+ rejects a bare delete on media the app doesn't own:
+     * they're published as [DeviceBackupUiState.deviceUrisToFree] for the
+     * screen to launch it (its launcher only lives while the screen does, and
+     * the server check can outlast it), and the result comes back through
+     * [applyFreedDeviceUris]. Everything else is deleted in-process.
      */
-    fun freeUpSyncedSpace(deleteDeviceUris: (List<String>) -> Unit) {
+    fun freeUpSyncedSpace() {
         if (_state.value.freeSpaceBlock != null) return
         val synced = _state.value.entries.filter { it.syncState is DeviceMediaSyncState.Synced }
         if (synced.isEmpty()) return
@@ -1253,7 +1270,9 @@ class DeviceBackupViewModel(
             val (deviceTargets, localTargets) = targets.partition {
                 it.media.uri.startsWith(MEDIASTORE_ITEM_URI_PREFIX)
             }
-            if (deviceTargets.isNotEmpty()) deleteDeviceUris(deviceTargets.map { it.media.uri })
+            if (deviceTargets.isNotEmpty()) {
+                _state.update { it.copy(deviceUrisToFree = deviceTargets.map { e -> e.media.uri }) }
+            }
 
             var deleted = 0
             var failed = 0
@@ -1297,6 +1316,11 @@ class DeviceBackupViewModel(
                 )
             }
         }
+    }
+
+    /** The screen launched the consent flow for [DeviceBackupUiState.deviceUrisToFree]. */
+    fun consumeDeviceUrisToFree() {
+        _state.update { it.copy(deviceUrisToFree = null) }
     }
 
     /** Which backed-up folder a file belongs to, for the ledger writes. */

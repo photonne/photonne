@@ -196,9 +196,15 @@ class BackupLedger(private val database: PhotonneDatabase) {
                 // by a favorite or a hide. A skip is the user's call about
                 // this photo, so it stays whatever happened to it.
                 if (row != null && row.state == LedgerState.Ignored) {
+                    // Its hash is set aside, not kept: under the new
+                    // fingerprint it would pass for current, and after an
+                    // unignore get checked against the server (or seeded
+                    // into the identity map) for content that may be gone.
                     val moved = row.copy(
                         sizeBytes = media.sizeBytes,
-                        dateModifiedMillis = media.dateModifiedMillis
+                        dateModifiedMillis = media.dateModifiedMillis,
+                        sha256 = null,
+                        previousSha256 = row.sha256 ?: row.previousSha256
                     )
                     insert(folderUri, moved)
                     result[media.uri] = moved
@@ -210,7 +216,12 @@ class BackupLedger(private val database: PhotonneDatabase) {
                 // verdict stands; if not, it's reset then (see
                 // DeviceBackupRepository.applyHash). Without a hash it can't
                 // be freed or seeded in the meantime.
-                val keepsVerdict = row?.state == LedgerState.Synced
+                // Only with a hash to compare against: a file uploaded straight
+                // from a selection was never hashed, and kept Synced it could
+                // never tell an edit apart, so the edited version would never
+                // go up.
+                val keepsVerdict = row?.state == LedgerState.Synced &&
+                    (row.sha256 ?: row.previousSha256) != null
                 val fresh = LedgerEntry(
                     uri = media.uri,
                     sizeBytes = media.sizeBytes,

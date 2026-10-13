@@ -190,6 +190,15 @@ fun BackupScreen(
         if (ok) viewModel.applyFreedDeviceUris(pendingFreeUris)
         pendingFreeUris = emptyList()
     }
+    // The server-confirmed MediaStore files: launched from here, where the
+    // launcher lives (calling it from the view model after the check crashed
+    // if the user had left the screen meanwhile).
+    LaunchedEffect(state.deviceUrisToFree) {
+        val uris = state.deviceUrisToFree ?: return@LaunchedEffect
+        viewModel.consumeDeviceUrisToFree()
+        pendingFreeUris = uris
+        freeSpaceDeleter(uris)
+    }
     var settingsExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Feedback goes through the app-wide snackbar like everywhere else, instead
@@ -439,10 +448,7 @@ fun BackupScreen(
                 // Only what the server confirms goes; MediaStore-backed
                 // entries → system consent flow, SAF/PhotoKit entries →
                 // the in-process path.
-                viewModel.freeUpSyncedSpace { deviceUris ->
-                    pendingFreeUris = deviceUris
-                    freeSpaceDeleter(deviceUris)
-                }
+                viewModel.freeUpSyncedSpace()
             }
         )
     }

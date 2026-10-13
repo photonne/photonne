@@ -92,9 +92,23 @@ class FavoritesViewModel(
      */
     private fun refreshQuietly() {
         if (!_state.value.loaded) return
-        // A full refresh in flight already brings fresh data; an append in
-        // flight would land on top of the replaced first page, so drop it.
-        if (pagingJob?.isActive == true && !_state.value.isAppending) return
+        // A full refresh in flight may have left before this change reached
+        // the server (two hearts in a row, an older server confirming a bulk
+        // favorite one photo at a time): one more reload follows it, however
+        // many changes arrive meanwhile. An append in flight would land on top
+        // of the replaced first page, so drop it.
+        val running = pagingJob
+        if (running?.isActive == true && !_state.value.isAppending) {
+            if (!refreshQueued) {
+                refreshQueued = true
+                viewModelScope.launch {
+                    running.join()
+                    refreshQueued = false
+                    refreshQuietly()
+                }
+            }
+            return
+        }
         cancelAppend()
         val loadedCount = _state.value.items.size
         pagingJob = viewModelScope.launch {
@@ -115,6 +129,9 @@ class FavoritesViewModel(
                 }
         }
     }
+
+    /** A reload is already waiting for the one in flight (see [refreshQuietly]). */
+    private var refreshQueued = false
 
     private fun cancelAppend() {
         if (_state.value.isAppending) {
