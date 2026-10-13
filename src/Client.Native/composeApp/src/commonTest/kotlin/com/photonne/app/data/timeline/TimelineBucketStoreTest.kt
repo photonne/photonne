@@ -13,6 +13,8 @@ import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,6 +32,17 @@ private class BucketStubTokenStorage : TokenStorage {
 }
 
 class TimelineBucketStoreTest {
+
+    /**
+     * The store fetches off-main ([kotlinx.coroutines.Dispatchers.Default]),
+     * so concurrent bucket loads hit the MockEngine handler from several
+     * threads at once; appending to a plain ArrayList there can drop an
+     * entry and make the request counts flaky.
+     */
+    private val requestsLock = Mutex()
+
+    private suspend fun MutableList<String>.record(path: String) =
+        requestsLock.withLock { add(path) }
 
     private val skeletonJson = """
         [
@@ -81,9 +94,11 @@ class TimelineBucketStoreTest {
     ): Pair<TimelineBucketStore, MutableList<String>> {
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
-            requests += if (path.endsWith("/timeline/years")) {
-                "$path?sample=${request.url.parameters["sample"]}"
-            } else path
+            requests.record(
+                if (path.endsWith("/timeline/years")) {
+                    "$path?sample=${request.url.parameters["sample"]}"
+                } else path
+            )
             val body = when {
                 path.endsWith("/timeline/buckets") -> skeletonJson
                 path.endsWith("/timeline/years") -> yearsJson
@@ -276,7 +291,7 @@ class TimelineBucketStoreTest {
         val requests = mutableListOf<String>()
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
-            requests += path
+            requests.record(path)
             when {
                 path.endsWith("/timeline/buckets") -> respond(
                     content = ByteReadChannel(skeletonJson),
@@ -334,7 +349,7 @@ class TimelineBucketStoreTest {
         var febRequests = 0
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
-            requests += path
+            requests.record(path)
             val body = when {
                 path.endsWith("/timeline/buckets") -> skeletonJson
                 path.endsWith("/buckets/2026-02") -> {
