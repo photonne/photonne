@@ -210,6 +210,7 @@ public class UploadAssetsEndpoint : IEndpoint
         {
             var usedBytes = await dbContext.Assets
                 .Where(a => a.OwnerId == userId && a.DeletedAt == null)
+                .Where(StorageSpaces.CountsTowardsQuota)
                 .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
 
             if (usedBytes + length > dbUser.StorageQuotaBytes.Value)

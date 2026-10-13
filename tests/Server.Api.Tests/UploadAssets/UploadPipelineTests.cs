@@ -398,6 +398,54 @@ public sealed class UploadPipelineTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Upload_Allowed_WhenOnlySharedAndLibraryBytesExceedQuota()
+    {
+        var (user, client) = await CreateAuthenticatedUserAsync();
+
+        // Shared folders and external libraries are measured but never count
+        // towards the quota, so a huge share must not block a personal upload.
+        var fixtureSize = new FileInfo(FixturePaths.WithExif).Length;
+        await WithDbContextAsync(async db =>
+        {
+            var u = await db.Users.FirstAsync(x => x.Id == user.Id);
+            u.StorageQuotaBytes = fixtureSize * 2;
+            var library = new ExternalLibrary
+            {
+                Name = "NAS",
+                Path = "/data/" + Guid.NewGuid().ToString("N"),
+                OwnerId = user.Id
+            };
+            db.ExternalLibraries.Add(library);
+            foreach (var (path, libraryId) in new[]
+            {
+                ($"/assets/shared/family/{Guid.NewGuid():N}.jpg", (Guid?)null),
+                ($"/data/nas/{Guid.NewGuid():N}.jpg", (Guid?)library.Id)
+            })
+            {
+                db.Assets.Add(new Asset
+                {
+                    FileName = Path.GetFileName(path),
+                    FullPath = path,
+                    FileSize = fixtureSize * 10,
+                    Checksum = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
+                    Type = AssetType.Image,
+                    Extension = "jpg",
+                    FileCreatedAt = DateTime.UtcNow,
+                    FileModifiedAt = DateTime.UtcNow,
+                    OwnerId = user.Id,
+                    ExternalLibraryId = libraryId
+                });
+            }
+            await db.SaveChangesAsync();
+        });
+
+        using var form = BuildMultipart(FixturePaths.WithExif);
+        var response = await client.PostAsync("/api/assets/upload", form);
+
+        Assert.True(response.IsSuccessStatusCode, $"Expected success, got {(int)response.StatusCode}");
+    }
+
+    [Fact]
     public async Task Upload_EmptyBody_ReturnsBadRequest()
     {
         var (_, client) = await CreateAuthenticatedUserAsync();

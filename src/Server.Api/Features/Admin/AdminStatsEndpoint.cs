@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Dtos;
 
 namespace Photonne.Server.Api.Features.Admin;
@@ -66,11 +67,13 @@ public class AdminStatsEndpoint : IEndpoint
         var assetStats = await dbContext.Assets
             .AsNoTracking()
             .Where(a => a.DeletedAt == null)
-            .GroupBy(a => new { a.OwnerId, a.Type })
+            .WithSpace()
+            .GroupBy(a => new { a.OwnerId, a.Type, a.Space })
             .Select(g => new
             {
                 g.Key.OwnerId,
                 g.Key.Type,
+                g.Key.Space,
                 Count = g.Count(),
                 Bytes = g.Sum(a => a.FileSize)
             })
@@ -99,6 +102,9 @@ public class AdminStatsEndpoint : IEndpoint
                 var videoCount = group.Where(a => a.Type == AssetType.Video).Sum(a => a.Count);
                 var photoBytes = group.Where(a => a.Type == AssetType.Image).Sum(a => a.Bytes);
                 var videoBytes = group.Where(a => a.Type == AssetType.Video).Sum(a => a.Bytes);
+                var personalBytes = group.Where(a => a.Space == StorageSpace.Personal).Sum(a => a.Bytes);
+                var sharedBytes = group.Where(a => a.Space == StorageSpace.Shared).Sum(a => a.Bytes);
+                var libraryBytes = group.Where(a => a.Space == StorageSpace.Library).Sum(a => a.Bytes);
 
                 if (ownerId.HasValue && userLookup.TryGetValue(ownerId.Value, out var user))
                 {
@@ -110,7 +116,10 @@ public class AdminStatsEndpoint : IEndpoint
                         Photos = photoCount,
                         Videos = videoCount,
                         PhotoBytes = photoBytes,
-                        VideoBytes = videoBytes
+                        VideoBytes = videoBytes,
+                        PersonalBytes = personalBytes,
+                        SharedBytes = sharedBytes,
+                        LibraryBytes = libraryBytes
                     };
                 }
 
@@ -122,7 +131,10 @@ public class AdminStatsEndpoint : IEndpoint
                     Photos = photoCount,
                     Videos = videoCount,
                     PhotoBytes = photoBytes,
-                    VideoBytes = videoBytes
+                    VideoBytes = videoBytes,
+                    PersonalBytes = personalBytes,
+                    SharedBytes = sharedBytes,
+                    LibraryBytes = libraryBytes
                 };
             })
             .OrderByDescending(u => u.PhotoBytes + u.VideoBytes)
@@ -133,6 +145,9 @@ public class AdminStatsEndpoint : IEndpoint
             TotalPhotos = assetStats.Where(a => a.Type == AssetType.Image).Sum(a => a.Count),
             TotalVideos = assetStats.Where(a => a.Type == AssetType.Video).Sum(a => a.Count),
             TotalBytes = assetStats.Sum(a => a.Bytes),
+            PersonalBytes = assetStats.Where(a => a.Space == StorageSpace.Personal).Sum(a => a.Bytes),
+            SharedBytes = assetStats.Where(a => a.Space == StorageSpace.Shared).Sum(a => a.Bytes),
+            LibraryBytes = assetStats.Where(a => a.Space == StorageSpace.Library).Sum(a => a.Bytes),
             Users = userUsage
         };
 

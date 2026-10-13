@@ -554,15 +554,17 @@ public class UsersEndpoint : IEndpoint
         if (dbUser == null)
             return TypedResults.NotFound();
 
-        // Group by (type, library) so we can return both the personal subset
-        // (ExternalLibraryId == null) and per-library usage in one query.
+        // Group by (type, space, library) so we can return the personal subset,
+        // the shared-space subset and per-library usage in one query.
         var breakdown = await dbContext.Assets
             .AsNoTracking()
             .Where(a => a.OwnerId == userId && a.DeletedAt == null)
-            .GroupBy(a => new { a.Type, a.ExternalLibraryId })
+            .WithSpace()
+            .GroupBy(a => new { a.Type, a.Space, a.ExternalLibraryId })
             .Select(g => new
             {
                 Type = g.Key.Type,
+                Space = g.Key.Space,
                 LibraryId = g.Key.ExternalLibraryId,
                 Count = g.Count(),
                 Bytes = g.Sum(a => (long?)a.FileSize) ?? 0L
@@ -587,6 +589,10 @@ public class UsersEndpoint : IEndpoint
             breakdown.FirstOrDefault(b => b.LibraryId == libId && b.Type == type)?.Count ?? 0;
         long BytesOf(Guid? libId, AssetType type) =>
             breakdown.FirstOrDefault(b => b.LibraryId == libId && b.Type == type)?.Bytes ?? 0L;
+        int SpaceCount(StorageSpace space, AssetType type) =>
+            breakdown.Where(b => b.Space == space && b.Type == type).Sum(b => b.Count);
+        long SpaceBytes(StorageSpace space, AssetType type) =>
+            breakdown.Where(b => b.Space == space && b.Type == type).Sum(b => b.Bytes);
 
         var libraries = libraryIds
             .Select(id => new StorageLibraryUsage
@@ -603,16 +609,21 @@ public class UsersEndpoint : IEndpoint
 
         return TypedResults.Ok(new StorageInfoDto
         {
-            UsedBytes = breakdown.Sum(b => b.Bytes),
+            // Only the personal space counts towards the quota.
+            UsedBytes = breakdown.Where(b => b.Space == StorageSpace.Personal).Sum(b => b.Bytes),
             QuotaBytes = dbUser.StorageQuotaBytes,
             Photos = breakdown.Where(b => b.Type == AssetType.Image).Sum(b => b.Count),
             Videos = breakdown.Where(b => b.Type == AssetType.Video).Sum(b => b.Count),
             PhotoBytes = breakdown.Where(b => b.Type == AssetType.Image).Sum(b => b.Bytes),
             VideoBytes = breakdown.Where(b => b.Type == AssetType.Video).Sum(b => b.Bytes),
-            PersonalPhotos = CountOf(null, AssetType.Image),
-            PersonalVideos = CountOf(null, AssetType.Video),
-            PersonalPhotoBytes = BytesOf(null, AssetType.Image),
-            PersonalVideoBytes = BytesOf(null, AssetType.Video),
+            PersonalPhotos = SpaceCount(StorageSpace.Personal, AssetType.Image),
+            PersonalVideos = SpaceCount(StorageSpace.Personal, AssetType.Video),
+            PersonalPhotoBytes = SpaceBytes(StorageSpace.Personal, AssetType.Image),
+            PersonalVideoBytes = SpaceBytes(StorageSpace.Personal, AssetType.Video),
+            SharedPhotos = SpaceCount(StorageSpace.Shared, AssetType.Image),
+            SharedVideos = SpaceCount(StorageSpace.Shared, AssetType.Video),
+            SharedPhotoBytes = SpaceBytes(StorageSpace.Shared, AssetType.Image),
+            SharedVideoBytes = SpaceBytes(StorageSpace.Shared, AssetType.Video),
             Libraries = libraries
         });
     }
@@ -829,6 +840,8 @@ public class UpdateUserRequest
 
 public class StorageInfoDto
 {
+    /// <summary>Bytes that count towards the quota: the personal space only.
+    /// Shared folders and external libraries are measured apart.</summary>
     public long UsedBytes { get; set; }
     public long? QuotaBytes { get; set; }
     public int Photos { get; set; }
@@ -839,6 +852,11 @@ public class StorageInfoDto
     public int PersonalVideos { get; set; }
     public long PersonalPhotoBytes { get; set; }
     public long PersonalVideoBytes { get; set; }
+    /// <summary>What the user owns inside shared folders (<c>/assets/shared</c>).</summary>
+    public int SharedPhotos { get; set; }
+    public int SharedVideos { get; set; }
+    public long SharedPhotoBytes { get; set; }
+    public long SharedVideoBytes { get; set; }
     public List<StorageLibraryUsage> Libraries { get; set; } = new();
 }
 

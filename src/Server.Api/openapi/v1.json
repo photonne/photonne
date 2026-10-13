@@ -4423,6 +4423,22 @@
         ],
         "description": "Revokes the refresh token cookie and clears the session cookies",
         "operationId": "Logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LogoutRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "No Content"
@@ -10909,6 +10925,9 @@
           "totalPhotos",
           "totalVideos",
           "totalBytes",
+          "personalBytes",
+          "sharedBytes",
+          "libraryBytes",
           "users"
         ],
         "type": "object",
@@ -10922,6 +10941,18 @@
             "format": "int32"
           },
           "totalBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "personalBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sharedBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "libraryBytes": {
             "type": "integer",
             "format": "int64"
           },
@@ -10941,7 +10972,10 @@
           "photos",
           "videos",
           "photoBytes",
-          "videoBytes"
+          "videoBytes",
+          "personalBytes",
+          "sharedBytes",
+          "libraryBytes"
         ],
         "type": "object",
         "properties": {
@@ -10971,6 +11005,18 @@
             "format": "int64"
           },
           "videoBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "personalBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sharedBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "libraryBytes": {
             "type": "integer",
             "format": "int64"
           }
@@ -13039,6 +13085,20 @@
           },
           "user": {
             "$ref": "#/components/schemas/UserDto"
+          }
+        }
+      },
+      "LogoutRequest": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -15892,6 +15952,10 @@
           "personalVideos",
           "personalPhotoBytes",
           "personalVideoBytes",
+          "sharedPhotos",
+          "sharedVideos",
+          "sharedPhotoBytes",
+          "sharedVideoBytes",
           "libraries"
         ],
         "type": "object",
@@ -15936,6 +16000,22 @@
             "format": "int64"
           },
           "personalVideoBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sharedPhotos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sharedVideos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sharedPhotoBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sharedVideoBytes": {
             "type": "integer",
             "format": "int64"
           },

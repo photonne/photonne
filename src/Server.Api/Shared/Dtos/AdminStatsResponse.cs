@@ -5,6 +5,11 @@ public class AdminStatsResponse
     public int TotalPhotos { get; set; }
     public int TotalVideos { get; set; }
     public long TotalBytes { get; set; }
+    /// <summary>TotalBytes split by space: personal (counts towards quotas),
+    /// shared folders and external libraries.</summary>
+    public long PersonalBytes { get; set; }
+    public long SharedBytes { get; set; }
+    public long LibraryBytes { get; set; }
     public List<AdminUserUsage> Users { get; set; } = new();
 }
 
@@ -17,6 +22,11 @@ public class AdminUserUsage
     public int Videos { get; set; }
     public long PhotoBytes { get; set; }
     public long VideoBytes { get; set; }
+    /// <summary>PhotoBytes + VideoBytes split by space. Only PersonalBytes
+    /// counts towards the user's quota.</summary>
+    public long PersonalBytes { get; set; }
+    public long SharedBytes { get; set; }
+    public long LibraryBytes { get; set; }
 }
 
 /// <summary>One month's worth of the library, used by the admin growth

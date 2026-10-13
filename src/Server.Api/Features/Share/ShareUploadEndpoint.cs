@@ -99,6 +99,7 @@ public class ShareUploadEndpoint : IEndpoint
         {
             var usedBytes = await dbContext.Assets
                 .Where(a => a.OwnerId == owner.Id && a.DeletedAt == null)
+                .Where(StorageSpaces.CountsTowardsQuota)
                 .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
 
             if (usedBytes + file.Length > owner.StorageQuotaBytes.Value)

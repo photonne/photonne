@@ -32,6 +32,10 @@ public sealed class StorageQuotaTests : IntegrationTestBase
         int PersonalVideos,
         long PersonalPhotoBytes,
         long PersonalVideoBytes,
+        int SharedPhotos,
+        int SharedVideos,
+        long SharedPhotoBytes,
+        long SharedVideoBytes,
         List<StorageLibraryUsage> Libraries);
 
     private Task AddAssetAsync(
@@ -39,14 +43,15 @@ public sealed class StorageQuotaTests : IntegrationTestBase
         long size,
         bool deleted = false,
         AssetType type = AssetType.Image,
-        Guid? externalLibraryId = null)
+        Guid? externalLibraryId = null,
+        string? fullPath = null)
     {
         return WithDbContextAsync(async db =>
         {
             db.Assets.Add(new Asset
             {
                 FileName = Guid.NewGuid().ToString("N") + (type == AssetType.Video ? ".mp4" : ".jpg"),
-                FullPath = $"/assets/users/{ownerId}/{Guid.NewGuid():N}.jpg",
+                FullPath = fullPath ?? $"/assets/users/{ownerId}/{Guid.NewGuid():N}.jpg",
                 FileSize = size,
                 Checksum = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
                 Type = type,
@@ -161,8 +166,10 @@ public sealed class StorageQuotaTests : IntegrationTestBase
         var info = await client.GetFromJsonAsync<StorageInfo>("/api/users/me/storage");
 
         Assert.NotNull(info);
-        // Totals include everything the user owns
-        Assert.Equal(21_000L, info!.UsedBytes);
+        // Only the personal space counts towards the quota...
+        Assert.Equal(6_000L, info!.UsedBytes);
+        // ...but the totals include everything the user owns
+        Assert.Equal(21_000L, info.PhotoBytes + info.VideoBytes);
         Assert.Equal(3, info.Photos);
         Assert.Equal(2, info.Videos);
         // Personal subset only counts assets without ExternalLibraryId
@@ -192,5 +199,33 @@ public sealed class StorageQuotaTests : IntegrationTestBase
         Assert.Empty(info!.Libraries);
         Assert.Equal(info.Photos, info.PersonalPhotos);
         Assert.Equal(info.PhotoBytes, info.PersonalPhotoBytes);
+    }
+
+    [Fact]
+    public async Task SharedFolderAssets_AreMeasuredApart_AndDontCountTowardsQuota()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+
+        await AddAssetAsync(alice.Id, size: 1_000, type: AssetType.Image);
+        await AddAssetAsync(alice.Id, size: 4_000, type: AssetType.Image,
+            fullPath: $"/assets/shared/family/{Guid.NewGuid():N}.jpg");
+        await AddAssetAsync(alice.Id, size: 8_000, type: AssetType.Video,
+            fullPath: $"/assets/shared/family/trip/{Guid.NewGuid():N}.mp4");
+        // A personal folder whose name merely starts with "shared" stays personal.
+        await AddAssetAsync(alice.Id, size: 500, type: AssetType.Image,
+            fullPath: $"/assets/users/{alice.Id}/shared/{Guid.NewGuid():N}.jpg");
+
+        var info = await client.GetFromJsonAsync<StorageInfo>("/api/users/me/storage");
+
+        Assert.NotNull(info);
+        Assert.Equal(1_500L, info!.UsedBytes);
+        Assert.Equal(2, info.PersonalPhotos);
+        Assert.Equal(1_500L, info.PersonalPhotoBytes);
+        Assert.Equal(1, info.SharedPhotos);
+        Assert.Equal(1, info.SharedVideos);
+        Assert.Equal(4_000L, info.SharedPhotoBytes);
+        Assert.Equal(8_000L, info.SharedVideoBytes);
+        Assert.Equal(13_500L, info.PhotoBytes + info.VideoBytes);
+        Assert.Empty(info.Libraries);
     }
 }
