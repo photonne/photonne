@@ -67,8 +67,12 @@ interface BackgroundSyncScheduler {
      * Stops the pass started by [requestForegroundBackup]. Cooperative: files
      * already in flight finish, nothing new starts. No-op where the pass runs
      * in-process (the caller cancels it directly instead).
+     *
+     * [keepQueuedSelections]: "Detener" stops the pass that is running, not
+     * the files the user picked meanwhile ("Subir estos" queued behind it),
+     * so those are queued again. Signing out drops them with the rest.
      */
-    fun cancelForegroundBackup() {}
+    fun cancelForegroundBackup(keepQueuedSelections: Boolean = false) {}
 }
 
 /** Returns the platform's [BackgroundSyncScheduler]. Set up via DI. */

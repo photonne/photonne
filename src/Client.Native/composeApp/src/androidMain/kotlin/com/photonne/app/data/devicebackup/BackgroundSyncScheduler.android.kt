@@ -10,6 +10,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import org.koin.core.context.GlobalContext
@@ -155,6 +156,9 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
         }
         val request = OneTimeWorkRequestBuilder<BackupWorker>()
             .setInputData(input)
+            // WorkInfo doesn't expose input data: the tag is how a stop finds
+            // the selections waiting in the chain (cancelForegroundBackup).
+            .apply { selectionKey?.let { addTag(SELECTION_TAG_PREFIX + it) } }
             .build()
 
         // A full pass already running or queued covers another "Subir ahora"
@@ -170,7 +174,34 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
         return true
     }
 
-    override fun cancelForegroundBackup() {
+    override fun cancelForegroundBackup(keepQueuedSelections: Boolean) {
+        if (!keepQueuedSelections) {
+            cancelOneShots()
+            return
+        }
+        // Cancelling a unique work cancels the work chained behind it too, so
+        // a "Subir estos" waiting for this pass (BLOCKED) would go with it.
+        // Its selection is still in the ledger — only a run that ends consumes
+        // it — so it's queued again once the chain is gone. The running work
+        // is never BLOCKED: whatever the user is stopping stays stopped.
+        val infos = workManager.getWorkInfosForUniqueWork(BackupWorker.FOREGROUND_WORK_NAME)
+        infos.addListener({
+            val waiting = runCatching { infos.get() }.getOrDefault(emptyList())
+                .filter { it.state == WorkInfo.State.BLOCKED }
+                .flatMap { info ->
+                    info.tags.filter { it.startsWith(SELECTION_TAG_PREFIX) }
+                        .map { it.removePrefix(SELECTION_TAG_PREFIX) }
+                }
+            cancelOneShots()
+            // Both go through WorkManager's serial executor: the chain is
+            // cancelled first, so APPEND_OR_REPLACE starts a fresh one. Its
+            // run waits for the stopped pass to let go of the pass lock.
+            waiting.forEach { requestForegroundBackup(it) }
+            if (waiting.isNotEmpty()) Log.i(TAG, "Re-queued ${waiting.size} waiting selection(s)")
+        }, Runnable::run)
+    }
+
+    private fun cancelOneShots() {
         // Flips the worker's isStopped, which the runner polls between files.
         // Only the one-shots: cancelling the periodic unique work would also
         // unschedule every future run, which "stop this pass" must not do.
@@ -181,6 +212,7 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
 
     private companion object {
         const val TAG = "BackgroundSync"
+        const val SELECTION_TAG_PREFIX = "backup-selection:"
     }
 }
 

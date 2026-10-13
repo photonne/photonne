@@ -930,7 +930,7 @@ class DeviceBackupViewModel(
     fun stopCurrentPass() {
         if (!_state.value.canStopCurrentPass) return
         if (_state.value.activeOrigin != null) {
-            backgroundScheduler.cancelForegroundBackup()
+            backgroundScheduler.cancelForegroundBackup(keepQueuedSelections = true)
             return
         }
         // Clips already in flight are cut too: the server keeps asking for
