@@ -8,6 +8,7 @@ import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PeoplePage
 import com.photonne.app.data.models.Person
 import com.photonne.app.data.people.PeopleRepository
+import com.photonne.app.util.suspendRunCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -93,17 +94,23 @@ class AssetFacesViewModel(
     private val _state = MutableStateFlow(AssetFacesUiState())
     val state: StateFlow<AssetFacesUiState> = _state.asStateFlow()
 
+    /** The faces being fetched; replaced when another photo's sheet opens so a
+     *  slow answer for the previous photo can't render (editable) on this one. */
+    private var loadJob: Job? = null
+
     fun open(assetId: String) {
         if (_state.value.assetId == assetId && _state.value.faces.isNotEmpty()) return
         _state.value = AssetFacesUiState(assetId = assetId, isLoading = true)
-        viewModelScope.launch {
-            runCatching {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            suspendRunCatching {
                 val faces = repository.assetFaces(assetId)
                 val people = repository.list(includeHidden = true, limit = 200, offset = 0)
                 faces to people
             }
                 .onSuccess { (faces, people) ->
                     _state.update {
+                        if (it.assetId != assetId) return@update it
                         it.copy(
                             faces = faces,
                             people = people.items,
@@ -113,6 +120,7 @@ class AssetFacesViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
+                        if (it.assetId != assetId) return@update it
                         it.copy(
                             isLoading = false,
                             error = errorFactory.from(error, "No se pudieron cargar las caras")

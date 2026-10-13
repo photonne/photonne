@@ -12,6 +12,7 @@ import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.ExifData
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PersonAsset
+import com.photonne.app.util.suspendRunCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -186,7 +187,7 @@ class AssetDetailViewModel(
         currentJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null, detail = null) }
         currentJob = viewModelScope.launch {
-            runCatching { repository.getDetail(assetId) }
+            suspendRunCatching { repository.getDetail(assetId) }
                 .onSuccess { detail ->
                     cache[assetId] = detail
                     publishCache()

@@ -85,6 +85,8 @@ class PeopleViewModel(
             it.copy(
                 isRefreshing = it.loaded && showRefreshIndicator,
                 isInitialLoading = !it.loaded,
+                // The loadMore this cancels never gets to clear its own flag.
+                isAppending = false,
                 error = null,
                 appendError = null
             )

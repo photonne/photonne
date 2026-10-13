@@ -170,12 +170,16 @@ fun AlbumDetailScreen(
 
     LaunchedEffect(album.id) { viewModel.open(album.id, album.name, album.description) }
 
-    val heroTitle = state.albumName ?: album.name
-    val heroDescription = state.albumDescription ?: album.description
+    // The view model outlives the screen and open() runs in an effect, so the
+    // first frames (the enter transition) still hold the previous album: until
+    // it switches, everything comes from [album] and the grid is a skeleton.
+    val isCurrentAlbum = state.albumId == album.id
+    val heroTitle = state.albumName?.takeIf { isCurrentAlbum } ?: album.name
+    val heroDescription = if (isCurrentAlbum) state.albumDescription ?: album.description else album.description
     // While items load, use the cached count from the AlbumSummary so the
     // hero doesn't flash "0 fotos"; once loaded, the live list is the source
     // of truth (so removing everything correctly reads 0).
-    val heroAssetCount = if (state.albumId == album.id && !state.isLoading) {
+    val heroAssetCount = if (isCurrentAlbum && !state.isLoading) {
         state.items.size
     } else {
         album.assetCount
@@ -204,7 +208,7 @@ fun AlbumDetailScreen(
       // pantallas se quedarían sin botón de volver.
       Box(modifier = Modifier.fillMaxSize()) {
         when {
-            state.isLoading && state.items.isEmpty() ->
+            !isCurrentAlbum || (state.isLoading && state.items.isEmpty()) ->
                 Column(modifier = Modifier.fillMaxSize()) {
                     hero()
                     // Mismo esqueleto que el detalle de carpeta: la rejilla se

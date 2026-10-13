@@ -10,6 +10,8 @@ import com.photonne.app.data.models.AlbumMemberRole
 import com.photonne.app.ui.util.sortedByNatural
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.ShareableUser
+import com.photonne.app.util.suspendRunCatching
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,16 +43,22 @@ class FolderPermissionsViewModel(
     private val _state = MutableStateFlow(FolderPermissionsUiState())
     val state: StateFlow<FolderPermissionsUiState> = _state.asStateFlow()
 
+    /** The member list being fetched. Replaced on every open/refresh: a slow
+     *  answer for the previous sheet must not land on (and retarget) this one. */
+    private var loadJob: Job? = null
+
     fun open(folderId: String) {
         if (_state.value.folderId == folderId && _state.value.members.isNotEmpty()) return
         _state.value = FolderPermissionsUiState(folderId = folderId, isLoading = true)
-        viewModelScope.launch { reloadInternal(folderId) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch { reloadInternal(folderId) }
     }
 
     fun refresh() {
         val folderId = _state.value.folderId ?: return
         _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch { reloadInternal(folderId) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch { reloadInternal(folderId) }
     }
 
     fun grant(
@@ -127,19 +135,20 @@ class FolderPermissionsViewModel(
     }
 
     fun close() {
+        loadJob?.cancel()
         _state.value = FolderPermissionsUiState()
     }
 
     private suspend fun reloadInternal(folderId: String) {
-        runCatching {
+        suspendRunCatching {
             val members = foldersRepository.listMembers(folderId)
             val candidates = runCatching { albumsRepository.shareableUsers() }.getOrDefault(emptyList())
             members to candidates
         }
             .onSuccess { (members, candidates) ->
                 _state.update {
+                    if (it.folderId != folderId) return@update it
                     it.copy(
-                        folderId = folderId,
                         members = members,
                         candidates = candidates,
                         isLoading = false
@@ -148,6 +157,7 @@ class FolderPermissionsViewModel(
             }
             .onFailure { error ->
                 _state.update {
+                    if (it.folderId != folderId) return@update it
                     it.copy(
                         isLoading = false,
                         error = errorFactory.from(error, "No se pudieron cargar los miembros")

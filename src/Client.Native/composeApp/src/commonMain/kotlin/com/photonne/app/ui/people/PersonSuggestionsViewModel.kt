@@ -6,6 +6,8 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.PersonSuggestion
 import com.photonne.app.data.people.PeopleRepository
+import com.photonne.app.util.suspendRunCatching
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +48,10 @@ class PersonSuggestionsViewModel(
     private val _state = MutableStateFlow(PersonSuggestionsUiState())
     val state: StateFlow<PersonSuggestionsUiState> = _state.asStateFlow()
 
+    /** The page being fetched. Opening another person (or refreshing) replaces
+     *  it, so a slow page of the previous person can't land on this one. */
+    private var loadJob: Job? = null
+
     fun open(personId: String, personName: String?) {
         if (_state.value.personId == personId && _state.value.items.isNotEmpty()) {
             _state.update { it.copy(personName = personName) }
@@ -56,7 +62,8 @@ class PersonSuggestionsViewModel(
             personName = personName,
             isInitialLoading = true
         )
-        viewModelScope.launch { loadInternal(append = false) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch { loadInternal(append = false) }
     }
 
     fun refresh() {
@@ -69,22 +76,24 @@ class PersonSuggestionsViewModel(
                 appendError = null
             )
         }
-        viewModelScope.launch { loadInternal(append = false) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch { loadInternal(append = false) }
     }
 
     fun loadMore() {
         val snapshot = _state.value
         if (snapshot.isAppending || snapshot.isInitialLoading || !snapshot.hasMore) return
         _state.update { it.copy(isAppending = true, appendError = null) }
-        viewModelScope.launch { loadInternal(append = true) }
+        loadJob = viewModelScope.launch { loadInternal(append = true) }
     }
 
     private suspend fun loadInternal(append: Boolean) {
         val personId = _state.value.personId ?: return
         val offset = if (append) _state.value.items.size else 0
-        runCatching { repository.suggestions(personId = personId, offset = offset) }
+        suspendRunCatching { repository.suggestions(personId = personId, offset = offset) }
             .onSuccess { page ->
                 _state.update { previous ->
+                    if (previous.personId != personId) return@update previous
                     val merged = if (append) {
                         val existing = previous.items.mapTo(HashSet()) { it.id }
                         previous.items + page.items.filter { it.id !in existing }
@@ -101,6 +110,7 @@ class PersonSuggestionsViewModel(
             }
             .onFailure { error ->
                 _state.update {
+                    if (it.personId != personId) return@update it
                     if (append) {
                         it.copy(
                             isAppending = false,

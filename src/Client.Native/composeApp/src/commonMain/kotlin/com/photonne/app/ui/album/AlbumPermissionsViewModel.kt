@@ -9,6 +9,8 @@ import com.photonne.app.data.models.AlbumMemberRole
 import com.photonne.app.ui.util.sortedByNatural
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.ShareableUser
+import com.photonne.app.util.suspendRunCatching
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,16 +42,22 @@ class AlbumPermissionsViewModel(
     private val _state = MutableStateFlow(AlbumPermissionsUiState())
     val state: StateFlow<AlbumPermissionsUiState> = _state.asStateFlow()
 
+    /** The member list being fetched. Replaced on every open/refresh: a slow
+     *  answer for the previous sheet must not land on (and retarget) this one. */
+    private var loadJob: Job? = null
+
     fun open(albumId: String) {
         if (_state.value.albumId == albumId && _state.value.members.isNotEmpty()) return
         _state.value = AlbumPermissionsUiState(albumId = albumId, isLoading = true)
-        viewModelScope.launch { reloadInternal(albumId) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch { reloadInternal(albumId) }
     }
 
     fun refresh() {
         val albumId = _state.value.albumId ?: return
         _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch { reloadInternal(albumId) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch { reloadInternal(albumId) }
     }
 
     fun grant(
@@ -129,19 +137,20 @@ class AlbumPermissionsViewModel(
     }
 
     fun close() {
+        loadJob?.cancel()
         _state.value = AlbumPermissionsUiState()
     }
 
     private suspend fun reloadInternal(albumId: String) {
-        runCatching {
+        suspendRunCatching {
             val members = repository.listMembers(albumId)
             val candidates = runCatching { repository.shareableUsers() }.getOrDefault(emptyList())
             members to candidates
         }
             .onSuccess { (members, candidates) ->
                 _state.update {
+                    if (it.albumId != albumId) return@update it
                     it.copy(
-                        albumId = albumId,
                         members = members,
                         candidates = candidates,
                         isLoading = false
@@ -150,6 +159,7 @@ class AlbumPermissionsViewModel(
             }
             .onFailure { error ->
                 _state.update {
+                    if (it.albumId != albumId) return@update it
                     it.copy(
                         isLoading = false,
                         error = errorFactory.from(error, "No se pudieron cargar los miembros")

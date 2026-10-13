@@ -15,6 +15,7 @@ import com.photonne.app.ui.album.smart.ConditionPickersController
 import com.photonne.app.ui.album.smart.SmartCondition
 import com.photonne.app.ui.album.smart.SmartPickerData
 import com.photonne.app.ui.album.smart.buildSmartRule
+import com.photonne.app.util.suspendRunCatching
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -127,7 +128,7 @@ class OrganizeRuleViewModel(
         _state.update { it.copy(isPreviewing = true) }
         previewJob = viewModelScope.launch {
             delay(PREVIEW_DEBOUNCE_MS)
-            runCatching { organize.previewRule(rule) }
+            suspendRunCatching { organize.previewRule(rule) }
                 .onSuccess { result ->
                     _state.update {
                         it.copy(

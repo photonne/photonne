@@ -171,6 +171,8 @@ class AlbumsViewModel(
                 }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
+                    // Silent, but it may have cancelled a spinner refresh().
+                    _state.update { it.copy(isLoading = false) }
                 }
         }
     }

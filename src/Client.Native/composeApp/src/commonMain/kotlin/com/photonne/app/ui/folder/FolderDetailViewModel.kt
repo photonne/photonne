@@ -294,6 +294,8 @@ class FolderDetailViewModel(
             runCatching { repository.update(folderId, name.trim(), parentFolderId = currentParent) }
                 .onSuccess { folder ->
                     _state.update {
+                        // Another folder may have opened meanwhile.
+                        if (it.folderId != folderId) return@update it.copy(isMutating = false)
                         it.copy(
                             isMutating = false,
                             folderName = folder.name,
@@ -322,6 +324,8 @@ class FolderDetailViewModel(
             runCatching { repository.update(folderId, name, parentFolderId = targetParentFolderId) }
                 .onSuccess { folder ->
                     _state.update {
+                        // Another folder may have opened meanwhile.
+                        if (it.folderId != folderId) return@update it.copy(isMutating = false)
                         it.copy(
                             isMutating = false,
                             folderName = folder.name,

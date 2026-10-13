@@ -11,6 +11,7 @@ import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.search.SearchRepository
 import com.photonne.app.ui.folder.FolderNode
+import com.photonne.app.util.suspendRunCatching
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -115,7 +116,7 @@ class SmartAlbumEditorViewModel(
             isLoadingRule = true,
         )
         loadJob = viewModelScope.launch {
-            runCatching { albums.smartRule(album.id) }
+            suspendRunCatching { albums.smartRule(album.id) }
                 .onSuccess { details ->
                     val parsed = parseSmartRule(details, unknownName)
                     _state.update {
@@ -183,7 +184,7 @@ class SmartAlbumEditorViewModel(
         _state.update { it.copy(isPreviewing = true) }
         previewJob = viewModelScope.launch {
             delay(PREVIEW_DEBOUNCE_MS)
-            runCatching { albums.preview(rule) }
+            suspendRunCatching { albums.preview(rule) }
                 .onSuccess { result ->
                     _state.update {
                         it.copy(

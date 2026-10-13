@@ -231,6 +231,9 @@ class AlbumDetailViewModel(
             }
                 .onSuccess { album ->
                     _state.update {
+                        // Another album may have opened meanwhile: only its
+                        // own name changes.
+                        if (it.albumId != albumId) return@update it.copy(isMutating = false)
                         it.copy(
                             isMutating = false,
                             albumName = album.name,
@@ -315,6 +318,10 @@ class AlbumDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
+                        // The rollback is this album's list: painted over
+                        // another album opened meanwhile it would show the
+                        // wrong photos.
+                        if (it.albumId != albumId) return@update it.copy(isMutating = false)
                         it.copy(
                             isMutating = false,
                             items = previous,

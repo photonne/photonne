@@ -9,6 +9,7 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.PublicShareContent
 import com.photonne.app.ui.main.SharedLinkTarget
+import com.photonne.app.util.suspendRunCatching
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,7 +81,7 @@ class SharedLinkViewModel(
         loadJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null) }
         loadJob = viewModelScope.launch {
-            runCatching { api.getPublicShare(target.token, password, target.serverUrl) }
+            suspendRunCatching { api.getPublicShare(target.token, password, target.serverUrl) }
                 .onSuccess { content ->
                     _state.update {
                         if (content.requiresPassword) it.copy(
