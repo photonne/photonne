@@ -75,7 +75,7 @@
 	/* Storage by space: personal (counts towards the quota), shared folders,
 	   external libraries, and the hatch of a space hidden from the totals. */
 	--color-space-personal: var(--color-accent);
-	--color-space-shared: #3b6ea5;
+	--color-space-shared: #2f7d4f;
 	--color-space-library: #7b4fa6;
 	--color-space-hidden: var(--color-border-strong);
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
@@ -112,7 +112,7 @@
 		--color-toast: #3a3c42;
 		--color-toast-text: #f2f2f4;
 		--color-toast-danger: #8c2a2a;
-		--color-space-shared: #8ab4e8;
+		--color-space-shared: #86d39f;
 		--color-space-library: #c4a3e8;
 		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 		color-scheme: dark;
@@ -142,7 +142,7 @@
 	--color-toast: #3a3c42;
 	--color-toast-text: #f2f2f4;
 	--color-toast-danger: #8c2a2a;
-	--color-space-shared: #8ab4e8;
+	--color-space-shared: #86d39f;
 	--color-space-library: #c4a3e8;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 	color-scheme: dark;
