@@ -896,9 +896,19 @@ public class FoldersEndpoint : IEndpoint
 
         var oldPath = folder.Path;
         var userRootPath = GetUserRootPath(username);
-        var newNormalizedPath = NormalizePath(newParent == null
-            ? $"{userRootPath}/{newName}"
-            : $"{newParent.Path.TrimEnd('/')}/{newName}");
+        // Sin padre nuevo: una carpeta que ya es de primer nivel se renombra donde
+        // está. Antes acababa en la raíz personal de quien la renombraba, así que
+        // renombrar una carpeta compartida raíz la sacaba del espacio compartido
+        // (Directory.Move incluido) y desaparecía para el resto de miembros.
+        var trimmedOldPath = oldPath.TrimEnd('/');
+        var currentDirectory = trimmedOldPath.Contains('/')
+            ? trimmedOldPath[..trimmedOldPath.LastIndexOf('/')]
+            : userRootPath;
+        var newNormalizedPath = NormalizePath(newParent != null
+            ? $"{newParent.Path.TrimEnd('/')}/{newName}"
+            : folder.ParentFolderId == null
+                ? $"{currentDirectory}/{newName}"
+                : $"{userRootPath}/{newName}");
 
         var oldPhysicalPath = await settingsService.ResolvePhysicalPathAsync(oldPath);
         var newPhysicalPath = await settingsService.ResolvePhysicalPathAsync(newNormalizedPath);

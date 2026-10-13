@@ -146,6 +146,10 @@ actual fun VideoSurface(
     AndroidView(
         modifier = modifier,
         update = { view ->
+            // The playback is recreated when its URL changes (LAN ↔ public
+            // with the viewer open); binding it only in factory left the view
+            // on the released player: audio, black picture.
+            view.player = player
             view.resizeMode = if (fillCrop) {
                 AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             } else {

@@ -3,6 +3,7 @@ package com.photonne.app.ui.asset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -174,10 +175,15 @@ actual fun VideoSurface(
     // Compose content, the caller insets it so it never covers the chrome — see
     // videoSurfaceRendersOnTop. A clear background keeps the letterbox showing the
     // black page behind instead of an opaque interop fill.
-    UIKitView(
-        modifier = modifier,
-        factory = { PlayerSurfaceView(ios.playerLayer) }
-    )
+    // Keyed by the layer: the playback is recreated when its URL changes
+    // (LAN ↔ public with the viewer open), and a view built in factory would
+    // keep hosting the released player's layer — audio, black picture.
+    key(ios.playerLayer) {
+        UIKitView(
+            modifier = modifier,
+            factory = { PlayerSurfaceView(ios.playerLayer) }
+        )
+    }
 }
 
 /**

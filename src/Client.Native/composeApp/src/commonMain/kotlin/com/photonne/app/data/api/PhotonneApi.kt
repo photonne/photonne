@@ -82,7 +82,6 @@ import io.ktor.http.encodeURLPathPart
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.close
-import io.ktor.utils.io.readUTF8Line
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -2885,7 +2884,7 @@ class PhotonneApiClient(
     override suspend fun adminScanLibrary(
         id: String
     ): Flow<com.photonne.app.data.models.LibraryScanProgress> =
-        streamJsonLines("$baseUrl/api/libraries/$id/scan/stream")
+        streamJsonObjects("$baseUrl/api/libraries/$id/scan/stream")
 
     override suspend fun adminListLibraryPermissions(
         id: String
@@ -3012,7 +3011,7 @@ class PhotonneApiClient(
 
     override suspend fun adminIndexStream():
         Flow<com.photonne.app.data.models.IndexStreamEvent> =
-        streamJsonLines("$baseUrl/api/assets/index/stream")
+        streamJsonObjects("$baseUrl/api/assets/index/stream")
 
     override suspend fun adminThumbnailsStream(
         regenerate: Boolean
@@ -3022,14 +3021,11 @@ class PhotonneApiClient(
             parameter("regenerate", regenerate)
         }.execute { response ->
             ensureStreamSuccess(response, "Thumbnails stream failed")
-            val channel = response.bodyAsChannel()
-            while (true) {
-                val line = channel.readUTF8Line() ?: break
-                if (line.isBlank()) continue
+            response.bodyAsChannel().forEachJsonObject { json ->
                 runCatching {
                     streamJson.decodeFromString(
                         com.photonne.app.data.models.ThumbnailStreamEvent.serializer(),
-                        line
+                        json
                     )
                 }.getOrNull()?.let { send(it) }
             }
@@ -3044,14 +3040,11 @@ class PhotonneApiClient(
             parameter("overwrite", overwrite)
         }.execute { response ->
             ensureStreamSuccess(response, "Metadata stream failed")
-            val channel = response.bodyAsChannel()
-            while (true) {
-                val line = channel.readUTF8Line() ?: break
-                if (line.isBlank()) continue
+            response.bodyAsChannel().forEachJsonObject { json ->
                 runCatching {
                     streamJson.decodeFromString(
                         com.photonne.app.data.models.MetadataStreamEvent.serializer(),
-                        line
+                        json
                     )
                 }.getOrNull()?.let { send(it) }
             }
@@ -3074,14 +3067,11 @@ class PhotonneApiClient(
             parameter("dryRun", dryRun)
         }.execute { response ->
             ensureStreamSuccess(response, "Date restore stream failed")
-            val channel = response.bodyAsChannel()
-            while (true) {
-                val line = channel.readUTF8Line() ?: break
-                if (line.isBlank()) continue
+            response.bodyAsChannel().forEachJsonObject { json ->
                 runCatching {
                     streamJson.decodeFromString(
                         com.photonne.app.data.models.MetadataStreamEvent.serializer(),
-                        line
+                        json
                     )
                 }.getOrNull()?.let { send(it) }
             }
@@ -3111,27 +3101,27 @@ class PhotonneApiClient(
     override suspend fun resumeIndexTaskStream(
         id: String
     ): Flow<com.photonne.app.data.models.IndexStreamEvent> =
-        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+        streamJsonObjects("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun resumeThumbnailsTaskStream(
         id: String
     ): Flow<com.photonne.app.data.models.ThumbnailStreamEvent> =
-        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+        streamJsonObjects("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun resumeMetadataTaskStream(
         id: String
     ): Flow<com.photonne.app.data.models.MetadataStreamEvent> =
-        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+        streamJsonObjects("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun resumeDateRestoreTaskStream(
         id: String
     ): Flow<com.photonne.app.data.models.MetadataStreamEvent> =
-        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+        streamJsonObjects("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun resumeLibraryScanTaskStream(
         id: String
     ): Flow<com.photonne.app.data.models.LibraryScanProgress> =
-        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+        streamJsonObjects("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun adminDuplicatesStream(
         cleanup: Boolean,
@@ -3143,14 +3133,11 @@ class PhotonneApiClient(
             parameter("physical", physical)
         }.execute { response ->
             ensureStreamSuccess(response, "Duplicates stream failed")
-            val channel = response.bodyAsChannel()
-            while (true) {
-                val line = channel.readUTF8Line() ?: break
-                if (line.isBlank()) continue
+            response.bodyAsChannel().forEachJsonObject { json ->
                 runCatching {
                     streamJson.decodeFromString(
                         com.photonne.app.data.models.DuplicatesStreamEvent.serializer(),
-                        line
+                        json
                     )
                 }.getOrNull()?.let { send(it) }
             }
@@ -3166,14 +3153,11 @@ class PhotonneApiClient(
             parameter("dryRun", dryRun)
         }.execute { response ->
             ensureStreamSuccess(response, "Maintenance stream failed")
-            val channel = response.bodyAsChannel()
-            while (true) {
-                val line = channel.readUTF8Line() ?: break
-                if (line.isBlank()) continue
+            response.bodyAsChannel().forEachJsonObject { json ->
                 runCatching {
                     streamJson.decodeFromString(
                         com.photonne.app.data.models.MaintenanceStreamEvent.serializer(),
-                        line
+                        json
                     )
                 }.getOrNull()?.let { send(it) }
             }
@@ -3186,14 +3170,11 @@ class PhotonneApiClient(
             disableStreamTimeouts()
         }.execute { response ->
             ensureStreamSuccess(response, "Face clustering stream failed")
-            val channel = response.bodyAsChannel()
-            while (true) {
-                val line = channel.readUTF8Line() ?: break
-                if (line.isBlank()) continue
+            response.bodyAsChannel().forEachJsonObject { json ->
                 runCatching {
                     streamJson.decodeFromString(
                         com.photonne.app.data.models.MaintenanceStreamEvent.serializer(),
-                        line
+                        json
                     )
                 }.getOrNull()?.let { send(it) }
             }
@@ -3203,7 +3184,7 @@ class PhotonneApiClient(
     override suspend fun resumeMaintenanceTaskStream(
         id: String
     ): Flow<com.photonne.app.data.models.MaintenanceStreamEvent> =
-        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+        streamJsonObjects("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun adminDownloadBackup(
         level: String
@@ -3254,21 +3235,18 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    /** Shared streaming helper for endpoints that emit one JSON object
-     *  per line via `IAsyncEnumerable<T>` on the server side.
+    /** Shared streaming helper for the progress endpoints: reads NDJSON
+     *  and `IAsyncEnumerable<T>` JSON arrays alike (see [JsonObjectSplitter]).
      *
      *  The streams are channelFlows, not flows: Ktor may run the
      *  `execute { }` block in another coroutine context (it does on
      *  Kotlin/Native), and a plain `flow { }` refuses to emit from there
      *  ("Flow invariant is violated"), which failed every stream on iOS. */
-    private inline fun <reified T> streamJsonLines(url: String): Flow<T> = channelFlow {
+    private inline fun <reified T> streamJsonObjects(url: String): Flow<T> = channelFlow {
         client.prepareGet(url) { disableStreamTimeouts() }.execute { response ->
             ensureStreamSuccess(response, "Stream failed")
-            val channel = response.bodyAsChannel()
-            while (true) {
-                val line = channel.readUTF8Line() ?: break
-                if (line.isBlank()) continue
-                runCatching { streamJson.decodeFromString<T>(line) }
+            response.bodyAsChannel().forEachJsonObject { json ->
+                runCatching { streamJson.decodeFromString<T>(json) }
                     .getOrNull()
                     ?.let { send(it) }
             }

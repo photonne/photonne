@@ -28,6 +28,11 @@ public class ExternalLibraryScanService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly BackgroundTaskManager _taskManager;
 
+    // Same casing as the live stream (camelCase): /api/tasks/{id}/stream replays
+    // these buffered strings, and PascalCase there left a re-attached client with
+    // an empty message, 0 % and a scan that never completed.
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+
     public ExternalLibraryScanService(
         ApplicationDbContext dbContext,
         DirectoryScanner scanner,
@@ -53,7 +58,7 @@ public class ExternalLibraryScanService
         {
             var updWithId = upd with { TaskId = entry.Id };
             channel.Writer.TryWrite(updWithId);
-            entry.Push(JsonSerializer.Serialize(updWithId), updWithId.Percentage, updWithId.Message);
+            entry.Push(JsonSerializer.Serialize(updWithId, _jsonOptions), updWithId.Percentage, updWithId.Message);
         }
 
         _ = Task.Run(async () =>

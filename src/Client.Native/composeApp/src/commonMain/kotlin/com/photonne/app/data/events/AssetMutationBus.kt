@@ -1,5 +1,6 @@
 package com.photonne.app.data.events
 
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlin.time.Instant
@@ -54,10 +55,14 @@ sealed interface AssetMutation {
 }
 
 class AssetMutationBus {
-    // extraBufferCapacity: tryEmit nunca debe suspender ni fallar por no haber
-    // colectores lentos; perder un evento antiguo es aceptable (los
-    // suscriptores recargan, no aplican deltas).
-    private val _events = MutableSharedFlow<AssetMutation>(extraBufferCapacity = 32)
+    // Búfer ilimitado: tryEmit nunca suspende ni falla. Con 32 plazas, marcar
+    // como favoritas 200 fotos emitía 200 FavoriteChanged seguidos en Main,
+    // el colector de App.kt (despachador de Compose) no podía vaciarlo hasta
+    // acabar el bucle y tryEmit descartaba el resto: unas 168 fotos se
+    // quedaban sin corazón en todas las listas. Los suscriptores aplican cada
+    // evento, así que ninguno se puede perder; los eventos son pequeños y se
+    // consumen enseguida.
+    private val _events = MutableSharedFlow<AssetMutation>(extraBufferCapacity = Channel.UNLIMITED)
     val events: SharedFlow<AssetMutation> = _events
 
     fun emit(event: AssetMutation) {

@@ -837,8 +837,6 @@ class AdminRunTasksViewModel(
                                     snapshot.dateRestoreWriteToFile,
                                 dryRun = snapshot.dateRestoreDryRun
                             ).take(1).collect {}
-                        AdminRunTask.DetectDuplicates ->
-                            repository.duplicatesStream(cleanup = false, physical = false).take(1).collect {}
                         else -> task.maintenanceKind?.let { kind ->
                             // dryRun only means anything to purge-missing; the
                             // other kinds ignore the query param server-side.
@@ -1392,7 +1390,15 @@ fun AdminRunTasksScreen(
                     onOpen = if (task == AdminRunTask.DetectDuplicates) {
                         { onOpenTask(task) }
                     } else null,
-                    onStart = { viewModel.start(task) },
+                    // Its ▶ opens that screen too: the server runs the
+                    // detection on the request's own token (it isn't a
+                    // BackgroundTaskManager task), so the fire-and-forget
+                    // trigger of the other rows cancelled it within seconds.
+                    onStart = if (task == AdminRunTask.DetectDuplicates) {
+                        { onOpenTask(task) }
+                    } else {
+                        { viewModel.start(task) }
+                    },
                     secondaryActions = listOfNotNull(
                         // Face recognition gets a second action: re-cluster the
                         // existing detections without re-running the model.

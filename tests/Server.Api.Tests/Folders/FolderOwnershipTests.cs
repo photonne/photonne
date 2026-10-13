@@ -67,6 +67,12 @@ public sealed class FolderOwnershipTests : IntegrationTestBase
         var rename = await admin.PutAsJsonAsync(
             $"/api/folders/{folderId}", new UpdateFolderBody("Familia 2026", null));
         Assert.True(rename.IsSuccessStatusCode);
+
+        // Renamed in place: a top-level shared folder must not move into the
+        // renamer's personal space.
+        var renamed = await FindFolderAsync(admin, folderId);
+        Assert.Equal("/assets/shared/Familia 2026", renamed!.Path);
+        Assert.True(renamed.IsShared);
     }
 
     [Fact]
