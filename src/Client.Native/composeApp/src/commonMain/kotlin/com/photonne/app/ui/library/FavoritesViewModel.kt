@@ -241,6 +241,15 @@ class FavoritesViewModel(
             applyAssetRemovedLocal(assetId)
         } else {
             val snapshot = unfavorited.remove(assetId)
+            if (snapshot == null && _state.value.items.none { it.id == assetId }) {
+                // Hearted somewhere else (Fotos, a search): it isn't in this
+                // list at all, and only the server knows where it goes.
+                // Without this, Favoritos (and the Colecciones strip) missed
+                // it until a manual refresh. A burst of them collapses into
+                // one reload (see refreshQuietly).
+                refreshQuietly()
+                return
+            }
             _state.update { previous ->
                 val restored = if (snapshot != null) {
                     previous.items.withRestored(snapshot, setOf(assetId))

@@ -381,7 +381,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                     albumDetailViewModel.rename(name, description) { updated ->
                         appState.showEditAlbum = false
                         appState.selectedAlbum = openedAlbum.copy(name = updated.name, description = updated.description)
-                        albumsViewModel.applyUpdate(updated)
+                        albumsViewModel.applyEdit(updated)
                     }
                 }
             )

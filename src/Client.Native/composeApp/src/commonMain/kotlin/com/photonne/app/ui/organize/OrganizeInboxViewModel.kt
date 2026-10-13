@@ -17,6 +17,8 @@ import com.photonne.app.ui.selection.applying
 import com.photonne.app.ui.selection.toggled
 import com.photonne.app.ui.selection.toggledAll
 import com.photonne.app.ui.selection.withSelection
+import com.photonne.app.util.suspendRunCatching
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -75,6 +77,10 @@ class OrganizeInboxViewModel(
     private val _state = MutableStateFlow(OrganizeInboxUiState())
     val state: StateFlow<OrganizeInboxUiState> = _state.asStateFlow()
 
+    /** The inbox page being fetched. A refresh replaces any append in flight,
+     *  whose stale cursor would otherwise land on top of the fresh first page. */
+    private var pageJob: Job? = null
+
     fun ensureLoaded() {
         val snapshot = _state.value
         if (snapshot.loaded || snapshot.isInitialLoading) return
@@ -86,10 +92,12 @@ class OrganizeInboxViewModel(
             it.copy(
                 isRefreshing = it.loaded,
                 isInitialLoading = !it.loaded,
+                isAppending = false,
                 error = null
             )
         }
-        viewModelScope.launch {
+        pageJob?.cancel()
+        pageJob = viewModelScope.launch {
             // El resumen va aparte y no bloquea: si falla, la bandeja se
             // muestra igual, solo sin la cabecera.
             launch {
@@ -97,7 +105,7 @@ class OrganizeInboxViewModel(
                     .onSuccess { summary -> _state.update { it.copy(summary = summary) } }
             }
             launch { loadSuggestions() }
-            runCatching { repository.inbox(cursor = null) }
+            suspendRunCatching { repository.inbox(cursor = null) }
                 .onSuccess { page ->
                     _state.update {
                         val remaining = it.selection.intersect(page.items.mapTo(HashSet()) { item -> item.id })
@@ -129,8 +137,8 @@ class OrganizeInboxViewModel(
         if (snapshot.isAppending || snapshot.isInitialLoading || !snapshot.hasMore) return
         val cursor = snapshot.nextCursor ?: return
         _state.update { it.copy(isAppending = true) }
-        viewModelScope.launch {
-            runCatching { repository.inbox(cursor = cursor) }
+        pageJob = viewModelScope.launch {
+            suspendRunCatching { repository.inbox(cursor = cursor) }
                 .onSuccess { page ->
                     _state.update {
                         val existing = it.items.mapTo(HashSet()) { item -> item.id }
@@ -289,6 +297,13 @@ class OrganizeInboxViewModel(
         }
     }
 
+    /** After photos leave the inbox: the header count and the proposed
+     *  batches still counted (and offered) them. */
+    private fun refreshSummaryAndSuggestions() {
+        refreshSummary()
+        viewModelScope.launch { loadSuggestions() }
+    }
+
     fun clearMoveSummary() {
         _state.update { it.copy(lastMoveSummary = null) }
     }
@@ -326,7 +341,7 @@ class OrganizeInboxViewModel(
                             lastMoveSummary = outcome.takeIf { o -> o.yearBreakdown.isNotEmpty() },
                         )
                     }
-                    if (partial) refresh()
+                    if (partial) refresh() else refreshSummaryAndSuggestions()
                     onComplete(outcome.moved)
                 }
                 .onFailure { error ->
@@ -396,6 +411,7 @@ class OrganizeInboxViewModel(
                             isBulkMutating = false
                         )
                     }
+                    refreshSummaryAndSuggestions()
                     onResult(null)
                 }
                 .onFailure { error ->

@@ -197,7 +197,7 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                             {
                                 val assetId = albumDetailState.selection.first()
                                 albumDetailViewModel.setCover(assetId) { updated ->
-                                    albumsViewModel.applyUpdate(updated)
+                                    albumsViewModel.applyCover(updated)
                                     appState.selectedAlbum = appState.selectedAlbum?.copy(
                                         coverThumbnailUrl = updated.coverThumbnailUrl
                                     )

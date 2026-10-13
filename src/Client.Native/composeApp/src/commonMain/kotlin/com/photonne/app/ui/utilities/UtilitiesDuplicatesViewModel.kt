@@ -58,6 +58,11 @@ class UtilitiesDuplicatesViewModel(
     private val _state = MutableStateFlow(UtilitiesDuplicatesUiState())
     val state: StateFlow<UtilitiesDuplicatesUiState> = _state.asStateFlow()
 
+    /** The screen has loaded at least once. Gates the reload on Restored rather
+     *  than "has groups": Deshacer after clearing every duplicate left the
+     *  screen saying there were none until it was opened again. */
+    private var loadedOnce = false
+
     init {
         // Lote L10: una copia borrada desde el visor sale de su grupo (y el
         // grupo, si ya no tiene duplicados); lo que vuelve pide recargar.
@@ -67,7 +72,7 @@ class UtilitiesDuplicatesViewModel(
                     is AssetMutation.Removed -> removeAssets(event.assetIds)
                     is AssetMutation.Purged -> removeAssets(event.assetIds)
                     is AssetMutation.Restored, AssetMutation.AllChanged ->
-                        if (_state.value.groups.isNotEmpty()) load()
+                        if (loadedOnce) load()
                     is AssetMutation.FavoriteChanged, is AssetMutation.DateChanged,
                     is AssetMutation.Moved -> Unit
                 }
@@ -110,6 +115,7 @@ class UtilitiesDuplicatesViewModel(
         viewModelScope.launch {
             runCatching { repository.duplicates() }
                 .onSuccess { groups ->
+                    loadedOnce = true
                     _state.update {
                         it.copy(
                             groups = groups.map { g -> DuplicateGroupView(g, emptySet()) },

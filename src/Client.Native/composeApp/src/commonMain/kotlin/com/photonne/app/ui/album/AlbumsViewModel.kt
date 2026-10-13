@@ -395,7 +395,7 @@ class AlbumsViewModel(
                     _state.update { previous ->
                         previous.copy(
                             albums = previous.albums.map {
-                                if (it.id == updated.id) updated.keepingPinOf(it) else it
+                                if (it.id == updated.id) it.withEditOf(updated) else it
                             },
                             isMutating = false,
                             selectedAlbumIds = emptySet()
@@ -499,6 +499,30 @@ class AlbumsViewModel(
         }
     }
 
+    /** The detail screen renamed/re-described an album: see [withEditOf]. */
+    fun applyEdit(updated: AlbumSummary) {
+        _state.update { previous ->
+            previous.copy(albums = previous.albums.map { if (it.id == updated.id) it.withEditOf(updated) else it })
+        }
+    }
+
+    /** A new cover was set: only the cover (and previews, when sent) come from
+     *  the response, which reports every album as Manual — a smart album's
+     *  card turned into a manual one. */
+    fun applyCover(updated: AlbumSummary) {
+        _state.update { previous ->
+            previous.copy(
+                albums = previous.albums.map {
+                    if (it.id != updated.id) it
+                    else it.copy(
+                        coverThumbnailUrl = updated.coverThumbnailUrl,
+                        previewThumbnailUrls = updated.previewThumbnailUrls.ifEmpty { it.previewThumbnailUrls }
+                    )
+                }
+            )
+        }
+    }
+
     fun applyUpdate(updated: AlbumSummary) {
         _state.update { previous ->
             previous.copy(
@@ -588,3 +612,11 @@ class AlbumsViewModel(
  */
 private fun AlbumSummary.keepingPinOf(previous: AlbumSummary): AlbumSummary =
     copy(isPinned = previous.isPinned, pinnedAt = previous.pinnedAt)
+
+/**
+ * The cached card with the name and description an edit answered. The update
+ * endpoint leaves the cover, previews, sharing and link badges at their
+ * defaults, so taking its response whole blanked them until the next reload.
+ */
+private fun AlbumSummary.withEditOf(updated: AlbumSummary): AlbumSummary =
+    copy(name = updated.name, description = updated.description)

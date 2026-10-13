@@ -373,10 +373,12 @@ class FoldersViewModel(
                 )
             }
                 .onSuccess { updated ->
-                    allFolders = allFolders.map { if (it.id == updated.id) updated.keepingPinOf(it) else it }
+                    allFolders = allFolders.map { if (it.id == updated.id) it.withPlacementOf(updated) else it }
                     repartition()
                     _state.update { it.copy(isMutating = false, selectedFolderIds = emptySet()) }
                     onSuccess(updated)
+                    // Its subfolders' paths changed too.
+                    refreshQuietly()
                 }
                 .onFailure { error ->
                     _state.update {
@@ -399,6 +401,9 @@ class FoldersViewModel(
                     repartition()
                     _state.update { it.copy(isMutating = false, selectedFolderIds = emptySet()) }
                     onSuccess()
+                    // Its subfolders went to the trash with it; as stale rows
+                    // they were still offered as move destinations.
+                    refreshQuietly()
                 }
                 .onFailure { error ->
                     _state.update {
@@ -507,8 +512,9 @@ class FoldersViewModel(
     }
 
     fun applyUpdate(updated: FolderSummary) {
-        allFolders = allFolders.map { if (it.id == updated.id) updated.keepingPinOf(it) else it }
+        allFolders = allFolders.map { if (it.id == updated.id) it.withPlacementOf(updated) else it }
         repartition()
+        refreshQuietly()
     }
 
     private val pinsInFlight = mutableSetOf<String>()
@@ -547,6 +553,7 @@ class FoldersViewModel(
     fun applyDelete(folderId: String) {
         allFolders = allFolders.filterNot { it.id == folderId }
         repartition()
+        refreshQuietly()
     }
 
     fun clearError() {
@@ -583,10 +590,12 @@ class FoldersViewModel(
     }
 }
 
-
 /**
- * Renombrar devuelve la carpeta entera, pero no toca el fijado (y un servidor
- * antiguo no lo manda): se conserva el que ya teníamos.
+ * The cached card with the name and place a rename/move answered. The update
+ * endpoint leaves the card fields (ownership, sharing, member count, preview
+ * mosaic, …) at their defaults, so taking its response whole made "Gestionar
+ * miembros", the mosaic and the member count vanish until the next reload. The
+ * pin, which an older server doesn't send at all, is kept the same way.
  */
-private fun FolderSummary.keepingPinOf(previous: FolderSummary): FolderSummary =
-    copy(isPinned = previous.isPinned, pinnedAt = previous.pinnedAt)
+private fun FolderSummary.withPlacementOf(updated: FolderSummary): FolderSummary =
+    copy(name = updated.name, path = updated.path, parentFolderId = updated.parentFolderId)

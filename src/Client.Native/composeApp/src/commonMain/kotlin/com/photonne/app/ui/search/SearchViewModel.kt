@@ -376,6 +376,10 @@ class SearchViewModel(
                 selectedPersonIds = emptySet(),
                 results = emptyList(),
                 hasMore = false,
+                // A loadMore in flight checks this flag before appending: left
+                // set, its page brought the old results back onto the
+                // cleared screen.
+                isAppending = false,
                 semanticCapped = false,
                 error = null,
                 selection = emptySet()
