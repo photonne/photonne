@@ -1,5 +1,11 @@
 package com.photonne.app.ui.devicebackup
 
+import androidx.lifecycle.compose.LifecycleStartEffect
+import com.photonne.app.data.devicelibrary.rememberDeviceLibraryAccessRequester
+import com.photonne.app.resources.backup_media_access_message
+import com.photonne.app.resources.backup_media_access_open_settings
+import com.photonne.app.resources.backup_media_access_title
+import com.photonne.app.ui.platform.rememberAppSettingsOpener
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.ProgressHeight
 import com.photonne.app.ui.theme.SectionHeader
@@ -190,6 +196,42 @@ fun BackupScreen(
         if (ok) viewModel.applyFreedDeviceUris(pendingFreeUris)
         pendingFreeUris = emptyList()
     }
+    // The photos permission, asked when an action needs it (turning backup or
+    // auto-backup on, "Subir ahora"). If the system won't show its prompt any
+    // more (always after a denial on iOS, after the second on Android), the
+    // dialog sends the user to Settings; on Android the action waits and runs
+    // when they come back with access (iOS restarts the app when the Photos
+    // permission changes, so there it's a fresh tap). Without access the
+    // switches stay off.
+    var pendingAccessAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showMediaAccessDialog by remember { mutableStateOf(false) }
+    val openAppSettings = rememberAppSettingsOpener()
+    val requestMediaAccess = rememberDeviceLibraryAccessRequester { access ->
+        if (access.canRead) {
+            val action = pendingAccessAction
+            pendingAccessAction = null
+            action?.invoke()
+        } else {
+            showMediaAccessDialog = true
+        }
+    }
+    val withMediaAccess: (() -> Unit) -> Unit = { action ->
+        if (!viewModel.needsMediaAccess()) {
+            action()
+        } else {
+            pendingAccessAction = action
+            requestMediaAccess()
+        }
+    }
+    LifecycleStartEffect(Unit) {
+        val action = pendingAccessAction
+        if (action != null && !showMediaAccessDialog && !viewModel.needsMediaAccess()) {
+            pendingAccessAction = null
+            action()
+        }
+        onStopOrDispose { }
+    }
+
     // The server-confirmed MediaStore files: launched from here, where the
     // launcher lives (calling it from the view model after the check crashed
     // if the user had left the screen meanwhile).
@@ -253,8 +295,14 @@ fun BackupScreen(
                     trailing = SettingsTrailing.Toggle(
                         checked = state.isBackupEnabled,
                         onCheckedChange = { enabled ->
-                            viewModel.setBackupEnabled(enabled)
-                            if (enabled) notifications.request()
+                            if (enabled) {
+                                withMediaAccess {
+                                    viewModel.setBackupEnabled(true)
+                                    notifications.request()
+                                }
+                            } else {
+                                viewModel.setBackupEnabled(false)
+                            }
                         }
                     )
                 )
@@ -303,7 +351,7 @@ fun BackupScreen(
                     pendingCount = pendingCount,
                     enrichmentCount = enrichmentState.inFlightAssets,
                     enrichmentFailedCount = enrichmentState.failedAssets,
-                    onUploadNow = viewModel::syncAllPending,
+                    onUploadNow = { withMediaAccess(viewModel::syncAllPending) },
                     onOpenPending = onOpenPending,
                     onOpenEnrichment = onOpenEnrichment,
                     onRecheck = { viewModel.refreshSyncStates() },
@@ -400,10 +448,10 @@ fun BackupScreen(
                         SettingsItem(
                             headline = stringResource(Res.string.background_sync_auto_label),
                             supporting = stringResource(Res.string.background_sync_auto_hint),
-                            trailing = SettingsTrailing.Toggle(
-                                state.backgroundSync.enabled,
-                                viewModel::setAutoBackupEnabled
-                            ),
+                            trailing = SettingsTrailing.Toggle(state.backgroundSync.enabled) { enabled ->
+                                if (enabled) withMediaAccess { viewModel.setAutoBackupEnabled(true) }
+                                else viewModel.setAutoBackupEnabled(false)
+                            },
                             showDivider = true
                         )
                         // Constraints only matter when auto-sync is on — hide them to
@@ -433,6 +481,26 @@ fun BackupScreen(
             }
         }
 
+    }
+
+    if (showMediaAccessDialog) {
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.backup_media_access_title),
+            message = stringResource(Res.string.backup_media_access_message),
+            confirmLabel = stringResource(Res.string.backup_media_access_open_settings),
+            isDestructive = false,
+            isSubmitting = false,
+            onDismiss = {
+                showMediaAccessDialog = false
+                pendingAccessAction = null
+            },
+            onConfirm = {
+                // The action stays pending: it runs on the way back if
+                // access was granted there.
+                showMediaAccessDialog = false
+                openAppSettings()
+            }
+        )
     }
 
     if (showFreeSpaceConfirm) {

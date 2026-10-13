@@ -19,6 +19,7 @@ import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.DeviceBackupRepository
 import com.photonne.app.data.devicebackup.LastBackupRun
 import com.photonne.app.data.devicebackup.blocksPass
+import com.photonne.app.data.devicelibrary.DeviceLibraryAccess
 import kotlin.time.Clock
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
@@ -455,6 +456,21 @@ class DeviceBackupViewModel(
         if (enabled && prefs.enabled) {
             backgroundScheduler.requestImmediateSync(prefs)
         }
+    }
+
+    /**
+     * True when a pass couldn't read its sources for lack of the photos
+     * permission: the iOS library and Android's device folders (buckets)
+     * need it; Android folders picked through the system picker (SAF trees,
+     * `content://` uris) carry their own grant and don't. With no folder
+     * chosen yet the backup is about to need it. Never on desktop.
+     */
+    fun needsMediaAccess(): Boolean {
+        val access = deviceLibrary.accessState()
+        if (access == DeviceLibraryAccess.Unsupported || access.canRead) return false
+        val folderUris = _state.value.folders.map { it.uri }
+            .ifEmpty { repository.savedFolders().map { it.uri } }
+        return folderUris.isEmpty() || folderUris.any { !it.startsWith(SAF_TREE_URI_PREFIX) }
     }
 
     fun setAutoBackupEnabled(enabled: Boolean) {
@@ -1369,6 +1385,9 @@ class DeviceBackupViewModel(
          *  are also content://, but under provider authorities — only the
          *  media authority takes this prefix. */
         const val MEDIASTORE_ITEM_URI_PREFIX = "content://media/"
+
+        /** Folders picked through the system picker (Android SAF trees). */
+        const val SAF_TREE_URI_PREFIX = "content://"
 
         /** Poll cadence while a media-change rescan waits out an active
          *  verify/upload pass instead of dropping the event. */

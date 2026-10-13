@@ -1296,6 +1296,9 @@
     <string name="device_backup_progress">%1$d / %2$d</string>
     <string name="device_backup_action_free_space">Liberar espacio (%1$d)</string>
     <string name="device_backup_action_free_space_sized">Liberar %2$s (%1$d archivos)</string>
+    <string name="backup_media_access_title">Acceso a tus fotos</string>
+    <string name="backup_media_access_message">Para hacer la copia, Photonne necesita acceso a las fotos y vídeos del dispositivo. Concédelo en Ajustes y vuelve a la app.</string>
+    <string name="backup_media_access_open_settings">Abrir ajustes</string>
     <string name="device_backup_free_space_dialog_title">Liberar espacio</string>
     <plurals name="device_backup_free_space_dialog_message">
         <item quantity="one">Se borrará del dispositivo %1$d archivo que ya está sincronizado en la app. Esta acción no se puede deshacer.</item>
