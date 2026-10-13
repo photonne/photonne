@@ -188,6 +188,9 @@ const stats: AdminStatsResponse = {
 	totalPhotos: 48_210,
 	totalVideos: 3_904,
 	totalBytes: 612 * GIB,
+	personalBytes: 402 * GIB,
+	sharedBytes: 120 * GIB,
+	libraryBytes: 90 * GIB,
 	users: [
 		{
 			userId: ADMIN_ID,
@@ -196,7 +199,10 @@ const stats: AdminStatsResponse = {
 			photos: 30_100,
 			videos: 2_400,
 			photoBytes: 210 * GIB,
-			videoBytes: 180 * GIB
+			videoBytes: 180 * GIB,
+			personalBytes: 180 * GIB,
+			sharedBytes: 120 * GIB,
+			libraryBytes: 90 * GIB
 		},
 		{
 			userId: '00000000-0000-0000-0000-000000000002',
@@ -205,7 +211,10 @@ const stats: AdminStatsResponse = {
 			photos: 12_010,
 			videos: 1_204,
 			photoBytes: 90 * GIB,
-			videoBytes: 70 * GIB
+			videoBytes: 70 * GIB,
+			personalBytes: 160 * GIB,
+			sharedBytes: 0,
+			libraryBytes: 0
 		},
 		{
 			userId: '00000000-0000-0000-0000-000000000003',
@@ -214,7 +223,10 @@ const stats: AdminStatsResponse = {
 			photos: 6_100,
 			videos: 300,
 			photoBytes: 32 * GIB,
-			videoBytes: 10 * GIB
+			videoBytes: 10 * GIB,
+			personalBytes: 42 * GIB,
+			sharedBytes: 0,
+			libraryBytes: 0
 		}
 	]
 };

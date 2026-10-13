@@ -5,6 +5,8 @@
 	import { formatBytes } from '#lib/format.js';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
+	import { hiddenSpaces } from '#lib/storage/hidden-spaces.svelte.js';
+	import SpaceBar from '#lib/storage/SpaceBar.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 
@@ -24,6 +26,68 @@
 				)
 	);
 	const count = (n: number) => new Intl.NumberFormat(getLocale()).format(n);
+
+	// One row per space: personal (what the quota counts), shared folders and
+	// each external library. Hidden spaces stay listed but leave the total.
+	interface Row {
+		key: string;
+		space: 'personal' | 'shared' | 'library';
+		name: string;
+		photos: number;
+		videos: number;
+		bytes: number;
+	}
+	const rows = $derived.by((): Row[] => {
+		if (!info) return [];
+		const list: Row[] = [
+			{
+				key: 'personal',
+				space: 'personal',
+				name: m.settings_storage_personal(),
+				photos: info.personalPhotos,
+				videos: info.personalVideos,
+				bytes: info.personalPhotoBytes + info.personalVideoBytes
+			}
+		];
+		if (info.sharedPhotos + info.sharedVideos > 0)
+			list.push({
+				key: 'shared',
+				space: 'shared',
+				name: m.storage_space_shared(),
+				photos: info.sharedPhotos,
+				videos: info.sharedVideos,
+				bytes: info.sharedPhotoBytes + info.sharedVideoBytes
+			});
+		for (const library of info.libraries)
+			list.push({
+				key: library.id,
+				space: 'library',
+				name: library.name,
+				photos: library.photos,
+				videos: library.videos,
+				bytes: library.photoBytes + library.videoBytes
+			});
+		return list;
+	});
+	const isHidden = (row: Row) => row.space !== 'personal' && hiddenSpaces.has(row.space);
+	const shown = $derived(rows.filter((row) => !isHidden(row)));
+	const spaceBytes = $derived({
+		personal: rows.filter((r) => r.space === 'personal').reduce((sum, r) => sum + r.bytes, 0),
+		shared: rows.filter((r) => r.space === 'shared').reduce((sum, r) => sum + r.bytes, 0),
+		library: rows.filter((r) => r.space === 'library').reduce((sum, r) => sum + r.bytes, 0)
+	});
+	const notCounted = $derived(
+		[
+			spaceBytes.shared > 0
+				? m.settings_storage_in_shared({ size: formatBytes(spaceBytes.shared) })
+				: null,
+			spaceBytes.library > 0
+				? m.settings_storage_in_libraries({ size: formatBytes(spaceBytes.library) })
+				: null
+		]
+			.filter(Boolean)
+			.join(' · ')
+	);
 </script>
 
 <svelte:head>
@@ -76,6 +140,9 @@
 				{:else}
 					<p class="hint">{m.settings_storage_no_quota()}</p>
 				{/if}
+				{#if notCounted}
+					<p class="hint">{m.settings_storage_not_counted({ spaces: notCounted })}</p>
+				{/if}
 			</section>
 
 			<section class="card" aria-labelledby="breakdown-title">
@@ -83,6 +150,7 @@
 					<h2 id="breakdown-title">{m.settings_storage_breakdown()}</h2>
 					<p>{m.settings_storage_breakdown_lead()}</p>
 				</header>
+				<SpaceBar bytes={spaceBytes} label={m.settings_storage_breakdown()} />
 				<table>
 					<thead>
 						<tr>
@@ -93,27 +161,23 @@
 						</tr>
 					</thead>
 					<tbody>
-						<tr>
-							<th scope="row">{m.settings_storage_personal()}</th>
-							<td class="num">{count(info.personalPhotos)}</td>
-							<td class="num">{count(info.personalVideos)}</td>
-							<td class="num">{formatBytes(info.personalPhotoBytes + info.personalVideoBytes)}</td>
-						</tr>
-						{#each info.libraries as library (library.id)}
-							<tr>
-								<th scope="row">{library.name}</th>
-								<td class="num">{count(library.photos)}</td>
-								<td class="num">{count(library.videos)}</td>
-								<td class="num">{formatBytes(library.photoBytes + library.videoBytes)}</td>
+						{#each rows as row (row.key)}
+							<tr class:off={isHidden(row)}>
+								<th scope="row"
+									><i class="swatch {row.space}" class:hidden={isHidden(row)}></i>{row.name}</th
+								>
+								<td class="num">{count(row.photos)}</td>
+								<td class="num">{count(row.videos)}</td>
+								<td class="num">{formatBytes(row.bytes)}</td>
 							</tr>
 						{/each}
 					</tbody>
 					<tfoot>
 						<tr>
 							<th scope="row">{m.settings_storage_total()}</th>
-							<td class="num">{count(info.photos)}</td>
-							<td class="num">{count(info.videos)}</td>
-							<td class="num">{formatBytes(info.photoBytes + info.videoBytes)}</td>
+							<td class="num">{count(shown.reduce((sum, r) => sum + r.photos, 0))}</td>
+							<td class="num">{count(shown.reduce((sum, r) => sum + r.videos, 0))}</td>
+							<td class="num">{formatBytes(shown.reduce((sum, r) => sum + r.bytes, 0))}</td>
 						</tr>
 					</tfoot>
 				</table>
@@ -168,6 +232,41 @@
 
 	tbody th {
 		font-weight: 400;
+	}
+
+	tbody tr.off {
+		color: var(--color-text-muted);
+	}
+
+	.swatch {
+		display: inline-block;
+		width: 10px;
+		height: 10px;
+		margin-right: var(--space-2);
+		border-radius: 2px;
+		vertical-align: baseline;
+	}
+
+	.swatch.personal {
+		background: var(--color-space-personal);
+	}
+
+	.swatch.shared {
+		background: var(--color-space-shared);
+	}
+
+	.swatch.library {
+		background: var(--color-space-library);
+	}
+
+	.swatch.hidden {
+		background: repeating-linear-gradient(
+			135deg,
+			var(--color-space-hidden) 0 2px,
+			transparent 2px 5px
+		);
+		outline: 1px solid var(--color-space-hidden);
+		outline-offset: -1px;
 	}
 
 	tfoot th,

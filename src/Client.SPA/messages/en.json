@@ -1,5 +1,11 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"storage_space_personal": "Personal",
+	"storage_space_shared": "Shared folders",
+	"storage_space_library": "External libraries",
+	"storage_space_hidden": "hidden",
+	"storage_space_hide": "Leave out of the total",
+	"storage_space_show": "Add to the total",
 	"app_name": "Photonne",
 	"session_restoring": "Loading…",
 	"session_unreachable_title": "Can't reach the server",

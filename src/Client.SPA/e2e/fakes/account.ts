@@ -307,16 +307,21 @@ const handle: FakeHandler = async (context) => {
 	// --- Settings ------------------------------------------------------
 	if (method === 'GET' && path === '/api/users/me/storage') {
 		await json(200, {
+			// Only the personal space counts towards the quota.
 			usedBytes: 47_500_000_000,
 			quotaBytes: 50_000_000_000,
-			photos: 18_240,
-			videos: 512,
-			photoBytes: 38_000_000_000,
-			videoBytes: 9_500_000_000,
+			photos: 20_240,
+			videos: 532,
+			photoBytes: 55_000_000_000,
+			videoBytes: 14_000_000_000,
 			personalPhotos: 12_240,
 			personalVideos: 412,
-			personalPhotoBytes: 25_000_000_000,
-			personalVideoBytes: 8_000_000_000,
+			personalPhotoBytes: 37_000_000_000,
+			personalVideoBytes: 10_500_000_000,
+			sharedPhotos: 2_000,
+			sharedVideos: 20,
+			sharedPhotoBytes: 5_000_000_000,
+			sharedVideoBytes: 2_000_000_000,
 			libraries: [
 				{
 					id: 'lib-1',

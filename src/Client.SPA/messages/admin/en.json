@@ -90,6 +90,7 @@
 	"admin_dash_split": "Breakdown",
 	"admin_dash_split_items": "By number of items",
 	"admin_dash_split_storage": "By space used",
+	"admin_dash_split_space": "By where it lives",
 	"admin_dash_top_users": "Who uses the most",
 	"admin_dash_no_usage": "No usage data.",
 	"admin_dash_coverage_title": "Indexing coverage",

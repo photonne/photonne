@@ -18,6 +18,9 @@
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { formatBytes } from '#lib/format.js';
 	import { appHref } from '#lib/navigation/href.js';
+	import { hiddenSpaces } from '#lib/storage/hidden-spaces.svelte.js';
+	import SpaceBar from '#lib/storage/SpaceBar.svelte';
+	import { visibleBytes } from '#lib/storage/spaces.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const statsQuery = createQuery(() => getAdminStatsOptions());
@@ -33,11 +36,32 @@
 	const coverageQuery = createQuery(() => ({ ...adminIndexingCoverageOptions(), retry: false }));
 
 	const stats = $derived(statsQuery.data);
+	// Spaces the viewer hid (shared folders, external libraries) leave the
+	// totals and the ranking but stay in the bars, hatched.
 	const usage = $derived(
 		[...(stats?.users ?? [])]
-			.map((u) => ({ ...u, bytes: u.photoBytes + u.videoBytes }))
+			.map((u) => {
+				const spaces = {
+					personal: u.personalBytes,
+					shared: u.sharedBytes,
+					library: u.libraryBytes
+				};
+				return {
+					...u,
+					spaces,
+					all: u.photoBytes + u.videoBytes,
+					bytes: visibleBytes(spaces, hiddenSpaces.set)
+				};
+			})
 			.sort((a, b) => b.bytes - a.bytes)
 	);
+	const maxAll = $derived(Math.max(0, ...usage.slice(0, 5).map((u) => u.all)));
+	const spaceTotals = $derived(
+		stats
+			? { personal: stats.personalBytes, shared: stats.sharedBytes, library: stats.libraryBytes }
+			: { personal: 0, shared: 0, library: 0 }
+	);
+	const shownBytes = $derived(visibleBytes(spaceTotals, hiddenSpaces.set));
 	const photoBytes = $derived(usage.reduce((sum, u) => sum + u.photoBytes, 0));
 	const videoBytes = $derived(usage.reduce((sum, u) => sum + u.videoBytes, 0));
 	const months = $derived(growthSeries(growthQuery.data ?? [], 24));
@@ -95,7 +119,7 @@
 		})}
 		{@render metric({
 			label: m.admin_dash_storage(),
-			value: stats ? formatBytes(stats.totalBytes) : dash,
+			value: stats ? formatBytes(shownBytes) : dash,
 			pending: statsQuery.isPending,
 			iconPath: adminIcons.storage,
 			sub: stats ? m.admin_dash_storage_sub({ count: usage.length, n: count(usage.length) }) : dash
@@ -199,6 +223,10 @@
 					formatBytes(photoBytes),
 					formatBytes(videoBytes)
 				)}
+				<div class="split">
+					<span class="small">{m.admin_dash_split_space()}</span>
+					<SpaceBar bytes={spaceTotals} label={m.admin_dash_split_space()} />
+				</div>
 				<div class="top-head">
 					<h3>{m.admin_dash_top_users()}</h3>
 					{#if usage.length}
@@ -210,12 +238,18 @@
 						<li>
 							<span class="top-name">{user.displayName}</span>
 							<span class="num muted small"
-								>{formatBytes(user.bytes)}{#if stats.totalBytes}
-									· {percentOfOne(user.bytes / stats.totalBytes)}{/if}</span
+								>{formatBytes(
+									user.bytes
+								)}{#if shownBytes}{` · ${percentOfOne(user.bytes / shownBytes)}`}{/if}</span
 							>
 							<span class="bar"
-								><span style:width="{usage[0].bytes ? (user.bytes / usage[0].bytes) * 100 : 0}%"
-								></span></span
+								><SpaceBar
+									bytes={user.spaces}
+									label={user.displayName}
+									scale={maxAll ? user.all / maxAll : 0}
+									height={6}
+									legend={false}
+								/></span
 							>
 						</li>
 					{:else}

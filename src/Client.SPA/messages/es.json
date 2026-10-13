@@ -1,5 +1,11 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"storage_space_personal": "Personal",
+	"storage_space_shared": "Carpetas compartidas",
+	"storage_space_library": "Bibliotecas externas",
+	"storage_space_hidden": "oculto",
+	"storage_space_hide": "Quitar del total",
+	"storage_space_show": "Sumar al total",
 	"app_name": "Photonne",
 	"session_restoring": "Cargando…",
 	"session_unreachable_title": "No se puede conectar con el servidor",

@@ -90,6 +90,7 @@
 	"admin_dash_split": "Distribución",
 	"admin_dash_split_items": "Por número de elementos",
 	"admin_dash_split_storage": "Por espacio ocupado",
+	"admin_dash_split_space": "Por origen",
 	"admin_dash_top_users": "Quién ocupa más",
 	"admin_dash_no_usage": "Sin datos de uso.",
 	"admin_dash_coverage_title": "Cobertura de indexación",

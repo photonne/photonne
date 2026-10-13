@@ -20,6 +20,18 @@ test('settings open on the profile and move between sections', async ({ page }) 
 	);
 	await expect(page.getByText(/casi lleno/)).toBeVisible();
 	await expect(page.getByRole('row', { name: /NAS familiar/ })).toBeVisible();
+	await expect(page.getByRole('row', { name: /Carpetas compartidas/ })).toBeVisible();
+	await expect(page.getByText(/No cuentan para tu cuota/)).toBeVisible();
+
+	// Shared folders leave the total but stay listed.
+	const total = page.getByRole('row', { name: /Total/ });
+	await expect(total).toContainText('64,3 GB');
+	await page.getByRole('button', { name: /Carpetas compartidas/ }).click();
+	await expect(page.getByRole('button', { name: /Carpetas compartidas/ })).toHaveAttribute(
+		'aria-pressed',
+		'false'
+	);
+	await expect(total).toContainText('57,7 GB');
 });
 
 test('edits the profile and confirms a username change', async ({ page }) => {

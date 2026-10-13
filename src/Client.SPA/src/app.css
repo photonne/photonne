@@ -72,6 +72,12 @@
 	--color-toast-danger: #7f1d1d;
 	/* The toast's action (Undo): gold on the dark toast in both themes. */
 	--color-toast-action: #ffd166;
+	/* Storage by space: personal (counts towards the quota), shared folders,
+	   external libraries, and the hatch of a space hidden from the totals. */
+	--color-space-personal: var(--color-accent);
+	--color-space-shared: #3b6ea5;
+	--color-space-library: #7b4fa6;
+	--color-space-hidden: var(--color-border-strong);
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
 
 	--header-height: 56px;
@@ -106,6 +112,8 @@
 		--color-toast: #3a3c42;
 		--color-toast-text: #f2f2f4;
 		--color-toast-danger: #8c2a2a;
+		--color-space-shared: #8ab4e8;
+		--color-space-library: #c4a3e8;
 		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 		color-scheme: dark;
 	}
@@ -134,6 +142,8 @@
 	--color-toast: #3a3c42;
 	--color-toast-text: #f2f2f4;
 	--color-toast-danger: #8c2a2a;
+	--color-space-shared: #8ab4e8;
+	--color-space-library: #c4a3e8;
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 	color-scheme: dark;
 }

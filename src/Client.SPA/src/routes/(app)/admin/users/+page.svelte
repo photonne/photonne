@@ -67,7 +67,9 @@
 
 	const users = $derived.by((): AdminUser[] => {
 		const usage = new Map(
-			(statsQuery.data?.users ?? []).map((u) => [u.userId, u.photoBytes + u.videoBytes])
+			// The quota only counts the personal space: shared folders and
+			// external libraries are measured apart.
+			(statsQuery.data?.users ?? []).map((u) => [u.userId, u.personalBytes])
 		);
 		return (usersQuery.data ?? []).map((u) => ({
 			...u,
