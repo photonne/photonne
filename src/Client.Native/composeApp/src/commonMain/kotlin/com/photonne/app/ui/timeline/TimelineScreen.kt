@@ -1,5 +1,6 @@
 package com.photonne.app.ui.timeline
 
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PhotonneColors
@@ -269,6 +270,10 @@ fun TimelineScreen(
     val deviceLibrary: DeviceLibraryStore = koinInject()
     val deviceLibraryState by deviceLibrary.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { deviceLibrary.ensureStarted() }
+    LifecycleStartEffect(deviceLibrary) {
+        deviceLibrary.recheckAccess()
+        onStopOrDispose { }
+    }
     val requestLibraryAccess = rememberDeviceLibraryAccessRequester(
         onResult = deviceLibrary::onAccessResult
     )

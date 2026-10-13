@@ -194,6 +194,20 @@ class TimelineBucketStoreTest {
     }
 
     @Test
+    fun eviction_never_drops_the_months_just_requested() = runTest {
+        val (store, requests) = buildStore(maxLoadedBuckets = 1)
+        store.refresh()
+
+        // More months on screen than the cap: all of them stay loaded…
+        store.ensureLoaded(listOf("2026-02", "2026-01", "2025-12"))
+        assertTrue(store.buckets.value.all { it.isLoaded })
+
+        // …so asking for the same viewport again fetches nothing.
+        store.ensureLoaded(listOf("2026-02", "2026-01", "2025-12"))
+        assertEquals(1, requests.count { it.endsWith("/buckets/2026-02") })
+    }
+
+    @Test
     fun ensureLoaded_refreshes_recency_so_visible_buckets_survive_eviction() = runTest {
         val (store, _) = buildStore(maxLoadedBuckets = 2)
         store.refresh()

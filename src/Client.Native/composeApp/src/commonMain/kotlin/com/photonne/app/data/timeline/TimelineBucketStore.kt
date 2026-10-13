@@ -198,7 +198,7 @@ class TimelineBucketStore(
             // own successes already flipped isLoading in storeItemsLocked).
             setLoading(toFetch, loading = false)
         }
-        evictBeyondCap()
+        evictBeyondCap(protected = keys.toSet())
     }
 
     /**
@@ -407,14 +407,24 @@ class TimelineBucketStore(
         }
     }
 
-    private suspend fun evictBeyondCap() {
+    /**
+     * Drops the least recently touched contents beyond [maxLoadedBuckets],
+     * never the [protected] keys the caller just asked for (the viewport and
+     * its neighbours). When more months than the cap fit on screen (sparse
+     * months on a tall iPad or desktop window), evicting visible ones changed
+     * the grid's layout key, the visibility effect asked for them again and
+     * the two chased each other forever: requests non-stop and months
+     * flickering between skeleton and content. The cap then simply stretches
+     * to what is on screen.
+     */
+    private suspend fun evictBeyondCap(protected: Set<String>) {
         mutex.withLock {
             val loaded = _buckets.value.filter { it.isLoaded }
             val excess = loaded.size - maxLoadedBuckets
             if (excess <= 0) return
 
             val evictKeys = loaded
-                .filter { it.key !in inFlight }
+                .filter { it.key !in inFlight && it.key !in protected }
                 .sortedBy { lastTouched[it.key] ?: 0L }
                 .take(excess)
                 .mapTo(HashSet()) { it.key }

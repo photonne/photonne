@@ -3,6 +3,7 @@ package com.photonne.app.data.devicelibrary
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.devicebackup.BackupLedger
+import com.photonne.app.util.suspendRunCatching
 import kotlinx.coroutines.CancellationException
 import com.photonne.app.data.devicebackup.DeviceGallery
 import com.photonne.app.data.devicebackup.DeviceMedia
@@ -191,12 +192,28 @@ class DeviceLibraryStore(
             val media = if (libraryScope == DeviceLibraryScope.SyncedOnly) {
                 emptyList()
             } else {
-                runCatching { library.loadAll(libraryScope) }.getOrDefault(emptyList())
+                suspendRunCatching { library.loadAll(libraryScope) }.getOrElse {
+                    // A failed MediaStore/PhotoKit query isn't an empty
+                    // gallery: keep the device photos already on screen.
+                    _state.update { it.copy(isLoading = false) }
+                    return
+                }
             }
             mediaByUri = media.associateBy { it.uri }
             rebuildItems(media)
             _state.update { it.copy(isLoading = false) }
         }
+    }
+
+    /**
+     * Back to the foreground: re-enumerates only if the access level changed
+     * meanwhile. Granting the permission from the system settings (or from the
+     * backup's folder picker) after denying the first prompt fires no media
+     * change, so the device photos stayed missing until the app restarted.
+     */
+    fun recheckAccess() {
+        if (!started) return
+        if (library.accessState() != _state.value.access) requestRefresh()
     }
 
     /** Fire-and-forget [refresh] — for callers that just changed the
