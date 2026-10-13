@@ -69,3 +69,48 @@ class BackupLedgerReconcileTest {
         assertNull(entry.previousSha256)
     }
 }
+
+/** An installed app's ledger (schema v4, before previousSha256) upgraded in place. */
+class BackupLedgerMigrationTest {
+
+    @Test
+    fun a_v4_ledger_migrates_keeping_its_rows() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        // Build the current schema, then roll backupLedger back to its v4 shape.
+        PhotonneDatabase.Schema.create(driver)
+        driver.execute(null, "DROP TABLE backupLedger", 0)
+        driver.execute(
+            null,
+            """
+            CREATE TABLE backupLedger (
+                folderUri TEXT NOT NULL,
+                uri TEXT NOT NULL,
+                sizeBytes INTEGER NOT NULL,
+                dateModifiedMillis INTEGER NOT NULL,
+                sha256 TEXT,
+                syncState TEXT NOT NULL DEFAULT 'UNKNOWN',
+                assetId TEXT,
+                failureReason TEXT,
+                lastVerifiedAtMillis INTEGER,
+                failureDetail TEXT,
+                PRIMARY KEY (folderUri, uri)
+            )
+            """.trimIndent(),
+            0
+        )
+        driver.execute(
+            null,
+            "INSERT INTO backupLedger(folderUri, uri, sizeBytes, dateModifiedMillis, sha256, syncState, assetId) " +
+                "VALUES ('f', 'photokit:a', 0, 1000, 'hash-1', 'SYNCED', 'asset-1')",
+            0
+        )
+
+        PhotonneDatabase.Schema.migrate(driver, oldVersion = 4, newVersion = PhotonneDatabase.Schema.version)
+
+        val entry = BackupLedger(PhotonneDatabase(driver)).entries("f").getValue("photokit:a")
+        assertEquals(LedgerState.Synced, entry.state)
+        assertEquals("hash-1", entry.sha256)
+        assertNull(entry.previousSha256)
+        assertEquals(5L, PhotonneDatabase.Schema.version)
+    }
+}
