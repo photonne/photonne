@@ -14,6 +14,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
@@ -21,7 +25,9 @@ import androidx.compose.ui.semantics.semantics
 
 data class StackedSegment(
     val value: Float,
-    val color: Color
+    val color: Color,
+    /** Sigue en la barra pero rayado: un espacio que no suma al total. */
+    val hatched: Boolean = false
 )
 
 /**
@@ -42,7 +48,9 @@ fun StackedBar(
     trackColor: Color? = null,
     animationDurationMs: Int = 600,
     /** Resumen para el lector de pantalla: un Canvas no dice nada por sí solo. */
-    description: String? = null
+    description: String? = null,
+    /** Parte de la pista que ocupan los segmentos (0..1), para comparar filas. */
+    fillFraction: Float = 1f
 ) {
     val sanitized = segments.filter { it.value > 0f }
     val total = sanitized.fold(0f) { acc, s -> acc + s.value }.coerceAtLeast(0.0001f)
@@ -74,7 +82,7 @@ fun StackedBar(
         }
         if (sanitized.isEmpty()) return@Canvas
 
-        val availableWidth = size.width * progress.value
+        val availableWidth = size.width * fillFraction.coerceIn(0f, 1f) * progress.value
         var x = 0f
         for (segment in sanitized) {
             val segWidth = (segment.value / total) * availableWidth
@@ -83,13 +91,42 @@ fun StackedBar(
             // segments overlap the rounded corners visually because of
             // how round rects render at <2*radius widths — fine for our
             // sizes, and gives the bar a continuous look.
-            drawRoundRect(
-                color = segment.color,
-                topLeft = Offset(x, 0f),
-                size = Size(segWidth, size.height),
-                cornerRadius = radius
-            )
+            if (segment.hatched) {
+                drawHatched(segment.color, Offset(x, 0f), Size(segWidth, size.height), radius)
+            } else {
+                drawRoundRect(
+                    color = segment.color,
+                    topLeft = Offset(x, 0f),
+                    size = Size(segWidth, size.height),
+                    cornerRadius = radius
+                )
+            }
             x += segWidth
+        }
+    }
+}
+
+/**
+ * Fondo tenue y rayas a 45° recortadas al segmento: "está, pero no cuenta".
+ * Lo comparten la barra y las muestras de la leyenda.
+ */
+fun DrawScope.drawHatched(color: Color, topLeft: Offset, size: Size, radius: CornerRadius) {
+    val clip = Path().apply {
+        addRoundRect(RoundRect(topLeft.x, topLeft.y, topLeft.x + size.width, topLeft.y + size.height, radius))
+    }
+    clipPath(clip) {
+        drawRect(color = color.copy(alpha = 0.18f), topLeft = topLeft, size = size)
+        val step = 3.dp.toPx()
+        val stroke = 1.dp.toPx()
+        var start = topLeft.x - size.height
+        while (start < topLeft.x + size.width) {
+            drawLine(
+                color = color,
+                start = Offset(start, topLeft.y + size.height),
+                end = Offset(start + size.height, topLeft.y),
+                strokeWidth = stroke
+            )
+            start += step
         }
     }
 }

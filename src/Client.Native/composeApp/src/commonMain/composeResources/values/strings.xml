@@ -790,6 +790,14 @@
     <string name="storage_count_size_format">%1$d · %2$s</string>
     <string name="storage_legend_used">Usado</string>
     <string name="storage_legend_free">Libre</string>
+    <string name="storage_section_spaces">Por origen</string>
+    <string name="storage_section_shared">Carpetas compartidas</string>
+    <string name="storage_space_personal">Personal</string>
+    <string name="storage_space_shared">Carpetas compartidas</string>
+    <string name="storage_space_library">Bibliotecas externas</string>
+    <string name="storage_space_hidden">oculto</string>
+    <string name="storage_spaces_hint">Apaga uno para quitarlo del total: seguirá en la barra, rayado.</string>
+    <string name="storage_quota_personal_only">Solo cuenta para la cuota tu espacio personal. Las carpetas compartidas y las bibliotecas externas se miden, pero no cuentan.</string>
 
     <!-- Administration -->
     <string name="administration_title">Administración</string>

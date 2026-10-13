@@ -6,6 +6,8 @@ import com.photonne.app.data.account.AccountRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.StorageInfoDto
+import com.photonne.app.data.settings.HiddenStorageSpacesStore
+import com.photonne.app.data.settings.StorageSpace
 import com.photonne.app.ui.format.storageQuotaFraction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,10 +28,16 @@ data class AccountStorageUiState(
 class AccountStorageViewModel(
     private val repository: AccountRepository,
     private val errorFactory: UiErrorFactory,
+    private val hiddenSpacesStore: HiddenStorageSpacesStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AccountStorageUiState())
     val state: StateFlow<AccountStorageUiState> = _state.asStateFlow()
+
+    /** Carpetas compartidas y bibliotecas que el usuario quitó del total. */
+    val hiddenSpaces: StateFlow<Set<StorageSpace>> = hiddenSpacesStore.value
+
+    fun toggleSpace(space: StorageSpace) = hiddenSpacesStore.toggle(space)
 
     /**
      * Carga solo si aún no hay datos: la fila de Almacenamiento de Ajustes

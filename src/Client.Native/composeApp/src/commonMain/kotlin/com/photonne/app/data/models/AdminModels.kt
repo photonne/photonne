@@ -46,7 +46,12 @@ data class AdminUserUsage(
     val photos: Int = 0,
     val videos: Int = 0,
     val photoBytes: Long = 0L,
-    val videoBytes: Long = 0L
+    val videoBytes: Long = 0L,
+    // photoBytes + videoBytes por espacio; solo personalBytes cuenta para la
+    // cuota. Un servidor anterior no los manda: ver [spaceBytes].
+    val personalBytes: Long = 0L,
+    val sharedBytes: Long = 0L,
+    val libraryBytes: Long = 0L
 )
 
 @Serializable
@@ -54,6 +59,9 @@ data class AdminStatsResponse(
     val totalPhotos: Int = 0,
     val totalVideos: Int = 0,
     val totalBytes: Long = 0L,
+    val personalBytes: Long = 0L,
+    val sharedBytes: Long = 0L,
+    val libraryBytes: Long = 0L,
     val users: List<AdminUserUsage> = emptyList()
 )
 

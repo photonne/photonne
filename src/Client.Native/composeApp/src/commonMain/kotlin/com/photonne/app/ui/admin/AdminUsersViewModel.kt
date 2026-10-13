@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import com.photonne.app.data.settings.spaceBytes
 import com.photonne.app.data.models.NO_STORAGE_QUOTA
 import com.photonne.app.resources.admin_users_error_load
 import com.photonne.app.resources.admin_users_created_format
@@ -127,7 +128,8 @@ class AdminUsersViewModel(
                     .onSuccess { stats ->
                         _state.update { state ->
                             state.copy(
-                                usedBytesByUser = stats.users.associate { it.userId to it.photoBytes + it.videoBytes }
+                                // La cuota solo cuenta lo personal.
+                                usedBytesByUser = stats.users.associate { it.userId to it.spaceBytes().personal }
                             )
                         }
                     }

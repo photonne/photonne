@@ -783,6 +783,14 @@
     <string name="storage_count_size_format">%1$d · %2$s</string>
     <string name="storage_legend_used">Used</string>
     <string name="storage_legend_free">Free</string>
+    <string name="storage_section_spaces">By where it lives</string>
+    <string name="storage_section_shared">Shared folders</string>
+    <string name="storage_space_personal">Personal</string>
+    <string name="storage_space_shared">Shared folders</string>
+    <string name="storage_space_library">External libraries</string>
+    <string name="storage_space_hidden">hidden</string>
+    <string name="storage_spaces_hint">Turn one off to leave it out of the total: it stays in the bar, hatched.</string>
+    <string name="storage_quota_personal_only">Only your personal space counts towards the quota. Shared folders and external libraries are measured but don\'t count.</string>
 
     <!-- Administration -->
     <string name="administration_title">Administration</string>

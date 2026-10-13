@@ -11,7 +11,8 @@ import com.photonne.app.ui.theme.LocalIsDarkTheme
  * top-N bars. Photos lean on the brand gold (primary), videos on a
  * complementary cool tone so the two are easy to tell apart even on a
  * grayscale donut. This file is the single home for chart colours: the
- * blue is the only hue in the app outside the theme, on purpose.
+ * blue and the storage-space green and violet are the only hues in the app
+ * outside the theme, on purpose.
  *
  * "Free" / inactive segments are a translucent onSurfaceVariant rather than
  * surfaceVariant: the storage donut sits on a surfaceVariant card, so that
@@ -20,7 +21,13 @@ import com.photonne.app.ui.theme.LocalIsDarkTheme
 data class ChartPalette(
     val photos: Color,
     val videos: Color,
-    val free: Color
+    val free: Color,
+    /** Espacios de almacenamiento: los mismos tonos que el SPA. */
+    val spacePersonal: Color,
+    val spaceShared: Color,
+    val spaceLibrary: Color,
+    /** Rayado de un espacio quitado del total. */
+    val spaceHidden: Color
 )
 
 @Composable
@@ -32,6 +39,10 @@ fun rememberChartPalette(): ChartPalette {
     return ChartPalette(
         photos = primary,
         videos = if (isDark) Color(0xFF93C5FD) else Color(0xFF3B82F6),
-        free = muted.copy(alpha = 0.25f)
+        free = muted.copy(alpha = 0.25f),
+        spacePersonal = primary,
+        spaceShared = if (isDark) Color(0xFF86D39F) else Color(0xFF2F7D4F),
+        spaceLibrary = if (isDark) Color(0xFFC4A3E8) else Color(0xFF7B4FA6),
+        spaceHidden = muted
     )
 }

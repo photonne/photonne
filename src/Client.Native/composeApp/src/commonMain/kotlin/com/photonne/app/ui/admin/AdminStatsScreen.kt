@@ -53,9 +53,16 @@ import com.photonne.app.ui.charts.DonutChart
 import com.photonne.app.ui.charts.DonutSlice
 import com.photonne.app.ui.charts.LegendItem
 import com.photonne.app.ui.charts.StackedBar
+import com.photonne.app.ui.charts.StorageSpacesBar
+import com.photonne.app.ui.charts.StorageSpacesBreakdown
+import com.photonne.app.ui.charts.storageSpaceName
+import com.photonne.app.data.settings.SpaceBytes
+import com.photonne.app.data.settings.StorageSpace
+import com.photonne.app.data.settings.spaceBytes
+import com.photonne.app.resources.storage_section_spaces
+import com.photonne.app.resources.storage_spaces_hint
+import androidx.compose.ui.text.style.TextOverflow
 import com.photonne.app.ui.charts.StackedSegment
-import com.photonne.app.ui.charts.TopNBars
-import com.photonne.app.ui.charts.TopNEntry
 import com.photonne.app.ui.charts.rememberChartPalette
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
@@ -72,6 +79,7 @@ fun AdminStatsScreen(
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val hiddenSpaces by viewModel.hiddenSpaces.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.load() }
 
     val data = state.data
@@ -104,6 +112,9 @@ fun AdminStatsScreen(
                 videoBytes = totalVideoBytes
             )
         }
+        item {
+            SpacesOverviewCard(data.spaceBytes(), hiddenSpaces, viewModel::toggleSpace)
+        }
         state.coverage?.let { coverage ->
             item {
                 IndexingCoverageCard(coverage)
@@ -111,7 +122,7 @@ fun AdminStatsScreen(
         }
         if (data.users.size >= 2) {
             item {
-                TopUsersCard(users = data.users)
+                TopUsersCard(users = data.users, hidden = hiddenSpaces)
             }
         }
         item {
@@ -197,14 +208,54 @@ private fun TotalsOverviewCard(
     }
 }
 
+/**
+ * Personal, carpetas compartidas y bibliotecas externas de todo el servidor.
+ * Los interruptores quitan un espacio del total y del ranking de abajo.
+ */
 @Composable
-private fun TopUsersCard(users: List<AdminUserUsage>) {
-    val palette = rememberChartPalette()
-    val top = remember(users) {
+private fun SpacesOverviewCard(
+    spaces: SpaceBytes,
+    hidden: Set<StorageSpace>,
+    onToggle: (StorageSpace) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.storage_section_spaces),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            StorageSpacesBreakdown(spaces, hidden, onToggle)
+            if (spaces.shared + spaces.library > 0L) {
+                Text(
+                    stringResource(Res.string.storage_spaces_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopUsersCard(users: List<AdminUserUsage>, hidden: Set<StorageSpace>) {
+    // Ordena por lo que suma (sin los espacios ocultos); la barra enseña todo,
+    // con lo oculto rayado, a escala del que más ocupa.
+    val top = remember(users, hidden) {
         users
-            .sortedByDescending { it.photoBytes + it.videoBytes }
+            .map { it to it.spaceBytes() }
+            .sortedByDescending { (_, spaces) -> spaces.visible(hidden) }
             .take(10)
     }
+    val maxAll = top.maxOfOrNull { (_, spaces) -> spaces.total }?.coerceAtLeast(1L) ?: 1L
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -220,17 +271,30 @@ private fun TopUsersCard(users: List<AdminUserUsage>) {
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            TopNBars(
-                entries = top.map { usage ->
-                    val total = usage.photoBytes + usage.videoBytes
-                    TopNEntry(
-                        label = usage.displayName,
-                        value = total.toFloat().coerceAtLeast(0f),
-                        displayValue = humanBytes(total),
-                        color = palette.photos
+            top.forEach { (usage, spaces) ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            usage.displayName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            humanBytes(spaces.visible(hidden)),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    StorageSpacesBar(
+                        bytes = spaces,
+                        hidden = hidden,
+                        barHeight = 8.dp,
+                        fillFraction = spaces.total.toFloat() / maxAll
                     )
                 }
-            )
+            }
         }
     }
 }
@@ -419,6 +483,12 @@ private fun UserUsageCard(usage: AdminUserUsage) {
                 value = "${usage.videos} · ${humanBytes(usage.videoBytes)}"
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xxs))
+            val spaces = usage.spaceBytes()
+            if (spaces.shared + spaces.library > 0L) {
+                StorageSpace.entries.filter { spaces[it] > 0L }.forEach { space ->
+                    AdminKeyValueRow(label = storageSpaceName(space), value = humanBytes(spaces[space]))
+                }
+            }
             AdminKeyValueRow(
                 label = stringResource(Res.string.admin_stats_total_storage),
                 value = humanBytes(usage.photoBytes + usage.videoBytes)

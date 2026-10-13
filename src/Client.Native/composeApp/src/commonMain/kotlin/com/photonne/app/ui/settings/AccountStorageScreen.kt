@@ -49,6 +49,14 @@ import com.photonne.app.ui.charts.DonutChart
 import com.photonne.app.ui.charts.DonutSlice
 import com.photonne.app.ui.charts.LegendItem
 import com.photonne.app.ui.charts.StackedBar
+import com.photonne.app.ui.charts.StorageSpacesBreakdown
+import com.photonne.app.data.settings.SpaceBytes
+import com.photonne.app.data.settings.StorageSpace
+import com.photonne.app.data.settings.spaceBytes
+import com.photonne.app.resources.storage_section_spaces
+import com.photonne.app.resources.storage_section_shared
+import com.photonne.app.resources.storage_spaces_hint
+import com.photonne.app.resources.storage_quota_personal_only
 import com.photonne.app.ui.charts.StackedSegment
 import com.photonne.app.ui.charts.rememberChartPalette
 import com.photonne.app.ui.format.humanBytes
@@ -77,6 +85,7 @@ fun AccountStorageScreen(
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val hiddenSpaces by viewModel.hiddenSpaces.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.load() }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -107,8 +116,27 @@ fun AccountStorageScreen(
                 item { SectionHeader(stringResource(Res.string.storage_section_overview)) }
                 item { OverviewCard(info, state.usagePercent, percentInt) }
 
+                // Solo hay reparto que enseñar si algo vive fuera del espacio personal.
+                val spaces = info.spaceBytes()
+                if (spaces.shared + spaces.library > 0L) {
+                    item { SectionHeader(stringResource(Res.string.storage_section_spaces)) }
+                    item { SpacesCard(spaces, hiddenSpaces, viewModel::toggleSpace) }
+                }
+
                 item { SectionHeader(stringResource(Res.string.storage_section_personal)) }
                 item { PersonalBreakdownCard(info) }
+
+                if (info.sharedPhotos + info.sharedVideos > 0) {
+                    item { SectionHeader(stringResource(Res.string.storage_section_shared)) }
+                    item {
+                        BreakdownCard(
+                            photos = info.sharedPhotos,
+                            videos = info.sharedVideos,
+                            photoBytes = info.sharedPhotoBytes,
+                            videoBytes = info.sharedVideoBytes
+                        )
+                    }
+                }
 
                 if (info.libraries.isNotEmpty()) {
                     item { SectionHeader(stringResource(Res.string.storage_section_libraries)) }
@@ -169,15 +197,16 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
                 centerPrimary = "$percentInt%"
                 centerSecondary = humanBytes(quota)
             } else {
+                // usedBytes es solo lo personal: el donut cuenta lo mismo.
                 slices = listOf(
-                    DonutSlice(info.photoBytes.toFloat().coerceAtLeast(0f), palette.photos),
-                    DonutSlice(info.videoBytes.toFloat().coerceAtLeast(0f), palette.videos)
+                    DonutSlice(info.personalPhotoBytes.toFloat().coerceAtLeast(0f), palette.photos),
+                    DonutSlice(info.personalVideoBytes.toFloat().coerceAtLeast(0f), palette.videos)
                 )
                 centerPrimary = usedHuman
                 centerSecondary = null
                 chartDescription = stringResource(Res.string.storage_label_photos) + " " +
-                    humanBytes(info.photoBytes) + ", " +
-                    stringResource(Res.string.storage_label_videos) + " " + humanBytes(info.videoBytes)
+                    humanBytes(info.personalPhotoBytes) + ", " +
+                    stringResource(Res.string.storage_label_videos) + " " + humanBytes(info.personalVideoBytes)
             }
             DonutChart(
                 slices = slices,
@@ -256,6 +285,37 @@ private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentI
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SpacesCard(
+    spaces: SpaceBytes,
+    hidden: Set<StorageSpace>,
+    onToggle: (StorageSpace) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StorageSpacesBreakdown(spaces, hidden, onToggle)
+            Text(
+                stringResource(Res.string.storage_spaces_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                stringResource(Res.string.storage_quota_personal_only),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

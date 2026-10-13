@@ -10,6 +10,8 @@ import com.photonne.app.data.api.AdminIndexingCoverageResponse
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AdminStatsResponse
+import com.photonne.app.data.settings.HiddenStorageSpacesStore
+import com.photonne.app.data.settings.StorageSpace
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,10 +29,16 @@ data class AdminStatsUiState(
 class AdminStatsViewModel(
     private val repository: AdminRepository,
     private val errorFactory: UiErrorFactory,
+    private val hiddenSpacesStore: HiddenStorageSpacesStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminStatsUiState())
     val state: StateFlow<AdminStatsUiState> = _state.asStateFlow()
+
+    /** Carpetas compartidas y bibliotecas que el admin quitó de los totales. */
+    val hiddenSpaces: StateFlow<Set<StorageSpace>> = hiddenSpacesStore.value
+
+    fun toggleSpace(space: StorageSpace) = hiddenSpacesStore.toggle(space)
 
     fun dismissError() {
         _state.update { it.copy(error = null) }

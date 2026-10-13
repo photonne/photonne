@@ -110,6 +110,13 @@ data class StorageInfoDto(
     val personalVideos: Int = 0,
     val personalPhotoBytes: Long = 0L,
     val personalVideoBytes: Long = 0L,
+    // Lo tuyo en carpetas compartidas (/assets/shared): se mide pero no cuenta
+    // para la cuota, igual que las bibliotecas externas. Un servidor anterior
+    // no lo manda y queda a 0.
+    val sharedPhotos: Int = 0,
+    val sharedVideos: Int = 0,
+    val sharedPhotoBytes: Long = 0L,
+    val sharedVideoBytes: Long = 0L,
     val libraries: List<StorageLibraryUsageDto> = emptyList()
 )
 
