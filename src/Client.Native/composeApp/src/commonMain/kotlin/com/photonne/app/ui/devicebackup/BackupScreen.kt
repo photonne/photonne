@@ -5,6 +5,9 @@ import com.photonne.app.data.devicelibrary.rememberDeviceLibraryAccessRequester
 import com.photonne.app.resources.backup_media_access_message
 import com.photonne.app.resources.backup_media_access_open_settings
 import com.photonne.app.resources.backup_media_access_title
+import com.photonne.app.resources.backup_media_access_missing_title
+import com.photonne.app.resources.backup_media_access_missing_hint
+import com.photonne.app.resources.backup_media_access_grant
 import com.photonne.app.ui.platform.rememberAppSettingsOpener
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.ProgressHeight
@@ -224,6 +227,7 @@ fun BackupScreen(
         }
     }
     LifecycleStartEffect(Unit) {
+        viewModel.reloadIfMediaAccessGranted()
         val action = pendingAccessAction
         if (action != null && !showMediaAccessDialog && !viewModel.needsMediaAccess()) {
             pendingAccessAction = null
@@ -333,6 +337,16 @@ fun BackupScreen(
             }
         }
 
+        // Without the photos permission nothing can be listed: say so and
+        // offer it, instead of an error snackbar on every visit.
+        if (state.mediaAccessMissing) {
+            item("media-access-missing") {
+                MediaAccessMissingCard(
+                    onGrant = { withMediaAccess(viewModel::reloadIfMediaAccessGranted) }
+                )
+            }
+        }
+
         // Lote L11: la pasada se cortó por la cuenta (cuota llena, sesión
         // caducada). Va antes del estado: explica los fallos que éste cuenta.
         val passBlock = state.passBlock
@@ -343,7 +357,8 @@ fun BackupScreen(
         // The answer to "am I backed up?" comes first. It used to sit at the
         // bottom, below every setting — the one thing people open this screen
         // for was the last thing they saw.
-        if (state.isBackupEnabled) {
+        // Its counts mean nothing without access: no file could be listed.
+        if (state.isBackupEnabled && !state.mediaAccessMissing) {
             item("status") {
                 BackupStatusCard(
                     state = state,
@@ -1096,6 +1111,35 @@ private fun BackupBlockedCard(block: com.photonne.app.data.devicebackup.BackupPa
  * Aviso prominente de permiso de notificaciones denegado, con la salida real:
  * pedirlo (si el sistema aún deja) o abrir los ajustes de la app.
  */
+@Composable
+private fun MediaAccessMissingCard(onGrant: () -> Unit) {
+    androidx.compose.material3.Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.lg, vertical = Spacing.xs)
+    ) {
+        Column(modifier = Modifier.padding(Spacing.md)) {
+            Text(
+                text = stringResource(Res.string.backup_media_access_missing_title),
+                style = MaterialTheme.typography.titleSmall
+            )
+            Text(
+                text = stringResource(Res.string.backup_media_access_missing_hint),
+                style = MaterialTheme.typography.bodySmall
+            )
+            TextButton(onClick = onGrant) {
+                Text(
+                    stringResource(Res.string.backup_media_access_grant),
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun NotificationsDeniedCard(
     onOpenSettings: (() -> Unit)?,

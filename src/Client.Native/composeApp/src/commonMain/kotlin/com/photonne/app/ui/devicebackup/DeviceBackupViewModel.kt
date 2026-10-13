@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.devicebackup.DeviceFolderRef
 import com.photonne.app.data.devicebackup.DeviceMedia
+import com.photonne.app.data.devicebackup.DeviceGalleryUnavailable
 import com.photonne.app.data.devicebackup.BackgroundSyncPreferences
 import com.photonne.app.data.devicebackup.BackgroundSyncScheduler
 import com.photonne.app.data.devicebackup.BackupActivity
@@ -93,6 +94,9 @@ data class DeviceBackupUiState(
     val isFreeingSpace: Boolean = false,
     val syncProgress: SyncProgress? = null,
     val error: UiError? = null,
+    /** The folders couldn't be listed for lack of the photos permission:
+     *  the screen offers to grant it instead of reporting a failure. */
+    val mediaAccessMissing: Boolean = false,
     val statusMessage: String? = null,
     /** MediaStore files the server confirmed, waiting for the screen to run
      *  the system's delete consent flow ([consumeDeviceUrisToFree]). */
@@ -473,6 +477,22 @@ class DeviceBackupViewModel(
         return folderUris.isEmpty() || folderUris.any { !it.startsWith(SAF_TREE_URI_PREFIX) }
     }
 
+    /** Reports [error] as missing access, not as a failure, when that's what it is. */
+    private fun markMediaAccessMissing(error: Throwable): Boolean {
+        if (error !is DeviceGalleryUnavailable || !needsMediaAccess()) return false
+        _state.update { it.copy(isLoading = false, mediaAccessMissing = true) }
+        return true
+    }
+
+    /** Lists the folders again once access is back (granted from the card,
+     *  or in Settings while the app was in the background). */
+    fun reloadIfMediaAccessGranted() {
+        val current = _state.value
+        if (!current.mediaAccessMissing || needsMediaAccess()) return
+        _state.update { it.copy(mediaAccessMissing = false) }
+        if (current.folders.isNotEmpty()) refreshFolderContents(current.folders)
+    }
+
     fun setAutoBackupEnabled(enabled: Boolean) {
         updateBackgroundPrefs { repository.setAutoBackupEnabled(enabled) }
         // Flipping the switch should visibly DO something: the periodic job
@@ -566,6 +586,7 @@ class DeviceBackupViewModel(
                         val previous = current.entries.associateBy { it.media.uri }
                         current.copy(
                             isLoading = false,
+                            mediaAccessMissing = false,
                             entries = scans.flatMap { (folder, items) ->
                                 items.map { media ->
                                     val existing = previous[media.uri]
@@ -596,6 +617,7 @@ class DeviceBackupViewModel(
                     }
                 }
                 .onFailure { error ->
+                    if (markMediaAccessMissing(error)) return@onFailure
                     _state.update {
                         it.copy(
                             isLoading = false,
@@ -1352,6 +1374,7 @@ class DeviceBackupViewModel(
                     _state.update { current ->
                         current.copy(
                             isLoading = false,
+                            mediaAccessMissing = false,
                             entries = scans.flatMap { (folder, items) ->
                                 items.map { DeviceBackupEntry(media = it, folderUri = folder.uri) }
                             }
@@ -1361,6 +1384,7 @@ class DeviceBackupViewModel(
                     maybeAutoVerify()
                 }
                 .onFailure { error ->
+                    if (markMediaAccessMissing(error)) return@onFailure
                     _state.update {
                         it.copy(
                             isLoading = false,

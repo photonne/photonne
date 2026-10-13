@@ -1257,6 +1257,9 @@
     <string name="backup_media_access_title">Access to your photos</string>
     <string name="backup_media_access_message">To back up, Photonne needs access to the photos and videos on this device. Allow it in Settings, then come back to the app.</string>
     <string name="backup_media_access_open_settings">Open Settings</string>
+    <string name="backup_media_access_missing_title">No access to your photos</string>
+    <string name="backup_media_access_missing_hint">Photonne can\'t see the photos and videos on this device, so it can\'t tell what still needs backing up.</string>
+    <string name="backup_media_access_grant">Grant access</string>
     <string name="device_backup_free_space_dialog_title">Free up space</string>
     <plurals name="device_backup_free_space_dialog_message">
         <item quantity="one">%1$d already-synced file will be removed from the device. This cannot be undone.</item>
