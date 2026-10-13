@@ -1404,6 +1404,7 @@
     <string name="upload_error_server_error">Server error</string>
     <string name="upload_error_network_error">Network error</string>
     <string name="upload_error_file_unreadable">Couldn't read the file</string>
+    <string name="upload_error_rejected">The server rejected the file</string>
     <string name="upload_error_unknown">Unknown error</string>
 
     <!-- Enrichment status screen -->

@@ -68,18 +68,43 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // iOS gives us a budget (minutes, for BGProcessing) — when it runs
         // out, the expirationHandler fires. Cancelling the Swift Task would
-        // NOT reach the Kotlin suspend function, so instead we flip a
-        // cooperative flag the pass polls between files: runBackup then
-        // returns on its own and completes the task exactly once, below.
+        // NOT reach the Kotlin suspend function, so we flip a cooperative flag
+        // the pass polls between files, AND complete the task right away:
+        // waiting for the uploads, hashes and iCloud downloads still in flight
+        // overran the deadline, the watchdog killed the app and iOS handed out
+        // fewer background windows afterwards. The pass's own completion,
+        // later, is then a no-op.
+        let completion = TaskCompletion(task: task)
         task.expirationHandler = {
-            NSLog("[BackupTask] expiration handler fired — requesting cooperative stop")
+            NSLog("[BackupTask] expiration handler fired — stopping and completing now")
             IosBackupBridge.shared.requestStop()
+            completion.complete(success: false)
         }
 
         Task {
             let success = (try? await IosBackupBridge.shared.runBackup().boolValue) ?? false
-            task.setTaskCompleted(success: success)
+            completion.complete(success: success)
         }
+    }
+}
+
+/// Calls `setTaskCompleted` exactly once, whichever of the expiration handler
+/// and the finished pass gets there first.
+private final class TaskCompletion {
+    private let task: BGTask
+    private let lock = NSLock()
+    private var done = false
+
+    init(task: BGTask) {
+        self.task = task
+    }
+
+    func complete(success: Bool) {
+        lock.lock()
+        let first = !done
+        done = true
+        lock.unlock()
+        if first { task.setTaskCompleted(success: success) }
     }
 }
 

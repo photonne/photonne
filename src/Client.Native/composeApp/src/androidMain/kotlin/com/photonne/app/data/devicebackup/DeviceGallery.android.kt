@@ -153,7 +153,10 @@ actual class DeviceGallery(private val context: Context) {
     /** One indexed MediaStore query per collection — same speed class as the
      *  timeline's DeviceLibrary, replacing the recursive SAF walk. */
     private fun listBucketMedia(folder: DeviceFolderRef): List<DeviceMedia> {
-        if (!hasMediaReadAccess()) return emptyList()
+        // Not an empty bucket (Android revokes permissions of unused apps):
+        // reconciling against an empty listing would drop every ledger row of
+        // the folder (hashes, verdicts, skips).
+        if (!hasMediaReadAccess()) throw DeviceGalleryUnavailable("Media read permission not granted")
         val bucketId = folder.uri.removePrefix(DEVICE_BUCKET_URI_PREFIX)
         val out = ArrayList<DeviceMedia>(512)
         queryBucket(

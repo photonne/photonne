@@ -271,6 +271,12 @@ class BackupLedger(private val database: PhotonneDatabase) {
         queries.clearIgnored(folderUri, uri)
     }
 
+    /** A failed file is fine again (it read this time): back to UNKNOWN so the
+     *  next server check gives it a real verdict. Same reset as [unignore]. */
+    fun clearFailure(folderUri: String, uri: String) {
+        queries.clearIgnored(folderUri, uri)
+    }
+
     // ─── Internals ───────────────────────────────────────────────────────────
 
     private fun insert(folderUri: String, entry: LedgerEntry) {

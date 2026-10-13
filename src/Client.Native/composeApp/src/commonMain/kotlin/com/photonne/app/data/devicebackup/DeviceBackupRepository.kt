@@ -242,7 +242,23 @@ class DeviceBackupRepository(
                             }
                             writes.withLock {
                                 ledger.setHash(folder.uri, entry.uri, hash)
-                                entries[entry.uri] = entry.copy(sha256 = hash)
+                                // It read this time: an earlier FileUnreadable
+                                // (iCloud download that failed, a transient
+                                // read error) no longer applies. Left FAILED,
+                                // the verdict below kept it Failed and, as a
+                                // non-retryable reason, no scheduled pass ever
+                                // tried to upload it again.
+                                val recovered = entry.state == LedgerState.Failed &&
+                                    entry.failureReason == UploadFailureReason.FileUnreadable.name
+                                if (recovered) ledger.clearFailure(folder.uri, entry.uri)
+                                entries[entry.uri] = if (recovered) {
+                                    entry.copy(
+                                        sha256 = hash,
+                                        state = LedgerState.Unknown,
+                                        failureReason = null,
+                                        failureDetail = null
+                                    )
+                                } else entry.copy(sha256 = hash)
                                 hashed++
                                 onProgress?.invoke(VerificationProgress(hashed, needHash.size))
                             }

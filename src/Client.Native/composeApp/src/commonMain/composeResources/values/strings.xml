@@ -1446,6 +1446,7 @@
     <string name="upload_error_server_error">Error del servidor</string>
     <string name="upload_error_network_error">Error de red</string>
     <string name="upload_error_file_unreadable">No se pudo leer el archivo</string>
+    <string name="upload_error_rejected">El servidor rechazó el archivo</string>
     <string name="upload_error_unknown">Error desconocido</string>
 
     <!-- Enrichment status screen -->

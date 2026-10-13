@@ -66,6 +66,21 @@ class UploadFailureReasonTest {
         // A file we can't even read won't get better by retrying the upload —
         // the user's recourse is to skip it.
         assertFalse(UploadFailureReason.FileUnreadable.isRetryable)
+        assertFalse(UploadFailureReason.Rejected.isRetryable)
+    }
+
+    @Test
+    fun otherClientErrorsAreRejectedNotRetriedForever() {
+        // An empty file's `no_file_uploaded` 400 used to land on Unknown, which
+        // is retried: every wake spent three attempts on it and the failure
+        // notification never fired.
+        assertEquals(UploadFailureReason.Rejected, apiError(400).toUploadFailureReason())
+        assertEquals(UploadFailureReason.Rejected, apiError(415).toUploadFailureReason())
+        assertEquals(UploadFailureReason.NetworkError, apiError(408).toUploadFailureReason())
+        assertEquals(
+            UploadFailureReason.FileUnreadable,
+            DeviceGalleryUnavailable("Asset not found for IMG_0001.HEIC").toUploadFailureReason()
+        )
     }
 
     @Test

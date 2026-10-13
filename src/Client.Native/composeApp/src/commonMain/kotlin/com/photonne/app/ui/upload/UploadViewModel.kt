@@ -3,6 +3,7 @@ package com.photonne.app.ui.upload
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.devicebackup.UploadFailureReason
 import com.photonne.app.data.devicebackup.toUploadFailureReason
 import com.photonne.app.data.error.UiError
@@ -303,18 +304,20 @@ class UploadViewModel(
         }
         val outcome = try {
             Result.success(
-                // Streamed from the file as it goes out: memory stays flat
-                // whatever the size. The real size replaces the picker's guess
-                // (PhotoKit only knows it once read).
-                content.open { source, sizeBytes ->
-                    if (sizeBytes != current.sizeBytes) setSize(itemId, sizeBytes)
-                    repository.uploadStream(
-                        current.name,
-                        current.mimeType,
-                        source,
-                        sizeBytes,
-                        fileModifiedAtMillis = current.lastModifiedMillis
-                    )
+                resendingOnceAfterRefresh {
+                    // Streamed from the file as it goes out: memory stays flat
+                    // whatever the size. The real size replaces the picker's
+                    // guess (PhotoKit only knows it once read).
+                    content.open { source, sizeBytes ->
+                        if (sizeBytes != current.sizeBytes) setSize(itemId, sizeBytes)
+                        repository.uploadStream(
+                            current.name,
+                            current.mimeType,
+                            source,
+                            sizeBytes,
+                            fileModifiedAtMillis = current.lastModifiedMillis
+                        )
+                    }
                 }
             )
         } catch (ex: CancellationException) {
@@ -371,14 +374,30 @@ class UploadViewModel(
     private suspend fun attachMotionClip(assetId: String, clip: PickedMotionClip, alreadyExisted: Boolean) {
         try {
             if (alreadyExisted && !repository.motionClipMissing(assetId)) return
-            clip.content.open { source, sizeBytes ->
-                repository.attachMotionClip(assetId, clip.name, clip.mimeType, source, sizeBytes)
+            resendingOnceAfterRefresh {
+                clip.content.open { source, sizeBytes ->
+                    repository.attachMotionClip(assetId, clip.name, clip.mimeType, source, sizeBytes)
+                }
             }
         } catch (ex: CancellationException) {
             throw ex
         } catch (_: Throwable) {
         }
     }
+
+    /**
+     * Runs a streamed upload, and once more if it came back 401. The auth
+     * plugin refreshes an expired token but can't replay a streamed body, so
+     * the first upload after the token expired failed as "Unauthorized" with a
+     * valid session. [send] reopens its source, as the backup's retry does.
+     */
+    private suspend fun <T> resendingOnceAfterRefresh(send: suspend () -> T): T =
+        try {
+            send()
+        } catch (ex: PhotonneApiException) {
+            if (ex.status != 401) throw ex
+            send()
+        }
 
     private fun setSize(itemId: Long, sizeBytes: Long) {
         _state.update {

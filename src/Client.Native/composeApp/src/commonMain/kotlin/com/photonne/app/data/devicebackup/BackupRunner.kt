@@ -125,7 +125,13 @@ class BackupRunner(
             // explicit check the suspend chain would keep going past the
             // expiration handler.
             currentCoroutineContext().ensureActive()
-            val items = gallery.listMedia(folder)
+            // No access to this source right now (permission revoked): skip it
+            // and leave its ledger alone; the other folders still go.
+            val items = try {
+                gallery.listMedia(folder)
+            } catch (ex: DeviceGalleryUnavailable) {
+                continue
+            }
             total += items.size
             items.forEach { folderByUri[it.uri] = folder }
             listed += items

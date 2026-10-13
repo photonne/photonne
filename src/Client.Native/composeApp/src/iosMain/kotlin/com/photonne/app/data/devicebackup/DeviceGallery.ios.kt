@@ -78,15 +78,19 @@ actual class DeviceGallery {
     actual suspend fun restoreFolder(uri: String, fallbackName: String?): DeviceFolderRef? =
         withContext(Dispatchers.Default) {
             if (uri != USER_LIBRARY_URI) return@withContext null
-            val status = PHPhotoLibrary.authorizationStatusForAccessLevel(PHAccessLevelReadWrite)
-            if (!isAuthorized(status)) return@withContext null
+            // Always restores, as Android does for buckets: the Photos grant is
+            // app-wide and can come back, and null makes the caller forget the
+            // source plus its whole ledger ("Omitir" choices included). Without
+            // access, listMedia says so instead of listing nothing.
             cameraRollRef()
         }
 
     actual suspend fun listMedia(folder: DeviceFolderRef): List<DeviceMedia> {
         if (folder.uri != USER_LIBRARY_URI) return emptyList()
         val status = PHPhotoLibrary.authorizationStatusForAccessLevel(PHAccessLevelReadWrite)
-        if (!isAuthorized(status)) return emptyList()
+        // Not an empty library: reconciling against an empty listing would
+        // drop every ledger row of the folder (hashes, verdicts, skips).
+        if (!isAuthorized(status)) throw DeviceGalleryUnavailable("Photo library access not granted")
         return withContext(Dispatchers.Default) {
             val options = PHFetchOptions().apply {
                 sortDescriptors = listOf(
@@ -269,32 +273,35 @@ private suspend fun <T> withSpilledResource(
     // Writes and the close are serialised so no chunk lands after close.
     val handleLock = NSLock()
     var handleClosed = false
+    val path = Path(tmpPath)
     try {
-        streamResourceData(resource) { data ->
+        try {
+            streamResourceData(resource) { data ->
+                handleLock.lock()
+                try {
+                    if (!handleClosed) handle.writeData(data)
+                } finally {
+                    handleLock.unlock()
+                }
+            }
+        } finally {
             handleLock.lock()
             try {
-                if (!handleClosed) handle.writeData(data)
+                handleClosed = true
+                handle.closeFile()
             } finally {
                 handleLock.unlock()
             }
         }
-    } finally {
-        handleLock.lock()
-        try {
-            handleClosed = true
-            handle.closeFile()
-        } finally {
-            handleLock.unlock()
-        }
-    }
 
-    val path = Path(tmpPath)
-    try {
         val sizeBytes = SystemFileSystem.metadataOrNull(path)?.size ?: fallbackSize
         return SystemFileSystem.source(path).buffered().use { source ->
             block(source, sizeBytes)
         }
     } finally {
+        // Also when the spill itself failed (iCloud error, cancellation): a
+        // partial file, possibly gigabytes of video, was left behind under a
+        // fresh name on every failure.
         runCatching { SystemFileSystem.delete(path, mustExist = false) }
     }
 }

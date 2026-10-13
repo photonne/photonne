@@ -36,6 +36,9 @@ enum class UploadFailureReason {
      *  permission revoked). Not a server problem — retrying rarely helps, so
      *  the user's recourse is to skip it. */
     FileUnreadable,
+    /** Any other 4xx (an empty file's 400, a 415…): the server refused this
+     *  file and will refuse it again, so it isn't retried on every wake. */
+    Rejected,
     /** Anything else: serialization, unknown HTTP code, programming bug. */
     Unknown,
 }
@@ -60,11 +63,17 @@ fun Throwable.toUploadFailureReason(): UploadFailureReason {
             409 -> UploadFailureReason.QuotaExceeded
             413 -> if (serverCode in PHOTONNE_TOO_LARGE_CODES) UploadFailureReason.FileTooLarge
                 else UploadFailureReason.ProxyTooLarge
+            408 -> UploadFailureReason.NetworkError
             429 -> UploadFailureReason.RateLimited
+            in 400..499 -> UploadFailureReason.Rejected
             in 500..599 -> UploadFailureReason.ServerError
             else -> UploadFailureReason.Unknown
         }
     }
+    // The gallery can't hand over the file (iOS asset deleted, no data
+    // resource): the file's problem, not a transient one. As Unknown it was
+    // retried, and its failure notification suppressed, on every wake.
+    if (this is DeviceGalleryUnavailable) return UploadFailureReason.FileUnreadable
     // I/O / timeout / DNS / socket errors all surface through Ktor as various
     // exceptions; match by simple class-name heuristic to stay platform-neutral.
     // DNS failures during a WiFi↔cellular switch arrive as UnknownHostException
@@ -158,5 +167,6 @@ val UploadFailureReason.isRetryable: Boolean
         UploadFailureReason.ProxyTooLarge,
         UploadFailureReason.NotAllowed,
         UploadFailureReason.FileUnreadable,
+        UploadFailureReason.Rejected,
         UploadFailureReason.Unauthorized -> false
     }

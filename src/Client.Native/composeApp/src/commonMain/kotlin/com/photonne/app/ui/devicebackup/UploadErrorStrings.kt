@@ -11,6 +11,7 @@ import com.photonne.app.resources.upload_error_proxy_too_large
 import com.photonne.app.resources.upload_error_proxy_too_large_hint
 import com.photonne.app.resources.upload_error_quota_exceeded
 import com.photonne.app.resources.upload_error_rate_limited
+import com.photonne.app.resources.upload_error_rejected
 import com.photonne.app.resources.upload_error_server_error
 import com.photonne.app.resources.upload_error_unauthorized
 import com.photonne.app.resources.upload_error_unknown
@@ -31,6 +32,7 @@ fun uploadErrorLabel(reason: UploadFailureReason): String = when (reason) {
     UploadFailureReason.ServerError -> stringResource(Res.string.upload_error_server_error)
     UploadFailureReason.NetworkError -> stringResource(Res.string.upload_error_network_error)
     UploadFailureReason.FileUnreadable -> stringResource(Res.string.upload_error_file_unreadable)
+    UploadFailureReason.Rejected -> stringResource(Res.string.upload_error_rejected)
     UploadFailureReason.Unknown -> stringResource(Res.string.upload_error_unknown)
 }
 
