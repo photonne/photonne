@@ -21,6 +21,7 @@
 		sectionAt,
 		type GridBlock,
 		type GridLayout,
+		type GridLayoutMode,
 		type GridOptions,
 		type GridSection
 	} from './grid-model.js';
@@ -48,6 +49,8 @@
 		onnearend?: () => void;
 		/** Thumbnail size and grouping (zoom.ts); the medium month grid by default. */
 		zoom?: ZoomLevel;
+		/** Justified rows (the timeline) or a masonry of columns (grid-model.ts). */
+		layout?: GridLayoutMode;
 		/** Ctrl/Cmd + wheel over the grid asks for a step; without it the browser zooms. */
 		onzoom?: (direction: 1 | -1) => void;
 		/**
@@ -80,6 +83,7 @@
 		headers = true,
 		onnearend,
 		zoom = DEFAULT_ZOOM,
+		layout: layoutMode = 'rows',
 		onzoom,
 		reflowKey = '',
 		selectable = true,
@@ -116,7 +120,6 @@
 	 */
 	// Not a $derived: the layout it feeds is what decides it, a cycle a
 	// derived can't hold.
-	// eslint-disable-next-line svelte/prefer-writable-derived
 	let withScrubber = $state(false);
 
 	const byDay = $derived(headers && groupingOf(zoom) === 'day');
@@ -128,6 +131,7 @@
 		);
 		return {
 			containerWidth,
+			layout: layoutMode,
 			targetRowHeight: rowHeightFor(zoom, containerWidth),
 			spacing: SPACING,
 			headerHeight: headers ? HEADER_HEIGHT : 0,
@@ -160,7 +164,10 @@
 	const scrubberShown = $derived(viewportHeight > 0 && maxScroll > viewportHeight);
 
 	$effect(() => {
-		withScrubber = scrubberShown;
+		// A masonry gets *shorter* when it narrows (same columns, each
+		// thinner), so giving the column could take the scrubber away again,
+		// and so on: once given, the column stays for the grid's life.
+		if (scrubberShown || layoutMode === 'rows') withScrubber = scrubberShown;
 	});
 
 	// Load the months that come within a screen of the viewport.
@@ -191,7 +198,7 @@
 	// mean nothing: the photo under the pointer (Ctrl + wheel) or at the top
 	// keeps its place on screen instead.
 	const shape = $derived(
-		`${options.targetRowHeight}|${options.containerWidth}|${byDay}|${reflowKey}`
+		`${options.layout}|${options.targetRowHeight}|${options.containerWidth}|${byDay}|${reflowKey}`
 	);
 	let previous: { layout: GridLayout<T>; shape: string } | null = null;
 	let pointerAnchor: { screenY: number; x: number } | null = null;
@@ -573,19 +580,20 @@
 						style:height="{block.height}px"
 					></div>
 				{:else}
-					{@const size = thumbnailSizeFor(block.height)}
 					{#each block.cells as cell (cell.item.id)}
 						{@const item = cell.item}
+						{@const height = cell.height ?? block.height}
+						{@const size = thumbnailSizeFor(height)}
 						{@const selected = selection.has(item.id)}
 						<div
 							class="cell"
 							class:selected
 							class:selecting={selection.active}
 							class:marked={item.isFavorite || item.isLivePhoto || item.isVideo}
-							style:top="{block.top + PADDING}px"
+							style:top="{block.top + (cell.top ?? 0) + PADDING}px"
 							style:left="{cell.left}px"
 							style:width="{cell.width}px"
-							style:height="{block.height}px"
+							style:height="{height}px"
 							style:--placeholder={item.dominantColor ?? 'var(--color-placeholder)'}
 							onpointerenter={() => onCellPointerEnter(item)}
 						>

@@ -2,6 +2,7 @@ import {
 	clampAspect,
 	computeRows,
 	estimateHeight,
+	FALLBACK_ASPECT,
 	type LayoutOptions
 } from './justified-layout.js';
 
@@ -23,6 +24,9 @@ export interface GridCell<T> {
 	item: T;
 	left: number;
 	width: number;
+	/** Masonry only: the cell's offset under its block's top, and its own height. */
+	top?: number;
+	height?: number;
 }
 
 export type GridBlock<T> =
@@ -32,7 +36,15 @@ export type GridBlock<T> =
 	| { kind: 'row'; key: string; top: number; height: number; cells: GridCell<T>[] }
 	| { kind: 'placeholder'; key: string; top: number; height: number };
 
+/**
+ * `rows`: justified rows (the timeline). `masonry`: equal-width columns
+ * where each photo keeps its shape and drops into the shortest column, so
+ * nothing lines up horizontally (search results, albums…).
+ */
+export type GridLayoutMode = 'rows' | 'masonry';
+
 export interface GridOptions extends LayoutOptions {
+	layout?: GridLayoutMode;
 	headerHeight: number;
 	/** Space after a section's last row, before the next header. */
 	sectionGap: number;
@@ -51,6 +63,21 @@ export interface GridLayout<T> {
 	blockOfItem: Map<string, number>;
 	/** Item ids of each subgroup (day), for its select-all check. */
 	groups: Map<string, string[]>;
+	/**
+	 * The tallest block. Masonry blocks overlap vertically, so a range query
+	 * can't assume a block ends before the next one starts.
+	 */
+	maxBlockHeight: number;
+}
+
+/**
+ * Masonry columns for a width: as many as a row of landscape photos would
+ * hold at the target height, so a zoom level reads the same in both
+ * layouts. Never under two.
+ */
+export function masonryColumns(containerWidth: number, targetRowHeight: number): number {
+	if (containerWidth <= 0 || targetRowHeight <= 0) return 1;
+	return Math.max(2, Math.round(containerWidth / (targetRowHeight * FALLBACK_ASPECT)));
 }
 
 /**
@@ -71,7 +98,45 @@ export function buildGridLayout<T extends GridItem>(
 	const groups = new Map<string, string[]>();
 	let top = 0;
 
+	// Every column-count consecutive items make one block: the shortest
+	// column only ever grows, so blocks start lower and lower, in order.
+	const layMasonry = (key: string, items: readonly T[]) => {
+		const columns = masonryColumns(options.containerWidth, options.targetRowHeight);
+		const width = (options.containerWidth - options.spacing * (columns - 1)) / columns;
+		const heights = new Array<number>(columns).fill(0);
+		const base = top;
+		for (let start = 0; start < items.length; start += columns) {
+			const cells: GridCell<T>[] = [];
+			let blockTop = Number.POSITIVE_INFINITY;
+			let blockBottom = 0;
+			for (const item of items.slice(start, start + columns)) {
+				let column = 0;
+				for (let c = 1; c < columns; c++) if (heights[c] < heights[column]) column = c;
+				const cellTop = heights[column] + (heights[column] > 0 ? options.spacing : 0);
+				const height = width / clampAspect(item.aspect);
+				cells.push({ item, left: column * (width + options.spacing), width, top: cellTop, height });
+				heights[column] = cellTop + height;
+				blockTop = Math.min(blockTop, cellTop);
+				blockBottom = Math.max(blockBottom, cellTop + height);
+			}
+			for (const cell of cells) {
+				cell.top! -= blockTop;
+				blockOfItem.set(cell.item.id, blocks.length);
+			}
+			rows.push(cells.map((cell) => cell.item.id));
+			blocks.push({
+				kind: 'row',
+				key,
+				top: base + blockTop,
+				height: blockBottom - blockTop,
+				cells
+			});
+		}
+		top = base + Math.max(0, ...heights);
+	};
+
 	const layRows = (key: string, items: readonly T[]) => {
+		if (options.layout === 'masonry') return layMasonry(key, items);
 		const layoutRows = computeRows(
 			items.map((item) => clampAspect(item.aspect)),
 			options
@@ -135,22 +200,27 @@ export function buildGridLayout<T extends GridItem>(
 		sectionTops,
 		rows,
 		blockOfItem,
-		groups
+		groups,
+		maxBlockHeight: blocks.reduce((max, block) => Math.max(max, block.height), 0)
 	};
 }
 
 /** Blocks overlapping [from, to], in order (binary search on the sorted tops). */
 export function blocksInRange<T>(layout: GridLayout<T>, from: number, to: number): GridBlock<T>[] {
-	const { blocks } = layout;
+	const { blocks, maxBlockHeight } = layout;
+	// Tops are sorted; bottoms aren't (masonry), so the search allows for the
+	// tallest block and the scan drops what doesn't actually reach the window.
 	let lo = 0;
 	let hi = blocks.length;
 	while (lo < hi) {
 		const mid = (lo + hi) >> 1;
-		if (blocks[mid].top + blocks[mid].height < from) lo = mid + 1;
+		if (blocks[mid].top + maxBlockHeight < from) lo = mid + 1;
 		else hi = mid;
 	}
 	const result: GridBlock<T>[] = [];
-	for (let i = lo; i < blocks.length && blocks[i].top <= to; i++) result.push(blocks[i]);
+	for (let i = lo; i < blocks.length && blocks[i].top <= to; i++) {
+		if (blocks[i].top + blocks[i].height >= from) result.push(blocks[i]);
+	}
 	return result;
 }
 

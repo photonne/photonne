@@ -206,6 +206,7 @@
 				sections={store.sections}
 				{selection}
 				{headers}
+				layout="masonry"
 				label={title}
 				sectionTitle={monthTitle}
 				{itemLabel}
