@@ -91,11 +91,16 @@ test('Ctrl + wheel zooms around the photo under the pointer', async ({ page }) =
 	await page.mouse.wheel(0, 1600);
 	await expect(page.getByRole('heading', { name: 'Junio de 2026' })).toBeVisible();
 
-	// A photo wholly inside the grid's viewport (not under the page header).
+	// A photo wholly inside the grid's viewport (not under the page header),
+	// among the rendered ones: the grid only renders what's near the viewport.
 	const area = (await grid.boundingBox())!;
-	let index = 30;
+	const rendered = await cells(page).count();
+	let index = 0;
 	let box = (await cells(page).nth(index).boundingBox())!;
-	while (box.y < area.y || box.y + box.height > area.y + area.height) {
+	while (
+		index < rendered - 1 &&
+		(box.y < area.y + 60 || box.y + box.height > area.y + area.height)
+	) {
 		box = (await cells(page).nth(++index).boundingBox())!;
 	}
 	const target = cells(page).nth(index);
@@ -108,7 +113,7 @@ test('Ctrl + wheel zooms around the photo under the pointer', async ({ page }) =
 	await page.keyboard.up('Control');
 
 	await expect(zoom(page)).toHaveAccessibleName(level('Pequeñas, por meses'));
-	// Rows reflow, so the photo may move sideways, but its row stays under the pointer.
+	// The grid reflows, so the photo may move sideways, but it stays under the pointer.
 	const after = (await page.locator(`[data-id="${id}"]`).boundingBox())!;
 	expect(after.y).toBeLessThanOrEqual(point.y + 2);
 	expect(after.y + after.height).toBeGreaterThanOrEqual(point.y - 2);

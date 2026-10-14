@@ -147,6 +147,28 @@ test('chooses the theme and the language', async ({ page }) => {
 	await expect(page.getByRole('radio', { name: 'English' })).toBeChecked();
 });
 
+test('chooses how collections lay their photos out', async ({ page }) => {
+	await fakeApi(page, { signedIn: true });
+
+	// A masonry by default: the cells of a row don't share a top.
+	await page.goto('/favorites');
+	const cells = page.locator('.cell');
+	await expect(cells.first()).toBeVisible();
+	const tops = async () =>
+		cells.evaluateAll((all) => all.map((cell) => (cell as HTMLElement).style.top));
+	expect(new Set(await tops()).size).toBeGreaterThan(2);
+
+	await page.goto('/settings/appearance');
+	await page.getByRole('radio', { name: /Filas/ }).check();
+	expect(await page.evaluate(() => localStorage.getItem('photonne.grid.layout'))).toBe('rows');
+
+	// Rows: the first row's cells all start at the same height.
+	await page.goto('/favorites');
+	await expect(cells.first()).toBeVisible();
+	const rowTops = await tops();
+	expect(rowTops.filter((top) => top === rowTops[0]).length).toBeGreaterThan(1);
+});
+
 test('hides a shared folder from the timeline, with undo', async ({ page }) => {
 	const { state } = await fakeApi(page, { signedIn: true });
 	const shared = (id: string, path: string, excluded: boolean) => ({

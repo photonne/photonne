@@ -20,6 +20,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import { leaveViewerThen } from '#lib/library/viewer-flow.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { gridLayout } from '#lib/timeline/grid-layout-preference.svelte.js';
 	import PhotoGrid, { type GridPosition } from '#lib/timeline/PhotoGrid.svelte';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
@@ -232,6 +233,7 @@
 				onloadsections={(keys) => store.loadMany(keys)}
 				onopen={view.yearView ? openMonthOf : openViewer}
 				zoom={view.zoom}
+				layout={view.yearView ? 'rows' : gridLayout.value}
 				onzoom={(direction) => view.step(direction)}
 				reflowKey={view.yearView ? 'years' : 'months'}
 				selectable={!view.yearView}
