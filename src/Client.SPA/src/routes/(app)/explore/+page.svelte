@@ -6,7 +6,7 @@
 		listSceneLabelsOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { labelHref, tagHref } from '#lib/library/explore-links.js';
-	import ExploreDeck from '#lib/library/ExploreDeck.svelte';
+	import ExploreRow from '#lib/library/ExploreRow.svelte';
 	import { icons } from '#lib/library/icons.js';
 	import LabelTile from '#lib/library/LabelTile.svelte';
 	import { themeRows } from '#lib/library/memories.js';
@@ -79,7 +79,7 @@
 			{@render waiting('explore-themes', m.explore_themes(), feed)}
 		{/if}
 		{#each themes as row (row.key)}
-			<ExploreDeck
+			<ExploreRow
 				id="theme-{row.key}"
 				title={row.title}
 				more={row.memories.length > 4
@@ -96,13 +96,13 @@
 						/>
 					</li>
 				{/each}
-			</ExploreDeck>
+			</ExploreRow>
 		{/each}
 
 		{#if !scenes.isSuccess}
 			{@render waiting('explore-scenes', m.explore_scenes(), scenes)}
 		{:else if scenes.data.length}
-			<ExploreDeck
+			<ExploreRow
 				id="explore-scenes"
 				title={m.explore_scenes()}
 				more={{ href: appHref('/explore/scenes') }}
@@ -117,13 +117,13 @@
 						/>
 					</li>
 				{/each}
-			</ExploreDeck>
+			</ExploreRow>
 		{/if}
 
 		{#if !objects.isSuccess}
 			{@render waiting('explore-objects', m.explore_objects(), objects)}
 		{:else if objects.data.length}
-			<ExploreDeck
+			<ExploreRow
 				id="explore-objects"
 				title={m.explore_objects()}
 				more={{ href: appHref('/explore/objects') }}
@@ -138,7 +138,7 @@
 						/>
 					</li>
 				{/each}
-			</ExploreDeck>
+			</ExploreRow>
 		{/if}
 
 		{#if !tags.isSuccess}
