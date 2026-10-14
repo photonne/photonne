@@ -177,5 +177,7 @@
 	],
 	"explore_themes": "Themes",
 	"explore_row_failed": "This row couldn’t be loaded.",
+	"explore_row_previous": "Previous",
+	"explore_row_next": "Next",
 	"explore_retry": "Try again"
 }

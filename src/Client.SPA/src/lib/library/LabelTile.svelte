@@ -11,16 +11,18 @@
 		label: string;
 		count: number;
 		coverAssetId: string | null;
+		/** The landscape card of a row of Explorar (Recuerdos' shape); square in a grid. */
+		wide?: boolean;
 	}
 
-	let { href, label, count, coverAssetId }: Props = $props();
+	let { href, label, count, coverAssetId, wide = false }: Props = $props();
 
 	const cover = $derived(
-		coverAssetId ? thumbnailUrl(coverAssetId, thumbnailSizeFor(180), null) : null
+		coverAssetId ? thumbnailUrl(coverAssetId, thumbnailSizeFor(wide ? 480 : 180), null) : null
 	);
 </script>
 
-<a class="tile" {href}>
+<a class="tile" class:wide {href}>
 	{#if cover}
 		<img src={cover} alt="" loading="lazy" decoding="async" />
 	{:else}
@@ -43,6 +45,22 @@
 		color: var(--color-on-media);
 		text-decoration: none;
 		isolation: isolate;
+	}
+
+	.tile.wide {
+		aspect-ratio: 1 / 0.62;
+	}
+
+	.tile.wide .text {
+		padding: var(--space-3) var(--space-4);
+	}
+
+	.tile.wide .label {
+		font-size: var(--font-size-lg);
+	}
+
+	.tile.wide .count {
+		font-size: var(--font-size-sm);
 	}
 
 	img {

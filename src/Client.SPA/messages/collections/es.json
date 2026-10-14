@@ -177,5 +177,7 @@
 	],
 	"explore_themes": "Temas",
 	"explore_row_failed": "No se ha podido cargar esta fila.",
+	"explore_row_previous": "Anterior",
+	"explore_row_next": "Siguiente",
 	"explore_retry": "Reintentar"
 }
