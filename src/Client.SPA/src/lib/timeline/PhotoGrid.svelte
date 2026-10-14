@@ -583,7 +583,9 @@
 					{#each block.cells as cell (cell.item.id)}
 						{@const item = cell.item}
 						{@const height = cell.height ?? block.height}
-						{@const size = thumbnailSizeFor(height)}
+						<!-- Sized by the row height, or by the column width in a masonry:
+						     a portrait column cell can be twice as tall as it is wide. -->
+						{@const size = thumbnailSizeFor(cell.height === undefined ? height : cell.width)}
 						{@const selected = selection.has(item.id)}
 						<div
 							class="cell"

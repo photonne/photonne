@@ -64,10 +64,11 @@ export interface GridLayout<T> {
 	/** Item ids of each subgroup (day), for its select-all check. */
 	groups: Map<string, string[]>;
 	/**
-	 * The tallest block. Masonry blocks overlap vertically, so a range query
-	 * can't assume a block ends before the next one starts.
+	 * For each block, the lowest bottom of it and the blocks before it. Tops
+	 * are sorted but, in a masonry, bottoms aren't (blocks overlap), and
+	 * this running bottom is what a range query can search.
 	 */
-	maxBlockHeight: number;
+	reach: number[];
 }
 
 /**
@@ -101,6 +102,9 @@ export function buildGridLayout<T extends GridItem>(
 	// Every column-count consecutive items make one block: the shortest
 	// column only ever grows, so blocks start lower and lower, in order.
 	const layMasonry = (key: string, items: readonly T[]) => {
+		// Like computeRows: nothing until the container is measured. At width
+		// 0 every photo would be a 0px block at the top, all of them "visible".
+		if (options.containerWidth <= 0 || options.targetRowHeight <= 0) return;
 		const columns = masonryColumns(options.containerWidth, options.targetRowHeight);
 		const width = (options.containerWidth - options.spacing * (columns - 1)) / columns;
 		const heights = new Array<number>(columns).fill(0);
@@ -194,6 +198,11 @@ export function buildGridLayout<T extends GridItem>(
 		top += options.sectionGap;
 	}
 
+	const reach: number[] = [];
+	for (const block of blocks) {
+		reach.push(Math.max(block.top + block.height, reach.at(-1) ?? 0));
+	}
+
 	return {
 		blocks,
 		totalHeight: Math.max(0, top - (blocks.length ? options.sectionGap : 0)),
@@ -201,20 +210,20 @@ export function buildGridLayout<T extends GridItem>(
 		rows,
 		blockOfItem,
 		groups,
-		maxBlockHeight: blocks.reduce((max, block) => Math.max(max, block.height), 0)
+		reach
 	};
 }
 
 /** Blocks overlapping [from, to], in order (binary search on the sorted tops). */
 export function blocksInRange<T>(layout: GridLayout<T>, from: number, to: number): GridBlock<T>[] {
-	const { blocks, maxBlockHeight } = layout;
-	// Tops are sorted; bottoms aren't (masonry), so the search allows for the
-	// tallest block and the scan drops what doesn't actually reach the window.
+	const { blocks, reach } = layout;
+	// Tops are sorted; bottoms aren't (masonry), so the search is on the
+	// running bottom and the scan drops what doesn't actually reach the window.
 	let lo = 0;
 	let hi = blocks.length;
 	while (lo < hi) {
 		const mid = (lo + hi) >> 1;
-		if (blocks[mid].top + maxBlockHeight < from) lo = mid + 1;
+		if (reach[mid] < from) lo = mid + 1;
 		else hi = mid;
 	}
 	const result: GridBlock<T>[] = [];

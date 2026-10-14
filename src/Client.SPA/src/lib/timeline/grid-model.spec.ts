@@ -120,7 +120,16 @@ describe('masonry', () => {
 		// section is as tall as its tallest column.
 		expect(second.top).toBeLessThan(first.top + first.height);
 		expect(layout.totalHeight).toBe(300);
-		expect(layout.maxBlockHeight).toBe(290);
+		// The running bottom never drops: the first block already reaches 290.
+		expect(layout.reach).toEqual([0, 290, 300]);
+	});
+
+	it('lays nothing out before the container has a width', () => {
+		const layout = buildGridLayout([{ key: 'a', count: 30, items: items('a', 30) }], {
+			...masonry,
+			containerWidth: 0
+		});
+		expect(layout.blocks.filter((b) => b.kind === 'row')).toEqual([]);
 	});
 
 	it('finds the blocks under a window when they overlap', () => {
