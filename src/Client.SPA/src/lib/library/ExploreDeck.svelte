@@ -9,8 +9,8 @@
 	 * A row of Explorar as a deck of cards: the cards sit on each other,
 	 * the one nearest the centre is shown whole and bigger, and the deck
 	 * scrolls sideways one card at a time (like the thumbnail strip under
-	 * the native app's viewer). A card to the side centres itself when
-	 * clicked; the centred one opens.
+	 * the native app's viewer). Any card opens when clicked. A row short
+	 * enough to fit flat is shown flat, like any other list.
 	 */
 	interface Props {
 		id: string;
@@ -23,15 +23,16 @@
 
 	let { id, title, more, children }: Props = $props();
 
-	/** The page gutter (--page-gutter), where a deck that fits starts. */
+	/** The page gutter (--page-gutter) and the gap between flat cards. */
 	const GUTTER = 24;
+	const GAP = 12;
 
 	let list = $state<HTMLUListElement>();
 	let centred = $state(0);
 	/** How many cards there are, for the next button. */
 	let count = $state(0);
-	/** The deck fits its row: it sits at the left, like any other list. */
-	let fits = $state(true);
+	/** The cards fit flat in the row: no deck, no overlap, every name shown. */
+	let flat = $state(true);
 	/** The cards have their first size: from here on they animate between sizes. */
 	let ready = $state(false);
 
@@ -43,24 +44,32 @@
 	function update() {
 		if (!list) return;
 		const items = cards();
+		count = items.length;
+		const width = list.clientWidth;
+		const card = parseFloat(getComputedStyle(list).getPropertyValue('--card')) || 0;
+		flat = items.length * card + (items.length - 1) * GAP <= width - 2 * GUTTER;
+		if (flat) {
+			for (const item of items) {
+				item.style.removeProperty('--scale');
+				item.style.zIndex = '';
+				item.classList.remove('centred');
+			}
+			centred = 0;
+			ready = true;
+			return;
+		}
 		const bounds = list.getBoundingClientRect();
-		// A deck that fits its row sits at the left, like any other list, with
-		// its first card in front; one that overflows centres the front card.
-		const first = items[0]?.getBoundingClientRect();
-		const last = items.at(-1)?.getBoundingClientRect();
-		fits = !first || !last || last.right - first.left <= bounds.width - 2 * GUTTER;
-		const middle = fits && first ? first.left + first.width / 2 : bounds.left + bounds.width / 2;
+		const middle = bounds.left + bounds.width / 2;
 		const distances = items.map((item) => {
 			const box = item.getBoundingClientRect();
 			return box.width > 0 ? Math.abs(box.left + box.width / 2 - middle) / box.width : 0;
 		});
-		deckScales(distances).forEach((card, i) => {
-			items[i].style.setProperty('--scale', card.scale.toFixed(3));
-			items[i].style.zIndex = String(card.depth);
-			items[i].classList.toggle('centred', card.centred);
+		deckScales(distances).forEach((scaled, i) => {
+			items[i].style.setProperty('--scale', scaled.scale.toFixed(3));
+			items[i].style.zIndex = String(scaled.depth);
+			items[i].classList.toggle('centred', scaled.centred);
 		});
 		centred = Math.max(0, distances.indexOf(Math.min(...distances)));
-		count = items.length;
 		// Not from the stylesheet's guess on the first paint.
 		ready = true;
 	}
@@ -79,29 +88,18 @@
 		};
 	});
 
-	function centre(index: number, behavior: ScrollBehavior = 'smooth') {
-		cards()[index]?.scrollIntoView({ behavior, inline: 'center', block: 'nearest' });
+	function centre(index: number) {
+		cards()[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 	}
 
 	function step(direction: 1 | -1) {
-		const index = Math.max(0, Math.min(cards().length - 1, centred + direction));
+		const index = Math.max(0, Math.min(count - 1, centred + direction));
 		centre(index);
 		return index;
 	}
 
-	// A side card centres itself instead of opening: the deck is browsed by
-	// bringing cards to the front, as the native strip is.
-	function onclick(event: MouseEvent) {
-		const card = (event.target as HTMLElement).closest('li');
-		if (!card || !list) return;
-		const index = cards().indexOf(card);
-		if (index === -1 || index === centred) return;
-		event.preventDefault();
-		centre(index);
-	}
-
 	function onkeydown(event: KeyboardEvent) {
-		if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+		if (flat || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
 		event.preventDefault();
 		const index = step(event.key === 'ArrowRight' ? 1 : -1);
 		// Focus follows the centred card, so Enter opens what's in front.
@@ -116,7 +114,7 @@
 			type="button"
 			class="nav prev"
 			aria-label={m.explore_deck_previous()}
-			disabled={centred === 0}
+			disabled={flat || centred === 0}
 			onclick={() => step(-1)}
 		>
 			<Icon name="chevronLeft" size={20} />
@@ -124,13 +122,12 @@
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<ul
 			class="cards"
-			class:fits
+			class:flat
 			class:ready
 			role="list"
 			aria-labelledby={id}
 			bind:this={list}
 			onscroll={update}
-			{onclick}
 			{onkeydown}
 		>
 			{@render children()}
@@ -139,7 +136,7 @@
 			type="button"
 			class="nav next"
 			aria-label={m.explore_deck_next()}
-			disabled={centred >= count - 1}
+			disabled={flat || centred >= count - 1}
 			onclick={() => step(1)}
 		>
 			<Icon name="chevronRight" size={20} />
@@ -190,9 +187,15 @@
 		width: calc(50% - var(--card) / 2);
 	}
 
-	.cards.fits::before,
-	.cards.fits::after {
-		width: var(--page-gutter);
+	/* Flat: a plain row from the gutter, cards side by side at full size. */
+	.cards.flat {
+		gap: 12px;
+		scroll-snap-type: none;
+	}
+
+	.cards.flat::before,
+	.cards.flat::after {
+		width: calc(var(--page-gutter) - 12px);
 	}
 
 	.cards > :global(li) {
@@ -214,12 +217,17 @@
 		margin-left: 0;
 	}
 
+	.cards.flat > :global(li) {
+		--scale: 1;
+		margin-left: 0;
+	}
+
 	.cards > :global(li > *) {
 		box-shadow: var(--shadow-raised);
 	}
 
 	/* Only the card in front shows its name; the others are its backdrop. */
-	.cards > :global(li:not(.centred) .text) {
+	.cards:not(.flat) > :global(li:not(.centred) .text) {
 		opacity: 0;
 		transition: opacity var(--duration-normal) ease;
 	}
