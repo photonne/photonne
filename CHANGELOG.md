@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.199.0](https://github.com/photonne/photonne/compare/v1.198.0...v1.199.0) (2026-10-14)
+
+
+### Novedades
+
+* **api:** El espacio de carpetas compartidas y bibliotecas externas se mide aparte y no cuenta para la cuota ([a473800](https://github.com/photonne/photonne/commit/a4738000ceb4c59c65a98f6adec289e43b08b0c4))
+* **native:** Activar la copia, la copia automática o Subir ahora pide el permiso de fotos si falta ([57d1aab](https://github.com/photonne/photonne/commit/57d1aab9aa8200c3c4010408b2aa8805636dd9fb))
+* **native:** Almacenamiento y Panel separan lo personal de las carpetas compartidas y las bibliotecas externas ([1ce116e](https://github.com/photonne/photonne/commit/1ce116e08951d6d69eff78c2fc5b13a473ec6983))
+* **spa:** Almacenamiento y Panel separan lo personal de las carpetas compartidas y las bibliotecas externas ([4bc41ad](https://github.com/photonne/photonne/commit/4bc41adac0e452b6cffb357f938d14ae05d741be))
+
+
+### Correcciones
+
+* **api:** Cerrar sesión en la web vuelve a revocar el refresh token en lugar de dar 404 ([b93358d](https://github.com/photonne/photonne/commit/b93358d304e6d35cf23c6ab46f415d1806869bfe))
+* **native:** Arregla las tareas de admin sin progreso, el renombrado de carpetas compartidas, los favoritos en bloque y el vídeo en negro ([d3e76c3](https://github.com/photonne/photonne/commit/d3e76c396d075a67e650f15bea0c23001f46a479))
+* **native:** Cierra los fallos de datos y sesión de la auditoría de Client.Native ([4efb2ac](https://github.com/photonne/photonne/commit/4efb2ac8c572fd35e273111984db3b48e64bbcf8))
+* **native:** Cierra los pendientes menores de la auditoría y deja el lint de Android en verde ([272e405](https://github.com/photonne/photonne/commit/272e40542af216996426a14e35192e00bba13ee7))
+* **native:** Copia de seguridad y subidas: fallos que no se recuperaban, reintentos eternos y permisos perdidos ([1258401](https://github.com/photonne/photonne/commit/12584014750eb2c760fd5dd3c4d447a9288ea757))
+* **native:** Corrige las regresiones que encontró la revisión de los arreglos de la auditoría ([a4ee598](https://github.com/photonne/photonne/commit/a4ee598f243b0994b6407f8cc4ff520260ee2575))
+* **native:** Detener para la copia en marcha pero conserva las fotos elegidas que esperaban detrás ([602b254](https://github.com/photonne/photonne/commit/602b254e5741c1d67fc55fc9ffde194468f89b9b))
+* **native:** El timeline deja de recargar meses en bucle y recoge las fotos del dispositivo al conceder el permiso ([edd829c](https://github.com/photonne/photonne/commit/edd829ca5512dc28f33a8ae6c5be49eb3291ac94))
+* **native:** iOS deja de volver a comprobar una foto, y de bajarla de iCloud, cuando solo cambia su fecha ([9d4b309](https://github.com/photonne/photonne/commit/9d4b309e2aee2fd595f0250e1ffdd0dada0470d8))
+* **native:** La copia conserva lo omitido y lo ya copiado cuando iOS cambia la fecha de una foto, y no pierde selecciones ([f517a0b](https://github.com/photonne/photonne/commit/f517a0bfe6977ff389560a55e46b2864f5f7a229))
+* **native:** Las cargas canceladas ya no se pintan como error ni las respuestas tardías caen en otra entidad ([86643c3](https://github.com/photonne/photonne/commit/86643c37340813ec59946b7ce4f492f113dd12b4))
+* **native:** Listas que se quedaban desactualizadas tras favoritos, mover, borrar o renombrar ([ba283b7](https://github.com/photonne/photonne/commit/ba283b748956bbe73fa608521e9889c7058de342))
+* **native:** Sin permiso de fotos, Copia muestra un aviso con Dar acceso en lugar de un error ([f05021b](https://github.com/photonne/photonne/commit/f05021b63418f7b42c9e32f295483d41c26e5673))
+* **spa:** Compartido pasa a verde para no confundirse con los vídeos azules de la app nativa ([416fcf7](https://github.com/photonne/photonne/commit/416fcf79c749280ac511967a5e828ef4c951b39e))
+
 ## [1.198.0](https://github.com/photonne/photonne/compare/v1.197.0...v1.198.0) (2026-10-12)
 
 
