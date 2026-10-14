@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.200.0](https://github.com/photonne/photonne/compare/v1.199.0...v1.200.0) (2026-10-14)
+
+
+### Novedades
+
+* **spa:** elegir entre mosaico y filas para las fotos ([fd4153f](https://github.com/photonne/photonne/commit/fd4153f941157b3ecfad94e05e95b9ce797739c4))
+* **spa:** Explorar en barajas de tarjetas y colecciones en mosaico ([631aee3](https://github.com/photonne/photonne/commit/631aee38a7c8b3dfcc113a76b36067ff356a4e99))
+* **spa:** filas de Explorar sin barra de scroll, con arrastre y flechas, y tarjetas grandes ([fc1a720](https://github.com/photonne/photonne/commit/fc1a720809e5b43149078101671b72c84f47559a))
+
+
+### Correcciones
+
+* **spa:** abrir las tarjetas de Explorar al pulsarlas y cargar el mosaico sin demora ([dfd0e3d](https://github.com/photonne/photonne/commit/dfd0e3d7418dd1a03ce5a889c0b98996f394078c))
+
+
+### Reversiones
+
+* **spa:** volver a la tira horizontal en Explorar ([680b63b](https://github.com/photonne/photonne/commit/680b63b01f050982ccfc945f763afd2865dec345))
+
 ## [1.199.0](https://github.com/photonne/photonne/compare/v1.198.0...v1.199.0) (2026-10-14)
 
 
