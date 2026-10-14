@@ -17,6 +17,7 @@
 	import AssetViewer, { type AssetChange } from '#lib/viewer/AssetViewer.svelte';
 	import { neighborsIn } from '#lib/viewer/neighbors.js';
 	import { ViewerRoute } from '#lib/viewer/viewer-route.svelte.js';
+	import { gridLayout } from './grid-layout-preference.svelte.js';
 	import type { ListStore } from './list-store.svelte.js';
 	import PhotoGrid from './PhotoGrid.svelte';
 	import SelectionBar from './SelectionBar.svelte';
@@ -206,7 +207,7 @@
 				sections={store.sections}
 				{selection}
 				{headers}
-				layout="masonry"
+				layout={gridLayout.value}
 				label={title}
 				sectionTitle={monthTitle}
 				{itemLabel}

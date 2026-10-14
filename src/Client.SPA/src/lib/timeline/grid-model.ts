@@ -82,6 +82,19 @@ export function masonryColumns(containerWidth: number, targetRowHeight: number):
 }
 
 /**
+ * Height of a masonry whose items aren't loaded yet, from its count alone:
+ * the columns share the items, each a landscape photo of the fallback shape.
+ */
+export function estimateMasonryHeight(count: number, options: LayoutOptions): number {
+	const { containerWidth, targetRowHeight, spacing } = options;
+	if (count <= 0 || containerWidth <= 0 || targetRowHeight <= 0) return 0;
+	const columns = masonryColumns(containerWidth, targetRowHeight);
+	const width = (containerWidth - spacing * (columns - 1)) / columns;
+	const perColumn = Math.ceil(count / columns);
+	return perColumn * (width / FALLBACK_ASPECT) + spacing * Math.max(0, perColumn - 1);
+}
+
+/**
  * Lays sections out top to bottom. With `subgroupOf` (a day key per item),
  * a loaded section is split into runs of consecutive items with the same
  * key, each under its own subheader and justified on its own; a placeholder
@@ -177,7 +190,10 @@ export function buildGridLayout<T extends GridItem>(
 		top += options.headerHeight;
 
 		if (section.items === null) {
-			const height = estimateHeight(section.count, options);
+			const height =
+				options.layout === 'masonry'
+					? estimateMasonryHeight(section.count, options)
+					: estimateHeight(section.count, options);
 			blocks.push({ kind: 'placeholder', key: section.key, top, height });
 			top += height;
 		} else if (subgroupOf) {
@@ -301,14 +317,26 @@ export function anchorAfterReflow<T extends GridItem>(
 ): number | null {
 	const row = rowNear(before, y);
 	if (row) {
+		// In a masonry the cells of a block start at different heights: the
+		// one under the pointer is the one that keeps its place.
 		const cell =
-			(x === undefined ? null : row.cells.find((c) => x >= c.left && x < c.left + c.width)) ??
-			row.cells[0];
+			(x === undefined
+				? null
+				: row.cells.find(
+						(c) =>
+							x >= c.left &&
+							x < c.left + c.width &&
+							(c.top === undefined || y >= row.top + c.top - 1)
+					)) ?? row.cells[0];
 		const index = after.blockOfItem.get(cell.item.id);
 		if (index !== undefined) {
-			const target = after.blocks[index];
-			const within = Math.min(1, Math.max(0, (y - row.top) / row.height));
-			return target.top + within * target.height;
+			const block = after.blocks[index];
+			const target =
+				block.kind === 'row' ? block.cells.find((c) => c.item.id === cell.item.id) : undefined;
+			const fromTop = row.top + (cell.top ?? 0);
+			const fromHeight = cell.height ?? row.height;
+			const within = Math.min(1, Math.max(0, (y - fromTop) / fromHeight));
+			return block.top + (target?.top ?? 0) + within * (target?.height ?? block.height);
 		}
 	}
 
