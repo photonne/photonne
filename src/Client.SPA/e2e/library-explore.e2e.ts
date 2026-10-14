@@ -130,12 +130,15 @@ test('a row scrolls with its arrows and by dragging, and a drag opens nothing', 
 	await expect.poll(() => row.evaluate((el) => el.scrollLeft)).toBeGreaterThan(100);
 	await expect(scenes.getByRole('button', { name: 'Anterior' })).toBeVisible();
 
-	// Dragging a card back scrolls the row instead of opening the card.
+	// Dragging a card back scrolls the row (it then snaps to a card, so
+	// not necessarily by the whole drag) instead of opening the card.
+	await page.waitForTimeout(500);
+	const before = await row.evaluate((el) => el.scrollLeft);
 	const box = (await row.boundingBox())!;
 	await page.mouse.move(box.x + 300, box.y + box.height / 2);
 	await page.mouse.down();
 	await page.mouse.move(box.x + 700, box.y + box.height / 2, { steps: 8 });
 	await page.mouse.up();
-	await expect.poll(() => row.evaluate((el) => el.scrollLeft)).toBeLessThan(100);
+	await expect.poll(() => row.evaluate((el) => el.scrollLeft)).toBeLessThan(before - 200);
 	await expect(page).toHaveURL(/\/explore$/);
 });
