@@ -177,7 +177,5 @@
 	],
 	"explore_themes": "Themes",
 	"explore_row_failed": "This row couldn’t be loaded.",
-	"explore_deck_previous": "Previous card",
-	"explore_deck_next": "Next card",
 	"explore_retry": "Try again"
 }

@@ -177,7 +177,5 @@
 	],
 	"explore_themes": "Temas",
 	"explore_row_failed": "No se ha podido cargar esta fila.",
-	"explore_deck_previous": "Tarjeta anterior",
-	"explore_deck_next": "Tarjeta siguiente",
 	"explore_retry": "Reintentar"
 }
