@@ -28,9 +28,13 @@ public class LogoutEndpoint : IEndpoint
     private static async Task<NoContent> Handle(
         [FromServices] ApplicationDbContext dbContext,
         HttpContext httpContext,
-        [FromBody] LogoutRequest? request,
         CancellationToken cancellationToken)
     {
+        // The body is read by hand: a [FromBody] parameter makes routing skip this
+        // endpoint for the web's bodyless POST, which then fell into the /api 404.
+        var request = httpContext.Request.HasJsonContentType()
+            ? await httpContext.Request.ReadFromJsonAsync<LogoutRequest>(cancellationToken)
+            : null;
         var refreshToken = RefreshTokenCookie.Read(httpContext)
             ?? (string.IsNullOrWhiteSpace(request?.RefreshToken) ? null : request.RefreshToken.Trim());
         if (refreshToken is not null)

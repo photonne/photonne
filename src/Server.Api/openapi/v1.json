@@ -4423,22 +4423,6 @@
         ],
         "description": "Revokes the refresh token cookie and clears the session cookies",
         "operationId": "Logout",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/LogoutRequest"
-                  }
-                ]
-              }
-            }
-          }
-        },
         "responses": {
           "204": {
             "description": "No Content"
@@ -13085,20 +13069,6 @@
           },
           "user": {
             "$ref": "#/components/schemas/UserDto"
-          }
-        }
-      },
-      "LogoutRequest": {
-        "required": [
-          "refreshToken"
-        ],
-        "type": "object",
-        "properties": {
-          "refreshToken": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
