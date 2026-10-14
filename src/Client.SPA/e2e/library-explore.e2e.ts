@@ -106,3 +106,36 @@ test('opens a theme in full and one of its memories', async ({ page }) => {
 		'Explorar'
 	);
 });
+
+test('a row scrolls with its arrows and by dragging, and a drag opens nothing', async ({
+	page
+}) => {
+	await fakeApi(page, { signedIn: true });
+	// More scenes than fit the row.
+	const labels = ['beach', 'mountain', 'forest', 'city', 'snow', 'sunset', 'lake', 'river'];
+	await page.route('**/api/scenes/labels*', (route) =>
+		route.fulfill({
+			json: labels.map((label, i) => ({ label, assetCount: 50 - i, coverAssetId: null }))
+		})
+	);
+	await page.goto('/explore');
+	const scenes = page.getByRole('region', { name: 'Escenas' });
+	const row = scenes.getByRole('list');
+	await expect(row.getByRole('listitem')).toHaveCount(labels.length);
+
+	// A row that fits has no arrows; one that overflows only the one it can use.
+	await expect(page.getByRole('region', { name: 'Viajes' }).getByRole('button')).toHaveCount(0);
+	await expect(scenes.getByRole('button', { name: 'Anterior' })).toBeHidden();
+	await scenes.getByRole('button', { name: 'Siguiente' }).click();
+	await expect.poll(() => row.evaluate((el) => el.scrollLeft)).toBeGreaterThan(100);
+	await expect(scenes.getByRole('button', { name: 'Anterior' })).toBeVisible();
+
+	// Dragging a card back scrolls the row instead of opening the card.
+	const box = (await row.boundingBox())!;
+	await page.mouse.move(box.x + 300, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(box.x + 700, box.y + box.height / 2, { steps: 8 });
+	await page.mouse.up();
+	await expect.poll(() => row.evaluate((el) => el.scrollLeft)).toBeLessThan(100);
+	await expect(page).toHaveURL(/\/explore$/);
+});

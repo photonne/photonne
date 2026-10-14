@@ -89,7 +89,6 @@
 				{#each row.memories.slice(0, ROW_LIMIT) as memory (memory.id)}
 					<li>
 						<MemoryCard
-							size="small"
 							href={appHref(`/memories/${memory.id}`)}
 							title={memory.cardLabel ?? memory.title}
 							coverAssetId={memory.coverAssetId}
@@ -110,6 +109,7 @@
 				{#each scenes.data as label (label.label)}
 					<li>
 						<LabelTile
+							wide
 							href={labelHref('scenes', label.label)}
 							label={label.label}
 							count={label.assetCount}
@@ -131,6 +131,7 @@
 				{#each objects.data as label (label.label)}
 					<li>
 						<LabelTile
+							wide
 							href={labelHref('objects', label.label)}
 							label={label.label}
 							count={label.assetCount}
