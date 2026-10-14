@@ -18,8 +18,8 @@ const options = {
 	sectionGap: 24
 };
 
-const items = (prefix: string, n: number) =>
-	Array.from({ length: n }, (_, i) => ({ id: `${prefix}${i}`, aspect: 1.5 }));
+const item = (prefix: string, i: number, aspect = 1.5) => ({ id: `${prefix}${i}`, aspect });
+const items = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => item(prefix, i));
 
 describe('buildGridLayout', () => {
 	it('stacks header, rows and placeholders without gaps or overlaps', () => {
@@ -73,6 +73,76 @@ describe('buildGridLayout', () => {
 
 		expect(layout.blocks).toEqual([]);
 		expect(layout.totalHeight).toBe(0);
+	});
+});
+
+describe('masonry', () => {
+	const masonry = { ...options, layout: 'masonry' as const, headerHeight: 0 };
+
+	it('keeps every photo its shape in equal columns, each on the shortest one', () => {
+		const layout = buildGridLayout(
+			[
+				{
+					key: 'a',
+					count: 4,
+					items: [item('a', 0, 2), item('a', 1, 1), item('a', 2, 0.5), item('a', 3, 1)]
+				}
+			],
+			{ ...masonry, containerWidth: 1000, targetRowHeight: 200, spacing: 0 }
+		);
+		// 1000 / (200 · 1.5) ≈ 3.3 → 3 columns; 4 photos: the fourth goes under the first.
+		const W = 1000 / 3;
+		const cells = layout.blocks.flatMap((b) => (b.kind === 'row' ? b.cells : []));
+		expect(cells.map((c) => c.width)).toEqual([W, W, W, W]);
+		expect(cells.map((c) => c.height)).toEqual([W / 2, W, W * 2, W]);
+		expect(cells.map((c) => c.left)).toEqual([0, W, 2 * W, 0]);
+		// The fourth photo opens the second block, which starts where it does.
+		expect(layout.blocks.filter((b) => b.kind === 'row')[1].top).toBe(W / 2);
+	});
+
+	it('drops the next photo into the shortest column, under the others', () => {
+		const layout = buildGridLayout(
+			[
+				{
+					key: 'a',
+					count: 3,
+					items: [item('a', 0, 1), item('a', 1, 0.5), item('a', 2, 1)]
+				}
+			],
+			{ ...masonry, containerWidth: 300, targetRowHeight: 100, spacing: 10 }
+		);
+		// 2 columns of 145px; the third photo goes under the first (the shorter column).
+		const [first, second] = layout.blocks.filter((b) => b.kind === 'row');
+		expect(first.kind === 'row' && first.cells.map((c) => c.left)).toEqual([0, 155]);
+		expect(second.kind === 'row' && second.cells[0].left).toBe(0);
+		expect(second.top).toBe(145 + 10);
+		// The second block starts inside the first (the tall column), so the
+		// section is as tall as its tallest column.
+		expect(second.top).toBeLessThan(first.top + first.height);
+		expect(layout.totalHeight).toBe(300);
+		expect(layout.maxBlockHeight).toBe(290);
+	});
+
+	it('finds the blocks under a window when they overlap', () => {
+		const layout = buildGridLayout(
+			[
+				{
+					key: 'a',
+					count: 40,
+					items: items('a', 40).map((it, i) => ({ ...it, aspect: i % 3 ? 1.5 : 0.4 }))
+				}
+			],
+			{ ...masonry, containerWidth: 1000, targetRowHeight: 200, spacing: 4 }
+		);
+		for (const [from, to] of [
+			[0, 100],
+			[500, 900],
+			[1200, 1300]
+		]) {
+			expect(blocksInRange(layout, from, to)).toEqual(
+				layout.blocks.filter((b) => b.top + b.height >= from && b.top <= to)
+			);
+		}
 	});
 });
 

@@ -2,7 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { fakeApi } from './fake-api';
 import { albumsApi } from './fakes/albums';
 
-test.use({ locale: 'es-ES', viewport: { width: 1280, height: 800 } });
+// Tall enough for a folder's twenty photos, laid out as a masonry, to all be
+// rendered: the grid only renders what's within two screens of the viewport.
+test.use({ locale: 'es-ES', viewport: { width: 1280, height: 1400 } });
 
 const cells = (page: Page) => page.getByRole('button', { name: /^(Foto|Vídeo), / });
 const tree = (page: Page) => page.getByRole('tree', { name: 'Árbol de carpetas' });
