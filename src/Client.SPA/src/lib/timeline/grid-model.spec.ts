@@ -124,6 +124,18 @@ describe('masonry', () => {
 		expect(layout.reach).toEqual([0, 290, 300]);
 	});
 
+	it('reserves a placeholder the height its columns would take', () => {
+		const layout = buildGridLayout([{ key: 'a', count: 10, items: null }], {
+			...masonry,
+			containerWidth: 1000,
+			targetRowHeight: 200,
+			spacing: 0
+		});
+		// 3 columns of 333px: 4 landscape photos (1.5) per column.
+		const placeholder = layout.blocks.find((b) => b.kind === 'placeholder')!;
+		expect(placeholder.height).toBeCloseTo((4 * 1000) / 3 / 1.5, 5);
+	});
+
 	it('lays nothing out before the container has a width', () => {
 		const layout = buildGridLayout([{ key: 'a', count: 30, items: items('a', 30) }], {
 			...masonry,
