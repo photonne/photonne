@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/photonne/photonne/compare/server-v1.200.2...server-v2.0.0) (2026-10-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **native:** ya no se publican instaladores de escritorio (DMG/MSI/DEB).
+
+### Otros cambios
+
+* **native:** retirar la app de escritorio ([8d0ca8e](https://github.com/photonne/photonne/commit/8d0ca8e998020af29e276c335b338d98d3a91109))
+
 ## [1.200.2](https://github.com/photonne/photonne/compare/server-v1.200.1...server-v1.200.2) (2026-10-15)
 
 
