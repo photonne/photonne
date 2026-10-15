@@ -38,14 +38,13 @@ raro no deben tirar abajo la copia de seguridad de tu boda.
 |---|---|---|
 | Android | `WorkManager` periodic work, cadencia mínima 15 min | Wi-Fi vs cualquier red, charging, batería suficiente |
 | iOS | `BGTaskScheduler` (`BGProcessingTaskRequest`), identificador `com.photonne.app.backup` | Charging (`requiresExternalPower`), red disponible. Wi-Fi-only se aplica client-side en el handler via `NWPathMonitor` |
-| Desktop | No-op | — |
 
 Además del despertar programado, cualquier subida explícita ("Subir ahora",
 "Sincronizar N seleccionadas", reintentar un fallo) se ejecuta en Android como
 **foreground worker** (`photonne.backup.foreground`), de modo que sobrevive a
 que el usuario cierre la app. La selección concreta no viaja en el `Data` de
 WorkManager (tope ~10 KB) sino en una fila de `ledgerMeta`, y el worker la
-consume una sola vez. En iOS/desktop la pasada sigue en proceso, envuelta en
+consume una sola vez. En iOS la pasada sigue en proceso, envuelta en
 `beginBackgroundTask` para ganar margen al pasar a segundo plano.
 
 ### Progreso y cancelación
@@ -85,7 +84,6 @@ El nombre del dispositivo viene del cliente:
 |---|---|
 | Android | `Build.MANUFACTURER + Build.MODEL` (deduplica prefijos: `Samsung SM-G998B`) |
 | iOS | `UIDevice.currentDevice.name` (lo que el usuario haya puesto en Ajustes) |
-| Desktop | `InetAddress.getLocalHost().hostName` (solo dev/test) |
 
 El servidor **sanitiza** ese string antes de usarlo como ruta:
 `[a-zA-Z0-9._-]` permitido, espacios → `_`, cualquier otra cosa se descarta,
