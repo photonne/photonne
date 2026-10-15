@@ -9,10 +9,10 @@ expect val clientUpdateUrl: String?
 
 /**
  * True si [candidate] es estrictamente más nueva que [current]. Comparación
- * major.minor.patch numérica (los sufijos tras '-' se ignoran). Servidor y
- * clientes versionan juntos desde Directory.Build.props, pero solo las
- * releases traen instaladores: compara contra la última release, no contra
- * la versión del servidor.
+ * major.minor.patch numérica (los sufijos tras '-' se ignoran). La app y el
+ * servidor versionan por separado (src/Client.Native/version.txt y
+ * Directory.Build.props): compara contra la última release de la app
+ * (native-vX.Y.Z), nunca contra la versión del servidor.
  */
 fun isNewerVersion(candidate: String?, current: String): Boolean {
     val s = parseVersion(candidate ?: return false) ?: return false

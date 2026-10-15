@@ -12,8 +12,9 @@ data class PublicVersionResponse(
 )
 
 /**
- * Respuesta de `GET /api/version/latest-release`: la última release de GitHub,
- * que es la que trae instaladores. Nulos si no hay o no se pudo consultar.
+ * Respuesta de `GET /api/version/latest-release`: la última release de la app
+ * en GitHub (native-vX.Y.Z), que es la que trae instaladores. Nulos si no hay
+ * o no se pudo consultar.
  */
 @Serializable
 data class LatestReleaseResponse(
