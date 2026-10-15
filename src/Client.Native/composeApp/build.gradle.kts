@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -81,11 +80,6 @@ kotlin {
         }
     }
 
-    jvm("desktop") {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
-    }
-
     sourceSets {
         commonMain {
             kotlin.srcDir(writePhotonneVersion)
@@ -157,19 +151,16 @@ kotlin {
             implementation(libs.sqldelight.native.driver)
         }
 
-        val desktopMain by getting {
+        // commonTest corre aquí en la JVM (rápido, en cada PR) y en el
+        // simulador de iOS. Lo que solo existe en la JVM (runBlocking, el
+        // driver JDBC de SQLite en memoria, MessageDigest) va en este source set.
+        val androidUnitTest by getting {
             dependencies {
-                implementation(compose.desktop.currentOs)
-                implementation(libs.kotlinx.coroutines.swing)
-                implementation(libs.ktor.client.cio)
-                implementation(libs.multiplatform.settings.no.arg)
                 implementation(libs.sqldelight.sqlite.driver)
-                implementation(libs.vlcj)
-                implementation(libs.java.keyring)
             }
         }
 
-        val desktopTest by getting {
+        val iosTest by getting {
             dependencies {
                 // Tests de interfaz (hit-test de toques sobre la rejilla).
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
@@ -201,6 +192,12 @@ android {
 
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    }
+
+    testOptions {
+        // Los tests comunes corren en la JVM sin dispositivo: las llamadas a
+        // android.jar (Log...) devuelven valores por defecto en vez de lanzar.
+        unitTests.isReturnDefaultValues = true
     }
 
     compileOptions {
@@ -235,31 +232,6 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
-    }
-}
-
-compose.desktop {
-    application {
-        mainClass = "com.photonne.app.MainKt"
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Photonne"
-            packageVersion = photonneVersion
-            // Módulos jlink que las libs cargan por reflexión y el detector no
-            // ve: java.sql (driver JDBC de SQLite), java.prefs (geometría de
-            // ventana y migración), jdk.unsupported (JNA: vlcj y java-keyring),
-            // java.naming (logback/JNA en algunos entornos).
-            modules("java.sql", "java.prefs", "java.naming", "jdk.unsupported")
-            macOS { iconFile.set(project.file("icons/photonne.icns")) }
-            windows { iconFile.set(project.file("icons/photonne.ico")) }
-            linux { iconFile.set(project.file("icons/photonne.png")) }
-        }
-        buildTypes.release.proguard {
-            // Sin ProGuard: vlcj/JNA, Ktor, SQLDelight y Koin dependen de
-            // reflexión y no llevamos reglas; el tamaño no compensa el riesgo.
-            isEnabled.set(false)
-        }
-        if (apiBaseUrl.isNotEmpty()) jvmArgs += "-Dphotonne.api.baseUrl=$apiBaseUrl"
     }
 }
 

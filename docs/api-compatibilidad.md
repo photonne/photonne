@@ -1,6 +1,6 @@
 # Compatibilidad de la API
 
-Las apps de Android, iOS y escritorio se actualizan cuando el usuario quiere, y el servidor se despliega en cada push. Durante semanas conviven servidores nuevos con apps antiguas, así que la API es un **contrato público**. Este documento fija qué se puede cambiar y cómo.
+Las apps de Android e iOS (y las de escritorio que sigan instaladas, ya retiradas) se actualizan cuando el usuario quiere, y el servidor se despliega en cada push. Durante semanas conviven servidores nuevos con apps antiguas, así que la API es un **contrato público**. Este documento fija qué se puede cambiar y cómo.
 
 El contrato es el documento OpenAPI que se guarda en [`src/Server.Api/openapi/v1.json`](../src/Server.Api/openapi/v1.json).
 

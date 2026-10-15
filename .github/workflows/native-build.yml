@@ -1,11 +1,19 @@
 name: Native client build
 
+# Android + iOS (the desktop JVM target was retired, ADR-005).
+#
+# On a PR the iOS job compiles Kotlin/Native and builds the Xcode app but
+# skips the common tests on the simulator (~13 min, the slowest step of the
+# whole pipeline): the same commonTest already runs on the JVM in the Linux
+# job. The simulator run happens on push to main and on a manual run.
+
 on:
   push:
     branches: [main]
     paths:
       - 'src/Client.Native/**'
       - '.github/workflows/native-build.yml'
+  workflow_dispatch:
   pull_request:
     paths:
       - 'src/Client.Native/**'
@@ -17,7 +25,7 @@ concurrency:
 
 jobs:
   build:
-    name: Compile common + desktop + android (Linux)
+    name: Compile + test common + android (Linux)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -45,14 +53,12 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Compile Desktop
-        run: ./gradlew :composeApp:compileKotlinDesktop --stacktrace
-
       - name: Compile Android (debug)
         run: ./gradlew :composeApp:compileDebugKotlinAndroid --stacktrace
 
+      # commonTest + androidUnitTest on the host JVM (no emulator).
       - name: Run common tests on JVM
-        run: ./gradlew :composeApp:desktopTest --stacktrace
+        run: ./gradlew :composeApp:testDebugUnitTest --stacktrace
 
       # R8 + resource shrinking + lintVital: catches missing keep rules and
       # fatal lint issues before a release is cut. Unsigned without secrets.
@@ -109,7 +115,9 @@ jobs:
       - name: Compile iOS (simulator + device)
         run: ./gradlew :composeApp:compileKotlinIosSimulatorArm64 :composeApp:compileKotlinIosArm64 --stacktrace
 
+      # Not on PRs: the Linux job already runs commonTest on the JVM.
       - name: Run common tests on the iOS simulator
+        if: github.event_name != 'pull_request'
         run: ./gradlew :composeApp:iosSimulatorArm64Test --stacktrace
 
       # The Xcode app itself: Swift sources, Info.plist, privacy manifest and

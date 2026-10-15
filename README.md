@@ -31,7 +31,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 - **Copia de seguridad** — Exportación y restauración de la base de datos y configuración
 
 **Clientes**
-- **Apps nativas** — Android, iOS y escritorio (Kotlin Multiplatform + Compose). Fuente principal para el consumo de la biblioteca
+- **Apps nativas** — Android e iOS (Kotlin Multiplatform + Compose). Fuente principal para el consumo de la biblioteca
 - **Web** — tu biblioteca completa en el navegador, instalable como PWA y pensada para escritorio (selección, arrastrar y soltar, atajos), con la administración del servidor: usuarios, bibliotecas, tareas, estadísticas y ajustes
 
 **Técnico**
@@ -45,7 +45,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 | Capa | Tecnología |
 |---|---|
 | Backend | ASP.NET Core 10, EF Core, PostgreSQL |
-| Apps nativas | Kotlin Multiplatform + Compose Multiplatform (Android, iOS, Desktop) |
+| Apps nativas | Kotlin Multiplatform + Compose Multiplatform (Android, iOS) |
 | Web | SvelteKit (SPA, PWA), Svelte 5, TypeScript, TanStack Query |
 | Imágenes | ImageSharp, Magick.NET |
 | Video | FFmpeg (vía Xabe.FFmpeg) |
@@ -62,7 +62,7 @@ Directory.Build.props    # Versión del servidor, mínimos app↔servidor y pref
 │   ├── Server.Api/      # API REST ASP.NET Core 10
 │   ├── Server.Ml/       # Servicio ML en Python (FastAPI)
 │   ├── Client.SPA/      # Cliente web (SvelteKit en modo SPA, PWA)
-│   └── Client.Native/   # Apps nativas (Android, iOS, Desktop) en KMP + Compose
+│   └── Client.Native/   # Apps nativas (Android, iOS) en KMP + Compose
 ├── tests/
 │   └── Server.Api.Tests/
 └── docs/
@@ -85,7 +85,7 @@ Directory.Build.props    # Versión del servidor, mínimos app↔servidor y pref
 
 **`Client.Native`** — Apps nativas (fuente principal de consumo):
 - Kotlin Multiplatform + Compose Multiplatform.
-- Targets Android, iOS y Desktop JVM con UI compartida.
+- Targets Android e iOS con UI compartida. En el ordenador se usa la web (PWA); la app de escritorio se retiró ([ADR-005](docs/ADR-005-retirar-escritorio.md)).
 - Cliente Ktor con refresh-on-401.
 - Decisión técnica documentada en [`src/Client.Native/docs/ADR-001-kotlin-multiplatform.md`](src/Client.Native/docs/ADR-001-kotlin-multiplatform.md).
 
@@ -408,7 +408,7 @@ externas).
 Las releases se publican a mano (ver [Versionado](#versionado)): `:latest`
 solo apunta a versiones publicadas, nunca a cada push. Cada release crea la
 [release de GitHub](https://github.com/photonne/photonne/releases) `v<versión>`
-(con sus notas y los instaladores de escritorio), que es la que consulta el
+(con sus notas), que es la que consulta el
 aviso de actualización del panel de administración. Además de `:latest`, cada
 imagen lleva la etiqueta de su versión (`:1.158.1`) y la del menor (`:1.158`):
 fíjala en `docker-compose.yml` si quieres actualizar solo cuando tú decidas o
@@ -438,7 +438,7 @@ por separado**. La versión de cada uno la gestiona
 |---|---|---|---|---|
 | `server` | `src/Server.Api` y `src/Client.SPA` (la SPA va dentro de la imagen) | `Directory.Build.props` (`<Version>`), `version.txt` | `server-vX.Y.Z` | `ghcr.io/photonne/photonne` |
 | `ml` | `src/Server.Ml` | `src/Server.Ml/version.txt` | `ml-vX.Y.Z` | `ghcr.io/photonne/photonne-ml` (+ `-gpu`) |
-| `native` | `src/Client.Native` (Android, iOS, escritorio) | `src/Client.Native/version.txt` | `native-vX.Y.Z` | instaladores de escritorio |
+| `native` | `src/Client.Native` (Android, iOS) | `src/Client.Native/version.txt` | `native-vX.Y.Z` | solo la release con sus notas (las tiendas, a mano desde la etiqueta) |
 
 Los commits **no** tocan la versión. En cada push a `main` release-please
 mantiene abierta **una PR de release por componente con cambios**
@@ -460,20 +460,20 @@ release.
 **Publicar un componente = hacer merge de su PR**, cuando quieras y sin tocar
 los demás. Al hacerlo, release-please etiqueta el commit y crea la release como
 borrador; `release.yml` construye solo ese componente desde la etiqueta
-(imágenes `:X.Y.Z`, `:X.Y`, `:latest`, o los instaladores de escritorio) y,
+(imágenes `:X.Y.Z`, `:X.Y`, `:latest`; `native` no construye nada) y,
 cuando todo está subido, publica la release. Solo las del servidor se marcan
 como *Latest* en GitHub. Para probar antes de publicar están las imágenes
 `:edge`, que salen de cada push a `main` (ver [CI/CD](#cicd)).
 
 Cada PR actualiza el `CHANGELOG.md` y los ficheros de versión de su
 componente. En `native`, `version.txt` cascada a Android
-(`versionName`/`versionCode`), Desktop y la constante `PhotonneVersion`; iOS no
+(`versionName`/`versionCode`) y la constante `PhotonneVersion`; iOS no
 deriva de ahí, así que el workflow sincroniza también `MARKETING_VERSION` y
 `CURRENT_PROJECT_VERSION` en el `project.pbxproj` dentro de esa PR. No edites
 las versiones a mano.
 
 El aviso de actualización del panel de administración compara con la última
-release `server-v*`, y el de la app de escritorio con la última `native-v*`.
+release `server-v*`.
 Las etiquetas `vX.Y.Z` de antes de separar los componentes valen para todos.
 
 Para que el workflow pueda abrir las PR hace falta activar *Allow GitHub
@@ -492,8 +492,8 @@ fichero y [docs/api-compatibilidad.md](docs/api-compatibilidad.md)).
 |---|---|---|
 | `api-image.yml` | push a `main` que toca el servidor/cliente web | `ghcr.io/photonne/photonne:edge` y `:sha-<commit>` |
 | `ml-image.yml` | push a `main` que toca `src/Server.Ml` | `ghcr.io/photonne/photonne-ml:edge`, `:edge-gpu` y `:sha-<commit>[-gpu]` |
-| `release.yml` | cada push a `main` (mantiene una PR de release por componente); merge de una de ellas | solo el componente publicado: `:X.Y.Z`, `:X.Y`, `:latest` de su imagen (+ `-gpu` en ML) o los instaladores de escritorio, y su release de GitHub |
-| `native-build.yml` | cambios en `src/Client.Native` | solo compila y prueba |
+| `release.yml` | cada push a `main` (mantiene una PR de release por componente); merge de una de ellas | solo el componente publicado: `:X.Y.Z`, `:X.Y`, `:latest` de su imagen (+ `-gpu` en ML) y su release de GitHub |
+| `native-build.yml` | cambios en `src/Client.Native` | solo compila y prueba (en las PR, los tests del simulador de iOS se saltan: los mismos tests comunes corren en la JVM) |
 
 Las imágenes Docker se construyen para `linux/amd64` y `linux/arm64`, cada
 arquitectura en su runner nativo; la variante GPU de ML solo para `amd64`.
