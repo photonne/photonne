@@ -221,7 +221,9 @@ test('pins a folder and hides a shared one from my photos', async ({ page }) => 
 	});
 });
 
-test('pinned albums, smart ones too, and folders show together everywhere', async ({ page }) => {
+test('pinned albums and folders share the sidebar; each index shows only its own', async ({
+	page
+}) => {
 	await open(page, '/folders/folder-4');
 	await page.getByRole('button', { name: 'Fijar en la barra lateral' }).click();
 	await expect(page.getByText('«Familia» fijado')).toBeVisible();
@@ -232,18 +234,76 @@ test('pinned albums, smart ones too, and folders show together everywhere', asyn
 	await expect(sidebar.getByRole('link', { name: 'Perros' })).toBeVisible();
 	await expect(sidebar.getByRole('link', { name: 'Familia' })).toBeVisible();
 
+	// The albums page: its pinned albums, smart ones too, and no folder.
 	const pinned = page.getByRole('region', { name: 'Fijados' });
-	for (const name of [/Vacaciones/, /Perros/, /Familia/])
+	for (const name of [/Vacaciones/, /Perros/])
 		await expect(pinned.getByRole('link', { name })).toBeVisible();
+	await expect(pinned.getByRole('link')).toHaveCount(2);
 
 	// A filter turns the page into one list of matches: no pinned group.
 	await page.getByRole('searchbox', { name: 'Buscar álbumes' }).fill('perr');
 	await expect(pinned).toBeHidden();
 	await expect(page.getByRole('main').getByRole('link', { name: /Perros/ })).toBeVisible();
 
+	// The folders page: the pinned folder alone, above the top-level ones.
 	await sidebar.getByRole('link', { name: 'Carpetas', exact: true }).click();
-	await expect(pinned.getByRole('link')).toHaveCount(3);
+	await expect(pinned.getByRole('link', { name: /Familia/ })).toBeVisible();
+	await expect(pinned.getByRole('link')).toHaveCount(1);
 	await expect(page.getByRole('heading', { name: 'Carpetas principales' })).toBeVisible();
+});
+
+test('a folder with subfolders and photos folds either section and shares the view', async ({
+	page
+}) => {
+	await open(page, '/folders/folder-1');
+	await expect(cells(page)).toHaveCount(20);
+	const subfolders = page.getByRole('list', { name: 'Subcarpetas' });
+	await expect(subfolders.getByRole('link', { name: /2025/ })).toBeVisible();
+	await expect(subfolders).toHaveClass(/grid/);
+
+	// The tiles or rows chosen here are the folders index's too.
+	await page.getByRole('radio', { name: 'Lista' }).check();
+	await expect(subfolders).toHaveClass(/list/);
+	await page
+		.getByRole('navigation', { name: 'Navegación principal' })
+		.getByRole('link', { name: 'Carpetas', exact: true })
+		.click();
+	await expect(page.getByRole('list', { name: 'Carpetas principales' })).toHaveClass(/list/);
+	await expect(page.getByRole('radio', { name: 'Lista' })).toBeChecked();
+
+	await page.goBack();
+	await expect(cells(page)).toHaveCount(20);
+	const subfoldersHead = page.getByRole('button', { name: 'Subcarpetas 1' });
+	const photosHead = page.getByRole('button', { name: 'Fotos 20' });
+	await expect(subfoldersHead).toHaveAttribute('aria-expanded', 'true');
+	await expect(photosHead).toHaveAttribute('aria-expanded', 'true');
+
+	await photosHead.click();
+	await expect(photosHead).toHaveAttribute('aria-expanded', 'false');
+	await expect(cells(page)).toHaveCount(0);
+	await expect(subfolders).toBeVisible();
+
+	await subfoldersHead.click();
+	await expect(subfolders).toBeHidden();
+	await expect(page.getByRole('radio', { name: 'Lista' })).toBeHidden();
+
+	// Folded sections stay folded on the next visit.
+	await page.reload();
+	await expect(page.getByRole('button', { name: 'Subcarpetas 1' })).toHaveAttribute(
+		'aria-expanded',
+		'false'
+	);
+	await expect(page.getByRole('button', { name: 'Fotos 20' })).toHaveAttribute(
+		'aria-expanded',
+		'false'
+	);
+	await page.getByRole('button', { name: 'Fotos 20' }).click();
+	await expect(cells(page)).toHaveCount(20);
+
+	// A folder without subfolders has nothing to fold: its photos just show.
+	await open(page, '/folders/folder-2');
+	await expect(cells(page)).toHaveCount(5);
+	await expect(page.getByRole('button', { name: /^Fotos/ })).toHaveCount(0);
 });
 
 test('shares a folder with a person', async ({ page }) => {

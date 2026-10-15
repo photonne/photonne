@@ -1,5 +1,5 @@
 import type { FolderResponse } from '#lib/api/index.js';
-import { fold, type ListView } from './album-list.js';
+import { fold } from './album-list.js';
 import { subtreeIds } from './folder-tree.js';
 
 /** Which folders: everything, the user's own, the shared space, or external libraries. */
@@ -10,7 +10,6 @@ export interface FolderListOptions {
 	scope: FolderScope;
 	sort: FolderSort;
 	descending: boolean;
-	view: ListView;
 	/** Matched against names at any depth, accent- and case-insensitive. */
 	query: string;
 }
@@ -25,7 +24,6 @@ export const defaultFolderListOptions: FolderListOptions = {
 	scope: 'all',
 	sort: 'name',
 	descending: false,
-	view: 'grid',
 	query: ''
 };
 
@@ -86,8 +84,9 @@ export function folderScopeCounts(roots: readonly FolderResponse[], username = '
 }
 
 /**
- * Saved sort, direction and view. The scope isn't kept: it hides folders,
- * and a filter restored weeks later reads as missing data (native app).
+ * Saved sort and direction (the view is folder-view.svelte.ts, shared with
+ * a folder's own page). The scope isn't kept: it hides folders, and a
+ * filter restored weeks later reads as missing data (native app).
  */
 export function parseFolderListOptions(raw: string | null): FolderListOptions {
 	try {
@@ -96,8 +95,7 @@ export function parseFolderListOptions(raw: string | null): FolderListOptions {
 			...defaultFolderListOptions,
 			scope: isFolderScope(saved.scope) ? saved.scope : defaultFolderListOptions.scope,
 			sort: saved.sort === 'count' ? 'count' : 'name',
-			descending: saved.descending === true,
-			view: saved.view === 'list' ? 'list' : 'grid'
+			descending: saved.descending === true
 		};
 	} catch {
 		return { ...defaultFolderListOptions };

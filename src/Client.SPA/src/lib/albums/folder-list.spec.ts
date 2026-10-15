@@ -116,7 +116,7 @@ describe('arrangeFolders', () => {
 });
 
 describe('parseFolderListOptions', () => {
-	it('keeps scope, sort, direction and view, never the search', () => {
+	it('keeps scope, sort and direction, never the search', () => {
 		expect(
 			parseFolderListOptions(
 				'{"sort":"count","descending":true,"view":"list","scope":"shared","query":"x"}'
@@ -125,8 +125,7 @@ describe('parseFolderListOptions', () => {
 			...defaultFolderListOptions,
 			scope: 'shared',
 			sort: 'count',
-			descending: true,
-			view: 'list'
+			descending: true
 		});
 		expect(parseFolderListOptions('{"scope":"elsewhere"}').scope).toBe('all');
 		expect(parseFolderListOptions('nope')).toEqual(defaultFolderListOptions);

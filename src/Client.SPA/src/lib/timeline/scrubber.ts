@@ -26,6 +26,33 @@ export function yearMarkers(
 }
 
 /**
+ * One marker per year for a grid without dated sections (an album sorted by
+ * date), where the year's first row starts. `rows` come in display order
+ * with the year of their first photo. Years that don't run one way (an
+ * album in its own order mixes them) give no markers: a year would start
+ * over and over, and the rail would say nothing.
+ */
+export function rowYearMarkers(
+	rows: readonly { top: number; year: string }[],
+	totalHeight: number
+): ScrubberMarker[] {
+	if (totalHeight <= 0) return [];
+	const markers: ScrubberMarker[] = [];
+	let direction = 0;
+	for (const row of rows) {
+		const last = markers.at(-1);
+		if (last?.label === row.year) continue;
+		if (last) {
+			const step = row.year > last.label ? 1 : -1;
+			if (direction !== 0 && step !== direction) return [];
+			direction = step;
+		}
+		markers.push({ label: row.year, fraction: row.top / totalHeight });
+	}
+	return markers;
+}
+
+/**
  * Drops markers that would overlap on a rail `railHeight` px tall, keeping
  * the earlier (newer) one, so labels stay legible on long libraries.
  */

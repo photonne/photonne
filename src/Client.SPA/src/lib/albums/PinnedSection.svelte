@@ -24,7 +24,7 @@
 	const queryClient = useQueryClient();
 </script>
 
-<!-- Albums and folders together, as in the sidebar and the native app's Collections. -->
+<!-- Pinned albums, folders, or (the sidebar's mix) both: each index shows its own kind. -->
 <section aria-labelledby="pinned-title">
 	<h2 id="pinned-title">{m.nav_section_pinned()}</h2>
 	<ul class={view}>

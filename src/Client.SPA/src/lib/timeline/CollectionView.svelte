@@ -58,6 +58,11 @@
 		 * folds to a slim bar once the grid scrolls.
 		 */
 		cover?: string | null;
+		/**
+		 * The grid put away (a folder showing only its subfolders): nothing
+		 * under the header, which then has the room.
+		 */
+		collapsed?: boolean;
 		onnearend?: () => void;
 	}
 
@@ -78,6 +83,7 @@
 		toolbar,
 		header,
 		cover = null,
+		collapsed = false,
 		onnearend
 	}: Props = $props();
 
@@ -195,7 +201,9 @@
 		{@render header?.()}
 	{/if}
 
-	{#if status === 'pending'}
+	{#if collapsed}
+		<!-- The host folded the grid away. -->
+	{:else if status === 'pending'}
 		<Skeleton variant="grid" />
 	{:else if status === 'error'}
 		<p class="status" role="alert">{m.error_loading()}</p>
@@ -278,11 +286,13 @@
 		height: 100%;
 	}
 
+	/* Under the banner, the toolbar keeps the page header's room below it:
+	   the grid scrolls under that margin, not up against the buttons. */
 	.head {
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-		padding: var(--space-2) var(--page-gutter) 0;
+		padding: var(--space-2) var(--page-gutter) var(--space-3);
 	}
 
 	h1 {
