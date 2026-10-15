@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.200.1](https://github.com/photonne/photonne/compare/v1.200.0...v1.200.1) (2026-10-15)
+
+
+### Correcciones
+
+* **spa:** álbumes y carpetas: margen, años en el scrubber, fijados por sección, vista y pliegue en carpetas, barras de scroll ([5e24eaf](https://github.com/photonne/photonne/commit/5e24eaf47dc252a504d1b75f4522c1b8cb6c2144))
+
 ## [1.200.0](https://github.com/photonne/photonne/compare/v1.199.0...v1.200.0) (2026-10-14)
 
 
