@@ -8,7 +8,7 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_settings_load_failed
 import com.photonne.app.resources.admin_settings_save_failed
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

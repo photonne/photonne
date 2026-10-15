@@ -4,8 +4,8 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.bulk_failed
 import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.getPluralString
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getPluralString
+import com.photonne.app.ui.util.getString
 
 /**
  * Texto del snackbar tras una acción en bloque: "3 álbumes eliminados" si todo

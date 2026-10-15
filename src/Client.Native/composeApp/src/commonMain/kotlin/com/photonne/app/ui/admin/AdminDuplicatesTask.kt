@@ -5,7 +5,7 @@ import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.SecondaryActionButton
 import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.resources.admin_duplicates_error_run
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.ui.error.ErrorBanner

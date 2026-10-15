@@ -7,7 +7,7 @@ import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_trash_error_stats
 import com.photonne.app.resources.admin_trash_cleanup_done_format
 import com.photonne.app.resources.admin_trash_error_cleanup
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import com.photonne.app.data.error.UiError
 import com.photonne.app.ui.error.ErrorBanner
 import androidx.compose.foundation.layout.Arrangement
