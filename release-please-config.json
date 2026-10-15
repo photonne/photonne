@@ -1,12 +1,14 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "release-type": "simple",
-  "include-component-in-tag": false,
+  "include-component-in-tag": true,
   "include-v-in-tag": true,
-  "pull-request-title-pattern": "chore: release ${version}",
-  "pull-request-header": "Al hacer merge de esta PR se publica la release: se crea la etiqueta, se construyen las imágenes Docker versionadas (`:latest` incluido) y los instaladores de escritorio, y la release se hace pública cuando todo está listo.",
+  "separate-pull-requests": true,
+  "pull-request-title-pattern": "chore: release${component} ${version}",
+  "pull-request-header": "Al hacer merge de esta PR se publica la release de este componente: se crea su etiqueta (`<componente>-vX.Y.Z`), se construye lo que le corresponde (imagen Docker versionada con `:latest` incluido, o los instaladores de escritorio) y la release se hace pública cuando todo está listo. Los demás componentes no se tocan.",
   "draft": true,
   "force-tag-creation": true,
+  "bootstrap-sha": "e8c2b368ce7de6f176b6d87124574a443fab19ca",
   "changelog-sections": [
     { "type": "feat", "section": "Novedades" },
     { "type": "fix", "section": "Correcciones" },
@@ -22,6 +24,12 @@
   ],
   "packages": {
     ".": {
+      "component": "server",
+      "exclude-paths": [
+        "src/Server.Ml",
+        "src/Client.Native",
+        "docs/site"
+      ],
       "extra-files": [
         {
           "type": "xml",
@@ -29,6 +37,12 @@
           "xpath": "//Project/PropertyGroup/Version"
         }
       ]
+    },
+    "src/Server.Ml": {
+      "component": "ml"
+    },
+    "src/Client.Native": {
+      "component": "native"
     }
   }
 }

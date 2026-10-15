@@ -1,7 +1,8 @@
 # Empaqueta la app de escritorio (DMG / MSI / DEB) en los tres SO y adjunta los
 # instaladores a la release de GitHub. Lo llama release.yml (workflow_call) al
-# hacer merge de la PR de release-please, mientras la release aún es borrador:
-# release.yml la publica cuando los instaladores y las imágenes están subidos.
+# hacer merge de la PR de release-please del componente native (etiqueta
+# native-vX.Y.Z), mientras la release aún es borrador: release.yml la publica
+# cuando los instaladores están subidos.
 # También se puede lanzar a mano (workflow_dispatch): entonces los instaladores
 # quedan como artifacts del run, sin release a la que subirlos.
 #

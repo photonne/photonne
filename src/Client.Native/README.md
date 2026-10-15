@@ -226,14 +226,17 @@ fijar la configuración compartida.
 
 ## Versionado
 
-No edites las versiones a mano. `versionName`/`versionCode` (Android) y el
+No edites las versiones a mano. La app es el componente `native` y versiona
+aparte del servidor: `versionName`/`versionCode` (Android) y el
 `packageVersion` (Desktop) se leen en configuración de Gradle desde
-`../../Directory.Build.props` (`<Version>`); iOS (`MARKETING_VERSION` /
+`version.txt` (en esta carpeta); iOS (`MARKETING_VERSION` /
 `CURRENT_PROJECT_VERSION` en `iosApp.xcodeproj/project.pbxproj`, ambos = la
-versión semver) lo sincroniza `release.yml` en la PR de release. La versión
-solo cambia al publicar una release con release-please — ver [Versionado en el
-README raíz](../../README.md#versionado). Los builds para las tiendas salen de
-la etiqueta de una release (`git checkout vX.Y.Z`).
+versión semver) lo sincroniza `release.yml` en la PR de release de `native`.
+La versión solo cambia al publicar una release con release-please — ver
+[Versionado en el README raíz](../../README.md#versionado). Los builds para las
+tiendas salen de la etiqueta de una release de la app
+(`git checkout native-vX.Y.Z`; las anteriores a separar los componentes son
+`vX.Y.Z`).
 
 ## Generación del cliente del API desde OpenAPI
 

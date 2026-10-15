@@ -4,10 +4,10 @@ name: ML image
 #
 # - edge (push to main touching src/Server.Ml, or by hand):
 #   :edge / :sha-<commit> and the GPU variant :edge-gpu / :sha-<commit>-gpu.
-# - release (workflow_call from release.yml): builds the tagged commit and
-#   publishes :<version>, :<minor>, :latest and their -gpu counterparts, so
-#   every release has a matching ML image even when the service didn't change
-#   (the layers then come straight from the build cache).
+# - release (workflow_call from release.yml when the ml component is released,
+#   tag ml-vX.Y.Z): builds the tagged commit and publishes :<version>,
+#   :<minor>, :latest and their -gpu counterparts. The ML service versions on
+#   its own (src/Server.Ml/version.txt), independently from the server.
 
 on:
   push:
@@ -46,12 +46,12 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - name: Read version from Directory.Build.props
+      - name: Read version from src/Server.Ml/version.txt
         id: read
         run: |
-          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -n1)
+          version=$(tr -d '[:space:]' < src/Server.Ml/version.txt)
           if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Unexpected version '$version' in Directory.Build.props"
+            echo "::error::Unexpected version '$version' in src/Server.Ml/version.txt"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"

@@ -6,7 +6,7 @@ name: API image
 #   ghcr.io/<owner>/photonne:edge and :sha-<commit>. Never :latest nor a
 #   version tag, so servers following :latest only get validated releases.
 # - release (workflow_call from release.yml once release-please has tagged a
-#   release): builds the tagged commit and publishes :<version>, :<minor> and
+#   server release, server-vX.Y.Z): builds the tagged commit and publishes :<version>, :<minor> and
 #   :latest. It is rebuilt rather than retagged from edge because the version
 #   is baked into the binaries (Directory.Build.props) and the release commit
 #   is the one that bumps it.

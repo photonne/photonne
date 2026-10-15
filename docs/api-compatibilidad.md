@@ -21,15 +21,17 @@ El contrato es el documento OpenAPI que se guarda en [`src/Server.Api/openapi/v1
 ### Cómo hacer un cambio que no es compatible
 
 1. **Mejor, no hacerlo.** Añade lo nuevo al lado de lo viejo (un campo `fooV2`, un endpoint nuevo). Retira lo viejo cuando la versión mínima de cliente ya no lo use.
-2. **Si no hay alternativa:** en la misma PR sube `PhotonneMinClientVersion` en [`Directory.Build.props`](../Directory.Build.props) a la versión que ya entiende el cambio. Las apps más antiguas avisarán al usuario de que tiene que actualizar.
+2. **Si no hay alternativa:** en la misma PR sube `PhotonneMinClientVersion` en [`Directory.Build.props`](../Directory.Build.props) a la versión de la app (`src/Client.Native/version.txt`) que ya entiende el cambio. Las apps más antiguas avisarán al usuario de que tiene que actualizar.
 3. **Para un rediseño completo de un área:** usa un prefijo `/api/v2/...` y mantén `/api/...` mientras haya apps en uso que lo necesiten.
 
 ## Versiones mínimas
 
 En `Directory.Build.props`, y se suben a mano:
 
-- **`PhotonneMinClientVersion`**: la app más antigua que este servidor atiende bien. Se publica en `GET /api/version` (`minClientVersion`). Las apps la comparan con su propia versión y muestran el aviso de actualizar la app.
-- **`PhotonneMinServerVersion`**: el servidor más antiguo que necesita la app. Va compilado en la app. Súbelo cuando la app empiece a usar un endpoint o campo nuevo, y avisará de que hay que actualizar el servidor.
+El servidor y la app versionan por separado (componentes `server` y `native`, ver [Versionado](../README.md#versionado)), así que cada mínimo va en las versiones del otro componente:
+
+- **`PhotonneMinClientVersion`**: la app más antigua que este servidor atiende bien, en versiones de la app (`src/Client.Native/version.txt`). Se publica en `GET /api/version` (`minClientVersion`). Las apps la comparan con su propia versión y muestran el aviso de actualizar la app.
+- **`PhotonneMinServerVersion`**: el servidor más antiguo que necesita la app, en versiones del servidor (`<Version>` de `Directory.Build.props`). Va compilado en la app. Súbelo cuando la app empiece a usar un endpoint o campo nuevo, y avisará de que hay que actualizar el servidor.
 
 ## Lo que comprueba la CI
 
