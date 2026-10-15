@@ -115,6 +115,12 @@ jobs:
       - name: Compile iOS (simulator + device)
         run: ./gradlew :composeApp:compileKotlinIosSimulatorArm64 :composeApp:compileKotlinIosArm64 --stacktrace
 
+      # On PRs only compile the iOS tests (iosTest is never built elsewhere);
+      # linking and running them is the slow part.
+      - name: Compile iOS tests
+        if: github.event_name == 'pull_request'
+        run: ./gradlew :composeApp:compileTestKotlinIosSimulatorArm64 --stacktrace
+
       # Not on PRs: the Linux job already runs commonTest on the JVM.
       - name: Run common tests on the iOS simulator
         if: github.event_name != 'pull_request'
