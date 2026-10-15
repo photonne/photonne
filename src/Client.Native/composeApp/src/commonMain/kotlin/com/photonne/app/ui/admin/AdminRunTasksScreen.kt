@@ -229,7 +229,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 import kotlin.time.Instant
 import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics

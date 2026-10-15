@@ -1,7 +1,7 @@
 package com.photonne.app.ui.admin
 
 import com.photonne.app.resources.admin_server_error_load
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import com.photonne.app.resources.Res
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

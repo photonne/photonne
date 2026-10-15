@@ -73,7 +73,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Instant
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.ListRowsSkeleton
 import com.photonne.app.ui.theme.PhotonneIcons

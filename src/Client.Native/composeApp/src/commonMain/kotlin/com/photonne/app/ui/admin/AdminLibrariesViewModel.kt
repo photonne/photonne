@@ -12,7 +12,7 @@ import com.photonne.app.resources.admin_libraries_error_scan_cancel
 import com.photonne.app.resources.admin_libraries_error_permissions_load
 import com.photonne.app.resources.admin_libraries_error_grant
 import com.photonne.app.resources.admin_libraries_error_revoke
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import com.photonne.app.resources.Res
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

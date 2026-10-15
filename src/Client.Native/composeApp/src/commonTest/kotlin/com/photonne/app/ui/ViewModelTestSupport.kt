@@ -84,6 +84,7 @@ internal class TrackedViewModels {
     fun <T : ViewModel> track(vm: T): T = vm.also { created += it }
 
     fun runTest(block: suspend TestScope.() -> Unit): TestResult = kotlinx.coroutines.test.runTest {
+        useTestStrings()
         try {
             block()
         } finally {

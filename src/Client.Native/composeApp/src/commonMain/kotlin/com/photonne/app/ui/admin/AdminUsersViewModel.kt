@@ -12,7 +12,7 @@ import com.photonne.app.resources.admin_users_error_delete
 import com.photonne.app.resources.admin_users_password_reset
 import com.photonne.app.resources.admin_users_error_reset_password
 import com.photonne.app.resources.admin_users_error_promote
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import com.photonne.app.resources.Res
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
