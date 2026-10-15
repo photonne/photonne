@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.200.2](https://github.com/photonne/photonne/compare/server-v1.200.1...server-v1.200.2) (2026-10-15)
+
+
+### Correcciones
+
+* **api:** el aviso de actualización compara con la release de su componente ([f89a408](https://github.com/photonne/photonne/commit/f89a40872822c05a45c74cfffe86a2a7c5a4293e))
+* **spa:** Los filtros de personas y carpetas de Organizar se pueden elegir pulsando el nombre ([719dfca](https://github.com/photonne/photonne/commit/719dfca8d5bfea096eafc315df81737adaaaf389))
+
 ## [1.200.1](https://github.com/photonne/photonne/compare/v1.200.0...v1.200.1) (2026-10-15)
 
 
