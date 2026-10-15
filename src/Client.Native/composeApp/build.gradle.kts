@@ -160,12 +160,10 @@ kotlin {
             }
         }
 
-        val iosTest by getting {
-            dependencies {
-                // Tests de interfaz (hit-test de toques sobre la rejilla).
-                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
-                implementation(compose.uiTest)
-            }
+        iosTest.dependencies {
+            // Tests de interfaz (hit-test de toques sobre la rejilla).
+            @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+            implementation(compose.uiTest)
         }
     }
 }
