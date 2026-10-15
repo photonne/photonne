@@ -5,7 +5,7 @@
   "include-v-in-tag": true,
   "separate-pull-requests": true,
   "pull-request-title-pattern": "chore: release${component} ${version}",
-  "pull-request-header": "Al hacer merge de esta PR se publica la release de este componente: se crea su etiqueta (`<componente>-vX.Y.Z`), se construye lo que le corresponde (imagen Docker versionada con `:latest` incluido, o los instaladores de escritorio) y la release se hace pública cuando todo está listo. Los demás componentes no se tocan.",
+  "pull-request-header": "Al hacer merge de esta PR se publica la release de este componente: se crea su etiqueta (`<componente>-vX.Y.Z`), se construye lo que le corresponde (la imagen Docker versionada con `:latest` incluido; la app nativa solo publica sus notas) y la release se hace pública cuando todo está listo. Los demás componentes no se tocan.",
   "draft": true,
   "force-tag-creation": true,
   "bootstrap-sha": "e8c2b368ce7de6f176b6d87124574a443fab19ca",

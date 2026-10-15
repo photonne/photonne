@@ -5,7 +5,7 @@
 # |-----------|------------------------------|----------------|------------------------------|
 # | server    | . (minus ML, Native, docs)   | server-vX.Y.Z  | API image (SPA inside)       |
 # | ml        | src/Server.Ml                | ml-vX.Y.Z      | ML image (+ -gpu)            |
-# | native    | src/Client.Native            | native-vX.Y.Z  | desktop installers           |
+# | native    | src/Client.Native            | native-vX.Y.Z  | release notes (stores: hand) |
 #
 # On every push to main release-please keeps ONE release PR open PER
 # COMPONENT with releasable changes ("chore: release server X.Y.Z"...). A
@@ -17,10 +17,11 @@
 # Merging one of them is the "publish" button for THAT component:
 # release-please tags the merge commit and creates the GitHub Release as a
 # DRAFT, then this workflow builds only that component from the tag and only
-# then publishes the release. So the servers' update check and the desktop
-# app (which look for the latest server-v* / native-v* release) never see a
-# release whose images or installers don't exist yet. Only server releases
-# are marked as GitHub's "Latest".
+# then publishes the release. So the servers' update check (which looks for
+# the latest server-v* release) never sees a release whose images don't exist
+# yet. A native release only carries its changelog: the Android and iOS builds
+# go to the stores by hand from its tag. Only server releases are marked as
+# GitHub's "Latest".
 #
 # Opening the release PRs needs either "Allow GitHub Actions to create and
 # approve pull requests" (Organization settings -> Actions -> General, then the
@@ -139,21 +140,10 @@ jobs:
           TAG: ${{ needs.release-please.outputs.ml_tag }}
         run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
 
-  # --- native: desktop installers ---------------------------------------------
-  # A release created with GITHUB_TOKEN doesn't fire `release: published` in
-  # other workflows, so the desktop installers are built from here (uploaded
-  # to the draft release).
-  native-desktop:
+  # --- native: nothing to build, only the release notes ----------------------
+  native-publish:
     needs: release-please
     if: needs.release-please.outputs.native_created == 'true'
-    permissions:
-      contents: write
-    uses: ./.github/workflows/desktop-release.yml
-    with:
-      tag: ${{ needs.release-please.outputs.native_tag }}
-
-  native-publish:
-    needs: [release-please, native-desktop]
     runs-on: ubuntu-latest
     steps:
       - name: Publish the draft release

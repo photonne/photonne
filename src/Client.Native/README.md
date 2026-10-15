@@ -1,6 +1,6 @@
 # Photonne.Client.Native
 
-Cliente nativo de Photonne para Android, iOS y Desktop, construido con
+Cliente nativo de Photonne para Android e iOS, construido con
 [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) y
 [Compose Multiplatform](https://www.jetbrains.com/lp/compose-multiplatform/).
 
@@ -10,16 +10,20 @@ Cliente nativo de Photonne para Android, iOS y Desktop, construido con
 > detalle de asset, además de administración del servidor. El cliente web
 > (`Photonne.Client.SPA`) ofrece lo mismo en el navegador, salvo la copia de
 > seguridad del dispositivo.
+>
+> En el ordenador se usa la web, instalable como PWA: la app de escritorio
+> (target JVM de Compose) se retiró en [ADR-005](../../docs/ADR-005-retirar-escritorio.md).
 
 ## Layout
 
 ```
 composeApp/
 ├── src/commonMain         # UI Compose + dominio + cliente Ktor
-├── src/commonTest         # Tests con MockEngine de Ktor
+├── src/commonTest         # Tests con MockEngine de Ktor (JVM de Android + simulador iOS)
 ├── src/androidMain        # MainActivity, EncryptedSharedPreferences, OkHttp engine
+├── src/androidUnitTest    # Tests solo-JVM (runBlocking, SQLite JDBC en memoria)
 ├── src/iosMain            # MainViewController, NSUserDefaults, Darwin engine
-└── src/desktopMain        # Main.kt, settings cifrados (llavero del SO), CIO engine, vlcj
+└── src/iosTest            # Tests de interfaz (compose ui-test)
 iosApp/                    # Wrapper Xcode para empaquetar el framework iOS
 ```
 
@@ -145,7 +149,6 @@ los FABs del mapa (son botones de acción, no cromo translúcido).
 | Todos | JDK 21, Kotlin 2.1, Gradle 8.10 (vendored vía wrapper) |
 | Android | Android SDK 35, NDK opcional, AGP 8.7 |
 | iOS | macOS + Xcode 16, CocoaPods opcional |
-| Desktop | JDK 21 |
 
 El JDK lo proporciona el wrapper o se puede instalar con `brew install --cask temurin@21`.
 
@@ -154,17 +157,11 @@ El JDK lo proporciona el wrapper o se puede instalar con `brew install --cask te
 Desde `src/Client.Native/`:
 
 ```sh
-# Tests unitarios (commonTest sobre JVM)
-./gradlew :composeApp:desktopTest
+# Tests unitarios (commonTest + androidUnitTest sobre la JVM)
+./gradlew :composeApp:testDebugUnitTest
 
-# Compilar sólo Desktop sin construir nada más
-./gradlew :composeApp:compileKotlinDesktop
-
-# Arrancar la app de escritorio apuntando al API local
-./gradlew :composeApp:run -PApiBaseUrl=http://localhost:1107
-
-# Empaquetar la app de escritorio como dmg/msi/deb
-./gradlew :composeApp:packageDistributionForCurrentOS
+# Los mismos tests comunes en el simulador de iOS (necesita macOS)
+./gradlew :composeApp:iosSimulatorArm64Test
 
 # Compilar sólo el módulo Android (sin firmar)
 ./gradlew :composeApp:assembleDebug
@@ -181,13 +178,12 @@ la persiste y elige la efectiva según la sonda de alcanzabilidad local
 (`LocalReachabilityProbe`). Los valores de build son solo el PRERRELLENO del
 campo cuando aún no hay URL guardada:
 
-1. `-PApiBaseUrl=...` al ejecutar Gradle (Desktop y Android).
-2. `PHOTONNE_API_BASE_URL` como variable de entorno (Desktop).
-3. `BuildConfig.API_BASE_URL` (Android): en debug, `-PApiBaseUrl` o, si no se
+1. `-PApiBaseUrl=...` al ejecutar Gradle (Android).
+2. `BuildConfig.API_BASE_URL` (Android): en debug, `-PApiBaseUrl` o, si no se
    pasa, `http://10.0.2.2:1107` (el host visto desde el emulador); en release
    solo el valor pasado explícitamente, nunca una dirección de desarrollo.
-4. `PhotonneApiBaseUrl` en `Info.plist` (iOS, ver `iosApp/Configuration/Config.xcconfig`).
-5. Por defecto: `http://localhost:1107` (puerto definido en `.env.example`).
+3. `PhotonneApiBaseUrl` en `Info.plist` (iOS, ver `iosApp/Configuration/Config.xcconfig`).
+4. Por defecto: `http://localhost:1107` (puerto definido en `.env.example`).
 
 El cliente añade automáticamente `Authorization: Bearer <jwt>` en cada
 petición, y reintenta una sola vez tras un `401` llamando a
@@ -227,8 +223,8 @@ fijar la configuración compartida.
 ## Versionado
 
 No edites las versiones a mano. La app es el componente `native` y versiona
-aparte del servidor: `versionName`/`versionCode` (Android) y el
-`packageVersion` (Desktop) se leen en configuración de Gradle desde
+aparte del servidor: `versionName`/`versionCode` (Android) se leen en
+configuración de Gradle desde
 `version.txt` (en esta carpeta); iOS (`MARKETING_VERSION` /
 `CURRENT_PROJECT_VERSION` en `iosApp.xcodeproj/project.pbxproj`, ambos = la
 versión semver) lo sincroniza `release.yml` en la PR de release de `native`.
@@ -251,8 +247,8 @@ el contrato se estabilice, se puede migrar al plugin
 ```sh
 docker compose up -d photonne-api
 cd src/Client.Native
-./gradlew :composeApp:desktopTest
-./gradlew :composeApp:run -PApiBaseUrl=http://localhost:1107
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:installDebug   # emulador: el login se prerrellena con http://10.0.2.2:1107
 ```
 
 Loguea con `admin` / `${ADMIN_PASSWORD}` y deberías llegar a
