@@ -8,16 +8,20 @@
 		folders: readonly FolderResponse[];
 		label: string;
 		view: ListView;
-		selection: Selection;
+		/** Makes the cards selectable (the index); a folder's subfolders aren't. */
+		selection?: Selection;
 		/** Where a folder is, for search results from any depth ("Camera / 2025"). */
 		location?: (folder: FolderResponse) => string;
+		/** Photos dropped on a card move into that folder. */
+		ondropassets?: (folder: FolderResponse, assetIds: string[]) => void;
 	}
 
-	let { folders, label, view, selection, location }: Props = $props();
+	let { folders, label, view, selection, location, ondropassets }: Props = $props();
 
 	const order = $derived(folders.map((folder) => folder.id));
 
 	function select(folder: FolderResponse, mode: 'toggle' | 'range') {
+		if (!selection) return;
 		if (mode === 'range') selection.selectRange(folder.id, order);
 		else selection.toggle(folder.id);
 	}
@@ -28,10 +32,11 @@
 		<FolderCard
 			{folder}
 			{view}
-			selected={selection.has(folder.id)}
-			selecting={selection.active}
-			onselect={(mode) => select(folder, mode)}
+			selected={selection?.has(folder.id) ?? false}
+			selecting={selection?.active ?? false}
+			onselect={selection && ((mode) => select(folder, mode))}
 			where={location?.(folder)}
+			{ondropassets}
 		/>
 	{/each}
 </ul>

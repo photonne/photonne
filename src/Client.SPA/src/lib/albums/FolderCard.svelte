@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isAssetDrag } from '#lib/actions/drag-assets.js';
 	import type { FolderResponse } from '#lib/api/index.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { thumbnailUrl } from '#lib/media.js';
@@ -6,6 +7,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import type { ListView } from './album-list.js';
 	import { cardClick } from './bulk.js';
+	import { draggedAssetIds } from './dragged.js';
 	import { icons } from './icons.js';
 
 	interface Props {
@@ -20,6 +22,8 @@
 		where?: string;
 		/** Shows the pin button, as on album cards. */
 		ontogglepin?: (folder: FolderResponse) => void;
+		/** Photos dropped on the card move into the folder (if it can be written). */
+		ondropassets?: (folder: FolderResponse, assetIds: string[]) => void;
 	}
 
 	let {
@@ -29,8 +33,12 @@
 		selecting = false,
 		onselect,
 		where,
-		ontogglepin
+		ontogglepin,
+		ondropassets
 	}: Props = $props();
+
+	const droppable = $derived(!!ondropassets && folder.canWrite);
+	let dropTarget = $state(false);
 
 	const src = $derived.by(() => {
 		const id = folder.previewAssetIds[0] ?? folder.firstAssetId;
@@ -47,7 +55,25 @@
 </script>
 
 <li class="card {view}" class:selected class:selecting class:pinnable={ontogglepin}>
-	<a href={appHref(`/folders/${folder.id}`)} {onclick}>
+	<a
+		href={appHref(`/folders/${folder.id}`)}
+		class:drop={dropTarget}
+		title={droppable ? m.drop_move_to_folder({ folder: folder.name }) : undefined}
+		{onclick}
+		ondragover={(event) => {
+			if (!droppable || !isAssetDrag(event)) return;
+			event.preventDefault();
+			dropTarget = true;
+		}}
+		ondragleave={() => (dropTarget = false)}
+		ondrop={(event) => {
+			if (!droppable) return;
+			event.preventDefault();
+			dropTarget = false;
+			const ids = draggedAssetIds(event.dataTransfer);
+			if (ids.length) ondropassets?.(folder, ids);
+		}}
+	>
 		<span class="thumb" class:tile={!src}>
 			{#if src}
 				<img {src} alt="" loading="lazy" decoding="async" />
@@ -127,6 +153,12 @@
 
 	a:focus-visible {
 		outline: none;
+	}
+
+	a.drop {
+		outline: 2px dashed var(--color-accent);
+		outline-offset: 2px;
+		background: color-mix(in srgb, var(--color-accent) 15%, transparent);
 	}
 
 	.thumb {
