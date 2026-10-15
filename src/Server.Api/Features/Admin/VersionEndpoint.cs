@@ -10,8 +10,13 @@ namespace Photonne.Server.Api.Features.Admin;
 
 public class VersionEndpoint : IEndpoint
 {
-    private const string LatestReleaseUrl = "https://api.github.com/repos/photonne/photonne/releases/latest";
-    private const string LatestReleaseCacheKey = "version:latest-release";
+    // Cada componente se publica con su etiqueta (server-vX.Y.Z,
+    // native-vX.Y.Z, ml-vX.Y.Z), así que releases/latest no sirve: puede ser
+    // la de otro componente. Se pide la lista y se filtra por prefijo.
+    private const string ReleasesUrl = "https://api.github.com/repos/photonne/photonne/releases?per_page=100";
+    private const string ReleasesCacheKey = "version:releases";
+    private const string ServerComponent = "server";
+    private const string NativeComponent = "native";
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -33,14 +38,14 @@ public class VersionEndpoint : IEndpoint
             .WithDescription("Returns the current server version. Public, no auth required.")
             .AllowAnonymous();
 
-        // Última release publicada, para que los clientes que se instalan a
-        // mano (escritorio) sepan si hay un instalador más nuevo. No va en
+        // Última release publicada de la app nativa, para que los clientes que
+        // se instalan a mano (escritorio) sepan si hay un instalador más nuevo. No va en
         // /api/version porque ese lo usa la sonda del login y no debe esperar
         // a GitHub; y pide sesión para que nadie use el servidor de proxy.
         app.MapGet("/api/version/latest-release", GetLatestRelease)
             .WithTags("Version")
             .WithName("GetLatestRelease")
-            .WithDescription("Returns the latest published release of Photonne on GitHub.")
+            .WithDescription("Returns the latest published release of the Photonne native apps on GitHub.")
             .RequireAuthorization();
     }
 
@@ -77,11 +82,12 @@ public class VersionEndpoint : IEndpoint
         [FromServices] IHttpClientFactory httpClientFactory,
         CancellationToken ct)
     {
-        var check = await CheckLatestReleaseAsync(cache, httpClientFactory, refresh: false, ct);
+        var check = await CheckReleasesAsync(cache, httpClientFactory, refresh: false, ct);
+        var release = check.LatestOf(NativeComponent);
         return TypedResults.Ok(new LatestReleaseResponse
         {
-            LatestVersion = check.Release?.Version,
-            ReleaseUrl = check.Release?.HtmlUrl
+            LatestVersion = release?.Version,
+            ReleaseUrl = release?.HtmlUrl
         });
     }
 
@@ -92,8 +98,8 @@ public class VersionEndpoint : IEndpoint
         CancellationToken ct)
     {
         var currentVersion = ResolveCurrentVersion();
-        var check = await CheckLatestReleaseAsync(cache, httpClientFactory, refresh == true, ct);
-        var release = check.Release;
+        var check = await CheckReleasesAsync(cache, httpClientFactory, refresh == true, ct);
+        var release = check.LatestOf(ServerComponent);
 
         // Tres estados, no dos: un servidor desplegado desde main antes de
         // que su release exista (o una imagen local) va POR DELANTE de la
@@ -120,61 +126,100 @@ public class VersionEndpoint : IEndpoint
     }
 
     /// <summary>
-    /// Consulta la última release de GitHub, cacheada una hora. Compartida por
-    /// el endpoint de admin y el de clientes para no gastar el límite de 60
-    /// peticiones/hora sin autenticar. Un repo sin releases no es un error.
+    /// Consulta las releases de GitHub, cacheadas una hora. Compartida por el
+    /// endpoint de admin (componente server) y el de clientes (native) para no
+    /// gastar el límite de 60 peticiones/hora sin autenticar. Un repo sin
+    /// releases no es un error.
     /// </summary>
-    private static async Task<ReleaseCheck> CheckLatestReleaseAsync(
+    private static async Task<ReleaseCheck> CheckReleasesAsync(
         IMemoryCache cache, IHttpClientFactory httpClientFactory, bool refresh, CancellationToken ct)
     {
-        if (!refresh && cache.TryGetValue(LatestReleaseCacheKey, out ReleaseCheck? cached) && cached is not null)
+        if (!refresh && cache.TryGetValue(ReleasesCacheKey, out ReleaseCheck? cached) && cached is not null)
             return cached;
 
         ReleaseCheck check;
         try
         {
             var client = httpClientFactory.CreateClient("github");
-            using var response = await client.GetAsync(LatestReleaseUrl, ct);
+            using var response = await client.GetAsync(ReleasesUrl, ct);
 
             if (response.IsSuccessStatusCode)
             {
                 var json = await response.Content.ReadAsStringAsync(ct);
-                var release = JsonSerializer.Deserialize<GitHubRelease>(json);
-                check = new ReleaseCheck(
-                    release?.TagName is null
-                        ? null
-                        : new LatestRelease(release.TagName.TrimStart('v'), release.HtmlUrl, release.Body, release.PublishedAt),
-                    null, DateTimeOffset.UtcNow);
+                var releases = JsonSerializer.Deserialize<List<GitHubRelease>>(json) ?? [];
+                check = new ReleaseCheck(releases, null, DateTimeOffset.UtcNow);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                check = new ReleaseCheck(null, null, DateTimeOffset.UtcNow);
+                check = new ReleaseCheck([], null, DateTimeOffset.UtcNow);
             }
             else
             {
-                check = new ReleaseCheck(null,
+                check = new ReleaseCheck([],
                     $"Error al consultar GitHub: {(int)response.StatusCode} {response.ReasonPhrase}",
                     DateTimeOffset.UtcNow);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            check = new ReleaseCheck(null, $"No se pudo conectar con GitHub: {ex.Message}", DateTimeOffset.UtcNow);
+            check = new ReleaseCheck([], $"No se pudo conectar con GitHub: {ex.Message}", DateTimeOffset.UtcNow);
         }
 
-        cache.Set(LatestReleaseCacheKey, check, TimeSpan.FromHours(1));
+        cache.Set(ReleasesCacheKey, check, TimeSpan.FromHours(1));
         return check;
     }
 
-    private sealed record LatestRelease(string Version, string? HtmlUrl, string? Body, DateTimeOffset? PublishedAt);
+    /// <summary>
+    /// "server-v1.2.3" → (server, 1.2.3). Las etiquetas de antes de versionar
+    /// por componente ("v1.2.3") publicaban todo junto: Component nulo, valen
+    /// para cualquiera.
+    /// </summary>
+    internal static (string? Component, string Version)? ParseTag(string? tag)
+    {
+        if (string.IsNullOrEmpty(tag)) return null;
+        if (tag.Length > 1 && tag[0] == 'v' && char.IsAsciiDigit(tag[1]))
+            return (null, tag[1..]);
+        var idx = tag.LastIndexOf("-v", StringComparison.Ordinal);
+        if (idx <= 0 || idx + 2 >= tag.Length) return null;
+        return (tag[..idx], tag[(idx + 2)..]);
+    }
 
-    private sealed record ReleaseCheck(LatestRelease? Release, string? Error, DateTimeOffset CheckedAt);
+    /// <summary>
+    /// La release publicada más alta de <paramref name="component"/> (o de
+    /// antes de separar los componentes). Ignora borradores y prereleases.
+    /// </summary>
+    internal static LatestRelease? PickLatest(IEnumerable<GitHubRelease> releases, string component)
+    {
+        LatestRelease? best = null;
+        Version? bestVersion = null;
+        foreach (var release in releases)
+        {
+            if (release.Draft || release.Prerelease) continue;
+            if (ParseTag(release.TagName) is not { } tag) continue;
+            if (tag.Component is not null && tag.Component != component) continue;
+            if (!Version.TryParse(tag.Version, out var version)) continue;
+            if (bestVersion is not null && version <= bestVersion) continue;
 
-    private sealed record GitHubRelease(
+            bestVersion = version;
+            best = new LatestRelease(tag.Version, release.HtmlUrl, release.Body, release.PublishedAt);
+        }
+        return best;
+    }
+
+    internal sealed record LatestRelease(string Version, string? HtmlUrl, string? Body, DateTimeOffset? PublishedAt);
+
+    private sealed record ReleaseCheck(IReadOnlyList<GitHubRelease> Releases, string? Error, DateTimeOffset CheckedAt)
+    {
+        public LatestRelease? LatestOf(string component) => PickLatest(Releases, component);
+    }
+
+    internal sealed record GitHubRelease(
         [property: JsonPropertyName("tag_name")] string? TagName,
         [property: JsonPropertyName("html_url")] string? HtmlUrl,
         [property: JsonPropertyName("body")] string? Body,
-        [property: JsonPropertyName("published_at")] DateTimeOffset? PublishedAt);
+        [property: JsonPropertyName("published_at")] DateTimeOffset? PublishedAt,
+        [property: JsonPropertyName("draft")] bool Draft,
+        [property: JsonPropertyName("prerelease")] bool Prerelease);
 }
 
 public sealed record PublicVersionResponse

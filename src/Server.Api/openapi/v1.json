@@ -5780,7 +5780,7 @@
         "tags": [
           "Version"
         ],
-        "description": "Returns the latest published release of Photonne on GitHub.",
+        "description": "Returns the latest published release of the Photonne native apps on GitHub.",
         "operationId": "GetLatestRelease",
         "responses": {
           "200": {
