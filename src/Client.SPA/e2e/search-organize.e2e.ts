@@ -158,6 +158,25 @@ test('a rule previews its matches, is reviewed and moves on the server', async (
 	await expect(page.getByText('0 fotos pendientes coinciden')).toBeVisible();
 });
 
+test('people and folders are picked by clicking their names', async ({ page }) => {
+	await open(page, '/organize/rules');
+	const add = page.getByRole('combobox', { name: 'Añadir condición…' });
+
+	// A click on the name (not the box) used to move focus out of the menu and close it.
+	await add.selectOption('person');
+	await page.getByRole('button', { name: 'Personas: Elegir…' }).click();
+	await page.getByText('Lucía', { exact: true }).click();
+	await page.getByText('Marc', { exact: true }).click();
+	await expect(page.getByRole('button', { name: 'Personas: 2 elegidas' })).toBeVisible();
+	await expect(page.getByRole('checkbox', { name: /^Marc/ })).toBeChecked();
+	await page.keyboard.press('Escape');
+
+	await add.selectOption('folder');
+	await page.getByRole('button', { name: 'Carpeta: Elegir…' }).click();
+	await page.getByText('/assets/users/ana/Camera', { exact: true }).click();
+	await expect(page.getByRole('button', { name: 'Carpeta: 1 elegida' })).toBeVisible();
+});
+
 test('a reviewed rule with photos left out moves exactly the kept ones', async ({ page }) => {
 	const state = await open(page, '/organize/rules');
 	const add = page.getByRole('combobox', { name: 'Añadir condición…' });

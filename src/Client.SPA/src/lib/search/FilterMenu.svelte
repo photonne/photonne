@@ -46,7 +46,8 @@
 	}
 
 	function onfocusout(event: FocusEvent) {
-		// Tabbing out of the panel closes it, like a menu.
+		// Tabbing out of the panel closes it, like a menu. (Clicks on the panel's
+		// plain text keep focus inside: the panel itself takes it, tabindex -1.)
 		const next = event.relatedTarget as Node | null;
 		if (open && next && root && !root.contains(next)) open = false;
 	}
@@ -79,6 +80,7 @@
 			id="{id}-panel"
 			role="group"
 			aria-label={name ?? label}
+			tabindex="-1"
 			style:width
 			bind:this={panel}
 		>
@@ -129,5 +131,9 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-raised);
+	}
+
+	.panel:focus {
+		outline: none;
 	}
 </style>
