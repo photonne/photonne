@@ -7,19 +7,24 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <!-- Versión única de la aplicación. Es la fuente de verdad y se inyecta
-         en wwwroot/index.html (APP_VERSION) y wwwroot/service-worker.published.js
-         (SW_VERSION) en build mediante el target StampAppVersion del cliente. -->
+    <!-- Versión del componente server (API .NET + SPA, que va dentro de la
+         misma imagen). La sube release-please en la PR "chore: release server"
+         (componente "." en release-please-config.json). ML y las apps
+         nativas versionan aparte: src/Server.Ml/version.txt y
+         src/Client.Native/version.txt. -->
     <Version>1.200.1</Version>
 
-    <!-- Compatibilidad entre el servidor y las apps nativas, que se actualizan
-         por separado. Se suben A MANO (release-please solo toca <Version>):
+    <!-- Compatibilidad entre el servidor y las apps nativas, que se versionan
+         y se publican por separado. Se suben A MANO (release-please solo toca
+         <Version>):
          - PhotonneMinClientVersion: la app más antigua que este servidor
-           atiende bien. Súbelo a la versión del commit que rompe el contrato
-           de la API (quita o cambia un endpoint o un campo que las apps usan).
+           atiende bien, en versiones de la app (src/Client.Native/version.txt).
+           Súbelo a la primera versión de la app que entiende el cambio cuando
+           se rompe el contrato de la API (quita o cambia un endpoint o un
+           campo que las apps usan).
          - PhotonneMinServerVersion: el servidor más antiguo que esta app
-           necesita. Súbelo cuando la app empiece a usar un endpoint o campo
-           nuevo del servidor.
+           necesita, en versiones del servidor (<Version> de arriba). Súbelo
+           cuando la app empiece a usar un endpoint o campo nuevo del servidor.
          Si alguno no se cumple, la app avisa de qué hay que actualizar.
          La CI (api-contract.yml) rechaza un cambio incompatible del contrato
          OpenAPI salvo que la misma PR suba PhotonneMinClientVersion; ver

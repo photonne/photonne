@@ -57,7 +57,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 
 ```
 Photonne.sln
-Directory.Build.props    # Versión, mínimos app↔servidor y prefijo Photonne. de las DLL
+Directory.Build.props    # Versión del servidor, mínimos app↔servidor y prefijo Photonne. de las DLL
 ├── src/
 │   ├── Server.Api/      # API REST ASP.NET Core 10
 │   ├── Server.Ml/       # Servicio ML en Python (FastAPI)
@@ -429,13 +429,26 @@ los wheels nativos de PyPI, también CPU-only.
 
 ## Versionado
 
-La versión la gestiona [release-please](https://github.com/googleapis/release-please)
-a partir de los [Conventional Commits](https://www.conventionalcommits.org/).
-Los commits **no** tocan la versión: en cada push a `main` release-please
-mantiene abierta **una única** PR de release (`chore: release X.Y.Z`) que va
-acumulando el changelog y calcula la siguiente versión:
+Photonne es un monorepo con **tres componentes que se versionan y se publican
+por separado**. La versión de cada uno la gestiona
+[release-please](https://github.com/googleapis/release-please) a partir de los
+[Conventional Commits](https://www.conventionalcommits.org/):
 
-| Commits desde la última release | Bump (semver) |
+| Componente | Qué incluye | Versión en | Etiqueta | Publica |
+|---|---|---|---|---|
+| `server` | `src/Server.Api` y `src/Client.SPA` (la SPA va dentro de la imagen) | `Directory.Build.props` (`<Version>`), `version.txt` | `server-vX.Y.Z` | `ghcr.io/photonne/photonne` |
+| `ml` | `src/Server.Ml` | `src/Server.Ml/version.txt` | `ml-vX.Y.Z` | `ghcr.io/photonne/photonne-ml` (+ `-gpu`) |
+| `native` | `src/Client.Native` (Android, iOS, escritorio) | `src/Client.Native/version.txt` | `native-vX.Y.Z` | instaladores de escritorio |
+
+Los commits **no** tocan la versión. En cada push a `main` release-please
+mantiene abierta **una PR de release por componente con cambios**
+(`chore: release server X.Y.Z`, `chore: release native X.Y.Z`...). Un commit
+cuenta para los componentes cuyos ficheros toca: un cambio solo en la SPA abre
+(o actualiza) la PR de `server`, nunca la de `native`. Lo que no es de ML ni de
+la app nativa (workflows, docs...) cuenta para `server`. Cada PR acumula el
+changelog de su componente y calcula su siguiente versión:
+
+| Commits del componente desde su última release | Bump (semver) |
 |---|---|
 | algún `<tipo>!: ...` o footer `BREAKING CHANGE:` | major |
 | algún `feat: ...` / `feat(scope): ...` | minor |
@@ -444,26 +457,34 @@ acumulando el changelog y calcula la siguiente versión:
 `docs:`, `chore:`, `ci:`, `test:`, `build:` y `style:` por sí solos no abren
 release.
 
-**Publicar una versión = hacer merge de esa PR.** Al hacerlo, release-please
-etiqueta el commit y crea la release como borrador; `release.yml` construye las
-imágenes versionadas (`:X.Y.Z`, `:X.Y`, `:latest`) y los instaladores de
-escritorio desde esa etiqueta y, cuando todo está subido, publica la release.
+**Publicar un componente = hacer merge de su PR**, cuando quieras y sin tocar
+los demás. Al hacerlo, release-please etiqueta el commit y crea la release como
+borrador; `release.yml` construye solo ese componente desde la etiqueta
+(imágenes `:X.Y.Z`, `:X.Y`, `:latest`, o los instaladores de escritorio) y,
+cuando todo está subido, publica la release. Solo las del servidor se marcan
+como *Latest* en GitHub. Para probar antes de publicar están las imágenes
+`:edge`, que salen de cada push a `main` (ver [CI/CD](#cicd)).
 
-La PR actualiza `Directory.Build.props` (`<Version>`, fuente de verdad que
-cascada al servidor .NET, el cliente web, Android `versionName`/`versionCode`,
-Desktop y la constante `PhotonneVersion`), `version.txt` y `CHANGELOG.md`. iOS
-no deriva de ahí, así que el workflow sincroniza también `MARKETING_VERSION` y
-`CURRENT_PROJECT_VERSION` en el `project.pbxproj` dentro de la misma PR. No
-edites la versión a mano.
+Cada PR actualiza el `CHANGELOG.md` y los ficheros de versión de su
+componente. En `native`, `version.txt` cascada a Android
+(`versionName`/`versionCode`), Desktop y la constante `PhotonneVersion`; iOS no
+deriva de ahí, así que el workflow sincroniza también `MARKETING_VERSION` y
+`CURRENT_PROJECT_VERSION` en el `project.pbxproj` dentro de esa PR. No edites
+las versiones a mano.
 
-Para que el workflow pueda abrir la PR hace falta activar *Allow GitHub
+El aviso de actualización del panel de administración compara con la última
+release `server-v*`, y el de la app de escritorio con la última `native-v*`.
+Las etiquetas `vX.Y.Z` de antes de separar los componentes valen para todos.
+
+Para que el workflow pueda abrir las PR hace falta activar *Allow GitHub
 Actions to create and approve pull requests* (primero en los ajustes de la
 organización, luego en los del repo) o crear el secret `RELEASE_PLEASE_TOKEN`
 con un PAT fine-grained del repo (Contents y Pull requests en lectura/escritura).
 
-Los mínimos de compatibilidad `PhotonneMinClientVersion` y
-`PhotonneMinServerVersion` del mismo `Directory.Build.props` se siguen subiendo
-a mano (ver el comentario del fichero).
+Los mínimos de compatibilidad `PhotonneMinClientVersion` (en versiones de la
+app) y `PhotonneMinServerVersion` (en versiones del servidor) de
+`Directory.Build.props` se siguen subiendo a mano (ver el comentario del
+fichero y [docs/api-compatibilidad.md](docs/api-compatibilidad.md)).
 
 ## CI/CD
 
@@ -471,7 +492,7 @@ a mano (ver el comentario del fichero).
 |---|---|---|
 | `api-image.yml` | push a `main` que toca el servidor/cliente web | `ghcr.io/photonne/photonne:edge` y `:sha-<commit>` |
 | `ml-image.yml` | push a `main` que toca `src/Server.Ml` | `ghcr.io/photonne/photonne-ml:edge`, `:edge-gpu` y `:sha-<commit>[-gpu]` |
-| `release.yml` | cada push a `main` (mantiene la PR de release); merge de esa PR | `:X.Y.Z`, `:X.Y`, `:latest` (+ `-gpu`) de ambas imágenes, instaladores de escritorio y la release de GitHub |
+| `release.yml` | cada push a `main` (mantiene una PR de release por componente); merge de una de ellas | solo el componente publicado: `:X.Y.Z`, `:X.Y`, `:latest` de su imagen (+ `-gpu` en ML) o los instaladores de escritorio, y su release de GitHub |
 | `native-build.yml` | cambios en `src/Client.Native` | solo compila y prueba |
 
 Las imágenes Docker se construyen para `linux/amd64` y `linux/arm64`, cada
