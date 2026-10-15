@@ -7,6 +7,7 @@ import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.ui.useTestStrings
 import com.photonne.app.data.version.AppVersionStore
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
@@ -63,6 +64,7 @@ class AdminLibrariesViewModelTest {
     private val created = mutableListOf<androidx.lifecycle.ViewModel>()
 
     private fun runVmTest(block: suspend kotlinx.coroutines.test.TestScope.() -> Unit) = runTest {
+        useTestStrings()
         try {
             block()
         } finally {

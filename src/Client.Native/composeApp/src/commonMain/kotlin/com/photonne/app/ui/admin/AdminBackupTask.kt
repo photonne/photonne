@@ -6,7 +6,7 @@ import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.admin_backup_error_download
 import kotlinx.coroutines.CancellationException
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.ui.error.ErrorBanner

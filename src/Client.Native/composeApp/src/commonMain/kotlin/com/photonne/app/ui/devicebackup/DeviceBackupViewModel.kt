@@ -47,7 +47,7 @@ import com.photonne.app.resources.device_backup_free_space_check_failed
 import com.photonne.app.resources.device_backup_free_space_unconfirmed
 import com.photonne.app.ui.format.humanBytes
 import kotlin.time.Instant
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 
 /**
  * One entry in the gallery grid. `media` carries the raw metadata

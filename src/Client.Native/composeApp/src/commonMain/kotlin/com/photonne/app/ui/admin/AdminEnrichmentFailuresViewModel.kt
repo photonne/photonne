@@ -12,7 +12,7 @@ import com.photonne.app.resources.admin_enrichment_failures_retry_all_done
 import com.photonne.app.resources.admin_enrichment_failures_retry_done
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import org.jetbrains.compose.resources.getString
+import com.photonne.app.ui.util.getString
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.api.AdminEnrichmentFailureDto
 import com.photonne.app.data.api.EnrichmentFailureKind
