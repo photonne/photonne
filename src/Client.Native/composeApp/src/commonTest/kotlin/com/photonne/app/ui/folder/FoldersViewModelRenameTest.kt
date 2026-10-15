@@ -1,6 +1,5 @@
 package com.photonne.app.ui.folder
 
-import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.buildPhotonneHttpClient
@@ -13,6 +12,7 @@ import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.data.organize.OrganizeRepository
 import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.ui.TrackedViewModels
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -23,12 +23,10 @@ import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -54,7 +52,9 @@ private const val FOLDERS = """[{"id":"f-1","path":"/assets/users/marc","name":"
 @OptIn(ExperimentalCoroutinesApi::class)
 class FoldersViewModelRenameTest {
 
-    private var vm: FoldersViewModel? = null
+    // vms.runTest stops the view model (and waits for it) inside the test,
+    // before tearDown swaps Dispatchers.Main back.
+    private val vms = TrackedViewModels()
 
     @Volatile
     private var folderListCalls = 0
@@ -63,15 +63,12 @@ class FoldersViewModelRenameTest {
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
     @AfterTest
-    fun tearDown() {
-        vm?.viewModelScope?.cancel()
-        Dispatchers.resetMain()
-    }
+    fun tearDown() = Dispatchers.resetMain()
 
     private fun user(name: String) = UserDto(id = "u-1", username = name, email = "$name@x.local", role = "User")
 
     @Test
-    fun renaming_the_account_reloads_the_folders() = runTest {
+    fun renaming_the_account_reloads_the_folders() = vms.runTest {
         val auth = AuthStateHolder().apply { update(AuthState.Authenticated(user("marc"))) }
         val engine = MockEngine { request ->
             if (request.method == HttpMethod.Get && request.url.encodedPath == "/api/folders") {
@@ -99,7 +96,7 @@ class FoldersViewModelRenameTest {
             MapSettings(),
             UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api)),
             AssetMutationBus()
-        ).also { vm = it }
+        ).also { vms.track(it) }
 
         // The view model loads itself on creation.
         withContext(Dispatchers.Default) { withTimeout(5_000) { vm.state.first { !it.isLoading } } }
