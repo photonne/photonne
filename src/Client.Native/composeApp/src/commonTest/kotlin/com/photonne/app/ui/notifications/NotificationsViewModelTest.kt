@@ -1,6 +1,5 @@
 package com.photonne.app.ui.notifications
 
-import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.buildPhotonneHttpClient
@@ -11,6 +10,7 @@ import com.photonne.app.data.notifications.ActivityNotificationScheduler
 import com.photonne.app.data.notifications.ActivityNotifications
 import com.photonne.app.data.notifications.NotificationsRepository
 import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.ui.TrackedViewModels
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -25,11 +25,9 @@ import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -53,15 +51,15 @@ class NotificationsViewModelTest {
 
     private var vm: NotificationsViewModel? = null
 
+    // The unread-count poll loops forever: vms.runTest stops it (and waits for
+    // it) inside the test, before tearDown swaps Dispatchers.Main back.
+    private val vms = TrackedViewModels()
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
     @AfterTest
-    fun tearDown() {
-        // The unread-count poll loops forever: stop it with the test.
-        vm?.viewModelScope?.cancel()
-        Dispatchers.resetMain()
-    }
+    fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel(
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
@@ -81,7 +79,7 @@ class NotificationsViewModelTest {
                 object : ActivityNotificationScheduler {},
                 NotificationsStubTokenStorage()
             )
-        ).also { vm = it }
+        ).also { vm = vms.track(it) }
     }
 
     private fun MockRequestHandleScope.json(body: String) = respond(
@@ -109,7 +107,7 @@ class NotificationsViewModelTest {
     private fun HttpRequestData.isUnreadCount() = url.encodedPath == "/api/notifications/unread-count"
 
     @Test
-    fun refresh_goes_back_to_page_one() = runTest {
+    fun refresh_goes_back_to_page_one() = vms.runTest {
         val vm = viewModel { request ->
             when {
                 request.isUnreadCount() -> json("""{"count":0}""")
@@ -129,7 +127,7 @@ class NotificationsViewModelTest {
     }
 
     @Test
-    fun a_late_answer_for_the_previous_filter_is_dropped() = runTest {
+    fun a_late_answer_for_the_previous_filter_is_dropped() = vms.runTest {
         val slowAll = CompletableDeferred<Unit>()
         val vm = viewModel { request ->
             when {
@@ -156,7 +154,7 @@ class NotificationsViewModelTest {
     }
 
     @Test
-    fun mark_read_is_undone_when_the_server_fails() = runTest {
+    fun mark_read_is_undone_when_the_server_fails() = vms.runTest {
         val vm = viewModel { request ->
             when {
                 request.isUnreadCount() -> json("""{"count":1}""")

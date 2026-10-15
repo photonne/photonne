@@ -1,6 +1,5 @@
 package com.photonne.app.ui.album
 
-import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.ServerUrlStore
@@ -10,6 +9,7 @@ import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.ui.TrackedViewModels
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -19,11 +19,9 @@ import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -48,7 +46,9 @@ private fun albums(count: Int, cover: String?) =
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlbumsViewModelAddedTest {
 
-    private var vm: AlbumsViewModel? = null
+    // vms.runTest stops the view model (and waits for it) inside the test,
+    // before tearDown swaps Dispatchers.Main back.
+    private val vms = TrackedViewModels()
 
     @Volatile
     private var serverAlbums = albums(count = 0, cover = null)
@@ -57,13 +57,10 @@ class AlbumsViewModelAddedTest {
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
     @AfterTest
-    fun tearDown() {
-        vm?.viewModelScope?.cancel()
-        Dispatchers.resetMain()
-    }
+    fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun added_photos_reload_the_real_count_and_cover() = runTest {
+    fun added_photos_reload_the_real_count_and_cover() = vms.runTest {
         val engine = MockEngine {
             respond(
                 content = ByteReadChannel(serverAlbums),
@@ -85,7 +82,7 @@ class AlbumsViewModelAddedTest {
             MapSettings(),
             UiErrorFactory(ServerUrlStore(MapSettings()), AppVersionStore(api)),
             AssetMutationBus()
-        ).also { vm = it }
+        ).also { vms.track(it) }
         withContext(Dispatchers.Default) { withTimeout(5_000) { vm.state.first { it.albums.isNotEmpty() } } }
 
         // 3 picked, but the server already had one of them: it stores 2.
