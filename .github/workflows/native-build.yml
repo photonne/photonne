@@ -5,14 +5,10 @@ on:
     branches: [main]
     paths:
       - 'src/Client.Native/**'
-      # PhotonneMinServerVersion, compiled into the app.
-      - 'Directory.Build.props'
       - '.github/workflows/native-build.yml'
   pull_request:
     paths:
       - 'src/Client.Native/**'
-      # PhotonneMinServerVersion, compiled into the app.
-      - 'Directory.Build.props'
       - '.github/workflows/native-build.yml'
 
 concurrency:
