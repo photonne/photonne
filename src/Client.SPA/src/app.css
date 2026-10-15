@@ -78,6 +78,8 @@
 	--color-space-shared: #2f7d4f;
 	--color-space-library: #7b4fa6;
 	--color-space-hidden: var(--color-border-strong);
+	/* The thumb of a scrollbar: a shade of the text, so it fades into the page. */
+	--color-scrollbar: rgb(0 0 0 / 0.28);
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
 
 	--header-height: 56px;
@@ -114,6 +116,7 @@
 		--color-toast-danger: #8c2a2a;
 		--color-space-shared: #86d39f;
 		--color-space-library: #c4a3e8;
+		--color-scrollbar: rgb(255 255 255 / 0.24);
 		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 		color-scheme: dark;
 	}
@@ -144,6 +147,7 @@
 	--color-toast-danger: #8c2a2a;
 	--color-space-shared: #86d39f;
 	--color-space-library: #c4a3e8;
+	--color-scrollbar: rgb(255 255 255 / 0.24);
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
 	color-scheme: dark;
 }
@@ -178,6 +182,34 @@ body {
 	outline-offset: 2px;
 }
 
+/* Scrollbars in the theme's colours: a slim thumb on a bare track, in
+   every pane that scrolls (the page, the sidebar, a dialog, a list). A
+   component that hides its own keeps doing so (scrollbar-width: none). */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-scrollbar) transparent;
+}
+
+/* Browsers without the standard properties (older Safari) take the WebKit
+   ones; those that have them ignore these. */
+@supports not (scrollbar-color: auto) {
+	::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	::-webkit-scrollbar-thumb {
+		border: 3px solid transparent;
+		border-radius: 999px;
+		background: var(--color-scrollbar);
+		background-clip: padding-box;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	:root {
 		--duration-fast: 0ms;
@@ -204,6 +236,7 @@ body {
 	--color-success: #7bd88f;
 	--color-warning: #f6b35a;
 	--color-placeholder: #26282c;
+	--color-scrollbar: rgb(255 255 255 / 0.24);
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.5);
 	color-scheme: dark;
 }

@@ -27,12 +27,14 @@
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
 	import { invalidateFolders, toggleFolderPin } from './cache.js';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
-	import FolderCards from './FolderCards.svelte';
 	import FolderFormDialog from './FolderFormDialog.svelte';
+	import FolderList from './FolderList.svelte';
 	import { moveAssets, onAssetsMoved } from './folder-moves.js';
 	import { browsableRoots, groupFolders } from './folder-groups.js';
 	import { pathTo, sortTree } from './folder-tree.js';
+	import { folderView } from './folder-view.svelte.js';
 	import { icons } from './icons.js';
+	import ListViewToggle from './ListViewToggle.svelte';
 	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import ShareDialog from './ShareDialog.svelte';
 
@@ -47,6 +49,7 @@
 	);
 	const ancestors = $derived(pathTo(tree, folderId).slice(0, -1));
 	const subfolders = $derived(sortTree(folder?.subFolders ?? [], getLocale()));
+	const subfoldersId = $props.id();
 
 	// The folder endpoint isn't sorted by capture date; the grid groups by month.
 	const list = new PagedList(async () => {
@@ -80,6 +83,14 @@
 
 	const canWrite = $derived(folder?.canWrite ?? false);
 	const isLibrary = $derived(!!folder?.externalLibraryId);
+
+	// A folder with subfolders and photos shows them as two sections, each
+	// of which folds away (folderView remembers) so the other has the page.
+	// With only one of them there is nothing to fold: what it has fills the page.
+	const hasPhotos = $derived(list.status !== 'ready' || list.store.items.length > 0);
+	const twoSections = $derived(subfolders.length > 0 && hasPhotos);
+	const photosShown = $derived(!twoSections || folderView.sections.photos);
+	const subfoldersShown = $derived(folderView.sections.subfolders);
 
 	async function toggleDiscovery() {
 		if (!folder) return;
@@ -201,6 +212,7 @@
 		status={folderQuery.isPending ? 'pending' : list.status}
 		emptyText={subfolders.length ? m.folders_empty_with_subfolders() : m.folders_empty()}
 		viewerActions={['trash', 'album']}
+		collapsed={!photosShown}
 	>
 		{#snippet toolbar()}
 			{#if folder}
@@ -241,7 +253,7 @@
 
 		{#snippet header()}
 			{#if folder}
-				<div class="about">
+				<div class="about" class:fill={!photosShown}>
 					{#if ancestors.length}
 						<nav aria-label={m.folders_breadcrumb()}>
 							<ol class="crumbs">
@@ -275,18 +287,58 @@
 						{/if}
 					</p>
 					{#if subfolders.length}
-						<div class="subfolders">
-							<FolderCards
-								folders={subfolders}
-								label={m.folders_subfolders()}
-								ondropassets={(target, assetIds) =>
-									moveAssets(queryClient, {
-										assetIds,
-										from: { id: folder.id, name: folder.name },
-										to: target
-									})}
-							/>
-						</div>
+						<section class="section" class:fill={!photosShown}>
+							<div class="section-head">
+								<h2>
+									<button
+										type="button"
+										aria-expanded={subfoldersShown}
+										aria-controls={subfoldersId}
+										onclick={() => folderView.toggle('subfolders')}
+									>
+										<span class="chevron" class:open={subfoldersShown} aria-hidden="true">
+											<Icon name="chevronRight" size={18} />
+										</span>
+										{m.folders_subfolders()}
+										<span class="count">{subfolders.length}</span>
+									</button>
+								</h2>
+								<!-- The same tiles or rows as the folders index. -->
+								{#if subfoldersShown}<ListViewToggle bind:view={folderView.value} />{/if}
+							</div>
+							<div id={subfoldersId} class="section-body" hidden={!subfoldersShown}>
+								<FolderList
+									folders={subfolders}
+									label={m.folders_subfolders()}
+									view={folderView.value}
+									ondropassets={(target, assetIds) =>
+										moveAssets(queryClient, {
+											assetIds,
+											from: { id: folder.id, name: folder.name },
+											to: target
+										})}
+								/>
+							</div>
+						</section>
+						{#if twoSections}
+							<div class="section-head">
+								<h2>
+									<button
+										type="button"
+										aria-expanded={photosShown}
+										onclick={() => folderView.toggle('photos')}
+									>
+										<span class="chevron" class:open={photosShown} aria-hidden="true">
+											<Icon name="chevronRight" size={18} />
+										</span>
+										{m.folders_photos()}
+										{#if list.status === 'ready'}
+											<span class="count">{list.store.items.length}</span>
+										{/if}
+									</button>
+								</h2>
+							</div>
+						{/if}
 					{/if}
 				</div>
 			{/if}
@@ -408,9 +460,17 @@
 	}
 
 	.about {
-		display: grid;
+		display: flex;
+		flex-direction: column;
 		gap: var(--space-2);
 		padding: var(--space-1) var(--space-4) var(--space-2);
+	}
+
+	/* The photos folded away: the subfolders get the page's height and
+	   scroll on their own. */
+	.about.fill {
+		flex: 1;
+		min-height: 0;
 	}
 
 	.crumbs {
@@ -461,10 +521,87 @@
 		font-weight: 600;
 	}
 
-	.subfolders {
-		max-height: 30vh;
+	.section {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		min-height: 0;
+	}
+
+	.section.fill {
+		flex: 1;
+	}
+
+	.section-head {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.section-head h2 {
+		flex: 1;
+		min-width: 0;
+		margin: 0;
+		font-size: var(--font-size-md);
+		font-weight: 600;
+		line-height: 1.3;
+	}
+
+	/* The heading folds its section: the chevron turns, the name stays. */
+	.section-head button {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+		max-width: 100%;
+		margin-left: calc(-1 * var(--space-1));
+		padding: 2px var(--space-2) 2px var(--space-1);
+		border: 0;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-weight: 600;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.section-head button:hover {
+		background: var(--color-hover);
+	}
+
+	.chevron {
+		display: grid;
+		transition: transform var(--duration-fast);
+	}
+
+	.chevron.open {
+		transform: rotate(90deg);
+	}
+
+	.count {
+		margin-left: var(--space-1);
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+		color: var(--color-text-muted);
+	}
+
+	/* With the photos under it the list keeps to a band (at least a row of
+	   tiles) and scrolls inside; a hovered tile lifts a little, so the band
+	   leaves it room at the top. */
+	.section-body {
+		min-height: 0;
+		max-height: max(30vh, 320px);
 		overflow-y: auto;
-		padding: 2px;
+		padding: var(--space-1) 2px 2px;
+	}
+
+	.section-body[hidden] {
+		display: none;
+	}
+
+	.fill .section-body {
+		flex: 1;
+		max-height: none;
 	}
 
 	.missing {

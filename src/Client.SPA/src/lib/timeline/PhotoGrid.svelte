@@ -27,7 +27,7 @@
 	} from './grid-model.js';
 	import { moveFocus, type Direction } from './keyboard-nav.js';
 	import Scrubber from './Scrubber.svelte';
-	import { spreadMarkers, yearMarkers } from './scrubber.js';
+	import { rowYearMarkers, spreadMarkers, yearMarkers } from './scrubber.js';
 	import type { Selection } from './selection.svelte.js';
 	import type { GridAsset } from './types.js';
 	import { DEFAULT_ZOOM, groupingOf, rowHeightFor, WheelZoom, type ZoomLevel } from './zoom.js';
@@ -153,13 +153,25 @@
 		new Map(sections.map((s) => [s.key, s.items?.map((item) => item.id) ?? []]))
 	);
 	const maxScroll = $derived(Math.max(0, layout.totalHeight + PADDING * 2 - viewportHeight));
+	// Years on the rail: where the months start, or, without month sections
+	// (an album in one section), where the rows' own dates change year.
+	const yearOf = (item: T) => item.capturedAt.slice(0, 4);
 	const markers = $derived(
 		spreadMarkers(
-			yearMarkers(layout.sectionTops, layout.totalHeight),
+			headers
+				? yearMarkers(layout.sectionTops, layout.totalHeight)
+				: rowYearMarkers(
+						layout.blocks.flatMap((block) =>
+							block.kind === 'row' ? [{ top: block.top, year: yearOf(block.cells[0].item) }] : []
+						),
+						layout.totalHeight
+					),
 			Math.max(1, viewportHeight - 32),
 			22
 		)
 	);
+	/** Headerless, but its rows run by date: the rail can still name a month. */
+	const dated = $derived(!headers && markers.length > 0);
 
 	const scrubberShown = $derived(viewportHeight > 0 && maxScroll > viewportHeight);
 
@@ -329,17 +341,22 @@
 		scroller!.scrollTop = fraction * maxScroll;
 	}
 
-	// Without headers there are no dated sections to name on the scrubber.
-	const currentLabel = $derived.by(() => {
-		if (!headers) return '';
-		const key = sectionAt(layout, scrollTop);
-		return key ? sectionTitle(key) : '';
-	});
+	// The month at `y`: the section's, or, without dated sections, the one
+	// of the row there when the rows run by date. Otherwise nothing to name.
+	function monthLabelAt(y: number) {
+		if (headers) {
+			const key = sectionAt(layout, y);
+			return key ? sectionTitle(key) : '';
+		}
+		if (!dated) return '';
+		const row = blocksInRange(layout, y, y).find((block) => block.kind === 'row');
+		return row ? sectionTitle(row.cells[0].item.capturedAt.slice(0, 7)) : '';
+	}
+
+	const currentLabel = $derived(monthLabelAt(scrollTop));
 
 	function labelAt(fraction: number) {
-		if (!headers) return '';
-		const key = sectionAt(layout, fraction * maxScroll);
-		return key ? sectionTitle(key) : '';
+		return monthLabelAt(fraction * maxScroll);
 	}
 
 	// --- Selection -------------------------------------------------------

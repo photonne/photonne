@@ -2,10 +2,7 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
 	import { deleteAlbum, leaveAlbum, type AlbumResponse } from '#lib/api/index.js';
-	import {
-		getAllAlbumsOptions,
-		getAllFoldersOptions
-	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import { getAllAlbumsOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import AlbumCard from '#lib/albums/AlbumCard.svelte';
 	import AlbumFormDialog from '#lib/albums/AlbumFormDialog.svelte';
 	import {
@@ -42,8 +39,6 @@
 
 	const queryClient = useQueryClient();
 	const albums = createQuery(() => getAllAlbumsOptions());
-	// Pinned folders join the pinned albums, as in the sidebar.
-	const folders = createQuery(() => getAllFoldersOptions());
 
 	let options = $state(parseListOptions(readSaved()));
 
@@ -81,9 +76,9 @@
 	const arranged = $derived(arrangeAlbums(albums.data ?? [], options, getLocale()));
 	const counts = $derived(scopeCounts(albums.data ?? []));
 	// Hidden while filtering: the matching albums are one list, pinned or not.
-	const pinned = $derived(
-		isFiltered(options) ? [] : mergePinned(arranged.pinned, folders.data ?? [])
-	);
+	// Only albums here; the pinned folders are the folders page's (the
+	// sidebar is where both meet).
+	const pinned = $derived(isFiltered(options) ? [] : mergePinned(arranged.pinned, []));
 	const years = $derived(options.groupByYear ? groupByYear(arranged.others) : []);
 	/** Every shown album in screen order, for Shift ranges and Ctrl+A. */
 	const shown = $derived([

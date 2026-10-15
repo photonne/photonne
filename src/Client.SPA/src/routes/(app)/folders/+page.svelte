@@ -2,7 +2,6 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { deleteFolder, updateFolder, type FolderResponse } from '#lib/api/index.js';
 	import {
-		getAllAlbumsOptions,
 		getAllFoldersOptions,
 		getFolderTreeOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
@@ -22,6 +21,7 @@
 	import FolderMoveDialog from '#lib/albums/FolderMoveDialog.svelte';
 	import { browsableRoots, groupFolders } from '#lib/albums/folder-groups.js';
 	import { pathTo } from '#lib/albums/folder-tree.js';
+	import { folderView } from '#lib/albums/folder-view.svelte.js';
 	import { icons } from '#lib/albums/icons.js';
 	import ListViewToggle from '#lib/albums/ListViewToggle.svelte';
 	import { mergePinned } from '#lib/albums/pinned.js';
@@ -46,8 +46,7 @@
 	const treeQuery = createQuery(() => getFolderTreeOptions());
 	const username = $derived(session.user?.username ?? '');
 	const roots = $derived(browsableRoots(groupFolders(treeQuery.data ?? [], username, getLocale())));
-	// What the sidebar pins, from any depth, with the pinned albums.
-	const albums = createQuery(() => getAllAlbumsOptions());
+	// The pinned folders, from any depth (the albums page shows the pinned albums).
 	const allFolders = createQuery(() => getAllFoldersOptions());
 
 	let options = $state(parseFolderListOptions(readSaved()));
@@ -69,11 +68,12 @@
 		}
 	}
 
-	// Remember how the list was arranged (not the search text).
+	// Remember how the list was arranged (not the search text; the view is
+	// folderView's, shared with a folder's own page).
 	$effect(() => {
-		const { scope, sort, descending, view } = options;
+		const { scope, sort, descending } = options;
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({ scope, sort, descending, view }));
+			localStorage.setItem(STORAGE_KEY, JSON.stringify({ scope, sort, descending }));
 		} catch {
 			// Storage may be unavailable (private mode); the defaults are fine.
 		}
@@ -84,7 +84,7 @@
 	const counts = $derived(folderScopeCounts(roots, username));
 	const filtered = $derived(searching || options.scope !== 'all');
 	// Hidden while filtering, like on the albums page.
-	const pinned = $derived(filtered ? [] : mergePinned(albums.data ?? [], allFolders.data ?? []));
+	const pinned = $derived(filtered ? [] : mergePinned([], allFolders.data ?? []));
 
 	/** "Camera / 2025" for a search hit below the top level. */
 	function location(folder: FolderResponse) {
@@ -250,7 +250,7 @@
 				</button>
 			</div>
 
-			<span class="view"><ListViewToggle bind:view={options.view} /></span>
+			<span class="view"><ListViewToggle bind:view={folderView.value} /></span>
 		</div>
 	{/snippet}
 
@@ -300,13 +300,13 @@
 	{:else}
 		<div class="content">
 			{#if pinned.length}
-				<PinnedSection entries={pinned} view={options.view} />
+				<PinnedSection entries={pinned} view={folderView.value} />
 				<h2>{m.folders_roots()}</h2>
 			{/if}
 			<FolderList
 				folders={shown}
 				label={searching ? m.folders_results() : m.folders_roots()}
-				view={options.view}
+				view={folderView.value}
 				{selection}
 				{location}
 			/>
