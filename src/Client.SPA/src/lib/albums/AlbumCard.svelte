@@ -67,12 +67,12 @@
 				<span class="pills">
 					{#if smart}
 						<span class="pill" title={m.albums_smart_hint()}>
-							<Icon path={icons.smart} size={14} />{m.albums_smart()}
+							<Icon path={icons.smart} size={14} /><span class="pill-text">{m.albums_smart()}</span>
 						</span>
 					{/if}
 					{#if sharedLabel}
 						<span class="pill" title={sharedLabel}>
-							<Icon name="people" size={14} /><span class="ellipsis">{sharedLabel}</span>
+							<Icon name="people" size={14} /><span class="pill-text ellipsis">{sharedLabel}</span>
 						</span>
 					{/if}
 					{#if album.hasActiveShareLink}
@@ -228,6 +228,30 @@
 		font-weight: 600;
 		backdrop-filter: blur(6px);
 		max-width: 100%;
+	}
+
+	/* A narrow tile (small cards) has no room for the words: the pills keep
+	   their icon, and the words stay for screen readers and in the tooltip. */
+	.grid .cover {
+		container-type: inline-size;
+	}
+
+	@container (max-width: 219px) {
+		.pill {
+			justify-content: center;
+			width: 28px;
+			min-height: 28px;
+			padding: 0;
+		}
+
+		.pill-text {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip: rect(0 0 0 0);
+			white-space: nowrap;
+		}
 	}
 
 	.ellipsis {
