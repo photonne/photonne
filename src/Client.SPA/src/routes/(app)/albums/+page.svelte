@@ -21,6 +21,7 @@
 	import { icons } from '#lib/albums/icons.js';
 	import ListViewToggle from '#lib/albums/ListViewToggle.svelte';
 	import { mergePinned } from '#lib/albums/pinned.js';
+	import { cardMinWidth, cardSize } from '#lib/albums/card-size.svelte.js';
 	import PinnedSection from '#lib/albums/PinnedSection.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -30,6 +31,7 @@
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
+	import SizeControl from '#lib/timeline/SizeControl.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -286,7 +288,18 @@
 				{m.albums_group_by_year()}
 			</button>
 
-			<span class="view"><ListViewToggle bind:view={options.view} /></span>
+			<span class="view">
+				{#if options.view === 'grid'}
+					<SizeControl
+						value={cardSize.value}
+						onchange={(size) => cardSize.set(size)}
+						label={m.cards_size()}
+						smallerLabel={m.cards_smaller()}
+						largerLabel={m.cards_larger()}
+					/>
+				{/if}
+				<ListViewToggle bind:view={options.view} />
+			</span>
 		</div>
 	{/snippet}
 
@@ -352,7 +365,10 @@
 </div>
 
 {#snippet list(items: AlbumResponse[])}
-	<ul class={options.view === 'grid' ? 'grid' : 'rows'}>
+	<ul
+		class={options.view === 'grid' ? 'grid' : 'rows'}
+		style:--card-min="{cardMinWidth(cardSize.value)}px"
+	>
 		{#each items as album (album.id)}
 			<AlbumCard
 				{album}
@@ -444,6 +460,9 @@
 	}
 
 	.view {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 		margin-left: auto;
 	}
 
@@ -462,7 +481,7 @@
 
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 180px), 1fr));
 		gap: var(--space-6) var(--space-4);
 		margin: 0;
 		padding: 0;

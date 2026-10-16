@@ -1,47 +1,103 @@
 /**
- * Timeline zoom levels, from the most zoomed out (a few sampled rows per
- * year) to the largest thumbnails. Like the native app's TimelineZoomLevel,
- * the order is the order + and - step through, so row heights only grow.
+ * Thumbnail size, from 0 (the smallest) to 100 (the largest), and, for the
+ * timeline, how photos are grouped. The two are independent: a slider sets
+ * the size and a menu the grouping.
  */
-export const zoomLevels = ['year', 'small', 'medium', 'large', 'xlarge'] as const;
-export type ZoomLevel = (typeof zoomLevels)[number];
+export const MIN_SIZE = 0;
+export const MAX_SIZE = 100;
+/** What + and − (and one step of the wheel) move the size by. */
+export const SIZE_STEP = 10;
+/** What one step of Ctrl + wheel (or a pinch) moves it by: finer, it comes in streams. */
+export const WHEEL_STEP = 5;
+/** The grid as it always was: medium rows. */
+export const DEFAULT_SIZE = 50;
 
-/** What a level's headers are: years (sampled), months, or months split into days. */
-export type ZoomGrouping = 'year' | 'month' | 'day';
+/** What the headers are: years (sampled), months, or months split into days. */
+export const groupings = ['year', 'month', 'day'] as const;
+export type Grouping = (typeof groupings)[number];
+export const DEFAULT_GROUPING: Grouping = 'month';
 
-/** The grid as it always was: month headers, medium rows. */
-export const DEFAULT_ZOOM: ZoomLevel = 'medium';
+// Row heights at evenly spaced sizes (0, 25, 50, 75, 100) for a narrow
+// (<600px), medium (<1100px) and wide grid; sizes in between interpolate.
+// 50 keeps the heights the grid had before zoom existed, and 25, 75 and 100
+// the old small, large and extra large levels.
+const ROW_HEIGHTS: [number, number, number][] = [
+	[60, 72, 84],
+	[84, 104, 124],
+	[120, 170, 210],
+	[170, 240, 290],
+	[240, 330, 400]
+];
 
-// Target row height per level for a narrow (<600px), medium (<1100px) and
-// wide grid. `medium` keeps the heights the grid had before zoom existed.
-const ROW_HEIGHTS: Record<ZoomLevel, [number, number, number]> = {
-	year: [48, 56, 64],
-	small: [84, 104, 124],
-	medium: [120, 170, 210],
-	large: [170, 240, 290],
-	xlarge: [240, 330, 400]
-};
+// The year view's sampled rows at the default size; they scale with it.
+const YEAR_ROW_HEIGHTS: [number, number, number] = [48, 56, 64];
+const MIN_YEAR_ROW_HEIGHT = 32;
 
-export function groupingOf(level: ZoomLevel): ZoomGrouping {
-	if (level === 'year') return 'year';
-	// Day headers only where rows are big enough for a day to read as a group;
-	// at small sizes they would cut every row short.
-	return level === 'large' || level === 'xlarge' ? 'day' : 'month';
+export function clampSize(size: number): number {
+	return Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(size)));
 }
 
-export function rowHeightFor(level: ZoomLevel, containerWidth: number): number {
-	const [narrow, medium, wide] = ROW_HEIGHTS[level];
-	return containerWidth < 600 ? narrow : containerWidth < 1100 ? medium : wide;
+function bucket(containerWidth: number): 0 | 1 | 2 {
+	return containerWidth < 600 ? 0 : containerWidth < 1100 ? 1 : 2;
 }
 
-/** The next level: +1 zooms in (bigger thumbnails), -1 out. Stops at both ends. */
-export function stepZoom(level: ZoomLevel, direction: 1 | -1): ZoomLevel {
-	const index = zoomLevels.indexOf(level) + direction;
-	return zoomLevels[Math.min(zoomLevels.length - 1, Math.max(0, index))];
+/**
+ * Target row height for a size. Between two anchors it grows geometrically,
+ * so each step of the slider feels the same at both ends.
+ */
+export function rowHeightFor(size: number, containerWidth: number): number {
+	const column = bucket(containerWidth);
+	const position = (clampSize(size) / MAX_SIZE) * (ROW_HEIGHTS.length - 1);
+	const index = Math.min(ROW_HEIGHTS.length - 2, Math.floor(position));
+	const from = ROW_HEIGHTS[index][column];
+	const to = ROW_HEIGHTS[index + 1][column];
+	return Math.round(from * Math.pow(to / from, position - index));
 }
 
-export function parseZoom(raw: string | null | undefined): ZoomLevel {
-	return zoomLevels.includes(raw as ZoomLevel) ? (raw as ZoomLevel) : DEFAULT_ZOOM;
+/** Row height of the year view: its own small rows, scaled like the rest. */
+export function yearRowHeightFor(size: number, containerWidth: number): number {
+	const scale = rowHeightFor(size, containerWidth) / rowHeightFor(DEFAULT_SIZE, containerWidth);
+	return Math.max(
+		MIN_YEAR_ROW_HEIGHT,
+		Math.round(YEAR_ROW_HEIGHTS[bucket(containerWidth)] * scale)
+	);
+}
+
+/** One step bigger (+1) or smaller (-1), within the range. */
+export function stepSize(size: number, direction: 1 | -1, step = SIZE_STEP): number {
+	return clampSize(size + direction * step);
+}
+
+export function parseSize(raw: string | null | undefined): number {
+	const size = raw === null || raw === undefined || raw.trim() === '' ? NaN : Number(raw);
+	return Number.isFinite(size) ? clampSize(size) : DEFAULT_SIZE;
+}
+
+export function parseGrouping(raw: string | null | undefined): Grouping {
+	return groupings.includes(raw as Grouping) ? (raw as Grouping) : DEFAULT_GROUPING;
+}
+
+/**
+ * The timeline used to save one of five levels that set both the size and
+ * the grouping; this reads one into the new pair, or null if it isn't one.
+ */
+export function migrateZoomLevel(
+	raw: string | null | undefined
+): { size: number; grouping: Grouping } | null {
+	switch (raw) {
+		case 'year':
+			return { size: DEFAULT_SIZE, grouping: 'year' };
+		case 'small':
+			return { size: 25, grouping: 'month' };
+		case 'medium':
+			return { size: 50, grouping: 'month' };
+		case 'large':
+			return { size: 75, grouping: 'day' };
+		case 'xlarge':
+			return { size: 100, grouping: 'day' };
+		default:
+			return null;
+	}
 }
 
 /** The server never samples more than this per year (TimelineYearsEndpoint.MaxSample). */
@@ -51,11 +107,15 @@ export const YEAR_ROWS = 3;
 
 /**
  * Photos per year to ask the server for, enough to fill YEAR_ROWS rows at
- * this width. Rounded up to a multiple of 12 so resizing the window doesn't
- * refetch on every pixel.
+ * this width and size. Rounded up to a multiple of 12 so resizing the window
+ * or dragging the slider doesn't refetch on every pixel.
  */
-export function yearSampleSize(containerWidth: number, assumedAspect = 1.5): number {
-	const rowHeight = rowHeightFor('year', containerWidth);
+export function yearSampleSize(
+	containerWidth: number,
+	size = DEFAULT_SIZE,
+	assumedAspect = 1.5
+): number {
+	const rowHeight = yearRowHeightFor(size, containerWidth);
 	const perRow = Math.max(1, Math.ceil(containerWidth / (rowHeight * assumedAspect)));
 	const wanted = Math.ceil((perRow * YEAR_ROWS) / 12) * 12;
 	return Math.min(MAX_YEAR_SAMPLE, Math.max(12, wanted));
@@ -89,4 +149,26 @@ export class WheelZoom {
 		this.#lastStep = now;
 		return step;
 	}
+}
+
+/**
+ * A key press nobody else wants, free for a page shortcut: not typed into a
+ * text field or a dialog, and without a modifier (Ctrl + + is the browser's own
+ * zoom).
+ */
+export function isFreeKeyPress(event: KeyboardEvent): boolean {
+	if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return false;
+	const target = event.target as HTMLElement | null;
+	// A slider doesn't type: + and − on it are still the page's.
+	return !target?.closest?.(
+		'input:not([type="range"]), textarea, select, dialog, [role="dialog"], [contenteditable]'
+	);
+}
+
+/** + bigger, − smaller, from a free key press (isFreeKeyPress); null otherwise. */
+export function sizeKeyDirection(event: KeyboardEvent): 1 | -1 | null {
+	if (!isFreeKeyPress(event)) return null;
+	if (event.key === '+' || event.key === '=') return 1;
+	if (event.key === '-' || event.key === '_') return -1;
+	return null;
 }

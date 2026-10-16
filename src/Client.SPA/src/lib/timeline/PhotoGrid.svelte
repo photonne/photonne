@@ -30,7 +30,13 @@
 	import { rowYearMarkers, spreadMarkers, yearMarkers } from './scrubber.js';
 	import type { Selection } from './selection.svelte.js';
 	import type { GridAsset } from './types.js';
-	import { DEFAULT_ZOOM, groupingOf, rowHeightFor, WheelZoom, type ZoomLevel } from './zoom.js';
+	import {
+		DEFAULT_SIZE,
+		rowHeightFor,
+		WheelZoom,
+		yearRowHeightFor,
+		type Grouping
+	} from './zoom.js';
 
 	interface Props {
 		sections: readonly GridSection<T>[];
@@ -47,8 +53,13 @@
 		headers?: boolean;
 		/** Scrolled near the end: load the next page, if the host pages. */
 		onnearend?: () => void;
-		/** Thumbnail size and grouping (zoom.ts); the medium month grid by default. */
-		zoom?: ZoomLevel;
+		/** Thumbnail size, 0–100 (zoom.ts); the medium grid by default. */
+		size?: number;
+		/**
+		 * `day` splits each section into days; `year` sizes rows for the
+		 * sampled year view. With headers off it makes no difference.
+		 */
+		grouping?: Grouping;
 		/** Justified rows (the timeline) or a masonry of columns (grid-model.ts). */
 		layout?: GridLayoutMode;
 		/** Ctrl/Cmd + wheel over the grid asks for a step; without it the browser zooms. */
@@ -82,7 +93,8 @@
 		label,
 		headers = true,
 		onnearend,
-		zoom = DEFAULT_ZOOM,
+		size = DEFAULT_SIZE,
+		grouping = 'month',
 		layout: layoutMode = 'rows',
 		onzoom,
 		reflowKey = '',
@@ -122,7 +134,7 @@
 	// derived can't hold.
 	let withScrubber = $state(false);
 
-	const byDay = $derived(headers && groupingOf(zoom) === 'day');
+	const byDay = $derived(headers && grouping === 'day');
 
 	const options: GridOptions = $derived.by(() => {
 		const containerWidth = Math.max(
@@ -132,7 +144,10 @@
 		return {
 			containerWidth,
 			layout: layoutMode,
-			targetRowHeight: rowHeightFor(zoom, containerWidth),
+			targetRowHeight:
+				grouping === 'year'
+					? yearRowHeightFor(size, containerWidth)
+					: rowHeightFor(size, containerWidth),
 			spacing: SPACING,
 			headerHeight: headers ? HEADER_HEIGHT : 0,
 			subheaderHeight: SUBHEADER_HEIGHT,
@@ -259,7 +274,8 @@
 	// Ctrl/Cmd + wheel (and a trackpad pinch, which browsers report the same
 	// way) zooms the grid. Registered by hand: it must be non-passive to keep
 	// the browser from zooming the whole page.
-	const wheelZoom = new WheelZoom();
+	// Finer than the default: each step is a small one (WHEEL_STEP).
+	const wheelZoom = new WheelZoom(40, 80);
 
 	$effect(() => {
 		const element = scroller;

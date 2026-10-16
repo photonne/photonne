@@ -21,8 +21,11 @@
 	import type { ListStore } from './list-store.svelte.js';
 	import PhotoGrid from './PhotoGrid.svelte';
 	import SelectionBar from './SelectionBar.svelte';
+	import { collectionSize } from './size-preference.svelte.js';
+	import SizeControl from './SizeControl.svelte';
 	import { Selection } from './selection.svelte.js';
 	import type { GridAsset } from './types.js';
+	import { sizeKeyDirection, WHEEL_STEP } from './zoom.js';
 
 	type Action = 'favorite' | 'album' | 'folder' | 'share' | 'download' | 'archive' | 'trash';
 
@@ -64,6 +67,8 @@
 		 */
 		collapsed?: boolean;
 		onnearend?: () => void;
+		/** + and − resize the grid; off where they mean something else (the map's zoom). */
+		sizeShortcuts?: boolean;
 	}
 
 	let {
@@ -84,7 +89,8 @@
 		header,
 		cover = null,
 		collapsed = false,
-		onnearend
+		onnearend,
+		sizeShortcuts = true
 	}: Props = $props();
 
 	let scrolled = $state(false);
@@ -127,6 +133,18 @@
 		viewer.close();
 	}
 
+	/** The grid is on screen, so its size can change. */
+	const sizable = $derived(!collapsed && status === 'ready' && store.items.length > 0);
+
+	// + / − resize the grid, like on the timeline, while nothing covers it.
+	function onkeydown(event: KeyboardEvent) {
+		if (!sizeShortcuts || !sizable || viewer.openId || pickingAlbumFor !== null) return;
+		const direction = sizeKeyDirection(event);
+		if (!direction) return;
+		event.preventDefault();
+		collectionSize.step(direction);
+	}
+
 	// However the viewer closes (its button, Escape, the browser's Back),
 	// focus goes back to the cell of the last photo shown.
 	let lastOpen: string | null = null;
@@ -156,6 +174,16 @@
 		}
 	}
 </script>
+
+<svelte:window {onkeydown} />
+
+<!-- The page's own buttons, after the size of the grid. -->
+{#snippet tools()}
+	{#if sizable}
+		<SizeControl value={collectionSize.value} onchange={(size) => collectionSize.set(size)} />
+	{/if}
+	{@render toolbar?.()}
+{/snippet}
 
 <div class="page">
 	<SelectionBar {selection}>
@@ -188,15 +216,17 @@
 				<div class="banner-header">{@render header?.()}</div>
 			</div>
 		</section>
-		{#if toolbar}<div class="head bar"><div class="toolbar">{@render toolbar()}</div></div>{/if}
+		{#if toolbar || sizable}<div class="head bar">
+				<div class="toolbar">{@render tools()}</div>
+			</div>{/if}
 	{:else}
 		{#if leading}
 			<div class="with-leading">
 				<div class="leading">{@render leading()}</div>
-				<PageHeader {title} {count} actions={toolbar} />
+				<PageHeader {title} {count} actions={toolbar || sizable ? tools : undefined} />
 			</div>
 		{:else}
-			<PageHeader {title} {count} actions={toolbar} />
+			<PageHeader {title} {count} actions={toolbar || sizable ? tools : undefined} />
 		{/if}
 		{@render header?.()}
 	{/if}
@@ -216,6 +246,8 @@
 				{selection}
 				{headers}
 				layout={gridLayout.value}
+				size={collectionSize.value}
+				onzoom={(direction) => collectionSize.step(direction, WHEEL_STEP)}
 				label={title}
 				sectionTitle={monthTitle}
 				{itemLabel}
