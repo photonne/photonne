@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/photonne/photonne/compare/server-v2.0.0...server-v2.1.0) (2026-10-16)
+
+
+### Novedades
+
+* **spa:** Slider para el tamaño de las miniaturas en Fotos, colecciones y tarjetas ([0acf7d0](https://github.com/photonne/photonne/commit/0acf7d01dbe50132bd060d323a4f3d979487d647))
+
 ## [2.0.0](https://github.com/photonne/photonne/compare/server-v1.200.2...server-v2.0.0) (2026-10-15)
 
 
