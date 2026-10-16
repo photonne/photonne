@@ -25,9 +25,11 @@
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
 	import { PagedList } from '#lib/timeline/paged-list.svelte.js';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
+	import SizeControl from '#lib/timeline/SizeControl.svelte';
 	import { invalidateFolders, toggleFolderPin } from './cache.js';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import FolderFormDialog from './FolderFormDialog.svelte';
+	import { cardSize } from './card-size.svelte.js';
 	import FolderList from './FolderList.svelte';
 	import { moveAssets, onAssetsMoved } from './folder-moves.js';
 	import { browsableRoots, groupFolders } from './folder-groups.js';
@@ -303,8 +305,19 @@
 										<span class="count">{subfolders.length}</span>
 									</button>
 								</h2>
-								<!-- The same tiles or rows as the folders index. -->
-								{#if subfoldersShown}<ListViewToggle bind:view={folderView.value} />{/if}
+								<!-- The same tiles or rows, and tile size, as the folders index. -->
+								{#if subfoldersShown}
+									{#if folderView.value === 'grid'}
+										<SizeControl
+											value={cardSize.value}
+											onchange={(size) => cardSize.set(size)}
+											label={m.cards_size()}
+											smallerLabel={m.cards_smaller()}
+											largerLabel={m.cards_larger()}
+										/>
+									{/if}
+									<ListViewToggle bind:view={folderView.value} />
+								{/if}
 							</div>
 							<div id={subfoldersId} class="section-body" hidden={!subfoldersShown}>
 								<FolderList
@@ -468,9 +481,13 @@
 
 	/* The photos folded away: the subfolders get the page's height and
 	   scroll on their own. */
+	/* With the photos folded the header has the page: it scrolls as a whole,
+	   so the folded Fotos heading stays right under the subfolders instead of
+	   at the bottom of the screen. */
 	.about.fill {
 		flex: 1;
 		min-height: 0;
+		overflow-y: auto;
 	}
 
 	.crumbs {
@@ -526,10 +543,6 @@
 		flex-direction: column;
 		gap: var(--space-2);
 		min-height: 0;
-	}
-
-	.section.fill {
-		flex: 1;
 	}
 
 	.section-head {
@@ -600,8 +613,8 @@
 	}
 
 	.fill .section-body {
-		flex: 1;
 		max-height: none;
+		overflow: visible;
 	}
 
 	.missing {
