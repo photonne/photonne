@@ -432,3 +432,20 @@ test('album tiles get smaller and bigger, only in the grid view', async ({ page 
 	await page.reload();
 	await expect(slider).toHaveValue('90');
 });
+
+test('small album tiles keep only the icons of their badges', async ({ page }) => {
+	await open(page, '/albums');
+	const slider = page.getByRole('slider', { name: 'Tamaño de las tarjetas' });
+	const rest = page.getByRole('region', { name: 'Álbumes' });
+	const smart = rest.getByTitle(/inteligente/i).first();
+	const words = smart.getByText('Inteligente');
+
+	await slider.fill('100');
+	await expect(words).toBeVisible();
+
+	await slider.fill('0');
+	await expect.poll(async () => (await smart.boundingBox())!.width).toBeLessThan(32);
+	// The words are still there for screen readers, and in the tooltip.
+	await expect(words).toBeAttached();
+	await expect(smart).toHaveAttribute('title', 'Álbum inteligente: lo llenan sus condiciones');
+});
