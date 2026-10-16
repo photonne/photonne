@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.2.0](https://github.com/photonne/photonne/compare/server-v2.1.0...server-v2.2.0) (2026-10-16)
+
+
+### Novedades
+
+* **spa:** Las etiquetas de una tarjeta de álbum pequeña quedan en icono ([595b228](https://github.com/photonne/photonne/commit/595b2284e6c94e589ef0b60c3c8ef0f64ee3ad0f))
+
+
+### Correcciones
+
+* **spa:** Tamaño de las subcarpetas dentro de una carpeta y Fotos plegada a la vista ([e6fa29e](https://github.com/photonne/photonne/commit/e6fa29ea6912d8b264cc0b2467ef3f0e5918524e))
+
 ## [2.1.0](https://github.com/photonne/photonne/compare/server-v2.0.0...server-v2.1.0) (2026-10-16)
 
 
