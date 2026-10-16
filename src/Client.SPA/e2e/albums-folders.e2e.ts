@@ -282,6 +282,11 @@ test('a folder with subfolders and photos folds either section and shares the vi
 	await expect(photosHead).toHaveAttribute('aria-expanded', 'false');
 	await expect(cells(page)).toHaveCount(0);
 	await expect(subfolders).toBeVisible();
+	// Folded, its heading stays right under the subfolders, not at the bottom.
+	await expect(photosHead).toBeInViewport();
+	const listBottom = await subfolders.evaluate((list) => list.getBoundingClientRect().bottom);
+	const headTop = (await photosHead.boundingBox())!.y;
+	expect(headTop - listBottom).toBeLessThan(80);
 
 	await subfoldersHead.click();
 	await expect(subfolders).toBeHidden();
@@ -349,4 +354,22 @@ test('the tree pane is resized by dragging or with the keyboard, and remembered'
 
 	await handle.dblclick();
 	await expect(handle).toHaveAttribute('aria-valuenow', '280');
+});
+
+test('subfolder tiles are resized from inside a folder too', async ({ page }) => {
+	await open(page, '/folders/folder-1');
+	const slider = page.getByRole('slider', { name: 'Tamaño de las tarjetas' });
+	const tile = page.getByRole('list', { name: 'Subcarpetas' }).getByRole('listitem').first();
+	const width = async () => (await tile.boundingBox())!.width;
+	const before = await width();
+
+	await slider.fill('0');
+	await expect.poll(width).toBeLessThan(before);
+
+	// The same size as the folders index.
+	await page
+		.getByRole('navigation', { name: 'Navegación principal' })
+		.getByRole('link', { name: 'Carpetas', exact: true })
+		.click();
+	await expect(page.getByRole('slider', { name: 'Tamaño de las tarjetas' })).toHaveValue('0');
 });
