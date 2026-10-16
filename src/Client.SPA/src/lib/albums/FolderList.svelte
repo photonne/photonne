@@ -3,6 +3,7 @@
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
 	import type { ListView } from './album-list.js';
 	import FolderCard from './FolderCard.svelte';
+	import { cardMinWidth, cardSize } from './card-size.svelte.js';
 
 	interface Props {
 		folders: readonly FolderResponse[];
@@ -27,7 +28,7 @@
 	}
 </script>
 
-<ul class={view} aria-label={label}>
+<ul class={view} aria-label={label} style:--card-min="{cardMinWidth(cardSize.value)}px">
 	{#each folders as folder (folder.id)}
 		<FolderCard
 			{folder}
@@ -50,7 +51,7 @@
 
 	ul.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 180px), 1fr));
 		gap: var(--space-6) var(--space-4);
 	}
 

@@ -4,29 +4,37 @@ import { monthTitle } from '#lib/format.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { GridSection } from './grid-model.js';
 import { toGridAsset, type GridAsset } from './types.js';
-import { parseZoom, stepZoom, yearSampleSize, type ZoomLevel } from './zoom.js';
+import { SizePreference } from './size-preference.svelte.js';
+import { migrateZoomLevel, parseGrouping, yearSampleSize, type Grouping } from './zoom.js';
 
-const STORAGE_KEY = 'photonne.timeline.zoom';
+const SIZE_KEY = 'photonne.timeline.size';
+const GROUPING_KEY = 'photonne.timeline.grouping';
+/** Where the timeline kept a level that set both size and grouping. */
+const LEGACY_ZOOM_KEY = 'photonne.timeline.zoom';
 
 // What PhotoGrid adds around the photos (side padding and the scrubber), to
 // size the year samples from the grid's outer width.
 const GRID_CHROME = 24 + 56;
 
 /**
- * How the timeline is shown: the zoom level (remembered) and, at the year
- * level, the per-year samples that replace the months. Created by the page,
+ * How the timeline is shown: the thumbnail size and the grouping (both
+ * remembered) and, grouped by year, the per-year samples that replace the months. Created by the page,
  * during component setup (it owns a query).
  */
 export class TimelineView {
-	zoom = $state<ZoomLevel>(readSaved());
+	#size = new SizePreference(SIZE_KEY, () => legacy()?.size ?? null);
+	grouping = $state<Grouping>(readGrouping());
 	/** The grid's outer width, bound by the page: the year samples depend on it. */
 	width = $state(0);
 
 	#years = createQuery(() => ({
 		...getTimelineYearsOptions({
-			query: { sample: yearSampleSize(Math.max(0, this.width - GRID_CHROME)) }
+			query: { sample: yearSampleSize(Math.max(0, this.width - GRID_CHROME), this.size) }
 		}),
-		enabled: this.zoom === 'year' && this.width > 0
+		enabled: this.grouping === 'year' && this.width > 0,
+		// A new sample count (the slider moved) keeps the years on screen
+		// until it arrives, instead of falling back to the months.
+		placeholderData: (previous) => previous
 	}));
 	#months: () => GridSection<GridAsset>[];
 
@@ -34,8 +42,13 @@ export class TimelineView {
 		this.#months = months;
 	}
 
-	/** Showing the year samples (they arrive a moment after choosing the level). */
-	yearView = $derived(this.zoom === 'year' && !!this.#years.data);
+	/** Thumbnail size, 0–100 (zoom.ts). */
+	get size() {
+		return this.#size.value;
+	}
+
+	/** Showing the year samples (they arrive a moment after choosing the grouping). */
+	yearView = $derived(this.grouping === 'year' && !!this.#years.data);
 
 	#yearCounts = $derived(
 		Object.fromEntries((this.#years.data ?? []).map((year) => [String(year.year), year.count]))
@@ -59,24 +72,38 @@ export class TimelineView {
 		return count === undefined ? '' : m.timeline_year_items({ count });
 	};
 
-	setZoom(level: ZoomLevel) {
-		this.zoom = level;
-		try {
-			localStorage.setItem(STORAGE_KEY, level);
-		} catch {
-			// Storage may be unavailable (private mode); the level lasts the visit.
-		}
+	setSize(size: number) {
+		this.#size.set(size);
 	}
 
-	step(direction: 1 | -1) {
-		this.setZoom(stepZoom(this.zoom, direction));
+	/** One step bigger (+1) or smaller (-1); `step` overrides the size of the step. */
+	step(direction: 1 | -1, step?: number) {
+		this.#size.step(direction, step);
+	}
+
+	setGrouping(grouping: Grouping) {
+		this.grouping = grouping;
+		try {
+			localStorage.setItem(GROUPING_KEY, grouping);
+		} catch {
+			// Storage may be unavailable (private mode); the choice lasts the visit.
+		}
 	}
 }
 
-function readSaved() {
+function legacy() {
 	try {
-		return parseZoom(localStorage.getItem(STORAGE_KEY));
+		return migrateZoomLevel(localStorage.getItem(LEGACY_ZOOM_KEY));
 	} catch {
-		return parseZoom(null);
+		return null;
+	}
+}
+
+function readGrouping(): Grouping {
+	try {
+		const own = localStorage.getItem(GROUPING_KEY);
+		return own !== null ? parseGrouping(own) : (legacy()?.grouping ?? parseGrouping(null));
+	} catch {
+		return parseGrouping(null);
 	}
 }

@@ -21,6 +21,7 @@
 	import FolderMoveDialog from '#lib/albums/FolderMoveDialog.svelte';
 	import { browsableRoots, groupFolders } from '#lib/albums/folder-groups.js';
 	import { pathTo } from '#lib/albums/folder-tree.js';
+	import { cardSize } from '#lib/albums/card-size.svelte.js';
 	import { folderView } from '#lib/albums/folder-view.svelte.js';
 	import { icons } from '#lib/albums/icons.js';
 	import ListViewToggle from '#lib/albums/ListViewToggle.svelte';
@@ -38,6 +39,7 @@
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
+	import SizeControl from '#lib/timeline/SizeControl.svelte';
 	import type { Snapshot } from './$types';
 
 	const STORAGE_KEY = 'photonne.folders.list';
@@ -250,7 +252,18 @@
 				</button>
 			</div>
 
-			<span class="view"><ListViewToggle bind:view={folderView.value} /></span>
+			<span class="view">
+				{#if folderView.value === 'grid'}
+					<SizeControl
+						value={cardSize.value}
+						onchange={(size) => cardSize.set(size)}
+						label={m.cards_size()}
+						smallerLabel={m.cards_smaller()}
+						largerLabel={m.cards_larger()}
+					/>
+				{/if}
+				<ListViewToggle bind:view={folderView.value} />
+			</span>
 		</div>
 	{/snippet}
 
@@ -390,6 +403,9 @@
 	}
 
 	.view {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 		margin-left: auto;
 	}
 
