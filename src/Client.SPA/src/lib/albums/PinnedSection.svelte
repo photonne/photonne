@@ -4,6 +4,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
 	import AlbumCard from './AlbumCard.svelte';
+	import { cardMinWidth, cardSize } from './card-size.svelte.js';
 	import type { ListView } from './album-list.js';
 	import { toggleAlbumPin, toggleFolderPin } from './cache.js';
 	import FolderCard from './FolderCard.svelte';
@@ -27,7 +28,7 @@
 <!-- Pinned albums, folders, or (the sidebar's mix) both: each index shows its own kind. -->
 <section aria-labelledby="pinned-title">
 	<h2 id="pinned-title">{m.nav_section_pinned()}</h2>
-	<ul class={view}>
+	<ul class={view} style:--card-min="{cardMinWidth(cardSize.value)}px">
 		{#each entries as entry (entry.kind + entry.item.id)}
 			{#if entry.kind === 'album'}
 				{@const album = entry.item}
@@ -66,7 +67,7 @@
 
 	ul.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 180px), 1fr));
 		gap: var(--space-6) var(--space-4);
 	}
 

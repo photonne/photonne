@@ -32,6 +32,7 @@
 		title={m.map_cluster_title({ count: store.items.length })}
 		status="ready"
 		emptyText={m.map_cluster_empty()}
+		sizeShortcuts={false}
 	>
 		{#snippet toolbar()}
 			<button

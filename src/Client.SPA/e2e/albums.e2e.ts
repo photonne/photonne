@@ -416,3 +416,19 @@ test('an album with a cover opens under it as a banner that folds when scrolling
 	await page.mouse.wheel(0, 600);
 	await expect.poll(async () => (await banner.boundingBox())!.height).toBeLessThan(tall);
 });
+
+test('album tiles get smaller and bigger, only in the grid view', async ({ page }) => {
+	await open(page, '/albums');
+	const slider = page.getByRole('slider', { name: 'Tamaño de las tarjetas' });
+	const tile = page.getByRole('region', { name: 'Álbumes' }).getByRole('listitem').first();
+	const width = async () => (await tile.boundingBox())!.width;
+	const before = await width();
+
+	await slider.fill('100');
+	await expect.poll(width).toBeGreaterThan(before);
+	await page.getByRole('button', { name: 'Tarjetas más pequeñas' }).click();
+	await expect(slider).toHaveValue('90');
+
+	await page.reload();
+	await expect(slider).toHaveValue('90');
+});

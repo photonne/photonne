@@ -4,7 +4,9 @@
 	import type { MonthCount } from './jump.js';
 	import JumpToDateDialog from './JumpToDateDialog.svelte';
 	import type { TimelineView } from './timeline-view.svelte.js';
-	import ZoomControl, { zoomLabels } from './ZoomControl.svelte';
+	import GroupingControl, { groupingLabels } from './GroupingControl.svelte';
+	import SizeControl from './SizeControl.svelte';
+	import { isFreeKeyPress } from './zoom.js';
 
 	interface Props {
 		view: TimelineView;
@@ -26,24 +28,16 @@
 	let announcement = $state('');
 
 	function zoomTo(direction: 1 | -1) {
-		const before = view.zoom;
+		const before = view.size;
 		view.step(direction);
-		if (view.zoom !== before) announce();
+		if (view.size !== before) announcement = m.size_changed({ percent: view.size });
 	}
 
-	function announce() {
-		announcement = m.timeline_zoom_changed({ level: zoomLabels[view.zoom]() });
-	}
-
-	// + / - zoom and G opens "go to a date", as long as nothing else has the
+	// + / - resize and G opens "go to a date", as long as nothing else has the
 	// keyboard: a text field, a dialog, or a modifier shortcut (Ctrl + + is
 	// the browser's own zoom).
 	function onkeydown(event: KeyboardEvent) {
-		if (paused || jumping || event.defaultPrevented) return;
-		if (event.ctrlKey || event.metaKey || event.altKey) return;
-		const target = event.target as HTMLElement;
-		if (target.closest('input, textarea, select, dialog, [role="dialog"], [contenteditable]'))
-			return;
+		if (paused || jumping || !isFreeKeyPress(event)) return;
 		if (event.key === '+' || event.key === '=') zoomTo(1);
 		else if (event.key === '-' || event.key === '_') zoomTo(-1);
 		else if (event.key === 'g' || event.key === 'G') jumping = { current: current() };
@@ -65,13 +59,14 @@
 		<Icon path={EVENT} size={18} />
 		{m.timeline_jump()}
 	</button>
-	<ZoomControl
-		zoom={view.zoom}
-		onchange={(level) => {
-			view.setZoom(level);
-			announce();
+	<GroupingControl
+		grouping={view.grouping}
+		onchange={(grouping) => {
+			view.setGrouping(grouping);
+			announcement = m.timeline_group_changed({ grouping: groupingLabels[grouping]() });
 		}}
 	/>
+	<SizeControl value={view.size} onchange={(size) => view.setSize(size)} />
 	<p class="visually-hidden" role="status">{announcement}</p>
 </div>
 

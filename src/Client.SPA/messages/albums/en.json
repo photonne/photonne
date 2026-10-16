@@ -390,5 +390,8 @@
 	"albums_clear_filters": "Clear filters",
 	"albums_rule_loading": "Loading the conditions…",
 	"albums_load_failed": "The album couldn’t be loaded.",
-	"albums_retry": "Try again"
+	"albums_retry": "Try again",
+	"cards_size": "Card size",
+	"cards_smaller": "Smaller cards",
+	"cards_larger": "Larger cards"
 }

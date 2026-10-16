@@ -26,6 +26,7 @@
 	import { Selection } from '#lib/timeline/selection.svelte.js';
 	import { TimelineStore } from '#lib/timeline/timeline-store.svelte.js';
 	import TimelineTools from '#lib/timeline/TimelineTools.svelte';
+	import { WHEEL_STEP } from '#lib/timeline/zoom.js';
 	import { TimelineView } from '#lib/timeline/timeline-view.svelte.js';
 	import type { GridAsset } from '#lib/timeline/types.js';
 	import AssetViewer, { type AssetChange } from '#lib/viewer/AssetViewer.svelte';
@@ -76,7 +77,7 @@
 	}
 
 	async function openMonthOf(item: GridAsset) {
-		view.setZoom('small');
+		view.setGrouping('month');
 		await tick();
 		await jumpTo(item.capturedAt.slice(0, 7));
 		await tick();
@@ -232,9 +233,10 @@
 				onneedsection={(key) => store.load(key)}
 				onloadsections={(keys) => store.loadMany(keys)}
 				onopen={view.yearView ? openMonthOf : openViewer}
-				zoom={view.zoom}
+				size={view.size}
+				grouping={view.yearView ? 'year' : view.grouping === 'day' ? 'day' : 'month'}
 				layout={view.yearView ? 'rows' : gridLayout.value}
-				onzoom={(direction) => view.step(direction)}
+				onzoom={(direction) => view.step(direction, WHEEL_STEP)}
 				reflowKey={view.yearView ? 'years' : 'months'}
 				selectable={!view.yearView}
 				bind:this={grid}

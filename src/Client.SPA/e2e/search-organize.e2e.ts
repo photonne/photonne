@@ -226,3 +226,22 @@ test('set-aside photos go back to the inbox', async ({ page }) => {
 		})
 	).toBeVisible();
 });
+
+test('the inbox thumbnails get smaller and bigger, apart from the timeline', async ({ page }) => {
+	await open(page, '/organize');
+	const slider = page.getByRole('slider', { name: 'Tamaño de las miniaturas' });
+	await expect(slider).toHaveValue('50');
+	const height = async () => (await cells(page).first().boundingBox())!.height;
+	const medium = await height();
+
+	await slider.fill('0');
+	await expect.poll(height).toBeLessThan(medium / 1.5);
+
+	await page.keyboard.press('+');
+	await expect(slider).toHaveValue('10');
+
+	await page.reload();
+	await expect(slider).toHaveValue('10');
+	expect(await page.evaluate(() => localStorage.getItem('photonne.collection.size'))).toBe('10');
+	expect(await page.evaluate(() => localStorage.getItem('photonne.timeline.size'))).toBeNull();
+});
