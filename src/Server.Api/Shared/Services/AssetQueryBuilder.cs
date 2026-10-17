@@ -43,6 +43,9 @@ public sealed class AssetFilter
 
     /// <summary>Websearch tsquery matched against OCR-recognized text lines.</summary>
     public string? OcrText { get; init; }
+
+    /// <summary>Only photos or only videos (search's <c>type</c>).</summary>
+    public AssetType? MediaType { get; init; }
 }
 
 /// <summary>
@@ -96,6 +99,9 @@ public static class AssetQueryBuilder
 
         if (!string.IsNullOrWhiteSpace(filter.OcrText))
             query = query.Where(AssetConditions.Ocr(filter.OcrText));
+
+        if (filter.MediaType.HasValue)
+            query = query.Where(AssetConditions.OfType(filter.MediaType.Value));
 
         if (filter.PersonIds is { Count: > 0 })
             foreach (var pid in filter.PersonIds)

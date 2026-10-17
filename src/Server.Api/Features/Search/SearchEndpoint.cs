@@ -18,7 +18,7 @@ public class SearchEndpoint : IEndpoint
         app.MapGet("/api/assets/search", Handle)
             .WithName("SearchAssets")
             .WithTags("Assets")
-            .WithDescription("Search assets by filename, path, tags or date range")
+            .WithDescription("Search assets by filename, path, tags, date range or media type")
             .RequireAuthorization();
     }
 
@@ -36,6 +36,7 @@ public class SearchEndpoint : IEndpoint
         [FromQuery(Name = "objectLabel")] string[]? objectLabels,
         [FromQuery(Name = "sceneLabel")] string[]? sceneLabels,
         [FromQuery] string? textQuery,
+        [FromQuery] string? type,
         CancellationToken ct)
     {
         var effectivePageSize = pageSize is > 0 ? Math.Min(pageSize.Value, 200) : 100;
@@ -53,9 +54,14 @@ public class SearchEndpoint : IEndpoint
         var hasObjectFilter = objectLabels is { Length: > 0 };
         var hasSceneFilter = sceneLabels is { Length: > 0 };
         var hasTextFilter = !string.IsNullOrWhiteSpace(textQuery);
+        // "image" / "video"; anything else is no filter at all.
+        AssetType? mediaType = Enum.TryParse<AssetType>(type, ignoreCase: true, out var parsedType)
+                               && Enum.IsDefined(parsedType)
+            ? parsedType
+            : null;
 
         // Require at least one filter to avoid returning everything
-        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter && !hasTextFilter)
+        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter && !hasTextFilter && mediaType == null)
             return TypedResults.Ok(new SearchResponse());
 
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
@@ -71,7 +77,10 @@ public class SearchEndpoint : IEndpoint
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
-                     && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
+                     && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value)
+                     // The .mov half of a Live Photo plays through its still, as on
+                     // the timeline; listed on its own it'd be a stray video.
+                     && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart));
 
         // People filter is per-user; validate ownership of the requested persons
         // up front so a forged id can't leak which assets exist. Passing an empty
@@ -97,7 +106,8 @@ public class SearchEndpoint : IEndpoint
             ObjectLabels = objectLabels,
             SceneLabels = sceneLabels,
             OcrText = textQuery,
-            PersonIds = validPersonIds
+            PersonIds = validPersonIds,
+            MediaType = mediaType
         }, dbContext, userId);
 
         var dbItems = await query

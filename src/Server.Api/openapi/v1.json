@@ -10,6 +10,50 @@
     }
   ],
   "paths": {
+    "/api/assets/videos": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "description": "Gets the videos visible on the current user\u0027s timeline, newest first",
+        "operationId": "GetVideos",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelinePageResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/utilities/large-files": {
       "get": {
         "tags": [
@@ -1993,7 +2037,7 @@
         "tags": [
           "Assets"
         ],
-        "description": "Search assets by filename, path, tags or date range",
+        "description": "Search assets by filename, path, tags, date range or media type",
         "operationId": "SearchAssets",
         "parameters": [
           {
@@ -2075,6 +2119,13 @@
           },
           {
             "name": "textQuery",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
             "in": "query",
             "schema": {
               "type": "string"
@@ -17181,10 +17232,10 @@
   },
   "tags": [
     {
-      "name": "Utilities"
+      "name": "Assets"
     },
     {
-      "name": "Assets"
+      "name": "Utilities"
     },
     {
       "name": "Texts"

@@ -28,7 +28,9 @@ public sealed class SearchFilterTests : IntegrationTestBase
             return folder.Id;
         });
 
-    private async Task<Guid> CreateAssetAsync(TestUser owner, string fileName, Guid folderId, DateTime capturedAt) =>
+    private async Task<Guid> CreateAssetAsync(
+        TestUser owner, string fileName, Guid folderId, DateTime capturedAt,
+        AssetType type = AssetType.Image, bool isMotionPhotoPart = false) =>
         await WithDbContextAsync(async db =>
         {
             var asset = new Asset
@@ -37,8 +39,8 @@ public sealed class SearchFilterTests : IntegrationTestBase
                 FullPath = $"/assets/users/{owner.Username}/{fileName}",
                 FileSize = 3,
                 Checksum = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
-                Type = AssetType.Image,
-                Extension = "jpg",
+                Type = type,
+                Extension = Path.GetExtension(fileName).TrimStart('.'),
                 FileCreatedAt = capturedAt,
                 FileModifiedAt = capturedAt,
                 CapturedAt = capturedAt,
@@ -46,6 +48,8 @@ public sealed class SearchFilterTests : IntegrationTestBase
                 FolderId = folderId
             };
             db.Assets.Add(asset);
+            if (isMotionPhotoPart)
+                db.AssetTags.Add(new AssetTag { Asset = asset, TagType = AssetTagType.MotionPhotoPart });
             await db.SaveChangesAsync();
             return asset.Id;
         });
@@ -92,7 +96,8 @@ public sealed class SearchFilterTests : IntegrationTestBase
             return person.Id;
         });
 
-    private sealed record Library(HttpClient Client, Guid BeachDog, Guid Mountain, Guid Plain, Guid PersonId);
+    private sealed record Library(
+        HttpClient Client, TestUser Owner, Guid FolderId, Guid BeachDog, Guid Mountain, Guid Plain, Guid PersonId);
 
     /// <summary>
     /// Seeds three assets: a March "beach-dog" (object dog, scene beach, a named
@@ -113,7 +118,7 @@ public sealed class SearchFilterTests : IntegrationTestBase
         await AddSceneAsync(mountain, "mountain");
         var personId = await TagPersonAsync(alice, beachDog, "Abuela");
 
-        return new Library(client, beachDog, mountain, plain, personId);
+        return new Library(client, alice, folderId, beachDog, mountain, plain, personId);
     }
 
     private static async Task<List<Guid>> IdsAsync(HttpClient client, string query)
@@ -164,5 +169,18 @@ public sealed class SearchFilterTests : IntegrationTestBase
         // A different user's client must not resolve alice's person id.
         var (_, otherClient) = await CreateAuthenticatedUserAsync();
         Assert.Empty(await IdsAsync(otherClient, $"personId={lib.PersonId}"));
+    }
+
+    [Fact]
+    public async Task Type_Video_AloneListsVideosButNotLivePhotoClips()
+    {
+        var lib = await SeedAsync();
+        var clip = await CreateAssetAsync(lib.Owner, "clip.mp4", lib.FolderId,
+            new DateTime(2026, 2, 1, 10, 0, 0, DateTimeKind.Utc), AssetType.Video);
+        await CreateAssetAsync(lib.Owner, "live.mov", lib.FolderId,
+            new DateTime(2026, 2, 2, 10, 0, 0, DateTimeKind.Utc), AssetType.Video, isMotionPhotoPart: true);
+
+        Assert.Equal(new[] { clip }, await IdsAsync(lib.Client, "type=video"));
+        Assert.DoesNotContain(clip, await IdsAsync(lib.Client, "type=image"));
     }
 }
