@@ -373,3 +373,34 @@ test('subfolder tiles are resized from inside a folder too', async ({ page }) =>
 		.click();
 	await expect(page.getByRole('slider', { name: 'Tamaño de las tarjetas' })).toHaveValue('0');
 });
+
+test('with subfolders, the photos size sits in the Fotos section', async ({ page }) => {
+	await open(page, '/folders/folder-1');
+	await expect(cells(page)).toHaveCount(20);
+	const photosSize = page.getByRole('slider', { name: 'Tamaño de las miniaturas' });
+	const photosHead = page.getByRole('button', { name: 'Fotos 20' });
+
+	// One for the photos, on the Fotos heading's row, under the subfolders.
+	await expect(photosSize).toHaveCount(1);
+	const sliderBox = (await photosSize.boundingBox())!;
+	const headBox = (await photosHead.boundingBox())!;
+	expect(
+		Math.abs(sliderBox.y + sliderBox.height / 2 - (headBox.y + headBox.height / 2))
+	).toBeLessThan(12);
+
+	const height = async () => (await cells(page).first().boundingBox())!.height;
+	const before = await height();
+	await photosSize.fill('0');
+	await expect.poll(height).toBeLessThan(before);
+
+	// Folded photos take their size control with them.
+	await photosHead.click();
+	await expect(photosSize).toHaveCount(0);
+	await photosHead.click();
+
+	// A folder with only photos keeps it in the toolbar, like any collection.
+	await open(page, '/folders/folder-2');
+	await expect(cells(page)).toHaveCount(5);
+	const top = (await page.getByRole('slider', { name: 'Tamaño de las miniaturas' }).boundingBox())!;
+	expect(top.y).toBeLessThan((await page.getByRole('heading', { level: 1 }).boundingBox())!.y + 40);
+});

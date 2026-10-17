@@ -69,6 +69,11 @@
 		onnearend?: () => void;
 		/** + and − resize the grid; off where they mean something else (the map's zoom). */
 		sizeShortcuts?: boolean;
+		/**
+		 * The size control in the page's toolbar. Off when the page puts it
+		 * next to the photos itself (a folder's Fotos section).
+		 */
+		sizeInToolbar?: boolean;
 	}
 
 	let {
@@ -90,7 +95,8 @@
 		cover = null,
 		collapsed = false,
 		onnearend,
-		sizeShortcuts = true
+		sizeShortcuts = true,
+		sizeInToolbar = true
 	}: Props = $props();
 
 	let scrolled = $state(false);
@@ -135,6 +141,7 @@
 
 	/** The grid is on screen, so its size can change. */
 	const sizable = $derived(!collapsed && status === 'ready' && store.items.length > 0);
+	const sizeInBar = $derived(sizable && sizeInToolbar);
 
 	// + / − resize the grid, like on the timeline, while nothing covers it.
 	function onkeydown(event: KeyboardEvent) {
@@ -179,7 +186,7 @@
 
 <!-- The page's own buttons, after the size of the grid. -->
 {#snippet tools()}
-	{#if sizable}
+	{#if sizeInBar}
 		<SizeControl value={collectionSize.value} onchange={(size) => collectionSize.set(size)} />
 	{/if}
 	{@render toolbar?.()}
@@ -216,17 +223,17 @@
 				<div class="banner-header">{@render header?.()}</div>
 			</div>
 		</section>
-		{#if toolbar || sizable}<div class="head bar">
+		{#if toolbar || sizeInBar}<div class="head bar">
 				<div class="toolbar">{@render tools()}</div>
 			</div>{/if}
 	{:else}
 		{#if leading}
 			<div class="with-leading">
 				<div class="leading">{@render leading()}</div>
-				<PageHeader {title} {count} actions={toolbar || sizable ? tools : undefined} />
+				<PageHeader {title} {count} actions={toolbar || sizeInBar ? tools : undefined} />
 			</div>
 		{:else}
-			<PageHeader {title} {count} actions={toolbar || sizable ? tools : undefined} />
+			<PageHeader {title} {count} actions={toolbar || sizeInBar ? tools : undefined} />
 		{/if}
 		{@render header?.()}
 	{/if}
