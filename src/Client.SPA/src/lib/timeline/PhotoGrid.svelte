@@ -532,6 +532,35 @@
 		scroller.querySelector<HTMLElement>(`[data-id="${id}"]`)?.focus({ preventScroll: true });
 	}
 
+	// A browser drops the focus of an element that moves in the DOM, and the
+	// keyed blocks below move when the grid regroups (a year's sample and the
+	// same photo in its month share a key). If the focused photo lost the
+	// focus that way, and not to a click elsewhere or to another element,
+	// give it back.
+	let lastPointer = { at: Number.NEGATIVE_INFINITY, id: null as string | null };
+
+	function onpointerdown(event: PointerEvent) {
+		const target = event.target as Element | null;
+		lastPointer = {
+			at: event.timeStamp,
+			id: target?.closest?.<HTMLElement>('[data-id]')?.dataset.id ?? null
+		};
+	}
+
+	function onfocusout(event: FocusEvent) {
+		const cell = event.target as HTMLElement;
+		const id = cell.dataset?.id;
+		if (event.relatedTarget || !id || id !== focusedId) return;
+		if (event.timeStamp - lastPointer.at < 500 && lastPointer.id !== id) return;
+		requestAnimationFrame(() => {
+			if (focusedId !== id || !document.hasFocus()) return;
+			if (document.activeElement && document.activeElement !== document.body) return;
+			scroller?.querySelector<HTMLElement>(`[data-id="${CSS.escape(id)}"]`)?.focus({
+				preventScroll: true
+			});
+		});
+	}
+
 	function blockKey(block: GridBlock<T>) {
 		if (block.kind === 'row') return `r:${block.cells[0].item.id}`;
 		if (block.kind === 'subheader') return `d:${block.group}`;
@@ -560,7 +589,7 @@
 	</button>
 {/snippet}
 
-<svelte:window onkeydown={onWindowKeydown} />
+<svelte:window onkeydown={onWindowKeydown} onpointerdowncapture={onpointerdown} />
 
 <div class="frame" bind:clientWidth={outerWidth}>
 	<div
@@ -568,6 +597,7 @@
 		bind:this={scroller}
 		bind:clientHeight={viewportHeight}
 		{onscroll}
+		{onfocusout}
 		role="region"
 		aria-label={label}
 	>
