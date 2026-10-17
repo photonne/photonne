@@ -87,6 +87,26 @@ test('dates and text in the image narrow the search', async ({ page }) => {
 	expect(state.searches?.at(-1)).toContain('textQuery=factura');
 });
 
+test('the type filter keeps only the videos, also with no words', async ({ page }) => {
+	const state = await open(page, '/search?q=IMG_2026&sem=0');
+	await expect(cells(page).first()).toBeVisible();
+
+	await page.getByRole('button', { name: 'Tipo', exact: true }).click();
+	await page.getByRole('button', { name: 'Vídeos', exact: true }).click();
+
+	await expect(page).toHaveURL(/type=video/);
+	await expect(
+		page.getByRole('list', { name: 'Filtros activos' }).getByText('Solo vídeos')
+	).toBeVisible();
+	await expect(cells(page).first()).toBeVisible();
+	await expect(page.getByRole('button', { name: /^Foto, / })).toHaveCount(0);
+	expect(state.searches?.at(-1)).toContain('type=video');
+
+	await page.goto('/search?type=video');
+	await expect(page.getByRole('button', { name: /^Vídeo, / }).first()).toBeVisible();
+	await expect(page.getByRole('button', { name: /^Foto, / })).toHaveCount(0);
+});
+
 test('semantic search shows the closest photos', async ({ page }) => {
 	const state = await open(page, '/search?q=perro+en+la+playa');
 

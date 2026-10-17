@@ -33,6 +33,7 @@ export const navigation: NavSection[] = [
 			{ path: '/memories', label: m.nav_memories, icon: 'history' },
 			{ path: '/people', label: m.nav_people, icon: 'people' },
 			{ path: '/favorites', label: m.nav_favorites, icon: 'favoriteOutline' },
+			{ path: '/videos', label: m.nav_videos, icon: 'videoLibrary' },
 			{ path: '/albums', label: m.nav_albums, icon: 'album' },
 			{ path: '/folders', label: m.nav_folders, icon: 'folder' },
 			{ path: '/explore', label: m.nav_explore, icon: 'explore' },

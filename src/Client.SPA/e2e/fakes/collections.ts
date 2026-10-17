@@ -10,6 +10,14 @@ const handle: FakeHandler = async ({ method, path, authorized, json }) => {
 		await json(200, { items, hasMore: false, nextCursor: null });
 		return true;
 	}
+	if (method === 'GET' && path === '/api/assets/videos') {
+		if (!authorized) return json(401).then(() => true);
+		const items = library.buckets
+			.flatMap((bucket) => library.items(bucket.key))
+			.filter((item) => item.type === 'Video');
+		await json(200, { items, hasMore: false, nextCursor: null });
+		return true;
+	}
 	return false;
 };
 

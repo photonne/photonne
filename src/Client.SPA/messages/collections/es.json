@@ -1,6 +1,7 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"favorites_empty": "Marca fotos como favoritas con el corazón y aparecerán aquí.",
+	"videos_empty": "Aún no hay vídeos. Los que subas o indexes aparecerán aquí, del más reciente al más antiguo.",
 	"library_breadcrumb": "Ruta de navegación",
 	"archive_empty": "No hay nada archivado. Lo que archives sale del timeline y se guarda aquí.",
 	"archive_hint": "Las fotos archivadas no aparecen en el timeline ni en los recuerdos, pero siguen en tus álbumes y carpetas.",

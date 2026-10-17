@@ -14,7 +14,7 @@ describe('search query', () => {
 	it('reads a search from the URL', () => {
 		const query = parseSearch(
 			new URLSearchParams(
-				'q=+playa+&sem=1&from=2024-01-01&to=2024-12-31&person=p1&person=p2&object=dog&scene=beach&ocr=factura&folder=Viajes'
+				'q=+playa+&sem=1&from=2024-01-01&to=2024-12-31&person=p1&person=p2&object=dog&scene=beach&ocr=factura&folder=Viajes&type=video'
 			)
 		);
 
@@ -27,7 +27,8 @@ describe('search query', () => {
 			objects: ['dog'],
 			scenes: ['beach'],
 			ocr: 'factura',
-			folder: 'Viajes'
+			folder: 'Viajes',
+			type: 'video'
 		});
 	});
 
@@ -40,6 +41,16 @@ describe('search query', () => {
 		expect(query.to).toBeNull();
 		expect(query.objects).toEqual(['dog']);
 		expect(query.semantic).toBe(false);
+		expect(parseSearch(new URLSearchParams('type=gif')).type).toBeNull();
+	});
+
+	it('filters by media type alone, as a text search', () => {
+		const query = parseSearch(new URLSearchParams('type=video'));
+
+		expect(query.semantic).toBe(false);
+		expect(hasCriteria(query)).toBe(true);
+		expect(searchKey(query)).toBe('type=video');
+		expect(textSearchRequest(query, 0, 50)).toMatchObject({ type: 'video' });
 	});
 
 	it('writes a canonical URL that round-trips', () => {

@@ -80,6 +80,8 @@ function textSearch(params: URLSearchParams) {
 	if (params.getAll('personId').length) items = items.filter((_, i) => i % 2 === 0);
 	if (params.get('textQuery')) items = items.slice(0, 3);
 	if (params.get('folder')) items = items.slice(0, 5);
+	const type = params.get('type');
+	if (type) items = items.filter((item) => item.type.toLowerCase() === type);
 	const pageSize = Number(params.get('pageSize') ?? 100);
 	const offset = Number(params.get('offset') ?? 0);
 	return {

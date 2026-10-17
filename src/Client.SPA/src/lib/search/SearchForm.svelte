@@ -13,7 +13,7 @@
 	import CheckList, { type CheckOption } from './CheckList.svelte';
 	import FilterMenu from './FilterMenu.svelte';
 	import { PeopleNames } from './people-names.svelte.js';
-	import { emptySearch, toggled, type SearchQuery } from './search-query.js';
+	import { emptySearch, toggled, type MediaType, type SearchQuery } from './search-query.js';
 	import { labelText, lastSegment, matches } from './text.js';
 
 	interface Props {
@@ -87,6 +87,11 @@
 
 	const filtersOff = $derived(semantic);
 
+	const types: { value: MediaType; label: () => string; icon: 'photos' | 'videoLibrary' }[] = [
+		{ value: 'image', label: m.search_type_photos, icon: 'photos' },
+		{ value: 'video', label: m.search_type_videos, icon: 'videoLibrary' }
+	];
+
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		onsearch({ ...query, q: text.trim() });
@@ -147,6 +152,13 @@
 				key: 'ocr',
 				label: m.search_chip_ocr({ text: query.ocr }),
 				remove: () => ({ ...query, ocr: '' })
+			});
+		}
+		if (query.type) {
+			list.push({
+				key: 'type',
+				label: query.type === 'video' ? m.search_chip_type_video() : m.search_chip_type_image(),
+				remove: () => ({ ...query, type: null })
 			});
 		}
 		if (query.folder) {
@@ -218,6 +230,28 @@
 					/>
 				</label>
 			</div>
+		</FilterMenu>
+
+		<FilterMenu label={m.search_filter_type()} count={query.type ? 1 : 0} disabled={filtersOff}>
+			{#snippet children(close)}
+				<ul class="options" aria-label={m.search_filter_type()}>
+					{#each types as type (type.value)}
+						<li>
+							<button
+								type="button"
+								aria-pressed={query.type === type.value}
+								onclick={() => {
+									onsearch({ ...query, type: query.type === type.value ? null : type.value });
+									close();
+								}}
+							>
+								<Icon name={type.icon} size={16} />
+								<span class="name">{type.label()}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/snippet}
 		</FilterMenu>
 
 		<FilterMenu label={m.search_filter_people()} count={query.people.length} disabled={filtersOff}>
@@ -478,7 +512,8 @@
 		gap: var(--space-2);
 	}
 
-	.folders ul {
+	.folders ul,
+	.options {
 		list-style: none;
 		margin: 0;
 		padding: 0;
@@ -486,7 +521,8 @@
 		overflow-y: auto;
 	}
 
-	.folders li button {
+	.folders li button,
+	.options button {
 		display: grid;
 		grid-template-columns: auto 1fr;
 		column-gap: var(--space-2);
@@ -500,11 +536,13 @@
 		cursor: pointer;
 	}
 
-	.folders li button:hover {
+	.folders li button:hover,
+	.options button:hover {
 		background: var(--color-hover);
 	}
 
-	.folders li button[aria-pressed='true'] {
+	.folders li button[aria-pressed='true'],
+	.options button[aria-pressed='true'] {
 		background: var(--color-accent-soft);
 		font-weight: 600;
 	}

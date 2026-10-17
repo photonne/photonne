@@ -1,6 +1,7 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"favorites_empty": "Mark photos as favorites with the heart and they show up here.",
+	"videos_empty": "No videos yet. The ones you upload or index will show up here, newest first.",
 	"library_breadcrumb": "Breadcrumb",
 	"archive_empty": "Nothing is archived. What you archive leaves the timeline and is kept here.",
 	"archive_hint": "Archived photos stay out of the timeline and memories, but remain in your albums and folders.",

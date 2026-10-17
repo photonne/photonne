@@ -25,7 +25,11 @@ export interface SearchQuery {
 	ocr: string;
 	/** Substring of the path, e.g. `/assets/users/ana/Viajes`. */
 	folder: string;
+	/** Only photos or only videos; null is both. */
+	type: MediaType | null;
 }
+
+export type MediaType = 'image' | 'video';
 
 export const emptySearch: SearchQuery = {
 	q: '',
@@ -36,7 +40,8 @@ export const emptySearch: SearchQuery = {
 	objects: [],
 	scenes: [],
 	ocr: '',
-	folder: ''
+	folder: '',
+	type: null
 };
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -47,6 +52,10 @@ function day(value: string | null) {
 
 function list(params: URLSearchParams, key: string) {
 	return [...new Set(params.getAll(key).map((value) => value.trim()))].filter(Boolean);
+}
+
+function mediaType(value: string | null): MediaType | null {
+	return value === 'image' || value === 'video' ? value : null;
 }
 
 /** Reads a search from the URL; anything malformed is ignored, never thrown. */
@@ -60,7 +69,8 @@ export function parseSearch(params: URLSearchParams): SearchQuery {
 		objects: list(params, 'object'),
 		scenes: list(params, 'scene'),
 		ocr: params.get('ocr')?.trim() ?? '',
-		folder: params.get('folder')?.trim() ?? ''
+		folder: params.get('folder')?.trim() ?? '',
+		type: mediaType(params.get('type'))
 	};
 	const sem = params.get('sem');
 	query.semantic = sem === '1' || (sem !== '0' && filterCount(query) === 0);
@@ -88,6 +98,7 @@ export function searchParams(query: SearchQuery): URLSearchParams {
 	for (const label of query.scenes) params.append('scene', label);
 	text('ocr', query.ocr);
 	text('folder', query.folder);
+	text('type', query.type);
 	return params;
 }
 
@@ -103,7 +114,8 @@ export function filterCount(query: SearchQuery) {
 		query.objects.length,
 		query.scenes.length,
 		query.ocr,
-		query.folder
+		query.folder,
+		query.type
 	].filter(Boolean).length;
 }
 
@@ -131,6 +143,7 @@ export function textSearchRequest(
 		sceneLabel: query.scenes.length ? query.scenes : undefined,
 		textQuery: query.ocr || undefined,
 		folder: query.folder || undefined,
+		type: query.type ?? undefined,
 		pageSize,
 		offset: offset || undefined
 	};

@@ -74,6 +74,7 @@ test('the menu follows the native app: photos, collections, actions', async ({ p
 			'Recuerdos',
 			'Personas',
 			'Favoritos',
+			'Vídeos',
 			'Álbumes',
 			'Carpetas',
 			'Explorar',
