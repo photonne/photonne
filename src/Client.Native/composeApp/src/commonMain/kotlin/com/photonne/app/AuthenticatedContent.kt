@@ -116,6 +116,7 @@ internal class AuthenticatedContentHost(
     archivedState: State<com.photonne.app.ui.library.ArchivedUiState>,
     trashState: State<com.photonne.app.ui.library.TrashUiState>,
     favoritesState: State<com.photonne.app.ui.library.FavoritesUiState>,
+    videosState: State<com.photonne.app.ui.library.VideosUiState>,
     organizeInboxState: State<com.photonne.app.ui.organize.OrganizeInboxUiState>,
     organizeExcludedState: State<com.photonne.app.ui.organize.OrganizeExcludedUiState>,
     organizeRuleState: State<com.photonne.app.ui.organize.OrganizeRuleUiState>,
@@ -140,6 +141,7 @@ internal class AuthenticatedContentHost(
     val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel,
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel,
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel,
+    val videosViewModel: com.photonne.app.ui.library.VideosViewModel,
     val unsupportedFilesViewModel: com.photonne.app.ui.library.UnsupportedFilesViewModel,
     val organizeInboxViewModel: com.photonne.app.ui.organize.OrganizeInboxViewModel,
     val organizeExcludedViewModel: com.photonne.app.ui.organize.OrganizeExcludedViewModel,
@@ -201,6 +203,7 @@ internal class AuthenticatedContentHost(
     val archivedState by archivedState
     val trashState by trashState
     val favoritesState by favoritesState
+    val videosState by videosState
     val organizeInboxState by organizeInboxState
     val organizeExcludedState by organizeExcludedState
     val organizeRuleState by organizeRuleState
@@ -531,6 +534,7 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
                 // de Buscar, así que su atrás (moreSubscreen = null) vuelve aquí.
                 onOpenMemories = { appState.moreSubscreen = MoreSubscreen.Memories },
                 onOpenMap = { appState.moreSubscreen = MoreSubscreen.Map },
+                onOpenVideos = { appState.moreSubscreen = MoreSubscreen.Videos },
                 onOpenPeople = {
                     appState.selectedPerson = null
                     appState.moreSubscreen = MoreSubscreen.People
@@ -1252,6 +1256,45 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                 onLoad = favoritesViewModel::ensureLoaded,
                 onRefresh = favoritesViewModel::refresh,
                 onApplySelection = favoritesViewModel::applySelection,
+                onBack = { appState.moreSubscreen = null },
+                onChromeVisibleChange = { appState.subscreenChromeVisible = it }
+            )
+            MoreSubscreen.Videos -> com.photonne.app.ui.library.VideosScreen(
+                state = videosState,
+                onItemClick = { index ->
+                    if (videosState.isSelectionActive) {
+                        videosState.items.getOrNull(index)?.let {
+                            videosViewModel.toggleSelection(it.id)
+                        }
+                    } else {
+                        appState.assetDetail = AssetDetailContext(
+                            items = videosState.items,
+                            startIndex = index,
+                            source = AssetDetailContext.Source.Timeline,
+                            hasMore = videosState.hasMore,
+                            onLoadMore = videosViewModel::loadMore,
+                            feed = com.photonne.app.ui.asset.AssetViewerFeed(
+                                items = { videosState.items },
+                                hasMore = { videosState.hasMore },
+                                loadMore = videosViewModel::loadMore
+                            ),
+                            onFavoriteChanged = { id, isFav ->
+                                videosViewModel.setFavorite(id, isFav)
+                                favoritesViewModel.setFavorite(id, isFav)
+                                timelineViewModel.setFavorite(id, isFav)
+                            }
+                        )
+                    }
+                },
+                onItemLongClick = { index ->
+                    videosState.items.getOrNull(index)?.let {
+                        videosViewModel.toggleSelection(it.id)
+                    }
+                },
+                onLoadMore = videosViewModel::loadMore,
+                onLoad = videosViewModel::ensureLoaded,
+                onRefresh = videosViewModel::refresh,
+                onApplySelection = videosViewModel::applySelection,
                 onBack = { appState.moreSubscreen = null },
                 onChromeVisibleChange = { appState.subscreenChromeVisible = it }
             )
@@ -2028,6 +2071,7 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                     )
                 },
                 onOpenMap = { appState.moreSubscreen = MoreSubscreen.Map },
+                onOpenVideos = { appState.moreSubscreen = MoreSubscreen.Videos },
                 onOpenArchived = { appState.moreSubscreen = MoreSubscreen.Archived },
                 onOpenTrash = {
                     appState.trashTab = com.photonne.app.ui.library.TrashTab.Personal

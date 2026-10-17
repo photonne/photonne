@@ -159,6 +159,7 @@ internal enum class MoreSubscreen {
     DeviceBackupPending,
     EnrichmentStatus,
     Favorites,
+    Videos,
     People,
     PeopleSuggestions,
     Map,
@@ -356,6 +357,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.SmartAlbumEditor,
     MoreSubscreen.DeviceBackup,
     MoreSubscreen.Favorites,
+    MoreSubscreen.Videos,
     MoreSubscreen.People,
     MoreSubscreen.Map,
     MoreSubscreen.Archived,
@@ -531,7 +533,7 @@ private fun SessionViewModelScope(
 }
 
 /** Whose selection the shared add-to-album dialog adds. */
-internal enum class BulkAddSource { Search, Map, Favorites, People, Folder, Archive, Album, Inbox, Upload, Memory }
+internal enum class BulkAddSource { Search, Map, Favorites, Videos, People, Folder, Archive, Album, Inbox, Upload, Memory }
 
 /**
  * Qué hay que añadir al álbum que se está creando cuando se llega a "Nuevo
@@ -629,6 +631,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel = koinViewModel()
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
+    val videosViewModel: com.photonne.app.ui.library.VideosViewModel = koinViewModel()
     val unsupportedFilesViewModel: com.photonne.app.ui.library.UnsupportedFilesViewModel = koinViewModel()
     val organizeInboxViewModel: com.photonne.app.ui.organize.OrganizeInboxViewModel = koinViewModel()
     val organizeExcludedViewModel: com.photonne.app.ui.organize.OrganizeExcludedViewModel = koinViewModel()
@@ -724,6 +727,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashState by trashStateRef
     val favoritesStateRef = favoritesViewModel.state.collectAsStateWithLifecycle()
     val favoritesState by favoritesStateRef
+    val videosStateRef = videosViewModel.state.collectAsStateWithLifecycle()
+    val videosState by videosStateRef
     val unsupportedFilesStateRef = unsupportedFilesViewModel.state.collectAsStateWithLifecycle()
     val organizeInboxStateRef = organizeInboxViewModel.state.collectAsStateWithLifecycle()
     val organizeInboxState by organizeInboxStateRef
@@ -928,6 +933,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         (appState.selectedTab == MainTab.Folders && foldersState.isSelectionActive) ||
         (appState.selectedTab == MainTab.Search && searchState.isSelectionActive) ||
         (appState.moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive) ||
+        (appState.moreSubscreen == MoreSubscreen.Videos && videosState.isSelectionActive) ||
         (appState.moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive) ||
         (appState.moreSubscreen == MoreSubscreen.Trash && appState.trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive) ||
         (appState.moreSubscreen == MoreSubscreen.People && appState.selectedPerson != null &&
@@ -989,6 +995,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 searchViewModel.clearSelection()
             appState.moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive ->
                 favoritesViewModel.clearSelection()
+            appState.moreSubscreen == MoreSubscreen.Videos && videosState.isSelectionActive ->
+                videosViewModel.clearSelection()
             appState.moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive ->
                 archivedViewModel.clearSelection()
             appState.moreSubscreen == MoreSubscreen.Trash && appState.trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive ->
@@ -1054,6 +1062,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         appState.moreSubscreen == MoreSubscreen.Favorites ->
             selectAllOf(favoritesState.selection.size, favoritesState.items.size,
                 favoritesViewModel::toggleSelectAll)
+        appState.moreSubscreen == MoreSubscreen.Videos ->
+            selectAllOf(videosState.selection.size, videosState.items.size,
+                videosViewModel::toggleSelectAll)
         appState.moreSubscreen == MoreSubscreen.Archived ->
             selectAllOf(archivedState.selection.size, archivedState.items.size,
                 archivedViewModel::toggleSelectAll)
@@ -1143,6 +1154,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.OrganizeInbox -> !organizeInboxState.isSelectionActive
         MoreSubscreen.OrganizeExcluded -> !organizeExcludedState.isSelectionActive
         MoreSubscreen.Favorites -> !favoritesState.isSelectionActive
+        MoreSubscreen.Videos -> !videosState.isSelectionActive
         MoreSubscreen.Archived -> !archivedState.isSelectionActive
         MoreSubscreen.UnsupportedFiles -> true
         MoreSubscreen.PeopleSuggestions -> true
@@ -1258,6 +1270,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         archivedState = archivedStateRef,
         trashState = trashStateRef,
         favoritesState = favoritesStateRef,
+        videosState = videosStateRef,
         organizeInboxState = organizeInboxStateRef,
         organizeExcludedState = organizeExcludedStateRef,
         personDetailState = personDetailStateRef,
@@ -1276,6 +1289,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         archivedViewModel = archivedViewModel,
         trashViewModel = trashViewModel,
         favoritesViewModel = favoritesViewModel,
+        videosViewModel = videosViewModel,
         organizeInboxViewModel = organizeInboxViewModel,
         organizeExcludedViewModel = organizeExcludedViewModel,
         personDetailViewModel = personDetailViewModel,
@@ -1461,6 +1475,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         archivedState = archivedStateRef,
         trashState = trashStateRef,
         favoritesState = favoritesStateRef,
+        videosState = videosStateRef,
         organizeInboxState = organizeInboxStateRef,
         organizeExcludedState = organizeExcludedStateRef,
         organizeRuleState = organizeRuleStateRef,
@@ -1485,6 +1500,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         archivedViewModel = archivedViewModel,
         trashViewModel = trashViewModel,
         favoritesViewModel = favoritesViewModel,
+        videosViewModel = videosViewModel,
         unsupportedFilesViewModel = unsupportedFilesViewModel,
         organizeInboxViewModel = organizeInboxViewModel,
         organizeExcludedViewModel = organizeExcludedViewModel,
@@ -2008,6 +2024,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             archivedState = archivedStateRef,
             trashState = trashStateRef,
             favoritesState = favoritesStateRef,
+            videosState = videosStateRef,
             organizeInboxState = organizeInboxStateRef,
             organizeRuleState = organizeRuleStateRef,
             peopleState = peopleStateRef,
@@ -2039,6 +2056,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             archivedViewModel = archivedViewModel,
             trashViewModel = trashViewModel,
             favoritesViewModel = favoritesViewModel,
+            videosViewModel = videosViewModel,
             organizeInboxViewModel = organizeInboxViewModel,
             organizeRuleViewModel = organizeRuleViewModel,
             uploadViewModel = uploadViewModel,

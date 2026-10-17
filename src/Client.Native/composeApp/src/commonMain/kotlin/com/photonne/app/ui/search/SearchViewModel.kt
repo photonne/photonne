@@ -36,12 +36,16 @@ import com.photonne.app.util.suspendRunCatching
 
 enum class SearchMode { Text, Semantic }
 
+/** Solo fotos o solo vídeos; [wire] es el `type` de /api/assets/search. */
+enum class SearchMediaType(val wire: String) { Image("image"), Video("video") }
+
 data class SearchUiState(
     val query: String = "",
     val mode: SearchMode = SearchMode.Text,
     val from: LocalDate? = null,
     val to: LocalDate? = null,
     val ocrText: String = "",
+    val mediaType: SearchMediaType? = null,
     val selectedPersonIds: Set<String> = emptySet(),
     val selectedObjectLabels: Set<String> = emptySet(),
     val selectedSceneLabels: Set<String> = emptySet(),
@@ -81,7 +85,8 @@ data class SearchUiState(
             selectedPersonIds.isNotEmpty(),
             selectedObjectLabels.isNotEmpty(),
             selectedSceneLabels.isNotEmpty(),
-            ocrText.isNotBlank()
+            ocrText.isNotBlank(),
+            mediaType != null
         ).count { it }
 
     val hasAnyCriteria: Boolean
@@ -168,6 +173,11 @@ class SearchViewModel(
         scheduleSearch()
     }
 
+    fun setMediaType(type: SearchMediaType?) {
+        _state.update { it.copy(mediaType = type, selection = emptySet()) }
+        scheduleSearch(immediate = true)
+    }
+
     fun setDateRange(from: LocalDate?, to: LocalDate?) {
         _state.update { it.copy(from = from, to = to, selection = emptySet()) }
         scheduleSearch(immediate = true)
@@ -235,6 +245,7 @@ class SearchViewModel(
                 from = null,
                 to = null,
                 ocrText = "",
+                mediaType = null,
                 selectedPersonIds = personIds,
                 selectedObjectLabels = objectLabels,
                 selectedSceneLabels = sceneLabels,
@@ -369,6 +380,7 @@ class SearchViewModel(
             it.copy(
                 query = "",
                 ocrText = "",
+                mediaType = null,
                 from = null,
                 to = null,
                 selectedObjectLabels = emptySet(),
@@ -410,6 +422,7 @@ class SearchViewModel(
                     objectLabels = snapshot.selectedObjectLabels.toList(),
                     sceneLabels = snapshot.selectedSceneLabels.toList(),
                     ocrText = snapshot.ocrText.takeIf { it.isNotBlank() },
+                    mediaType = snapshot.mediaType?.wire,
                     offset = snapshot.results.size
                 )
             }
@@ -561,6 +574,7 @@ class SearchViewModel(
                         objectLabels = snapshot.selectedObjectLabels.toList(),
                         sceneLabels = snapshot.selectedSceneLabels.toList(),
                         ocrText = snapshot.ocrText.takeIf { it.isNotBlank() },
+                        mediaType = snapshot.mediaType?.wire,
                         offset = offset
                     ).let { page ->
                         val next = (offset ?: 0) + page.items.size

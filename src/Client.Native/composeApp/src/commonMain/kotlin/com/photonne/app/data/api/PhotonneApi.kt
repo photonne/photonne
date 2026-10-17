@@ -563,6 +563,10 @@ interface PhotonneApi {
         cursor: Instant? = null,
         pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
     ): AssetPage
+    suspend fun getVideoAssets(
+        cursor: Instant? = null,
+        pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
+    ): AssetPage
     /**
      * Streams the ZIP of [assetIds] into [consume] while it arrives, so it
      * never sits whole in memory: [consume] gets the response head and the
@@ -770,6 +774,8 @@ interface PhotonneApi {
         objectLabels: List<String> = emptyList(),
         sceneLabels: List<String> = emptyList(),
         textQuery: String? = null,
+        /** "image" o "video"; null, los dos. */
+        mediaType: String? = null,
         pageSize: Int? = null,
         offset: Int? = null
     ): SearchResponse
@@ -1788,6 +1794,17 @@ class PhotonneApiClient(
         return response.body()
     }
 
+    override suspend fun getVideoAssets(cursor: Instant?, pageSize: Int): AssetPage {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/videos") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Videos list failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
     override suspend fun uploadAsset(
         fileName: String,
         mimeType: String,
@@ -2368,6 +2385,7 @@ class PhotonneApiClient(
         objectLabels: List<String>,
         sceneLabels: List<String>,
         textQuery: String?,
+        mediaType: String?,
         pageSize: Int?,
         offset: Int?
     ): SearchResponse {
@@ -2382,6 +2400,7 @@ class PhotonneApiClient(
             for (label in objectLabels) parameter("objectLabel", label)
             for (label in sceneLabels) parameter("sceneLabel", label)
             if (!textQuery.isNullOrBlank()) parameter("textQuery", textQuery)
+            if (!mediaType.isNullOrBlank()) parameter("type", mediaType)
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Search failed (${response.status.value})")

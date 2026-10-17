@@ -34,6 +34,8 @@ import com.photonne.app.resources.memories_strip_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.search_discover_map_subtitle
+import com.photonne.app.resources.search_discover_videos_subtitle
+import com.photonne.app.resources.videos_title
 import com.photonne.app.resources.search_discover_see_all
 import com.photonne.app.ui.explore.ExploreLabelTile
 import com.photonne.app.ui.explore.LabelTileCard
@@ -67,6 +69,7 @@ internal fun SearchDiscover(
     contentPadding: PaddingValues,
     onOpenMemories: () -> Unit,
     onOpenMap: () -> Unit,
+    onOpenVideos: () -> Unit,
     onOpenPeople: () -> Unit,
     onOpenScenes: () -> Unit,
     onOpenObjects: () -> Unit,
@@ -99,6 +102,12 @@ internal fun SearchDiscover(
                     title = stringResource(Res.string.map_title),
                     subtitle = stringResource(Res.string.search_discover_map_subtitle),
                     onClick = onOpenMap
+                )
+                EntryCard(
+                    icon = PhotonneIcons.Videos,
+                    title = stringResource(Res.string.videos_title),
+                    subtitle = stringResource(Res.string.search_discover_videos_subtitle),
+                    onClick = onOpenVideos
                 )
             }
         }

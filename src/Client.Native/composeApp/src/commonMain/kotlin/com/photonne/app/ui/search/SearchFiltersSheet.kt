@@ -47,6 +47,9 @@ import com.photonne.app.resources.search_filters
 import com.photonne.app.resources.search_filters_loading
 import com.photonne.app.resources.search_objects_count
 import com.photonne.app.resources.search_ocr_hint
+import com.photonne.app.resources.search_media_type
+import com.photonne.app.resources.search_media_type_photos
+import com.photonne.app.resources.search_media_type_videos
 import com.photonne.app.resources.search_ocr_title
 import com.photonne.app.resources.search_people_count
 import com.photonne.app.resources.search_scenes_count
@@ -69,6 +72,7 @@ fun SearchFiltersSheet(
     onDismiss: () -> Unit,
     onDateRangeChange: (LocalDate?, LocalDate?) -> Unit,
     onOcrChange: (String) -> Unit,
+    onMediaTypeChange: (SearchMediaType?) -> Unit,
     onToggleObject: (String) -> Unit,
     onToggleScene: (String) -> Unit,
     onTogglePerson: (String) -> Unit,
@@ -95,6 +99,24 @@ fun SearchFiltersSheet(
                 // un filtro más y con listas largas ni se veía.
                 TextButton(onClick = onClearAll) {
                     Text(stringResource(Res.string.search_clear_all))
+                }
+            }
+
+            // Photos or videos
+            Text(
+                stringResource(Res.string.search_media_type),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for ((type, label) in listOf(
+                    SearchMediaType.Image to Res.string.search_media_type_photos,
+                    SearchMediaType.Video to Res.string.search_media_type_videos
+                )) {
+                    FilterChip(
+                        selected = state.mediaType == type,
+                        onClick = { onMediaTypeChange(if (state.mediaType == type) null else type) },
+                        label = { Text(stringResource(label)) }
+                    )
                 }
             }
 

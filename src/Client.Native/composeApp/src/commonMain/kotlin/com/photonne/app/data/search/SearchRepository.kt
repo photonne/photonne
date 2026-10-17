@@ -19,6 +19,7 @@ class SearchRepository(
         objectLabels: List<String>,
         sceneLabels: List<String>,
         ocrText: String? = null,
+        mediaType: String? = null,
         pageSize: Int? = null,
         offset: Int? = null
     ): SearchResponse = api.searchAssets(
@@ -29,6 +30,7 @@ class SearchRepository(
         objectLabels = objectLabels,
         sceneLabels = sceneLabels,
         textQuery = ocrText,
+        mediaType = mediaType,
         pageSize = pageSize,
         offset = offset
     )

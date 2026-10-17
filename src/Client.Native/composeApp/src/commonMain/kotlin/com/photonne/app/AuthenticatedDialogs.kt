@@ -120,6 +120,7 @@ internal class AuthenticatedDialogsHost(
     archivedState: State<com.photonne.app.ui.library.ArchivedUiState>,
     trashState: State<com.photonne.app.ui.library.TrashUiState>,
     favoritesState: State<com.photonne.app.ui.library.FavoritesUiState>,
+    videosState: State<com.photonne.app.ui.library.VideosUiState>,
     organizeInboxState: State<com.photonne.app.ui.organize.OrganizeInboxUiState>,
     organizeRuleState: State<com.photonne.app.ui.organize.OrganizeRuleUiState>,
     peopleState: State<com.photonne.app.ui.people.PeopleUiState>,
@@ -151,6 +152,7 @@ internal class AuthenticatedDialogsHost(
     val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel,
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel,
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel,
+    val videosViewModel: com.photonne.app.ui.library.VideosViewModel,
     val organizeInboxViewModel: com.photonne.app.ui.organize.OrganizeInboxViewModel,
     val organizeRuleViewModel: com.photonne.app.ui.organize.OrganizeRuleViewModel,
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel,
@@ -181,6 +183,7 @@ internal class AuthenticatedDialogsHost(
     val archivedState by archivedState
     val trashState by trashState
     val favoritesState by favoritesState
+    val videosState by videosState
     val organizeInboxState by organizeInboxState
     val organizeRuleState by organizeRuleState
     val peopleState by peopleState
@@ -246,6 +249,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                     BulkAddSource.Search -> searchState.isBulkMutating to searchState.error?.userMessage
                     BulkAddSource.Map -> mapBulkState.isBulkMutating to mapBulkState.error?.userMessage
                     BulkAddSource.Favorites -> favoritesState.isBulkMutating to favoritesState.error?.userMessage
+                    BulkAddSource.Videos -> videosState.isBulkMutating to videosState.error?.userMessage
                     BulkAddSource.People -> personDetailState.isBulkMutating to personDetailState.error?.userMessage
                     BulkAddSource.Folder -> folderDetailState.isBulkMutating to folderDetailState.error?.userMessage
                     BulkAddSource.Archive -> archivedState.isBulkMutating to archivedState.error?.userMessage
@@ -264,6 +268,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                         BulkAddSource.Search -> searchViewModel.clearError()
                         BulkAddSource.Map -> mapViewModel.clearError()
                         BulkAddSource.Favorites -> favoritesViewModel.clearError()
+                        BulkAddSource.Videos -> videosViewModel.clearError()
                         BulkAddSource.People -> personDetailViewModel.clearError()
                         BulkAddSource.Folder -> folderDetailViewModel.clearError()
                         BulkAddSource.Archive -> archivedViewModel.clearError()
@@ -320,6 +325,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
                         BulkAddSource.Search -> searchViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Map -> mapViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Favorites -> favoritesViewModel.bulkAddToAlbum(album.id, onAdded)
+                        BulkAddSource.Videos -> videosViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.People -> personDetailViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Folder -> folderDetailViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Archive -> archivedViewModel.bulkAddToAlbum(album.id, onAdded)
@@ -1024,6 +1030,7 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                 onDismiss = { appState.showSearchFilters = false },
                 onDateRangeChange = searchViewModel::setDateRange,
                 onOcrChange = searchViewModel::setOcrText,
+                onMediaTypeChange = searchViewModel::setMediaType,
                 onToggleObject = searchViewModel::toggleObjectLabel,
                 onToggleScene = searchViewModel::toggleSceneLabel,
                 onTogglePerson = searchViewModel::togglePerson,
@@ -1047,6 +1054,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                 BulkAddSource.Map -> mapViewModel.state.collectAsStateWithLifecycle().value
                     .let { it.isBulkMutating to it.error?.userMessage }
                 BulkAddSource.Favorites -> favoritesState.isBulkMutating to favoritesState.error?.userMessage
+                BulkAddSource.Videos -> videosState.isBulkMutating to videosState.error?.userMessage
                 BulkAddSource.People -> personDetailState.isBulkMutating to personDetailState.error?.userMessage
                 BulkAddSource.Folder -> folderDetailState.isBulkMutating to folderDetailState.error?.userMessage
                 BulkAddSource.Archive -> archivedState.isBulkMutating to archivedState.error?.userMessage
@@ -1060,6 +1068,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                     BulkAddSource.Search -> searchViewModel.clearError()
                     BulkAddSource.Map -> mapViewModel.clearError()
                     BulkAddSource.Favorites -> favoritesViewModel.clearError()
+                    BulkAddSource.Videos -> videosViewModel.clearError()
                     BulkAddSource.People -> personDetailViewModel.clearError()
                     BulkAddSource.Folder -> folderDetailViewModel.clearError()
                     BulkAddSource.Archive -> archivedViewModel.clearError()
@@ -1096,6 +1105,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                         BulkAddSource.Search -> searchViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Map -> mapViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Favorites -> favoritesViewModel.bulkAddToAlbum(album.id, onAdded)
+                        BulkAddSource.Videos -> videosViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.People -> personDetailViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Folder -> folderDetailViewModel.bulkAddToAlbum(album.id, onAdded)
                         BulkAddSource.Archive -> archivedViewModel.bulkAddToAlbum(album.id, onAdded)

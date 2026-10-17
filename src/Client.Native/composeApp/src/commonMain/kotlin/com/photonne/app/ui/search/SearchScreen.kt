@@ -63,6 +63,8 @@ import com.photonne.app.resources.search_clear_all
 import com.photonne.app.resources.search_empty_results
 import com.photonne.app.resources.search_filters
 import com.photonne.app.resources.search_input_hint
+import com.photonne.app.resources.search_media_type_only_photos
+import com.photonne.app.resources.search_media_type_only_videos
 import com.photonne.app.resources.search_mode_semantic
 import com.photonne.app.resources.search_mode_text
 import androidx.compose.foundation.layout.PaddingValues
@@ -87,6 +89,7 @@ fun SearchScreen(
     onBack: () -> Unit = {},
     onOpenMemories: () -> Unit = {},
     onOpenMap: () -> Unit = {},
+    onOpenVideos: () -> Unit = {},
     onOpenPeople: () -> Unit = {},
     onOpenScenes: () -> Unit = {},
     onOpenObjects: () -> Unit = {},
@@ -144,6 +147,7 @@ fun SearchScreen(
                             ),
                             onOpenMemories = onOpenMemories,
                             onOpenMap = onOpenMap,
+                            onOpenVideos = onOpenVideos,
                             onOpenPeople = onOpenPeople,
                             onOpenScenes = onOpenScenes,
                             onOpenObjects = onOpenObjects,
@@ -317,8 +321,14 @@ private fun SearchModeMenu(
 
 @Composable
 private fun ActiveFiltersRow(state: SearchUiState, onClick: () -> Unit = {}) {
-    val chips = remember(state) {
+    val mediaTypeLabel = when (state.mediaType) {
+        SearchMediaType.Image -> stringResource(Res.string.search_media_type_only_photos)
+        SearchMediaType.Video -> stringResource(Res.string.search_media_type_only_videos)
+        null -> null
+    }
+    val chips = remember(state, mediaTypeLabel) {
         buildList {
+            if (mediaTypeLabel != null) add(mediaTypeLabel)
             if (state.from != null || state.to != null) {
                 add(
                     state.from?.let(::formatFilterDate).orEmpty() + " — " +

@@ -21,6 +21,7 @@
     <string name="memories_entry_subtitle">Personas, viajes y momentos de otros años</string>
     <string name="search_discover_see_all">Ver todo</string>
     <string name="search_discover_map_subtitle">Tus fotos según dónde se hicieron</string>
+    <string name="search_discover_videos_subtitle">Todos tus vídeos, del más reciente al más antiguo</string>
 
     <string name="action_refresh">Refrescar</string>
     <string name="action_account">Cuenta</string>
@@ -475,6 +476,11 @@
     <string name="search_date_from">Desde</string>
     <string name="search_date_to">Hasta</string>
     <string name="search_ocr_title">Texto en las imágenes (OCR)</string>
+    <string name="search_media_type">Tipo</string>
+    <string name="search_media_type_photos">Fotos</string>
+    <string name="search_media_type_videos">Vídeos</string>
+    <string name="search_media_type_only_photos">Solo fotos</string>
+    <string name="search_media_type_only_videos">Solo vídeos</string>
     <string name="search_ocr_hint">Ej.: matrícula, ticket, factura…</string>
     <string name="search_objects_count">Objetos (%1$d)</string>
     <string name="search_scenes_count">Escenas (%1$d)</string>
@@ -507,6 +513,9 @@
     <string name="favorites_title">Favoritos</string>
     <string name="favorites_empty_title">Aún no hay favoritas</string>
     <string name="favorites_empty_subtitle">Marca una foto con el corazón desde el visor para que aparezca aquí.</string>
+    <string name="videos_title">Vídeos</string>
+    <string name="videos_empty_title">Aún no hay vídeos</string>
+    <string name="videos_empty_subtitle">Los vídeos que subas o indexes aparecerán aquí, del más reciente al más antiguo.</string>
 
     <string name="upload_title">Subir fotos</string>
     <string name="upload_subtitle_pending">%1$d pendientes</string>
@@ -1677,6 +1686,9 @@
     <string name="smart_album_cond_dates">Fechas</string>
     <string name="smart_album_cond_scenes">Escenas</string>
     <string name="smart_album_cond_objects">Objetos</string>
+    <string name="smart_album_cond_media_type">Tipo</string>
+    <string name="smart_album_media_type_photos">Solo fotos</string>
+    <string name="smart_album_media_type_videos">Solo vídeos</string>
     <string name="smart_album_search_person">Buscar persona…</string>
     <string name="smart_album_search_folder">Buscar carpeta…</string>
     <string name="smart_album_search_scene">Buscar escena…</string>

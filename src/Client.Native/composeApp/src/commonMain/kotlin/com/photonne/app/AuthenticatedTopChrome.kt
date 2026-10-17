@@ -56,6 +56,7 @@ internal class AuthenticatedChromeHost(
     archivedState: State<com.photonne.app.ui.library.ArchivedUiState>,
     trashState: State<com.photonne.app.ui.library.TrashUiState>,
     favoritesState: State<com.photonne.app.ui.library.FavoritesUiState>,
+    videosState: State<com.photonne.app.ui.library.VideosUiState>,
     organizeInboxState: State<com.photonne.app.ui.organize.OrganizeInboxUiState>,
     organizeExcludedState: State<com.photonne.app.ui.organize.OrganizeExcludedUiState>,
     personDetailState: State<com.photonne.app.ui.people.PersonDetailUiState>,
@@ -74,6 +75,7 @@ internal class AuthenticatedChromeHost(
     val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel,
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel,
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel,
+    val videosViewModel: com.photonne.app.ui.library.VideosViewModel,
     val organizeInboxViewModel: com.photonne.app.ui.organize.OrganizeInboxViewModel,
     val organizeExcludedViewModel: com.photonne.app.ui.organize.OrganizeExcludedViewModel,
     val personDetailViewModel: com.photonne.app.ui.people.PersonDetailViewModel,
@@ -99,6 +101,7 @@ internal class AuthenticatedChromeHost(
     val archivedState by archivedState
     val trashState by trashState
     val favoritesState by favoritesState
+    val videosState by videosState
     val organizeInboxState by organizeInboxState
     val organizeExcludedState by organizeExcludedState
     val personDetailState by personDetailState
@@ -307,6 +310,20 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                     selectAllLoadedOnly = favoritesState.hasMore
                 )
             }
+            appState.moreSubscreen == MoreSubscreen.Videos &&
+                videosState.isSelectionActive -> selectionChrome {
+                AssetSelectionTopBar(
+                    selectedCount = videosState.selection.size,
+                    totalCount = videosState.items.size,
+                    isMutating = videosState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
+                    onClose = videosViewModel::clearSelection,
+                    onSelectAll = videosViewModel::toggleSelectAll,
+                    // El servidor no da los ids de toda la lista: solo se
+                    // puede seleccionar lo cargado, y así se rotula.
+                    selectAllLoadedOnly = videosState.hasMore
+                )
+            }
             appState.moreSubscreen == MoreSubscreen.Archived &&
                 archivedState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
@@ -412,9 +429,10 @@ internal fun buildTopBar(
                 // de acciones); aquí no va barra acoplada.
                 appState.moreSubscreen == MoreSubscreen.People -> {
                 }
-                // Favoritos pinta su propio cromo flotante dentro de la pantalla
+                // Favoritos y Vídeos pintan su propio cromo flotante dentro de la pantalla
                 // (ver floatingChromeSubscreen); aquí no va barra acoplada.
-                appState.moreSubscreen == MoreSubscreen.Favorites -> {
+                appState.moreSubscreen == MoreSubscreen.Favorites ||
+                    appState.moreSubscreen == MoreSubscreen.Videos -> {
                 }
                 // Archivados pinta su propio cromo flotante dentro de la pantalla.
                 appState.moreSubscreen == MoreSubscreen.Archived -> {

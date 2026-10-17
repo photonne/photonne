@@ -42,6 +42,7 @@ import com.photonne.app.ui.album.SentSharesViewModel
 import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.library.ArchivedViewModel
 import com.photonne.app.ui.library.FavoritesViewModel
+import com.photonne.app.ui.library.VideosViewModel
 import com.photonne.app.ui.memories.MemorySelectionViewModel
 import com.photonne.app.ui.library.UnsupportedFilesViewModel
 import com.photonne.app.ui.organize.OrganizeInboxViewModel
@@ -245,6 +246,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::ArchivedViewModel)
     viewModelOf(::TrashViewModel)
     viewModelOf(::FavoritesViewModel)
+    viewModelOf(::VideosViewModel)
     viewModelOf(::MemorySelectionViewModel)
     viewModelOf(::UnsupportedFilesViewModel)
     viewModelOf(::OrganizeInboxViewModel)

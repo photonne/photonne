@@ -31,6 +31,7 @@ class ParseSmartRuleTest {
             SmartCondition.Folders(listOf(FolderRef("d1", "Viajes", false, "/assets/users/marc/Viajes"))),
             SmartCondition.DateRange("2024-01-01", null),
             SmartCondition.Scenes(listOf("beach")),
+            SmartCondition.MediaType(SmartCondition.MediaType.VIDEO),
         )
         val rule = buildSmartRule(conditions, matchAll = false)!!
 
@@ -74,5 +75,22 @@ class ParseSmartRuleTest {
         val folders = assertIs<SmartCondition.Folders>(parsed.conditions.single())
         assertFalse(folders.includeSubfolders)
         assertEquals(listOf("Viajes", "(ya no existe)"), folders.folders.map { it.name })
+    }
+
+    @Test
+    fun mediaType_readsAnyCase_andKeepsAnUnknownValue() {
+        val unknown = SmartRule(type = "mediaType", mediaType = "Gif")
+        val rule = SmartRule(
+            op = "AND",
+            conditions = listOf(SmartRule(type = "MEDIATYPE", mediaType = "video"), unknown),
+        )
+
+        val parsed = parseSmartRule(details(rule), "?")
+
+        val media = assertIs<SmartCondition.MediaType>(parsed.conditions.single())
+        assertTrue(media.isVideo)
+        assertEquals(SmartRule(type = "mediaType", mediaType = "Video"),
+            buildSmartRule(parsed.conditions, matchAll = true)!!.conditions!!.single())
+        assertEquals(listOf(unknown), parsed.preserved)
     }
 }

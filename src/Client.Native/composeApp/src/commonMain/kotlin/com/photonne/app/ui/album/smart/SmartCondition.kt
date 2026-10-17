@@ -59,6 +59,19 @@ sealed interface SmartCondition {
         override val key: String = "objects",
     ) : SmartCondition
 
+    data class MediaType(
+        /** Wire value of the rule: "Image" or "Video". */
+        val mediaType: String,
+        override val key: String = "mediaType",
+    ) : SmartCondition {
+        val isVideo: Boolean get() = mediaType.equals(VIDEO, ignoreCase = true)
+
+        companion object {
+            const val IMAGE = "Image"
+            const val VIDEO = "Video"
+        }
+    }
+
     /** True when this condition carries no selection yet (nothing to send). */
     val isEmpty: Boolean
         get() = when (this) {
@@ -67,6 +80,7 @@ sealed interface SmartCondition {
             is DateRange -> from == null && to == null
             is Scenes -> labels.isEmpty()
             is Objects -> labels.isEmpty()
+            is MediaType -> false
         }
 }
 
@@ -85,6 +99,7 @@ private fun SmartCondition.toRule(): SmartRule = when (this) {
     is SmartCondition.DateRange -> SmartRule(type = "dateRange", from = from, to = to)
     is SmartCondition.Scenes -> SmartRule(type = "scene", match = if (matchAll) "all" else "any", labels = labels)
     is SmartCondition.Objects -> SmartRule(type = "object", match = if (matchAll) "all" else "any", labels = labels)
+    is SmartCondition.MediaType -> SmartRule(type = "mediaType", mediaType = mediaType)
 }
 
 /**
@@ -107,7 +122,7 @@ fun buildSmartRule(
 data class ParsedSmartRule(
     val matchAll: Boolean,
     val conditions: List<SmartCondition>,
-    /** Nodes this editor has no row for (favorite, mediaType, text, "not", nested
+    /** Nodes this editor has no row for (favorite, text, "not", nested
      *  groups, a second condition of a kind…): re-emitted verbatim on save so
      *  editing on the phone never drops what was set up on the web. */
     val preserved: List<SmartRule>,
@@ -167,6 +182,13 @@ private fun SmartRule.toCondition(
         "daterange" -> SmartCondition.DateRange(from = from?.take(10), to = to?.take(10))
         "scene" -> SmartCondition.Scenes(labels.orEmpty(), matchAll = all)
         "object" -> SmartCondition.Objects(labels.orEmpty(), matchAll = all)
+        "mediatype" -> when {
+            mediaType.equals(SmartCondition.MediaType.IMAGE, ignoreCase = true) ->
+                SmartCondition.MediaType(SmartCondition.MediaType.IMAGE)
+            mediaType.equals(SmartCondition.MediaType.VIDEO, ignoreCase = true) ->
+                SmartCondition.MediaType(SmartCondition.MediaType.VIDEO)
+            else -> null
+        }
         else -> null
     }?.takeUnless { it.isEmpty }
 }

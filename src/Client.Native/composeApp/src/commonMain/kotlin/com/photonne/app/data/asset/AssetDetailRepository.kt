@@ -172,6 +172,9 @@ class AssetDetailRepository(
     suspend fun listFavorites(cursor: Instant? = null, pageSize: Int? = null): AssetPage =
         if (pageSize != null) api.getFavoriteAssets(cursor, pageSize) else api.getFavoriteAssets(cursor)
 
+    suspend fun listVideos(cursor: Instant? = null, pageSize: Int? = null): AssetPage =
+        if (pageSize != null) api.getVideoAssets(cursor, pageSize) else api.getVideoAssets(cursor)
+
     suspend fun updateDescription(assetId: String, description: String?) {
         api.updateAssetDescription(assetId, description)
     }

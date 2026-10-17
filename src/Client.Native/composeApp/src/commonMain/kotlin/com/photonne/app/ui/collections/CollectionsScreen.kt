@@ -60,6 +60,7 @@ import com.photonne.app.resources.albums_section_pinned
 import com.photonne.app.resources.albums_title
 import com.photonne.app.resources.collections_customize
 import com.photonne.app.resources.archive_title
+import com.photonne.app.resources.videos_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.trash_title
@@ -184,6 +185,7 @@ class CollectionsActions(
     /** Índice en [CollectionsContent.favorites]: el visor recorre los favoritos. */
     val onOpenFavorite: (Int) -> Unit,
     val onOpenMap: () -> Unit,
+    val onOpenVideos: () -> Unit,
     val onOpenArchived: () -> Unit,
     val onOpenTrash: () -> Unit,
 )
@@ -678,9 +680,10 @@ private fun OrganizeRow(count: Int, onClick: () -> Unit) {
 }
 
 /**
- * Pie de Colecciones: Archivados y Papelera, destinos sin portada que antes
- * vivían en la rejilla de Más. Filas, no slider: son sitios a los que ir, no
- * colecciones que hojear (Favoritos y Mapa sí lo son y tienen sección).
+ * Pie de Colecciones: Vídeos, Archivados y Papelera, destinos sin portada
+ * (Archivados y Papelera vivían antes en la rejilla de Más). Filas, no
+ * slider: Vídeos se abre como lista completa; Favoritos y Mapa sí tienen
+ * sección que hojear.
  */
 @Composable
 private fun LibraryRows(actions: CollectionsActions) {
@@ -690,10 +693,17 @@ private fun LibraryRows(actions: CollectionsActions) {
             .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.xl)
     ) {
         SettingsItem(
+            headline = stringResource(Res.string.videos_title),
+            leadingIcon = PhotonneIcons.Videos,
+            onClick = actions.onOpenVideos,
+            headlineMaxLines = 1
+        )
+        SettingsItem(
             headline = stringResource(Res.string.archive_title),
             leadingIcon = PhotonneIcons.Archive,
             onClick = actions.onOpenArchived,
-            headlineMaxLines = 1
+            headlineMaxLines = 1,
+            showDivider = true
         )
         SettingsItem(
             headline = stringResource(Res.string.trash_title),

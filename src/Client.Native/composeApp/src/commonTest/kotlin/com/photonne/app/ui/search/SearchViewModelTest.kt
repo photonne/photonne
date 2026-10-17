@@ -75,6 +75,24 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun the_media_type_alone_searches_and_goes_to_the_server() = vms.runTest {
+        val types = mutableListOf<String?>()
+        val vm = viewModel { request ->
+            types += request.url.parameters["type"]
+            json("""{"items":[${timelineItemJson("v")}],"hasMore":false}""")
+        }
+        vm.setMediaType(SearchMediaType.Video)
+        val state = vm.settled()
+
+        assertEquals(1, state.activeFilterCount)
+        assertEquals(listOf("v"), state.results.map { it.id })
+        assertEquals(listOf<String?>("video"), types)
+
+        vm.clearAll()
+        assertEquals(null, vm.state.value.mediaType)
+    }
+
+    @Test
     fun ai_search_unavailable_falls_back_to_text_and_says_so() = vms.runTest {
         val paths = mutableListOf<String>()
         val vm = viewModel { request ->

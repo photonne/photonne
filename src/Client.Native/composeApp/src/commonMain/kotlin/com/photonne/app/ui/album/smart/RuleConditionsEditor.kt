@@ -87,6 +87,9 @@ import com.photonne.app.resources.smart_album_match_all
 import com.photonne.app.resources.smart_album_match_all_together
 import com.photonne.app.resources.smart_album_match_any
 import com.photonne.app.resources.smart_album_match_section
+import com.photonne.app.resources.smart_album_cond_media_type
+import com.photonne.app.resources.smart_album_media_type_photos
+import com.photonne.app.resources.smart_album_media_type_videos
 import com.photonne.app.resources.smart_album_no_selection
 import com.photonne.app.resources.smart_album_preview_calculating
 import com.photonne.app.resources.smart_album_preview_count
@@ -117,7 +120,7 @@ import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
 
-internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates }
+internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates, MediaType }
 
 /**
  * The reusable condition builder: the "Coincidir con" (Todas/Cualquiera) toggle,
@@ -187,6 +190,7 @@ fun RuleConditionsEditor(
                                 is SmartCondition.Scenes -> EditorSheet.Scenes
                                 is SmartCondition.Objects -> EditorSheet.Objects
                                 is SmartCondition.DateRange -> EditorSheet.Dates
+                                is SmartCondition.MediaType -> EditorSheet.MediaType
                             }
                         },
                         onRemove = { onRemoveCondition(condition.key) },
@@ -282,6 +286,11 @@ fun RuleConditionsEditor(
             onDismiss = { sheet = null },
             onConfirm = { onUpsertCondition(it); sheet = null },
         )
+        EditorSheet.MediaType -> MediaTypeSheet(
+            existing = conditions.filterIsInstance<SmartCondition.MediaType>().firstOrNull(),
+            onDismiss = { sheet = null },
+            onConfirm = { onUpsertCondition(it); sheet = null },
+        )
         null -> Unit
     }
 }
@@ -325,6 +334,7 @@ private fun SmartCondition.icon(): ImageVector = when (this) {
     is SmartCondition.DateRange -> Icons.Outlined.DateRange
     is SmartCondition.Scenes -> Icons.Outlined.Image
     is SmartCondition.Objects -> Icons.Outlined.Category
+    is SmartCondition.MediaType -> PhotonneIcons.Videos
 }
 
 @Composable
@@ -334,6 +344,7 @@ private fun SmartCondition.title(): String = when (this) {
     is SmartCondition.DateRange -> stringResource(Res.string.smart_album_cond_dates)
     is SmartCondition.Scenes -> stringResource(Res.string.smart_album_cond_scenes)
     is SmartCondition.Objects -> stringResource(Res.string.smart_album_cond_objects)
+    is SmartCondition.MediaType -> stringResource(Res.string.smart_album_cond_media_type)
 }
 
 @Composable
@@ -357,6 +368,9 @@ private fun SmartCondition.summary(): String = when (this) {
     }
     is SmartCondition.Scenes -> if (labels.isEmpty()) stringResource(Res.string.smart_album_no_selection) else labels.joinToString(", ")
     is SmartCondition.Objects -> if (labels.isEmpty()) stringResource(Res.string.smart_album_no_selection) else labels.joinToString(", ")
+    is SmartCondition.MediaType -> stringResource(
+        if (isVideo) Res.string.smart_album_media_type_videos else Res.string.smart_album_media_type_photos
+    )
 }
 
 @Composable
@@ -417,6 +431,7 @@ private fun AddConditionMenuSheet(onDismiss: () -> Unit, onPick: (EditorSheet) -
             MenuRow(Icons.Outlined.DateRange, stringResource(Res.string.smart_album_cond_dates)) { onPick(EditorSheet.Dates) }
             MenuRow(Icons.Outlined.Image, stringResource(Res.string.smart_album_cond_scenes)) { onPick(EditorSheet.Scenes) }
             MenuRow(Icons.Outlined.Category, stringResource(Res.string.smart_album_cond_objects)) { onPick(EditorSheet.Objects) }
+            MenuRow(PhotonneIcons.Videos, stringResource(Res.string.smart_album_cond_media_type)) { onPick(EditorSheet.MediaType) }
         }
     }
 }
@@ -817,6 +832,41 @@ private fun DateRangeSheet(
                 picking = null
             },
         )
+    }
+}
+
+// ── Media type ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun MediaTypeSheet(
+    existing: SmartCondition.MediaType?,
+    onDismiss: () -> Unit,
+    onConfirm: (SmartCondition.MediaType) -> Unit,
+) {
+    // Vídeos por defecto: es lo que más cuesta encontrar a mano.
+    var mediaType by remember { mutableStateOf(existing?.mediaType ?: SmartCondition.MediaType.VIDEO) }
+
+    SelectSheetScaffold(
+        title = stringResource(Res.string.smart_album_cond_media_type),
+        isLoading = false,
+        isEmpty = false,
+        emptyText = "",
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(SmartCondition.MediaType(mediaType)) },
+        confirmEnabled = true,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            FilterChip(
+                selected = mediaType == SmartCondition.MediaType.VIDEO,
+                onClick = { mediaType = SmartCondition.MediaType.VIDEO },
+                label = { Text(stringResource(Res.string.smart_album_media_type_videos)) },
+            )
+            FilterChip(
+                selected = mediaType == SmartCondition.MediaType.IMAGE,
+                onClick = { mediaType = SmartCondition.MediaType.IMAGE },
+                label = { Text(stringResource(Res.string.smart_album_media_type_photos)) },
+            )
+        }
     }
 }
 

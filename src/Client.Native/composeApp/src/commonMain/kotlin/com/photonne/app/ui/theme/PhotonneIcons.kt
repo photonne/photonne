@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Close
@@ -149,6 +150,9 @@ object PhotonneIcons {
 
     val Favorite: ImageVector = Icons.Outlined.FavoriteBorder
     val FavoriteActive: ImageVector = Icons.Filled.Favorite
+
+    /** La colección Vídeos y el tipo «vídeo» en filtros y condiciones. */
+    val Videos: ImageVector = Icons.Outlined.VideoLibrary
 
     // ── Personas ────────────────────────────────────────────────────────
     val Person: ImageVector = Icons.Outlined.Person

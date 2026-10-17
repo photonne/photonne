@@ -1,37 +1,12 @@
 package com.photonne.app.ui.library
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.favorites_empty_subtitle
 import com.photonne.app.resources.favorites_empty_title
 import com.photonne.app.resources.favorites_title
-import com.photonne.app.ui.grid.AssetGrid
-import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
-import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.selection.SelectionPatch
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import com.photonne.app.ui.theme.AssetGridSkeleton
-import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneIcons
-import com.photonne.app.ui.theme.PhotonneRefreshableScreen
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -46,106 +21,26 @@ fun FavoritesScreen(
     onApplySelection: (SelectionPatch) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val apiBaseUrl = rememberApiBaseUrl()
-    // Fuente de blur del cromo: la rejilla que scrollea por detrás, de la que las
-    // cápsulas son HERMANAS (regla de Haze).
-    val hazeState = remember { HazeState() }
-    val gridState = rememberLazyGridState()
-    val gestures = rememberAssetGridSelectionGestures(onApplySelection)
-    // Con una selección activa el cromo flotante cede el sitio a la cápsula de
-    // selección, que ocupa el mismo hueco: la rejilla lo reserva siempre, así
-    // que entrar o salir de la selección no la mueve (ni a mitad de arrastre).
-    val chromeFloating = !state.isSelectionActive
-    val reservedTop = subscreenChromeReservedTop()
-
-    LaunchedEffect(Unit) { onLoad() }
-
-    PhotonneRefreshableScreen(
-        indicatorTopPadding = reservedTop,
+    AssetCollectionGridScreen(
+        title = stringResource(Res.string.favorites_title),
+        items = state.items,
+        selection = state.selection,
+        hasMore = state.hasMore,
+        isInitialLoading = state.isInitialLoading,
+        isAppending = state.isAppending,
         isRefreshing = state.isRefreshing,
-        onRefresh = onRefresh
-    ) {
-        // El cromo envuelve todas las ramas: carga / error / vacío también
-        // necesitan su barra (y su botón de volver).
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                state.isInitialLoading ->
-                    AssetGridSkeleton(
-                        contentPadding = PaddingValues(
-                            top = reservedTop,
-                            bottom = floatingNavBarReservedHeight()
-                        )
-                    )
-                state.error != null && state.items.isEmpty() ->
-                    com.photonne.app.ui.error.FullScreenError(
-                        error = state.error,
-                        onRetry = onRefresh,
-                        modifier = Modifier.padding(top = reservedTop)
-                    )
-                state.isEmpty ->
-                    EmptyState(
-                        icon = PhotonneIcons.Favorite,
-                        title = stringResource(Res.string.favorites_empty_title),
-                        subtitle = stringResource(Res.string.favorites_empty_subtitle)
-                    )
-                else -> AssetGrid(
-                    items = state.items,
-                    baseUrl = apiBaseUrl,
-                    gridState = gridState,
-                    onItemClick = onItemClick,
-                    onItemLongClick = onItemLongClick,
-                    selectedIds = state.selection,
-                    hasMore = state.hasMore,
-                    isAppending = state.isAppending,
-                    isInitialLoading = state.isInitialLoading,
-                    onLoadMore = onLoadMore,
-                    dragSelect = gestures.dragSelect,
-                    contentPadding = PaddingValues(
-                        top = reservedTop,
-                        bottom = floatingNavBarReservedHeight()
-                    ),
-                    modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
-                )
-            }
-
-            PhotoGridScrubberOverlay(
-                gridState = gridState,
-                items = state.items,
-                reservedTop = reservedTop,
-                reservedBottom = floatingNavBarReservedHeight(),
-                selectionActive = state.isSelectionActive,
-                hazeState = hazeState,
-            )
-
-            if (chromeFloating) {
-                SubscreenFloatingChrome(
-                    title = stringResource(Res.string.favorites_title),
-                    onBack = onBack,
-                    scroll = SubscreenScroll(
-                        firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
-                        firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
-                        isScrollInProgress = { gridState.isScrollInProgress },
-                        scrollToTopMinIndex = SCROLL_TO_TOP_MIN_CELL,
-                        onScrollToTop = {
-                            if (gridState.firstVisibleItemIndex > SCROLL_TO_TOP_SNAP_CELL) {
-                                gridState.scrollToItem(SCROLL_TO_TOP_SNAP_CELL)
-                            }
-                            gridState.animateScrollToItem(0)
-                        }
-                    ),
-                    hazeState = hazeState,
-                    onChromeVisibleChange = onChromeVisibleChange,
-                    // Fotos a sangre bajo la status bar: sin scrim el reloj se pierde
-                    // sobre según qué miniatura.
-                    statusBarScrim = true
-                )
-            }
-        }
-    }
+        isEmpty = state.isEmpty,
+        error = state.error,
+        emptyIcon = PhotonneIcons.Favorite,
+        emptyTitle = stringResource(Res.string.favorites_empty_title),
+        emptySubtitle = stringResource(Res.string.favorites_empty_subtitle),
+        onItemClick = onItemClick,
+        onItemLongClick = onItemLongClick,
+        onLoadMore = onLoadMore,
+        onLoad = onLoad,
+        onRefresh = onRefresh,
+        onBack = onBack,
+        onApplySelection = onApplySelection,
+        onChromeVisibleChange = onChromeVisibleChange
+    )
 }
-
-/** Celdas scrolleadas antes de que aparezca la píldora de volver arriba. */
-private const val SCROLL_TO_TOP_MIN_CELL = 12
-
-/** Adónde teletransporta el tap antes de animar el último tramo. */
-private const val SCROLL_TO_TOP_SNAP_CELL = 48

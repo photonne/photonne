@@ -501,6 +501,59 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                     )
                 }
             }
+            appState.moreSubscreen == MoreSubscreen.Videos &&
+                videosState.isSelectionActive -> {
+                {
+                    AssetSelectionBottomBar(
+                        selectedCount = videosState.selection.size,
+                        isMutating = videosState.isBulkMutating ||
+                            actionsState.working != AssetActionWorking.Idle,
+                        onShare = {
+                            actionsViewModel.beginShare(videosState.selection.toList())
+                        },
+                        onAddToAlbum = { appState.bulkAddSource = BulkAddSource.Videos },
+                        onDownload = {
+                            actionsViewModel.download(videosState.selection.toList())
+                        },
+                        onArchive = videosViewModel::bulkArchive,
+                        onTrash = videosViewModel::bulkTrash,
+                        selectedIds = { videosState.selection.toList() },
+                        allFavorite = selectionAllFavorite(videosState.items, videosState.selection),
+                        onToggleFavorite = run {
+                            val favoriteSnackbar = LocalSnackbarController.current
+                            {
+                                runBulkFavorite(
+                                    videosState.items, videosState.selection, favoriteSnackbar,
+                                    videosViewModel::clearSelection
+                                )
+                            }
+                        },
+                        onUndo = { kind, ids ->
+                            actionsViewModel.undoBulk(kind, ids)
+                        },
+                        onMove = run {
+                            val unmovable = com.photonne.app.ui.actions.countUnmovable(
+                                videosState.items, videosState.selection
+                            )
+                            val moveBlocked = if (unmovable > 0) pluralStringResource(
+                                Res.plurals.selection_move_blocked_read_only, unmovable, unmovable
+                            ) else null
+                            val moveSnackbar = LocalSnackbarController.current
+                            {
+                                if (moveBlocked != null) {
+                                    moveSnackbar?.show(moveBlocked)
+                                } else {
+                                    appState.moveSelectionError = null
+                                    appState.moveSelectionRequest = MoveSelectionRequest(
+                                        assetIds = videosState.selection.toList(),
+                                        onMoved = videosViewModel::clearSelection
+                                    )
+                                }
+                            }
+                        },
+                    )
+                }
+            }
             // Duplicados: con algo marcado, la cápsula de confirmar borrar sustituye
             // a la nav, como la de "Mover" en Para organizar (antes era un FAB).
             appState.moreSubscreen == MoreSubscreen.UtilitiesDuplicates &&
