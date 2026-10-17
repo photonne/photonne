@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.0](https://github.com/photonne/photonne/compare/server-v2.3.0...server-v2.4.0) (2026-10-17)
+
+
+### Novedades
+
+* **server:** Lista de vídeos y filtro por tipo en la búsqueda ([f20d335](https://github.com/photonne/photonne/commit/f20d3355322921025520c8ec5cab90d4c0b898e6))
+* **spa:** Colección Vídeos en el menú y filtro de tipo en la búsqueda ([de477e0](https://github.com/photonne/photonne/commit/de477e022b1e3df5b7d6ff6ad28237d2826cabac))
+* **spa:** Mover a una carpeta muestra un árbol plegable y deja crear la carpeta destino en el momento ([ee55b98](https://github.com/photonne/photonne/commit/ee55b98905e0cf478832b5f0832dd52907a90149))
+
 ## [2.3.0](https://github.com/photonne/photonne/compare/server-v2.2.0...server-v2.3.0) (2026-10-17)
 
 
