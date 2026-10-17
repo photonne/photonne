@@ -25,6 +25,7 @@
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
 	import { PagedList } from '#lib/timeline/paged-list.svelte.js';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
+	import { collectionSize } from '#lib/timeline/size-preference.svelte.js';
 	import SizeControl from '#lib/timeline/SizeControl.svelte';
 	import { invalidateFolders, toggleFolderPin } from './cache.js';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -215,6 +216,7 @@
 		emptyText={subfolders.length ? m.folders_empty_with_subfolders() : m.folders_empty()}
 		viewerActions={['trash', 'album']}
 		collapsed={!photosShown}
+		sizeInToolbar={!twoSections}
 	>
 		{#snippet toolbar()}
 			{#if folder}
@@ -350,6 +352,13 @@
 										{/if}
 									</button>
 								</h2>
+								<!-- The photos' size, next to them rather than up by the title. -->
+								{#if photosShown && list.status === 'ready'}
+									<SizeControl
+										value={collectionSize.value}
+										onchange={(size) => collectionSize.set(size)}
+									/>
+								{/if}
 							</div>
 						{/if}
 					{/if}
