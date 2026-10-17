@@ -127,7 +127,10 @@ test('moves the selection with the folder picker and removes photos from the fol
 	await page.getByRole('button', { name: 'Mover a otra carpeta' }).click();
 	const picker = page.getByRole('dialog', { name: 'Mover a una carpeta' });
 	await picker.getByText('Documentos', { exact: true }).click();
-	await expect(picker.getByRole('radio', { name: 'Documentos' })).toBeChecked();
+	await expect(picker.getByRole('treeitem', { name: 'Documentos' })).toHaveAttribute(
+		'aria-selected',
+		'true'
+	);
 	await picker.getByRole('button', { name: 'Mover' }).click();
 
 	await expect(page.getByText('2 movidas a «Documentos»')).toBeVisible();
@@ -147,6 +150,41 @@ test('moves the selection with the folder picker and removes photos from the fol
 	await expect(page.getByText('1 quitada de la carpeta')).toBeVisible();
 	await expect(cells(page)).toHaveCount(17);
 	expect(calls(state, 'POST /api/folders/assets/remove')).toHaveLength(1);
+});
+
+test('the folder picker folds and creates a folder inside the chosen one', async ({ page }) => {
+	const state = await open(page, '/folders/folder-1');
+	await expect(cells(page)).toHaveCount(20);
+
+	await cells(page)
+		.nth(0)
+		.click({ modifiers: ['ControlOrMeta'] });
+	await page.getByRole('button', { name: 'Mover a otra carpeta' }).click();
+	const picker = page.getByRole('dialog', { name: 'Mover a una carpeta' });
+	const camera = picker.getByRole('treeitem', { name: 'Camera' });
+	// Folded to the top level: subfolders show on demand.
+	await expect(picker.getByRole('treeitem', { name: '2025' })).toBeHidden();
+	await camera.click();
+	await camera.press('ArrowRight');
+	await expect(picker.getByRole('treeitem', { name: '2025' })).toBeVisible();
+	await camera.press('ArrowLeft');
+	await expect(picker.getByRole('treeitem', { name: '2025' })).toBeHidden();
+
+	await expect(picker.getByText('Nueva carpeta dentro de «Camera»')).toBeVisible();
+	await picker.getByLabel('Nombre de la carpeta').fill('Viajes');
+	await picker.getByRole('button', { name: 'Crear' }).click();
+	const created = picker.getByRole('treeitem', { name: 'Viajes' });
+	await expect(created).toHaveAttribute('aria-selected', 'true');
+	expect(calls(state, 'POST /api/folders')[0].body).toEqual({
+		name: 'Viajes',
+		parentFolderId: 'folder-1'
+	});
+
+	await picker.getByRole('button', { name: 'Mover', exact: true }).click();
+	await expect(page.getByText('1 movida a «Viajes»')).toBeVisible();
+	expect(calls(state, 'POST /api/folders/assets/move')[0].body).toMatchObject({
+		targetFolderId: expect.stringMatching(/^folder-new-/)
+	});
 });
 
 test('creates a subfolder and opens it', async ({ page }) => {
