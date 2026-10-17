@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.3.0](https://github.com/photonne/photonne/compare/server-v2.2.0...server-v2.3.0) (2026-10-17)
+
+
+### Novedades
+
+* **spa:** En una carpeta con subcarpetas, el tamaño de las fotos va en su sección ([64f119c](https://github.com/photonne/photonne/commit/64f119c1a58ca2b6da623b76d2283b8143767296))
+
+
+### Correcciones
+
+* **spa:** La foto enfocada no pierde el foco cuando la cuadrícula se reagrupa ([982937b](https://github.com/photonne/photonne/commit/982937bbe96dceda4035f37ed002ee1eb5e7f2a7))
+
 ## [2.2.0](https://github.com/photonne/photonne/compare/server-v2.1.0...server-v2.2.0) (2026-10-16)
 
 
