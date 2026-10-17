@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/photonne/photonne/compare/native-v2.0.0...native-v2.1.0) (2026-10-17)
+
+
+### Novedades
+
+* **native:** Colección Vídeos, filtro de tipo en la búsqueda y condición Tipo en álbumes inteligentes ([8802e4d](https://github.com/photonne/photonne/commit/8802e4d1f4f638c1604c2773305825a4efd8a4a5))
+* **native:** El selector de destino al mover fotos deja crear la carpeta dentro de la elegida ([9ac9878](https://github.com/photonne/photonne/commit/9ac9878ddadc3c983c030fa1880cd2e6a4183e01))
+
 ## [2.0.0](https://github.com/photonne/photonne/compare/native-v1.200.1...native-v2.0.0) (2026-10-15)
 
 
