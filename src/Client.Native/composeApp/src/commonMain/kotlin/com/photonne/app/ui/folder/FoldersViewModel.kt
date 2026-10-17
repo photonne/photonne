@@ -327,9 +327,17 @@ class FoldersViewModel(
         name: String,
         parentFolderId: String?,
         isSharedSpace: Boolean = false,
+        /**
+         * Para quien muestra el error él mismo (el selector de destino): así no
+         * se queda en el estado de Carpetas y reaparece al volver a la lista.
+         */
+        onFailed: ((UiError) -> Unit)? = null,
         onCreated: (FolderSummary) -> Unit = {}
     ) {
-        if (_state.value.isMutating) return
+        if (_state.value.isMutating) {
+            onFailed?.invoke(UiError("Hay otra operación de carpetas en curso. Prueba de nuevo en un momento."))
+            return
+        }
         _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching {
@@ -346,12 +354,11 @@ class FoldersViewModel(
                     onCreated(folder)
                 }
                 .onFailure { error ->
+                    val uiError = errorFactory.from(error, "No se pudo crear la carpeta")
                     _state.update {
-                        it.copy(
-                            isMutating = false,
-                            error = errorFactory.from(error, "No se pudo crear la carpeta")
-                        )
+                        it.copy(isMutating = false, error = if (onFailed != null) it.error else uiError)
                     }
+                    onFailed?.invoke(uiError)
                 }
         }
     }

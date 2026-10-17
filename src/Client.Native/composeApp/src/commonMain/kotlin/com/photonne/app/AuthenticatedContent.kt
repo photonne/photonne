@@ -800,6 +800,14 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     destinationsLoading = foldersState.isLoading,
                     destinationsError = foldersState.error,
                     onRetryDestinations = foldersViewModel::refresh,
+                    onCreateDestination = { name, parentId, onCreated, onFailed ->
+                        foldersViewModel.create(
+                            name = name,
+                            parentFolderId = parentId,
+                            onFailed = { onFailed(it.userMessage) },
+                            onCreated = onCreated,
+                        )
+                    },
                     viewModel = organizeRuleViewModel,
                     reviewOpen = organizeRuleState.reviewGroups != null
                 )

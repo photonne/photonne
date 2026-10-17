@@ -82,6 +82,8 @@ import com.photonne.app.ui.theme.Spacing
  * @param destinationsLoading / [destinationsError] / [onRetryDestinations] let
  *   the destination picker tell a load in progress or a failed one from a real
  *   empty list, like the other folder pickers.
+ * @param onCreateDestination crea una carpeta desde el selector de destino
+ *   (ver [FolderPickerDialog]).
  * @param reviewOpen true mientras la revisión tapa la pantalla: el cromo se
  *   retira para no flotar sobre el overlay.
  */
@@ -93,6 +95,7 @@ fun OrganizeRuleScreen(
     destinationsLoading: Boolean = false,
     destinationsError: UiError? = null,
     onRetryDestinations: (() -> Unit)? = null,
+    onCreateDestination: ((String, String?, (FolderSummary) -> Unit, (String) -> Unit) -> Unit)? = null,
     viewModel: OrganizeRuleViewModel = koinViewModel(),
     onChromeVisibleChange: (Boolean) -> Unit = {},
     reviewOpen: Boolean = false,
@@ -217,6 +220,7 @@ fun OrganizeRuleScreen(
             isLoading = destinationsLoading,
             loadError = destinationsError,
             onRetry = onRetryDestinations,
+            onCreateFolder = onCreateDestination,
             isSubmitting = false,
             includeRoot = false,
             initialSelectionId = state.targetFolderId,

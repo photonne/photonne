@@ -8,7 +8,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.photonne.app.resources.action_create
+import com.photonne.app.resources.folder_action_new
+import com.photonne.app.resources.folder_field_name
+import com.photonne.app.resources.folder_picker_new_in
+import com.photonne.app.resources.folder_picker_new_in_root
+import com.photonne.app.resources.folder_picker_new_slash
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -88,6 +99,17 @@ fun FolderPickerDialog(
     loadError: UiError? = null,
     /** Reloads the destinations; also called on open when they're empty or failed. */
     onRetry: (() -> Unit)? = null,
+    /**
+     * Crea una carpeta dentro del destino elegido (o en la raíz personal sin
+     * ninguno) sin salir del selector, que la deja elegida en cuanto llega a
+     * [folders]. Null: el selector no ofrece crear.
+     */
+    onCreateFolder: ((
+        name: String,
+        parentFolderId: String?,
+        onCreated: (FolderSummary) -> Unit,
+        onFailed: (String) -> Unit,
+    ) -> Unit)? = null,
     onDismiss: () -> Unit,
     onConfirm: (targetFolderId: String?, organizeByYear: Boolean) -> Unit
 ) {
@@ -112,10 +134,20 @@ fun FolderPickerDialog(
     var organizeByYear by remember { mutableStateOf(false) }
     // Groups open by default (this is a quick single-pick, unlike the album
     // picker) and the ancestors of the preselected destination are pre-expanded
-    // so it's visible on open.
-    var expanded by remember(candidates, initialSelectionId) {
-        mutableStateOf(setOf("grp:personal", "grp:shared") + ancestorIds(byId, initialSelectionId))
+    // so it's visible on open. Not keyed on the folder list: a folder created
+    // here would otherwise fold back everything the user had opened.
+    var expanded by remember(initialSelectionId) {
+        mutableStateOf(setOf("grp:personal", "grp:shared"))
     }
+    // The list may arrive after the sheet opens.
+    LaunchedEffect(initialSelectionId, byId.isNotEmpty()) {
+        expanded = expanded + ancestorIds(byId, initialSelectionId)
+    }
+
+    var showNewFolder by remember { mutableStateOf(false) }
+    var newFolderName by remember { mutableStateOf("") }
+    var creatingFolder by remember { mutableStateOf(false) }
+    var newFolderError by remember { mutableStateOf<String?>(null) }
 
     val q = query.trim().lowercase()
     val searching = q.isNotEmpty()
@@ -123,7 +155,7 @@ fun FolderPickerDialog(
     val sharedNodes = if (searching) filterFolderTree(sharedRoots, q) else sharedRoots
     val effExpanded = if (searching) collectFolderIds(personalNodes) + collectFolderIds(sharedNodes) else expanded
 
-    val canSubmit = !isSubmitting && (rootSelected || selectedId != null)
+    val canSubmit = !isSubmitting && !creatingFolder && (rootSelected || selectedId != null)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Single-select: a radio in the trailing slot, no subtree "covered" locking.
@@ -258,6 +290,51 @@ fun FolderPickerDialog(
                     }
                 }
             }
+            if (onCreateFolder != null && !(folders.isEmpty() && (isLoading || loadError != null))) {
+                val parent = if (rootSelected) null else selectedId?.let(byId::get)
+                val badName = newFolderName.contains('/') || newFolderName.contains('\\')
+                fun submitNewFolder() {
+                    val name = newFolderName.trim()
+                    if (name.isEmpty() || badName || creatingFolder) return
+                    creatingFolder = true
+                    newFolderError = null
+                    onCreateFolder(
+                        name,
+                        parent?.id,
+                        { created ->
+                            creatingFolder = false
+                            newFolderName = ""
+                            showNewFolder = false
+                            query = ""
+                            rootSelected = false
+                            selectedId = created.id
+                            // Su rama abierta, para verla elegida bajo su padre.
+                            expanded = expanded + ancestorIds(byId, created.parentFolderId) +
+                                listOfNotNull(created.parentFolderId) +
+                                if (created.isShared) "grp:shared" else "grp:personal"
+                        },
+                        { message ->
+                            creatingFolder = false
+                            newFolderError = message
+                        },
+                    )
+                }
+                NewFolderRow(
+                    open = showNewFolder,
+                    where = if (parent != null) {
+                        stringResource(Res.string.folder_picker_new_in, parent.name)
+                    } else {
+                        stringResource(Res.string.folder_picker_new_in_root)
+                    },
+                    name = newFolderName,
+                    error = if (badName) stringResource(Res.string.folder_picker_new_slash) else newFolderError,
+                    canCreate = newFolderName.isNotBlank() && !badName && !creatingFolder && !isSubmitting,
+                    creating = creatingFolder,
+                    onOpen = { showNewFolder = true },
+                    onNameChange = { newFolderName = it; newFolderError = null },
+                    onCreate = ::submitNewFolder,
+                )
+            }
             // Fuera del bloque elástico: un error dentro se recortaba junto al árbol.
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
@@ -310,6 +387,71 @@ fun FolderPickerDialog(
                 enabled = canSubmit,
                 isLoading = isSubmitting
             )
+        }
+    }
+}
+
+/**
+ * "Nueva carpeta": un botón que se despliega en un campo con el sitio donde
+ * se creará (la carpeta elegida en el árbol), para no tener que salir a
+ * Carpetas cuando el destino aún no existe.
+ */
+@Composable
+private fun NewFolderRow(
+    open: Boolean,
+    where: String,
+    name: String,
+    error: String?,
+    canCreate: Boolean,
+    creating: Boolean,
+    onOpen: () -> Unit,
+    onNameChange: (String) -> Unit,
+    onCreate: () -> Unit,
+) {
+    if (!open) {
+        TextButton(onClick = onOpen) {
+            Icon(PhotonneIcons.NewFolder, contentDescription = null)
+            Spacer(Modifier.width(Spacing.sm))
+            Text(stringResource(Res.string.folder_action_new))
+        }
+        return
+    }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+        Text(
+            where,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = onNameChange,
+                modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                placeholder = { Text(stringResource(Res.string.folder_field_name)) },
+                leadingIcon = { Icon(PhotonneIcons.NewFolder, contentDescription = null) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (canCreate) onCreate() }),
+                isError = error != null,
+                enabled = !creating,
+                singleLine = true,
+            )
+            if (creating) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            } else {
+                TextButton(onClick = onCreate, enabled = canCreate) {
+                    Text(stringResource(Res.string.action_create))
+                }
+            }
+        }
+        if (error != null) {
+            Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
     }
 }

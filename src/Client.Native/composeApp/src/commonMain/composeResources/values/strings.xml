@@ -452,6 +452,9 @@
     <string name="folder_picker_recent">Recientes</string>
     <string name="folder_picker_root">Raíz (sin carpeta padre)</string>
     <string name="folder_picker_empty">No hay carpetas disponibles como destino.</string>
+    <string name="folder_picker_new_in">Dentro de «%1$s»</string>
+    <string name="folder_picker_new_in_root">En tus carpetas personales</string>
+    <string name="folder_picker_new_slash">El nombre no puede llevar «/» ni «\\».</string>
     <string name="folder_move_assets_title">Mover a una carpeta</string>
     <string name="action_move">Mover</string>
     <string name="folder_selection_move">Mover a carpeta</string>
