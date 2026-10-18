@@ -13,6 +13,22 @@ public enum VideoSummarySource
     Album = 1,
 }
 
+/// <summary>Which material goes in, by shape — and so the summary's own
+/// frame. Persisted as int — append, never renumber.</summary>
+public enum VideoSummaryOrientation
+{
+    /// <summary>Everything, in a landscape frame; portrait material is fitted
+    /// over a blurred fill of itself.</summary>
+    All = 0,
+
+    /// <summary>Only landscape material, in a landscape frame.</summary>
+    Landscape = 1,
+
+    /// <summary>Only portrait material, in a portrait frame — a summary to
+    /// watch on a phone held upright.</summary>
+    Portrait = 2,
+}
+
 /// <summary>Persisted as int — append, never renumber.</summary>
 public enum VideoSummaryStatus
 {
@@ -61,6 +77,16 @@ public class VideoSummary
     public string Title { get; set; } = string.Empty;
 
     public bool IncludePhotos { get; set; }
+
+    public VideoSummaryOrientation Orientation { get; set; } = VideoSummaryOrientation.All;
+
+    /// <summary>Upper bound for the summary's length, chosen by the user
+    /// (1 to 10 minutes). The cut can come out shorter when material runs out.</summary>
+    public int DurationSeconds { get; set; } = DefaultDurationSeconds;
+
+    public const int DefaultDurationSeconds = 300;
+    public const int MinDurationSeconds = 60;
+    public const int MaxDurationSeconds = 600;
 
     public VideoSummaryStatus Status { get; set; } = VideoSummaryStatus.Pending;
 

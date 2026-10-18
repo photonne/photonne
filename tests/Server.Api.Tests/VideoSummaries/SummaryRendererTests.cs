@@ -49,7 +49,7 @@ public sealed class SummaryRendererTests : IDisposable
                 new RenderClip(portrait, true, 0, 2),
                 new RenderClip(photo, false, 0, 2),
             },
-            output, "Resumen 2024", captured, Path.Combine(_dir, "work"),
+            new Frame(1920, 1080), output, "Resumen 2024", captured, Path.Combine(_dir, "work"),
             p => { progress.Add(p); return Task.CompletedTask; },
             CancellationToken.None);
 
@@ -74,13 +74,52 @@ public sealed class SummaryRendererTests : IDisposable
     }
 
     [Fact]
+    public async Task PortraitFrame_ComesOutUpright()
+    {
+        var portrait = Path.Combine(_dir, "portrait.mp4");
+        var photo = Path.Combine(_dir, "tall.jpg");
+        await Ffmpeg("-f", "lavfi", "-i", "testsrc2=size=720x1280:rate=30:duration=3",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", portrait);
+        await Ffmpeg("-f", "lavfi", "-i", "testsrc=size=600x800", "-frames:v", "1", photo);
+
+        var output = Path.Combine(_dir, "vertical.mp4");
+        var count = await new SummaryRenderer(NullLogger<SummaryRenderer>.Instance).RenderAsync(
+            new[] { new RenderClip(portrait, true, 0, 2), new RenderClip(photo, false, 0, 2) },
+            new Frame(1080, 1920), output, "Resumen", DateTime.UtcNow, Path.Combine(_dir, "work"),
+            _ => Task.CompletedTask, CancellationToken.None);
+
+        Assert.Equal(2, count);
+        var probe = await FfmpegProcess.ProbeAsync(output, CancellationToken.None);
+        Assert.Equal(1080, probe!.DisplayWidth);
+        Assert.Equal(1920, probe.DisplayHeight);
+    }
+
+    [Fact]
+    public async Task Probe_ReadsTheShapeAsPlayed_ThroughThePhonesRotationFlag()
+    {
+        // Phones store portrait video landscape and flag it to be turned.
+        var stored = Path.Combine(_dir, "stored.mp4");
+        var flagged = Path.Combine(_dir, "flagged.mp4");
+        await Ffmpeg("-f", "lavfi", "-i", "testsrc=size=1280x720:rate=30:duration=1",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", stored);
+        await Ffmpeg("-display_rotation", "90", "-i", stored, "-c", "copy", flagged);
+
+        var plain = await FfmpegProcess.ProbeAsync(stored, CancellationToken.None);
+        var turned = await FfmpegProcess.ProbeAsync(flagged, CancellationToken.None);
+
+        Assert.True(plain!.AspectRatio > 1);
+        Assert.Equal(720, turned!.DisplayWidth);
+        Assert.Equal(1280, turned.DisplayHeight);
+    }
+
+    [Fact]
     public async Task NothingRenderable_Fails()
     {
         var renderer = new SummaryRenderer(NullLogger<SummaryRenderer>.Instance);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => renderer.RenderAsync(
             new[] { new RenderClip(Path.Combine(_dir, "missing.mp4"), true, 0, 2) },
-            Path.Combine(_dir, "out.mp4"), "x", DateTime.UtcNow, Path.Combine(_dir, "work"),
+            new Frame(1920, 1080), Path.Combine(_dir, "out.mp4"), "x", DateTime.UtcNow, Path.Combine(_dir, "work"),
             _ => Task.CompletedTask, CancellationToken.None));
     }
 

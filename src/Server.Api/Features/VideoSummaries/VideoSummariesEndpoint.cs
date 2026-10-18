@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.VideoSummaries.Rendering;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -57,6 +58,22 @@ public class VideoSummariesEndpoint : IEndpoint
         if (request == null)
             return TypedResults.BadRequest(new ApiError("Falta la petición.", "invalid_request"));
 
+        VideoSummaryOrientation orientation;
+        switch (request.Orientation?.Trim().ToLowerInvariant())
+        {
+            case null or "" or "all": orientation = VideoSummaryOrientation.All; break;
+            case "landscape": orientation = VideoSummaryOrientation.Landscape; break;
+            case "portrait": orientation = VideoSummaryOrientation.Portrait; break;
+            default:
+                return TypedResults.BadRequest(new ApiError(
+                    "Orientación no válida: usa «all», «landscape» o «portrait».", "invalid_orientation"));
+        }
+
+        var durationSeconds = (request.DurationMinutes ?? VideoSummary.DefaultDurationSeconds / 60) * 60;
+        if (durationSeconds is < VideoSummary.MinDurationSeconds or > VideoSummary.MaxDurationSeconds)
+            return TypedResults.BadRequest(new ApiError(
+                "La duración debe estar entre 1 y 10 minutos.", "invalid_duration"));
+
         IQueryable<Asset> material;
         string sourceKey;
         string title;
@@ -89,7 +106,22 @@ public class VideoSummariesEndpoint : IEndpoint
                 return TypedResults.BadRequest(new ApiError("Origen no válido: usa «year» o «album».", "invalid_source"));
         }
 
-        var counts = await material
+        // A first check, by the thumbnails' shape; material with no thumbnail
+        // yet gets the benefit of the doubt here and is settled when rendering.
+        var shaped = material.Select(a => new
+        {
+            a.Type,
+            Ratio = a.Thumbnails
+                .Where(t => t.Size == ThumbnailSize.Small && t.Height > 0)
+                .Select(t => (double?)t.Width / t.Height)
+                .FirstOrDefault(),
+        });
+        if (orientation == VideoSummaryOrientation.Landscape)
+            shaped = shaped.Where(x => x.Ratio == null || x.Ratio >= 1 - SummaryOrientation.SquareTolerance);
+        else if (orientation == VideoSummaryOrientation.Portrait)
+            shaped = shaped.Where(x => x.Ratio == null || x.Ratio <= 1 + SummaryOrientation.SquareTolerance);
+
+        var counts = await shaped
             .GroupBy(a => a.Type)
             .Select(g => new { Type = g.Key, Count = g.Count() })
             .ToListAsync(ct);
@@ -98,9 +130,7 @@ public class VideoSummariesEndpoint : IEndpoint
         var usable = videos + (request.IncludePhotos ? photos : 0);
         if (usable < 2)
             return TypedResults.BadRequest(new ApiError(
-                request.IncludePhotos || photos == 0
-                    ? "No hay suficientes vídeos ni fotos para montar un resumen."
-                    : "No hay suficientes vídeos para montar un resumen. Prueba a incluir las fotos.",
+                VideoSummaryGenerator.NotEnoughMessage(request.IncludePhotos || photos == 0, orientation),
                 "not_enough_media"));
 
         var summary = await db.VideoSummaries
@@ -134,6 +164,8 @@ public class VideoSummariesEndpoint : IEndpoint
 
         summary.Title = title;
         summary.IncludePhotos = request.IncludePhotos;
+        summary.Orientation = orientation;
+        summary.DurationSeconds = durationSeconds;
         summary.Status = VideoSummaryStatus.Pending;
         summary.Progress = 0;
         summary.Error = null;
@@ -214,11 +246,17 @@ public class VideoSummariesEndpoint : IEndpoint
 }
 
 /// <param name="Source">"year" or "album".</param>
-public sealed record RequestVideoSummaryRequest(string? Source, int? Year, Guid? AlbumId, bool IncludePhotos);
+/// <param name="Orientation">"all" (default), "landscape" or "portrait": which
+/// material goes in. A portrait summary is also cut in a portrait frame.</param>
+/// <param name="DurationMinutes">Longest the summary may run, 1 to 10 (default 5).</param>
+public sealed record RequestVideoSummaryRequest(
+    string? Source, int? Year, Guid? AlbumId, bool IncludePhotos,
+    string? Orientation = null, int? DurationMinutes = null);
 
 public sealed record VideoSummaryYearResponse(int Year, int Videos, int Photos);
 
 /// <param name="Source">"year" or "album".</param>
+/// <param name="Orientation">"all", "landscape" or "portrait".</param>
 /// <param name="Status">"pending", "running", "completed" or "failed".</param>
 /// <param name="Progress">0..1.</param>
 /// <param name="AssetId">The rendered video, once completed.</param>
@@ -229,6 +267,8 @@ public sealed record VideoSummaryResponse(
     Guid? AlbumId,
     string Title,
     bool IncludePhotos,
+    string Orientation,
+    int DurationMinutes,
     string Status,
     double Progress,
     string? Error,
@@ -244,6 +284,8 @@ public sealed record VideoSummaryResponse(
         s.AlbumId,
         s.Title,
         s.IncludePhotos,
+        s.Orientation.ToString().ToLowerInvariant(),
+        s.DurationSeconds / 60,
         s.Status.ToString().ToLowerInvariant(),
         s.Progress,
         s.Error,
