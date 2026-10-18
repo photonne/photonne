@@ -74,6 +74,8 @@ public class ApplicationDbContext : DbContext
     /// re-derived so their names and boundaries don't flicker night to night.</summary>
     public DbSet<Trip> Trips { get; set; }
     public DbSet<TripPlace> TripPlaces { get; set; }
+    /// <summary>On-demand summary videos and the asset each one produced.</summary>
+    public DbSet<VideoSummary> VideoSummaries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -908,6 +910,34 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.AssetId);
+        });
+
+        modelBuilder.Entity<VideoSummary>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SourceKey).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Error).HasMaxLength(500);
+
+            entity.HasOne(e => e.Owner)
+                .WithMany()
+                .HasForeignKey(e => e.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // SetNull: purging the rendered video from the trash leaves the
+            // request behind, so asking again re-renders instead of failing.
+            entity.HasOne(e => e.Asset)
+                .WithMany()
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // The request upserts on this: one summary per (owner, source).
+            entity.HasIndex(e => new { e.OwnerId, e.SourceKey }).IsUnique();
+            // "Is this asset a generated summary?" — asked by every source query.
+            entity.HasIndex(e => e.AssetId);
+
+            entity.Property(e => e.RequestedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.CompletedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
         });
     }
 }

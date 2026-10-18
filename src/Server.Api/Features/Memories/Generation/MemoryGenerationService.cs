@@ -55,6 +55,9 @@ public sealed class MemoryGenerationService
             .AsNoTracking()
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                      && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))
+            // A summary video already is a memory; it must not come back as
+            // material for another one.
+            .Where(a => !_db.VideoSummaries.Any(s => s.AssetId == a.Id))
             .Where(scope.DiscoveryPredicate());
 
         var ctx = new MemoryContext

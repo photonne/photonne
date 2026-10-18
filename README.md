@@ -13,6 +13,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 - **Favoritos** — Marca assets como favoritos para acceso rápido
 - **Etiquetas** — Tags automáticos por ML y tags manuales de usuario
 - **Memorias** — Revive fotos y vídeos de este mismo día en años anteriores
+- **Vídeos resumen** — Monta bajo demanda un vídeo de hasta 5 minutos con lo mejor de un año o de un álbum (con fotos, si quieres) y lo guarda en tu biblioteca, en la carpeta Recuerdos
 
 **Gestión de archivos**
 - **Sincronización desde dispositivo** — Subida de assets desde el navegador
