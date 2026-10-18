@@ -21,6 +21,7 @@ public sealed class OrganizeInboxTests : IntegrationTestBase
     private sealed record InboxItem(Guid Id, string FullPath, DateTime FileCreatedAt);
     private sealed record InboxPage(List<InboxItem> Items, bool HasMore, DateTime? NextCursor);
     private sealed record CountBody(int Count);
+    private sealed record ItemsBody(List<InboxItem> Items);
 
     private async Task<Guid> CreateFolderAsync(string path)
     {
@@ -192,5 +193,46 @@ public sealed class OrganizeInboxTests : IntegrationTestBase
 
         Assert.Equal(0, bobCount!.Count);
         Assert.Empty(bobPage!.Items);
+    }
+
+    [Fact]
+    public async Task Items_ReturnsOnlyPendingAmongTheIds_NewestFirst()
+    {
+        var (_, client, mobileAssetId) = await SeedAsync();
+        var (otherIds, filedId) = await WithDbContextAsync(async db =>
+        {
+            var pending = await db.Assets
+                .Where(a => a.FullPath.EndsWith("pix-old.jpg") || a.FullPath.EndsWith("iph.jpg"))
+                .Select(a => a.Id).ToListAsync();
+            var filed = await db.Assets.Where(a => a.FullPath.EndsWith("familia.jpg")).Select(a => a.Id).FirstAsync();
+            return (pending, filed);
+        });
+
+        // A filed asset and an unknown id ride along, as in a batch gone stale.
+        var response = await client.PostAsJsonAsync("/api/organize/inbox/items", new
+        {
+            assetIds = new[] { otherIds[0], mobileAssetId, filedId, Guid.NewGuid(), otherIds[1] }
+        });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<ItemsBody>();
+
+        Assert.Equal(3, body!.Items.Count);
+        Assert.DoesNotContain(body.Items, i => i.Id == filedId);
+        Assert.Equal(
+            body.Items.OrderByDescending(i => i.FileCreatedAt).Select(i => i.Id),
+            body.Items.Select(i => i.Id));
+    }
+
+    [Fact]
+    public async Task Items_IsPerUser()
+    {
+        var (_, _, mobileAssetId) = await SeedAsync();
+        var (_, bobClient) = await CreateAuthenticatedUserAsync();
+
+        var response = await bobClient.PostAsJsonAsync("/api/organize/inbox/items",
+            new { assetIds = new[] { mobileAssetId } });
+        var body = await response.Content.ReadFromJsonAsync<ItemsBody>();
+
+        Assert.Empty(body!.Items);
     }
 }
