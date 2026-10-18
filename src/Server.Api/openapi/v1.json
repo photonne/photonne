@@ -5888,6 +5888,167 @@
         ]
       }
     },
+    "/api/video-summaries": {
+      "post": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Requests (or re-renders) the summary video of a year or an album",
+        "operationId": "RequestVideoSummary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RequestVideoSummaryRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSummaryResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Lists the current user\u0027s summary videos, newest request first",
+        "operationId": "GetVideoSummaries",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VideoSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/video-summaries/{summaryId}": {
+      "get": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Gets one summary video request and its progress",
+        "operationId": "GetVideoSummary",
+        "parameters": [
+          {
+            "name": "summaryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSummaryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/video-summaries/years": {
+      "get": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Years with material for a summary, with how many videos and photos each has",
+        "operationId": "GetVideoSummaryYears",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VideoSummaryYearResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/users": {
       "get": {
         "tags": [
@@ -14877,6 +15038,40 @@
           }
         }
       },
+      "RequestVideoSummaryRequest": {
+        "required": [
+          "source",
+          "year",
+          "albumId",
+          "includePhotos"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "year": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "albumId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "includePhotos": {
+            "type": "boolean"
+          }
+        }
+      },
       "ResetPasswordRequest": {
         "type": "object",
         "properties": {
@@ -17245,6 +17440,110 @@
           }
         }
       },
+      "VideoSummaryResponse": {
+        "required": [
+          "id",
+          "source",
+          "year",
+          "albumId",
+          "title",
+          "includePhotos",
+          "status",
+          "progress",
+          "error",
+          "assetId",
+          "clipCount",
+          "requestedAt",
+          "completedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "year": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "albumId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "includePhotos": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "number",
+            "format": "double"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "assetId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "clipCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "VideoSummaryYearResponse": {
+        "required": [
+          "year",
+          "videos",
+          "photos"
+        ],
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "videos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "photos": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "YearCount": {
         "required": [
           "year",
@@ -17340,6 +17639,9 @@
     },
     {
       "name": "Version"
+    },
+    {
+      "name": "VideoSummaries"
     },
     {
       "name": "Users"
