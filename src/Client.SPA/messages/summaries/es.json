@@ -4,17 +4,41 @@
 	"summaries_action_year": "Vídeo resumen del año",
 	"summaries_close": "Cerrar",
 	"summaries_create": "Crear vídeo",
+	"summaries_duration": "Duración máxima",
+	"summaries_duration_option": [
+		{
+			"declarations": [
+				"input minutes",
+				"local minutesPlural = minutes: plural",
+				"local minutesFormatted = minutes: number"
+			],
+			"selectors": ["minutesPlural"],
+			"match": {
+				"minutesPlural=one": "{minutesFormatted} minuto",
+				"minutesPlural=other": "{minutesFormatted} minutos"
+			}
+		}
+	],
 	"summaries_failed": "No se pudo crear: {error}",
 	"summaries_failed_unknown": "No se pudo crear el vídeo.",
-	"summaries_hint": "Montamos un vídeo de hasta 5 minutos con los mejores momentos y lo guardamos en tu biblioteca, en la carpeta Recuerdos. Tarda unos minutos; te avisaremos cuando esté listo.",
+	"summaries_hint": "Montamos un vídeo con los mejores momentos y lo guardamos en tu biblioteca, en la carpeta Recuerdos. Tarda unos minutos; te avisaremos cuando esté listo.",
 	"summaries_include_photos": "Incluir fotos",
 	"summaries_include_photos_hint": "Las fotos aparecen unos segundos con un zoom lento entre los vídeos.",
+	"summaries_no_years": "Todavía no tienes vídeos para montar un resumen.",
 	"summaries_not_enough": "No hay suficientes vídeos para montar un resumen.",
+	"summaries_not_enough_orientation": "No hay suficientes vídeos ni fotos con esa orientación. Prueba con «Todos».",
 	"summaries_not_enough_photos": "No hay suficientes vídeos. Prueba a incluir las fotos.",
 	"summaries_open": "Ver vídeo",
+	"summaries_orientation": "Orientación",
+	"summaries_orientation_all": "Todos",
+	"summaries_orientation_all_hint": "Vídeo horizontal; lo vertical se ve con un fondo desenfocado.",
+	"summaries_orientation_landscape": "Horizontales",
+	"summaries_orientation_landscape_hint": "Solo vídeos y fotos horizontales, en un vídeo horizontal.",
+	"summaries_orientation_portrait": "Verticales",
+	"summaries_orientation_portrait_hint": "Solo vídeos y fotos verticales, en un vídeo vertical para el móvil.",
 	"summaries_pending": "En cola…",
-	"summaries_ready": "Listo: «{title}» ya está en tu biblioteca.",
 	"summaries_queue_full": "Ya tienes varios vídeos resumen en preparación. Espera a que terminen.",
+	"summaries_ready": "Listo: «{title}» ya está en tu biblioteca.",
 	"summaries_regenerate": "Volver a crear",
 	"summaries_regenerate_hint": "Se sustituye el vídeo anterior por uno nuevo.",
 	"summaries_requested": "Creando «{title}». Te avisaremos cuando esté listo.",
@@ -36,6 +60,5 @@
 				"videosPlural=other": "{year} · {videosFormatted} vídeos"
 			}
 		}
-	],
-	"summaries_no_years": "Todavía no tienes vídeos para montar un resumen."
+	]
 }

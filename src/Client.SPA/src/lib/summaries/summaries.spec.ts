@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { VideoSummaryResponse } from '#lib/api/index.js';
 import {
+	DEFAULT_OPTIONS,
 	findSummary,
 	isActive,
+	optionsOf,
 	percent,
 	pollWhileActive,
 	POLL_MS,
@@ -17,6 +19,8 @@ function summary(overrides: Partial<VideoSummaryResponse>): VideoSummaryResponse
 		albumId: null,
 		title: 'Resumen 2024',
 		includePhotos: false,
+		orientation: 'all',
+		durationMinutes: 5,
 		status: 'completed',
 		progress: 1,
 		error: null,
@@ -60,19 +64,42 @@ describe('polling', () => {
 });
 
 describe('requestBody', () => {
-	it('sends the year or the album, never both', () => {
-		expect(requestBody({ kind: 'year', year: 2024 }, true)).toEqual({
+	it('sends the year or the album, never both, with the chosen options', () => {
+		expect(requestBody({ kind: 'year', year: 2024 }, DEFAULT_OPTIONS)).toEqual({
 			source: 'year',
 			year: 2024,
 			albumId: null,
-			includePhotos: true
+			includePhotos: false,
+			orientation: 'all',
+			durationMinutes: 5
 		});
-		expect(requestBody({ kind: 'album', albumId: 'x' }, false)).toEqual({
+		expect(
+			requestBody(
+				{ kind: 'album', albumId: 'x' },
+				{ includePhotos: true, orientation: 'portrait', durationMinutes: 10 }
+			)
+		).toEqual({
 			source: 'album',
 			year: null,
 			albumId: 'x',
-			includePhotos: false
+			includePhotos: true,
+			orientation: 'portrait',
+			durationMinutes: 10
 		});
+	});
+});
+
+describe('optionsOf', () => {
+	it('starts again from what the earlier request asked for', () => {
+		expect(
+			optionsOf(summary({ includePhotos: true, orientation: 'landscape', durationMinutes: 3 }))
+		).toEqual({ includePhotos: true, orientation: 'landscape', durationMinutes: 3 });
+	});
+
+	it('falls back to the defaults for values it does not know', () => {
+		expect(optionsOf(summary({ orientation: 'diagonal', durationMinutes: 42 }))).toEqual(
+			DEFAULT_OPTIONS
+		);
 	});
 });
 

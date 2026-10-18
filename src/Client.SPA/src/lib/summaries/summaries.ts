@@ -30,11 +30,61 @@ export function pollWhileActive(
 	return summaries?.some(isActive) ? POLL_MS : false;
 }
 
+/** Which material goes in by shape; a portrait summary also comes out portrait. */
+export type SummaryOrientation = 'all' | 'landscape' | 'portrait';
+
+export const ORIENTATIONS: readonly SummaryOrientation[] = ['all', 'landscape', 'portrait'];
+
+/** The lengths the user can pick, in minutes. */
+export const DURATIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+export const DEFAULT_MINUTES = 5;
+
+export interface SummaryOptions {
+	includePhotos: boolean;
+	orientation: SummaryOrientation;
+	durationMinutes: number;
+}
+
+/** What a new summary starts with: no photos, every shape, five minutes. */
+export const DEFAULT_OPTIONS: SummaryOptions = {
+	includePhotos: false,
+	orientation: 'all',
+	durationMinutes: DEFAULT_MINUTES
+};
+
+/** The options an earlier request used, to start from them when asking again. */
+export function optionsOf(summary: VideoSummaryResponse): SummaryOptions {
+	return {
+		includePhotos: summary.includePhotos,
+		orientation: ORIENTATIONS.includes(summary.orientation as SummaryOrientation)
+			? (summary.orientation as SummaryOrientation)
+			: 'all',
+		durationMinutes: DURATIONS.includes(summary.durationMinutes)
+			? summary.durationMinutes
+			: DEFAULT_MINUTES
+	};
+}
+
 /** The request body for a source. */
-export function requestBody(source: SummarySource, includePhotos: boolean) {
+export function requestBody(source: SummarySource, options: SummaryOptions) {
+	const { includePhotos, orientation, durationMinutes } = options;
 	return source.kind === 'year'
-		? { source: 'year', year: source.year, albumId: null, includePhotos }
-		: { source: 'album', year: null, albumId: source.albumId, includePhotos };
+		? {
+				source: 'year',
+				year: source.year,
+				albumId: null,
+				includePhotos,
+				orientation,
+				durationMinutes
+			}
+		: {
+				source: 'album',
+				year: null,
+				albumId: source.albumId,
+				includePhotos,
+				orientation,
+				durationMinutes
+			};
 }
 
 /** Whole percent for display, 0–100. */
