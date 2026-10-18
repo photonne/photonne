@@ -29,6 +29,8 @@
 	import { orderItems, type ItemOrder } from './item-order.js';
 	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import ShareDialog from './ShareDialog.svelte';
+	import { ICON_MOVIE } from '#lib/summaries/icons.js';
+	import VideoSummaryDialog from '#lib/summaries/VideoSummaryDialog.svelte';
 
 	let { albumId }: { albumId: string } = $props();
 
@@ -70,6 +72,7 @@
 	let editing = $state(false);
 	let sharing = $state<'people' | 'links' | null>(null);
 	let confirming = $state<'delete' | 'leave' | null>(null);
+	let summarising = $state(false);
 	let busy = $state(false);
 
 	const menu = $derived.by(() => {
@@ -84,6 +87,11 @@
 			});
 		if (canWrite)
 			items.push({ label: m.albums_share_links(), icon: 'link', run: () => (sharing = 'links') });
+		items.push({
+			label: m.summaries_action_album(),
+			icon: { path: ICON_MOVIE },
+			run: () => (summarising = true)
+		});
 		if (album.isOwner || album.canDelete)
 			items.push({
 				label: m.albums_delete(),
@@ -315,6 +323,13 @@
 
 {#if editing && album}
 	<AlbumFormDialog {album} onclose={() => (editing = false)} onsaved={saved} />
+{/if}
+
+{#if summarising && album}
+	<VideoSummaryDialog
+		album={{ id: albumId, name: album.name }}
+		onclose={() => (summarising = false)}
+	/>
 {/if}
 
 {#if sharing && album}

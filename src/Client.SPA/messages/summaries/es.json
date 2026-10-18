@@ -1,0 +1,41 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"summaries_action_album": "Crear vídeo resumen",
+	"summaries_action_year": "Vídeo resumen del año",
+	"summaries_close": "Cerrar",
+	"summaries_create": "Crear vídeo",
+	"summaries_failed": "No se pudo crear: {error}",
+	"summaries_failed_unknown": "No se pudo crear el vídeo.",
+	"summaries_hint": "Montamos un vídeo de hasta 5 minutos con los mejores momentos y lo guardamos en tu biblioteca, en la carpeta Recuerdos. Tarda unos minutos; te avisaremos cuando esté listo.",
+	"summaries_include_photos": "Incluir fotos",
+	"summaries_include_photos_hint": "Las fotos aparecen unos segundos con un zoom lento entre los vídeos.",
+	"summaries_not_enough": "No hay suficientes vídeos para montar un resumen.",
+	"summaries_not_enough_photos": "No hay suficientes vídeos. Prueba a incluir las fotos.",
+	"summaries_open": "Ver vídeo",
+	"summaries_pending": "En cola…",
+	"summaries_ready": "Listo: «{title}» ya está en tu biblioteca.",
+	"summaries_queue_full": "Ya tienes varios vídeos resumen en preparación. Espera a que terminen.",
+	"summaries_regenerate": "Volver a crear",
+	"summaries_regenerate_hint": "Se sustituye el vídeo anterior por uno nuevo.",
+	"summaries_requested": "Creando «{title}». Te avisaremos cuando esté listo.",
+	"summaries_running": "Montando el vídeo… {percent} %",
+	"summaries_title_album": "Vídeo resumen del álbum",
+	"summaries_title_year": "Vídeo resumen del año",
+	"summaries_year": "Año",
+	"summaries_year_option": [
+		{
+			"declarations": [
+				"input year",
+				"input videos",
+				"local videosPlural = videos: plural",
+				"local videosFormatted = videos: number"
+			],
+			"selectors": ["videosPlural"],
+			"match": {
+				"videosPlural=one": "{year} · {videosFormatted} vídeo",
+				"videosPlural=other": "{year} · {videosFormatted} vídeos"
+			}
+		}
+	],
+	"summaries_no_years": "Todavía no tienes vídeos para montar un resumen."
+}

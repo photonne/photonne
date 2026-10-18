@@ -11,6 +11,9 @@
 	import { icons } from '#lib/library/icons.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import Icon from '#lib/components/Icon.svelte';
+	import { ICON_MOVIE } from '#lib/summaries/icons.js';
+	import VideoSummaryDialog from '#lib/summaries/VideoSummaryDialog.svelte';
 
 	const feed = createQuery(memoryFeedOptions);
 	// "On this day" straight from the photos: what Recuerdos shows before the
@@ -20,6 +23,8 @@
 	const blocks = $derived(memoryBlocks(feed.data ?? []));
 	const hasToday = $derived(blocks.some((group) => group.block === 'today'));
 	const todayAssets = $derived(hasToday ? [] : (onThisDay.data ?? []));
+
+	let summarising = $state(false);
 
 	const titles: Record<MemoryBlock, () => string> = {
 		today: m.memories_block_today,
@@ -33,7 +38,13 @@
 </svelte:head>
 
 <div class="page">
-	<PageHeader title={m.nav_memories()} />
+	<PageHeader title={m.nav_memories()}>
+		{#snippet actions()}
+			<button type="button" class="btn" onclick={() => (summarising = true)}>
+				<Icon path={ICON_MOVIE} size={18} />{m.summaries_action_year()}
+			</button>
+		{/snippet}
+	</PageHeader>
 
 	{#if feed.isPending}
 		<Skeleton variant="cards" count={6} />
@@ -80,6 +91,10 @@
 		{/each}
 	{/if}
 </div>
+
+{#if summarising}
+	<VideoSummaryDialog onclose={() => (summarising = false)} />
+{/if}
 
 <style>
 	.page {

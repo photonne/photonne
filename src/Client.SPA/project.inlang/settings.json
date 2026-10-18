@@ -24,7 +24,8 @@
 			"./messages/admin-ops/{locale}.json",
 			"./messages/viewer/{locale}.json",
 			"./messages/timeline/{locale}.json",
-			"./messages/links/{locale}.json"
+			"./messages/links/{locale}.json",
+			"./messages/summaries/{locale}.json"
 		]
 	},
 	"baseLocale": "es",

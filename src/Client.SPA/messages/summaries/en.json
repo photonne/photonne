@@ -1,0 +1,41 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"summaries_action_album": "Create summary video",
+	"summaries_action_year": "Year in video",
+	"summaries_close": "Close",
+	"summaries_create": "Create video",
+	"summaries_failed": "Couldn't create it: {error}",
+	"summaries_failed_unknown": "Couldn't create the video.",
+	"summaries_hint": "We cut a video of up to 5 minutes with the best moments and save it to your library, in the Recuerdos folder. It takes a few minutes; we'll let you know when it's ready.",
+	"summaries_include_photos": "Include photos",
+	"summaries_include_photos_hint": "Photos show for a few seconds with a slow zoom between the videos.",
+	"summaries_not_enough": "There aren't enough videos for a summary.",
+	"summaries_not_enough_photos": "There aren't enough videos. Try including the photos.",
+	"summaries_open": "Watch video",
+	"summaries_pending": "Queued…",
+	"summaries_ready": "Done: “{title}” is in your library.",
+	"summaries_queue_full": "You already have several summary videos on the way. Wait for them to finish.",
+	"summaries_regenerate": "Create again",
+	"summaries_regenerate_hint": "The previous video is replaced by a new one.",
+	"summaries_requested": "Creating “{title}”. We'll let you know when it's ready.",
+	"summaries_running": "Cutting the video… {percent}%",
+	"summaries_title_album": "Album summary video",
+	"summaries_title_year": "Year in video",
+	"summaries_year": "Year",
+	"summaries_year_option": [
+		{
+			"declarations": [
+				"input year",
+				"input videos",
+				"local videosPlural = videos: plural",
+				"local videosFormatted = videos: number"
+			],
+			"selectors": ["videosPlural"],
+			"match": {
+				"videosPlural=one": "{year} · {videosFormatted} video",
+				"videosPlural=other": "{year} · {videosFormatted} videos"
+			}
+		}
+	],
+	"summaries_no_years": "You don't have any videos for a summary yet."
+}
