@@ -352,6 +352,11 @@ const handle: FakeHandler = async (context) => {
 	}
 	if (method === 'GET' && path === '/api/organize/inbox')
 		return send(200, page(organize(state).inbox));
+	if (method === 'POST' && path === '/api/organize/inbox/items') {
+		const { assetIds } = body() as { assetIds: string[] };
+		const { inbox } = organize(state);
+		return send(200, { items: page(assetIds.filter((id) => inbox.has(id))).items });
+	}
 	if (method === 'GET' && path === '/api/organize/excluded')
 		return send(200, page(organize(state).excluded));
 	if (method === 'GET' && path === '/api/organize/suggestions')

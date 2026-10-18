@@ -17,11 +17,43 @@
 
 	interface Props {
 		open: boolean;
+		/** Defaults to moving photos ("Mover a una carpeta" / "Mover"). */
+		title?: string;
+		confirmLabel?: string;
+		/** Offers the top of the user's folders as a destination (moving folders). */
+		root?: boolean;
+		/** Folders that can't be the destination, with everything below them. */
+		exclude?: ReadonlySet<string>;
+		/** The "organize by capture year" option, only for photos. */
+		byYearOption?: boolean;
+		/** Chosen on open: a folder id, `null` for the top (with `root`), nothing if unset. */
+		initial?: string | null;
+		/** Under the tree (what a move takes along). */
+		hint?: string | null;
+		busy?: boolean;
+		/** True when moving there changes nothing (the folders are already there). */
+		unchanged?: (folderId: string | null) => boolean;
 		onclose: () => void;
 		onpick: (folder: { id: string; name: string }, organizeByCaptureYear: boolean) => void;
+		/** The top of the user's folders was picked (with `root`). */
+		onpickroot?: () => void;
 	}
 
-	let { open, onclose, onpick }: Props = $props();
+	let {
+		open,
+		title = m.folder_picker_title(),
+		confirmLabel = m.folder_picker_move(),
+		root = false,
+		exclude = new Set<string>(),
+		byYearOption = true,
+		initial = undefined,
+		hint = null,
+		busy = false,
+		unchanged = () => false,
+		onclose,
+		onpick,
+		onpickroot
+	}: Props = $props();
 
 	/** A heading over one group's folders: it folds, but isn't a destination. */
 	interface GroupNode {
@@ -31,8 +63,18 @@
 		subFolders: FolderResponse[];
 		group: true;
 	}
-	type TreeNode = FolderResponse | GroupNode;
+	/** The top of the user's folders, a destination without a folder. */
+	interface RootNode {
+		id: string;
+		name: string;
+		parentFolderId: null;
+		subFolders: FolderResponse[];
+		root: true;
+	}
+	type TreeNode = FolderResponse | GroupNode | RootNode;
+	const ROOT_ID = 'root:personal';
 	const isGroup = (node: TreeNode): node is GroupNode => 'group' in node;
+	const isRoot = (node: TreeNode): node is RootNode => 'root' in node;
 
 	const queryClient = useQueryClient();
 	const tree = createQuery(() => ({ ...getFolderTreeOptions(), enabled: open }));
@@ -45,6 +87,8 @@
 	let createError = $state<string | null>(null);
 	let focusId = $state<string | null>(null);
 	let list = $state<HTMLUListElement>();
+	/** Whether `initial` was applied since the dialog opened (it waits for the tree). */
+	let initialized = false;
 
 	const GROUPS = [
 		{ key: 'personal', label: m.folders_group_personal },
@@ -62,6 +106,7 @@
 		newName = '';
 		createError = null;
 		focusId = null;
+		initialized = false;
 		expanded.clear();
 		for (const { key } of GROUPS) expanded.add(`group:${key}`);
 	});
@@ -69,6 +114,7 @@
 	/** Keeps the folders one can move into, and the ancestors that lead to them. */
 	function writableOnly(nodes: readonly FolderResponse[]): FolderResponse[] {
 		return nodes.flatMap((folder) => {
+			if (exclude.has(folder.id)) return [];
 			const subFolders = writableOnly(folder.subFolders ?? []);
 			return folder.canWrite || subFolders.length ? [{ ...folder, subFolders }] : [];
 		});
@@ -82,15 +128,44 @@
 			external: writableOnly(all.external)
 		};
 	});
-	const nodes = $derived<TreeNode[]>(
-		GROUPS.filter(({ key }) => groups[key].length).map(({ key, label }) => ({
+	const nodes = $derived<TreeNode[]>([
+		...(root
+			? [
+					{
+						id: ROOT_ID,
+						name: m.folders_location_root(),
+						parentFolderId: null,
+						subFolders: [],
+						root: true as const
+					}
+				]
+			: []),
+		...GROUPS.filter(({ key }) => groups[key].length).map(({ key, label }) => ({
 			id: `group:${key}`,
 			name: label(),
 			parentFolderId: null,
 			subFolders: groups[key],
-			group: true
+			group: true as const
 		}))
-	);
+	]);
+
+	// The starting destination, once the tree is there to name it and open its branch.
+	$effect(() => {
+		if (!open || initialized || !tree.data || initial === undefined) return;
+		initialized = true;
+		if (initial === null) {
+			if (root) chosen = { id: ROOT_ID, name: m.folders_location_root(), external: false };
+			return;
+		}
+		const path = pathTo(nodes, initial);
+		const folder = path.at(-1);
+		if (!folder || isGroup(folder) || isRoot(folder)) return;
+		for (const ancestor of path.slice(0, -1)) expanded.add(ancestor.id);
+		chosen = { id: folder.id, name: folder.name, external: !!folder.externalLibraryId };
+	});
+
+	/** What the chosen row means to the caller: a folder id, or null for the top. */
+	const target = $derived(chosen && (chosen.id === ROOT_ID ? null : chosen.id));
 	const rows = $derived(visibleRows(nodes, expanded));
 	const tabStop = $derived(
 		rows.find((r) => r.folder.id === focusId)?.folder.id ??
@@ -104,6 +179,11 @@
 	}
 
 	function choose(node: TreeNode) {
+		if (isRoot(node)) {
+			chosen = { id: ROOT_ID, name: node.name, external: false };
+			createError = null;
+			return;
+		}
 		if (isGroup(node) || !node.canWrite) {
 			toggle(node.id);
 			return;
@@ -149,7 +229,7 @@
 		event.preventDefault();
 		if (!canCreate) return;
 		const name = newName.trim();
-		const parent = chosen;
+		const parent = chosen && chosen.id !== ROOT_ID ? chosen : null;
 		creating = true;
 		createError = null;
 		const { data, error } = await createFolder({
@@ -172,7 +252,7 @@
 	}
 </script>
 
-<Dialog {open} title={m.folder_picker_title()} {onclose} width="520px">
+<Dialog {open} {title} {onclose} width="520px">
 	{#if tree.isPending}
 		<Skeleton variant="rows" count={6} flush />
 	{:else if tree.isError}
@@ -185,10 +265,27 @@
 	{:else if rows.length === 0}
 		<p class="status">{m.folder_picker_empty()}</p>
 	{:else}
-		<ul class="tree" role="tree" aria-label={m.folder_picker_title()} bind:this={list}>
+		<ul class="tree" role="tree" aria-label={title} bind:this={list}>
 			{#each rows as row (row.folder.id)}
 				{@const node = row.folder}
-				{#if isGroup(node)}
+				{#if isRoot(node)}
+					<li
+						role="treeitem"
+						data-folder={node.id}
+						aria-level={row.depth + 1}
+						aria-selected={node.id === chosen?.id}
+						tabindex={node.id === tabStop ? 0 : -1}
+						class:current={node.id === chosen?.id}
+						style:--depth={row.depth}
+						onclick={() => choose(node)}
+						onkeydown={(event) => onkeydown(event, node)}
+						onfocus={() => (focusId = node.id)}
+					>
+						<span class="twisty"></span>
+						<Icon name="folder" size={18} />
+						<span class="name">{node.name}</span>
+					</li>
+				{:else if isGroup(node)}
 					<li
 						role="treeitem"
 						class="group"
@@ -250,7 +347,9 @@
 	{#if !tree.isPending && !tree.isError}
 		<form class="new" onsubmit={create}>
 			<span class="where">
-				{chosen ? m.folder_picker_new_in({ folder: chosen.name }) : m.folder_picker_new_in_root()}
+				{chosen && chosen.id !== ROOT_ID
+					? m.folder_picker_new_in({ folder: chosen.name })
+					: m.folder_picker_new_in_root()}
 			</span>
 			<div class="row">
 				<input
@@ -275,20 +374,27 @@
 		</form>
 	{/if}
 
-	<label class="by-year">
-		<input type="checkbox" bind:checked={byYear} />
-		{m.folder_picker_by_year()}
-	</label>
+	{#if hint}<p class="hint move-hint">{hint}</p>{/if}
+	{#if byYearOption}
+		<label class="by-year">
+			<input type="checkbox" bind:checked={byYear} />
+			{m.folder_picker_by_year()}
+		</label>
+	{/if}
 
 	{#snippet actions()}
-		<button type="button" onclick={onclose}>{m.dialog_cancel()}</button>
+		<button type="button" disabled={busy} onclick={onclose}>{m.dialog_cancel()}</button>
 		<button
 			type="button"
 			class="primary"
-			disabled={!chosen || creating}
-			onclick={() => chosen && onpick({ id: chosen.id, name: chosen.name }, byYear)}
+			disabled={!chosen || creating || busy || unchanged(target)}
+			onclick={() => {
+				if (!chosen) return;
+				if (target === null) onpickroot?.();
+				else onpick({ id: chosen.id, name: chosen.name }, byYearOption && byYear);
+			}}
 		>
-			{m.folder_picker_move()}
+			{confirmLabel}
 		</button>
 	{/snippet}
 </Dialog>
@@ -428,6 +534,10 @@
 
 	.error {
 		color: var(--color-danger);
+	}
+
+	.move-hint {
+		margin: 0 0 var(--space-3);
 	}
 
 	.by-year {

@@ -43,11 +43,30 @@
 		}
 	],
 	"organize_review_and_move": "Review and move",
-	"organize_review_suggestion": "Review and move “{title}”",
 	"organize_dismiss": "Dismiss",
 	"organize_dismiss_suggestion": "Dismiss “{title}” (sets them aside)",
+	"organize_open_batch": "See batch",
+	"organize_open_batch_title": "See the “{title}” batch",
+	"organize_batch_back": "Back to the inbox",
+	"organize_batch_selected": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} selected",
+				"countPlural=other": "{countFormatted} selected"
+			}
+		}
+	],
+	"organize_batch_scope": "Which photos to show",
+	"organize_batch_only": "Only the batch",
+	"organize_batch_all": "Whole inbox",
+	"organize_batch_empty": "This batch has no pending photos left.",
 	"organize_move": "Move to a folder",
-	"organize_choose_destination": "Choose destination",
 	"organize_cancel": "Cancel",
 	"organize_moved": [
 		{

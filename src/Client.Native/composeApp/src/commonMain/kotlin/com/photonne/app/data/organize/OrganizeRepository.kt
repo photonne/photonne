@@ -8,6 +8,7 @@ import com.photonne.app.data.models.OrganizeSuggestion
 import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SmartRule
+import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.YearGroup
 import kotlin.time.Instant
@@ -43,6 +44,10 @@ class OrganizeRepository(
      */
     suspend fun suggestions(): List<OrganizeSuggestion> =
         api.getOrganizeSuggestions()
+
+    /** Las fotos de un lote que siguen pendientes, para enseñarlo solo. */
+    suspend fun batchItems(assetIds: List<String>): List<TimelineItem> =
+        api.getOrganizeInboxItems(assetIds)
 
     /** Lo apartado, para poder revisarlo y devolverlo a la bandeja. */
     suspend fun excluded(cursor: Instant? = null): TimelinePage =

@@ -3334,6 +3334,42 @@
         ]
       }
     },
+    "/api/organize/inbox/items": {
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "description": "Returns the pending inbox items among the given asset ids, newest first",
+        "operationId": "GetOrganizeInboxItems",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizeInboxItemsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizeInboxItemsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/organize/rule/move": {
       "post": {
         "tags": [
@@ -13953,6 +13989,32 @@
           "excludedCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "OrganizeInboxItemsRequest": {
+        "type": "object",
+        "properties": {
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "OrganizeInboxItemsResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineResponse"
+            }
           }
         }
       },

@@ -53,6 +53,15 @@ import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.style.TextOverflow
+import com.photonne.app.resources.organize_batch_scope_batch
+import com.photonne.app.resources.organize_batch_scope_inbox
+import com.photonne.app.resources.organize_batch_selected
+import com.photonne.app.ui.util.SegmentOption
+import com.photonne.app.ui.util.SegmentedChoiceRow
 
 /**
  * "Para organizar" inbox: a paged grid of the assets still sitting under
@@ -73,6 +82,8 @@ fun OrganizeInboxScreen(
     onPickSuggestion: (com.photonne.app.data.models.OrganizeSuggestion) -> Unit = {},
     onSeeAllItems: () -> Unit = {},
     onBackToSuggestions: () -> Unit = {},
+    onBatchScope: (OrganizeBatchScope) -> Unit = {},
+    onBatchRevealed: () -> Unit = {},
     onApplySelection: (SelectionPatch) -> Unit = {},
     onOpenExcluded: () -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {},
@@ -82,6 +93,9 @@ fun OrganizeInboxScreen(
     // las cápsulas son HERMANAS — la regla de Haze.
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
+    // El lote solo es otra rejilla: compartiendo estado, volver a la bandeja
+    // la dejaba en la posición que tenía el lote.
+    val batchGridState = rememberLazyGridState()
     // La vista de lotes es otra lista: sin su estado aquí, el cromo flotante
     // no se ocultaba al bajar ni tenía de dónde sacar el blur.
     val batchesState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -90,9 +104,21 @@ fun OrganizeInboxScreen(
     // que entrar o salir de la selección no la mueve (ni a mitad de arrastre).
     val gestures = rememberAssetGridSelectionGestures(onApplySelection)
     val chromeFloating = !state.isSelectionActive
-    val reservedTop = subscreenChromeReservedTop()
+    val chromeTop = subscreenChromeReservedTop()
+    val batch = state.batch
+    // Con un lote abierto, su barra (conmutador incluido) queda fija bajo el
+    // cromo: el contenido empieza debajo de las dos.
+    val reservedTop = if (batch != null) chromeTop + BATCH_BAR_HEIGHT else chromeTop
 
     LaunchedEffect(Unit) { onLoad() }
+
+    // Al pasar a la bandeja entera, a la foto más nueva del lote (1 = cabecera).
+    LaunchedEffect(state.batchRevealId) {
+        val target = state.batchRevealId ?: return@LaunchedEffect
+        val index = state.items.indexOfFirst { it.id == target }
+        if (index >= 0) gridState.scrollToItem(index + 1)
+        onBatchRevealed()
+    }
 
     PhotonneRefreshableScreen(
         indicatorTopPadding = reservedTop,
@@ -110,6 +136,34 @@ fun OrganizeInboxScreen(
                             bottom = floatingNavBarReservedHeight()
                         )
                     )
+                batch != null && state.isBatchOnly ->
+                    if (state.isLoadingBatch && state.batchItems.isEmpty()) {
+                        AssetGridSkeleton(
+                            contentPadding = PaddingValues(
+                                top = reservedTop,
+                                bottom = floatingNavBarReservedHeight()
+                            )
+                        )
+                    } else {
+                        AssetGrid(
+                            items = state.batchItems,
+                            baseUrl = apiBaseUrl,
+                            gridState = batchGridState,
+                            onItemClick = onItemClick,
+                            onItemLongClick = onItemLongClick,
+                            selectedIds = state.selection,
+                            hasMore = false,
+                            isAppending = false,
+                            isInitialLoading = false,
+                            onLoadMore = {},
+                            dragSelect = gestures.dragSelect,
+                            contentPadding = PaddingValues(
+                                top = reservedTop,
+                                bottom = floatingNavBarReservedHeight()
+                            ),
+                            modifier = Modifier.fillMaxWidth().hazeSource(hazeState),
+                        )
+                    }
                 state.error != null && state.items.isEmpty() ->
                     FullScreenError(
                         error = state.error,
@@ -168,7 +222,7 @@ fun OrganizeInboxScreen(
                     )
             }
 
-            if (state.showAllItems || state.suggestions.isEmpty()) PhotoGridScrubberOverlay(
+            if ((state.showAllItems || state.suggestions.isEmpty()) && !state.isBatchOnly) PhotoGridScrubberOverlay(
                 gridState = gridState,
                 items = state.items,
                 headerCount = 1,
@@ -178,16 +232,38 @@ fun OrganizeInboxScreen(
                 hazeState = hazeState,
             )
 
+            if (batch != null) {
+                BatchBar(
+                    title = batch.title,
+                    selected = state.selection.size,
+                    total = state.batchItems.size,
+                    scope = state.batchScope,
+                    onScope = onBatchScope,
+                    // Sin fotos del lote aparte, "Solo el lote" saldría vacío.
+                    showScope = state.isLoadingBatch || state.batchItems.isNotEmpty(),
+                    modifier = Modifier.padding(top = chromeTop),
+                )
+            }
+
             if (chromeFloating) {
                 SubscreenFloatingChrome(
-                    title = stringResource(Res.string.organize_inbox_title),
-                    onBack = onBack,
+                    // Dentro de un lote, atrás vuelve a los lotes.
+                    title = batch?.title ?: stringResource(Res.string.organize_inbox_title),
+                    onBack = if (batch != null) onBackToSuggestions else onBack,
                     scroll = run {
                         // Lotes y rejilla son listas distintas: el cromo debe
                         // seguir a la que se está viendo.
                         val showingBatches =
                             !state.showAllItems && state.suggestions.isNotEmpty()
-                        if (showingBatches) SubscreenScroll(
+                        if (state.isBatchOnly) SubscreenScroll(
+                            firstVisibleItemIndex = { batchGridState.firstVisibleItemIndex },
+                            firstVisibleItemScrollOffset = {
+                                batchGridState.firstVisibleItemScrollOffset
+                            },
+                            isScrollInProgress = { batchGridState.isScrollInProgress },
+                            scrollToTopMinIndex = SCROLL_TO_TOP_MIN_CELL,
+                            onScrollToTop = { batchGridState.animateScrollToItem(0) }
+                        ) else if (showingBatches) SubscreenScroll(
                             firstVisibleItemIndex = { batchesState.firstVisibleItemIndex },
                             firstVisibleItemScrollOffset = {
                                 batchesState.firstVisibleItemScrollOffset
@@ -214,7 +290,7 @@ fun OrganizeInboxScreen(
                     // pierde sobre según qué miniatura.
                     statusBarScrim = true,
                     actions = {
-                        if (state.showAllItems && state.suggestions.isNotEmpty()) {
+                        if (batch == null && state.showAllItems && state.suggestions.isNotEmpty()) {
                             IconButton(onClick = onBackToSuggestions) {
                                 Icon(
                                     Icons.Outlined.AutoAwesomeMosaic,
@@ -235,6 +311,59 @@ fun OrganizeInboxScreen(
                     }
                 )
             }
+        }
+    }
+}
+
+/** Alto de [BatchBar]: título + conmutador. */
+private val BATCH_BAR_HEIGHT = 96.dp
+
+/**
+ * Cabecera fija de un lote abierto: qué lote es, cuánto de él va marcado y el
+ * paso entre verlo solo (¿acierta el agrupado?) y verlo dentro de la bandeja
+ * (para sumarle fotos cercanas). No se va con el scroll: tras saltar al lote en
+ * la bandeja, volver a "Solo el lote" no debe obligar a subir hasta arriba.
+ */
+@Composable
+private fun BatchBar(
+    title: String,
+    selected: Int,
+    total: Int,
+    scope: OrganizeBatchScope,
+    onScope: (OrganizeBatchScope) -> Unit,
+    showScope: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        modifier = modifier.fillMaxWidth().height(BATCH_BAR_HEIGHT),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Text(
+                text = "$title · " + pluralStringResource(
+                    Res.plurals.organize_batch_selected, selected, selected, total
+                ),
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (showScope) SegmentedChoiceRow(
+                options = listOf(
+                    SegmentOption(
+                        OrganizeBatchScope.Batch,
+                        stringResource(Res.string.organize_batch_scope_batch)
+                    ),
+                    SegmentOption(
+                        OrganizeBatchScope.Inbox,
+                        stringResource(Res.string.organize_batch_scope_inbox)
+                    ),
+                ),
+                selected = scope,
+                onSelect = onScope,
+            )
         }
     }
 }

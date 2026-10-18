@@ -242,13 +242,14 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 organizeInboxState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = organizeInboxState.selection.size,
-                    totalCount = organizeInboxState.items.size,
+                    totalCount = organizeInboxState.gridItems.size,
                     isMutating = organizeInboxState.isBulkMutating,
                     onClose = organizeInboxViewModel::clearSelection,
                     onSelectAll = organizeInboxViewModel::toggleSelectAll,
                     // El servidor no da los ids de toda la lista: solo se
-                    // puede seleccionar lo cargado, y así se rotula.
-                    selectAllLoadedOnly = organizeInboxState.hasMore
+                    // puede seleccionar lo cargado, y así se rotula. El lote
+                    // solo, en cambio, está entero.
+                    selectAllLoadedOnly = organizeInboxState.hasMore && !organizeInboxState.isBatchOnly
                 )
             }
             // Apartadas: con selección, la cápsula lleva "Devolver a la bandeja"

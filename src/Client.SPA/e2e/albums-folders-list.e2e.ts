@@ -81,6 +81,32 @@ test('deletes several folders after confirming, only if all can be deleted', asy
 	await expect(bar(page)).toBeHidden();
 });
 
+test('creates the destination folder while moving folders', async ({ page }) => {
+	const state = await open(page);
+
+	await page.getByRole('checkbox', { name: 'Seleccionar «Documentos»' }).click();
+	await bar(page).getByRole('button', { name: 'Mover' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Mover 1 carpeta' });
+	await dialog.getByRole('treeitem', { name: 'Familia' }).click();
+	await expect(dialog.getByText('Nueva carpeta dentro de «Familia»')).toBeVisible();
+	await dialog.getByLabel('Nombre de la carpeta').fill('Papeles');
+	await dialog.getByRole('button', { name: 'Crear' }).click();
+
+	await expect(dialog.getByRole('treeitem', { name: 'Papeles' })).toHaveAttribute(
+		'aria-selected',
+		'true'
+	);
+	expect(calls(state, 'POST /api/folders')[0].body).toEqual({
+		name: 'Papeles',
+		parentFolderId: 'folder-4'
+	});
+	await dialog.getByRole('button', { name: 'Mover', exact: true }).click();
+	await expect(page.getByText('1 carpeta movida a «Papeles»')).toBeVisible();
+	expect(calls(state, 'PUT /api/folders/folder-3')[0].body).toMatchObject({
+		parentFolderId: expect.stringMatching(/^folder-new-/)
+	});
+});
+
 test('moves the selected folders into another one', async ({ page }) => {
 	const state = await open(page);
 
@@ -88,12 +114,19 @@ test('moves the selected folders into another one', async ({ page }) => {
 	await bar(page).getByRole('button', { name: 'Mover' }).click();
 
 	const dialog = page.getByRole('dialog', { name: 'Mover 1 carpeta' });
-	await expect(dialog.getByRole('combobox', { name: 'Ubicación' })).toHaveValue('');
-	await expect(dialog.getByRole('button', { name: 'Mover' })).toBeDisabled();
+	// It's already at the top of my folders: chosen, and moving there changes nothing.
+	await expect(dialog.getByRole('treeitem', { name: 'Mis carpetas (raíz)' })).toHaveAttribute(
+		'aria-selected',
+		'true'
+	);
+	await expect(dialog.getByRole('button', { name: 'Mover', exact: true })).toBeDisabled();
 	// A folder can't go inside itself: Documentos isn't offered.
-	await expect(dialog.getByRole('option', { name: /Documentos/ })).toHaveCount(0);
-	await dialog.getByRole('combobox', { name: 'Ubicación' }).selectOption({ label: 'Camera' });
-	await dialog.getByRole('button', { name: 'Mover' }).click();
+	await expect(dialog.getByRole('treeitem', { name: 'Documentos' })).toHaveCount(0);
+	await expect(dialog.getByRole('checkbox', { name: 'Organizar por año de captura' })).toHaveCount(
+		0
+	);
+	await dialog.getByRole('treeitem', { name: 'Camera' }).click();
+	await dialog.getByRole('button', { name: 'Mover', exact: true }).click();
 
 	await expect(page.getByText('1 carpeta movida a «Camera»')).toBeVisible();
 	expect(calls(state, 'PUT /api/folders/folder-3')[0].body).toEqual({

@@ -22,11 +22,12 @@
 	interface Props {
 		suggestions: readonly OrganizeSuggestionResponse[];
 		busy?: boolean;
-		onreview: (suggestion: OrganizeSuggestionResponse) => void;
+		/** Opens the batch: its photos, chosen, to check and adjust before moving. */
+		onopen: (suggestion: OrganizeSuggestionResponse) => void;
 		ondismiss: (suggestion: OrganizeSuggestionResponse) => void;
 	}
 
-	let { suggestions, busy = false, onreview, ondismiss }: Props = $props();
+	let { suggestions, busy = false, onopen, ondismiss }: Props = $props();
 
 	const kinds: Record<string, () => string> = {
 		trip: m.organize_kind_trip,
@@ -80,14 +81,15 @@
 						{/if}
 					</div>
 					<div class="buttons">
+						<!-- Stretched over the card: clicking anywhere on it opens the batch. -->
 						<button
 							type="button"
-							class="btn sm primary"
+							class="btn sm primary open"
 							disabled={busy}
-							aria-label={m.organize_review_suggestion({ title })}
-							onclick={() => onreview(suggestion)}
+							aria-label={m.organize_open_batch_title({ title })}
+							onclick={() => onopen(suggestion)}
 						>
-							{m.organize_review_and_move()}
+							{m.organize_open_batch()}
 						</button>
 						<button
 							type="button"
@@ -181,6 +183,7 @@
 	/* The buttons sit at the card's foot, so they line up across cards
 	   whatever the text above them takes. */
 	article {
+		position: relative;
 		display: grid;
 		grid-template-columns: 64px 1fr;
 		grid-template-rows: auto 1fr;
@@ -225,10 +228,28 @@
 		font-size: var(--font-size-sm);
 	}
 
+	article:has(.open:not(:disabled)):hover {
+		border-color: var(--color-accent);
+	}
+
 	.buttons {
 		grid-column: 1 / -1;
 		align-self: end;
 		display: flex;
 		gap: var(--space-2);
+	}
+
+	.open::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: var(--radius-md);
+		cursor: pointer;
+	}
+
+	/* Above the stretched area, so it stays its own button. */
+	.buttons .ghost {
+		position: relative;
+		z-index: 1;
 	}
 </style>

@@ -57,6 +57,18 @@ data class OrganizeRuleReviewResponse(val groups: List<YearGroup> = emptyList())
  * que guardar en ninguna carpeta (capturas, memes, recibos). Es lo que permite
  * que la bandeja llegue de verdad a cero.
  */
+/** Cuerpo de `POST /api/organize/inbox/items`: los ids de un lote. */
+@Serializable
+data class OrganizeInboxItemsRequest(
+    val assetIds: List<String> = emptyList(),
+)
+
+/** Lo que sigue pendiente de un lote, más nuevo primero. */
+@Serializable
+data class OrganizeInboxItemsResponse(
+    val items: List<TimelineItem> = emptyList(),
+)
+
 @Serializable
 data class OrganizeExcludeRequest(
     val assetIds: List<String> = emptyList(),

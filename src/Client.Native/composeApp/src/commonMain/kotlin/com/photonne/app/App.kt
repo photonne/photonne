@@ -1003,6 +1003,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 trashViewModel.clearSelection()
             appState.moreSubscreen == MoreSubscreen.People && appState.selectedPerson != null &&
                 personDetailState.isSelectionActive -> personDetailViewModel.clearSelection()
+            // Dentro de un lote, atrás vuelve a los lotes (con o sin selección).
+            appState.moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.batch != null ->
+                organizeInboxViewModel.showSuggestions()
             appState.moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive ->
                 organizeInboxViewModel.clearSelection()
             appState.moreSubscreen == MoreSubscreen.OrganizeExcluded && organizeExcludedState.isSelectionActive ->
@@ -1072,7 +1075,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectAllOf(personDetailState.selection.size, personDetailState.items.size,
                 personDetailViewModel::toggleSelectAll)
         appState.moreSubscreen == MoreSubscreen.OrganizeInbox ->
-            selectAllOf(organizeInboxState.selection.size, organizeInboxState.items.size,
+            selectAllOf(organizeInboxState.selection.size, organizeInboxState.gridItems.size,
                 organizeInboxViewModel::toggleSelectAll)
         // Listas de álbumes y carpetas: todas las tarjetas visibles.
         appState.moreSubscreen == null && appState.selectedTab == MainTab.Albums && appState.selectedAlbum == null ->

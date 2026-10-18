@@ -415,12 +415,12 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                         onArchive = organizeInboxViewModel::bulkArchive,
                         onTrash = organizeInboxViewModel::bulkTrash,
                         selectedIds = { organizeInboxState.selection.toList() },
-                        allFavorite = selectionAllFavorite(organizeInboxState.items, organizeInboxState.selection),
+                        allFavorite = selectionAllFavorite(organizeInboxState.knownItems, organizeInboxState.selection),
                         onToggleFavorite = run {
                             val favoriteSnackbar = LocalSnackbarController.current
                             {
                                 runBulkFavorite(
-                                    organizeInboxState.items, organizeInboxState.selection, favoriteSnackbar,
+                                    organizeInboxState.knownItems, organizeInboxState.selection, favoriteSnackbar,
                                     organizeInboxViewModel::clearSelection
                                 )
                             }

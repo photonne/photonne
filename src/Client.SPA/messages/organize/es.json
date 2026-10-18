@@ -43,11 +43,30 @@
 		}
 	],
 	"organize_review_and_move": "Revisar y mover",
-	"organize_review_suggestion": "Revisar y mover «{title}»",
 	"organize_dismiss": "Descartar",
 	"organize_dismiss_suggestion": "Descartar «{title}» (se apartan de la bandeja)",
+	"organize_open_batch": "Ver lote",
+	"organize_open_batch_title": "Ver el lote «{title}»",
+	"organize_batch_back": "Volver a la bandeja",
+	"organize_batch_selected": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} seleccionada",
+				"countPlural=other": "{countFormatted} seleccionadas"
+			}
+		}
+	],
+	"organize_batch_scope": "Qué fotos ver",
+	"organize_batch_only": "Solo el lote",
+	"organize_batch_all": "Toda la bandeja",
+	"organize_batch_empty": "Este lote ya no tiene fotos pendientes.",
 	"organize_move": "Mover a una carpeta",
-	"organize_choose_destination": "Elegir destino",
 	"organize_cancel": "Cancelar",
 	"organize_moved": [
 		{

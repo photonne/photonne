@@ -1629,6 +1629,12 @@
     <string name="organize_suggestions_title">Lotes propuestos</string>
     <string name="organize_suggestions_see_all">Ver todas las fotos</string>
     <string name="organize_suggestions_back">Volver a los lotes</string>
+    <string name="organize_batch_scope_batch">Solo el lote</string>
+    <string name="organize_batch_scope_inbox">Toda la bandeja</string>
+    <plurals name="organize_batch_selected">
+        <item quantity="one">%1$d de %2$d seleccionada</item>
+        <item quantity="other">%1$d de %2$d seleccionadas</item>
+    </plurals>
     <string name="organize_inbox_title">Organizar</string>
     <string name="organize_rule_title">Mover por condiciones</string>
     <string name="organize_inbox_card_subtitle">Fotos en MobileBackup sin organizar</string>

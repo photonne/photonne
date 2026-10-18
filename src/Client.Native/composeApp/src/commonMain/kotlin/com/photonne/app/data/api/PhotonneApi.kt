@@ -45,6 +45,8 @@ import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.models.AssetYearBreakdownResponse
 import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.OrganizeExcludeRequest
+import com.photonne.app.data.models.OrganizeInboxItemsRequest
+import com.photonne.app.data.models.OrganizeInboxItemsResponse
 import com.photonne.app.data.models.OrganizeSuggestion
 import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.OrganizeRuleReviewResponse
@@ -456,6 +458,8 @@ interface PhotonneApi {
     suspend fun getOrganizeSummary(): OrganizeSummary
     /** Lotes propuestos a partir de lo que sigue sin organizar. */
     suspend fun getOrganizeSuggestions(): List<OrganizeSuggestion>
+    /** Las fotos de un lote que siguen en la bandeja (las movidas o apartadas, fuera). */
+    suspend fun getOrganizeInboxItems(assetIds: List<String>): List<TimelineItem>
     /** Aparta (o devuelve) assets de la bandeja sin moverlos ni archivarlos. */
     suspend fun setOrganizeExcluded(assetIds: List<String>, excluded: Boolean)
     /** Lo que se ha apartado de la bandeja, para poder revisarlo y devolverlo. */
@@ -1152,6 +1156,17 @@ class PhotonneApiClient(
             throw response.apiException("Organize suggestions fetch failed (${response.status.value})")
         }
         return response.body()
+    }
+
+    override suspend fun getOrganizeInboxItems(assetIds: List<String>): List<TimelineItem> {
+        val response: HttpResponse = client.post("$baseUrl/api/organize/inbox/items") {
+            contentType(ContentType.Application.Json)
+            setBody(OrganizeInboxItemsRequest(assetIds = assetIds))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Organize inbox items fetch failed (${response.status.value})")
+        }
+        return response.body<OrganizeInboxItemsResponse>().items
     }
 
     override suspend fun setOrganizeExcluded(assetIds: List<String>, excluded: Boolean) {

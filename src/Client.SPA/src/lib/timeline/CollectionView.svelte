@@ -74,6 +74,11 @@
 		 * next to the photos itself (a folder's Fotos section).
 		 */
 		sizeInToolbar?: boolean;
+		/**
+		 * The page's own selection, when it chooses photos itself (a proposed
+		 * batch in Organizar) or keeps it across views.
+		 */
+		selection?: Selection;
 	}
 
 	let {
@@ -96,7 +101,8 @@
 		collapsed = false,
 		onnearend,
 		sizeShortcuts = true,
-		sizeInToolbar = true
+		sizeInToolbar = true,
+		selection: given
 	}: Props = $props();
 
 	let scrolled = $state(false);
@@ -112,7 +118,7 @@
 	let coverFailed = $state(false);
 
 	const queryClient = useQueryClient();
-	const selection = new Selection();
+	const selection = untrack(() => given) ?? new Selection();
 	// A view keeps the store it was created with for its whole life.
 	const batch = new BatchActions(
 		untrack(() => store),
@@ -129,6 +135,12 @@
 	const neighbors = $derived(
 		viewer.openId ? neighborsIn(store.order, viewer.openId) : { previous: null, next: null }
 	);
+
+	/** Scrolls to a photo and focuses it, once the grid shows it. */
+	export async function reveal(id: string) {
+		await tick();
+		await grid?.focusItem(id);
+	}
 
 	function itemLabel(item: GridAsset) {
 		const date = longDate(item.capturedAt);
