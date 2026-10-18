@@ -77,6 +77,8 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, st
 			albumId: body.albumId,
 			title: body.source === 'album' ? 'Resumen · Vacaciones' : `Resumen ${body.year}`,
 			includePhotos: body.includePhotos,
+			orientation: body.orientation ?? 'all',
+			durationMinutes: body.durationMinutes ?? 5,
 			status: 'pending',
 			progress: 0,
 			error: null,

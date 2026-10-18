@@ -4,17 +4,41 @@
 	"summaries_action_year": "Year in video",
 	"summaries_close": "Close",
 	"summaries_create": "Create video",
+	"summaries_duration": "Maximum length",
+	"summaries_duration_option": [
+		{
+			"declarations": [
+				"input minutes",
+				"local minutesPlural = minutes: plural",
+				"local minutesFormatted = minutes: number"
+			],
+			"selectors": ["minutesPlural"],
+			"match": {
+				"minutesPlural=one": "{minutesFormatted} minute",
+				"minutesPlural=other": "{minutesFormatted} minutes"
+			}
+		}
+	],
 	"summaries_failed": "Couldn't create it: {error}",
 	"summaries_failed_unknown": "Couldn't create the video.",
-	"summaries_hint": "We cut a video of up to 5 minutes with the best moments and save it to your library, in the Recuerdos folder. It takes a few minutes; we'll let you know when it's ready.",
+	"summaries_hint": "We cut a video with the best moments and save it to your library, in the Recuerdos folder. It takes a few minutes; we'll let you know when it's ready.",
 	"summaries_include_photos": "Include photos",
 	"summaries_include_photos_hint": "Photos show for a few seconds with a slow zoom between the videos.",
+	"summaries_no_years": "You don't have any videos for a summary yet.",
 	"summaries_not_enough": "There aren't enough videos for a summary.",
+	"summaries_not_enough_orientation": "There aren't enough videos or photos in that orientation. Try “All”.",
 	"summaries_not_enough_photos": "There aren't enough videos. Try including the photos.",
 	"summaries_open": "Watch video",
+	"summaries_orientation": "Orientation",
+	"summaries_orientation_all": "All",
+	"summaries_orientation_all_hint": "A landscape video; portrait material shows over a blurred background.",
+	"summaries_orientation_landscape": "Landscape",
+	"summaries_orientation_landscape_hint": "Only landscape videos and photos, in a landscape video.",
+	"summaries_orientation_portrait": "Portrait",
+	"summaries_orientation_portrait_hint": "Only portrait videos and photos, in a portrait video for phones.",
 	"summaries_pending": "Queued…",
-	"summaries_ready": "Done: “{title}” is in your library.",
 	"summaries_queue_full": "You already have several summary videos on the way. Wait for them to finish.",
+	"summaries_ready": "Done: “{title}” is in your library.",
 	"summaries_regenerate": "Create again",
 	"summaries_regenerate_hint": "The previous video is replaced by a new one.",
 	"summaries_requested": "Creating “{title}”. We'll let you know when it's ready.",
@@ -36,6 +60,5 @@
 				"videosPlural=other": "{year} · {videosFormatted} videos"
 			}
 		}
-	],
-	"summaries_no_years": "You don't have any videos for a summary yet."
+	]
 }

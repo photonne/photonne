@@ -13,11 +13,17 @@
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import {
+		DEFAULT_OPTIONS,
+		DURATIONS,
 		findSummary,
 		isActive,
+		optionsOf,
+		ORIENTATIONS,
 		percent,
 		pollWhileActive,
 		requestBody,
+		type SummaryOptions,
+		type SummaryOrientation,
 		type SummarySource
 	} from './summaries.js';
 
@@ -54,8 +60,24 @@
 	const current = $derived(source ? findSummary(summaries.data, source) : undefined);
 	const active = $derived(isActive(current));
 
-	// Off by default: photos are an option the user turns on.
-	let includePhotos = $state(false);
+	// Photos off, every shape, five minutes — or whatever the last request for
+	// this year or album used, once the list says.
+	let options = $state<SummaryOptions>({ ...DEFAULT_OPTIONS });
+	let optionsFor = '';
+	$effect(() => {
+		const key = source ? JSON.stringify(source) : '';
+		if (!summaries.isSuccess || key === optionsFor) return;
+		optionsFor = key;
+		options = current ? optionsOf(current) : { ...DEFAULT_OPTIONS };
+	});
+
+	const orientationLabels: Record<SummaryOrientation, () => string> = {
+		all: m.summaries_orientation_all,
+		landscape: m.summaries_orientation_landscape,
+		portrait: m.summaries_orientation_portrait
+	};
+	const orientationName = $props.id();
+
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
 
@@ -65,7 +87,7 @@
 		submitting = true;
 		error = null;
 		const { data, error: failure } = await requestVideoSummary({
-			body: requestBody(source, includePhotos)
+			body: requestBody(source, options)
 		});
 		submitting = false;
 		if (data) {
@@ -75,7 +97,11 @@
 		}
 		const code = apiErrorCode(failure);
 		if (code === 'not_enough_media')
-			error = includePhotos ? m.summaries_not_enough() : m.summaries_not_enough_photos();
+			error = !options.includePhotos
+				? m.summaries_not_enough_photos()
+				: options.orientation !== 'all'
+					? m.summaries_not_enough_orientation()
+					: m.summaries_not_enough();
 		else if (code === 'summary_queue_full') error = m.summaries_queue_full();
 		else error = m.action_failed();
 	}
@@ -110,8 +136,42 @@
 			{/if}
 		{/if}
 
+		<label class="field">
+			<span>{m.summaries_duration()}</span>
+			<select bind:value={options.durationMinutes} disabled={active}>
+				{#each DURATIONS as minutes (minutes)}
+					<option value={minutes}>{m.summaries_duration_option({ minutes })}</option>
+				{/each}
+			</select>
+		</label>
+
+		<div class="field">
+			<span id="{orientationName}-label">{m.summaries_orientation()}</span>
+			<div class="segmented" role="radiogroup" aria-labelledby="{orientationName}-label">
+				{#each ORIENTATIONS as orientation (orientation)}
+					<label>
+						<input
+							type="radio"
+							name={orientationName}
+							value={orientation}
+							bind:group={options.orientation}
+							disabled={active}
+						/>
+						{orientationLabels[orientation]()}
+					</label>
+				{/each}
+			</div>
+			<small class="note">
+				{options.orientation === 'portrait'
+					? m.summaries_orientation_portrait_hint()
+					: options.orientation === 'landscape'
+						? m.summaries_orientation_landscape_hint()
+						: m.summaries_orientation_all_hint()}
+			</small>
+		</div>
+
 		<label class="check">
-			<input type="checkbox" bind:checked={includePhotos} disabled={active} />
+			<input type="checkbox" bind:checked={options.includePhotos} disabled={active} />
 			<span>
 				{m.summaries_include_photos()}
 				<small>{m.summaries_include_photos_hint()}</small>
@@ -171,6 +231,10 @@
 		margin: 0;
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
+	}
+
+	.segmented {
+		justify-self: start;
 	}
 
 	.check {
