@@ -968,6 +968,7 @@ private fun FolderDialogs(host: AuthenticatedDialogsHost) {
                 errorMessage = folderDetailState.error?.userMessage,
                 excludeFolderId = openedFolder.id,
                 includeRoot = true,
+                onCreateFolder = foldersViewModel::createFromPicker,
                 // Padre actual preseleccionado; si no es un destino listado (la raíz
                 // personal), queda marcada la raíz.
                 initialSelectionId = openedFolder.parentFolderId?.takeIf { parentId ->
@@ -1121,18 +1122,6 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
             )
         }
 
-        // "Nueva carpeta" dentro de los selectores de destino al mover fotos:
-        // crea donde esté elegido y el selector la deja marcada.
-        val createFolderInPicker: (String, String?, (com.photonne.app.data.models.FolderSummary) -> Unit, (String) -> Unit) -> Unit =
-            { name, parentId, onCreated, onFailed ->
-                foldersViewModel.create(
-                    name = name,
-                    parentFolderId = parentId,
-                    onFailed = { onFailed(it.userMessage) },
-                    onCreated = onCreated,
-                )
-            }
-
         if (appState.showMoveSelectedAssets && openedFolder != null) {
             // Un error viejo de la pantalla no debe estrenar el selector.
             LaunchedEffect(Unit) { folderDetailViewModel.clearError() }
@@ -1147,7 +1136,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                 excludeFolderId = openedFolder.id,
                 includeRoot = false,
                 recentDestinationIds = recentDestinations,
-                onCreateFolder = createFolderInPicker,
+                onCreateFolder = foldersViewModel::createFromPicker,
                 onDismiss = {
                     appState.showMoveSelectedAssets = false
                     folderDetailViewModel.clearError()
@@ -1192,7 +1181,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                 errorMessage = errorMessage,
                 includeRoot = false,
                 recentDestinationIds = recentDestinations,
-                onCreateFolder = createFolderInPicker,
+                onCreateFolder = foldersViewModel::createFromPicker,
                 onDismiss = onDismiss,
                 onConfirm = { targetFolderId, _ ->
                     if (targetFolderId != null) {
@@ -1276,7 +1265,7 @@ private fun SelectionDialogs(host: AuthenticatedDialogsHost) {
                 errorMessage = organizeInboxState.error?.userMessage,
                 includeRoot = false,
                 recentDestinationIds = recentDestinations,
-                onCreateFolder = createFolderInPicker,
+                onCreateFolder = foldersViewModel::createFromPicker,
                 showOrganizeByDate = true,
                 yearBreakdown = organizeInboxState.moveYearGroups.map {
                     com.photonne.app.data.models.YearCount(it.year, it.count)

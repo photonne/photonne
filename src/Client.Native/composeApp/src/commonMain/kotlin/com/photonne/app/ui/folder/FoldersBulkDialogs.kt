@@ -84,6 +84,7 @@ fun FoldersBulkMoveDialog(
         onRetry = viewModel::refresh,
         isSubmitting = state.isMutating,
         excludeFolderIds = sources.mapTo(mutableSetOf()) { it.id },
+        onCreateFolder = viewModel::createFromPicker,
         includeRoot = true,
         initialSelectionId = commonParent?.takeIf { parentId ->
             state.moveDestinations.any { it.id == parentId }

@@ -363,6 +363,22 @@ class FoldersViewModel(
         }
     }
 
+    /**
+     * "Nueva carpeta" desde un selector de destino ([FolderPickerDialog]): el
+     * error vuelve al selector en vez de quedarse en el estado de Carpetas.
+     */
+    fun createFromPicker(
+        name: String,
+        parentFolderId: String?,
+        onCreated: (FolderSummary) -> Unit,
+        onFailed: (String) -> Unit,
+    ) = create(
+        name = name,
+        parentFolderId = parentFolderId,
+        onFailed = { onFailed(it.userMessage) },
+        onCreated = onCreated,
+    )
+
     fun renameFolder(
         folderId: String,
         name: String,

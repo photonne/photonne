@@ -1545,6 +1545,12 @@
     <string name="organize_suggestions_title">Suggested batches</string>
     <string name="organize_suggestions_see_all">See all photos</string>
     <string name="organize_suggestions_back">Back to batches</string>
+    <string name="organize_batch_scope_batch">Just the batch</string>
+    <string name="organize_batch_scope_inbox">Whole inbox</string>
+    <plurals name="organize_batch_selected">
+        <item quantity="one">%1$d of %2$d selected</item>
+        <item quantity="other">%1$d of %2$d selected</item>
+    </plurals>
     <string name="organize_inbox_title">Organize</string>
     <string name="organize_rule_title">Move by conditions</string>
     <string name="organize_inbox_card_subtitle">Photos in MobileBackup not yet filed</string>

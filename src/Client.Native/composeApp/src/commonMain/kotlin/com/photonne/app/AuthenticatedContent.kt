@@ -714,19 +714,20 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     onRefresh = organizeInboxViewModel::refresh,
                     onLoadMore = organizeInboxViewModel::loadMore,
                     onItemClick = { index ->
-                        if (organizeInboxState.isSelectionActive) {
-                            organizeInboxState.items.getOrNull(index)?.let {
+                        // La rejilla pinta el lote solo o la bandeja: el índice es de la que se ve.
+                        if (organizeInboxState.isSelectionActive || organizeInboxState.isBatchOnly) {
+                            organizeInboxState.gridItems.getOrNull(index)?.let {
                                 organizeInboxViewModel.toggleSelection(it.id)
                             }
                         } else {
                             appState.assetDetail = AssetDetailContext(
-                                items = organizeInboxViewModel.state.value.items,
+                                items = organizeInboxViewModel.state.value.gridItems,
                                 startIndex = index,
                                 source = AssetDetailContext.Source.Timeline,
                                 hasMore = organizeInboxState.hasMore,
                                 onLoadMore = organizeInboxViewModel::loadMore,
                                 feed = com.photonne.app.ui.asset.AssetViewerFeed(
-                                    items = { organizeInboxState.items },
+                                    items = { organizeInboxState.gridItems },
                                     hasMore = { organizeInboxState.hasMore },
                                     loadMore = organizeInboxViewModel::loadMore
                                 ),
@@ -737,7 +738,7 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                         }
                     },
                     onItemLongClick = { index ->
-                        organizeInboxState.items.getOrNull(index)?.let {
+                        organizeInboxState.gridItems.getOrNull(index)?.let {
                             organizeInboxViewModel.toggleSelection(it.id)
                         }
                     },
@@ -749,6 +750,8 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     onPickSuggestion = organizeInboxViewModel::selectSuggestion,
                     onSeeAllItems = organizeInboxViewModel::showAllItems,
                     onBackToSuggestions = organizeInboxViewModel::showSuggestions,
+                    onBatchScope = organizeInboxViewModel::setBatchScope,
+                    onBatchRevealed = organizeInboxViewModel::consumeBatchReveal,
                     onApplySelection = organizeInboxViewModel::applySelection,
                     onOpenExcluded = {
                         organizeExcludedViewModel.refresh()
@@ -804,14 +807,7 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     destinationsLoading = foldersState.isLoading,
                     destinationsError = foldersState.error,
                     onRetryDestinations = foldersViewModel::refresh,
-                    onCreateDestination = { name, parentId, onCreated, onFailed ->
-                        foldersViewModel.create(
-                            name = name,
-                            parentFolderId = parentId,
-                            onFailed = { onFailed(it.userMessage) },
-                            onCreated = onCreated,
-                        )
-                    },
+                    onCreateDestination = foldersViewModel::createFromPicker,
                     viewModel = organizeRuleViewModel,
                     reviewOpen = organizeRuleState.reviewGroups != null
                 )

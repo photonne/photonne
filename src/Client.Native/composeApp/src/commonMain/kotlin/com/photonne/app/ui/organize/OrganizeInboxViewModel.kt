@@ -10,6 +10,7 @@ import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.OrganizeSuggestion
 import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.YearGroup
 import com.photonne.app.data.organize.OrganizeRepository
 import com.photonne.app.ui.selection.SelectionPatch
@@ -54,13 +55,36 @@ data class OrganizeInboxUiState(
     val isLoadingSuggestions: Boolean = false,
     /** true cuando el usuario ha pedido ver la rejilla plana completa. */
     val showAllItems: Boolean = false,
+    /**
+     * El lote abierto: se ve solo (sus fotos, todas marcadas) o dentro de la
+     * bandeja entera con la misma selección, para añadirle fotos cercanas.
+     */
+    val batch: OrganizeSuggestion? = null,
+    /** Lo que sigue pendiente del lote, más nuevo primero. */
+    val batchItems: List<TimelineItem> = emptyList(),
+    val isLoadingBatch: Boolean = false,
+    val batchScope: OrganizeBatchScope = OrganizeBatchScope.Batch,
+    /** Foto del lote a la que llevar la rejilla al pasar a la bandeja entera;
+     *  la pantalla la consume con [OrganizeInboxViewModel.consumeBatchReveal]. */
+    val batchRevealId: String? = null,
 ) {
     /** Pending count = the loaded items; the whole inbox is materialized here as
      *  the user pages, and the header reflects what's visible. The authoritative
      *  badge on the entry point comes from the cheap /count endpoint. */
     val isEmpty: Boolean get() = loaded && items.isEmpty() && !isInitialLoading
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
+    val isBatchOnly: Boolean get() = batch != null && batchScope == OrganizeBatchScope.Batch
+    /** Lo que pinta la rejilla: el lote solo o la bandeja. */
+    val gridItems: List<TimelineItem> get() = if (isBatchOnly) batchItems else items
+    /** Todo lo cargado, para resolver la selección (que puede venir de las dos). */
+    val knownItems: List<TimelineItem>
+        get() = if (batch == null) items else (batchItems + items).distinctBy { it.id }
 }
+
+enum class OrganizeBatchScope { Batch, Inbox }
+
+/** Páginas de la bandeja que se cargan como mucho para llegar al lote. */
+private const val MAX_REVEAL_PAGES = 10
 
 /**
  * Drives the "Para organizar" inbox screen: a paged grid of the assets still
@@ -80,6 +104,8 @@ class OrganizeInboxViewModel(
     /** The inbox page being fetched. A refresh replaces any append in flight,
      *  whose stale cursor would otherwise land on top of the fresh first page. */
     private var pageJob: Job? = null
+    private var batchJob: Job? = null
+    private var revealJob: Job? = null
 
     fun ensureLoaded() {
         val snapshot = _state.value
@@ -105,10 +131,13 @@ class OrganizeInboxViewModel(
                     .onSuccess { summary -> _state.update { it.copy(summary = summary) } }
             }
             launch { loadSuggestions() }
+            _state.value.batch?.let { batch -> launch { loadBatchItems(batch) } }
             suspendRunCatching { repository.inbox(cursor = null) }
                 .onSuccess { page ->
                     _state.update {
-                        val remaining = it.selection.intersect(page.items.mapTo(HashSet()) { item -> item.id })
+                        // Lo del lote no tiene por qué estar en la primera página.
+                        val known = (page.items + it.batchItems).mapTo(HashSet()) { item -> item.id }
+                        val remaining = it.selection.intersect(known)
                         it.copy(
                             items = page.items,
                             selection = remaining,
@@ -139,18 +168,7 @@ class OrganizeInboxViewModel(
         _state.update { it.copy(isAppending = true) }
         pageJob = viewModelScope.launch {
             suspendRunCatching { repository.inbox(cursor = cursor) }
-                .onSuccess { page ->
-                    _state.update {
-                        val existing = it.items.mapTo(HashSet()) { item -> item.id }
-                        val appended = page.items.filter { item -> item.id !in existing }
-                        it.copy(
-                            items = it.items + appended,
-                            hasMore = page.hasMore,
-                            nextCursor = page.nextCursor,
-                            isAppending = false
-                        )
-                    }
-                }
+                .onSuccess(::appendPage)
                 .onFailure { error ->
                     _state.update {
                         it.copy(
@@ -159,6 +177,19 @@ class OrganizeInboxViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    private fun appendPage(page: TimelinePage) {
+        _state.update {
+            val existing = it.items.mapTo(HashSet()) { item -> item.id }
+            val appended = page.items.filter { item -> item.id !in existing }
+            it.copy(
+                items = it.items + appended,
+                hasMore = page.hasMore,
+                nextCursor = page.nextCursor,
+                isAppending = false
+            )
         }
     }
 
@@ -183,7 +214,7 @@ class OrganizeInboxViewModel(
 
     fun toggleSelectAll() {
         _state.update { previous ->
-            previous.copy(selection = previous.selection.toggledAll(previous.items.map { it.id }))
+            previous.copy(selection = previous.selection.toggledAll(previous.gridItems.map { it.id }))
         }
     }
 
@@ -242,11 +273,17 @@ class OrganizeInboxViewModel(
                             items = if (excluded) {
                                 it.items.filterNot { item -> item.id in touched }
                             } else it.items,
+                            batchItems = if (excluded) {
+                                it.batchItems.filterNot { item -> item.id in touched }
+                            } else it.batchItems,
                             selection = it.selection - touched,
                             isBulkMutating = false,
                         )
                     }
-                    if (!excluded) refresh() else refreshSummary()
+                    if (!excluded) refresh() else {
+                        refreshSummary()
+                        leaveBatchIfDone()
+                    }
                     onDone()
                 }
                 .onFailure { error ->
@@ -276,10 +313,114 @@ class OrganizeInboxViewModel(
             }
     }
 
-    /** Selecciona el lote entero para que las barras de siempre actúen sobre él. */
+    /**
+     * Abre el lote: primero solo, con todas sus fotos marcadas, para ver de un
+     * vistazo si el agrupado acierta. Las barras de selección de siempre actúan
+     * sobre él; [setBatchScope] lo pone dentro de la bandeja para añadir más.
+     */
     fun selectSuggestion(suggestion: OrganizeSuggestion) {
-        _state.update { it.copy(selection = suggestion.assetIds.toSet(), showAllItems = true) }
-        loadMoveYearBreakdown()
+        revealJob?.cancel()
+        _state.update {
+            it.copy(
+                batch = suggestion,
+                batchItems = emptyList(),
+                isLoadingBatch = true,
+                batchScope = OrganizeBatchScope.Batch,
+                batchRevealId = null,
+                selection = suggestion.assetIds.toSet(),
+                showAllItems = true,
+            )
+        }
+        batchJob?.cancel()
+        batchJob = viewModelScope.launch { loadBatchItems(suggestion) }
+    }
+
+    /**
+     * Trae lo que sigue pendiente del lote. Lo que ya no lo está (movido o
+     * apartado desde otro sitio) sale también de la selección: si no, se
+     * contaría en "N seleccionadas" sin verse en ninguna parte.
+     */
+    private suspend fun loadBatchItems(suggestion: OrganizeSuggestion) {
+        suspendRunCatching { repository.batchItems(suggestion.assetIds) }
+            .onSuccess { list ->
+                if (_state.value.batch?.key != suggestion.key) return@onSuccess
+                val pending = list.mapTo(HashSet()) { it.id }
+                val stale = suggestion.assetIds.filterNot { it in pending }.toSet()
+                _state.update {
+                    it.copy(batchItems = list, isLoadingBatch = false, selection = it.selection - stale)
+                }
+                leaveBatchIfDone()
+            }
+            .onFailure { error ->
+                if (_state.value.batch?.key != suggestion.key) return@onFailure
+                // Un servidor sin el endpoint (o un fallo puntual): el lote se
+                // arma con lo que ya hay cargado de la bandeja, sin cambiar de vista.
+                val ids = suggestion.assetIds.toSet()
+                val local = _state.value.items.filter { item -> item.id in ids }
+                if (local.isNotEmpty()) {
+                    _state.update { it.copy(batchItems = local, isLoadingBatch = false) }
+                    return@onFailure
+                }
+                // Sin nada que enseñar aparte queda lo de antes: la bandeja con él marcado.
+                _state.update {
+                    it.copy(
+                        isLoadingBatch = false,
+                        batchScope = OrganizeBatchScope.Inbox,
+                        error = errorFactory.from(error, "No se pudo cargar el lote")
+                    )
+                }
+            }
+    }
+
+    /** Lote solo o bandeja entera; al pasar a la bandeja, la rejilla va al lote. */
+    fun setBatchScope(scope: OrganizeBatchScope) {
+        if (_state.value.batch == null || _state.value.batchScope == scope) return
+        _state.update { it.copy(batchScope = scope, batchRevealId = null) }
+        if (scope == OrganizeBatchScope.Inbox) revealBatchInInbox()
+    }
+
+    /**
+     * Carga páginas de la bandeja hasta que aparezca la foto más nueva del lote
+     * (con tope: un lote de hace años no debe bajarse la bandeja entera) y la
+     * deja en [OrganizeInboxUiState.batchRevealId] para que la rejilla vaya allí.
+     */
+    private fun revealBatchInInbox() {
+        val target = _state.value.batchItems.firstOrNull()?.id ?: return
+        revealJob?.cancel()
+        revealJob = viewModelScope.launch {
+            var pages = 0
+            while (_state.value.items.none { it.id == target } && pages < MAX_REVEAL_PAGES) {
+                // Una página en vuelo (el scroll de la rejilla) llega primero.
+                if (_state.value.isAppending) pageJob?.join()
+                val snapshot = _state.value
+                if (snapshot.items.any { it.id == target }) break
+                if (!snapshot.hasMore || snapshot.isInitialLoading) break
+                val cursor = snapshot.nextCursor ?: break
+                _state.update { it.copy(isAppending = true) }
+                val page = suspendRunCatching { repository.inbox(cursor = cursor) }.getOrNull()
+                if (page == null) {
+                    _state.update { it.copy(isAppending = false) }
+                    break
+                }
+                appendPage(page)
+                pages++
+            }
+            if (_state.value.items.any { it.id == target }) {
+                _state.update { it.copy(batchRevealId = target) }
+            }
+        }
+    }
+
+    fun consumeBatchReveal() {
+        _state.update { it.copy(batchRevealId = null) }
+    }
+
+    /** Con todo el lote ya movido o apartado no queda nada que ver: a los lotes. */
+    private fun leaveBatchIfDone() {
+        val snapshot = _state.value
+        if (snapshot.batch != null && !snapshot.isLoadingBatch && snapshot.batchItems.isEmpty()) {
+            showSuggestions()
+        }
     }
 
     fun showAllItems() {
@@ -287,7 +428,19 @@ class OrganizeInboxViewModel(
     }
 
     fun showSuggestions() {
-        _state.update { it.copy(showAllItems = false, selection = emptySet()) }
+        batchJob?.cancel()
+        revealJob?.cancel()
+        _state.update {
+            it.copy(
+                showAllItems = false,
+                selection = emptySet(),
+                batch = null,
+                batchItems = emptyList(),
+                isLoadingBatch = false,
+                batchScope = OrganizeBatchScope.Batch,
+                batchRevealId = null,
+            )
+        }
     }
 
     private fun refreshSummary() {
@@ -333,6 +486,9 @@ class OrganizeInboxViewModel(
                     _state.update {
                         it.copy(
                             items = if (partial) it.items else it.items.filterNot { item -> item.id in requested },
+                            batchItems = if (partial) it.batchItems else {
+                                it.batchItems.filterNot { item -> item.id in requested }
+                            },
                             // Lo apartado en la revisión sigue seleccionado,
                             // listo para mandarlo a otro sitio sin re-marcarlo.
                             selection = it.selection - requested,
@@ -341,7 +497,10 @@ class OrganizeInboxViewModel(
                             lastMoveSummary = outcome.takeIf { o -> o.yearBreakdown.isNotEmpty() },
                         )
                     }
-                    if (partial) refresh() else refreshSummaryAndSuggestions()
+                    if (partial) refresh() else {
+                        refreshSummaryAndSuggestions()
+                        leaveBatchIfDone()
+                    }
                     onComplete(outcome.moved)
                 }
                 .onFailure { error ->
@@ -359,7 +518,7 @@ class OrganizeInboxViewModel(
      *  album doesn't file them out of MobileBackup); we just clear the selection.
      *  [onComplete] receives the added items for local album-count fan-out. */
     fun bulkAddToAlbum(albumId: String, onComplete: (List<TimelineItem>) -> Unit = {}) {
-        val items = _state.value.items.filter { it.id in _state.value.selection }
+        val items = _state.value.knownItems.filter { it.id in _state.value.selection }
         val ids = items.map { it.id }
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         _state.update { it.copy(isBulkMutating = true, error = null) }
@@ -407,11 +566,13 @@ class OrganizeInboxViewModel(
                     _state.update {
                         it.copy(
                             items = it.items.filterNot { item -> item.id in moved },
+                            batchItems = it.batchItems.filterNot { item -> item.id in moved },
                             selection = emptySet(),
                             isBulkMutating = false
                         )
                     }
                     refreshSummaryAndSuggestions()
+                    leaveBatchIfDone()
                     onResult(null)
                 }
                 .onFailure { error ->

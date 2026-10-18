@@ -385,7 +385,9 @@ fun FolderPickerDialog(
                     )
                 },
                 enabled = canSubmit,
-                isLoading = isSubmitting
+                // Crear la carpeta puede ocupar al mismo ViewModel que mueve
+                // (mover carpetas en bloque): eso no es "moviendo".
+                isLoading = isSubmitting && !creatingFolder
             )
         }
     }
