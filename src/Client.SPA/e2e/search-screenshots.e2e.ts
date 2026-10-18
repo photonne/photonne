@@ -19,10 +19,10 @@ const pages: [string, string, ((page: Page) => Promise<void>)?][] = [
 	],
 	['organize', '/organize'],
 	[
-		'organize-review',
+		'organize-batch',
 		'/organize',
 		async (page) => {
-			await page.getByRole('button', { name: 'Revisar y mover «Roma»' }).click();
+			await page.getByRole('button', { name: 'Ver el lote «Roma»' }).click();
 		}
 	],
 	[

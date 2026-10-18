@@ -75,24 +75,42 @@ test('moves the selection to a folder and takes it out of the inbox', async ({ p
 	]);
 });
 
-test('reviews a suggestion, leaves a photo out and moves the rest', async ({ page }) => {
+test('a batch opens on its own photos, chosen, and takes more from the whole inbox', async ({
+	page
+}) => {
 	const state = await open(page, '/organize');
 
-	await page.getByRole('button', { name: 'Revisar y mover «Roma»' }).click();
-	const review = page.getByRole('dialog', { name: 'Roma' });
-	await expect(review.getByText('Se moverán 6 de 6.')).toBeVisible();
-	await review.getByRole('checkbox', { name: 'Foto 1 de 2026' }).uncheck();
-	await expect(review.getByText('Se moverán 5 de 6.')).toBeVisible();
-	await review.getByRole('button', { name: 'Elegir destino' }).click();
+	// The whole card opens the batch.
+	await page.getByRole('article', { name: 'Roma' }).click();
+	await expect(cells(page)).toHaveCount(6);
+	await expect(page.getByRole('toolbar', { name: '6 seleccionados' })).toBeVisible();
+	const left = await cells(page).nth(0).getAttribute('data-id');
+	await select(page, 0);
+	await expect(page.getByRole('toolbar', { name: '5 seleccionados' })).toBeVisible();
 
+	await page.getByRole('radio', { name: 'Toda la bandeja' }).check();
+	// The choice stays, and the view lands on the batch: the photo left out
+	// shows, unchosen, among its neighbours.
+	await expect(page.locator(`[data-id="${left}"]`)).toBeInViewport();
+	await expect(page.locator(`[data-id="${left}"]`)).toHaveAttribute('aria-pressed', 'false');
+	// A photo of the same trip the batch missed.
+	const added = '2026-08-6';
+	await page.locator(`[data-id="${added}"]`).click({ modifiers: ['ControlOrMeta'] });
+	await expect(page.getByRole('toolbar', { name: '6 seleccionados' })).toBeVisible();
+
+	await page.getByRole('button', { name: 'Mover a una carpeta' }).click();
 	const picker = page.getByRole('dialog', { name: 'Mover a una carpeta' });
 	await picker.getByText('Camera', { exact: true }).click();
 	await picker.getByRole('button', { name: 'Mover', exact: true }).click();
 
-	await expect(page.getByText('5 movidas a «Camera»')).toBeVisible();
-	expect(state.moves?.[0].assetIds).toHaveLength(5);
-	expect(state.moves?.[0].assetIds).not.toContain('2026-08-0');
-	// The suggestion now offers only what is left.
+	await expect(page.getByText('6 movidas a «Camera»')).toBeVisible();
+	expect(state.moves?.[0].assetIds).toHaveLength(6);
+	expect(state.moves?.[0].assetIds).toContain(added);
+	expect(state.moves?.[0].assetIds).not.toContain(left);
+	// One photo of the batch is left, so it stays open on what remains.
+	await page.getByRole('radio', { name: 'Solo el lote' }).check();
+	await expect(cells(page)).toHaveCount(1);
+	await page.getByRole('button', { name: 'Volver a la bandeja' }).click();
 	await expect(
 		page.getByRole('article', { name: 'Roma' }).getByText('Viaje · 1 foto')
 	).toBeVisible();

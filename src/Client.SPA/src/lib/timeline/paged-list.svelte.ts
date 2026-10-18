@@ -72,6 +72,11 @@ export class PagedList {
 		}
 	}
 
+	/** More pages to load (the end of the list isn't on screen yet). */
+	get hasMore() {
+		return this.#hasMore;
+	}
+
 	async more() {
 		if (!this.#hasMore || this.#loading) return;
 		const generation = this.#generation;
