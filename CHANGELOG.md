@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.6.0](https://github.com/photonne/photonne/compare/server-v2.5.0...server-v2.6.0) (2026-10-18)
+
+
+### Novedades
+
+* **server:** Duración y orientación a elegir en los vídeos resumen ([6101ea6](https://github.com/photonne/photonne/commit/6101ea642583be1e115fdaafa08fb97d27c3687b))
+* **server:** Vídeos resumen bajo demanda de un año o de un álbum ([692becd](https://github.com/photonne/photonne/commit/692becdd2a7b076d7bf273bbc393152e15b7c21c))
+* **spa:** Crear un vídeo resumen del año o de un álbum ([70c8714](https://github.com/photonne/photonne/commit/70c8714e757c03b119a3c5eeb0b014ba786b3b91))
+* **spa:** Elegir duración y orientación del vídeo resumen ([aa86277](https://github.com/photonne/photonne/commit/aa8627715be733ca061eb370c7f87f137bfc24c6))
+
 ## [2.5.0](https://github.com/photonne/photonne/compare/server-v2.4.0...server-v2.5.0) (2026-10-18)
 
 
