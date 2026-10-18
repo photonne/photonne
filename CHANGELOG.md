@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.0](https://github.com/photonne/photonne/compare/server-v2.4.0...server-v2.5.0) (2026-10-18)
+
+
+### Novedades
+
+* **server:** Las fotos pendientes de un lote propuesto de Organizar ([6a1ca56](https://github.com/photonne/photonne/commit/6a1ca562bb0fae2fa590fd22c6b1aaa4d9a49d98))
+* **spa:** Un lote propuesto se abre solo y deja añadirle fotos de la bandeja ([dd15bc8](https://github.com/photonne/photonne/commit/dd15bc815498134de456b255cc8c8175d5597f34))
+
 ## [2.4.0](https://github.com/photonne/photonne/compare/server-v2.3.0...server-v2.4.0) (2026-10-17)
 
 
