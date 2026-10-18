@@ -8,6 +8,9 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Photonne.Server.Api.Features.VideoSummaries.Rendering;
 
+/// <summary>The summary's frame, in pixels: 1920×1080 or, for a portrait summary, 1080×1920.</summary>
+public readonly record struct Frame(int Width, int Height);
+
 /// <summary>A planned clip, resolved to files on disk.</summary>
 /// <param name="FallbackImagePath">For photos: a pre-oriented thumbnail to use
 /// when the original can't be decoded.</param>
@@ -18,12 +21,12 @@ public sealed record RenderClip(
 /// Cuts planned clips out of their sources and joins them into one MP4.
 ///
 /// Every clip is first rendered to a segment with exactly the same format —
-/// 1920×1080, 30 fps, H.264 yuv420p, AAC stereo 48 kHz — so the segments can be
+/// the <see cref="Frame"/>, 30 fps, H.264 yuv420p, AAC stereo 48 kHz — so the segments can be
 /// joined with the concat demuxer as a stream copy instead of a second encode.
 /// Normalising per clip is also what makes a year of mixed material work:
 /// portrait and landscape, 30 and 60 fps, HDR iPhone clips next to SDR ones.
 ///
-/// * Anything not 16:9 is fitted over a blurred, zoomed copy of itself
+/// * Anything not the frame's shape is fitted over a blurred, zoomed copy of itself
 ///   instead of black bars.
 /// * HDR (PQ/HLG) is tone-mapped to SDR; played as-is it looks washed out.
 /// * Audio is loudness-normalised per clip so a quiet clip after a loud one
@@ -37,8 +40,6 @@ public sealed record RenderClip(
 /// </summary>
 public sealed class SummaryRenderer
 {
-    public const int Width = 1920;
-    public const int Height = 1080;
     private const int Fps = 30;
     private const double Fade = 0.3;
 
@@ -55,6 +56,7 @@ public sealed class SummaryRenderer
     /// is where the indexer reads a video's capture date from.</param>
     public async Task<int> RenderAsync(
         IReadOnlyList<RenderClip> clips,
+        Frame f,
         string outputPath,
         string title,
         DateTime creationTimeUtc,
@@ -75,8 +77,8 @@ public sealed class SummaryRenderer
             try
             {
                 error = clip.IsVideo
-                    ? await RenderVideoSegmentAsync(clip, segment, ct)
-                    : await RenderPhotoSegmentAsync(clip, segment, i, workDirectory, ct);
+                    ? await RenderVideoSegmentAsync(clip, segment, f, ct)
+                    : await RenderPhotoSegmentAsync(clip, segment, i, workDirectory, f, ct);
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
@@ -115,20 +117,20 @@ public sealed class SummaryRenderer
         return segments.Count;
     }
 
-    private static async Task<string?> RenderVideoSegmentAsync(RenderClip clip, string output, CancellationToken ct)
+    private static async Task<string?> RenderVideoSegmentAsync(RenderClip clip, string output, Frame f, CancellationToken ct)
     {
         var probe = await FfmpegProcess.ProbeAsync(clip.SourcePath, ct);
         if (probe is not { HasVideo: true }) return "no video stream";
 
-        var error = await RunVideoSegmentAsync(clip, output, probe, toneMap: probe.IsHdr, ct);
+        var error = await RunVideoSegmentAsync(clip, output, probe, f, toneMap: probe.IsHdr, ct);
         // zscale isn't in every ffmpeg build. Grey colours beat a missing clip.
         if (error != null && probe.IsHdr && error.Contains("zscale", StringComparison.OrdinalIgnoreCase))
-            error = await RunVideoSegmentAsync(clip, output, probe, toneMap: false, ct);
+            error = await RunVideoSegmentAsync(clip, output, probe, f, toneMap: false, ct);
         return error;
     }
 
     private static Task<string?> RunVideoSegmentAsync(
-        RenderClip clip, string output, MediaProbe probe, bool toneMap, CancellationToken ct)
+        RenderClip clip, string output, MediaProbe probe, Frame f, bool toneMap, CancellationToken ct)
     {
         var length = Seconds(clip.Length);
         var hdrToSdr = toneMap
@@ -136,7 +138,7 @@ public sealed class SummaryRenderer
             : "";
         var audioSource = probe.HasAudio ? "[0:a]" : "[1:a]";
         var graph =
-            $"[0:v]{hdrToSdr}{FitFilter("v")},fps={Fps},format=yuv420p,{VideoFades(clip.Length)}[v];" +
+            $"[0:v]{hdrToSdr}{FitFilter("v", f)},fps={Fps},format=yuv420p,{VideoFades(clip.Length)}[v];" +
             $"{audioSource}{AudioChain(clip.Length, normalise: probe.HasAudio)}[a]";
 
         return FfmpegProcess.RunFfmpegAsync(
@@ -150,11 +152,11 @@ public sealed class SummaryRenderer
     }
 
     private static async Task<string?> RenderPhotoSegmentAsync(
-        RenderClip clip, string output, int index, string workDirectory, CancellationToken ct)
+        RenderClip clip, string output, int index, string workDirectory, Frame f, CancellationToken ct)
     {
         var frame = Path.Combine(workDirectory, $"frame-{index:00000}.jpg");
-        if (!await ComposeFrameAsync(clip.SourcePath, frame, ct)
-            && (clip.FallbackImagePath == null || !await ComposeFrameAsync(clip.FallbackImagePath, frame, ct)))
+        if (!await ComposeFrameAsync(clip.SourcePath, frame, f, ct)
+            && (clip.FallbackImagePath == null || !await ComposeFrameAsync(clip.FallbackImagePath, frame, f, ct)))
         {
             return "could not decode the photo";
         }
@@ -169,8 +171,8 @@ public sealed class SummaryRenderer
         var length = Seconds(clip.Length);
         // Upscaled before zoompan: it moves in whole pixels, which judders at 1080p.
         var graph =
-            $"[0:v]scale={Width * 2}:{Height * 2},zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'" +
-            $":d={frames}:s={Width}x{Height}:fps={Fps},setsar=1,format=yuv420p,{VideoFades(clip.Length)}[v];" +
+            $"[0:v]scale={f.Width * 2}:{f.Height * 2},zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'" +
+            $":d={frames}:s={f.Width}x{f.Height}:fps={Fps},setsar=1,format=yuv420p,{VideoFades(clip.Length)}[v];" +
             $"[1:a]{AudioChain(clip.Length, normalise: false)}[a]";
 
         try
@@ -192,22 +194,22 @@ public sealed class SummaryRenderer
 
     /// <summary>
     /// Draws the photo, upright, fitted over a blurred fill of itself on a
-    /// 1920×1080 canvas. Done here rather than in ffmpeg because ffmpeg ignores
+    /// frame-sized canvas. Done here rather than in ffmpeg because ffmpeg ignores
     /// EXIF orientation on stills and can't read HEIC or RAW; ImageSharp
     /// (or ImageMagick, for those) handles both, exactly as the thumbnails do.
     /// </summary>
-    private static async Task<bool> ComposeFrameAsync(string source, string output, CancellationToken ct)
+    private static async Task<bool> ComposeFrameAsync(string source, string output, Frame f, CancellationToken ct)
     {
         try
         {
-            using var photo = await LoadUprightAsync(source, ct);
+            using var photo = await LoadUprightAsync(source, f, ct);
             using var canvas = photo.Clone(x => x
-                .Resize(new ResizeOptions { Size = new Size(Width / 8, Height / 8), Mode = ResizeMode.Crop })
+                .Resize(new ResizeOptions { Size = new Size(f.Width / 8, f.Height / 8), Mode = ResizeMode.Crop })
                 .GaussianBlur(6)
-                .Resize(Width, Height)
+                .Resize(f.Width, f.Height)
                 .Brightness(0.7f));
-            photo.Mutate(x => x.Resize(new ResizeOptions { Size = new Size(Width, Height), Mode = ResizeMode.Max }));
-            canvas.Mutate(x => x.DrawImage(photo, new Point((Width - photo.Width) / 2, (Height - photo.Height) / 2), 1f));
+            photo.Mutate(x => x.Resize(new ResizeOptions { Size = new Size(f.Width, f.Height), Mode = ResizeMode.Max }));
+            canvas.Mutate(x => x.DrawImage(photo, new Point((f.Width - photo.Width) / 2, (f.Height - photo.Height) / 2), 1f));
             await canvas.SaveAsJpegAsync(output, new JpegEncoder { Quality = 92 }, ct);
             return true;
         }
@@ -218,14 +220,14 @@ public sealed class SummaryRenderer
         }
     }
 
-    private static async Task<Image<Rgb24>> LoadUprightAsync(string source, CancellationToken ct)
+    private static async Task<Image<Rgb24>> LoadUprightAsync(string source, Frame f, CancellationToken ct)
     {
         var extension = Path.GetExtension(source);
         if (MediaFileTypes.IsHeic(extension) || MediaFileTypes.IsRaw(extension))
         {
             using var magick = RawImageLoader.Load(source);
             magick.AutoOrient();
-            magick.Resize(new MagickGeometry(Width, Height));
+            magick.Resize(new MagickGeometry((uint)f.Width, (uint)f.Height));
             magick.Format = MagickFormat.Jpeg;
             return Image.Load<Rgb24>(magick.ToByteArray());
         }
@@ -237,11 +239,11 @@ public sealed class SummaryRenderer
 
     /// <summary>Fits <c>[in]</c> into the frame over a blurred fill of itself.
     /// The fill is blurred at a quarter of the size: same look, a fraction of the cost.</summary>
-    private static string FitFilter(string label) =>
+    private static string FitFilter(string label, Frame f) =>
         $"setsar=1,split=2[{label}bg][{label}fg];" +
-        $"[{label}bg]scale={Width / 4}:{Height / 4}:force_original_aspect_ratio=increase,crop={Width / 4}:{Height / 4}," +
-        $"boxblur=10:2,eq=brightness=-0.08,scale={Width}:{Height},setsar=1[{label}bgb];" +
-        $"[{label}fg]scale={Width}:{Height}:force_original_aspect_ratio=decrease,setsar=1[{label}fgs];" +
+        $"[{label}bg]scale={f.Width / 4}:{f.Height / 4}:force_original_aspect_ratio=increase,crop={f.Width / 4}:{f.Height / 4}," +
+        $"boxblur=10:2,eq=brightness=-0.08,scale={f.Width}:{f.Height},setsar=1[{label}bgb];" +
+        $"[{label}fg]scale={f.Width}:{f.Height}:force_original_aspect_ratio=decrease,setsar=1[{label}fgs];" +
         $"[{label}bgb][{label}fgs]overlay=(W-w)/2:(H-h)/2";
 
     private static string VideoFades(double length) =>

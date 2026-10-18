@@ -15069,6 +15069,19 @@
           },
           "includePhotos": {
             "type": "boolean"
+          },
+          "orientation": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "durationMinutes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -17448,6 +17461,8 @@
           "albumId",
           "title",
           "includePhotos",
+          "orientation",
+          "durationMinutes",
           "status",
           "progress",
           "error",
@@ -17484,6 +17499,13 @@
           },
           "includePhotos": {
             "type": "boolean"
+          },
+          "orientation": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
           },
           "status": {
             "type": "string"

@@ -22,7 +22,7 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
 
     private sealed record Summary(
         Guid Id, string Source, int? Year, Guid? AlbumId, string Title, bool IncludePhotos,
-        string Status, double Progress, string? Error, Guid? AssetId, int ClipCount);
+        string Orientation, int DurationMinutes, string Status, double Progress, string? Error, Guid? AssetId, int ClipCount);
 
     private sealed record YearRow(int Year, int Videos, int Photos);
 
@@ -42,7 +42,8 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
     /// <summary>An asset row; with <paramref name="realFile"/>, a real clip or
     /// photo on disk behind it so it can actually be rendered.</summary>
     private async Task<Guid> CreateAssetAsync(
-        TestUser owner, string fileName, Guid folderId, DateTime capturedAt, AssetType type, bool realFile = false)
+        TestUser owner, string fileName, Guid folderId, DateTime capturedAt, AssetType type, bool realFile = false,
+        bool portrait = false)
     {
         var virtualPath = $"/assets/users/{owner.Username}/{fileName}";
         if (realFile)
@@ -50,11 +51,11 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
             var physical = Path.Combine(Factory.InternalAssetsPath, "users", owner.Username, fileName);
             Directory.CreateDirectory(Path.GetDirectoryName(physical)!);
             if (type == AssetType.Video)
-                await Ffmpeg("-f", "lavfi", "-i", "testsrc=size=640x360:rate=30:duration=3",
+                await Ffmpeg("-f", "lavfi", "-i", $"testsrc=size={(portrait ? "360x640" : "640x360")}:rate=30:duration=3",
                     "-f", "lavfi", "-i", "sine=frequency=330:duration=3",
                     "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", physical);
             else
-                await Ffmpeg("-f", "lavfi", "-i", "testsrc=size=400x300", "-frames:v", "1", physical);
+                await Ffmpeg("-f", "lavfi", "-i", $"testsrc=size={(portrait ? "300x400" : "400x300")}", "-frames:v", "1", physical);
         }
 
         return await WithDbContextAsync(async db =>
@@ -152,6 +153,64 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
 
         var list = (await client.GetFromJsonAsync<List<Summary>>("/api/video-summaries"))!;
         Assert.Equal(requested.Id, Assert.Single(list).Id);
+    }
+
+    [Fact]
+    public async Task PortraitSummary_TakesOnlyPortraitMaterial_InAPortraitFrame()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        await CreateAssetAsync(alice, "tall1.mp4", folderId, In2023(4, 1), AssetType.Video, realFile: true, portrait: true);
+        await CreateAssetAsync(alice, "wide.mp4", folderId, In2023(4, 2), AssetType.Video, realFile: true);
+        await CreateAssetAsync(alice, "tall2.mp4", folderId, In2023(4, 3), AssetType.Video, realFile: true, portrait: true);
+        await CreateAssetAsync(alice, "tall.jpg", folderId, In2023(4, 4), AssetType.Image, realFile: true, portrait: true);
+        await CreateAssetAsync(alice, "wide.jpg", folderId, In2023(4, 5), AssetType.Image, realFile: true);
+
+        var response = await client.PostAsJsonAsync("/api/video-summaries",
+            new { source = "year", year = 2023, includePhotos = true, orientation = "portrait", durationMinutes = 1 });
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var requested = (await response.Content.ReadFromJsonAsync<Summary>())!;
+        Assert.Equal("portrait", requested.Orientation);
+        Assert.Equal(1, requested.DurationMinutes);
+
+        await RunGeneratorAsync(requested.Id);
+
+        var done = (await client.GetFromJsonAsync<Summary>($"/api/video-summaries/{requested.Id}"))!;
+        Assert.True(done.Status == "completed", done.Error);
+        // Two portrait videos and the portrait photo; the landscape ones stay out.
+        Assert.Equal(3, done.ClipCount);
+        var physical = Path.Combine(Factory.InternalAssetsPath, "users", alice.Username, "Recuerdos", "Resumen 2023.mp4");
+        var probe = await Photonne.Server.Api.Features.VideoSummaries.Rendering.FfmpegProcess
+            .ProbeAsync(physical, CancellationToken.None);
+        Assert.Equal(1080, probe!.DisplayWidth);
+        Assert.Equal(1920, probe.DisplayHeight);
+    }
+
+    [Fact]
+    public async Task Options_AreValidated()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        await CreateAssetAsync(alice, "a.mp4", folderId, In2023(1, 1), AssetType.Video);
+        await CreateAssetAsync(alice, "b.mp4", folderId, In2023(1, 2), AssetType.Video);
+
+        async Task<string?> Code(object body)
+        {
+            var response = await client.PostAsJsonAsync("/api/video-summaries", body);
+            return response.StatusCode == HttpStatusCode.BadRequest
+                ? (await response.Content.ReadFromJsonAsync<ApiErrorBody>())!.Code
+                : null;
+        }
+
+        Assert.Equal("invalid_duration", await Code(new { source = "year", year = 2023, durationMinutes = 0 }));
+        Assert.Equal("invalid_duration", await Code(new { source = "year", year = 2023, durationMinutes = 11 }));
+        Assert.Equal("invalid_orientation", await Code(new { source = "year", year = 2023, orientation = "square" }));
+
+        // Defaults: every shape, five minutes.
+        var defaults = await client.PostAsJsonAsync("/api/video-summaries", new { source = "year", year = 2023 });
+        var summary = (await defaults.Content.ReadFromJsonAsync<Summary>())!;
+        Assert.Equal("all", summary.Orientation);
+        Assert.Equal(5, summary.DurationMinutes);
     }
 
     [Fact]

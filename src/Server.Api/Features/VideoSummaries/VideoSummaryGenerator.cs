@@ -16,9 +16,6 @@ public sealed class VideoSummaryGenerator
 {
     public const string FolderName = "Recuerdos";
 
-    /// <summary>Upper bound for a summary's length.</summary>
-    public const double TargetSeconds = 300;
-
     private readonly ApplicationDbContext _db;
     private readonly VideoSummarySources _sources;
     private readonly SettingsService _settings;
@@ -127,11 +124,29 @@ public sealed class VideoSummaryGenerator
 
         if (!summary.IncludePhotos) query = query.Where(a => a.Type == AssetType.Video);
         var material = await query
-            .Select(a => new { a.Id, a.Type, a.CapturedAt, a.FullPath, a.Duration })
+            .Select(a => new
+            {
+                a.Id,
+                a.Type,
+                a.CapturedAt,
+                a.FullPath,
+                a.Duration,
+                // The thumbnails are drawn upright (EXIF orientation, a phone's
+                // rotation flag), so their shape is the shape as seen.
+                ThumbnailRatio = a.Thumbnails
+                    .Where(t => t.Size == ThumbnailSize.Small && t.Height > 0)
+                    .Select(t => (double?)t.Width / t.Height)
+                    .FirstOrDefault(),
+                ExifWidth = a.Exif != null ? a.Exif.Width : null,
+                ExifHeight = a.Exif != null ? a.Exif.Height : null,
+                ExifOrientation = a.Exif != null ? a.Exif.Orientation : null,
+            })
             .ToListAsync(ct);
+        var filter = summary.Orientation;
 
         // Durations: a planner needs them and the indexer doesn't record them,
-        // so probe what's missing and keep it on the asset for next time.
+        // so probe what's missing and keep it on the asset for next time. A
+        // video without a thumbnail yet gets probed for its shape too.
         var candidates = new List<SummaryCandidate>(material.Count);
         var paths = new Dictionary<Guid, string>(material.Count);
         var videos = material.Count(m => m.Type == AssetType.Video);
@@ -141,19 +156,27 @@ public sealed class VideoSummaryGenerator
             ct.ThrowIfCancellationRequested();
             var path = await _settings.ResolvePhysicalPathAsync(item.FullPath);
             if (!File.Exists(path)) continue;
-            paths[item.Id] = path;
 
             if (item.Type != AssetType.Video)
             {
+                var ratio = item.ThumbnailRatio
+                    ?? SummaryOrientation.PhotoAspectRatio(item.ExifWidth, item.ExifHeight, item.ExifOrientation);
+                if (ratio == null && filter != VideoSummaryOrientation.All)
+                    ratio = await SummaryOrientation.ReadPhotoAspectRatioAsync(path, ct);
+                if (!SummaryOrientation.Matches(filter, ratio)) continue;
+                paths[item.Id] = path;
                 candidates.Add(new SummaryCandidate(item.Id, false, item.CapturedAt, 0));
                 continue;
             }
 
             var duration = item.Duration?.TotalSeconds;
-            if (duration is not > 0)
+            var shape = item.ThumbnailRatio;
+            if (duration is not > 0 || (shape == null && filter != VideoSummaryOrientation.All))
             {
-                duration = (await FfmpegProcess.ProbeAsync(path, ct))?.DurationSeconds ?? 0;
-                if (duration > 0)
+                var probe = await FfmpegProcess.ProbeAsync(path, ct);
+                shape ??= probe?.AspectRatio;
+                duration = duration is > 0 ? duration : probe?.DurationSeconds ?? 0;
+                if (duration > 0 && item.Duration is null)
                 {
                     var span = TimeSpan.FromSeconds(duration.Value);
                     await _db.Assets.Where(a => a.Id == item.Id)
@@ -161,14 +184,15 @@ public sealed class VideoSummaryGenerator
                 }
                 await SetProgressAsync(summary, 0.1 * ++probed / Math.Max(1, videos), ct);
             }
+            if (!SummaryOrientation.Matches(filter, shape)) continue;
+            paths[item.Id] = path;
             candidates.Add(new SummaryCandidate(item.Id, true, item.CapturedAt, duration.Value));
         }
 
-        var plan = SummaryPlanner.Plan(candidates, summary.IncludePhotos, new SummaryPlanOptions { TargetSeconds = TargetSeconds });
+        var plan = SummaryPlanner.Plan(candidates, summary.IncludePhotos,
+            new SummaryPlanOptions { TargetSeconds = summary.DurationSeconds });
         if (plan.Count < 2)
-            throw new VideoSummaryException(summary.IncludePhotos
-                ? "No hay suficientes vídeos ni fotos para montar un resumen."
-                : "No hay suficientes vídeos para montar un resumen. Prueba a incluir las fotos.");
+            throw new VideoSummaryException(NotEnoughMessage(summary.IncludePhotos, filter));
 
         var photoIds = plan.Where(c => !c.IsVideo).Select(c => c.AssetId).ToList();
         var fallbacks = await _db.AssetThumbnails
@@ -184,8 +208,9 @@ public sealed class VideoSummaryGenerator
         var creationUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(capturedAt, DateTimeKind.Unspecified), tz);
 
         var rendered = Path.Combine(workDirectory, "summary.mp4");
+        var (width, height) = SummaryOrientation.Frame(filter);
         var clipCount = await _renderer.RenderAsync(
-            clips, rendered, summary.Title, creationUtc, workDirectory,
+            clips, new Frame(width, height), rendered, summary.Title, creationUtc, workDirectory,
             p => SetProgressAsync(summary, 0.1 + 0.85 * p, ct),
             ct);
         summary.ClipCount = clipCount;
@@ -276,6 +301,21 @@ public sealed class VideoSummaryGenerator
         {
             _logger.LogDebug(ex, "Could not record progress for summary {SummaryId}", summary.Id);
         }
+    }
+
+    /// <summary>Why there's nothing to cut, with what the user could change.</summary>
+    internal static string NotEnoughMessage(bool includePhotos, VideoSummaryOrientation orientation)
+    {
+        var what = orientation switch
+        {
+            VideoSummaryOrientation.Landscape => includePhotos ? "vídeos ni fotos horizontales" : "vídeos horizontales",
+            VideoSummaryOrientation.Portrait => includePhotos ? "vídeos ni fotos verticales" : "vídeos verticales",
+            _ => includePhotos ? "vídeos ni fotos" : "vídeos",
+        };
+        var hint = !includePhotos ? " Prueba a incluir las fotos."
+            : orientation != VideoSummaryOrientation.All ? " Prueba con todas las orientaciones."
+            : "";
+        return $"No hay suficientes {what} para montar un resumen.{hint}";
     }
 
     internal static string FileNameFor(string title)

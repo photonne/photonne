@@ -7,7 +7,14 @@ namespace Photonne.Server.Api.Features.VideoSummaries.Rendering;
 
 /// <summary>What the renderer needs to know about a source video.</summary>
 /// <param name="IsHdr">PQ or HLG transfer — needs tone mapping or it comes out grey.</param>
-public sealed record MediaProbe(double DurationSeconds, bool HasVideo, bool HasAudio, bool IsHdr);
+/// <param name="DisplayWidth">Width as played, after the rotation phones record
+/// portrait video with (stored landscape, flagged to be turned). 0 when unknown.</param>
+public sealed record MediaProbe(
+    double DurationSeconds, bool HasVideo, bool HasAudio, bool IsHdr, int DisplayWidth = 0, int DisplayHeight = 0)
+{
+    /// <summary>Width over height as played; null when unknown.</summary>
+    public double? AspectRatio => DisplayWidth > 0 && DisplayHeight > 0 ? (double)DisplayWidth / DisplayHeight : null;
+}
 
 /// <summary>
 /// Runs ffmpeg/ffprobe as child processes. Arguments go through
@@ -43,7 +50,7 @@ public static class FfmpegProcess
             new[]
             {
                 "-v", "error",
-                "-show_entries", "format=duration:stream=codec_type,color_transfer,duration",
+                "-show_entries", "format=duration:stream=codec_type,color_transfer,duration,width,height:stream_tags=rotate:stream_side_data=rotation",
                 "-of", "json",
                 path,
             },
@@ -63,6 +70,7 @@ public static class FfmpegProcess
             }
 
             bool hasVideo = false, hasAudio = false, isHdr = false;
+            int width = 0, height = 0;
             if (root.TryGetProperty("streams", out var streams))
             {
                 foreach (var stream in streams.EnumerateArray())
@@ -71,7 +79,11 @@ public static class FfmpegProcess
                     if (type == "audio") hasAudio = true;
                     if (type != "video") continue;
 
+                    if (hasVideo) continue; // the first video stream is the picture; others are covers
                     hasVideo = true;
+                    width = stream.TryGetProperty("width", out var w) && w.ValueKind == JsonValueKind.Number ? w.GetInt32() : 0;
+                    height = stream.TryGetProperty("height", out var h) && h.ValueKind == JsonValueKind.Number ? h.GetInt32() : 0;
+                    if (Math.Abs(Rotation(stream)) % 180 == 90) (width, height) = (height, width);
                     var transfer = stream.TryGetProperty("color_transfer", out var c) ? c.GetString() : null;
                     if (transfer is "smpte2084" or "arib-std-b67") isHdr = true;
                     if (duration <= 0 && stream.TryGetProperty("duration", out var sd))
@@ -79,12 +91,30 @@ public static class FfmpegProcess
                 }
             }
 
-            return new MediaProbe(duration, hasVideo, hasAudio, isHdr);
+            return new MediaProbe(duration, hasVideo, hasAudio, isHdr, width, height);
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    /// <summary>Degrees the stream is turned on playback: the display matrix
+    /// side data on current ffmpeg, the legacy "rotate" tag on older files.</summary>
+    private static int Rotation(JsonElement stream)
+    {
+        if (stream.TryGetProperty("side_data_list", out var sideData))
+        {
+            foreach (var item in sideData.EnumerateArray())
+            {
+                if (item.TryGetProperty("rotation", out var r) && r.ValueKind == JsonValueKind.Number)
+                    return (int)Math.Round(r.GetDouble());
+            }
+        }
+        if (stream.TryGetProperty("tags", out var tags) && tags.TryGetProperty("rotate", out var tag)
+            && int.TryParse(tag.GetString(), out var degrees))
+            return degrees;
+        return 0;
     }
 
     private static double ParseSeconds(string? value) =>
