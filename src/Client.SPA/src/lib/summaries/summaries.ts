@@ -3,6 +3,9 @@ import type { VideoSummaryResponse } from '#lib/api/index.js';
 /** What a summary video is made from: a calendar year or an album. */
 export type SummarySource = { kind: 'year'; year: number } | { kind: 'album'; albumId: string };
 
+/** Per-user setting: "true" to get the year's summary at the end of every December. */
+export const AUTO_YEAR_KEY = 'VideoSummarySettings.AutoYear';
+
 /** How often the list is re-read while something renders. */
 export const POLL_MS = 3000;
 
@@ -103,4 +106,11 @@ export function requestBody(source: SummarySource, options: SummaryOptions) {
 /** Whole percent for display, 0–100. */
 export function percent(summary: VideoSummaryResponse): number {
 	return Math.round(Math.min(1, Math.max(0, summary.progress)) * 100);
+}
+
+/** The summaries with a video to watch, most recently finished first. */
+export function finished(summaries: readonly VideoSummaryResponse[] | undefined) {
+	return (summaries ?? [])
+		.filter((s) => s.status === 'completed' && s.assetId)
+		.sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
 }

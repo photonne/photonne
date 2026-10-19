@@ -396,7 +396,8 @@ const nightly: SettingsSection = {
 			fields: [
 				bool('NightlyTaskSettings.FaceClustering.Enabled', m.ops_set_nightly_clustering, true),
 				bool('NightlyTaskSettings.TrashCleanup.Enabled', m.ops_set_nightly_trash, false),
-				bool('NightlyTaskSettings.IndexingCoverage.Enabled', m.ops_set_nightly_coverage, false)
+				bool('NightlyTaskSettings.IndexingCoverage.Enabled', m.ops_set_nightly_coverage, false),
+				bool('NightlyTaskSettings.YearSummaries.Enabled', m.ops_set_nightly_year_summaries, true)
 			]
 		}
 	]

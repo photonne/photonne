@@ -14,6 +14,8 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import { ICON_MOVIE } from '#lib/summaries/icons.js';
 	import VideoSummaryDialog from '#lib/summaries/VideoSummaryDialog.svelte';
+	import { getVideoSummariesOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import { finished } from '#lib/summaries/summaries.js';
 
 	const feed = createQuery(memoryFeedOptions);
 	// "On this day" straight from the photos: what Recuerdos shows before the
@@ -25,6 +27,10 @@
 	const todayAssets = $derived(hasToday ? [] : (onThisDay.data ?? []));
 
 	let summarising = $state(false);
+
+	// The summary videos, made by hand or every December: memories too.
+	const summaries = createQuery(() => getVideoSummariesOptions());
+	const summaryVideos = $derived(finished(summaries.data));
 
 	const titles: Record<MemoryBlock, () => string> = {
 		today: m.memories_block_today,
@@ -89,6 +95,24 @@
 				</ul>
 			</section>
 		{/each}
+	{/if}
+
+	{#if summaryVideos.length > 0}
+		<section aria-labelledby="block-summaries">
+			<SectionTitle id="block-summaries" title={m.summaries_section()} />
+			<ul class="cards" role="list">
+				{#each summaryVideos as summary (summary.id)}
+					<li>
+						<MemoryCard
+							href={appHref(`/videos?asset=${summary.assetId}`)}
+							title={summary.title}
+							subtitle={m.summaries_card_subtitle({ count: summary.clipCount })}
+							coverAssetId={summary.assetId!}
+						/>
+					</li>
+				{/each}
+			</ul>
+		</section>
 	{/if}
 </div>
 

@@ -2,6 +2,22 @@
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"summaries_action_album": "Crear vídeo resumen",
 	"summaries_action_year": "Vídeo resumen del año",
+	"summaries_auto_year": "Crear el resumen del año cada diciembre",
+	"summaries_auto_year_hint": "Al final de diciembre se monta solo, con las opciones de la última vez, y te avisamos.",
+	"summaries_card_subtitle": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Vídeo · {countFormatted} momento",
+				"countPlural=other": "Vídeo · {countFormatted} momentos"
+			}
+		}
+	],
 	"summaries_close": "Cerrar",
 	"summaries_create": "Crear vídeo",
 	"summaries_duration": "Duración máxima",
@@ -93,6 +109,7 @@
 	"summaries_review_use": "Usar {kind} del {date}",
 	"summaries_review_video": "Vídeo",
 	"summaries_running": "Montando el vídeo… {percent} %",
+	"summaries_section": "Vídeos resumen",
 	"summaries_title_album": "Vídeo resumen del álbum",
 	"summaries_title_year": "Vídeo resumen del año",
 	"summaries_titles": "Título y rótulos",
