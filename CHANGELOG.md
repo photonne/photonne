@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.1](https://github.com/photonne/photonne/compare/server-v2.6.0...server-v2.6.1) (2026-10-19)
+
+
+### Correcciones
+
+* **spa:** controles del vídeo accesibles y X para cerrar el panel de información ([6e83be2](https://github.com/photonne/photonne/commit/6e83be26205c7b29c18746aa92dd3448d3f4c0c2))
+
 ## [2.6.0](https://github.com/photonne/photonne/compare/server-v2.5.0...server-v2.6.0) (2026-10-18)
 
 

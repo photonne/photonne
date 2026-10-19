@@ -12,7 +12,7 @@
          (componente "." en release-please-config.json). ML y las apps
          nativas versionan aparte: src/Server.Ml/version.txt y
          src/Client.Native/version.txt. -->
-    <Version>2.6.0</Version>
+    <Version>2.6.1</Version>
 
     <!-- Compatibilidad entre el servidor y las apps nativas, que se versionan
          y se publican por separado. Se suben A MANO (release-please solo toca
