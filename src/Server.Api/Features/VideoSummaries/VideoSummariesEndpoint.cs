@@ -41,6 +41,30 @@ public class VideoSummariesEndpoint : IEndpoint
             .WithName("GetVideoSummary")
             .WithDescription("Gets one summary video request and its progress");
 
+        group.MapGet("{summaryId:guid}/plan", GetPlan)
+            .WithName("GetVideoSummaryPlan")
+            .WithDescription("Gets the clips chosen for a summary, to review them before (or after) rendering")
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPut("{summaryId:guid}/plan", UpdatePlan)
+            .WithName("UpdateVideoSummaryPlan")
+            .WithDescription("Replaces the clips of a summary's plan: removed, swapped, trimmed or pinned")
+            .Produces<ApiError>(StatusCodes.Status400BadRequest)
+            .Produces<ApiError>(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("{summaryId:guid}/plan/alternatives", Alternatives)
+            .WithName("GetVideoSummaryPlanAlternatives")
+            .WithDescription("Material of the summary left out of its plan, closest in time to an asset first")
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("{summaryId:guid}/render", Render)
+            .WithName("RenderVideoSummary")
+            .WithDescription("Approves the summary's plan as it is and renders it")
+            .Produces<ApiError>(StatusCodes.Status400BadRequest)
+            .Produces<ApiError>(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status404NotFound);
+
         group.MapPost("music", UploadMusic)
             .WithName("UploadVideoSummaryMusic")
             .WithDescription("Uploads a music track to lay under a summary video; pass its id as musicId")
@@ -153,12 +177,8 @@ public class VideoSummariesEndpoint : IEndpoint
 
         // Rendering is one at a time for the whole server; one user can't
         // queue up a whole decade ahead of everyone else.
-        var queued = await db.VideoSummaries.CountAsync(s => s.OwnerId == userId
-            && (s.Status == VideoSummaryStatus.Pending || s.Status == VideoSummaryStatus.Running), ct);
-        if (queued >= MaxQueuedPerUser)
-            return TypedResults.BadRequest(new ApiError(
-                "Ya tienes varios vídeos resumen en preparación. Espera a que terminen.",
-                "summary_queue_full"));
+        if (await QueueFullAsync(db, userId, ct))
+            return TypedResults.BadRequest(QueueFull);
 
         if (summary == null)
         {
@@ -180,6 +200,178 @@ public class VideoSummariesEndpoint : IEndpoint
         summary.ShowTitles = request.ShowTitles ?? true;
         summary.MusicId = request.MusicId;
         summary.MusicName = request.MusicId == null ? null : MusicName(request.MusicName);
+        summary.Review = request.Review ?? false;
+        summary.PlanApproved = false;
+        summary.Status = VideoSummaryStatus.Pending;
+        summary.Progress = 0;
+        summary.Error = null;
+        summary.RequestedAt = DateTime.UtcNow;
+        summary.CompletedAt = null;
+        await db.SaveChangesAsync(ct);
+
+        queue.Enqueue(summary.Id);
+        return TypedResults.Accepted($"/api/video-summaries/{summary.Id}", VideoSummaryResponse.From(summary));
+    }
+
+    private static readonly ApiError QueueFull = new(
+        "Ya tienes varios vídeos resumen en preparación. Espera a que terminen.", "summary_queue_full");
+
+    private static async Task<bool> QueueFullAsync(ApplicationDbContext db, Guid userId, CancellationToken ct) =>
+        await db.VideoSummaries.CountAsync(s => s.OwnerId == userId
+            && (s.Status == VideoSummaryStatus.Pending || s.Status == VideoSummaryStatus.Running), ct)
+        >= MaxQueuedPerUser;
+
+    private static readonly ApiError Busy = new(
+        "El vídeo se está preparando. Espera a que termine para cambiar los fragmentos.", "summary_busy");
+
+    /// <summary>Shortest cut the user may leave a video at.</summary>
+    internal const double MinClipSeconds = 1;
+
+    /// <summary>Longest and shortest a photo may stay on screen.</summary>
+    internal const double MinPhotoSeconds = 1;
+    internal const double MaxPhotoSeconds = 10;
+
+    /// <summary>More clips than a ten-minute summary could ever show.</summary>
+    internal const int MaxPlanClips = 600;
+
+    private static async Task<Results<Ok<VideoSummaryPlanResponse>, NotFound, UnauthorizedHttpResult>> GetPlan(
+        [FromRoute] Guid summaryId,
+        [FromServices] ApplicationDbContext db,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+            return TypedResults.Unauthorized();
+
+        var summary = await db.VideoSummaries.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == summaryId && s.OwnerId == userId, ct);
+        var plan = SummaryPlanDocument.Deserialize(summary?.Plan);
+        return summary == null || plan == null
+            ? TypedResults.NotFound()
+            : TypedResults.Ok(VideoSummaryPlanResponse.From(summary, plan));
+    }
+
+    private static async Task<Results<Ok<VideoSummaryPlanResponse>, BadRequest<ApiError>, Conflict<ApiError>, NotFound, UnauthorizedHttpResult>> UpdatePlan(
+        [FromRoute] Guid summaryId,
+        [FromBody] UpdateVideoSummaryPlanRequest? request,
+        [FromServices] ApplicationDbContext db,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+            return TypedResults.Unauthorized();
+
+        var summary = await db.VideoSummaries
+            .FirstOrDefaultAsync(s => s.Id == summaryId && s.OwnerId == userId, ct);
+        var plan = SummaryPlanDocument.Deserialize(summary?.Plan);
+        if (summary == null || plan == null) return TypedResults.NotFound();
+        if (summary.Status is VideoSummaryStatus.Pending or VideoSummaryStatus.Running)
+            return TypedResults.Conflict(Busy);
+
+        var requested = request?.Clips ?? new List<VideoSummaryPlanClipRequest>();
+        if (requested.Count < 2)
+            return TypedResults.BadRequest(new ApiError("Deja al menos dos fragmentos.", "not_enough_media"));
+        if (requested.Count > MaxPlanClips)
+            return TypedResults.BadRequest(new ApiError("Demasiados fragmentos.", "invalid_clip"));
+
+        var candidates = plan.Candidates.ToDictionary(c => c.AssetId);
+        var clips = new List<SummaryClip>(requested.Count);
+        foreach (var clip in requested)
+        {
+            if (!candidates.TryGetValue(clip.AssetId, out var candidate))
+                return TypedResults.BadRequest(new ApiError(
+                    "Uno de los fragmentos no es de este resumen.", "invalid_clip"));
+            if (!double.IsFinite(clip.Start) || !double.IsFinite(clip.Length))
+                return TypedResults.BadRequest(new ApiError("Fragmento no válido.", "invalid_clip"));
+
+            if (candidate.IsVideo)
+            {
+                var start = Math.Round(clip.Start, 3);
+                var length = Math.Round(clip.Length, 3);
+                if (start < 0 || length < MinClipSeconds || start + length > candidate.DurationSeconds + 0.05)
+                    return TypedResults.BadRequest(new ApiError(
+                        $"Cada fragmento de vídeo dura al menos {MinClipSeconds:0} s y no se sale del vídeo.",
+                        "invalid_clip"));
+                clips.Add(new SummaryClip(candidate.AssetId, true, candidate.CapturedAt, start,
+                    Math.Min(length, Math.Round(candidate.DurationSeconds - start, 3))));
+            }
+            else
+            {
+                var length = Math.Round(clip.Length, 3);
+                if (length is < MinPhotoSeconds or > MaxPhotoSeconds)
+                    return TypedResults.BadRequest(new ApiError(
+                        $"Cada foto se ve entre {MinPhotoSeconds:0} y {MaxPhotoSeconds:0} segundos.", "invalid_clip"));
+                clips.Add(new SummaryClip(candidate.AssetId, false, candidate.CapturedAt, 0, length));
+            }
+        }
+
+        if (clips.Sum(c => c.Length) > summary.DurationSeconds + 0.5)
+            return TypedResults.BadRequest(new ApiError(
+                "Los fragmentos duran más que el máximo elegido para el vídeo.", "plan_too_long"));
+
+        // The summary plays in time order, whatever order the edit came in.
+        clips = clips.OrderBy(c => c.CapturedAt).ThenBy(c => c.AssetId).ThenBy(c => c.Start).ToList();
+        var edited = plan with { Clips = clips };
+        summary.Plan = edited.Serialize();
+        summary.PinnedAssetIds = requested.Where(c => c.Pinned).Select(c => c.AssetId).Distinct().ToList();
+        summary.ClipCount = clips.Select(c => c.AssetId).Distinct().Count();
+        await db.SaveChangesAsync(ct);
+        return TypedResults.Ok(VideoSummaryPlanResponse.From(summary, edited));
+    }
+
+    private static async Task<Results<Ok<List<VideoSummaryPlanCandidateResponse>>, NotFound, UnauthorizedHttpResult>> Alternatives(
+        [FromRoute] Guid summaryId,
+        [FromQuery] Guid? near,
+        [FromQuery] int? count,
+        [FromServices] ApplicationDbContext db,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+            return TypedResults.Unauthorized();
+
+        var summary = await db.VideoSummaries.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == summaryId && s.OwnerId == userId, ct);
+        var plan = SummaryPlanDocument.Deserialize(summary?.Plan);
+        if (summary == null || plan == null) return TypedResults.NotFound();
+
+        var used = plan.Clips.Select(c => c.AssetId).ToHashSet();
+        var anchor = near is { } nearId
+            ? plan.Candidates.FirstOrDefault(c => c.AssetId == nearId)?.CapturedAt
+            : null;
+        IEnumerable<SummaryCandidate> left = plan.Candidates.Where(c => !used.Contains(c.AssetId));
+        if (anchor is { } at)
+            left = left.OrderBy(c => Math.Abs((c.CapturedAt - at).TotalSeconds)).ThenBy(c => c.AssetId);
+        var take = Math.Clamp(count ?? 24, 1, 100);
+
+        return TypedResults.Ok(left
+            .Take(take)
+            .OrderBy(c => c.CapturedAt)
+            .Select(c => new VideoSummaryPlanCandidateResponse(c.AssetId, c.IsVideo, c.CapturedAt, c.DurationSeconds))
+            .ToList());
+    }
+
+    private static async Task<Results<Accepted<VideoSummaryResponse>, BadRequest<ApiError>, Conflict<ApiError>, NotFound, UnauthorizedHttpResult>> Render(
+        [FromRoute] Guid summaryId,
+        [FromServices] ApplicationDbContext db,
+        [FromServices] VideoSummaryQueue queue,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+            return TypedResults.Unauthorized();
+
+        var summary = await db.VideoSummaries
+            .Include(s => s.Asset)
+            .FirstOrDefaultAsync(s => s.Id == summaryId && s.OwnerId == userId, ct);
+        if (summary == null || SummaryPlanDocument.Deserialize(summary.Plan) == null)
+            return TypedResults.NotFound();
+        if (summary.Status is VideoSummaryStatus.Pending or VideoSummaryStatus.Running)
+            return TypedResults.Conflict(Busy);
+        if (await QueueFullAsync(db, userId, ct))
+            return TypedResults.BadRequest(QueueFull);
+
+        summary.PlanApproved = true;
         summary.Status = VideoSummaryStatus.Pending;
         summary.Progress = 0;
         summary.Error = null;
@@ -225,13 +417,11 @@ public class VideoSummariesEndpoint : IEndpoint
         if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
             return TypedResults.Unauthorized();
 
-        var summaries = await db.VideoSummaries
-            .AsNoTracking()
-            .Include(s => s.Asset)
-            .Where(s => s.OwnerId == userId)
-            .OrderByDescending(s => s.RequestedAt)
+        var summaries = await VideoSummaryResponse.Project(db.VideoSummaries
+                .Where(s => s.OwnerId == userId)
+                .OrderByDescending(s => s.RequestedAt))
             .ToListAsync(ct);
-        return TypedResults.Ok(summaries.Select(VideoSummaryResponse.From).ToList());
+        return TypedResults.Ok(summaries);
     }
 
     private static async Task<Results<Ok<VideoSummaryResponse>, NotFound, UnauthorizedHttpResult>> Get(
@@ -243,11 +433,10 @@ public class VideoSummariesEndpoint : IEndpoint
         if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
             return TypedResults.Unauthorized();
 
-        var summary = await db.VideoSummaries
-            .AsNoTracking()
-            .Include(s => s.Asset)
-            .FirstOrDefaultAsync(s => s.Id == summaryId && s.OwnerId == userId, ct);
-        return summary == null ? TypedResults.NotFound() : TypedResults.Ok(VideoSummaryResponse.From(summary));
+        var summary = await VideoSummaryResponse.Project(db.VideoSummaries
+                .Where(s => s.Id == summaryId && s.OwnerId == userId))
+            .FirstOrDefaultAsync(ct);
+        return summary == null ? TypedResults.NotFound() : TypedResults.Ok(summary);
     }
 
     private static async Task<Results<Ok<List<VideoSummaryYearResponse>>, UnauthorizedHttpResult>> Years(
@@ -292,10 +481,60 @@ public class VideoSummariesEndpoint : IEndpoint
 /// <param name="ShowTitles">Title card and chapter captions (default true).</param>
 /// <param name="MusicId">A track uploaded with POST /api/video-summaries/music.</param>
 /// <param name="MusicName">How to call that track (its file name, usually).</param>
+/// <param name="Review">Stop once the clips are chosen ("planned"), to review
+/// them before rendering (default false).</param>
 public sealed record RequestVideoSummaryRequest(
     string? Source, int? Year, Guid? AlbumId, bool IncludePhotos,
     string? Orientation = null, int? DurationMinutes = null,
-    bool? ShowTitles = null, Guid? MusicId = null, string? MusicName = null);
+    bool? ShowTitles = null, Guid? MusicId = null, string? MusicName = null,
+    bool? Review = null);
+
+/// <param name="Start">Seconds into the video the clip starts (ignored for photos).</param>
+/// <param name="Length">Seconds the clip lasts: at least 1 for a video, 1 to 10 for a photo.</param>
+/// <param name="Pinned">"Include always": every new cut of this summary keeps the asset.</param>
+public sealed record VideoSummaryPlanClipRequest(Guid AssetId, double Start, double Length, bool Pinned = false);
+
+public sealed record UpdateVideoSummaryPlanRequest(List<VideoSummaryPlanClipRequest>? Clips);
+
+/// <param name="SourceSeconds">The whole video's length (0 for photos), the
+/// bound for moving the clip's start and end.</param>
+public sealed record VideoSummaryPlanClipResponse(
+    Guid AssetId, bool IsVideo, DateTime CapturedAt, double Start, double Length, double SourceSeconds, bool Pinned);
+
+public sealed record VideoSummaryPlanCandidateResponse(Guid AssetId, bool IsVideo, DateTime CapturedAt, double DurationSeconds);
+
+/// <param name="Status">The summary's status (see <see cref="VideoSummaryResponse"/>).</param>
+/// <param name="TargetSeconds">The longest the clips may add up to.</param>
+/// <param name="Alternatives">How much material was left out, to swap in.</param>
+public sealed record VideoSummaryPlanResponse(
+    Guid SummaryId,
+    string Title,
+    string Status,
+    int TargetSeconds,
+    double TotalSeconds,
+    List<VideoSummaryPlanClipResponse> Clips,
+    int Alternatives)
+{
+    public static VideoSummaryPlanResponse From(VideoSummary summary, SummaryPlanDocument plan)
+    {
+        var durations = plan.Candidates.ToDictionary(c => c.AssetId, c => c.DurationSeconds);
+        var pinned = summary.PinnedAssetIds.ToHashSet();
+        var used = plan.Clips.Select(c => c.AssetId).ToHashSet();
+        return new VideoSummaryPlanResponse(
+            summary.Id,
+            summary.Title,
+            summary.Status.ToString().ToLowerInvariant(),
+            summary.DurationSeconds,
+            Math.Round(plan.TotalSeconds, 3),
+            plan.Clips
+                .Select(c => new VideoSummaryPlanClipResponse(
+                    c.AssetId, c.IsVideo, c.CapturedAt, c.Start, c.Length,
+                    c.IsVideo ? durations.GetValueOrDefault(c.AssetId, c.Start + c.Length) : 0,
+                    pinned.Contains(c.AssetId)))
+                .ToList(),
+            plan.Candidates.Count(c => !used.Contains(c.AssetId)));
+    }
+}
 
 public sealed record VideoSummaryMusicResponse(Guid Id, string Name, double DurationSeconds);
 
@@ -303,7 +542,10 @@ public sealed record VideoSummaryYearResponse(int Year, int Videos, int Photos);
 
 /// <param name="Source">"year" or "album".</param>
 /// <param name="Orientation">"all", "landscape" or "portrait".</param>
-/// <param name="Status">"pending", "running", "completed" or "failed".</param>
+/// <param name="Status">"pending", "running", "planned" (clips chosen, waiting
+/// for the user's review), "completed" or "failed".</param>
+/// <param name="Review">The request asked to review the clips before rendering.</param>
+/// <param name="HasPlan">There are chosen clips to review or change.</param>
 /// <param name="Progress">0..1.</param>
 /// <param name="AssetId">The rendered video, once completed.</param>
 public sealed record VideoSummaryResponse(
@@ -318,6 +560,8 @@ public sealed record VideoSummaryResponse(
     bool ShowTitles,
     Guid? MusicId,
     string? MusicName,
+    bool Review,
+    bool HasPlan,
     string Status,
     double Progress,
     string? Error,
@@ -326,6 +570,33 @@ public sealed record VideoSummaryResponse(
     DateTime RequestedAt,
     DateTime? CompletedAt)
 {
+    /// <summary>The responses straight from the table, without loading the
+    /// plans (they can be large, and the list is polled while rendering).</summary>
+    public static IQueryable<VideoSummaryResponse> Project(IQueryable<VideoSummary> summaries) =>
+        summaries.Select(s => new VideoSummaryResponse(
+            s.Id,
+            s.Source == VideoSummarySource.Year ? "year" : "album",
+            s.Year,
+            s.AlbumId,
+            s.Title,
+            s.IncludePhotos,
+            Name(s.Orientation),
+            s.DurationSeconds / 60,
+            s.ShowTitles,
+            s.MusicId,
+            s.MusicName,
+            s.Review,
+            s.Plan != null,
+            Name(s.Status),
+            s.Progress,
+            s.Error,
+            s.Asset != null && s.Asset.DeletedAt != null ? null : s.AssetId,
+            s.ClipCount,
+            s.RequestedAt,
+            s.CompletedAt));
+
+    private static string Name<T>(T value) where T : struct, Enum => value.ToString().ToLowerInvariant();
+
     public static VideoSummaryResponse From(VideoSummary s) => new(
         s.Id,
         s.Source == VideoSummarySource.Year ? "year" : "album",
@@ -333,12 +604,14 @@ public sealed record VideoSummaryResponse(
         s.AlbumId,
         s.Title,
         s.IncludePhotos,
-        s.Orientation.ToString().ToLowerInvariant(),
+        Name(s.Orientation),
         s.DurationSeconds / 60,
         s.ShowTitles,
         s.MusicId,
         s.MusicName,
-        s.Status.ToString().ToLowerInvariant(),
+        s.Review,
+        s.Plan != null,
+        Name(s.Status),
         s.Progress,
         s.Error,
         // A video sent to the trash is no longer something to open.

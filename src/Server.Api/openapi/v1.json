@@ -6020,6 +6020,239 @@
         ]
       }
     },
+    "/api/video-summaries/{summaryId}/plan": {
+      "get": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Gets the clips chosen for a summary, to review them before (or after) rendering",
+        "operationId": "GetVideoSummaryPlan",
+        "parameters": [
+          {
+            "name": "summaryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSummaryPlanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Replaces the clips of a summary\u0027s plan: removed, swapped, trimmed or pinned",
+        "operationId": "UpdateVideoSummaryPlan",
+        "parameters": [
+          {
+            "name": "summaryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/UpdateVideoSummaryPlanRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSummaryPlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/video-summaries/{summaryId}/plan/alternatives": {
+      "get": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Material of the summary left out of its plan, closest in time to an asset first",
+        "operationId": "GetVideoSummaryPlanAlternatives",
+        "parameters": [
+          {
+            "name": "summaryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "near",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VideoSummaryPlanCandidateResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/video-summaries/{summaryId}/render": {
+      "post": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Approves the summary\u0027s plan as it is and renders it",
+        "operationId": "RenderVideoSummary",
+        "parameters": [
+          {
+            "name": "summaryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/video-summaries/music": {
       "post": {
         "tags": [
@@ -15155,6 +15388,12 @@
               "null",
               "string"
             ]
+          },
+          "review": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -17325,6 +17564,23 @@
           }
         }
       },
+      "UpdateVideoSummaryPlanRequest": {
+        "required": [
+          "clips"
+        ],
+        "type": "object",
+        "properties": {
+          "clips": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/VideoSummaryPlanClipRequest"
+            }
+          }
+        }
+      },
       "UploadAssetResponse": {
         "required": [
           "message",
@@ -17547,6 +17803,140 @@
           }
         }
       },
+      "VideoSummaryPlanCandidateResponse": {
+        "required": [
+          "assetId",
+          "isVideo",
+          "capturedAt",
+          "durationSeconds"
+        ],
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isVideo": {
+            "type": "boolean"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationSeconds": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "VideoSummaryPlanClipRequest": {
+        "required": [
+          "assetId",
+          "start",
+          "length"
+        ],
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "number",
+            "format": "double"
+          },
+          "length": {
+            "type": "number",
+            "format": "double"
+          },
+          "pinned": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "VideoSummaryPlanClipResponse": {
+        "required": [
+          "assetId",
+          "isVideo",
+          "capturedAt",
+          "start",
+          "length",
+          "sourceSeconds",
+          "pinned"
+        ],
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isVideo": {
+            "type": "boolean"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "start": {
+            "type": "number",
+            "format": "double"
+          },
+          "length": {
+            "type": "number",
+            "format": "double"
+          },
+          "sourceSeconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "pinned": {
+            "type": "boolean"
+          }
+        }
+      },
+      "VideoSummaryPlanResponse": {
+        "required": [
+          "summaryId",
+          "title",
+          "status",
+          "targetSeconds",
+          "totalSeconds",
+          "clips",
+          "alternatives"
+        ],
+        "type": "object",
+        "properties": {
+          "summaryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "targetSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalSeconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoSummaryPlanClipResponse"
+            }
+          },
+          "alternatives": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "VideoSummaryResponse": {
         "required": [
           "id",
@@ -17560,6 +17950,8 @@
           "showTitles",
           "musicId",
           "musicName",
+          "review",
+          "hasPlan",
           "status",
           "progress",
           "error",
@@ -17619,6 +18011,12 @@
               "null",
               "string"
             ]
+          },
+          "review": {
+            "type": "boolean"
+          },
+          "hasPlan": {
+            "type": "boolean"
           },
           "status": {
             "type": "string"

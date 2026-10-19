@@ -113,4 +113,50 @@ public sealed class SummaryPlannerTests
         Assert.Empty(SummaryPlanner.Plan(Array.Empty<SummaryCandidate>(), includePhotos: true));
         Assert.Empty(SummaryPlanner.Plan(new[] { Photo(1) }, includePhotos: false));
     }
+
+    [Fact]
+    public void PinnedAssets_AlwaysGoIn_PushingOutTheirNeighboursInTime()
+    {
+        // A minute of videos: 15 at the base cut fit, 365 don't.
+        var options = new SummaryPlanOptions { TargetSeconds = 60 };
+        var videos = Enumerable.Range(0, 365).Select(day => Video(day, 30)).ToList();
+        var plan = SummaryPlanner.Plan(videos, includePhotos: false, options);
+        var pinned = videos[3];
+        Assert.DoesNotContain(plan, c => c.AssetId == pinned.AssetId);
+
+        var withPin = SummaryPlanner.WithPinned(plan, new[] { pinned }, options);
+
+        Assert.Contains(withPin, c => c.AssetId == pinned.AssetId);
+        Assert.True(withPin.Sum(c => c.Length) <= 60 + 1e-6);
+        // What made room was the closest in time; the rest of the year stays.
+        var gone = plan.Select(c => c.AssetId).Except(withPin.Select(c => c.AssetId)).ToList();
+        Assert.Equal(plan.OrderBy(c => Math.Abs((c.CapturedAt - pinned.CapturedAt).TotalDays)).First().AssetId,
+            Assert.Single(gone));
+        Assert.Equal(withPin.OrderBy(c => c.CapturedAt).Select(c => c.AssetId), withPin.Select(c => c.AssetId));
+    }
+
+    [Fact]
+    public void PinnedAssets_AlreadyInThePlan_ChangeNothing_AndPhotosGetTheirUsualTime()
+    {
+        var options = new SummaryPlanOptions { TargetSeconds = 60 };
+        var videos = new[] { Video(1, 30), Video(2, 30) };
+        var plan = SummaryPlanner.Plan(videos, includePhotos: false, options);
+        Assert.Equal(plan, SummaryPlanner.WithPinned(plan, new[] { videos[0] }, options));
+
+        var photo = Photo(5);
+        var withPhoto = SummaryPlanner.WithPinned(plan, new[] { photo }, options);
+        Assert.Equal(options.PhotoSeconds, withPhoto.Single(c => c.AssetId == photo.AssetId).Length);
+    }
+
+    [Fact]
+    public void OnlyPinnedLeft_AreTrimmed_ToFit()
+    {
+        var options = new SummaryPlanOptions { TargetSeconds = 10 };
+        var pins = new[] { Video(1, 30), Video(2, 30), Video(3, 30) };
+
+        var plan = SummaryPlanner.WithPinned(new List<SummaryClip>(), pins, options);
+
+        Assert.Equal(pins.Select(p => p.AssetId), plan.Select(c => c.AssetId));
+        Assert.True(plan.Sum(c => c.Length) <= 10 + 1e-6);
+    }
 }
