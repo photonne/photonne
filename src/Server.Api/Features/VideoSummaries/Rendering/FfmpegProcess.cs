@@ -117,6 +117,11 @@ public static class FfmpegProcess
         return 0;
     }
 
+    /// <summary>A path as a filter option value: ':' and '\' separate options
+    /// and escape characters inside a filter graph, so they're escaped.</summary>
+    public static string EscapeFilterPath(string path) =>
+        path.Replace("\\", "/").Replace(":", "\\:").Replace("'", "\\'");
+
     private static double ParseSeconds(string? value) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var s) && s > 0 ? s : 0;
 

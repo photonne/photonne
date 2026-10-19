@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.VideoSummaries.Music;
 using Photonne.Server.Api.Features.VideoSummaries.Rendering;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
@@ -40,6 +41,12 @@ public class VideoSummariesEndpoint : IEndpoint
             .WithName("GetVideoSummary")
             .WithDescription("Gets one summary video request and its progress");
 
+        group.MapPost("music", UploadMusic)
+            .WithName("UploadVideoSummaryMusic")
+            .WithDescription("Uploads a music track to lay under a summary video; pass its id as musicId")
+            .DisableAntiforgery()
+            .Produces<ApiError>(StatusCodes.Status400BadRequest);
+
         group.MapGet("years", Years)
             .WithName("GetVideoSummaryYears")
             .WithDescription("Years with material for a summary, with how many videos and photos each has");
@@ -50,6 +57,7 @@ public class VideoSummariesEndpoint : IEndpoint
         [FromServices] ApplicationDbContext db,
         [FromServices] VideoSummarySources sources,
         [FromServices] VideoSummaryQueue queue,
+        [FromServices] SummaryMusicStore music,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
@@ -57,6 +65,9 @@ public class VideoSummariesEndpoint : IEndpoint
             return TypedResults.Unauthorized();
         if (request == null)
             return TypedResults.BadRequest(new ApiError("Falta la petición.", "invalid_request"));
+        if (request.MusicId is { } requestedMusic && music.Find(userId, requestedMusic) == null)
+            return TypedResults.BadRequest(new ApiError(
+                "No se encuentra la música. Vuelve a subirla.", "music_not_found"));
 
         VideoSummaryOrientation orientation;
         switch (request.Orientation?.Trim().ToLowerInvariant())
@@ -166,6 +177,9 @@ public class VideoSummariesEndpoint : IEndpoint
         summary.IncludePhotos = request.IncludePhotos;
         summary.Orientation = orientation;
         summary.DurationSeconds = durationSeconds;
+        summary.ShowTitles = request.ShowTitles ?? true;
+        summary.MusicId = request.MusicId;
+        summary.MusicName = request.MusicId == null ? null : MusicName(request.MusicName);
         summary.Status = VideoSummaryStatus.Pending;
         summary.Progress = 0;
         summary.Error = null;
@@ -175,6 +189,32 @@ public class VideoSummariesEndpoint : IEndpoint
 
         queue.Enqueue(summary.Id);
         return TypedResults.Accepted($"/api/video-summaries/{summary.Id}", VideoSummaryResponse.From(summary));
+    }
+
+    private static string MusicName(string? name)
+    {
+        var clean = name?.Trim() ?? "";
+        return clean.Length == 0 ? "Música" : clean[..Math.Min(200, clean.Length)];
+    }
+
+    private static async Task<Results<Ok<VideoSummaryMusicResponse>, BadRequest<ApiError>, UnauthorizedHttpResult>> UploadMusic(
+        IFormFile file,
+        [FromServices] SummaryMusicStore music,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+            return TypedResults.Unauthorized();
+
+        try
+        {
+            var saved = await music.SaveAsync(userId, file, ct);
+            return TypedResults.Ok(new VideoSummaryMusicResponse(saved.Id, saved.Name, saved.DurationSeconds));
+        }
+        catch (VideoSummaryException ex)
+        {
+            return TypedResults.BadRequest(new ApiError(ex.Message, "invalid_music"));
+        }
     }
 
     private static async Task<Results<Ok<List<VideoSummaryResponse>>, UnauthorizedHttpResult>> List(
@@ -249,9 +289,15 @@ public class VideoSummariesEndpoint : IEndpoint
 /// <param name="Orientation">"all" (default), "landscape" or "portrait": which
 /// material goes in. A portrait summary is also cut in a portrait frame.</param>
 /// <param name="DurationMinutes">Longest the summary may run, 1 to 10 (default 5).</param>
+/// <param name="ShowTitles">Title card and chapter captions (default true).</param>
+/// <param name="MusicId">A track uploaded with POST /api/video-summaries/music.</param>
+/// <param name="MusicName">How to call that track (its file name, usually).</param>
 public sealed record RequestVideoSummaryRequest(
     string? Source, int? Year, Guid? AlbumId, bool IncludePhotos,
-    string? Orientation = null, int? DurationMinutes = null);
+    string? Orientation = null, int? DurationMinutes = null,
+    bool? ShowTitles = null, Guid? MusicId = null, string? MusicName = null);
+
+public sealed record VideoSummaryMusicResponse(Guid Id, string Name, double DurationSeconds);
 
 public sealed record VideoSummaryYearResponse(int Year, int Videos, int Photos);
 
@@ -269,6 +315,9 @@ public sealed record VideoSummaryResponse(
     bool IncludePhotos,
     string Orientation,
     int DurationMinutes,
+    bool ShowTitles,
+    Guid? MusicId,
+    string? MusicName,
     string Status,
     double Progress,
     string? Error,
@@ -286,6 +335,9 @@ public sealed record VideoSummaryResponse(
         s.IncludePhotos,
         s.Orientation.ToString().ToLowerInvariant(),
         s.DurationSeconds / 60,
+        s.ShowTitles,
+        s.MusicId,
+        s.MusicName,
         s.Status.ToString().ToLowerInvariant(),
         s.Progress,
         s.Error,

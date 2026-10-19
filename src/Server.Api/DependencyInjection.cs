@@ -113,6 +113,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<Features.VideoSummaries.VideoSummaryGenerator>();
         builder.Services.AddScoped<Features.VideoSummaries.Highlights.VideoProfileCache>();
         builder.Services.AddScoped<Features.VideoSummaries.Highlights.VideoMlAnalyzer>();
+        builder.Services.AddSingleton<Features.VideoSummaries.Music.SummaryMusicStore>();
         builder.Services.AddHttpClient<Features.VideoSummaries.Highlights.IVideoMlService,
                                        Features.VideoSummaries.Highlights.VideoMlService>((sp, client) =>
         {

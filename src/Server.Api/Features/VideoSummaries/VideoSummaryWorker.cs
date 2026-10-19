@@ -79,5 +79,7 @@ public sealed class VideoSummaryWorker : BackgroundService
             .Select(s => s.Id)
             .ToListAsync(ct);
         foreach (var id in pending) _queue.Enqueue(id);
+
+        await scope.ServiceProvider.GetRequiredService<Music.SummaryMusicStore>().SweepAsync(db, ct);
     }
 }
