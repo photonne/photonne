@@ -651,6 +651,7 @@
 	"ops_set_nightly_after": "Al terminar",
 	"ops_set_nightly_clustering": "Reagrupar caras",
 	"ops_set_nightly_coverage": "Comprobar la cobertura de indexación",
+	"ops_set_nightly_year_summaries": "Vídeo resumen del año a final de diciembre (para quien lo active)",
 	"ops_set_nightly_desc": "Un ciclo diario que pone al día lo pendiente.",
 	"ops_set_nightly_enabled": "Tareas nocturnas activadas",
 	"ops_set_nightly_feature_enabled": "Procesar cada noche",

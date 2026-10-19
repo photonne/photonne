@@ -2,6 +2,22 @@
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"summaries_action_album": "Create summary video",
 	"summaries_action_year": "Year in video",
+	"summaries_auto_year": "Make the year's summary every December",
+	"summaries_auto_year_hint": "At the end of December it is put together on its own, with last time's options, and we let you know.",
+	"summaries_card_subtitle": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Video · {countFormatted} moment",
+				"countPlural=other": "Video · {countFormatted} moments"
+			}
+		}
+	],
 	"summaries_close": "Close",
 	"summaries_create": "Create video",
 	"summaries_duration": "Maximum length",
@@ -93,6 +109,7 @@
 	"summaries_review_use": "Use the {kind} from {date}",
 	"summaries_review_video": "Video",
 	"summaries_running": "Cutting the video… {percent}%",
+	"summaries_section": "Summary videos",
 	"summaries_title_album": "Album summary video",
 	"summaries_title_year": "Year in video",
 	"summaries_titles": "Title and captions",

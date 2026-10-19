@@ -3,6 +3,7 @@ import type { VideoSummaryResponse } from '#lib/api/index.js';
 import {
 	DEFAULT_OPTIONS,
 	findSummary,
+	finished,
 	isActive,
 	optionsOf,
 	percent,
@@ -146,5 +147,16 @@ describe('percent', () => {
 		expect(percent(summary({ progress: 0.456 }))).toBe(46);
 		expect(percent(summary({ progress: 1.2 }))).toBe(100);
 		expect(percent(summary({ progress: -1 }))).toBe(0);
+	});
+});
+
+describe('finished', () => {
+	it('keeps the summaries with a video, most recently finished first', () => {
+		const old = summary({ id: 'old', completedAt: '2025-12-27T02:20:00Z' });
+		const recent = summary({ id: 'recent', completedAt: '2026-10-18T10:05:00Z' });
+		const gone = summary({ id: 'gone', assetId: null });
+		const planned = summary({ id: 'planned', status: 'planned', assetId: null });
+		expect(finished([old, gone, recent, planned]).map((s) => s.id)).toEqual(['recent', 'old']);
+		expect(finished(undefined)).toEqual([]);
 	});
 });

@@ -1,8 +1,15 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { apiErrorCode, requestVideoSummary, uploadVideoSummaryMusic } from '#lib/api/index.js';
 	import {
+		apiErrorCode,
+		requestVideoSummary,
+		saveSetting,
+		uploadVideoSummaryMusic
+	} from '#lib/api/index.js';
+	import {
+		getSettingOptions,
+		getSettingQueryKey,
 		getVideoSummariesOptions,
 		getVideoSummariesQueryKey,
 		getVideoSummaryYearsOptions
@@ -14,6 +21,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import {
 		DEFAULT_OPTIONS,
+		AUTO_YEAR_KEY,
 		DURATIONS,
 		findSummary,
 		isActive,
@@ -43,6 +51,27 @@
 		refetchInterval: (query) => pollWhileActive(query.state.data)
 	}));
 	const years = createQuery(() => ({ ...getVideoSummaryYearsOptions(), enabled: !forAlbum }));
+
+	// Every year at the end of December, without asking: the user's own switch.
+	const autoYear = createQuery(() => ({
+		...getSettingOptions({ query: { key: AUTO_YEAR_KEY } }),
+		enabled: !forAlbum
+	}));
+	let savingAuto = $state(false);
+	async function setAutoYear(event: Event) {
+		const value = (event.currentTarget as HTMLInputElement).checked ? 'true' : 'false';
+		savingAuto = true;
+		const { error: failure } = await saveSetting({ body: { key: AUTO_YEAR_KEY, value } });
+		savingAuto = false;
+		if (failure) {
+			toasts.show(m.action_failed());
+			return;
+		}
+		queryClient.setQueryData(getSettingQueryKey({ query: { key: AUTO_YEAR_KEY } }), {
+			key: AUTO_YEAR_KEY,
+			value
+		});
+	}
 
 	let year = $state<number | null>(null);
 	// The most recent year with videos, once the list is in.
@@ -244,6 +273,21 @@
 				<small>{m.summaries_review_hint()}</small>
 			</span>
 		</label>
+
+		{#if !forAlbum}
+			<label class="check">
+				<input
+					type="checkbox"
+					checked={autoYear.data?.value === 'true'}
+					disabled={!autoYear.isSuccess || savingAuto}
+					onchange={setAutoYear}
+				/>
+				<span>
+					{m.summaries_auto_year()}
+					<small>{m.summaries_auto_year_hint()}</small>
+				</span>
+			</label>
+		{/if}
 
 		{#if current}
 			<div class="status" role="status">

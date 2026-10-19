@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { fakeApi } from './fake-api';
+import { adminState } from './fakes/adminops';
 import { summariesState } from './fakes/summaries';
 
 test.use({ locale: 'es-ES', viewport: { width: 1280, height: 800 } });
@@ -241,7 +242,8 @@ test('reviews the clips before rendering: trims, swaps, pins and removes', async
 
 	await page.getByRole('button', { name: 'Montar vídeo' }).click();
 	await expect(
-		page.getByText('Creando «Resumen 2026». Te avisaremos cuando esté listo.')
+		// The toast of the request may still be up.
+		page.getByText('Creando «Resumen 2026». Te avisaremos cuando esté listo.').last()
 	).toBeVisible();
 	expect(data.edits).toEqual([
 		{
@@ -332,4 +334,51 @@ test('will not save a cut longer than the summary may be', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Montar vídeo' })).toBeDisabled();
 	await expect(page.getByRole('button', { name: 'Guardar' })).toBeDisabled();
 	expect(data.edits).toEqual([]);
+});
+
+test('turns on the summary of every December, and lists the summaries among the memories', async ({
+	page
+}) => {
+	const api = await fakeApi(page, { signedIn: true });
+	const data = summariesState(api.state);
+	data.list = [
+		{
+			id: 'y2025',
+			source: 'year',
+			year: 2025,
+			albumId: null,
+			title: 'Resumen 2025',
+			includePhotos: false,
+			orientation: 'all',
+			durationMinutes: 5,
+			showTitles: true,
+			musicId: null,
+			musicName: null,
+			review: false,
+			hasPlan: true,
+			status: 'completed',
+			progress: 1,
+			error: null,
+			assetId: '2026-09-0',
+			clipCount: 40,
+			requestedAt: '2025-12-27T02:00:00Z',
+			completedAt: '2025-12-27T02:20:00Z'
+		}
+	];
+	await page.goto('/memories');
+
+	const row = page.getByRole('region', { name: 'Vídeos resumen' });
+	await expect(row.getByRole('link', { name: /Resumen 2025/ })).toHaveAttribute(
+		'href',
+		'/videos?asset=2026-09-0'
+	);
+	await expect(row.getByText('Vídeo · 40 momentos')).toBeVisible();
+
+	await page.getByRole('button', { name: 'Vídeo resumen del año' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Vídeo resumen del año' });
+	const every = dialog.getByRole('checkbox', { name: /Crear el resumen del año cada diciembre/ });
+	await expect(every).not.toBeChecked();
+	await every.check();
+	await expect(every).toBeChecked();
+	expect(adminState(api.state).saved).toEqual([['VideoSummarySettings.AutoYear', 'true']]);
 });
