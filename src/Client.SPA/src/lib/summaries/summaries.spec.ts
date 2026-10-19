@@ -24,6 +24,8 @@ function summary(overrides: Partial<VideoSummaryResponse>): VideoSummaryResponse
 		showTitles: true,
 		musicId: null,
 		musicName: null,
+		review: false,
+		hasPlan: true,
 		status: 'completed',
 		progress: 1,
 		error: null,
@@ -62,6 +64,7 @@ describe('polling', () => {
 	it('counts only pending and running as active', () => {
 		expect(isActive(summary({ status: 'pending' }))).toBe(true);
 		expect(isActive(summary({ status: 'completed' }))).toBe(false);
+		expect(isActive(summary({ status: 'planned' }))).toBe(false);
 		expect(isActive(undefined)).toBe(false);
 	});
 });
@@ -77,7 +80,8 @@ describe('requestBody', () => {
 			durationMinutes: 5,
 			showTitles: true,
 			musicId: null,
-			musicName: null
+			musicName: null,
+			review: false
 		});
 		expect(
 			requestBody(
@@ -87,7 +91,8 @@ describe('requestBody', () => {
 					orientation: 'portrait',
 					durationMinutes: 10,
 					showTitles: false,
-					music: { id: 'm1', name: 'Verano' }
+					music: { id: 'm1', name: 'Verano' },
+					review: true
 				}
 			)
 		).toEqual({
@@ -99,7 +104,8 @@ describe('requestBody', () => {
 			durationMinutes: 10,
 			showTitles: false,
 			musicId: 'm1',
-			musicName: 'Verano'
+			musicName: 'Verano',
+			review: true
 		});
 	});
 });
@@ -114,7 +120,8 @@ describe('optionsOf', () => {
 					durationMinutes: 3,
 					showTitles: false,
 					musicId: 'm1',
-					musicName: 'Verano'
+					musicName: 'Verano',
+					review: true
 				})
 			)
 		).toEqual({
@@ -122,7 +129,8 @@ describe('optionsOf', () => {
 			orientation: 'landscape',
 			durationMinutes: 3,
 			showTitles: false,
-			music: { id: 'm1', name: 'Verano' }
+			music: { id: 'm1', name: 'Verano' },
+			review: true
 		});
 	});
 

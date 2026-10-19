@@ -127,7 +127,9 @@
 	}
 
 	const noYears = $derived(!forAlbum && years.isSuccess && years.data.length === 0);
-	const done = $derived(current?.status === 'completed' || current?.status === 'failed');
+	const done = $derived(
+		current?.status === 'completed' || current?.status === 'failed' || current?.status === 'planned'
+	);
 </script>
 
 <Dialog
@@ -235,6 +237,14 @@
 			</span>
 		</label>
 
+		<label class="check">
+			<input type="checkbox" bind:checked={options.review} disabled={active} />
+			<span>
+				{m.summaries_review()}
+				<small>{m.summaries_review_hint()}</small>
+			</span>
+		</label>
+
 		{#if current}
 			<div class="status" role="status">
 				{#if current.status === 'pending'}
@@ -246,11 +256,23 @@
 						label={m.summaries_running({ percent: percent(current) })}
 					/>
 					<p>{m.summaries_running({ percent: percent(current) })}</p>
+				{:else if current.status === 'planned'}
+					<p>{m.summaries_planned({ title: current.title })}</p>
+					<a class="btn primary" href={appHref(`/summaries/${current.id}`)} onclick={onclose}>
+						{m.summaries_review_open()}
+					</a>
 				{:else if current.status === 'completed' && current.assetId}
 					<p>{m.summaries_ready({ title: current.title })}</p>
-					<a class="btn" href={appHref(`/videos?asset=${current.assetId}`)} onclick={onclose}>
-						{m.summaries_open()}
-					</a>
+					<div class="links">
+						<a class="btn" href={appHref(`/videos?asset=${current.assetId}`)} onclick={onclose}>
+							{m.summaries_open()}
+						</a>
+						{#if current.hasPlan}
+							<a class="btn" href={appHref(`/summaries/${current.id}`)} onclick={onclose}>
+								{m.summaries_review_change()}
+							</a>
+						{/if}
+					</div>
 				{:else if current.status === 'failed'}
 					<p class="error">
 						{current.error
@@ -340,6 +362,12 @@
 
 	.status p {
 		margin: 0;
+	}
+
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
 	}
 
 	.error {

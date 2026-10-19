@@ -18,7 +18,8 @@ export function findSummary(
 	);
 }
 
-/** Queued or rendering: the server is still on it. */
+/** Queued or rendering: the server is still on it. A "planned" summary
+ * waits for the user instead. */
 export function isActive(summary: VideoSummaryResponse | undefined): boolean {
 	return summary?.status === 'pending' || summary?.status === 'running';
 }
@@ -51,16 +52,19 @@ export interface SummaryOptions {
 	durationMinutes: number;
 	showTitles: boolean;
 	music: SummaryMusic | null;
+	/** Stop once the clips are chosen, to review them before rendering. */
+	review: boolean;
 }
 
 /** What a new summary starts with: no photos, every shape, five minutes,
- * titles on, no music. */
+ * titles on, no music, straight to rendering. */
 export const DEFAULT_OPTIONS: SummaryOptions = {
 	includePhotos: false,
 	orientation: 'all',
 	durationMinutes: DEFAULT_MINUTES,
 	showTitles: true,
-	music: null
+	music: null,
+	review: false
 };
 
 /** The options an earlier request used, to start from them when asking again. */
@@ -74,20 +78,22 @@ export function optionsOf(summary: VideoSummaryResponse): SummaryOptions {
 			? summary.durationMinutes
 			: DEFAULT_MINUTES,
 		showTitles: summary.showTitles,
-		music: summary.musicId ? { id: summary.musicId, name: summary.musicName ?? '' } : null
+		music: summary.musicId ? { id: summary.musicId, name: summary.musicName ?? '' } : null,
+		review: summary.review
 	};
 }
 
 /** The request body for a source. */
 export function requestBody(source: SummarySource, options: SummaryOptions) {
-	const { includePhotos, orientation, durationMinutes, showTitles, music } = options;
+	const { includePhotos, orientation, durationMinutes, showTitles, music, review } = options;
 	const common = {
 		includePhotos,
 		orientation,
 		durationMinutes,
 		showTitles,
 		musicId: music?.id ?? null,
-		musicName: music?.name ?? null
+		musicName: music?.name ?? null,
+		review
 	};
 	return source.kind === 'year'
 		? { source: 'year', year: source.year, albumId: null, ...common }
