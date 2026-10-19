@@ -948,6 +948,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.AssetId);
             entity.Property(e => e.Checksum).IsRequired().HasMaxLength(128);
             entity.Property(e => e.Profile).IsRequired().HasColumnType("jsonb");
+            entity.Property(e => e.MlProfile).HasColumnType("jsonb");
             entity.Property(e => e.AnalyzedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
 
             // Model output about the file: goes with the asset.

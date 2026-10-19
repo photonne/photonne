@@ -3,7 +3,10 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Photonne.Server.Api.Features.VideoSummaries;
+using Photonne.Server.Api.Features.VideoSummaries.Highlights;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Tests.Infrastructure;
 
@@ -43,7 +46,7 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
     /// photo on disk behind it so it can actually be rendered.</summary>
     private async Task<Guid> CreateAssetAsync(
         TestUser owner, string fileName, Guid folderId, DateTime capturedAt, AssetType type, bool realFile = false,
-        bool portrait = false)
+        bool portrait = false, int seconds = 3)
     {
         var virtualPath = $"/assets/users/{owner.Username}/{fileName}";
         if (realFile)
@@ -51,8 +54,8 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
             var physical = Path.Combine(Factory.InternalAssetsPath, "users", owner.Username, fileName);
             Directory.CreateDirectory(Path.GetDirectoryName(physical)!);
             if (type == AssetType.Video)
-                await Ffmpeg("-f", "lavfi", "-i", $"testsrc=size={(portrait ? "360x640" : "640x360")}:rate=30:duration=3",
-                    "-f", "lavfi", "-i", "sine=frequency=330:duration=3",
+                await Ffmpeg("-f", "lavfi", "-i", $"testsrc=size={(portrait ? "360x640" : "640x360")}:rate=30:duration={seconds}",
+                    "-f", "lavfi", "-i", $"sine=frequency=330:duration={seconds}",
                     "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", physical);
             else
                 await Ffmpeg("-f", "lavfi", "-i", $"testsrc=size={(portrait ? "300x400" : "400x300")}", "-frames:v", "1", physical);
@@ -92,9 +95,9 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
             return album.Id;
         });
 
-    private async Task RunGeneratorAsync(Guid summaryId)
+    private async Task RunGeneratorAsync(Guid summaryId, IServiceProvider? services = null)
     {
-        using var scope = Factory.Services.CreateScope();
+        using var scope = (services ?? Factory.Services).CreateScope();
         await scope.ServiceProvider.GetRequiredService<VideoSummaryGenerator>().RunAsync(summaryId, CancellationToken.None);
     }
 
@@ -243,6 +246,135 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
         Assert.Equal(
             analyses.Select(a => (a.AssetId, a.AnalyzedAt)).OrderBy(x => x.AssetId),
             again.Select(a => (a.AssetId, a.AnalyzedAt)).OrderBy(x => x.AssetId));
+    }
+
+    /// <summary>A stand-in ML service: a named face from the fourth frame on,
+    /// a little speech, and a record of what it was asked about.</summary>
+    private sealed class FakeVideoMl : IVideoMlService
+    {
+        public float[] Martina { get; } = VideoMlTests.Direction(0);
+        public List<string> MissingFiles { get; } = new();
+        public int Calls;
+
+        public Task<MlCapabilities> CapabilitiesAsync(CancellationToken ct) => Task.FromResult(new MlCapabilities(true, true, true));
+
+        public Task<IReadOnlyList<FrameFace>?> FacesAsync(string imagePath, Guid assetId, CancellationToken ct)
+        {
+            Seen(imagePath);
+            var index = int.Parse(Path.GetFileNameWithoutExtension(imagePath).Split('-')[1]);
+            IReadOnlyList<FrameFace> faces = index >= 4 ? new[] { new FrameFace(0.05f, 0.9f, Martina) } : Array.Empty<FrameFace>();
+            return Task.FromResult<IReadOnlyList<FrameFace>?>(faces);
+        }
+
+        public Task<float[]?> EmbedImageAsync(string imagePath, Guid assetId, CancellationToken ct)
+        {
+            Seen(imagePath);
+            // Each video looks different, so none is taken for a repeat of another.
+            return Task.FromResult<float[]?>(VideoMlTests.Direction(10 + (assetId.GetHashCode() & 0x7fffffff) % 400));
+        }
+
+        public Task<float[]?> EmbedTextAsync(string text, CancellationToken ct) =>
+            Task.FromResult<float[]?>(text.Contains("sharp") ? VideoMlTests.Direction(2) : VideoMlTests.Direction(3));
+
+        public Task<IReadOnlyList<double[]>?> SpeechAsync(string wavPath, Guid assetId, CancellationToken ct)
+        {
+            Seen(wavPath);
+            return Task.FromResult<IReadOnlyList<double[]>?>(new[] { new[] { 1.0, 2.5 } });
+        }
+
+        private void Seen(string path)
+        {
+            Interlocked.Increment(ref Calls);
+            if (!File.Exists(path)) MissingFiles.Add(path);
+        }
+    }
+
+    [Fact]
+    public async Task WithTheMlService_FramesAndAudioAreAnalysed_Cached_AndCleanedUp()
+    {
+        var fake = new FakeVideoMl();
+        await using var withMl = Factory.WithWebHostBuilder(b => b.ConfigureServices(s =>
+        {
+            s.RemoveAll<IVideoMlService>();
+            s.AddSingleton<IVideoMlService>(fake);
+        }));
+
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        var video = await CreateAssetAsync(alice, "party.mp4", folderId, In2023(7, 1), AssetType.Video, realFile: true, seconds: 12);
+        await CreateAssetAsync(alice, "cake.mp4", folderId, In2023(7, 2), AssetType.Video, realFile: true);
+
+        async Task RenderAsync()
+        {
+            var response = await client.PostAsJsonAsync("/api/video-summaries",
+                new { source = "year", year = 2023, includePhotos = false });
+            var summary = (await response.Content.ReadFromJsonAsync<Summary>())!;
+            await RunGeneratorAsync(summary.Id, withMl.Services);
+            var done = (await client.GetFromJsonAsync<Summary>($"/api/video-summaries/{summary.Id}"))!;
+            Assert.True(done.Status == "completed", done.Error);
+        }
+
+        await RenderAsync();
+
+        Assert.Empty(fake.MissingFiles); // the ML service could read every frame and the audio
+        var stored = await WithDbContextAsync(db => db.AssetVideoAnalyses.AsNoTracking().FirstAsync(a => a.AssetId == video));
+        Assert.Equal(1, stored.MlVersion);
+        var ml = System.Text.Json.JsonSerializer.Deserialize<VideoMlProfile>(stored.MlProfile!,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+        Assert.Equal(new[] { 1.0, 3, 5, 7, 9, 11 }, ml.FrameTimes);
+        var martina = Assert.Single(ml.Faces!);
+        Assert.Equal(new double[] { 7, 9, 11 }, martina.Times);
+        Assert.Equal(ml.FrameTimes.Length, ml.Quality!.Length);
+        Assert.NotNull(ml.Embedding);
+        Assert.Equal(new[] { 1.0, 2.5 }, Assert.Single(ml.Speech!));
+
+        var scratch = Path.Combine(
+            withMl.Services.GetRequiredService<IConfiguration>()["ThumbnailsPath"]!, ".video-summaries");
+        Assert.True(!Directory.Exists(scratch) || !Directory.EnumerateFileSystemEntries(scratch).Any(),
+            "the frames and audio given to the ML service are removed");
+
+        // Everything was analysed: rendering again asks the ML service nothing.
+        var calls = fake.Calls;
+        await RenderAsync();
+        Assert.Equal(calls, fake.Calls);
+    }
+
+    [Fact]
+    public async Task NamedPeople_AreTheUsersNamedAndVisibleOnes()
+    {
+        var alice = await CreateUserAsync();
+        var bob = await CreateUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        var photo = await CreateAssetAsync(alice, "p.jpg", folderId, In2023(1, 1), AssetType.Image);
+        var martina = VideoMlTests.Direction(0);
+        var hidden = VideoMlTests.Direction(1);
+        var unnamed = VideoMlTests.Direction(2);
+        var bobs = VideoMlTests.Direction(3);
+
+        await WithDbContextAsync(async db =>
+        {
+            void Assign(Guid userId, float[] embedding, string? name, bool isHidden = false)
+            {
+                var person = new Person { OwnerId = userId, Name = name, IsHidden = isHidden };
+                var face = new Face { AssetId = photo, Embedding = new Pgvector.Vector(embedding), Confidence = 0.9f };
+                db.People.Add(person);
+                db.Faces.Add(face);
+                db.UserFaceAssignments.Add(new UserFaceAssignment { Face = face, UserId = userId, Person = person });
+            }
+            Assign(alice.Id, martina, "Martina");
+            Assign(alice.Id, hidden, "Oculta", isHidden: true);
+            Assign(alice.Id, unnamed, null);
+            Assign(bob.Id, bobs, "De Bob");
+            await db.SaveChangesAsync();
+        });
+
+        var people = await WithDbContextAsync(db => PeopleIndex.LoadAsync(db, alice.Id, CancellationToken.None));
+
+        Assert.Equal(1, people.Count);
+        Assert.True(people.IsNamedPerson(martina));
+        Assert.False(people.IsNamedPerson(hidden));
+        Assert.False(people.IsNamedPerson(unnamed));
+        Assert.False(people.IsNamedPerson(bobs));
     }
 
     [Fact]

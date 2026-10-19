@@ -112,6 +112,14 @@ public static class DependencyInjection
         builder.Services.AddScoped<Features.VideoSummaries.VideoSummarySources>();
         builder.Services.AddScoped<Features.VideoSummaries.VideoSummaryGenerator>();
         builder.Services.AddScoped<Features.VideoSummaries.Highlights.VideoProfileCache>();
+        builder.Services.AddScoped<Features.VideoSummaries.Highlights.VideoMlAnalyzer>();
+        builder.Services.AddHttpClient<Features.VideoSummaries.Highlights.IVideoMlService,
+                                       Features.VideoSummaries.Highlights.VideoMlService>((sp, client) =>
+        {
+            var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
+            client.BaseAddress = new Uri(ml.ServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
+        });
         builder.Services.AddSingleton<Features.VideoSummaries.Rendering.SummaryRenderer>();
         builder.Services.AddSingleton<Features.VideoSummaries.VideoSummaryQueue>();
         builder.Services.AddHostedService<Features.VideoSummaries.VideoSummaryWorker>();

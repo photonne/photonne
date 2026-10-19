@@ -47,7 +47,7 @@ public static class HighlightFinder
     private const double SilentLufs = -45;
 
     /// <summary>The score of each second of the video, 0–1.</summary>
-    public static double[] Score(VideoProfile profile)
+    public static double[] Score(VideoProfile profile, MomentSignals? signals = null)
     {
         var n = profile.Seconds;
         var loudness = profile.Loudness.Where(l => l.HasValue).Select(l => l!.Value).ToList();
@@ -88,6 +88,22 @@ public static class HighlightFinder
             var shake = y > 30 ? 0.7 : 1;
             var edge = i == 0 ? 0.6 : i == n - 1 ? 0.7 : 1;
 
+            if (signals != null)
+            {
+                // What ML adds, on top of the measurements (which keep most of
+                // the weight, so a frame isn't great just for having a face):
+                // the people the user named matter most; any face, someone
+                // speaking and a well-made shot a little. A busy second can
+                // already score 1 on measurements alone, so the base is scaled
+                // down rather than the bonus added on top and clamped away.
+                var quality = signals.Quality != null ? At(signals.Quality, i) : 0.5;
+                var speaking = signals.Speech is { } speech && i < speech.Length && speech[i] ? 1 : 0;
+                raw = Math.Clamp(
+                    0.7 * raw + 0.18 * At(signals.Named, i) + 0.05 * At(signals.Faces, i)
+                    + 0.04 * speaking + 0.06 * quality,
+                    0, 1);
+            }
+
             scores[i] = raw * light * shake * edge;
         }
         return scores;
@@ -95,9 +111,9 @@ public static class HighlightFinder
 
     /// <summary>How good the video's best few seconds are, 0–1: what decides
     /// which videos get more time in the summary.</summary>
-    public static double Interest(VideoProfile profile, double window = 4)
+    public static double Interest(VideoProfile profile, MomentSignals? signals = null, double window = 4)
     {
-        var scores = Score(profile);
+        var scores = Score(profile, signals);
         var length = Math.Min(window, profile.Duration);
         if (length <= 0) return 0;
         var cumulative = Cumulative(scores);
@@ -109,10 +125,10 @@ public static class HighlightFinder
 
     /// <summary>Where a cut can fall naturally: the ends, shot changes, and
     /// where the sound goes quiet or comes back.</summary>
-    public static List<double> Breaks(VideoProfile profile) =>
+    public static List<double> Breaks(VideoProfile profile, MomentSignals? signals = null) =>
         new[] { 0, profile.Duration }
             .Concat(profile.SceneCuts)
-            .Concat(SoundBreaks(profile))
+            .Concat(SoundBreaks(profile, signals))
             .Where(b => b >= 0 && b <= profile.Duration)
             .Distinct()
             .OrderBy(b => b)
@@ -120,8 +136,12 @@ public static class HighlightFinder
 
     /// <summary>Per second: is something being heard (talking, laughing), as
     /// opposed to silence or the video's background hum. All false without sound.</summary>
-    internal static bool[] Sounding(VideoProfile profile)
+    internal static bool[] Sounding(VideoProfile profile, MomentSignals? signals = null)
     {
+        // With voice detection, "being heard" means someone speaking: wind,
+        // music or traffic no longer hold a cut open.
+        if (signals?.Speech is { } speech && speech.Length == profile.Seconds) return speech;
+
         var loudness = profile.Loudness.Where(l => l.HasValue).Select(l => l!.Value).ToList();
         if (loudness.Count == 0) return new bool[profile.Seconds];
         var median = Median(loudness);
@@ -132,9 +152,9 @@ public static class HighlightFinder
 
     /// <summary>Where the sound comes or goes, or changes level sharply (a
     /// voice stopping over background noise is a 10 dB drop, not silence).</summary>
-    private static IEnumerable<double> SoundBreaks(VideoProfile profile)
+    private static IEnumerable<double> SoundBreaks(VideoProfile profile, MomentSignals? signals = null)
     {
-        var sounding = Sounding(profile);
+        var sounding = Sounding(profile, signals);
         for (var i = 1; i < sounding.Length; i++)
         {
             var jump = profile.Loudness[i] is { } now && profile.Loudness[i - 1] is { } before
@@ -150,7 +170,8 @@ public static class HighlightFinder
     /// time order. Snapping to breaks can make the total come out slightly
     /// different from what was asked.
     /// </summary>
-    public static List<HighlightSegment> Pick(VideoProfile profile, double seconds, HighlightOptions? options = null)
+    public static List<HighlightSegment> Pick(
+        VideoProfile profile, double seconds, HighlightOptions? options = null, MomentSignals? signals = null)
     {
         var o = options ?? new HighlightOptions();
         var duration = profile.Duration;
@@ -163,10 +184,10 @@ public static class HighlightFinder
         count = Math.Max(1, Math.Min(count, (int)Math.Floor(seconds / o.MinSegment)));
         var length = Math.Min(seconds / count, duration);
 
-        var cumulative = Cumulative(Score(profile));
-        var breaks = Breaks(profile);
-        var sounding = Sounding(profile);
-        var soundBreaks = SoundBreaks(profile).Append(duration).Prepend(0).ToList();
+        var cumulative = Cumulative(Score(profile, signals));
+        var breaks = Breaks(profile, signals);
+        var sounding = Sounding(profile, signals);
+        var soundBreaks = SoundBreaks(profile, signals).Append(duration).Prepend(0).ToList();
         var chosen = new List<HighlightSegment>();
 
         for (var k = 0; k < count; k++)
@@ -263,6 +284,8 @@ public static class HighlightFinder
 
         return new HighlightSegment(Math.Round(start, 3), Math.Round(end - start, 3));
     }
+
+    private static double At(double[] values, int i) => i < values.Length ? values[i] : 0;
 
     private static bool Overlaps(HighlightSegment a, HighlightSegment b, double gap) =>
         a.Start < b.End + gap && b.Start < a.End + gap;

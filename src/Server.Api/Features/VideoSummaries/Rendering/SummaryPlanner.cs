@@ -6,8 +6,15 @@ namespace Photonne.Server.Api.Features.VideoSummaries.Rendering;
 /// <param name="DurationSeconds">Probed length for videos; ignored for photos.</param>
 /// <param name="IsFavorite">The user's own mark of what matters: gets more time
 /// and is the last to be left out.</param>
+/// <param name="Embedding">For photos: the CLIP embedding (normalised), to
+/// keep one shot of a burst instead of five.</param>
 public sealed record SummaryCandidate(
-    Guid AssetId, bool IsVideo, DateTime CapturedAt, double DurationSeconds, bool IsFavorite = false);
+    Guid AssetId, bool IsVideo, DateTime CapturedAt, double DurationSeconds, bool IsFavorite = false,
+    float[]? Embedding = null);
+
+/// <summary>A video with what's known about it: its measurements, and when the
+/// ML service looked at it, the per-user signals and what it looks like.</summary>
+public sealed record AnalysedVideo(VideoProfile Profile, MomentSignals? Signals = null, float[]? Embedding = null);
 
 /// <summary>One cut of the summary: <paramref name="Length"/> seconds of the asset,
 /// starting <paramref name="Start"/> seconds in (always 0 for photos).</summary>
@@ -44,6 +51,18 @@ public sealed record SummaryPlanOptions
 
     /// <summary>How a video's allowance is spent on moments.</summary>
     public HighlightOptions Highlights { get; init; } = new();
+
+    /// <summary>CLIP similarity above which two videos (taken within
+    /// <see cref="DuplicateVideoWindow"/>) are the same moment filmed twice.</summary>
+    public double DuplicateVideoSimilarity { get; init; } = 0.93;
+
+    public TimeSpan DuplicateVideoWindow { get; init; } = TimeSpan.FromDays(2);
+
+    /// <summary>CLIP similarity above which two photos (taken within
+    /// <see cref="BurstWindow"/>) are the same shot: a burst, or the "one more".</summary>
+    public double DuplicatePhotoSimilarity { get; init; } = 0.92;
+
+    public TimeSpan BurstWindow { get; init; } = TimeSpan.FromMinutes(30);
 }
 
 /// <summary>
@@ -87,8 +106,16 @@ public static class SummaryPlanner
     public static List<SummaryClip> Plan(
         IEnumerable<SummaryCandidate> candidates,
         bool includePhotos,
+        SummaryPlanOptions? options,
+        IReadOnlyDictionary<Guid, VideoProfile>? profiles) =>
+        Plan(candidates, includePhotos, options,
+            profiles?.ToDictionary(p => p.Key, p => new AnalysedVideo(p.Value)));
+
+    public static List<SummaryClip> Plan(
+        IEnumerable<SummaryCandidate> candidates,
+        bool includePhotos,
         SummaryPlanOptions? options = null,
-        IReadOnlyDictionary<Guid, VideoProfile>? profiles = null)
+        IReadOnlyDictionary<Guid, AnalysedVideo>? profiles = null)
     {
         var o = options ?? new SummaryPlanOptions();
         var (videos, chosenPhotos, videoBudget) = Split(candidates, includePhotos, o);
@@ -117,7 +144,9 @@ public static class SummaryPlanner
         var videos = ordered
             .Where(c => c.IsVideo && c.DurationSeconds >= o.MinVideoSeconds)
             .ToList();
-        var photos = includePhotos ? ordered.Where(c => !c.IsVideo).ToList() : new List<SummaryCandidate>();
+        var photos = includePhotos
+            ? WithoutRepeats(ordered.Where(c => !c.IsVideo).ToList(), o)
+            : new List<SummaryCandidate>();
 
         // What videos could take at most, every one of them at its longest cut:
         // photos only get past their share when videos can't fill the rest.
@@ -178,23 +207,36 @@ public static class SummaryPlanner
     private static List<SummaryClip> PlanHighlights(
         List<SummaryCandidate> videos,
         double videoBudget,
-        IReadOnlyDictionary<Guid, VideoProfile> profiles,
+        IReadOnlyDictionary<Guid, AnalysedVideo> analysed,
         SummaryPlanOptions o)
     {
         var shortlist = Shortlist(videos, videoBudget, o);
         var h = o.Highlights;
         var items = shortlist.Select(v =>
         {
-            var profile = profiles.GetValueOrDefault(v.AssetId);
+            var video = analysed.GetValueOrDefault(v.AssetId);
+            var profile = video?.Profile;
             // Unanalysed videos rank below average rather than being dropped first.
-            var interest = profile != null ? HighlightFinder.Interest(profile) : 0.3;
+            var interest = profile != null ? HighlightFinder.Interest(profile, video!.Signals) : 0.3;
             var weight = Math.Max(0.05, interest) * (v.IsFavorite ? 1.4 : 1);
             var min = Math.Min(o.BaseVideoSeconds, v.DurationSeconds);
             var max = profile != null
                 ? Math.Min(v.DurationSeconds, h.MaxSegment * h.MaxSegmentsPerVideo)
                 : Math.Min(o.MaxVideoSeconds, v.DurationSeconds);
-            return new Allowance(v, profile, weight, min, max) { Seconds = min };
+            return new Allowance(v, profile, video?.Signals, video?.Embedding, weight, min, max) { Seconds = min };
         }).ToList();
+
+        // The same moment filmed twice: keep the better take.
+        var kept = new List<Allowance>();
+        foreach (var item in items.OrderByDescending(i => i.Weight))
+        {
+            var repeat = item.Embedding != null && kept.Any(k =>
+                k.Embedding != null
+                && (k.Video.CapturedAt - item.Video.CapturedAt).Duration() <= o.DuplicateVideoWindow
+                && Vectors.Similarity(k.Embedding, item.Embedding) >= o.DuplicateVideoSimilarity);
+            if (!repeat) kept.Add(item);
+        }
+        items = items.Where(kept.Contains).ToList();
 
         var budget = videoBudget * o.SnapSlack;
         while (items.Count > 0 && items.Sum(i => i.Seconds) > budget + 1e-9)
@@ -228,7 +270,7 @@ public static class SummaryPlanner
                 clips.Add(BlindClip(item.Video, item.Seconds));
                 continue;
             }
-            clips.AddRange(HighlightFinder.Pick(item.Profile, item.Seconds, h)
+            clips.AddRange(HighlightFinder.Pick(item.Profile, item.Seconds, h, item.Signals)
                 .Select(s => new SummaryClip(item.Video.AssetId, true, item.Video.CapturedAt,
                     Math.Round(s.Start, 3), Math.Round(s.Length, 3))));
         }
@@ -262,7 +304,9 @@ public static class SummaryPlanner
         return clips;
     }
 
-    private sealed record Allowance(SummaryCandidate Video, VideoProfile? Profile, double Weight, double Min, double Max)
+    private sealed record Allowance(
+        SummaryCandidate Video, VideoProfile? Profile, MomentSignals? Signals, float[]? Embedding,
+        double Weight, double Min, double Max)
     {
         public double Seconds { get; set; }
     }
@@ -314,6 +358,27 @@ public static class SummaryPlanner
         }
 
         return lengths;
+    }
+
+    /// <summary>
+    /// One photo per burst: in time order, a photo that looks the same as the
+    /// one kept just before it (and was taken within
+    /// <see cref="SummaryPlanOptions.BurstWindow"/>) is skipped — unless it's a
+    /// favourite and that one isn't, in which case it takes its place.
+    /// </summary>
+    internal static List<SummaryCandidate> WithoutRepeats(List<SummaryCandidate> photos, SummaryPlanOptions o)
+    {
+        var kept = new List<SummaryCandidate>(photos.Count);
+        foreach (var photo in photos)
+        {
+            var last = kept.Count > 0 ? kept[^1] : null;
+            var repeat = last?.Embedding != null && photo.Embedding != null
+                && photo.CapturedAt - last.CapturedAt <= o.BurstWindow
+                && Vectors.Similarity(last.Embedding, photo.Embedding) >= o.DuplicatePhotoSimilarity;
+            if (!repeat) kept.Add(photo);
+            else if (photo.IsFavorite && !last!.IsFavorite) kept[^1] = photo;
+        }
+        return kept;
     }
 
     /// <summary><paramref name="count"/> items evenly spaced over
