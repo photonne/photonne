@@ -50,6 +50,10 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, st
 	if (!authorized) return json(401).then(() => true);
 	const data = summariesState(state);
 
+	if (method === 'POST' && path === '/api/video-summaries/music') {
+		await json(200, { id: 'music-1', name: 'Verano', durationSeconds: 184 });
+		return true;
+	}
 	if (method === 'GET' && path === '/api/video-summaries/years') {
 		await json(200, data.years);
 		return true;
@@ -79,6 +83,9 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, st
 			includePhotos: body.includePhotos,
 			orientation: body.orientation ?? 'all',
 			durationMinutes: body.durationMinutes ?? 5,
+			showTitles: body.showTitles ?? true,
+			musicId: body.musicId ?? null,
+			musicName: body.musicName ?? null,
 			status: 'pending',
 			progress: 0,
 			error: null,
