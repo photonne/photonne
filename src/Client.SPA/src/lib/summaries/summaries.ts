@@ -39,17 +39,28 @@ export const ORIENTATIONS: readonly SummaryOrientation[] = ['all', 'landscape', 
 export const DURATIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 export const DEFAULT_MINUTES = 5;
 
+/** A track uploaded to lay under the summary. */
+export interface SummaryMusic {
+	id: string;
+	name: string;
+}
+
 export interface SummaryOptions {
 	includePhotos: boolean;
 	orientation: SummaryOrientation;
 	durationMinutes: number;
+	showTitles: boolean;
+	music: SummaryMusic | null;
 }
 
-/** What a new summary starts with: no photos, every shape, five minutes. */
+/** What a new summary starts with: no photos, every shape, five minutes,
+ * titles on, no music. */
 export const DEFAULT_OPTIONS: SummaryOptions = {
 	includePhotos: false,
 	orientation: 'all',
-	durationMinutes: DEFAULT_MINUTES
+	durationMinutes: DEFAULT_MINUTES,
+	showTitles: true,
+	music: null
 };
 
 /** The options an earlier request used, to start from them when asking again. */
@@ -61,30 +72,26 @@ export function optionsOf(summary: VideoSummaryResponse): SummaryOptions {
 			: 'all',
 		durationMinutes: DURATIONS.includes(summary.durationMinutes)
 			? summary.durationMinutes
-			: DEFAULT_MINUTES
+			: DEFAULT_MINUTES,
+		showTitles: summary.showTitles,
+		music: summary.musicId ? { id: summary.musicId, name: summary.musicName ?? '' } : null
 	};
 }
 
 /** The request body for a source. */
 export function requestBody(source: SummarySource, options: SummaryOptions) {
-	const { includePhotos, orientation, durationMinutes } = options;
+	const { includePhotos, orientation, durationMinutes, showTitles, music } = options;
+	const common = {
+		includePhotos,
+		orientation,
+		durationMinutes,
+		showTitles,
+		musicId: music?.id ?? null,
+		musicName: music?.name ?? null
+	};
 	return source.kind === 'year'
-		? {
-				source: 'year',
-				year: source.year,
-				albumId: null,
-				includePhotos,
-				orientation,
-				durationMinutes
-			}
-		: {
-				source: 'album',
-				year: null,
-				albumId: source.albumId,
-				includePhotos,
-				orientation,
-				durationMinutes
-			};
+		? { source: 'year', year: source.year, albumId: null, ...common }
+		: { source: 'album', year: null, albumId: source.albumId, ...common };
 }
 
 /** Whole percent for display, 0–100. */

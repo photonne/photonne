@@ -46,7 +46,10 @@ test('asks for the summary of a year from Recuerdos and follows it until it is r
 			albumId: null,
 			includePhotos: true,
 			orientation: 'portrait',
-			durationMinutes: 3
+			durationMinutes: 3,
+			showTitles: true,
+			musicId: null,
+			musicName: null
 		}
 	]);
 
@@ -89,7 +92,10 @@ test('asks for an album summary from the album menu and explains when there is t
 			albumId: 'album-1',
 			includePhotos: false,
 			orientation: 'all',
-			durationMinutes: 5
+			durationMinutes: 5,
+			showTitles: true,
+			musicId: null,
+			musicName: null
 		}
 	]);
 });
@@ -107,6 +113,9 @@ test('starts from the options of the last summary of that year', async ({ page }
 			includePhotos: true,
 			orientation: 'landscape',
 			durationMinutes: 8,
+			showTitles: false,
+			musicId: 'music-7',
+			musicName: 'Fiesta',
 			status: 'completed',
 			progress: 1,
 			error: null,
@@ -123,5 +132,53 @@ test('starts from the options of the last summary of that year', async ({ page }
 	await expect(dialog.getByRole('combobox', { name: 'Duración máxima' })).toHaveValue('8');
 	await expect(dialog.getByRole('radio', { name: 'Horizontales' })).toBeChecked();
 	await expect(dialog.getByRole('checkbox', { name: /Incluir fotos/ })).toBeChecked();
+	await expect(dialog.getByRole('checkbox', { name: /Título y rótulos/ })).not.toBeChecked();
+	await expect(dialog.getByText('Fiesta')).toBeVisible();
 	await expect(dialog.getByRole('button', { name: 'Volver a crear' })).toBeEnabled();
+});
+
+test('lays music under the summary and can do without titles', async ({ page }) => {
+	const api = await fakeApi(page, { signedIn: true });
+	const data = summariesState(api.state);
+	await page.goto('/memories');
+	await page.getByRole('button', { name: 'Vídeo resumen del año' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Vídeo resumen del año' });
+	await expect(dialog.getByRole('combobox', { name: 'Año' })).toHaveValue('2026');
+
+	const titles = dialog.getByRole('checkbox', { name: /Título y rótulos/ });
+	await expect(titles).toBeChecked();
+	await titles.uncheck();
+
+	await dialog.getByLabel('Música (opcional)').setInputFiles({
+		name: 'verano.mp3',
+		mimeType: 'audio/mpeg',
+		buffer: Buffer.from('not really music, the fake server takes it')
+	});
+	await expect(dialog.getByText('Verano', { exact: true })).toBeVisible();
+
+	// Changed their mind, and then back.
+	await dialog.getByRole('button', { name: 'Quitar' }).click();
+	await expect(dialog.getByText('Verano', { exact: true })).toHaveCount(0);
+	await dialog.getByLabel('Música (opcional)').setInputFiles({
+		name: 'verano.mp3',
+		mimeType: 'audio/mpeg',
+		buffer: Buffer.from('again')
+	});
+	await expect(dialog.getByText('Verano', { exact: true })).toBeVisible();
+
+	await dialog.getByRole('button', { name: 'Crear vídeo' }).click();
+	await expect(dialog.getByText('Montando el vídeo… 40 %')).toBeVisible();
+	expect(data.requests).toEqual([
+		{
+			source: 'year',
+			year: 2026,
+			albumId: null,
+			includePhotos: false,
+			orientation: 'all',
+			durationMinutes: 5,
+			showTitles: false,
+			musicId: 'music-1',
+			musicName: 'Verano'
+		}
+	]);
 });

@@ -21,6 +21,9 @@ function summary(overrides: Partial<VideoSummaryResponse>): VideoSummaryResponse
 		includePhotos: false,
 		orientation: 'all',
 		durationMinutes: 5,
+		showTitles: true,
+		musicId: null,
+		musicName: null,
 		status: 'completed',
 		progress: 1,
 		error: null,
@@ -71,12 +74,21 @@ describe('requestBody', () => {
 			albumId: null,
 			includePhotos: false,
 			orientation: 'all',
-			durationMinutes: 5
+			durationMinutes: 5,
+			showTitles: true,
+			musicId: null,
+			musicName: null
 		});
 		expect(
 			requestBody(
 				{ kind: 'album', albumId: 'x' },
-				{ includePhotos: true, orientation: 'portrait', durationMinutes: 10 }
+				{
+					includePhotos: true,
+					orientation: 'portrait',
+					durationMinutes: 10,
+					showTitles: false,
+					music: { id: 'm1', name: 'Verano' }
+				}
 			)
 		).toEqual({
 			source: 'album',
@@ -84,7 +96,10 @@ describe('requestBody', () => {
 			albumId: 'x',
 			includePhotos: true,
 			orientation: 'portrait',
-			durationMinutes: 10
+			durationMinutes: 10,
+			showTitles: false,
+			musicId: 'm1',
+			musicName: 'Verano'
 		});
 	});
 });
@@ -92,8 +107,23 @@ describe('requestBody', () => {
 describe('optionsOf', () => {
 	it('starts again from what the earlier request asked for', () => {
 		expect(
-			optionsOf(summary({ includePhotos: true, orientation: 'landscape', durationMinutes: 3 }))
-		).toEqual({ includePhotos: true, orientation: 'landscape', durationMinutes: 3 });
+			optionsOf(
+				summary({
+					includePhotos: true,
+					orientation: 'landscape',
+					durationMinutes: 3,
+					showTitles: false,
+					musicId: 'm1',
+					musicName: 'Verano'
+				})
+			)
+		).toEqual({
+			includePhotos: true,
+			orientation: 'landscape',
+			durationMinutes: 3,
+			showTitles: false,
+			music: { id: 'm1', name: 'Verano' }
+		});
 	});
 
 	it('falls back to the defaults for values it does not know', () => {

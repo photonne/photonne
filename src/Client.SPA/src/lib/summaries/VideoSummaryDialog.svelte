@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { apiErrorCode, requestVideoSummary } from '#lib/api/index.js';
+	import { apiErrorCode, requestVideoSummary, uploadVideoSummaryMusic } from '#lib/api/index.js';
 	import {
 		getVideoSummariesOptions,
 		getVideoSummariesQueryKey,
@@ -79,6 +79,23 @@
 	const orientationName = $props.id();
 
 	let submitting = $state(false);
+	let uploading = $state(false);
+	let musicError = $state<string | null>(null);
+
+	async function chooseMusic(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+		uploading = true;
+		musicError = null;
+		const { data, error: failure } = await uploadVideoSummaryMusic({ body: { file } });
+		uploading = false;
+		if (data) options.music = { id: data.id, name: data.name };
+		else
+			musicError =
+				apiErrorCode(failure) === 'invalid_music' ? m.summaries_music_invalid() : m.action_failed();
+	}
 	let error = $state<string | null>(null);
 
 	async function submit(event: SubmitEvent) {
@@ -103,7 +120,10 @@
 					? m.summaries_not_enough_orientation()
 					: m.summaries_not_enough();
 		else if (code === 'summary_queue_full') error = m.summaries_queue_full();
-		else error = m.action_failed();
+		else if (code === 'music_not_found') {
+			options.music = null;
+			error = m.summaries_music_missing();
+		} else error = m.action_failed();
 	}
 
 	const noYears = $derived(!forAlbum && years.isSuccess && years.data.length === 0);
@@ -171,6 +191,43 @@
 		</div>
 
 		<label class="check">
+			<input type="checkbox" bind:checked={options.showTitles} disabled={active} />
+			<span>
+				{m.summaries_titles()}
+				<small>{m.summaries_titles_hint()}</small>
+			</span>
+		</label>
+
+		<div class="field">
+			<span id="{orientationName}-music">{m.summaries_music()}</span>
+			{#if options.music}
+				<div class="music">
+					<span class="music-name">{options.music.name}</span>
+					<button
+						type="button"
+						class="btn sm"
+						disabled={active}
+						onclick={() => (options.music = null)}
+					>
+						{m.summaries_music_remove()}
+					</button>
+				</div>
+			{:else}
+				<input
+					type="file"
+					accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac"
+					aria-labelledby="{orientationName}-music"
+					disabled={active || uploading}
+					onchange={chooseMusic}
+				/>
+			{/if}
+			<small class="note">
+				{uploading ? m.summaries_music_uploading() : m.summaries_music_hint()}
+			</small>
+			{#if musicError}<p class="error" role="alert">{musicError}</p>{/if}
+		</div>
+
+		<label class="check">
 			<input type="checkbox" bind:checked={options.includePhotos} disabled={active} />
 			<span>
 				{m.summaries_include_photos()}
@@ -214,7 +271,7 @@
 			type="submit"
 			form="summary-form"
 			class="primary"
-			disabled={!source || submitting || active || noYears}
+			disabled={!source || submitting || uploading || active || noYears}
 		>
 			{done ? m.summaries_regenerate() : m.summaries_create()}
 		</button>
@@ -235,6 +292,19 @@
 
 	.segmented {
 		justify-self: start;
+	}
+
+	.music {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.music-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-weight: 600;
 	}
 
 	.check {
