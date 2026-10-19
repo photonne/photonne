@@ -1,6 +1,8 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+# fonts-dejavu-core: the font for the video summaries' titles and captions.
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    fonts-dejavu-core \
     libgdiplus \
     libc6-dev \
     curl \

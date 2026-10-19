@@ -25,7 +25,7 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
 
     private sealed record Summary(
         Guid Id, string Source, int? Year, Guid? AlbumId, string Title, bool IncludePhotos,
-        string Orientation, int DurationMinutes, string Status, double Progress, string? Error, Guid? AssetId, int ClipCount);
+        string Orientation, int DurationMinutes, bool ShowTitles, Guid? MusicId, string? MusicName, string Status, double Progress, string? Error, Guid? AssetId, int ClipCount);
 
     private sealed record YearRow(int Year, int Videos, int Photos);
 
@@ -375,6 +375,92 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
         Assert.False(people.IsNamedPerson(hidden));
         Assert.False(people.IsNamedPerson(unnamed));
         Assert.False(people.IsNamedPerson(bobs));
+    }
+
+    private sealed record MusicUpload(Guid Id, string Name, double DurationSeconds);
+
+    private async Task<HttpResponseMessage> UploadMusicAsync(HttpClient client, string fileName, byte[] bytes)
+    {
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent(bytes), "file", fileName);
+        return await client.PostAsync("/api/video-summaries/music", form);
+    }
+
+    private async Task<byte[]> ToneAsync(double seconds)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"photonne-tone-{Guid.NewGuid():N}.wav");
+        try
+        {
+            await Ffmpeg("-f", "lavfi", "-i", $"aevalsrc='if(lt(mod(t,0.5),0.03),sin(2*PI*1000*t),0)':s=44100:d={seconds}", path);
+            return await File.ReadAllBytesAsync(path);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Music_IsUploaded_WhenItIsMusic()
+    {
+        var (_, client) = await CreateAuthenticatedUserAsync();
+
+        var ok = await UploadMusicAsync(client, "Canción del verano.wav", await ToneAsync(12));
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        var music = (await ok.Content.ReadFromJsonAsync<MusicUpload>())!;
+        Assert.Equal("Canción del verano", music.Name);
+        Assert.InRange(music.DurationSeconds, 11.5, 12.5);
+
+        var tooShort = await UploadMusicAsync(client, "jingle.wav", await ToneAsync(3));
+        Assert.Equal("invalid_music", (await tooShort.Content.ReadFromJsonAsync<ApiErrorBody>())!.Code);
+        var notAudio = await UploadMusicAsync(client, "notes.txt", "hola"u8.ToArray());
+        Assert.Equal("invalid_music", (await notAudio.Content.ReadFromJsonAsync<ApiErrorBody>())!.Code);
+        var fake = await UploadMusicAsync(client, "fake.mp3", "not really an mp3"u8.ToArray());
+        Assert.Equal("invalid_music", (await fake.Content.ReadFromJsonAsync<ApiErrorBody>())!.Code);
+    }
+
+    [Fact]
+    public async Task ASummary_WithMusicAndTitles_IsRendered_AndRemembersThem()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        await CreateAssetAsync(alice, "a.mp4", folderId, In2023(7, 1), AssetType.Video, realFile: true, seconds: 6);
+        await CreateAssetAsync(alice, "b.mp4", folderId, In2023(8, 1), AssetType.Video, realFile: true, seconds: 6);
+
+        // Someone else's upload is not this user's to use.
+        var (_, bobClient) = await CreateAuthenticatedUserAsync();
+        var bobs = (await (await UploadMusicAsync(bobClient, "bob.wav", await ToneAsync(12)))
+            .Content.ReadFromJsonAsync<MusicUpload>())!;
+        var stolen = await client.PostAsJsonAsync("/api/video-summaries",
+            new { source = "year", year = 2023, musicId = bobs.Id });
+        Assert.Equal("music_not_found", (await stolen.Content.ReadFromJsonAsync<ApiErrorBody>())!.Code);
+
+        var music = (await (await UploadMusicAsync(client, "verano.wav", await ToneAsync(12)))
+            .Content.ReadFromJsonAsync<MusicUpload>())!;
+        var response = await client.PostAsJsonAsync("/api/video-summaries",
+            new { source = "year", year = 2023, musicId = music.Id, musicName = music.Name, showTitles = true });
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var requested = (await response.Content.ReadFromJsonAsync<Summary>())!;
+        Assert.Equal(music.Id, requested.MusicId);
+        Assert.Equal("verano", requested.MusicName);
+        Assert.True(requested.ShowTitles);
+
+        await RunGeneratorAsync(requested.Id);
+
+        var done = (await client.GetFromJsonAsync<Summary>($"/api/video-summaries/{requested.Id}"))!;
+        Assert.True(done.Status == "completed", done.Error);
+        var physical = Path.Combine(Factory.InternalAssetsPath, "users", alice.Username, "Recuerdos", "Resumen 2023.mp4");
+        var probe = await Photonne.Server.Api.Features.VideoSummaries.Rendering.FfmpegProcess.ProbeAsync(physical, CancellationToken.None);
+        Assert.True(probe!.HasAudio);
+        Assert.True(probe.DurationSeconds > 3);
+
+        // Asked again without music, it goes.
+        var again = await client.PostAsJsonAsync("/api/video-summaries",
+            new { source = "year", year = 2023, showTitles = false });
+        var second = (await again.Content.ReadFromJsonAsync<Summary>())!;
+        Assert.Null(second.MusicId);
+        Assert.Null(second.MusicName);
+        Assert.False(second.ShowTitles);
     }
 
     [Fact]

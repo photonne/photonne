@@ -1597,6 +1597,13 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<bool>("IncludePhotos")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("MusicId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MusicName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int>("Orientation")
                         .HasColumnType("integer");
 
@@ -1608,6 +1615,9 @@ namespace Photonne.Server.Api.Migrations
 
                     b.Property<DateTime>("RequestedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("ShowTitles")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Source")
                         .HasColumnType("integer");

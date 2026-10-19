@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.UploadAssets;
 using Photonne.Server.Api.Features.VideoSummaries.Highlights;
+using Photonne.Server.Api.Features.VideoSummaries.Music;
 using Photonne.Server.Api.Features.VideoSummaries.Rendering;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
@@ -17,6 +18,9 @@ public sealed class VideoSummaryGenerator
 {
     public const string FolderName = "Recuerdos";
 
+    /// <summary>Seconds each clip blends into the next.</summary>
+    public const double Crossfade = 0.5;
+
     private readonly ApplicationDbContext _db;
     private readonly VideoSummarySources _sources;
     private readonly SettingsService _settings;
@@ -28,6 +32,7 @@ public sealed class VideoSummaryGenerator
     private readonly VideoProfileCache _profiles;
     private readonly IVideoMlService _ml;
     private readonly VideoMlAnalyzer _mlAnalyzer;
+    private readonly SummaryMusicStore _music;
     private readonly INotificationService _notifications;
     private readonly ILogger<VideoSummaryGenerator> _logger;
 
@@ -43,6 +48,7 @@ public sealed class VideoSummaryGenerator
         VideoProfileCache profiles,
         IVideoMlService ml,
         VideoMlAnalyzer mlAnalyzer,
+        SummaryMusicStore music,
         INotificationService notifications,
         ILogger<VideoSummaryGenerator> logger)
     {
@@ -57,6 +63,7 @@ public sealed class VideoSummaryGenerator
         _profiles = profiles;
         _ml = ml;
         _mlAnalyzer = mlAnalyzer;
+        _music = music;
         _notifications = notifications;
         _logger = logger;
     }
@@ -237,12 +244,55 @@ public sealed class VideoSummaryGenerator
         if (plan.Count < 2)
             throw new VideoSummaryException(NotEnoughMessage(summary.IncludePhotos, filter));
 
+        // Finishing: clips blend into each other, cut on the music's beat when
+        // there is music, with a title card and a caption at each chapter.
+        var style = new RenderStyle { Crossfade = Crossfade };
+        var font = summary.ShowTitles ? FontLocator.Find() : null;
+        string? musicPath = null;
+        if (summary.MusicId is { } musicId)
+        {
+            musicPath = _music.Find(summary.OwnerId, musicId);
+            if (musicPath == null)
+                _logger.LogWarning("Music {MusicId} of summary {SummaryId} is gone; rendering without it", musicId, summary.Id);
+        }
+        if (musicPath != null)
+        {
+            var titleOffset = font != null ? SummaryRenderer.TitleSeconds - Crossfade : 0;
+            var beats = await BeatTracker.TrackAsync(
+                musicPath, plan.Sum(c => c.Length) + titleOffset + 30, Path.Combine(workDirectory, "music"), ct);
+            if (beats != null)
+            {
+                var durations = candidates.ToDictionary(c => c.AssetId, c => c.DurationSeconds);
+                var available = plan.Select(c => c.IsVideo ? durations[c.AssetId] - c.Start : 8).ToList();
+                plan = BeatSync.Align(plan, available, beats, Crossfade, titleOffset);
+            }
+        }
+
+        var planIds = plan.Select(c => c.AssetId).Distinct().ToList();
+        var places = font == null
+            ? new Dictionary<Guid, string>()
+            : await _db.AssetExifs
+                .AsNoTracking()
+                .Where(e => planIds.Contains(e.AssetId) && e.PlaceId != null)
+                .Join(_db.Places, e => e.PlaceId, p => p.Id, (e, p) => new { e.AssetId, p.Name })
+                .ToDictionaryAsync(x => x.AssetId, x => x.Name, ct);
+        var text = SummaryChapters.Describe(plan, summary.Source, places);
+        style = style with
+        {
+            FontFile = font,
+            Title = font != null ? summary.Title : null,
+            Subtitle = text.Subtitle,
+            MusicPath = musicPath,
+        };
+
         var photoIds = plan.Where(c => !c.IsVideo).Select(c => c.AssetId).ToList();
         var fallbacks = await _db.AssetThumbnails
             .Where(t => photoIds.Contains(t.AssetId) && t.Size == ThumbnailSize.Large)
             .ToDictionaryAsync(t => t.AssetId, t => t.FilePath, ct);
         var clips = plan
-            .Select(c => new RenderClip(paths[c.AssetId], c.IsVideo, c.Start, c.Length, fallbacks.GetValueOrDefault(c.AssetId)))
+            .Select((c, i) => new RenderClip(
+                paths[c.AssetId], c.IsVideo, c.Start, c.Length, fallbacks.GetValueOrDefault(c.AssetId),
+                font != null ? text.Captions[i] : null))
             .ToList();
 
         // The summary sits in the timeline right after the last moment it shows.
@@ -255,7 +305,8 @@ public sealed class VideoSummaryGenerator
         var clipCount = await _renderer.RenderAsync(
             clips, new Frame(width, height), rendered, summary.Title, creationUtc, workDirectory,
             p => SetProgressAsync(summary, 0.45 + 0.5 * p, ct),
-            ct);
+            ct,
+            style);
         summary.ClipCount = clipCount;
 
         return await StoreAsync(summary, rendered, capturedAt, ct);

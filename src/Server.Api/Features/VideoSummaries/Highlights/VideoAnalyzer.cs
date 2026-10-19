@@ -40,7 +40,7 @@ public static class VideoAnalyzer
             {
                 "-skip_frame", "noref", "-t", limit, "-i", path, "-an",
                 "-vf", "fps=5,scale=160:-2,select='gte(scene,0)',signalstats,blurdetect," +
-                       $"metadata=mode=print:file={FilterPath(pictureFile)}",
+                       $"metadata=mode=print:file={FfmpegProcess.EscapeFilterPath(pictureFile)}",
                 "-f", "null", "-",
             }, ct);
             if (pictureError != null || !File.Exists(pictureFile)) return null;
@@ -52,7 +52,7 @@ public static class VideoAnalyzer
                 {
                     "-t", limit, "-i", path, "-vn",
                     "-af", "aresample=16000,ebur128=metadata=1," +
-                           $"ametadata=mode=print:key=lavfi.r128.M:file={FilterPath(soundFile)}",
+                           $"ametadata=mode=print:key=lavfi.r128.M:file={FfmpegProcess.EscapeFilterPath(soundFile)}",
                     "-f", "null", "-",
                 }, ct);
             }
@@ -139,9 +139,4 @@ public static class VideoAnalyzer
         }
         return frames;
     }
-
-    /// <summary>A path as a filter option value: ':' and '\' separate options
-    /// and escape characters inside a filter graph, so they're escaped.</summary>
-    private static string FilterPath(string path) =>
-        path.Replace("\\", "/").Replace(":", "\\:").Replace("'", "\\'");
 }

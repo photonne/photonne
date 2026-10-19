@@ -84,6 +84,18 @@ public class VideoSummary
     /// (1 to 10 minutes). The cut can come out shorter when material runs out.</summary>
     public int DurationSeconds { get; set; } = DefaultDurationSeconds;
 
+    /// <summary>Opening title card and a caption at each chapter (month, or
+    /// day for an album), with the place when it's known.</summary>
+    public bool ShowTitles { get; set; } = true;
+
+    /// <summary>Background music the user uploaded for this summary
+    /// (<c>Features.VideoSummaries.SummaryMusicStore</c>), or null for the
+    /// videos' own sound only.</summary>
+    public Guid? MusicId { get; set; }
+
+    [MaxLength(200)]
+    public string? MusicName { get; set; }
+
     public const int DefaultDurationSeconds = 300;
     public const int MinDurationSeconds = 60;
     public const int MaxDurationSeconds = 600;

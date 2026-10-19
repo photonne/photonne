@@ -6020,6 +6020,60 @@
         ]
       }
     },
+    "/api/video-summaries/music": {
+      "post": {
+        "tags": [
+          "VideoSummaries"
+        ],
+        "description": "Uploads a music track to lay under a summary video; pass its id as musicId",
+        "operationId": "UploadVideoSummaryMusic",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSummaryMusicResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/video-summaries/years": {
       "get": {
         "tags": [
@@ -15082,6 +15136,25 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "showTitles": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "musicId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "musicName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -17453,6 +17526,27 @@
           }
         }
       },
+      "VideoSummaryMusicResponse": {
+        "required": [
+          "id",
+          "name",
+          "durationSeconds"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "VideoSummaryResponse": {
         "required": [
           "id",
@@ -17463,6 +17557,9 @@
           "includePhotos",
           "orientation",
           "durationMinutes",
+          "showTitles",
+          "musicId",
+          "musicName",
           "status",
           "progress",
           "error",
@@ -17506,6 +17603,22 @@
           "durationMinutes": {
             "type": "integer",
             "format": "int32"
+          },
+          "showTitles": {
+            "type": "boolean"
+          },
+          "musicId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "musicName": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "status": {
             "type": "string"

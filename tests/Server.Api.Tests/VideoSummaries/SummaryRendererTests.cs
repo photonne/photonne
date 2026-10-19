@@ -113,6 +113,54 @@ public sealed class SummaryRendererTests : IDisposable
     }
 
     [Fact]
+    public async Task Finished_WithTitle_Captions_Crossfades_Chapters_AndMusic()
+    {
+        var a = Path.Combine(_dir, "a.mp4");
+        var b = Path.Combine(_dir, "b.mp4");
+        var photo = Path.Combine(_dir, "p.jpg");
+        var music = Path.Combine(_dir, "music.wav");
+        await Ffmpeg("-f", "lavfi", "-i", "testsrc=size=1280x720:rate=30:duration=4",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=4",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", a);
+        await Ffmpeg("-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30:duration=4",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", b);
+        await Ffmpeg("-f", "lavfi", "-i", "testsrc=size=800x600", "-frames:v", "1", photo);
+        // A short loop of clicks: has to be repeated to cover the summary.
+        await Ffmpeg("-f", "lavfi", "-i", "aevalsrc='if(lt(mod(t,0.5),0.03),sin(2*PI*1000*t),0)':s=44100:d=4", music);
+
+        var font = FontLocator.Find();
+        var style = new RenderStyle
+        {
+            Crossfade = 0.5,
+            Title = "Resumen 2024",
+            Subtitle = "Enero – diciembre de 2024",
+            FontFile = font,
+            MusicPath = music,
+            ChunkSize = 2,
+        };
+        var output = Path.Combine(_dir, "finished.mp4");
+
+        var count = await new SummaryRenderer(NullLogger<SummaryRenderer>.Instance).RenderAsync(
+            new[]
+            {
+                new RenderClip(a, true, 0, 3, Caption: "Julio · Barcelona"),
+                new RenderClip(b, true, 0, 3),
+                new RenderClip(photo, false, 0, 3, Caption: "Agosto"),
+            },
+            new Frame(1920, 1080), output, "Resumen 2024", DateTime.UtcNow, Path.Combine(_dir, "work"),
+            _ => Task.CompletedTask, CancellationToken.None, style);
+
+        Assert.Equal(3, count);
+        var probe = (await FfmpegProcess.ProbeAsync(output, CancellationToken.None))!;
+        Assert.True(probe.HasAudio);
+        // Title card first when there's a font; within each chapter of two
+        // segments the crossfade overlaps them by half a second.
+        var segments = font != null ? new[] { 3.5, 3, 3, 3 } : new[] { 3.0, 3, 3 };
+        var expected = segments.Chunk(2).Sum(chapter => chapter.Sum() - 0.5 * (chapter.Length - 1));
+        Assert.InRange(probe.DurationSeconds, expected - 0.3, expected + 0.3);
+    }
+
+    [Fact]
     public async Task NothingRenderable_Fails()
     {
         var renderer = new SummaryRenderer(NullLogger<SummaryRenderer>.Instance);
