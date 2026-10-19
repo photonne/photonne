@@ -18,6 +18,7 @@ from .image_loader import ImageLoadError, load_bgr
 from .object_detector import detector as object_detector
 from .object_models import ObjectDetectRequest, ObjectDetectResponse
 from . import request_log
+from .readiness import overall_status
 from .scene_classifier import classifier as scene_classifier
 from .scene_models import SceneClassifyRequest, SceneClassifyResponse
 from .text_models import TextDetectRequest, TextDetectResponse
@@ -156,10 +157,9 @@ def health() -> Dict[str, Any]:
         components["embeddings"]["error"] = (
             image_embedder.load_error or text_embedder.load_error
         )
-    enabled = [c for c, v in components.items() if v["enabled"]]
-    all_loaded = all(components[c]["loaded"] for c in enabled) if enabled else True
+    components["voice"]["optional"] = True
     return {
-        "status": "ready" if all_loaded else "loading",
+        "status": overall_status(components),
         "providers": providers,
         "components": components,
     }

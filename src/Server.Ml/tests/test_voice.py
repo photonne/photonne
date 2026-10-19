@@ -95,3 +95,18 @@ def test_rejects_a_file_that_is_not_audio(tmp_path):
 
     with pytest.raises(AudioReadError):
         read_wav(str(path), max_seconds=10)
+
+
+
+def test_readiness_ignores_an_optional_component_that_failed():
+    from app.readiness import overall_status
+
+    components = {
+        "faces": {"enabled": True, "loaded": True},
+        "embeddings": {"enabled": False, "loaded": False},
+        "voice": {"enabled": True, "loaded": False, "optional": True},
+    }
+    assert overall_status(components) == "ready"
+
+    components["faces"]["loaded"] = False
+    assert overall_status(components) == "loading"
