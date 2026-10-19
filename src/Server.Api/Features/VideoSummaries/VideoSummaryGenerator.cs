@@ -26,6 +26,8 @@ public sealed class VideoSummaryGenerator
     private readonly FileHashService _hashes;
     private readonly SummaryRenderer _renderer;
     private readonly VideoProfileCache _profiles;
+    private readonly IVideoMlService _ml;
+    private readonly VideoMlAnalyzer _mlAnalyzer;
     private readonly INotificationService _notifications;
     private readonly ILogger<VideoSummaryGenerator> _logger;
 
@@ -39,6 +41,8 @@ public sealed class VideoSummaryGenerator
         FileHashService hashes,
         SummaryRenderer renderer,
         VideoProfileCache profiles,
+        IVideoMlService ml,
+        VideoMlAnalyzer mlAnalyzer,
         INotificationService notifications,
         ILogger<VideoSummaryGenerator> logger)
     {
@@ -51,6 +55,8 @@ public sealed class VideoSummaryGenerator
         _hashes = hashes;
         _renderer = renderer;
         _profiles = profiles;
+        _ml = ml;
+        _mlAnalyzer = mlAnalyzer;
         _notifications = notifications;
         _logger = logger;
     }
@@ -195,23 +201,39 @@ public sealed class VideoSummaryGenerator
             candidates.Add(new SummaryCandidate(item.Id, true, item.CapturedAt, duration.Value, item.IsFavorite));
         }
 
-        // Analyse a shortlist (cached per file) so the cut picks moments
-        // instead of a fixed stretch of each video.
         var planOptions = new SummaryPlanOptions { TargetSeconds = summary.DurationSeconds };
+        if (summary.IncludePhotos)
+            candidates = await WithPhotoEmbeddingsAsync(candidates, ct);
+
+        // Analyse a shortlist (cached per file) so the cut picks moments
+        // instead of a fixed stretch of each video: measurements first, then
+        // — when the ML service is there — faces, looks and speech.
         var checksums = material.ToDictionary(m => m.Id, m => m.Checksum);
         var toAnalyze = SummaryPlanner.VideosToAnalyze(candidates, summary.IncludePhotos, planOptions);
-        var profiles = new Dictionary<Guid, VideoProfile>();
+        var capabilities = toAnalyze.Count > 0 ? await _ml.CapabilitiesAsync(ct) : MlCapabilities.None;
+        var people = capabilities.Faces ? await PeopleIndex.LoadAsync(_db, summary.OwnerId, ct) : PeopleIndex.Empty;
+
+        var analysed = new Dictionary<Guid, AnalysedVideo>();
         for (var i = 0; i < toAnalyze.Count; i++)
         {
             var video = toAnalyze[i];
             var profile = await _profiles.GetAsync(
                 video.AssetId, checksums[video.AssetId], paths[video.AssetId],
                 Path.Combine(workDirectory, "analysis"), ct);
-            if (profile != null) profiles[video.AssetId] = profile;
-            await SetProgressAsync(summary, 0.1 + 0.25 * (i + 1) / toAnalyze.Count, ct);
+            await SetProgressAsync(summary, 0.1 + 0.15 * (i + 1) / toAnalyze.Count, ct);
+            if (profile == null) continue;
+
+            var ml = await _profiles.GetMlAsync(
+                video.AssetId, checksums[video.AssetId], paths[video.AssetId], profile.Duration,
+                capabilities, _mlAnalyzer, ct);
+            analysed[video.AssetId] = new AnalysedVideo(
+                profile,
+                MomentSignals.Build(ml, profile.Seconds, people),
+                ml?.Embedding is { } embedding ? Vectors.Decode(embedding) : null);
+            await SetProgressAsync(summary, 0.25 + 0.2 * (i + 1) / toAnalyze.Count, ct);
         }
 
-        var plan = SummaryPlanner.Plan(candidates, summary.IncludePhotos, planOptions, profiles);
+        var plan = SummaryPlanner.Plan(candidates, summary.IncludePhotos, planOptions, analysed);
         if (plan.Count < 2)
             throw new VideoSummaryException(NotEnoughMessage(summary.IncludePhotos, filter));
 
@@ -232,11 +254,27 @@ public sealed class VideoSummaryGenerator
         var (width, height) = SummaryOrientation.Frame(filter);
         var clipCount = await _renderer.RenderAsync(
             clips, new Frame(width, height), rendered, summary.Title, creationUtc, workDirectory,
-            p => SetProgressAsync(summary, 0.35 + 0.6 * p, ct),
+            p => SetProgressAsync(summary, 0.45 + 0.5 * p, ct),
             ct);
         summary.ClipCount = clipCount;
 
         return await StoreAsync(summary, rendered, capturedAt, ct);
+    }
+
+    /// <summary>The photos' CLIP embeddings, where the enrichment already made
+    /// them, so a burst goes in as one photo.</summary>
+    private async Task<List<SummaryCandidate>> WithPhotoEmbeddingsAsync(List<SummaryCandidate> candidates, CancellationToken ct)
+    {
+        var photoIds = candidates.Where(c => !c.IsVideo).Select(c => c.AssetId).ToList();
+        if (photoIds.Count == 0) return candidates;
+        var embeddings = await _db.AssetEmbeddings
+            .AsNoTracking()
+            .Where(e => photoIds.Contains(e.AssetId))
+            .Select(e => new { e.AssetId, e.Embedding })
+            .ToDictionaryAsync(e => e.AssetId, e => Vectors.Normalize(e.Embedding.ToArray()), ct);
+        return candidates
+            .Select(c => !c.IsVideo && embeddings.TryGetValue(c.AssetId, out var e) ? c with { Embedding = e } : c)
+            .ToList();
     }
 
     /// <summary>

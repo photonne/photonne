@@ -692,6 +692,12 @@ namespace Photonne.Server.Api.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("MlProfile")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("MlVersion")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Profile")
                         .IsRequired()
                         .HasColumnType("jsonb");

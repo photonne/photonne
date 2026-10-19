@@ -27,4 +27,12 @@ public class AssetVideoAnalysis
     public string Profile { get; set; } = "{}";
 
     public DateTime AnalyzedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>What the ML service saw and heard
+    /// (<c>Features.VideoSummaries.Highlights.VideoMlProfile</c>, as JSON), or
+    /// null before it ever looked. Filled in separately: a server without the
+    /// ML service still gets the measurements above.</summary>
+    public string? MlProfile { get; set; }
+
+    public int MlVersion { get; set; }
 }
