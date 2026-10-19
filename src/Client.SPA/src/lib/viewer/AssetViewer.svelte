@@ -527,7 +527,8 @@
 >
 	<div class="main">
 		{#if !slideshow}
-			<header class="bar">
+			<!-- A video gets the bar above it, not over it: its own controls stay reachable. -->
+			<header class="bar" class:solid={isVideo}>
 				<button
 					type="button"
 					class="icon-btn"
@@ -734,6 +735,7 @@
 			onselectface={(id) => (selectedFaceId = id)}
 			showFaceBoxes={showFaces}
 			ontogglefaceboxes={toggleFaces}
+			onclose={toggleInfo}
 		/>
 	{/if}
 </div>
@@ -815,6 +817,12 @@
 	}
 
 	/* On the photo, the bar's buttons are white whatever is under them. */
+	.bar.solid {
+		position: relative;
+		flex: none;
+		background: #000;
+	}
+
 	.bar :global(.icon-btn) {
 		color: #fff;
 	}
@@ -852,10 +860,10 @@
 		place-items: center;
 	}
 
+	/* Pinned to the stage: the media is sized by the room left, never by its own pixels. */
 	.slide {
-		position: relative;
-		width: 100%;
-		height: 100%;
+		position: absolute;
+		inset: 0;
 		display: grid;
 		place-items: center;
 	}
@@ -877,17 +885,16 @@
 		}
 	}
 
+	/* The whole slide, letterboxed: the controls (timeline included) sit on its edges. */
 	video {
-		max-width: 100%;
-		max-height: 100%;
-	}
-
-	.live-clip {
 		position: absolute;
 		inset: 0;
 		width: 100%;
 		height: 100%;
 		object-fit: contain;
+	}
+
+	.live-clip {
 		background: #000;
 	}
 

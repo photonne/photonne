@@ -123,6 +123,7 @@
 	"viewer_shortcuts_title": "Keyboard shortcuts",
 	"viewer_shortcuts_navigate": "Previous or next photo",
 	"viewer_shortcuts_close": "Reset the zoom or close the viewer",
+	"viewer_info_close": "Close the info",
 	"viewer_shortcuts_info": "Show or hide the info",
 	"viewer_shortcuts_favorite": "Add to or remove from favorites",
 	"viewer_shortcuts_faces": "Show or hide faces",

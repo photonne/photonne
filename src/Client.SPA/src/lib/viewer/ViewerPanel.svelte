@@ -9,6 +9,7 @@
 	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import PaneResizer from '#lib/components/PaneResizer.svelte';
 	import { clampWidth, savedWidth } from '#lib/components/pane-width.js';
+	import Icon from '#lib/components/Icon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import AiPanel from './AiPanel.svelte';
 	import FacesPanel from './FacesPanel.svelte';
@@ -24,6 +25,7 @@
 		onselectface: (faceId: string | null) => void;
 		showFaceBoxes: boolean;
 		ontogglefaceboxes: () => void;
+		onclose: () => void;
 	}
 
 	let {
@@ -35,7 +37,8 @@
 		selectedFaceId,
 		onselectface,
 		showFaceBoxes,
-		ontogglefaceboxes
+		ontogglefaceboxes,
+		onclose
 	}: Props = $props();
 
 	const id = $props.id();
@@ -89,7 +92,18 @@
 {/if}
 
 <aside id="viewer-panel" class="panel" style:--panel-width="{shown}px" aria-labelledby="info-title">
-	<h2 id="info-title">{m.info_title()}</h2>
+	<header class="head">
+		<h2 id="info-title">{m.info_title()}</h2>
+		<button
+			type="button"
+			class="icon-btn"
+			title="{m.viewer_info_close()} · I"
+			aria-label={m.viewer_info_close()}
+			onclick={onclose}
+		>
+			<Icon name="close" />
+		</button>
+	</header>
 
 	<!-- svelte-ignore a11y_interactive_supports_focus -->
 	<div class="tabs" role="tablist" aria-label={m.viewer_tabs()} bind:this={tablist} {onkeydown}>
@@ -151,9 +165,16 @@
 		}
 	}
 
+	.head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-2) var(--space-1) var(--space-4);
+	}
+
 	h2 {
 		margin: 0;
-		padding: var(--space-4) var(--space-4) var(--space-2);
 		font-size: var(--font-size-lg);
 	}
 

@@ -155,3 +155,15 @@ test('resizes the panel by dragging or with the keyboard, and remembers it', asy
 	await handle.dblclick();
 	await expect(handle).toHaveAttribute('aria-valuenow', '340');
 });
+
+test('the panel closes from its own X', async ({ page }) => {
+	const { panel } = await openPanel(page);
+
+	await panel.getByRole('button', { name: 'Cerrar la información' }).click();
+
+	await expect(panel).toBeHidden();
+	await expect(page.getByRole('button', { name: 'Información' })).toHaveAttribute(
+		'aria-pressed',
+		'false'
+	);
+});
