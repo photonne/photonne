@@ -1,8 +1,13 @@
+using Photonne.Server.Api.Features.VideoSummaries.Highlights;
+
 namespace Photonne.Server.Api.Features.VideoSummaries.Rendering;
 
 /// <summary>A source asset the summary could draw from.</summary>
 /// <param name="DurationSeconds">Probed length for videos; ignored for photos.</param>
-public sealed record SummaryCandidate(Guid AssetId, bool IsVideo, DateTime CapturedAt, double DurationSeconds);
+/// <param name="IsFavorite">The user's own mark of what matters: gets more time
+/// and is the last to be left out.</param>
+public sealed record SummaryCandidate(
+    Guid AssetId, bool IsVideo, DateTime CapturedAt, double DurationSeconds, bool IsFavorite = false);
 
 /// <summary>One cut of the summary: <paramref name="Length"/> seconds of the asset,
 /// starting <paramref name="Start"/> seconds in (always 0 for photos).</summary>
@@ -28,6 +33,17 @@ public sealed record SummaryPlanOptions
     /// <summary>Share of the target photos may take while videos could fill it.
     /// Videos are what the user asked a video summary for; photos season it.</summary>
     public double MaxPhotoShare { get; init; } = 0.4;
+
+    /// <summary>With analysed videos: how many more videos than fit at the
+    /// base cut get analysed, so the duller ones can be left out.</summary>
+    public double ShortlistFactor { get; init; } = 1.5;
+
+    /// <summary>With analysed videos: share of the video budget planned
+    /// before cuts snap to natural breaks, which tends to lengthen them.</summary>
+    public double SnapSlack { get; init; } = 0.92;
+
+    /// <summary>How a video's allowance is spent on moments.</summary>
+    public HighlightOptions Highlights { get; init; } = new();
 }
 
 /// <summary>
@@ -47,12 +63,52 @@ public sealed record SummaryPlanOptions
 ///     settles for being shorter than the target;
 ///   * a video's cut is taken a little before its middle: the first seconds of
 ///     a home video tend to be the camera being raised.
+///
+/// With the videos' <see cref="VideoProfile"/>s (see <see cref="VideosToAnalyze"/>)
+/// the cut stops being blind: a shortlist is analysed, the duller videos are
+/// left out, time goes to each video by how good its best moments are (more
+/// for favourites), and <see cref="HighlightFinder"/> picks which moments —
+/// one or several per video, cut at natural breaks. A video whose analysis
+/// failed falls back to the blind cut.
 /// </summary>
 public static class SummaryPlanner
 {
-    public static List<SummaryClip> Plan(IEnumerable<SummaryCandidate> candidates, bool includePhotos, SummaryPlanOptions? options = null)
+    /// <summary>The videos worth analysing for this summary: an even sample
+    /// across the chronology, bigger than what fits, plus favourites. Plan with
+    /// their profiles and the same arguments.</summary>
+    public static List<SummaryCandidate> VideosToAnalyze(
+        IEnumerable<SummaryCandidate> candidates, bool includePhotos, SummaryPlanOptions? options = null)
     {
         var o = options ?? new SummaryPlanOptions();
+        var (videos, _, videoBudget) = Split(candidates, includePhotos, o);
+        return Shortlist(videos, videoBudget, o);
+    }
+
+    public static List<SummaryClip> Plan(
+        IEnumerable<SummaryCandidate> candidates,
+        bool includePhotos,
+        SummaryPlanOptions? options = null,
+        IReadOnlyDictionary<Guid, VideoProfile>? profiles = null)
+    {
+        var o = options ?? new SummaryPlanOptions();
+        var (videos, chosenPhotos, videoBudget) = Split(candidates, includePhotos, o);
+
+        var clips = profiles is { Count: > 0 }
+            ? PlanHighlights(videos, videoBudget, profiles, o)
+            : PlanBlind(videos, videoBudget, o);
+        clips.AddRange(chosenPhotos.Select(p => new SummaryClip(p.AssetId, false, p.CapturedAt, 0, o.PhotoSeconds)));
+
+        return clips
+            .OrderBy(c => c.CapturedAt)
+            .ThenBy(c => c.AssetId)
+            .ThenBy(c => c.Start)
+            .ToList();
+    }
+
+    /// <summary>The usable videos, the photos that go in, and the time left for videos.</summary>
+    private static (List<SummaryCandidate> Videos, List<SummaryCandidate> Photos, double VideoBudget) Split(
+        IEnumerable<SummaryCandidate> candidates, bool includePhotos, SummaryPlanOptions o)
+    {
         var ordered = candidates
             .OrderBy(c => c.CapturedAt)
             .ThenBy(c => c.AssetId)
@@ -63,7 +119,6 @@ public static class SummaryPlanner
             .ToList();
         var photos = includePhotos ? ordered.Where(c => !c.IsVideo).ToList() : new List<SummaryCandidate>();
 
-        double BaseCut(SummaryCandidate v) => Math.Min(o.BaseVideoSeconds, v.DurationSeconds);
         // What videos could take at most, every one of them at its longest cut:
         // photos only get past their share when videos can't fill the rest.
         var videosAtMost = videos.Sum(v => Math.Min(o.MaxVideoSeconds, v.DurationSeconds));
@@ -75,23 +130,141 @@ public static class SummaryPlanner
         var chosenPhotos = SampleEvenly(photos, photoCount);
 
         var videoBudget = o.TargetSeconds - chosenPhotos.Count * o.PhotoSeconds;
+        return (videos, chosenPhotos, videoBudget);
+    }
+
+    /// <summary>The blind cut: base cuts for an even sample, grown evenly,
+    /// each a little before the video's middle.</summary>
+    private static List<SummaryClip> PlanBlind(List<SummaryCandidate> videos, double videoBudget, SummaryPlanOptions o)
+    {
+        double BaseCut(SummaryCandidate v) => Math.Min(o.BaseVideoSeconds, v.DurationSeconds);
         var chosenVideos = ChooseVideos(videos, videoBudget, BaseCut);
         var lengths = GrowCuts(chosenVideos, videoBudget, BaseCut, o.MaxVideoSeconds);
 
-        var clips = new List<SummaryClip>(chosenVideos.Count + chosenPhotos.Count);
+        var clips = new List<SummaryClip>(chosenVideos.Count);
         for (var i = 0; i < chosenVideos.Count; i++)
-        {
-            var v = chosenVideos[i];
-            var length = lengths[i];
-            var start = Math.Max(0, (v.DurationSeconds - length) * 0.4);
-            clips.Add(new SummaryClip(v.AssetId, true, v.CapturedAt, Math.Round(start, 3), Math.Round(length, 3)));
-        }
-        clips.AddRange(chosenPhotos.Select(p => new SummaryClip(p.AssetId, false, p.CapturedAt, 0, o.PhotoSeconds)));
+            clips.Add(BlindClip(chosenVideos[i], lengths[i]));
+        return clips;
+    }
 
-        return clips
-            .OrderBy(c => c.CapturedAt)
-            .ThenBy(c => c.AssetId)
+    private static SummaryClip BlindClip(SummaryCandidate v, double length)
+    {
+        var start = Math.Max(0, (v.DurationSeconds - length) * 0.4);
+        return new SummaryClip(v.AssetId, true, v.CapturedAt, Math.Round(start, 3), Math.Round(length, 3));
+    }
+
+    /// <summary>An even sample of the videos, <see cref="SummaryPlanOptions.ShortlistFactor"/>
+    /// times what fits at the base cut, plus the favourites among them.</summary>
+    private static List<SummaryCandidate> Shortlist(List<SummaryCandidate> videos, double videoBudget, SummaryPlanOptions o)
+    {
+        if (videos.Count == 0 || videoBudget <= 0) return new List<SummaryCandidate>();
+        var fits = (int)Math.Ceiling(videoBudget / o.BaseVideoSeconds * o.ShortlistFactor);
+        var favorites = videos.Where(v => v.IsFavorite).ToList();
+        return SampleEvenly(videos, fits)
+            .Concat(SampleEvenly(favorites, Math.Max(1, fits / 3)))
+            .Distinct()
+            .OrderBy(v => v.CapturedAt)
+            .ThenBy(v => v.AssetId)
             .ToList();
+    }
+
+    /// <summary>
+    /// Time by merit: every shortlisted video starts at its base cut; while
+    /// that's over budget, the least interesting goes; what's left is shared
+    /// out by interest (squared, so a great video gets clearly more than a
+    /// decent one) up to a few moments per video. Each allowance is then spent
+    /// by <see cref="HighlightFinder.Pick"/>.
+    /// </summary>
+    private static List<SummaryClip> PlanHighlights(
+        List<SummaryCandidate> videos,
+        double videoBudget,
+        IReadOnlyDictionary<Guid, VideoProfile> profiles,
+        SummaryPlanOptions o)
+    {
+        var shortlist = Shortlist(videos, videoBudget, o);
+        var h = o.Highlights;
+        var items = shortlist.Select(v =>
+        {
+            var profile = profiles.GetValueOrDefault(v.AssetId);
+            // Unanalysed videos rank below average rather than being dropped first.
+            var interest = profile != null ? HighlightFinder.Interest(profile) : 0.3;
+            var weight = Math.Max(0.05, interest) * (v.IsFavorite ? 1.4 : 1);
+            var min = Math.Min(o.BaseVideoSeconds, v.DurationSeconds);
+            var max = profile != null
+                ? Math.Min(v.DurationSeconds, h.MaxSegment * h.MaxSegmentsPerVideo)
+                : Math.Min(o.MaxVideoSeconds, v.DurationSeconds);
+            return new Allowance(v, profile, weight, min, max) { Seconds = min };
+        }).ToList();
+
+        var budget = videoBudget * o.SnapSlack;
+        while (items.Count > 0 && items.Sum(i => i.Seconds) > budget + 1e-9)
+        {
+            var dullest = items.OrderBy(i => i.Weight).ThenByDescending(i => i.Video.CapturedAt).First();
+            items.Remove(dullest);
+        }
+
+        var spare = budget - items.Sum(i => i.Seconds);
+        while (spare > 1e-6)
+        {
+            var growable = items.Where(i => i.Seconds < i.Max - 1e-9).ToList();
+            if (growable.Count == 0) break;
+            var total = growable.Sum(i => i.Weight * i.Weight);
+            var given = 0.0;
+            foreach (var item in growable)
+            {
+                var add = Math.Min(item.Max - item.Seconds, spare * item.Weight * item.Weight / total);
+                item.Seconds += add;
+                given += add;
+            }
+            spare -= given;
+            if (given < 1e-6) break;
+        }
+
+        var clips = new List<SummaryClip>();
+        foreach (var item in items)
+        {
+            if (item.Profile == null)
+            {
+                clips.Add(BlindClip(item.Video, item.Seconds));
+                continue;
+            }
+            clips.AddRange(HighlightFinder.Pick(item.Profile, item.Seconds, h)
+                .Select(s => new SummaryClip(item.Video.AssetId, true, item.Video.CapturedAt,
+                    Math.Round(s.Start, 3), Math.Round(s.Length, 3))));
+        }
+
+        return FitToBudget(clips, videoBudget, h.MinSegment);
+    }
+
+    /// <summary>Snapping can push the total past the budget; trims the longest
+    /// cuts from their end until it fits, never below a moment's minimum.</summary>
+    internal static List<SummaryClip> FitToBudget(List<SummaryClip> clips, double budget, double minSegment)
+    {
+        var excess = clips.Sum(c => c.Length) - budget;
+        while (excess > 1e-6)
+        {
+            var longest = clips
+                .Select((c, i) => (c, i))
+                .Where(x => x.c.Length > minSegment + 1e-6)
+                .OrderByDescending(x => x.c.Length)
+                .FirstOrDefault();
+            if (longest.c == null)
+            {
+                // Everything is at its minimum: drop the last-chosen cut instead.
+                clips.RemoveAt(clips.Count - 1);
+                excess = clips.Sum(c => c.Length) - budget;
+                continue;
+            }
+            var cut = Math.Min(excess, longest.c.Length - minSegment);
+            clips[longest.i] = longest.c with { Length = Math.Round(longest.c.Length - cut, 3) };
+            excess -= cut;
+        }
+        return clips;
+    }
+
+    private sealed record Allowance(SummaryCandidate Video, VideoProfile? Profile, double Weight, double Min, double Max)
+    {
+        public double Seconds { get; set; }
     }
 
     /// <summary>All videos when their base cuts fit; otherwise an even sample

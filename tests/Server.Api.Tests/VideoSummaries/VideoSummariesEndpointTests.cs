@@ -214,6 +214,38 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task VideoAnalysis_IsStored_AndReusedWhenRenderingAgain()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        var first = await CreateAssetAsync(alice, "a.mp4", folderId, In2023(5, 1), AssetType.Video, realFile: true);
+        var second = await CreateAssetAsync(alice, "b.mp4", folderId, In2023(5, 2), AssetType.Video, realFile: true);
+
+        async Task RenderAsync()
+        {
+            var response = await client.PostAsJsonAsync("/api/video-summaries",
+                new { source = "year", year = 2023, includePhotos = false });
+            var summary = (await response.Content.ReadFromJsonAsync<Summary>())!;
+            await RunGeneratorAsync(summary.Id);
+            var done = (await client.GetFromJsonAsync<Summary>($"/api/video-summaries/{summary.Id}"))!;
+            Assert.True(done.Status == "completed", done.Error);
+        }
+
+        await RenderAsync();
+        var analyses = await WithDbContextAsync(db => db.AssetVideoAnalyses.AsNoTracking()
+            .OrderBy(a => a.AnalyzedAt).ToListAsync());
+        Assert.Equal(new[] { first, second }.OrderBy(id => id), analyses.Select(a => a.AssetId).OrderBy(id => id));
+        Assert.All(analyses, a => Assert.Contains("\"motion\"", a.Profile));
+
+        await RenderAsync();
+        var again = await WithDbContextAsync(db => db.AssetVideoAnalyses.AsNoTracking().ToListAsync());
+        // Same rows, not analysed again.
+        Assert.Equal(
+            analyses.Select(a => (a.AssetId, a.AnalyzedAt)).OrderBy(x => x.AssetId),
+            again.Select(a => (a.AssetId, a.AnalyzedAt)).OrderBy(x => x.AssetId));
+    }
+
+    [Fact]
     public async Task AlbumSummary_UsesTheAlbum_AndWaitsWhenAlreadyQueued()
     {
         var (alice, client) = await CreateAuthenticatedUserAsync();

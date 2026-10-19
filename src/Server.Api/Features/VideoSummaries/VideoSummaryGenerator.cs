@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.UploadAssets;
+using Photonne.Server.Api.Features.VideoSummaries.Highlights;
 using Photonne.Server.Api.Features.VideoSummaries.Rendering;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
@@ -24,6 +25,7 @@ public sealed class VideoSummaryGenerator
     private readonly IEnrichmentService _enrichment;
     private readonly FileHashService _hashes;
     private readonly SummaryRenderer _renderer;
+    private readonly VideoProfileCache _profiles;
     private readonly INotificationService _notifications;
     private readonly ILogger<VideoSummaryGenerator> _logger;
 
@@ -36,6 +38,7 @@ public sealed class VideoSummaryGenerator
         IEnrichmentService enrichment,
         FileHashService hashes,
         SummaryRenderer renderer,
+        VideoProfileCache profiles,
         INotificationService notifications,
         ILogger<VideoSummaryGenerator> logger)
     {
@@ -47,6 +50,7 @@ public sealed class VideoSummaryGenerator
         _enrichment = enrichment;
         _hashes = hashes;
         _renderer = renderer;
+        _profiles = profiles;
         _notifications = notifications;
         _logger = logger;
     }
@@ -131,6 +135,8 @@ public sealed class VideoSummaryGenerator
                 a.CapturedAt,
                 a.FullPath,
                 a.Duration,
+                a.Checksum,
+                a.IsFavorite,
                 // The thumbnails are drawn upright (EXIF orientation, a phone's
                 // rotation flag), so their shape is the shape as seen.
                 ThumbnailRatio = a.Thumbnails
@@ -165,7 +171,7 @@ public sealed class VideoSummaryGenerator
                     ratio = await SummaryOrientation.ReadPhotoAspectRatioAsync(path, ct);
                 if (!SummaryOrientation.Matches(filter, ratio)) continue;
                 paths[item.Id] = path;
-                candidates.Add(new SummaryCandidate(item.Id, false, item.CapturedAt, 0));
+                candidates.Add(new SummaryCandidate(item.Id, false, item.CapturedAt, 0, item.IsFavorite));
                 continue;
             }
 
@@ -186,11 +192,26 @@ public sealed class VideoSummaryGenerator
             }
             if (!SummaryOrientation.Matches(filter, shape)) continue;
             paths[item.Id] = path;
-            candidates.Add(new SummaryCandidate(item.Id, true, item.CapturedAt, duration.Value));
+            candidates.Add(new SummaryCandidate(item.Id, true, item.CapturedAt, duration.Value, item.IsFavorite));
         }
 
-        var plan = SummaryPlanner.Plan(candidates, summary.IncludePhotos,
-            new SummaryPlanOptions { TargetSeconds = summary.DurationSeconds });
+        // Analyse a shortlist (cached per file) so the cut picks moments
+        // instead of a fixed stretch of each video.
+        var planOptions = new SummaryPlanOptions { TargetSeconds = summary.DurationSeconds };
+        var checksums = material.ToDictionary(m => m.Id, m => m.Checksum);
+        var toAnalyze = SummaryPlanner.VideosToAnalyze(candidates, summary.IncludePhotos, planOptions);
+        var profiles = new Dictionary<Guid, VideoProfile>();
+        for (var i = 0; i < toAnalyze.Count; i++)
+        {
+            var video = toAnalyze[i];
+            var profile = await _profiles.GetAsync(
+                video.AssetId, checksums[video.AssetId], paths[video.AssetId],
+                Path.Combine(workDirectory, "analysis"), ct);
+            if (profile != null) profiles[video.AssetId] = profile;
+            await SetProgressAsync(summary, 0.1 + 0.25 * (i + 1) / toAnalyze.Count, ct);
+        }
+
+        var plan = SummaryPlanner.Plan(candidates, summary.IncludePhotos, planOptions, profiles);
         if (plan.Count < 2)
             throw new VideoSummaryException(NotEnoughMessage(summary.IncludePhotos, filter));
 
@@ -211,7 +232,7 @@ public sealed class VideoSummaryGenerator
         var (width, height) = SummaryOrientation.Frame(filter);
         var clipCount = await _renderer.RenderAsync(
             clips, new Frame(width, height), rendered, summary.Title, creationUtc, workDirectory,
-            p => SetProgressAsync(summary, 0.1 + 0.85 * p, ct),
+            p => SetProgressAsync(summary, 0.35 + 0.6 * p, ct),
             ct);
         summary.ClipCount = clipCount;
 

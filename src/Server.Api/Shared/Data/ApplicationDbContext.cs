@@ -76,6 +76,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<TripPlace> TripPlaces { get; set; }
     /// <summary>On-demand summary videos and the asset each one produced.</summary>
     public DbSet<VideoSummary> VideoSummaries { get; set; }
+    /// <summary>Cached per-second measurements of videos, for picking their best moments.</summary>
+    public DbSet<AssetVideoAnalysis> AssetVideoAnalyses { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -939,6 +941,20 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.RequestedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.CompletedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
+        });
+
+        modelBuilder.Entity<AssetVideoAnalysis>(entity =>
+        {
+            entity.HasKey(e => e.AssetId);
+            entity.Property(e => e.Checksum).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.Profile).IsRequired().HasColumnType("jsonb");
+            entity.Property(e => e.AnalyzedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+
+            // Model output about the file: goes with the asset.
+            entity.HasOne(e => e.Asset)
+                .WithMany()
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

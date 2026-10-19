@@ -676,6 +676,31 @@ namespace Photonne.Server.Api.Migrations
                     b.ToTable("AssetUserTags");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetVideoAnalysis", b =>
+                {
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AnalyzedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("AnalyzerVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Checksum")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Profile")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("AssetId");
+
+                    b.ToTable("AssetVideoAnalyses");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExternalLibrary", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1832,6 +1857,17 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Asset");
 
                     b.Navigation("UserTag");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetVideoAnalysis", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExternalLibrary", b =>
