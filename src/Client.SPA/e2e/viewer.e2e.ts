@@ -129,3 +129,21 @@ test('the "more" menu holds the other actions and works with the keyboard', asyn
 		'true'
 	);
 });
+
+test('a video sits below the bar and fits the screen, so its controls stay reachable', async ({
+	page
+}) => {
+	await fakeApi(page, { signedIn: true });
+	// A real portrait clip (1080×1920), taller than the screen.
+	await page.route('**/api/assets/2026-09-5/content*', (route) =>
+		route.fulfill({ path: new URL('./fakes/portrait.webm', import.meta.url).pathname })
+	);
+	await page.goto('/?asset=2026-09-5');
+
+	const video = page.locator('video');
+	await expect(video).toHaveJSProperty('videoHeight', 1920);
+	const bar = (await page.getByRole('button', { name: 'Cerrar' }).boundingBox())!;
+	const box = (await video.boundingBox())!;
+	expect(box.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+	expect(box.y + box.height).toBeLessThanOrEqual(800);
+});
