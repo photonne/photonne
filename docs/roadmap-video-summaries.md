@@ -34,11 +34,11 @@ Analizar cada vídeo antes de cortar, con ffmpeg a baja resolución (unos 160 px
 - [x] **11. Quitar repetidos** (M). Comparar los embeddings CLIP de los fragmentos candidatos: de cinco vídeos casi iguales del mismo momento, quedarse con uno. Hecho para vídeos (embedding medio, mismo momento en 2 días) y para ráfagas de fotos (30 minutos), que se quedan en una, la favorita si la hay.
 - [x] **12. Detección de voz** (M). VAD (por ejemplo, Silero) para no cortar nunca a alguien hablando. Completa el punto 5. Hecho con Silero VAD v5 en el servicio de ML (`POST /v1/audio/voice`); el viento o la música ya no mantienen un corte abierto.
 
-## Fase 4 — Acabado
+## Fase 4 — Acabado (hecho)
 
-- [ ] **13. Transiciones** (S). Encadenar los fragmentos (`xfade`) en vez de fundir a negro, y adelantar o alargar un poco el audio respecto a la imagen para suavizar los cortes.
-- [ ] **14. Títulos** (S). Título del resumen al principio, y fechas o lugares sobreimpresos (`drawtext`).
-- [ ] **15. Música** (L). Música elegida por el usuario de su propia biblioteca, sin problemas de licencias. Los cortes se sincronizan con el ritmo y el audio original baja de volumen.
+- [x] **13. Transiciones** (S). Encadenar los fragmentos (`xfade`) en vez de fundir a negro, y adelantar o alargar un poco el audio respecto a la imagen para suavizar los cortes. Hecho con fundidos encadenados de 0,5 s de imagen y sonido (`xfade` + `acrossfade`), en capítulos de hasta 30 fragmentos que entran y salen de negro. El audio adelantado o alargado (cortes J/L) no está hecho: el fundido del sonido ya suaviza el corte.
+- [x] **14. Títulos** (S). Título del resumen al principio, y fechas o lugares sobreimpresos (`drawtext`). Hecho: portada con el título y el periodo sobre el primer plano desenfocado, y un rótulo al empezar cada mes (año) o día (álbum) con el lugar si la mayoría coincide. Se pueden desactivar. La imagen de la API instala `fonts-dejavu-core`.
+- [x] **15. Música** (L). Música elegida por el usuario de su propia biblioteca, sin problemas de licencias. Los cortes se sincronizan con el ritmo y el audio original baja de volumen. Hecho con una diferencia: Photonne no indexa audio, así que la pista se sube en el diálogo (MP3, M4A, WAV, OGG, Opus o FLAC; se guarda por usuario fuera de la biblioteca y se reutiliza al volver a crear). Al revés de lo previsto, es la música la que baja cuando suena el vídeo (compresión sidechain), para que se oiga a quien habla.
 
 ## Fase 5 — Control del usuario y otras plataformas
 
