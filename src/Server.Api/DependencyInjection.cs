@@ -111,6 +111,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<Features.Memories.Generation.MemoryGenerationService>();
         builder.Services.AddScoped<Features.VideoSummaries.VideoSummarySources>();
         builder.Services.AddScoped<Features.VideoSummaries.VideoSummaryGenerator>();
+        builder.Services.AddScoped<Features.VideoSummaries.Highlights.VideoProfileCache>();
         builder.Services.AddSingleton<Features.VideoSummaries.Rendering.SummaryRenderer>();
         builder.Services.AddSingleton<Features.VideoSummaries.VideoSummaryQueue>();
         builder.Services.AddHostedService<Features.VideoSummaries.VideoSummaryWorker>();
