@@ -32,6 +32,8 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   InterpolateLocations.Enabled  — infer coordinates from nearby geotagged photos (default: true)
 ///   ReverseGeocode.Enabled        — resolve place names for geolocated assets (default: true)
 ///   Memories.Enabled              — regenerate the per-user Recuerdos feed (default: true)
+///   YearSummaries.Enabled         — at the end of December, ask for the year's summary video of
+///                                   the users who turned it on (default: true)
 ///   IndexingCoverage.Enabled      — verify every physical file is indexed (default: false)
 ///   LastRunDate                   — ISO date "yyyy-MM-dd" of last successful run (written by this service)
 /// </summary>
@@ -156,6 +158,7 @@ public class NightlySchedulerService : BackgroundService
         // Defaults to true: it's a handful of queries per user over data that's
         // already indexed, and a Recuerdos feed nobody turned on is an empty tab.
         var memoriesEnabled = await settings.GetSettingAsync("NightlyTaskSettings.Memories.Enabled", Guid.Empty, "true");
+        var yearSummariesEnabled = await settings.GetSettingAsync("NightlyTaskSettings.YearSummaries.Enabled", Guid.Empty, "true");
         // Also true by default — an in-memory lookup with no model behind it.
         var geocodeEnabled = await settings.GetSettingAsync("NightlyTaskSettings.ReverseGeocode.Enabled", Guid.Empty, "true");
         var interpolateEnabled = await settings.GetSettingAsync("NightlyTaskSettings.InterpolateLocations.Enabled", Guid.Empty, "true");
@@ -208,6 +211,10 @@ public class NightlySchedulerService : BackgroundService
         // so they want the night's clustering to have already landed.
         if (memoriesEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMemoriesAsync(ct);
+
+        // Only queues them: the summary worker renders them one at a time.
+        if (yearSummariesEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunYearSummariesAsync(settings, ct);
 
         // Coverage check at the very end so it verifies the night's final state.
         if (coverageEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
@@ -427,6 +434,23 @@ public class NightlySchedulerService : BackgroundService
             "Tarea nocturna: recuerdos",
             $"Procesados {usersProcessed} usuario(s): {created} recuerdo(s) nuevos, {updated} actualizados, {removed} retirados, {usersFailed} error(es).",
             ct);
+    }
+
+    private async Task RunYearSummariesAsync(SettingsService settings, CancellationToken ct)
+    {
+        try
+        {
+            var tz = await MetadataTimeZone.ResolveAsync(settings, ct);
+            using var scope = _scopeFactory.CreateScope();
+            var automation = scope.ServiceProvider.GetRequiredService<Features.VideoSummaries.YearSummaryAutomation>();
+            var queued = await automation.RequestDueAsync(MetadataTimeZone.LocalNow(tz), ct);
+            if (queued > 0) Console.WriteLine($"[NIGHTLY] Year summaries queued: {queued}.");
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NIGHTLY] Year summaries error: {ex.Message}");
+        }
     }
 
     /// <summary>Applies the trash retention/quota policy overnight, reusing the

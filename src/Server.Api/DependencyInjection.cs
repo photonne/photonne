@@ -123,6 +123,7 @@ public static class DependencyInjection
         });
         builder.Services.AddSingleton<Features.VideoSummaries.Rendering.SummaryRenderer>();
         builder.Services.AddSingleton<Features.VideoSummaries.VideoSummaryQueue>();
+        builder.Services.AddSingleton<Features.VideoSummaries.YearSummaryAutomation>();
         builder.Services.AddHostedService<Features.VideoSummaries.VideoSummaryWorker>();
 
         // Reverse geocoding. The geocoder is a singleton because it owns the

@@ -696,6 +696,63 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
             db.VideoSummaries.Where(s => s.Id == requested.Id).Select(s => s.PinnedAssetIds).SingleAsync()));
     }
 
+    [Fact]
+    public async Task YearSummary_IsAskedForAtTheEndOfDecember_ForWhoeverTurnedItOn_OnlyOnce()
+    {
+        var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
+        var (bob, _) = await CreateAuthenticatedUserAsync();
+        var aliceFolder = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        var bobFolder = await CreateFolderAsync($"/assets/users/{bob.Username}");
+        foreach (var (user, folder) in new[] { (alice, aliceFolder), (bob, bobFolder) })
+        {
+            await CreateAssetAsync(user, "a.mp4", folder, In2023(3, 1), AssetType.Video);
+            await CreateAssetAsync(user, "b.mp4", folder, In2023(7, 1), AssetType.Video);
+        }
+
+        // Alice made one in summer, with her own options; only she turned it on.
+        var summer = (await (await aliceClient.PostAsJsonAsync("/api/video-summaries",
+                new { source = "year", year = 2023, includePhotos = true, durationMinutes = 3, showTitles = false }))
+            .Content.ReadFromJsonAsync<Summary>())!;
+        await WithDbContextAsync(async db =>
+        {
+            var row = await db.VideoSummaries.SingleAsync(s => s.Id == summer.Id);
+            row.Status = VideoSummaryStatus.Completed;
+            row.RequestedAt = new DateTime(2023, 6, 30, 10, 0, 0, DateTimeKind.Utc);
+            await db.SaveChangesAsync();
+        });
+        var save = await aliceClient.PostAsJsonAsync("/api/settings",
+            new { key = YearSummaryAutomation.SettingKey, value = "true" });
+        Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+
+        var automation = Factory.Services.GetRequiredService<YearSummaryAutomation>();
+        // Not yet: Christmas isn't over.
+        Assert.Equal(0, await automation.RequestDueAsync(new DateTime(2023, 12, 20), CancellationToken.None));
+
+        Assert.Equal(1, await automation.RequestDueAsync(new DateTime(2023, 12, 27), CancellationToken.None));
+        var due = (await aliceClient.GetFromJsonAsync<Summary>($"/api/video-summaries/{summer.Id}"))!;
+        Assert.Equal("pending", due.Status);
+        Assert.True(due.IncludePhotos);
+        Assert.Equal(3, due.DurationMinutes);
+        Assert.False(due.ShowTitles);
+        Assert.False(await WithDbContextAsync(db => db.VideoSummaries.AnyAsync(s => s.OwnerId == bob.Id)));
+
+        // Made once (even if it's still on its way, or done the next night).
+        Assert.Equal(0, await automation.RequestDueAsync(new DateTime(2023, 12, 28), CancellationToken.None));
+        await WithDbContextAsync(db => db.VideoSummaries.Where(s => s.Id == summer.Id)
+            .ExecuteUpdateAsync(u => u.SetProperty(s => s.Status, VideoSummaryStatus.Completed)));
+        Assert.Equal(0, await automation.RequestDueAsync(new DateTime(2024, 1, 3), CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(2023, 12, 25, null)]
+    [InlineData(2023, 12, 26, 2023)]
+    [InlineData(2023, 12, 31, 2023)]
+    [InlineData(2024, 1, 15, 2023)]
+    [InlineData(2024, 1, 16, null)]
+    [InlineData(2024, 6, 1, null)]
+    public void YearSummary_IsDue_FromBoxingDayToMidJanuary(int year, int month, int day, int? due) =>
+        Assert.Equal(due, YearSummaryAutomation.DueYear(new DateTime(year, month, day)));
+
     private static async Task Ffmpeg(params string[] args)
     {
         var psi = new ProcessStartInfo("ffmpeg")
