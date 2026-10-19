@@ -132,6 +132,11 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
         var physical = Path.Combine(Factory.InternalAssetsPath, "users", alice.Username, "Recuerdos", "Resumen 2023.mp4");
         Assert.True(File.Exists(physical));
 
+        // Each video was measured once, and is kept for the next summary.
+        var analyses = await WithDbContextAsync(db => db.AssetVideoAnalyses.AsNoTracking().ToListAsync());
+        Assert.Equal(2, analyses.Count);
+        Assert.All(analyses, a => Assert.Equal(3, a.Motion.Length));
+
         // The summary itself is not material: the year's counts don't change.
         var years = (await client.GetFromJsonAsync<List<YearRow>>("/api/video-summaries/years"))!;
         Assert.Equal(new YearRow(2023, 2, 1), years.Single(y => y.Year == 2023));
@@ -148,6 +153,11 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
         Assert.Equal("completed", redone.Status);
         Assert.Equal(done.AssetId, redone.AssetId);
         Assert.Equal(2, redone.ClipCount);
+        // Not measured again: same files, same measurements.
+        var reused = await WithDbContextAsync(db => db.AssetVideoAnalyses.AsNoTracking().ToListAsync());
+        Assert.Equal(
+            analyses.OrderBy(a => a.AssetId).Select(a => a.AnalyzedAt),
+            reused.OrderBy(a => a.AssetId).Select(a => a.AnalyzedAt));
         Assert.Equal(1, await WithDbContextAsync(db =>
             db.Assets.CountAsync(a => a.FullPath.Contains("/Recuerdos/"))));
 

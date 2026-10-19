@@ -74,6 +74,8 @@ public class ApplicationDbContext : DbContext
     /// re-derived so their names and boundaries don't flicker night to night.</summary>
     public DbSet<Trip> Trips { get; set; }
     public DbSet<TripPlace> TripPlaces { get; set; }
+    /// <summary>Per-second measurements of a video, for cutting summaries.</summary>
+    public DbSet<AssetVideoAnalysis> AssetVideoAnalyses { get; set; }
     /// <summary>On-demand summary videos and the asset each one produced.</summary>
     public DbSet<VideoSummary> VideoSummaries { get; set; }
 
@@ -910,6 +912,17 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.AssetId);
+        });
+
+        modelBuilder.Entity<AssetVideoAnalysis>(entity =>
+        {
+            entity.HasKey(e => e.AssetId);
+            entity.Property(e => e.Checksum).IsRequired().HasMaxLength(64);
+            entity.HasOne(e => e.Asset)
+                .WithMany()
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.AnalyzedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         modelBuilder.Entity<VideoSummary>(entity =>

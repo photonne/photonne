@@ -1,8 +1,8 @@
 # Roadmap — Vídeos resumen
 
-Plan del 2026-10-18 para los vídeos resumen bajo demanda (`src/Server.Api/Features/VideoSummaries`, `src/Client.SPA/src/lib/summaries`). La fase 1 llegó con la PR #97 (servidor 2.6.0). Las rutas son relativas a la raíz del repositorio.
+Plan del 2026-10-18 para los vídeos resumen bajo demanda (`src/Server.Api/Features/VideoSummaries`, `src/Client.SPA/src/lib/summaries`). La fase 1 llegó con la PR #97 (servidor 2.6.0); la fase 2 está hecha y saldrá en la siguiente versión del servidor. Las rutas son relativas a la raíz del repositorio.
 
-El problema que motiva las fases siguientes: el planificador (`SummaryPlanner`) elige **a ciegas**. De cada vídeo toma un tramo fijo (4 s, hasta 8 s si sobra tiempo) un poco antes de la mitad, sin mirar qué pasa en él. Por eso corta a media frase o a media acción, se pierde lo bueno si está al principio o al final, y da el mismo tiempo a un vídeo aburrido que a uno lleno de momentos.
+El problema que motivó la fase 2: el planificador (`SummaryPlanner`) elegía **a ciegas**. De cada vídeo tomaba un tramo fijo (4 s, hasta 8 s si sobraba tiempo) un poco antes de la mitad, sin mirar qué pasaba en él. Por eso cortaba a media frase o a media acción, se perdía lo bueno si estaba al principio o al final, y daba el mismo tiempo a un vídeo aburrido que a uno lleno de momentos.
 
 Esfuerzo: S pequeño, M medio, L grande.
 
@@ -12,20 +12,20 @@ Esfuerzo: S pequeño, M medio, L grande.
 - [x] **2. Opciones del usuario** (M). Duración de 1 a 10 minutos y fotos opcionales con efecto Ken Burns. Orientación todos/horizontales/verticales; con verticales, el vídeo sale en 1080×1920.
 - [x] **3. Normalización con ffmpeg** (M). 1080p a 30 fps, fondo desenfocado para lo que no encaja, HDR→SDR, `loudnorm`, fundidos, unión de segmentos copiando sin recodificar.
 
-## Fase 2 — Cortes inteligentes sin ML (siguiente)
+## Fase 2 — Cortes inteligentes sin ML (hecho)
 
-Analizar cada vídeo antes de cortar, con ffmpeg a baja resolución (unos 160 px a 5 fps) para que sea rápido. Coste estimado: un 5-10 % de la duración de los vídeos de origen, y solo la primera vez.
+Analizar cada vídeo antes de cortar, con ffmpeg a baja resolución (160 px a 5 fps) y en una sola pasada (`VideoAnalyzer`). Coste medido: un 7 % de la duración del vídeo de origen (60 s de 1080p en 4,4 s con 4 núcleos), y solo la primera vez. La puntuación, los cortes y los momentos están en `SummaryMoments`; el reparto, en `SummaryPlanner`.
 
-- [ ] **4. Puntuación por segundo** (M). Por cada tramo de 1 s:
+- [x] **4. Puntuación por segundo** (M). Por cada tramo de 1 s:
   - movimiento (diferencia entre fotogramas);
   - sonoridad momentánea (`ebur128`) para captar risas, aplausos y gritos;
   - nitidez.
 
-  Penalizar lo negro (`blackdetect`), lo congelado (`freezedetect`) y los primeros y últimos segundos movidos (el móvil subiendo o bajando).
-- [ ] **5. Cortes en puntos naturales** (M). Ajustar el inicio y el final de cada fragmento a cambios de plano (`scdet`) o a pausas del audio (`silencedetect`), nunca a media frase.
-- [ ] **6. Fragmentos de longitud variable** (M). De 3 a 12 s según el interés. Un vídeo largo y bueno aporta dos o tres momentos; los vídeos cortos (menos de unos 8 s) entran enteros.
-- [ ] **7. Reparto del tiempo por interés** (S). Los vídeos más vivos se llevan más tiempo, sin dejar de cubrir toda la cronología. Los favoritos tienen prioridad.
-- [ ] **8. Caché del análisis por vídeo** (S). Tabla nueva, invalidada por el checksum del archivo. Volver a montar un resumen, o hacer otro con los mismos vídeos, no repite el análisis.
+  Penalizar lo negro, lo congelado y los primeros y últimos segundos movidos (el móvil subiendo o bajando). Al final no hicieron falta `blackdetect` ni `freezedetect`: `signalstats` ya da el brillo y el movimiento de cada fotograma.
+- [x] **5. Cortes en puntos naturales** (M). Ajustar el inicio y el final de cada fragmento a cambios de plano (`scdet`) o a pausas del audio, nunca a media frase. Las pausas salen de la sonoridad por segundo (los segundos más bajos que el propio vídeo), sin `silencedetect`. El ajuste mueve el corte como mucho 1,5 s.
+- [x] **6. Fragmentos de longitud variable** (M). De 3 a 12 s según el interés. Un vídeo largo y bueno aporta dos o tres momentos; los vídeos cortos (menos de unos 8 s) entran enteros.
+- [x] **7. Reparto del tiempo por interés** (S). Los vídeos más vivos se llevan más tiempo, sin dejar de cubrir toda la cronología. Los favoritos tienen prioridad. Un 70 % del tiempo cubre la cronología (se parte en tramos y cada tramo pone su vídeo más interesante); el resto va a los mejores momentos que quedan.
+- [x] **8. Caché del análisis por vídeo** (S). Tabla nueva (`AssetVideoAnalyses`), invalidada por el checksum del archivo y por la versión del análisis. Volver a montar un resumen, o hacer otro con los mismos vídeos, no repite el análisis.
 
 ## Fase 3 — ML con el servicio existente (`src/Server.Ml`)
 

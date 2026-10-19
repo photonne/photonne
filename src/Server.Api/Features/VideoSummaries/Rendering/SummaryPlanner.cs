@@ -2,7 +2,15 @@ namespace Photonne.Server.Api.Features.VideoSummaries.Rendering;
 
 /// <summary>A source asset the summary could draw from.</summary>
 /// <param name="DurationSeconds">Probed length for videos; ignored for photos.</param>
-public sealed record SummaryCandidate(Guid AssetId, bool IsVideo, DateTime CapturedAt, double DurationSeconds);
+/// <param name="Signals">How the video looks and sounds second by second; null
+/// when it couldn't be measured, and then its moment is taken blind.</param>
+public sealed record SummaryCandidate(
+    Guid AssetId,
+    bool IsVideo,
+    DateTime CapturedAt,
+    double DurationSeconds,
+    bool IsFavorite = false,
+    VideoSignals? Signals = null);
 
 /// <summary>One cut of the summary: <paramref name="Length"/> seconds of the asset,
 /// starting <paramref name="Start"/> seconds in (always 0 for photos).</summary>
@@ -16,37 +24,40 @@ public sealed record SummaryPlanOptions
 
     public double PhotoSeconds { get; init; } = 3;
 
-    /// <summary>A video's cut when material is plentiful.</summary>
-    public double BaseVideoSeconds { get; init; } = 4;
-
-    /// <summary>How long a video's cut may grow when there are few of them.</summary>
-    public double MaxVideoSeconds { get; init; } = 8;
-
     /// <summary>Clips shorter than this are flashes, not moments; skipped.</summary>
     public double MinVideoSeconds { get; init; } = 1.5;
 
     /// <summary>Share of the target photos may take while videos could fill it.
     /// Videos are what the user asked a video summary for; photos season it.</summary>
     public double MaxPhotoShare { get; init; } = 0.4;
+
+    /// <summary>Share of the video time spent covering the whole chronology,
+    /// one moment per stretch of it; the rest goes to the best moments left.</summary>
+    public double CoverageShare { get; init; } = 0.7;
+
+    /// <summary>Added to a favourite's interest (0-1) when choosing.</summary>
+    public double FavoriteBonus { get; init; } = 0.25;
+
+    public MomentOptions Moments { get; init; } = new();
 }
 
 /// <summary>
-/// Decides what goes into a summary: which assets, which stretch of each
-/// video, and how long each one stays on screen. Pure, so the choice can be
-/// tested without ffmpeg.
+/// Decides what goes into a summary: which assets, which moments of each
+/// video (<see cref="SummaryMoments"/>), and how long each one stays on
+/// screen. Pure, so the choice can be tested without ffmpeg.
 ///
 /// The rules, in order:
 ///   * videos come first; photos (when asked for) get at most
 ///     <see cref="SummaryPlanOptions.MaxPhotoShare"/> of the target, unless
 ///     videos can't fill the rest anyway;
-///   * when there is more material than time, assets are sampled evenly across
-///     the chronology so every part of the year or trip is represented, rather
-///     than the first N minutes of it;
-///   * when there is less, video cuts grow (up to
-///     <see cref="SummaryPlanOptions.MaxVideoSeconds"/>) before the summary
-///     settles for being shorter than the target;
-///   * a video's cut is taken a little before its middle: the first seconds of
-///     a home video tend to be the camera being raised.
+///   * every video offers its best moment, and a long lively one a second or
+///     third; livelier moments are longer (3-12 s), short videos go in whole;
+///   * when every video's best moment fits, they all go in; when not, the
+///     chronology is split into stretches and each one shows its most
+///     interesting video, so every part of the year or trip is represented
+///     (<see cref="SummaryPlanOptions.CoverageShare"/> of the time);
+///   * the time left goes to the most interesting moments remaining, further
+///     moments of chosen videos included; favourites go first.
 /// </summary>
 public static class SummaryPlanner
 {
@@ -60,13 +71,14 @@ public static class SummaryPlanner
 
         var videos = ordered
             .Where(c => c.IsVideo && c.DurationSeconds >= o.MinVideoSeconds)
+            .Select(v => (Video: v, Moments: SummaryMoments.Find(v.DurationSeconds, v.Signals, o.Moments)))
+            .Where(v => v.Moments.Count > 0)
             .ToList();
         var photos = includePhotos ? ordered.Where(c => !c.IsVideo).ToList() : new List<SummaryCandidate>();
 
-        double BaseCut(SummaryCandidate v) => Math.Min(o.BaseVideoSeconds, v.DurationSeconds);
-        // What videos could take at most, every one of them at its longest cut:
+        // What videos could take at most, every moment of every one of them:
         // photos only get past their share when videos can't fill the rest.
-        var videosAtMost = videos.Sum(v => Math.Min(o.MaxVideoSeconds, v.DurationSeconds));
+        var videosAtMost = videos.Sum(v => v.Moments.Sum(m => m.Length));
 
         var photoBudget = Math.Min(
             photos.Count * o.PhotoSeconds,
@@ -75,72 +87,100 @@ public static class SummaryPlanner
         var chosenPhotos = SampleEvenly(photos, photoCount);
 
         var videoBudget = o.TargetSeconds - chosenPhotos.Count * o.PhotoSeconds;
-        var chosenVideos = ChooseVideos(videos, videoBudget, BaseCut);
-        var lengths = GrowCuts(chosenVideos, videoBudget, BaseCut, o.MaxVideoSeconds);
+        var chosenMoments = Allocate(videos, videoBudget, o);
 
-        var clips = new List<SummaryClip>(chosenVideos.Count + chosenPhotos.Count);
-        for (var i = 0; i < chosenVideos.Count; i++)
-        {
-            var v = chosenVideos[i];
-            var length = lengths[i];
-            var start = Math.Max(0, (v.DurationSeconds - length) * 0.4);
-            clips.Add(new SummaryClip(v.AssetId, true, v.CapturedAt, Math.Round(start, 3), Math.Round(length, 3)));
-        }
+        var clips = chosenMoments
+            .Select(c => new SummaryClip(c.Video.AssetId, true, c.Video.CapturedAt, c.Moment.Start, c.Moment.Length))
+            .ToList();
         clips.AddRange(chosenPhotos.Select(p => new SummaryClip(p.AssetId, false, p.CapturedAt, 0, o.PhotoSeconds)));
 
         return clips
             .OrderBy(c => c.CapturedAt)
             .ThenBy(c => c.AssetId)
+            .ThenBy(c => c.Start)
             .ToList();
     }
 
-    /// <summary>All videos when their base cuts fit; otherwise an even sample
-    /// across the chronology, as many as fit.</summary>
-    private static List<SummaryCandidate> ChooseVideos(
-        List<SummaryCandidate> videos, double budget, Func<SummaryCandidate, double> baseCut)
+    /// <summary>Which moments fill <paramref name="budget"/> seconds: first
+    /// one per stretch of the chronology, then the most interesting left.</summary>
+    private static List<(SummaryCandidate Video, Moment Moment)> Allocate(
+        List<(SummaryCandidate Video, List<Moment> Moments)> videos, double budget, SummaryPlanOptions o)
     {
-        if (videos.Count == 0 || budget <= 0) return new List<SummaryCandidate>();
-        if (videos.Sum(baseCut) <= budget + 1e-9) return videos;
+        var chosen = new List<(SummaryCandidate Video, Moment Moment)>();
+        if (videos.Count == 0 || budget <= 0) return chosen;
 
-        // Cuts differ (short videos are cut shorter), so find the largest even
-        // sample that fits rather than dividing by an average.
-        var low = 0;
-        var high = videos.Count;
-        while (low < high)
+        double Priority(SummaryCandidate video, Moment moment) =>
+            moment.Interest + (video.IsFavorite ? o.FavoriteBonus : 0);
+
+        // Coverage: every video's best moment when they all fit; otherwise the
+        // most stretches of the chronology that fit in the coverage share.
+        var picked = new bool[videos.Count];
+        var firsts = Enumerable.Range(0, videos.Count).ToList();
+        if (videos.Sum(v => v.Moments[0].Length) > budget + 1e-9)
         {
-            var mid = (low + high + 1) / 2;
-            if (SampleEvenly(videos, mid).Sum(baseCut) <= budget + 1e-9) low = mid;
-            else high = mid - 1;
-        }
-        return SampleEvenly(videos, low);
-    }
-
-    /// <summary>Spreads whatever budget the base cuts leave over the chosen
-    /// videos, a little to each, never past a video's own length or the cap.</summary>
-    private static double[] GrowCuts(
-        List<SummaryCandidate> videos, double budget, Func<SummaryCandidate, double> baseCut, double maxCut)
-    {
-        var lengths = videos.Select(baseCut).ToArray();
-        var spare = budget - lengths.Sum();
-
-        while (spare > 1e-6)
-        {
-            var growable = Enumerable.Range(0, videos.Count)
-                .Where(i => lengths[i] < Math.Min(maxCut, videos[i].DurationSeconds) - 1e-9)
-                .ToList();
-            if (growable.Count == 0) break;
-
-            var share = spare / growable.Count;
-            foreach (var i in growable)
+            var coverage = budget * o.CoverageShare;
+            firsts = new List<int>();
+            for (var k = 1; k <= videos.Count; k++)
             {
-                var room = Math.Min(maxCut, videos[i].DurationSeconds) - lengths[i];
-                var add = Math.Min(room, share);
-                lengths[i] += add;
-                spare -= add;
+                var picks = BucketPicks(videos, k, Priority);
+                if (picks.Sum(i => videos[i].Moments[0].Length) > coverage + 1e-9) break;
+                firsts = picks;
             }
         }
 
-        return lengths;
+        var used = 0.0;
+        foreach (var i in firsts)
+        {
+            picked[i] = true;
+            chosen.Add((videos[i].Video, videos[i].Moments[0]));
+            used += videos[i].Moments[0].Length;
+        }
+
+        // The rest by interest: best moments of videos not shown yet, and
+        // further moments of the ones that are. A video's moments go in order,
+        // so one that doesn't fit holds back its video's lesser ones too.
+        var next = picked.Select(p => p ? 1 : 0).ToArray();
+        while (true)
+        {
+            var best = -1;
+            for (var i = 0; i < videos.Count; i++)
+            {
+                if (next[i] >= videos[i].Moments.Count) continue;
+                var moment = videos[i].Moments[next[i]];
+                if (used + moment.Length > budget + 1e-9) continue;
+                if (best < 0 || Priority(videos[i].Video, moment) > Priority(videos[best].Video, videos[best].Moments[next[best]]))
+                    best = i;
+            }
+            if (best < 0) break;
+
+            var chosenMoment = videos[best].Moments[next[best]];
+            chosen.Add((videos[best].Video, chosenMoment));
+            used += chosenMoment.Length;
+            next[best]++;
+        }
+
+        return chosen;
+    }
+
+    /// <summary>Splits the videos (in chronological order) into
+    /// <paramref name="count"/> stretches and picks the one whose best moment
+    /// is most interesting in each.</summary>
+    private static List<int> BucketPicks(
+        List<(SummaryCandidate Video, List<Moment> Moments)> videos, int count,
+        Func<SummaryCandidate, Moment, double> priority)
+    {
+        var picks = new List<int>(count);
+        for (var b = 0; b < count; b++)
+        {
+            var from = (int)Math.Floor((double)b * videos.Count / count);
+            var to = (int)Math.Floor((double)(b + 1) * videos.Count / count);
+            var best = from;
+            for (var i = from + 1; i < to; i++)
+                if (priority(videos[i].Video, videos[i].Moments[0]) > priority(videos[best].Video, videos[best].Moments[0]))
+                    best = i;
+            picks.Add(best);
+        }
+        return picks;
     }
 
     /// <summary><paramref name="count"/> items evenly spaced over

@@ -16,6 +16,10 @@ public sealed class VideoSummaryGenerator
 {
     public const string FolderName = "Recuerdos";
 
+    /// <summary>Share of the progress bar for probing and measuring the videos;
+    /// rendering takes the rest. Measuring only happens the first time.</summary>
+    private const double AnalysisShare = 0.3;
+
     private readonly ApplicationDbContext _db;
     private readonly VideoSummarySources _sources;
     private readonly SettingsService _settings;
@@ -131,6 +135,8 @@ public sealed class VideoSummaryGenerator
                 a.CapturedAt,
                 a.FullPath,
                 a.Duration,
+                a.Checksum,
+                a.IsFavorite,
                 // The thumbnails are drawn upright (EXIF orientation, a phone's
                 // rotation flag), so their shape is the shape as seen.
                 ThumbnailRatio = a.Thumbnails
@@ -144,13 +150,20 @@ public sealed class VideoSummaryGenerator
             .ToListAsync(ct);
         var filter = summary.Orientation;
 
+        // What each video looks and sounds like, measured on an earlier summary.
+        var videoIds = material.Where(m => m.Type == AssetType.Video).Select(m => m.Id).ToList();
+        var analyses = await _db.AssetVideoAnalyses
+            .Where(a => videoIds.Contains(a.AssetId))
+            .ToDictionaryAsync(a => a.AssetId, ct);
+
         // Durations: a planner needs them and the indexer doesn't record them,
         // so probe what's missing and keep it on the asset for next time. A
-        // video without a thumbnail yet gets probed for its shape too.
+        // video without a thumbnail yet gets probed for its shape too, and one
+        // not measured yet (or changed since) gets measured.
         var candidates = new List<SummaryCandidate>(material.Count);
         var paths = new Dictionary<Guid, string>(material.Count);
-        var videos = material.Count(m => m.Type == AssetType.Video);
-        var probed = 0;
+        var videos = videoIds.Count;
+        var seen = 0;
         foreach (var item in material)
         {
             ct.ThrowIfCancellationRequested();
@@ -171,9 +184,10 @@ public sealed class VideoSummaryGenerator
 
             var duration = item.Duration?.TotalSeconds;
             var shape = item.ThumbnailRatio;
+            MediaProbe? probe = null;
             if (duration is not > 0 || (shape == null && filter != VideoSummaryOrientation.All))
             {
-                var probe = await FfmpegProcess.ProbeAsync(path, ct);
+                probe = await FfmpegProcess.ProbeAsync(path, ct);
                 shape ??= probe?.AspectRatio;
                 duration = duration is > 0 ? duration : probe?.DurationSeconds ?? 0;
                 if (duration > 0 && item.Duration is null)
@@ -182,11 +196,21 @@ public sealed class VideoSummaryGenerator
                     await _db.Assets.Where(a => a.Id == item.Id)
                         .ExecuteUpdateAsync(u => u.SetProperty(a => a.Duration, span), ct);
                 }
-                await SetProgressAsync(summary, 0.1 * ++probed / Math.Max(1, videos), ct);
             }
-            if (!SummaryOrientation.Matches(filter, shape)) continue;
+            if (!SummaryOrientation.Matches(filter, shape))
+            {
+                await SetProgressAsync(summary, AnalysisShare * ++seen / Math.Max(1, videos), ct);
+                continue;
+            }
+
+            var signals = analyses.TryGetValue(item.Id, out var cached)
+                && cached.Version == VideoAnalyzer.Version && cached.Checksum == item.Checksum
+                ? ToSignals(cached)
+                : await AnalyzeAsync(item.Id, item.Checksum, path, probe, cached, workDirectory, ct);
+            await SetProgressAsync(summary, AnalysisShare * ++seen / Math.Max(1, videos), ct);
+
             paths[item.Id] = path;
-            candidates.Add(new SummaryCandidate(item.Id, true, item.CapturedAt, duration.Value));
+            candidates.Add(new SummaryCandidate(item.Id, true, item.CapturedAt, duration.Value, item.IsFavorite, signals));
         }
 
         var plan = SummaryPlanner.Plan(candidates, summary.IncludePhotos,
@@ -211,12 +235,52 @@ public sealed class VideoSummaryGenerator
         var (width, height) = SummaryOrientation.Frame(filter);
         var clipCount = await _renderer.RenderAsync(
             clips, new Frame(width, height), rendered, summary.Title, creationUtc, workDirectory,
-            p => SetProgressAsync(summary, 0.1 + 0.85 * p, ct),
+            p => SetProgressAsync(summary, AnalysisShare + (0.95 - AnalysisShare) * p, ct),
             ct);
         summary.ClipCount = clipCount;
 
         return await StoreAsync(summary, rendered, capturedAt, ct);
     }
+
+    /// <summary>
+    /// Measures a video and keeps the result for the next summary. A video
+    /// that can't be measured still goes in, its moment taken blind.
+    /// </summary>
+    private async Task<VideoSignals?> AnalyzeAsync(
+        Guid assetId, string checksum, string path, MediaProbe? probe, AssetVideoAnalysis? stale,
+        string workDirectory, CancellationToken ct)
+    {
+        VideoSignals? signals;
+        try
+        {
+            probe ??= await FfmpegProcess.ProbeAsync(path, ct);
+            signals = probe == null ? null : await VideoAnalyzer.AnalyzeAsync(path, probe, workDirectory, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not analyze video {AssetId} for a summary", assetId);
+            return null;
+        }
+        if (signals == null) return null;
+
+        var row = stale ?? new AssetVideoAnalysis { AssetId = assetId };
+        row.Checksum = checksum;
+        row.Version = VideoAnalyzer.Version;
+        row.DurationSeconds = signals.DurationSeconds;
+        row.Motion = signals.Motion;
+        row.Brightness = signals.Brightness;
+        row.Blur = signals.Blur;
+        row.Loudness = signals.Loudness ?? [];
+        row.SceneCuts = signals.SceneCuts;
+        row.AnalyzedAt = DateTime.UtcNow;
+        if (stale == null) _db.AssetVideoAnalyses.Add(row);
+        await _db.SaveChangesAsync(ct);
+        return signals;
+    }
+
+    private static VideoSignals ToSignals(AssetVideoAnalysis row) => new(
+        row.DurationSeconds, row.Motion, row.Brightness, row.Blur,
+        row.Loudness.Length > 0 ? row.Loudness : null, row.SceneCuts);
 
     /// <summary>
     /// Moves the rendered file into the user's library. Asking again for the
