@@ -42,7 +42,7 @@ Analizar cada vídeo antes de cortar, con ffmpeg a baja resolución (unos 160 px
 
 ## Fase 5 — Control del usuario y otras plataformas
 
-- [ ] **16. Revisar antes de montar** (L). Ver los fragmentos elegidos, quitar o cambiar alguno, ajustar dónde empieza y dónde acaba, y marcar "incluir siempre". Necesita separar el plan del render en la API.
+- [x] **16. Revisar antes de montar** (L). Ver los fragmentos elegidos, quitar o cambiar alguno, ajustar dónde empieza y dónde acaba, y marcar "incluir siempre". Necesita separar el plan del render en la API. Hecho con la opción «Revisar los fragmentos antes de montar»: el resumen se queda en `planned` con el plan guardado y la página `/summaries/{id}` deja quitar fragmentos, cambiarlos por otro momento cercano en el tiempo, mover el inicio y el final, cambiar los segundos de cada foto y marcar «Incluir siempre». El plan se conserva después de montar, así que también se puede cambiar un resumen ya hecho y volver a montarlo. Lo fijado entra en cada plan nuevo y hace sitio quitando lo más cercano en el tiempo. Con música, los cortes se siguen ajustando al ritmo (como mucho media pulsación).
 - [ ] **17. Apps nativas** (M). El mismo diálogo y las mismas opciones en Android e iOS. Hoy solo ven el vídeo resultante.
 - [ ] **18. Resumen automático del año** (S). Opcional: generarlo en diciembre como una memoria más, con las mismas reglas.
 
