@@ -22,6 +22,9 @@ from .scene_classifier import classifier as scene_classifier
 from .scene_models import SceneClassifyRequest, SceneClassifyResponse
 from .text_models import TextDetectRequest, TextDetectResponse
 from .text_recognizer import recognizer as text_recognizer
+from .voice_detector import AudioReadError, read_wav
+from .voice_detector import detector as voice_detector
+from .voice_models import VoiceDetectRequest, VoiceDetectResponse
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("photonne.ml")
@@ -134,6 +137,12 @@ def health() -> Dict[str, Any]:
             "model": settings.embedding.model_version,
             "providers": image_embedder.providers,
         },
+        "voice": {
+            "enabled": settings.voice.enabled,
+            "loaded": voice_detector.is_loaded,
+            "model": settings.voice.model_path,
+            "providers": voice_detector.providers,
+        },
     }
     if object_detector.load_error:
         components["objects"]["error"] = object_detector.load_error
@@ -141,6 +150,8 @@ def health() -> Dict[str, Any]:
         components["scenes"]["error"] = scene_classifier.load_error
     if text_recognizer.load_error:
         components["text"]["error"] = text_recognizer.load_error
+    if voice_detector.load_error:
+        components["voice"]["error"] = voice_detector.load_error
     if image_embedder.load_error or text_embedder.load_error:
         components["embeddings"]["error"] = (
             image_embedder.load_error or text_embedder.load_error
@@ -155,7 +166,7 @@ def health() -> Dict[str, Any]:
 
 
 class ProviderConfigRequest(BaseModel):
-    # task: faces | objects | scenes | text | embeddings (singular aliases too).
+    # task: faces | objects | scenes | text | embeddings | voice (singular aliases too).
     task: str
     # ONNX provider spec, e.g. "CUDAExecutionProvider,CPUExecutionProvider".
     # Empty / "auto" / "default" reloads the task on its configured env default.
@@ -179,6 +190,7 @@ _TASK_LOADERS: Dict[str, Tuple[List[Any], Callable[[], str]]] = {
     "text": ([text_recognizer], lambda: text_recognizer.providers),
     "embeddings": ([image_embedder, text_embedder], lambda: image_embedder.providers),
     "embedding": ([image_embedder, text_embedder], lambda: image_embedder.providers),
+    "voice": ([voice_detector], lambda: voice_detector.providers),
 }
 
 
@@ -370,5 +382,31 @@ def embed_text(req: EmbedTextRequest) -> EmbeddingResponse:
         embedding=vector,
         dim=len(vector),
         model=settings.embedding.model_version,
+        elapsed_ms=elapsed_ms,
+    )
+
+
+@app.post("/v1/audio/voice", response_model=VoiceDetectResponse)
+def detect_voice(req: VoiceDetectRequest) -> VoiceDetectResponse:
+    if not settings.voice.enabled:
+        raise errors.capability_disabled("la detección de voz")
+    if not voice_detector.is_loaded:
+        raise errors.model_not_loaded("detección de voz", voice_detector.load_error)
+
+    try:
+        samples = read_wav(req.audio_path, settings.voice.max_seconds)
+    except AudioReadError as e:
+        raise errors.audio_unreadable(str(e)) from e
+
+    try:
+        segments, elapsed_ms = voice_detector.detect(samples)
+    except Exception as e:
+        log.exception("Voice detection failed for asset %s", req.asset_id)
+        raise errors.inference_failed("detección de voz", e) from e
+
+    return VoiceDetectResponse(
+        asset_id=req.asset_id,
+        segments=[[s, e] for s, e in segments],
+        duration=round(len(samples) / 16000, 3),
         elapsed_ms=elapsed_ms,
     )
