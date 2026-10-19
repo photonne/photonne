@@ -81,11 +81,46 @@ public sealed class VideoSummaryGenerator
         var workDirectory = Path.Combine(Path.GetTempPath(), "photonne-summaries", summary.Id.ToString("N"));
         try
         {
-            var asset = await GenerateAsync(summary, workDirectory, ct);
+            var approved = summary.PlanApproved ? SummaryPlanDocument.Deserialize(summary.Plan) : null;
+            // An approved plan skips straight to rendering: its progress starts there.
+            var renderFrom = approved != null ? 0 : 0.45;
+            Dictionary<Guid, string> paths;
+            if (approved != null)
+            {
+                paths = await ApprovedPathsAsync(approved, ct);
+            }
+            else
+            {
+                (approved, paths) = await PlanAsync(summary, workDirectory, ct);
+                summary.Plan = approved.Serialize();
+                summary.ClipCount = approved.Clips.Select(c => c.AssetId).Distinct().Count();
+
+                if (summary.Review)
+                {
+                    // The user wants to see the cut first: stop here until
+                    // they approve it (POST /api/video-summaries/{id}/render).
+                    summary.Status = VideoSummaryStatus.Planned;
+                    summary.Progress = 1;
+                    summary.CompletedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync(ct);
+
+                    await _notifications.CreateAsync(
+                        summary.OwnerId,
+                        NotificationType.JobCompleted,
+                        "Selección lista para revisar",
+                        $"Revisa los fragmentos de «{summary.Title}» antes de montar el vídeo.",
+                        $"/summaries/{summary.Id}");
+                    return;
+                }
+                await _db.SaveChangesAsync(ct);
+            }
+
+            var asset = await RenderAsync(summary, approved, paths, workDirectory, renderFrom, ct);
 
             summary.Status = VideoSummaryStatus.Completed;
             summary.Progress = 1;
             summary.AssetId = asset.Id;
+            summary.PlanApproved = false;
             summary.CompletedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
 
@@ -130,7 +165,13 @@ public sealed class VideoSummaryGenerator
         }
     }
 
-    private async Task<Asset> GenerateAsync(VideoSummary summary, string workDirectory, CancellationToken ct)
+    /// <summary>
+    /// Chooses the cut: resolves the material, probes and analyses what it
+    /// needs to, and plans — with the user's pinned assets always in. Returns
+    /// the plan and where each candidate's file is.
+    /// </summary>
+    private async Task<(SummaryPlanDocument Plan, Dictionary<Guid, string> Paths)> PlanAsync(
+        VideoSummary summary, string workDirectory, CancellationToken ct)
     {
         var query = summary.Source switch
         {
@@ -216,7 +257,13 @@ public sealed class VideoSummaryGenerator
         // instead of a fixed stretch of each video: measurements first, then
         // — when the ML service is there — faces, looks and speech.
         var checksums = material.ToDictionary(m => m.Id, m => m.Checksum);
-        var toAnalyze = SummaryPlanner.VideosToAnalyze(candidates, summary.IncludePhotos, planOptions);
+        var pinned = summary.PinnedAssetIds.Count == 0
+            ? new List<SummaryCandidate>()
+            : candidates.Where(c => summary.PinnedAssetIds.Contains(c.AssetId)).ToList();
+        var toAnalyze = SummaryPlanner.VideosToAnalyze(candidates, summary.IncludePhotos, planOptions)
+            .Concat(pinned.Where(p => p.IsVideo))
+            .DistinctBy(v => v.AssetId)
+            .ToList();
         var capabilities = toAnalyze.Count > 0 ? await _ml.CapabilitiesAsync(ct) : MlCapabilities.None;
         var people = capabilities.Faces ? await PeopleIndex.LoadAsync(_db, summary.OwnerId, ct) : PeopleIndex.Empty;
 
@@ -241,8 +288,44 @@ public sealed class VideoSummaryGenerator
         }
 
         var plan = SummaryPlanner.Plan(candidates, summary.IncludePhotos, planOptions, analysed);
+        plan = SummaryPlanner.WithPinned(plan, pinned, planOptions, analysed);
         if (plan.Count < 2)
             throw new VideoSummaryException(NotEnoughMessage(summary.IncludePhotos, filter));
+
+        var usable = candidates.Where(c => paths.ContainsKey(c.AssetId));
+        return (SummaryPlanDocument.Of(plan, usable), paths);
+    }
+
+    /// <summary>Where the files of an approved plan's clips are now. A clip
+    /// whose asset went to the trash or lost its file since is left out.</summary>
+    private async Task<Dictionary<Guid, string>> ApprovedPathsAsync(SummaryPlanDocument plan, CancellationToken ct)
+    {
+        var ids = plan.Clips.Select(c => c.AssetId).Distinct().ToList();
+        var rows = await _db.Assets
+            .AsNoTracking()
+            .Where(a => ids.Contains(a.Id) && a.DeletedAt == null)
+            .Select(a => new { a.Id, a.FullPath })
+            .ToListAsync(ct);
+        var paths = new Dictionary<Guid, string>(rows.Count);
+        foreach (var row in rows)
+        {
+            var path = await _settings.ResolvePhysicalPathAsync(row.FullPath);
+            if (File.Exists(path)) paths[row.Id] = path;
+        }
+        return paths;
+    }
+
+    /// <summary>
+    /// Renders a plan — fresh from <see cref="PlanAsync"/> or as the user
+    /// left it — and files the video in the library.
+    /// </summary>
+    private async Task<Asset> RenderAsync(
+        VideoSummary summary, SummaryPlanDocument document, Dictionary<Guid, string> paths,
+        string workDirectory, double renderFrom, CancellationToken ct)
+    {
+        var plan = document.Clips.Where(c => paths.ContainsKey(c.AssetId)).ToList();
+        if (plan.Count < 2)
+            throw new VideoSummaryException(NotEnoughMessage(summary.IncludePhotos, summary.Orientation));
 
         // Finishing: clips blend into each other, cut on the music's beat when
         // there is music, with a title card and a caption at each chapter.
@@ -262,8 +345,10 @@ public sealed class VideoSummaryGenerator
                 musicPath, plan.Sum(c => c.Length) + titleOffset + 30, Path.Combine(workDirectory, "music"), ct);
             if (beats != null)
             {
-                var durations = candidates.ToDictionary(c => c.AssetId, c => c.DurationSeconds);
-                var available = plan.Select(c => c.IsVideo ? durations[c.AssetId] - c.Start : 8).ToList();
+                var durations = document.Candidates.ToDictionary(c => c.AssetId, c => c.DurationSeconds);
+                var available = plan
+                    .Select(c => c.IsVideo ? durations.GetValueOrDefault(c.AssetId, c.Start + c.Length) - c.Start : 8)
+                    .ToList();
                 plan = BeatSync.Align(plan, available, beats, Crossfade, titleOffset);
             }
         }
@@ -301,10 +386,10 @@ public sealed class VideoSummaryGenerator
         var creationUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(capturedAt, DateTimeKind.Unspecified), tz);
 
         var rendered = Path.Combine(workDirectory, "summary.mp4");
-        var (width, height) = SummaryOrientation.Frame(filter);
+        var (width, height) = SummaryOrientation.Frame(summary.Orientation);
         var clipCount = await _renderer.RenderAsync(
             clips, new Frame(width, height), rendered, summary.Title, creationUtc, workDirectory,
-            p => SetProgressAsync(summary, 0.45 + 0.5 * p, ct),
+            p => SetProgressAsync(summary, renderFrom + (0.95 - renderFrom) * p, ct),
             ct,
             style);
         summary.ClipCount = clipCount;

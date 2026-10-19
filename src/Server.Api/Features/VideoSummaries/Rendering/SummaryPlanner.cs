@@ -278,6 +278,68 @@ public static class SummaryPlanner
         return FitToBudget(clips, videoBudget, h.MinSegment);
     }
 
+    /// <summary>
+    /// The user's "include always": each pinned asset the plan left out goes
+    /// in — a video with its best moment (its base cut, a little longer when
+    /// analysed), a photo for its usual time — and makes room by pushing out
+    /// the unpinned clips closest to it in time, so the rest of the chronology
+    /// keeps its share. Only when nothing unpinned is left are the pinned cuts
+    /// themselves trimmed.
+    /// </summary>
+    public static List<SummaryClip> WithPinned(
+        List<SummaryClip> plan,
+        IEnumerable<SummaryCandidate> pinned,
+        SummaryPlanOptions? options = null,
+        IReadOnlyDictionary<Guid, AnalysedVideo>? analysed = null)
+    {
+        var o = options ?? new SummaryPlanOptions();
+        var pins = pinned.ToList();
+        if (pins.Count == 0) return plan;
+
+        var clips = plan.ToList();
+        var pinnedIds = pins.Select(p => p.AssetId).ToHashSet();
+        foreach (var pin in pins.Where(p => clips.All(c => c.AssetId != p.AssetId)))
+        {
+            if (!pin.IsVideo)
+            {
+                clips.Add(new SummaryClip(pin.AssetId, false, pin.CapturedAt, 0, o.PhotoSeconds));
+                continue;
+            }
+            if (pin.DurationSeconds <= 0) continue;
+            var video = analysed?.GetValueOrDefault(pin.AssetId);
+            if (video == null)
+            {
+                clips.Add(BlindClip(pin, Math.Min(o.BaseVideoSeconds, pin.DurationSeconds)));
+                continue;
+            }
+            var seconds = Math.Min(pin.DurationSeconds, o.BaseVideoSeconds * 1.5);
+            var moments = HighlightFinder.Pick(video.Profile, seconds, o.Highlights, video.Signals);
+            clips.AddRange(moments.Count > 0
+                ? moments.Select(s => new SummaryClip(pin.AssetId, true, pin.CapturedAt,
+                    Math.Round(s.Start, 3), Math.Round(s.Length, 3)))
+                : new[] { BlindClip(pin, Math.Min(o.BaseVideoSeconds, pin.DurationSeconds)) });
+        }
+
+        var added = pins.Where(p => plan.All(c => c.AssetId != p.AssetId)).Select(p => p.CapturedAt).ToList();
+        while (clips.Sum(c => c.Length) > o.TargetSeconds + 1e-6)
+        {
+            var unpinned = clips.Where(c => !pinnedIds.Contains(c.AssetId)).ToList();
+            if (unpinned.Count == 0) break;
+            var nearest = unpinned
+                .OrderBy(c => added.Count == 0 ? 0 : added.Min(t => Math.Abs((c.CapturedAt - t).TotalSeconds)))
+                .ThenByDescending(c => c.CapturedAt)
+                .First();
+            clips.Remove(nearest);
+        }
+        clips = FitToBudget(clips, o.TargetSeconds, o.MinVideoSeconds);
+
+        return clips
+            .OrderBy(c => c.CapturedAt)
+            .ThenBy(c => c.AssetId)
+            .ThenBy(c => c.Start)
+            .ToList();
+    }
+
     /// <summary>Snapping can push the total past the budget; trims the longest
     /// cuts from their end until it fits, never below a moment's minimum.</summary>
     internal static List<SummaryClip> FitToBudget(List<SummaryClip> clips, double budget, double minSegment)

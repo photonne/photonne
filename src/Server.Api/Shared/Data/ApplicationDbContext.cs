@@ -922,6 +922,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Error).HasMaxLength(500);
             entity.Property(e => e.DurationSeconds).HasDefaultValue(VideoSummary.DefaultDurationSeconds);
             entity.Property(e => e.MusicName).HasMaxLength(200);
+            entity.Property(e => e.Plan).HasColumnType("jsonb");
 
             entity.HasOne(e => e.Owner)
                 .WithMany()

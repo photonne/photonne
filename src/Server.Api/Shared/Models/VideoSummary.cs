@@ -36,6 +36,11 @@ public enum VideoSummaryStatus
     Running = 1,
     Completed = 2,
     Failed = 3,
+
+    /// <summary>The cut is chosen and waits for the user to review it
+    /// (<see cref="VideoSummary.Review"/>); nothing is rendered until they
+    /// approve it.</summary>
+    Planned = 4,
 }
 
 /// <summary>
@@ -99,6 +104,24 @@ public class VideoSummary
     public const int DefaultDurationSeconds = 300;
     public const int MinDurationSeconds = 60;
     public const int MaxDurationSeconds = 600;
+
+    /// <summary>Stop after choosing the cut, so the user can review it
+    /// (<see cref="VideoSummaryStatus.Planned"/>) before it's rendered.</summary>
+    public bool Review { get; set; }
+
+    /// <summary>The last chosen cut and the material it was chosen from
+    /// (<c>Features.VideoSummaries.Rendering.SummaryPlanDocument</c>, as JSON),
+    /// or null before the first plan. Kept after rendering, so the user can
+    /// change it and render again.</summary>
+    public string? Plan { get; set; }
+
+    /// <summary>The user approved <see cref="Plan"/>: the next run renders it
+    /// as it is instead of choosing again.</summary>
+    public bool PlanApproved { get; set; }
+
+    /// <summary>Assets the user marked "include always": every new cut of
+    /// this summary has them, whatever the planner thinks of them.</summary>
+    public List<Guid> PinnedAssetIds { get; set; } = new();
 
     public VideoSummaryStatus Status { get; set; } = VideoSummaryStatus.Pending;
 

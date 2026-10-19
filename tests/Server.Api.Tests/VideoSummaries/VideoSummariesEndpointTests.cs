@@ -29,6 +29,12 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
 
     private sealed record YearRow(int Year, int Videos, int Photos);
 
+    private sealed record PlanClip(Guid AssetId, bool IsVideo, DateTime CapturedAt, double Start, double Length, double SourceSeconds, bool Pinned);
+
+    private sealed record Plan(Guid SummaryId, string Title, string Status, int TargetSeconds, double TotalSeconds, List<PlanClip> Clips, int Alternatives);
+
+    private sealed record Alternative(Guid AssetId, bool IsVideo, DateTime CapturedAt, double DurationSeconds);
+
     private sealed record ApiErrorBody(string Error, string Code);
 
     private static DateTime In2023(int month, int day) => new(2023, month, day, 10, 0, 0, DateTimeKind.Utc);
@@ -602,6 +608,92 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
         Assert.Contains("álbum", failed.Error);
         Assert.True(await WithDbContextAsync(db =>
             db.Notifications.AnyAsync(n => n.UserId == alice.Id && n.Type == NotificationType.JobFailed)));
+    }
+
+    [Fact]
+    public async Task Review_StopsAtThePlan_ThenRendersItAsTheUserLeftIt()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var folderId = await CreateFolderAsync($"/assets/users/{alice.Username}");
+        var a = await CreateAssetAsync(alice, "a.mp4", folderId, In2023(3, 1), AssetType.Video, realFile: true, seconds: 6);
+        var b = await CreateAssetAsync(alice, "b.mp4", folderId, In2023(5, 1), AssetType.Video, realFile: true, seconds: 6);
+        var c = await CreateAssetAsync(alice, "c.mp4", folderId, In2023(8, 1), AssetType.Video, realFile: true, seconds: 6);
+
+        var requested = (await (await client.PostAsJsonAsync("/api/video-summaries",
+            new { source = "year", year = 2023, includePhotos = false, durationMinutes = 1, showTitles = false, review = true }))
+            .Content.ReadFromJsonAsync<Summary>())!;
+        // No plan to look at until the worker chose one.
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/video-summaries/{requested.Id}/plan")).StatusCode);
+        await RunGeneratorAsync(requested.Id);
+
+        var planned = (await client.GetFromJsonAsync<Summary>($"/api/video-summaries/{requested.Id}"))!;
+        Assert.True(planned.Status == "planned", planned.Error);
+        Assert.Null(planned.AssetId);
+        Assert.False(await WithDbContextAsync(db => db.Assets.AnyAsync(x => x.FullPath.Contains("/Recuerdos/"))));
+        Assert.True(await WithDbContextAsync(db => db.Notifications.AnyAsync(n =>
+            n.UserId == alice.Id && n.ActionUrl == $"/summaries/{requested.Id}")));
+
+        var plan = (await client.GetFromJsonAsync<Plan>($"/api/video-summaries/{requested.Id}/plan"))!;
+        Assert.Equal(60, plan.TargetSeconds);
+        Assert.Equal(new[] { a, b, c }, plan.Clips.Select(x => x.AssetId).Distinct());
+        Assert.All(plan.Clips, x => Assert.Equal(6, x.SourceSeconds, 1));
+        Assert.Equal(0, plan.Alternatives);
+
+        // Someone else's plan is nobody else's business.
+        var (_, bobClient) = await CreateAuthenticatedUserAsync();
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await bobClient.GetAsync($"/api/video-summaries/{requested.Id}/plan")).StatusCode);
+
+        async Task<HttpResponseMessage> Put(params object[] clips) =>
+            await client.PutAsJsonAsync($"/api/video-summaries/{requested.Id}/plan", new { clips });
+
+        // What the edit can't do.
+        Assert.Equal("not_enough_media", (await (await Put(new { assetId = a, start = 0, length = 2 }))
+            .Content.ReadFromJsonAsync<ApiErrorBody>())!.Code);
+        Assert.Equal("invalid_clip", (await (await Put(
+                new { assetId = a, start = 0, length = 2 }, new { assetId = Guid.NewGuid(), start = 0, length = 2 }))
+            .Content.ReadFromJsonAsync<ApiErrorBody>())!.Code);
+        Assert.Equal("invalid_clip", (await (await Put(
+                new { assetId = a, start = 5, length = 3 }, new { assetId = b, start = 0, length = 2 }))
+            .Content.ReadFromJsonAsync<ApiErrorBody>())!.Code);
+        var tooLong = Enumerable.Range(0, 11).Select(_ => (object)new { assetId = a, start = 0, length = 6 }).ToArray();
+        Assert.Equal("plan_too_long", (await (await Put(tooLong)).Content.ReadFromJsonAsync<ApiErrorBody>())!.Code);
+
+        // Leave b out, keep c from 1 s to 4 s and a always in, in any order.
+        var edit = await Put(
+            new { assetId = c, start = 1, length = 3, pinned = false },
+            new { assetId = a, start = 0.5, length = 2.5, pinned = true });
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        var edited = (await edit.Content.ReadFromJsonAsync<Plan>())!;
+        Assert.Equal(new[] { a, c }, edited.Clips.Select(x => x.AssetId));
+        Assert.Equal(5.5, edited.TotalSeconds, 3);
+        Assert.True(edited.Clips[0].Pinned);
+        Assert.Equal(1, edited.Alternatives);
+        var alternatives = (await client.GetFromJsonAsync<List<Alternative>>(
+            $"/api/video-summaries/{requested.Id}/plan/alternatives?near={c}"))!;
+        Assert.Equal(b, Assert.Single(alternatives).AssetId);
+
+        var render = await client.PostAsync($"/api/video-summaries/{requested.Id}/render", null);
+        Assert.Equal(HttpStatusCode.Accepted, render.StatusCode);
+        Assert.Equal("pending", (await render.Content.ReadFromJsonAsync<Summary>())!.Status);
+        // Not while it renders.
+        Assert.Equal(HttpStatusCode.Conflict, (await Put(
+            new { assetId = a, start = 0, length = 2 }, new { assetId = b, start = 0, length = 2 })).StatusCode);
+        await RunGeneratorAsync(requested.Id);
+
+        var done = (await client.GetFromJsonAsync<Summary>($"/api/video-summaries/{requested.Id}"))!;
+        Assert.True(done.Status == "completed", done.Error);
+        Assert.Equal(2, done.ClipCount);
+        var physical = Path.Combine(Factory.InternalAssetsPath, "users", alice.Username, "Recuerdos", "Resumen 2023.mp4");
+        var probe = await Features.VideoSummaries.Rendering.FfmpegProcess.ProbeAsync(physical, CancellationToken.None);
+        // 2.5 s + 3 s, blended by one crossfade.
+        Assert.InRange(probe!.DurationSeconds, 4.3, 5.8);
+        // The plan stays, to change it and render again.
+        Assert.Equal(new[] { a, c }, (await client.GetFromJsonAsync<Plan>($"/api/video-summaries/{requested.Id}/plan"))!
+            .Clips.Select(x => x.AssetId));
+        Assert.Equal(new List<Guid> { a }, await WithDbContextAsync(db =>
+            db.VideoSummaries.Where(s => s.Id == requested.Id).Select(s => s.PinnedAssetIds).SingleAsync()));
     }
 
     private static async Task Ffmpeg(params string[] args)
