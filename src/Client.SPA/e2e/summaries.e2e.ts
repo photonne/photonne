@@ -241,10 +241,8 @@ test('reviews the clips before rendering: trims, swaps, pins and removes', async
 	await expect(clips).toHaveCount(2);
 
 	await page.getByRole('button', { name: 'Montar vídeo' }).click();
-	await expect(
-		// The toast of the request may still be up.
-		page.getByText('Creando «Resumen 2026». Te avisaremos cuando esté listo.').last()
-	).toBeVisible();
+	// The edit is saved first, then the render asked for.
+	await expect.poll(() => data.renders).toEqual(['summary-1']);
 	expect(data.edits).toEqual([
 		{
 			clips: [
@@ -253,7 +251,6 @@ test('reviews the clips before rendering: trims, swaps, pins and removes', async
 			]
 		}
 	]);
-	expect(data.renders).toEqual(['summary-1']);
 
 	await expect(page.getByText('Listo: «Resumen 2026» ya está en tu biblioteca.')).toBeVisible({
 		timeout: 20_000
