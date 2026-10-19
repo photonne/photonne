@@ -88,6 +88,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     EMBEDDING_IMAGE_MODEL_PATH=/app/models/clip_image.onnx \
     EMBEDDING_TEXT_MODEL_PATH=/app/models/clip_text.onnx \
     EMBEDDING_TEXT_TOKENIZER_PATH=/app/models/clip_tokenizer.json \
+    VOICE_MODEL_PATH=/app/models/silero_vad.onnx \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update \
@@ -123,6 +124,13 @@ COPY --from=yolo-export /export/scene_classifier.onn[x] /opt/ml-models/scene_cla
 COPY --from=yolo-export /export/clip_image.onn[x] /opt/ml-models/clip_image.onnx
 COPY --from=yolo-export /export/clip_text.onn[x] /opt/ml-models/clip_text.onnx
 COPY --from=yolo-export /export/clip_tokenizer.jso[n] /opt/ml-models/clip_tokenizer.json
+
+# Silero VAD (~2 MB, MIT) for voice detection in the video summaries. Fetched
+# at build time, pinned to a release tag; `|| echo` keeps the build green if
+# GitHub is unreachable — the runtime then falls back to VOICE_MODEL_URL.
+RUN curl -fsSL --retry 3 -o /opt/ml-models/silero_vad.onnx \
+        https://raw.githubusercontent.com/snakers4/silero-vad/v5.1.2/src/silero_vad/data/silero_vad.onnx \
+    || (rm -f /opt/ml-models/silero_vad.onnx; echo "[build] WARNING: Silero VAD download failed; voice detection will download it at runtime")
 
 COPY app /app/app
 COPY entrypoint.sh /usr/local/bin/photonne-ml-entrypoint.sh

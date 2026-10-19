@@ -31,6 +31,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 CAPABILITY_DISABLED = "capability_disabled"
 MODEL_NOT_LOADED = "model_not_loaded"
 IMAGE_UNREADABLE = "image_unreadable"
+AUDIO_UNREADABLE = "audio_unreadable"
 BAD_REQUEST = "bad_request"
 INFERENCE_FAILED = "inference_failed"
 INTERNAL = "internal"
@@ -98,6 +99,18 @@ def image_unreadable(reason: str) -> MlError:
         status_code=400,
         code=IMAGE_UNREADABLE,
         message="no se ha podido leer la imagen",
+        transient=False,
+        detail=reason,
+    )
+
+
+def audio_unreadable(reason: str) -> MlError:
+    """The audio file isn't the expected 16 kHz mono WAV or can't be read.
+    The same file fails the same way: not transient."""
+    return MlError(
+        status_code=400,
+        code=AUDIO_UNREADABLE,
+        message="no se ha podido leer el audio",
         transient=False,
         detail=reason,
     )

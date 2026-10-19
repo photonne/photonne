@@ -9,6 +9,7 @@ API. Each capability is opt-in and runs on the same ONNX Runtime stack.
 | Object detection | `POST /v1/objects/detect` | YOLOv8 ONNX (`yolov8n` by default, COCO-80) | Bounding boxes and class labels for tagging and search. |
 | Scene classification | `POST /v1/scenes/classify` | Places365 ResNet18 ONNX | Top-K scene labels (e.g. "beach", "kitchen", "forest path") used as search facets. |
 | Text recognition (OCR) | `POST /v1/text/detect` | RapidOCR (PaddleOCR DBNet + CRNN, ONNX) | Per-line transcription with bbox + confidence; full-text indexed for search. |
+| Voice activity | `POST /v1/audio/voice` | Silero VAD v5 (ONNX, ~2 MB) | Stretches of a video's audio where someone speaks, so the video summaries don't cut sentences. Takes `{"audio_path": "<16 kHz mono 16-bit WAV>"}`. |
 
 Both endpoints accept `{"image_path": "/data/assets/...", "asset_id": "<guid>"}`
 and the API process reads images directly from the shared volume — pixel bytes
@@ -38,7 +39,7 @@ Environment variables (see `app/config.py`):
 | Var | Default | Notes |
 |---|---|---|
 | `ONNX_PROVIDERS` | `CPUExecutionProvider` | Comma-separated ORT execution providers, in priority order. See **GPU acceleration** below — the default image is CPU-only, so setting this to `CUDAExecutionProvider` alone does nothing. |
-| `FACE_ONNX_PROVIDERS`, `OBJECT_ONNX_PROVIDERS`, `SCENE_ONNX_PROVIDERS`, `TEXT_ONNX_PROVIDERS`, `EMBEDDING_ONNX_PROVIDERS` | *(falls back to `ONNX_PROVIDERS`)* | Per-task provider override, so e.g. faces run on GPU while OCR stays on CPU. Also settable at runtime per task from the admin panel (persisted in the API DB, pushed to `POST /v1/config`). |
+| `FACE_ONNX_PROVIDERS`, `OBJECT_ONNX_PROVIDERS`, `SCENE_ONNX_PROVIDERS`, `TEXT_ONNX_PROVIDERS`, `EMBEDDING_ONNX_PROVIDERS`, `VOICE_ONNX_PROVIDERS` | *(falls back to `ONNX_PROVIDERS`)* | Per-task provider override, so e.g. faces run on GPU while OCR stays on CPU. Also settable at runtime per task from the admin panel (persisted in the API DB, pushed to `POST /v1/config`). |
 | `CUDA_GPU_MEM_LIMIT_MB` | *(unset)* | Optional hard cap (MiB) on each CUDA session's memory arena. Leave unset unless a very tight card OOMs even with the frugal defaults. |
 
 ## GPU acceleration (NVIDIA/CUDA)

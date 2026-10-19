@@ -119,6 +119,24 @@ class EmbeddingSettings:
 
 
 @dataclass(frozen=True)
+class VoiceSettings:
+    # Silero VAD v5 (~2 MB ONNX): when someone is speaking in a video's audio,
+    # so the video summaries don't cut sentences in half. Baked into the image
+    # and seeded like the other models; the URL is only a fallback for a
+    # missing file.
+    enabled: bool = _bool_env("VOICE_ENABLED", "true")
+    model_path: str = os.getenv("VOICE_MODEL_PATH", "/app/models/silero_vad.onnx")
+    model_url: str = os.getenv(
+        "VOICE_MODEL_URL",
+        "https://raw.githubusercontent.com/snakers4/silero-vad/v5.1.2/src/silero_vad/data/silero_vad.onnx",
+    )
+    # Longest stretch of audio read per request: summaries only look at the
+    # first 20 minutes of a video anyway.
+    max_seconds: float = float(os.getenv("VOICE_MAX_SECONDS", "1200"))
+    providers: str = _providers_for("VOICE_ONNX_PROVIDERS")
+
+
+@dataclass(frozen=True)
 class Settings:
     # Global ONNX execution-provider list (priority order). Kept as the fallback
     # for the per-task <TASK>_ONNX_PROVIDERS on each sub-settings above.
@@ -128,6 +146,7 @@ class Settings:
     scene: SceneSettings = field(default_factory=SceneSettings)
     text: TextSettings = field(default_factory=TextSettings)
     embedding: EmbeddingSettings = field(default_factory=EmbeddingSettings)
+    voice: VoiceSettings = field(default_factory=VoiceSettings)
 
 
 settings = Settings()
