@@ -61,6 +61,7 @@ import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_action_album_actions
 import com.photonne.app.resources.album_action_members
+import com.photonne.app.resources.summaries_action_album
 import com.photonne.app.resources.album_action_pin
 import com.photonne.app.resources.album_action_unpin
 import com.photonne.app.resources.album_action_sort
@@ -117,6 +118,14 @@ fun AlbumDetailScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val gridState = rememberLazyGridState()
+    // Vídeo resumen del álbum: el mismo diálogo que el del año.
+    var summarising by rememberSaveable { mutableStateOf(false) }
+    if (summarising) {
+        com.photonne.app.ui.summaries.VideoSummaryDialog(
+            album = com.photonne.app.ui.summaries.SummarySource.Album(album.id, album.name),
+            onDismiss = { summarising = false }
+        )
+    }
     // Fuente de blur de TODO el cromo del álbum (barra superior, scrubber, botón
     // de subir). Su fuente es SOLO la rejilla, así que las cápsulas quedan como
     // HERMANAS de ella y no descendientes — la regla de Haze.
@@ -368,6 +377,7 @@ fun AlbumDetailScreen(
                     onDelete = onDelete,
                     onManageMembers = onManageMembers,
                     onLeave = onLeave,
+                    onVideoSummary = { summarising = true },
                     hazeState = albumHazeState,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -418,6 +428,7 @@ private fun AlbumDetailTopBar(
     onDelete: () -> Unit,
     onManageMembers: () -> Unit,
     onLeave: () -> Unit,
+    onVideoSummary: () -> Unit,
     /**
      * Fuente de blur de las cápsulas, pasada explícitamente (es la rejilla que
      * scrollea por detrás). Sin ella las cápsulas caen al gris de reserva.
@@ -481,7 +492,8 @@ private fun AlbumDetailTopBar(
                     onEdit = onEdit,
                     onDelete = onDelete,
                     onManageMembers = onManageMembers,
-                    onLeave = onLeave
+                    onLeave = onLeave,
+                    onVideoSummary = onVideoSummary
                 )
             }
         }
@@ -635,7 +647,8 @@ private fun AlbumActionsOverflowMenu(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onManageMembers: () -> Unit,
-    onLeave: () -> Unit
+    onLeave: () -> Unit,
+    onVideoSummary: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -666,6 +679,12 @@ private fun AlbumActionsOverflowMenu(
                     )
                 },
                 onClick = { menuOpen = false; onTogglePin() }
+            )
+            // Cualquiera que vea el álbum puede pedir su resumen: va a su biblioteca.
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.summaries_action_album)) },
+                leadingIcon = { Icon(PhotonneIcons.VideoSummary, contentDescription = null) },
+                onClick = { menuOpen = false; onVideoSummary() }
             )
             if (canEdit) {
                 DropdownMenuItem(

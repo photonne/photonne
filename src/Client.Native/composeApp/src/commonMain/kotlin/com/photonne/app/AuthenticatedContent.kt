@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.photonne.app.resources.notifications_no_screen
@@ -969,7 +970,14 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     onBack = { appState.moreSubscreen = null },
                     onChromeVisibleChange = { appState.subscreenChromeVisible = it }
                 )
-            MoreSubscreen.Memories ->
+            MoreSubscreen.Memories -> {
+                var summarising by remember { mutableStateOf(false) }
+                if (summarising) {
+                    com.photonne.app.ui.summaries.VideoSummaryDialog(
+                        album = null,
+                        onDismiss = { summarising = false }
+                    )
+                }
                 com.photonne.app.ui.memories.MemoriesScreen(
                     viewModel = memoryFeedViewModel,
                     baseUrl = apiBaseUrl,
@@ -982,8 +990,10 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                         )
                     },
                     onBack = { appState.moreSubscreen = null },
-                    onChromeVisibleChange = { appState.subscreenChromeVisible = it }
+                    onChromeVisibleChange = { appState.subscreenChromeVisible = it },
+                    onVideoSummary = { summarising = true }
                 )
+            }
             MoreSubscreen.ExploreScenes ->
                 com.photonne.app.ui.explore.ExploreScenesScreen(
                     viewModel = exploreFacetsViewModel,

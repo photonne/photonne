@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Close
@@ -153,6 +154,9 @@ object PhotonneIcons {
 
     /** La colección Vídeos y el tipo «vídeo» en filtros y condiciones. */
     val Videos: ImageVector = Icons.Outlined.VideoLibrary
+
+    /** Vídeo resumen: un año o un álbum montado en un vídeo. */
+    val VideoSummary: ImageVector = Icons.Outlined.Movie
 
     // ── Personas ────────────────────────────────────────────────────────
     val Person: ImageVector = Icons.Outlined.Person

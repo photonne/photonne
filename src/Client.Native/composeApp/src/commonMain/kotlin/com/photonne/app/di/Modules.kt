@@ -87,6 +87,7 @@ import com.photonne.app.ui.settings.AccountStorageViewModel
 import com.photonne.app.ui.settings.AppearanceViewModel
 import com.photonne.app.ui.notifications.NotificationsViewModel
 import com.photonne.app.ui.memories.MemoryFeedViewModel
+import com.photonne.app.ui.summaries.VideoSummaryViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
 import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel
@@ -230,6 +231,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
     viewModelOf(::MemoryFeedViewModel)
+    viewModelOf(::VideoSummaryViewModel)
     viewModelOf(::NotificationsViewModel)
     viewModelOf(::AssetDetailViewModel)
     viewModelOf(::AlbumsViewModel)
