@@ -2,7 +2,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
-	import { tick, type Snippet } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -28,6 +28,8 @@
 		savedCollapsed
 	} from '#lib/navigation/sidebar.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { chrome } from '#lib/navigation/chrome.svelte.js';
+	import FloatingNav from './FloatingNav.svelte';
 	import Icon from './Icon.svelte';
 	import Logo from './Logo.svelte';
 
@@ -72,60 +74,50 @@
 		return () => query.removeEventListener('change', follow);
 	});
 
-	// On a phone-sized window the menu is a drawer over the page instead.
-	const DRAWER_QUERY = '(max-width: 700px)';
-	let mobile = $state(window.matchMedia(DRAWER_QUERY).matches);
-	let drawerOpen = $state(false);
-	let menuButton = $state<HTMLButtonElement>();
-	let sidebar = $state<HTMLElement>();
-	/** Icons only: the rail, never in the drawer. */
+	// On a phone-sized window the island gives way to the native app's
+	// navigation: three tabs in a capsule at the bottom (FloatingNav).
+	const PHONE_QUERY = '(max-width: 700px)';
+	let mobile = $state(window.matchMedia(PHONE_QUERY).matches);
+	/** Icons only: the rail. */
 	const rail = $derived(collapsed && !mobile);
 
 	$effect(() => {
-		const query = window.matchMedia(DRAWER_QUERY);
+		const query = window.matchMedia(PHONE_QUERY);
 		const follow = () => {
 			mobile = query.matches;
-			if (!mobile) drawerOpen = false;
+			if (!mobile) chrome.immersive = false;
 		};
 		query.addEventListener('change', follow);
 		return () => query.removeEventListener('change', follow);
 	});
 
-	afterNavigate(() => (drawerOpen = false));
-
 	function toggleSidebar() {
-		if (mobile) {
-			drawerOpen = !drawerOpen;
-			// Into the menu on opening, so the keyboard lands where the eyes do.
-			if (drawerOpen) tick().then(() => sidebar?.querySelector('a')?.focus());
-			return;
-		}
 		collapsed = !collapsed;
 		chosen = true;
 		saveCollapsed(collapsed);
 	}
 
-	const menuLabel = $derived(
-		mobile
-			? drawerOpen
-				? m.nav_close_menu()
-				: m.nav_open_menu()
-			: collapsed
-				? m.nav_expand()
-				: m.nav_collapse()
-	);
+	const menuLabel = $derived(collapsed ? m.nav_expand() : m.nav_collapse());
 
-	function closeDrawer() {
-		drawerOpen = false;
-		menuButton?.focus();
+	// Immersive on a phone, as the native ImmersiveChromeEffect: scrolling
+	// down any pane of the page hides the chrome, scrolling up or reaching
+	// the top brings it back. A few pixels of slack ignore jitter.
+	const SCROLL_SLACK = 10;
+	const lastTops = new WeakMap<Element, number>();
+
+	function onscroll(event: Event) {
+		const pane = event.target;
+		if (!mobile || !(pane instanceof Element)) return;
+		const top = pane.scrollTop;
+		const last = lastTops.get(pane) ?? 0;
+		if (top <= SCROLL_SLACK) chrome.immersive = false;
+		else if (top - last > SCROLL_SLACK) chrome.immersive = true;
+		else if (last - top > SCROLL_SLACK) chrome.immersive = false;
+		else return;
+		lastTops.set(pane, top);
 	}
 
-	function onkeydown(event: KeyboardEvent) {
-		if (drawerOpen && event.key === 'Escape' && !event.defaultPrevented) {
-			event.preventDefault();
-			closeDrawer();
-		}
-	}
+	afterNavigate(() => (chrome.immersive = false));
 	let search = $state('');
 
 	/**
@@ -177,8 +169,6 @@
 	const onSearchPage = $derived(page.url.pathname === href('/search'));
 </script>
 
-<svelte:window {onkeydown} />
-
 <a class="skip-link" href="#content">{m.skip_to_content()}</a>
 
 <!-- Files dropped anywhere in the app go to the upload queue. -->
@@ -194,18 +184,21 @@
 	onclose={() => (confirmingLogout = false)}
 />
 
-<div class="shell" class:collapsed={rail} class:drawer-open={drawerOpen}>
+<div
+	class="shell"
+	class:collapsed={rail}
+	class:immersive={chrome.immersive}
+	class:selecting={chrome.selecting > 0}
+>
 	<!-- The navigation island: a glass panel floating beside the page, with
-	     the brand and the fold button on top. On a phone its parts float on
-	     their own: the button and the logo in a capsule, the menu as a drawer. -->
+	     the brand and the fold button on top. Not on a phone: FloatingNav. -->
 	<div class="island glass">
 		<div class="brand-area">
 			<button
-				bind:this={menuButton}
 				type="button"
 				class="icon-btn"
 				aria-controls="sidebar"
-				aria-expanded={mobile ? drawerOpen : !collapsed}
+				aria-expanded={!collapsed}
 				aria-label={menuLabel}
 				title={menuLabel}
 				onclick={toggleSidebar}
@@ -213,11 +206,11 @@
 				<Icon name="menu" />
 			</button>
 			<a class="brand" href={href('/')} aria-label={m.app_name()}
-				><Logo size={28} markOnly={rail || mobile} /></a
+				><Logo size={28} markOnly={rail} /></a
 			>
 		</div>
 
-		<nav id="sidebar" class="sidebar" aria-label={m.nav_main()} bind:this={sidebar}>
+		<nav id="sidebar" class="sidebar" aria-label={m.nav_main()}>
 			{#each navigation.filter((section) => !section.adminOnly || session.isAdmin) as section (section.id)}
 				{#if section.label}
 					<h2 class:visually-hidden={rail}>{section.label()}</h2>
@@ -282,16 +275,16 @@
 		</nav>
 	</div>
 
-	{#if drawerOpen}
-		<!-- The page behind the drawer: a click on it closes the drawer. -->
-		<div class="scrim" aria-hidden="true" onclick={closeDrawer}></div>
-	{/if}
-
-	<div class="stage">
+	<div class="stage" onscrollcapture={onscroll}>
 		<!-- No bar: the search and the tools float over the page in two glass
-		     capsules, and the page scrolls beneath them. -->
+		     capsules, and the page scrolls beneath them. On a phone the logo
+		     takes the search's place and the search is a button. -->
 		<header class="topbar">
-			{#if !onSearchPage}
+			{#if mobile}
+				<a class="brand-pill glass" href={href('/')} aria-label={m.app_name()}
+					><Logo size={26} markOnly /></a
+				>
+			{:else if !onSearchPage}
 				<form class="search glass" role="search" onsubmit={submitSearch}>
 					<Icon name="search" size={20} />
 					<input
@@ -305,6 +298,11 @@
 			{/if}
 
 			<div class="tools glass">
+				{#if mobile && !onSearchPage}
+					<a class="icon" href={href('/search')} aria-label={m.nav_search()}>
+						<Icon name="search" />
+					</a>
+				{/if}
 				{#if uploads.active}
 					<!-- Uploads keep going from any page: how far along, one click from the queue. -->
 					<a
@@ -354,15 +352,19 @@
 			</div>
 		</header>
 
-		<main id="content" class="content" tabindex="-1" inert={drawerOpen}>
+		<main id="content" class="content" tabindex="-1">
 			{@render children()}
 		</main>
 	</div>
+
+	<FloatingNav unread={unreadCount} />
 </div>
 
 <style>
 	.shell {
 		--nav-width: var(--sidebar-width);
+		/* Where the page starts: floating bars centre themselves on it. */
+		--stage-left: calc(var(--nav-width) + var(--float-margin));
 		/* Height of the floating chrome above the page: the capsules and the
 		   room around them. Pages scroll under it and start below it. */
 		--chrome-top: calc(var(--float-margin) * 2 + var(--chrome-h));
@@ -561,6 +563,19 @@
 		pointer-events: auto;
 	}
 
+	/* A selection's own capsule takes the top: the glass would show these
+	   through it. */
+	.topbar {
+		transition:
+			opacity var(--duration-fast),
+			visibility var(--duration-fast);
+	}
+
+	.selecting .topbar {
+		opacity: 0;
+		visibility: hidden;
+	}
+
 	.search {
 		display: flex;
 		align-items: center;
@@ -727,92 +742,50 @@
 		outline: none;
 	}
 
-	.scrim {
-		display: none;
+	.brand-pill {
+		display: grid;
+		place-items: center;
+		width: var(--chrome-h);
+		height: 100%;
+		border-radius: 50%;
+		box-shadow: var(--shadow-bar);
 	}
 
-	/* Phone-sized: one column; the menu button and the logo float in their
-	   own capsule and the menu slides in over the page. */
+	/* Phone-sized: no island; the logo and the tools float at the top, the
+	   three tabs at the bottom (FloatingNav), and scrolling down hides both. */
 	@media (max-width: 700px) {
 		.shell {
+			--stage-left: 0px;
 			grid-template-columns: minmax(0, 1fr);
 		}
 
 		.island {
-			display: contents;
-		}
-
-		.brand-area {
-			position: fixed;
-			top: var(--float-margin);
-			left: var(--float-margin);
-			z-index: 21;
-			height: var(--chrome-h);
-			padding: 0 var(--space-3) 0 4px;
-			border-radius: var(--radius-pill);
-			background: color-mix(in srgb, var(--chrome-base) 60%, transparent);
-			-webkit-backdrop-filter: blur(30px) saturate(1.6);
-			backdrop-filter: blur(30px) saturate(1.6);
-			border: 1px solid var(--glass-edge);
-			box-shadow: var(--shadow-bar);
-		}
-
-		.stage {
-			grid-column: 1;
+			display: none;
 		}
 
 		.topbar {
-			left: calc(var(--float-margin) + 108px);
-			gap: var(--space-2);
-		}
-
-		.search,
-		.search:focus-within {
-			flex: 1;
-			width: auto;
-			min-width: 0;
-		}
-
-		.sidebar {
-			position: fixed;
-			top: calc(var(--chrome-top) - var(--space-1));
-			bottom: var(--float-margin);
 			left: var(--float-margin);
-			z-index: 20;
-			width: min(300px, 85vw);
-			padding-top: var(--space-2);
-			border-radius: var(--radius-xl);
-			background: color-mix(in srgb, var(--chrome-base) 92%, transparent);
-			-webkit-backdrop-filter: blur(30px) saturate(1.6);
-			backdrop-filter: blur(30px) saturate(1.6);
-			border: 1px solid var(--glass-edge);
-			box-shadow: var(--shadow-nav);
-			transform: translateX(calc(-100% - 2 * var(--float-margin)));
-			visibility: hidden;
+			gap: var(--space-2);
 			transition:
-				transform var(--duration-chrome) var(--ease-standard),
-				visibility var(--duration-chrome);
+				translate var(--duration-chrome) var(--ease-standard),
+				opacity var(--duration-chrome);
 		}
 
-		/* Visible at once on opening (focus can go in); hidden only once it
-		   has slid out on closing. */
-		.drawer-open .sidebar {
-			transform: none;
-			visibility: visible;
-			transition: transform var(--duration-chrome) var(--ease-spring);
+		.immersive .topbar {
+			translate: 0 calc(-100% - var(--float-margin) - 8px);
+			opacity: 0;
 		}
 
-		.scrim {
-			display: block;
-			position: fixed;
-			inset: 0;
-			z-index: 19;
-			background: var(--color-scrim-soft);
+		/* The last of the page clears the tabs. */
+		.content {
+			padding-bottom: calc(
+				var(--nav-pill-h) + 8px + var(--float-margin) + env(safe-area-inset-bottom, 0px)
+			);
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.sidebar {
+		.topbar {
 			transition: none;
 		}
 	}

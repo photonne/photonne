@@ -131,6 +131,9 @@
 	--sidebar-width: 240px;
 	/* Height of a floating header capsule (search, tools, selection). */
 	--chrome-h: 48px;
+	/* Height of the phone's navigation capsule and of the action capsule
+	   that replaces it while selecting (the native 64 dp). */
+	--nav-pill-h: 64px;
 
 	color-scheme: light;
 }
