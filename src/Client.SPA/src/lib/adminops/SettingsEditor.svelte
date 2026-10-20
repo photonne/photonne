@@ -214,7 +214,7 @@
 		flex-direction: column;
 		/* At least the window's height, so the save bar sits at its bottom. */
 		min-height: calc(
-			100dvh - var(--header-height) - var(--admin-nav-height) - var(--settings-nav-height, 0px)
+			100dvh - var(--chrome-top) - var(--admin-nav-height) - var(--settings-nav-height, 0px)
 		);
 	}
 

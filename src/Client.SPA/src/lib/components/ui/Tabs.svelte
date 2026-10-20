@@ -64,7 +64,9 @@
 	.list {
 		display: flex;
 		gap: var(--space-1);
-		padding: var(--space-2) var(--page-gutter);
+		/* 32 px pills in a 44 px row, plus the 1 px rule: pages pin their
+		   sticky bars below that (--admin-nav-height). */
+		padding: 6px var(--page-gutter);
 		overflow-x: auto;
 		scrollbar-width: none;
 	}

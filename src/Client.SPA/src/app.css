@@ -128,7 +128,9 @@
 	--float-margin: 12px;
 
 	--header-height: 56px;
-	--sidebar-width: 232px;
+	--sidebar-width: 240px;
+	/* Height of a floating header capsule (search, tools, selection). */
+	--chrome-h: 48px;
 
 	color-scheme: light;
 }
