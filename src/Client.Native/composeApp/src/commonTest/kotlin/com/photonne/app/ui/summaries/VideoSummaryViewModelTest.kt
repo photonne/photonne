@@ -172,7 +172,7 @@ class VideoSummaryOptionsTest {
     }
 
     @Test
-    fun `a summary is found by its year or album, and only pending or running is active`() {
+    fun `a summary is found by its year or album and only pending or running is active`() {
         val list = listOf(summary())
         assertEquals("s", list.forSource(SummarySource.Album("a1", "x"))?.id)
         assertNull(list.forSource(SummarySource.Year(2024)))
@@ -184,7 +184,7 @@ class VideoSummaryOptionsTest {
     }
 
     @Test
-    fun `the request carries the year or the album, never both`() {
+    fun `the request carries the year or the album but never both`() {
         val options = SummaryOptions(orientation = SummaryOrientation.Landscape, music = SummaryMusic("m1", "Verano"))
         val year = requestBody(SummarySource.Year(2024), options)
         assertEquals("year", year.source)
