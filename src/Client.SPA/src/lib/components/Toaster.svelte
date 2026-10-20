@@ -79,7 +79,7 @@
 {#snippet item(toast: Toast)}
 	<!-- Pointer or focus on a toast stops its countdown: there is time to read it and reach Undo. -->
 	<div
-		class="toast"
+		class="toast glass"
 		class:error={toast.tone === 'error'}
 		style:order={toast.id}
 		role="group"
@@ -132,10 +132,12 @@
 </div>
 
 <style>
-	/* Reset the popover's UA box (centred, bordered, opaque). */
+	/* Reset the popover's UA box (centred, bordered, opaque). At the top, as
+	   in the native app: the bottom belongs to the navigation and the action
+	   capsules. */
 	.toaster {
 		position: fixed;
-		inset: auto auto var(--space-6) 50%;
+		inset: calc(env(safe-area-inset-top, 0px) + var(--float-margin)) auto auto 50%;
 		z-index: 100;
 		transform: translateX(-50%);
 		margin: 0;
@@ -163,16 +165,35 @@
 		gap: var(--space-3);
 		min-width: 280px;
 		max-width: min(560px, calc(100vw - 2 * var(--space-4)));
-		padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
-		border-radius: var(--radius-md);
-		background: var(--color-toast);
-		color: var(--color-toast-text);
-		box-shadow: var(--shadow-raised);
+		min-height: 48px;
+		padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+		border-radius: 24px;
+		box-shadow: var(--shadow-bar);
+		font-size: var(--font-size-sm);
+		font-weight: 500;
 		pointer-events: auto;
+		transition:
+			opacity var(--duration-emphasis) ease,
+			translate var(--duration-chrome) var(--ease-spring),
+			scale var(--duration-chrome) var(--ease-spring);
 	}
 
+	/* Slides down from above as it arrives. */
+	@starting-style {
+		.toast {
+			opacity: 0;
+			translate: 0 -16px;
+			scale: 0.96;
+		}
+	}
+
+	/* An error stays solid: it has to read over anything. */
 	.toast.error {
+		border-color: transparent;
 		background: var(--color-toast-danger);
+		color: var(--color-toast-text);
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
 	}
 
 	span {
@@ -187,16 +208,28 @@
 	}
 
 	.action {
-		padding: var(--space-1) var(--space-2);
-		border-radius: var(--radius-sm);
+		min-height: var(--control-h-sm);
+		padding: 0 var(--space-4);
+		border-radius: var(--radius-pill);
+		background: var(--color-active-pill);
+		color: var(--color-accent);
+		font-weight: 700;
+	}
+
+	.toast.error .action {
 		color: var(--color-toast-action);
-		font-weight: 600;
 	}
 
 	.close {
 		display: grid;
 		place-items: center;
-		padding: var(--space-1);
+		width: var(--control-h);
+		height: var(--control-h);
 		border-radius: 50%;
+	}
+
+	.close:hover,
+	.action:hover {
+		background: var(--color-hover);
 	}
 </style>

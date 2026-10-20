@@ -143,15 +143,15 @@
 	}
 
 	.swatch.light {
-		background: linear-gradient(135deg, #ffffff 50%, #f4f5f7 50%);
+		background: linear-gradient(135deg, #ffffff 50%, #f8f9fa 50%);
 	}
 
 	.swatch.dark {
-		background: linear-gradient(135deg, #232428 50%, #111214 50%);
+		background: linear-gradient(135deg, #1c1c20 50%, #0a0a0c 50%);
 	}
 
 	.swatch.system {
-		background: linear-gradient(135deg, #ffffff 50%, #111214 50%);
+		background: linear-gradient(135deg, #f8f9fa 50%, #0a0a0c 50%);
 	}
 
 	/* A sketch of each layout: three columns of blocks, or two rows. */

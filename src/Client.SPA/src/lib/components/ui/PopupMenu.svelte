@@ -211,7 +211,7 @@
 		<div
 			bind:this={menu}
 			id="{id}-menu"
-			class="menu"
+			class="menu glass"
 			class:up={place.up}
 			style:top="{place.top}px"
 			style:left="{place.left}px"
@@ -278,30 +278,22 @@
 		z-index: 60;
 		display: grid;
 		min-width: 220px;
-		padding: var(--space-1);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface-raised);
-		box-shadow: var(--shadow-raised);
-		color: var(--color-text);
-		animation: pop var(--duration-fast) ease-out;
+		padding: 6px;
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-nav);
+		transform-origin: top;
+		animation: pop var(--duration-emphasis) var(--ease-spring);
 	}
 
 	.menu.up {
-		animation-name: pop-up;
+		transform-origin: bottom;
 	}
 
+	/* Grows from the side it opens on, with a little spring. */
 	@keyframes pop {
 		from {
 			opacity: 0;
-			transform: translateY(-4px);
-		}
-	}
-
-	@keyframes pop-up {
-		from {
-			opacity: 0;
-			transform: translateY(4px);
+			transform: scale(0.92);
 		}
 	}
 
@@ -315,10 +307,10 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-		min-height: var(--control-h);
+		min-height: 36px;
 		padding: 0 var(--space-3);
 		border: 0;
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-pill);
 		background: transparent;
 		color: inherit;
 		font-size: var(--font-size-sm);
@@ -330,7 +322,7 @@
 
 	[role^='menuitem']:hover,
 	[role^='menuitem']:focus-visible {
-		background: var(--color-hover);
+		background: var(--color-active-pill);
 	}
 
 	[role^='menuitem']:focus-visible {
@@ -369,8 +361,8 @@
 	kbd {
 		margin-left: var(--space-4);
 		padding: 0 var(--space-1);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+		border-radius: var(--radius-xs);
 		color: var(--color-text-muted);
 		font: inherit;
 		font-size: var(--font-size-2xs);
@@ -381,12 +373,12 @@
 		min-width: 0;
 		padding: var(--space-2) var(--space-3) var(--space-3);
 		margin-bottom: var(--space-1);
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
 	}
 
 	.separator {
 		height: 1px;
-		margin: var(--space-1) 0;
-		background: var(--color-border);
+		margin: var(--space-1) var(--space-3);
+		background: color-mix(in srgb, currentColor 12%, transparent);
 	}
 </style>
