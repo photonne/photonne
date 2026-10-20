@@ -1881,4 +1881,51 @@
     <string name="motion_frames_saved">Frame saved next to the original photo</string>
     <string name="motion_frames_load_error">Couldn\'t read this photo\'s motion</string>
     <string name="motion_frames_hint">The new photo has the video\'s resolution, lower than the original\'s.</string>
+    <!-- Summary videos -->
+    <string name="summaries_action_year">Year summary video</string>
+    <string name="summaries_action_album">Create summary video</string>
+    <string name="summaries_title_year">Year summary video</string>
+    <string name="summaries_title_album">Album summary video</string>
+    <string name="summaries_hint">We put together a video with the best moments and save it in your library, in the Recuerdos folder. It takes a few minutes; we will let you know when it is ready.</string>
+    <string name="summaries_year">Year</string>
+    <plurals name="summaries_year_option">
+        <item quantity="one">%1$s · %2$d video</item>
+        <item quantity="other">%1$s · %2$d videos</item>
+    </plurals>
+    <string name="summaries_no_years">You have no videos to make a summary from yet.</string>
+    <string name="summaries_duration">Maximum length</string>
+    <plurals name="summaries_duration_option">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <string name="summaries_orientation">Orientation</string>
+    <string name="summaries_orientation_all">All</string>
+    <string name="summaries_orientation_landscape">Landscape</string>
+    <string name="summaries_orientation_portrait">Portrait</string>
+    <string name="summaries_orientation_all_hint">A landscape video; portrait material shows over a blurred background.</string>
+    <string name="summaries_orientation_landscape_hint">Only landscape videos and photos, in a landscape video.</string>
+    <string name="summaries_orientation_portrait_hint">Only portrait videos and photos, in a portrait video for the phone.</string>
+    <string name="summaries_titles">Title and captions</string>
+    <string name="summaries_titles_hint">A title card and, as each month or day begins, when and where.</string>
+    <string name="summaries_music">Music</string>
+    <string name="summaries_music_remove">Remove</string>
+    <string name="summaries_music_web_hint">Music is chosen on the web; here you can keep it or remove it.</string>
+    <string name="summaries_include_photos">Include photos</string>
+    <string name="summaries_include_photos_hint">Photos show for a few seconds with a slow zoom between the videos.</string>
+    <string name="summaries_review">Review the clips before rendering</string>
+    <string name="summaries_review_hint">Clips are reviewed on the web; the video is rendered once you approve them.</string>
+    <string name="summaries_auto_year">Make the year summary every December</string>
+    <string name="summaries_auto_year_hint">At the end of December it is put together on its own, with last time options, and we let you know.</string>
+    <string name="summaries_pending">Queued…</string>
+    <string name="summaries_running">Rendering the video… %1$d %%</string>
+    <string name="summaries_planned">The clips of “%1$s” are chosen. Review them on the web or render it as is.</string>
+    <string name="summaries_render_as_is">Render as is</string>
+    <string name="summaries_ready">Done: “%1$s” is in your library, in the Recuerdos folder.</string>
+    <string name="summaries_failed">Could not be created: %1$s</string>
+    <string name="summaries_failed_unknown">The video could not be created.</string>
+    <string name="summaries_regenerate_hint">The previous video is replaced by a new one.</string>
+    <string name="summaries_create">Create video</string>
+    <string name="summaries_regenerate">Create again</string>
+    <string name="summaries_close">Close</string>
+    <string name="summaries_requested">Creating “%1$s”. We will let you know when it is ready.</string>
 </resources>

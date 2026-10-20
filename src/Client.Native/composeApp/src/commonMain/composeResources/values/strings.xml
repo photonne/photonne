@@ -1891,4 +1891,51 @@
     <string name="motion_frames_saved">Fotograma guardado junto a la foto original</string>
     <string name="motion_frames_load_error">No se pudo leer el movimiento de esta foto</string>
     <string name="motion_frames_hint">La foto nueva tiene la resolución del vídeo, menor que la de la original.</string>
+    <!-- Vídeos resumen -->
+    <string name="summaries_action_year">Vídeo resumen del año</string>
+    <string name="summaries_action_album">Crear vídeo resumen</string>
+    <string name="summaries_title_year">Vídeo resumen del año</string>
+    <string name="summaries_title_album">Vídeo resumen del álbum</string>
+    <string name="summaries_hint">Montamos un vídeo con los mejores momentos y lo guardamos en tu biblioteca, en la carpeta Recuerdos. Tarda unos minutos; te avisaremos cuando esté listo.</string>
+    <string name="summaries_year">Año</string>
+    <plurals name="summaries_year_option">
+        <item quantity="one">%1$s · %2$d vídeo</item>
+        <item quantity="other">%1$s · %2$d vídeos</item>
+    </plurals>
+    <string name="summaries_no_years">Todavía no tienes vídeos para montar un resumen.</string>
+    <string name="summaries_duration">Duración máxima</string>
+    <plurals name="summaries_duration_option">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <string name="summaries_orientation">Orientación</string>
+    <string name="summaries_orientation_all">Todos</string>
+    <string name="summaries_orientation_landscape">Horizontales</string>
+    <string name="summaries_orientation_portrait">Verticales</string>
+    <string name="summaries_orientation_all_hint">Vídeo horizontal; lo vertical se ve con un fondo desenfocado.</string>
+    <string name="summaries_orientation_landscape_hint">Solo vídeos y fotos horizontales, en un vídeo horizontal.</string>
+    <string name="summaries_orientation_portrait_hint">Solo vídeos y fotos verticales, en un vídeo vertical para el móvil.</string>
+    <string name="summaries_titles">Título y rótulos</string>
+    <string name="summaries_titles_hint">Una portada con el título y, al empezar cada mes o día, cuándo y dónde.</string>
+    <string name="summaries_music">Música</string>
+    <string name="summaries_music_remove">Quitar</string>
+    <string name="summaries_music_web_hint">La música se elige desde la web; aquí puedes mantenerla o quitarla.</string>
+    <string name="summaries_include_photos">Incluir fotos</string>
+    <string name="summaries_include_photos_hint">Las fotos aparecen unos segundos con un zoom lento entre los vídeos.</string>
+    <string name="summaries_review">Revisar los fragmentos antes de montar</string>
+    <string name="summaries_review_hint">Los fragmentos se revisan en la web; el vídeo se monta cuando los apruebas.</string>
+    <string name="summaries_auto_year">Crear el resumen del año cada diciembre</string>
+    <string name="summaries_auto_year_hint">Al final de diciembre se monta solo, con las opciones de la última vez, y te avisamos.</string>
+    <string name="summaries_pending">En cola…</string>
+    <string name="summaries_running">Montando el vídeo… %1$d %%</string>
+    <string name="summaries_planned">Los fragmentos de «%1$s» están elegidos. Revísalos en la web o móntalo tal cual.</string>
+    <string name="summaries_render_as_is">Montar tal cual</string>
+    <string name="summaries_ready">Listo: «%1$s» ya está en tu biblioteca, en la carpeta Recuerdos.</string>
+    <string name="summaries_failed">No se pudo crear: %1$s</string>
+    <string name="summaries_failed_unknown">No se pudo crear el vídeo.</string>
+    <string name="summaries_regenerate_hint">Se sustituye el vídeo anterior por uno nuevo.</string>
+    <string name="summaries_create">Crear vídeo</string>
+    <string name="summaries_regenerate">Volver a crear</string>
+    <string name="summaries_close">Cerrar</string>
+    <string name="summaries_requested">Creando «%1$s». Te avisaremos cuando esté listo.</string>
 </resources>
