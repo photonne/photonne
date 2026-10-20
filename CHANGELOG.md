@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.7.0](https://github.com/photonne/photonne/compare/server-v2.6.1...server-v2.7.0) (2026-10-20)
+
+
+### Novedades
+
+* **native:** Diálogo del vídeo resumen en Android e iOS ([#109](https://github.com/photonne/photonne/issues/109)) ([c5dcf9c](https://github.com/photonne/photonne/commit/c5dcf9cda52e5bbd5550971bda5f520e5fb051d4))
+* **server:** Los vídeos resumen eligen los mejores momentos de cada vídeo ([dd2a7d7](https://github.com/photonne/photonne/commit/dd2a7d761b655082f21d1df1d86d162ec47b2d50))
+* **server:** Los vídeos resumen usan el ML para caras, voz, calidad y repetidos ([bb0ad9b](https://github.com/photonne/photonne/commit/bb0ad9b898544431936692bab1a5d8b6083d2128))
+* **server:** Resumen automático del año a final de diciembre ([4b03e74](https://github.com/photonne/photonne/commit/4b03e7401b82e2086fd26ae531481cedf35ecab8))
+* **server:** Revisar los fragmentos del vídeo resumen antes de montarlo ([5333b9a](https://github.com/photonne/photonne/commit/5333b9adef9d004d20ddde09d584df565954d3d5))
+* **server:** Transiciones, títulos y música en los vídeos resumen ([c442b74](https://github.com/photonne/photonne/commit/c442b749b471246b1b6166d0e6b7a596d29baf21))
+* **spa:** Página para revisar los fragmentos del vídeo resumen ([11790a7](https://github.com/photonne/photonne/commit/11790a73081cfaaa439bd7834674204ba33dab82))
+* **spa:** Resumen del año cada diciembre y fila de vídeos resumen en Recuerdos ([4909ae4](https://github.com/photonne/photonne/commit/4909ae48f50c344699249b1c999f888946e751ad))
+* **spa:** Títulos y música en el vídeo resumen ([f9b1092](https://github.com/photonne/photonne/commit/f9b109297480d59df25d063b7d08502f91c1037f))
+
 ## [2.6.1](https://github.com/photonne/photonne/compare/server-v2.6.0...server-v2.6.1) (2026-10-19)
 
 
