@@ -304,7 +304,10 @@
 	export function scrollToSection(target: string) {
 		const key = nearestSection([...layout.sectionTops.keys()], target);
 		if (key === null || !scroller) return null;
-		scroller.scrollTop = layout.sectionTops.get(key)! + PADDING;
+		// Rounded up: section tops can be fractional (masonry) and the browser
+		// truncates scrollTop, which would leave the view a hair inside the
+		// section above, anchored to it as that one loads.
+		scroller.scrollTop = Math.ceil(layout.sectionTops.get(key)! + PADDING);
 		scrollTop = scroller.scrollTop;
 		rememberAnchor();
 		return key;
