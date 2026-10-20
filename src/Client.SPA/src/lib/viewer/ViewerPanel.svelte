@@ -140,13 +140,19 @@
 </aside>
 
 <style>
+	/* An island beside the photo, like the app's navigation. */
 	.panel {
 		flex: none;
 		width: var(--panel-width);
-		height: 100%;
+		height: calc(100% - 2 * var(--float-margin));
+		margin: var(--float-margin) var(--float-margin) var(--float-margin) 0;
 		display: flex;
 		flex-direction: column;
+		overflow: hidden;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-xl);
 		background: var(--color-surface-raised);
+		box-shadow: var(--shadow-nav);
 		color: var(--color-text);
 	}
 
@@ -159,9 +165,21 @@
 			z-index: 3;
 			width: auto;
 			height: min(60vh, 560px);
-			border-top: 1px solid var(--color-border);
-			border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-			box-shadow: var(--shadow-raised);
+			margin: 0;
+			border-width: 1px 0 0;
+			border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+		}
+
+		/* The sheet's grip. */
+		.panel::before {
+			content: '';
+			align-self: center;
+			flex: none;
+			width: 36px;
+			height: 4px;
+			margin-top: var(--space-2);
+			border-radius: var(--radius-pill);
+			background: var(--color-border-strong);
 		}
 	}
 
@@ -178,22 +196,29 @@
 		font-size: var(--font-size-lg);
 	}
 
+	/* The tabs as a segmented pill. */
 	.tabs {
 		display: flex;
-		gap: var(--space-1);
-		padding: 0 var(--space-4);
-		border-bottom: 1px solid var(--color-border);
+		gap: 2px;
+		margin: var(--space-1) var(--space-4) var(--space-2);
+		padding: 3px;
+		border-radius: var(--radius-pill);
+		background: var(--color-surface);
 	}
 
 	[role='tab'] {
 		flex: 1;
-		padding: var(--space-2) var(--space-1);
+		min-height: var(--control-h-sm);
+		padding: 0 var(--space-2);
 		border: 0;
-		border-bottom: 2px solid transparent;
+		border-radius: var(--radius-pill);
 		background: transparent;
 		color: var(--color-text-muted);
 		font-weight: 600;
 		cursor: pointer;
+		transition:
+			background var(--duration-normal) var(--ease-standard),
+			color var(--duration-fast);
 	}
 
 	[role='tab']:hover {
@@ -201,7 +226,7 @@
 	}
 
 	[role='tab'][aria-selected='true'] {
-		border-bottom-color: var(--color-accent);
+		background: var(--color-active-pill);
 		color: var(--color-text);
 	}
 

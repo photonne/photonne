@@ -89,6 +89,8 @@
 	--color-success: #17703a;
 	--color-warning: #8f5200;
 	--color-badge: #d32f2f;
+	/* A favourite's heart over photos, as in the native app. */
+	--color-favorite: #ff5252;
 	--color-focus: #8a6400;
 	--color-placeholder: #e7eaee;
 	/* Text on a solid badge (--color-badge). */

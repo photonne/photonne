@@ -529,24 +529,28 @@
 		{#if !slideshow}
 			<!-- A video gets the bar above it, not over it: its own controls stay reachable. -->
 			<header class="bar" class:solid={isVideo}>
-				<button
-					type="button"
-					class="icon-btn"
-					bind:this={closeButton}
-					title="{m.viewer_close()} · Esc"
-					aria-label={m.viewer_close()}
-					aria-keyshortcuts="Escape"
-					onclick={onclose}
-				>
-					<Icon name="close" />
-				</button>
-				<div class="title">
-					{#if asset}
-						<span>{dateTime(asUtc(asset.capturedAt))}</span>
-						<span class="muted">{asset.fileName}</span>
-					{/if}
+				<!-- Two glass capsules, the photo showing between them (as the
+				     native viewer): where and when on the left, the tools right. -->
+				<div class="lead glass">
+					<button
+						type="button"
+						class="icon-btn"
+						bind:this={closeButton}
+						title="{m.viewer_close()} · Esc"
+						aria-label={m.viewer_close()}
+						aria-keyshortcuts="Escape"
+						onclick={onclose}
+					>
+						<Icon name="close" />
+					</button>
+					<div class="title">
+						{#if asset}
+							<span>{dateTime(asUtc(asset.capturedAt))}</span>
+							<span class="muted">{asset.fileName}</span>
+						{/if}
+					</div>
 				</div>
-				<div class="actions">
+				<div class="actions glass">
 					{@render actions?.()}
 					{#if isLive && !isVideo}
 						<button
@@ -559,43 +563,18 @@
 							{m.viewer_live()}
 						</button>
 					{/if}
-					{#if onshare}
-						<button
-							type="button"
-							class="icon-btn"
-							title={m.viewer_share()}
-							aria-label={m.viewer_share()}
-							onclick={onshare}
-						>
-							<Icon name="share" />
-						</button>
-					{/if}
-					<button
-						type="button"
-						class="icon-btn"
-						aria-pressed={asset?.isFavorite ?? false}
-						aria-keyshortcuts="F"
-						title="{asset?.isFavorite ? m.viewer_favorite_remove() : m.viewer_favorite_add()} · F"
-						aria-label={asset?.isFavorite ? m.viewer_favorite_remove() : m.viewer_favorite_add()}
-						disabled={!asset}
-						onclick={favorite}
-					>
-						<Icon name={asset?.isFavorite ? 'favorite' : 'favoriteOutline'} />
-					</button>
-					<button
-						type="button"
-						class="icon-btn"
-						aria-pressed={showInfo}
-						aria-keyshortcuts="I"
-						title="{m.viewer_info()} · I"
-						aria-label={m.viewer_info()}
-						onclick={toggleInfo}
-					>
-						<Icon name="info" />
-					</button>
+					<!-- A video keeps them up here: a dock would cover its controls. -->
+					{#if isVideo}{@render quickActions()}{/if}
+					{#if isVideo}{@render infoButton()}{/if}
 					<PopupMenu label={m.viewer_more()} items={moreItems} />
 				</div>
 			</header>
+		{/if}
+
+		<!-- Before the stage in the tab order, wherever it floats: the arrows
+		     stay the last stops. -->
+		{#if !slideshow && !isVideo}
+			<div class="dock glass">{@render quickActions()}{@render infoButton()}</div>
 		{/if}
 
 		<div class="stage">
@@ -646,28 +625,28 @@
 				{#if previous}
 					<button
 						type="button"
-						class="nav previous"
+						class="nav previous glass"
 						aria-label={m.viewer_previous()}
 						onclick={() => onnavigate(previous)}
 					>
-						<Icon name="chevronLeft" size={32} />
+						<Icon name="chevronLeft" size={28} />
 					</button>
 				{/if}
 				{#if next}
 					<button
 						type="button"
-						class="nav next"
+						class="nav next glass"
 						aria-label={m.viewer_next()}
 						onclick={() => onnavigate(next)}
 					>
-						<Icon name="chevronRight" size={32} />
+						<Icon name="chevronRight" size={28} />
 					</button>
 				{/if}
 			{/if}
 		</div>
 
 		{#if slideshow}
-			<div class="slideshow-bar" role="toolbar" aria-label={m.viewer_slideshow_label()}>
+			<div class="slideshow-bar glass" role="toolbar" aria-label={m.viewer_slideshow_label()}>
 				<button
 					type="button"
 					class="icon-btn"
@@ -753,6 +732,46 @@
 	</dl>
 </Dialog>
 
+{#snippet infoButton()}
+	<button
+		type="button"
+		class="icon-btn"
+		aria-pressed={showInfo}
+		aria-keyshortcuts="I"
+		title="{m.viewer_info()} · I"
+		aria-label={m.viewer_info()}
+		onclick={toggleInfo}
+	>
+		<Icon name="info" />
+	</button>
+{/snippet}
+
+{#snippet quickActions()}
+	<button
+		type="button"
+		class="icon-btn favorite"
+		aria-pressed={asset?.isFavorite ?? false}
+		aria-keyshortcuts="F"
+		title="{asset?.isFavorite ? m.viewer_favorite_remove() : m.viewer_favorite_add()} · F"
+		aria-label={asset?.isFavorite ? m.viewer_favorite_remove() : m.viewer_favorite_add()}
+		disabled={!asset}
+		onclick={favorite}
+	>
+		<Icon name={asset?.isFavorite ? 'favorite' : 'favoriteOutline'} />
+	</button>
+	{#if onshare}
+		<button
+			type="button"
+			class="icon-btn"
+			title={m.viewer_share()}
+			aria-label={m.viewer_share()}
+			onclick={onshare}
+		>
+			<Icon name="share" />
+		</button>
+	{/if}
+{/snippet}
+
 {#snippet faceOverlay(scale: number)}
 	<FaceBoxes faces={boxes} selectedId={selectedFaceId} {scale} onselect={selectFace} />
 {/snippet}
@@ -788,14 +807,40 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-		padding: var(--space-2) var(--space-3);
-		background: linear-gradient(rgb(0 0 0 / 0.6), transparent);
+		padding: calc(env(safe-area-inset-top, 0px) + var(--float-margin)) var(--float-margin) 0;
+		/* The photo between the capsules takes the pointer (swipes, zoom). */
+		pointer-events: none;
+		transition: opacity var(--duration-chrome);
+	}
+
+	.bar > * {
+		pointer-events: auto;
+	}
+
+	.lead,
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		min-width: 0;
+		height: 52px;
+		padding: 0 6px;
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-nav);
+	}
+
+	.lead {
+		gap: var(--space-2);
+		max-width: min(360px, 60%);
+		padding-right: var(--space-4);
 	}
 
 	.title {
 		display: grid;
-		line-height: 1.3;
+		line-height: 1.25;
 		min-width: 0;
+		font-size: var(--font-size-sm);
+		font-weight: 600;
 	}
 
 	.title span {
@@ -805,30 +850,57 @@
 	}
 
 	.muted {
-		font-size: var(--font-size-sm);
-		color: rgb(255 255 255 / 0.7);
+		font-size: var(--font-size-xs);
+		font-weight: 400;
+		color: rgb(255 255 255 / 0.75);
 	}
 
 	.actions {
 		margin-left: auto;
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
 	}
 
-	/* On the photo, the bar's buttons are white whatever is under them. */
+	/* A video's bar sits above it, on black, so the video's own controls at
+	   its bottom stay reachable. */
 	.bar.solid {
 		position: relative;
 		flex: none;
+		padding-bottom: var(--float-margin);
 		background: #000;
 	}
 
-	.bar :global(.icon-btn) {
+	/* On the photo, the buttons are white whatever is under them. */
+	.bar :global(.icon-btn),
+	.dock :global(.icon-btn) {
 		color: #fff;
 	}
 
-	.bar :global(.icon-btn[aria-pressed='true']) {
+	.bar :global(.icon-btn[aria-pressed='true']),
+	.dock :global(.icon-btn[aria-pressed='true']) {
 		color: var(--color-accent);
+	}
+
+	/* A favourite's heart is red, as in the native viewer. */
+	.viewer :global(.favorite[aria-pressed='true']) {
+		color: var(--color-favorite);
+	}
+
+	/* The photo's quick actions, floating over its bottom edge. */
+	.dock {
+		position: absolute;
+		left: 50%;
+		bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6));
+		z-index: 2;
+		display: flex;
+		gap: var(--space-2);
+		padding: 6px var(--space-3);
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-nav);
+		translate: -50% 0;
+	}
+
+	.dock :global(.icon-btn) {
+		width: 44px;
+		height: 44px;
 	}
 
 	.live {
@@ -836,7 +908,7 @@
 		align-items: center;
 		gap: var(--space-1);
 		height: var(--control-h-sm);
-		margin-right: var(--space-1);
+		margin: 0 var(--space-1);
 		padding: 0 var(--space-3);
 		border: 1px solid rgb(255 255 255 / 0.5);
 		border-radius: 999px;
@@ -898,34 +970,42 @@
 		background: #000;
 	}
 
+	/* Glass circles at the edges, quiet until the pointer comes near. */
 	.nav {
 		position: absolute;
 		top: 50%;
 		transform: translateY(-50%);
 		display: grid;
 		place-items: center;
-		width: 56px;
-		height: 56px;
+		width: 48px;
+		height: 48px;
 		padding: 0;
-		border: 0;
 		border-radius: 50%;
-		background: rgb(0 0 0 / 0.35);
+		box-shadow: var(--shadow-pill);
 		color: #fff;
 		cursor: pointer;
-		opacity: 0.7;
+		opacity: 0.55;
+		transition:
+			opacity var(--duration-normal),
+			scale var(--duration-emphasis) var(--ease-spring);
+	}
+
+	.stage:hover .nav {
+		opacity: 0.85;
 	}
 
 	.nav:hover,
 	.nav:focus-visible {
 		opacity: 1;
+		scale: 1.06;
 	}
 
 	.previous {
-		left: var(--space-3);
+		left: var(--float-margin);
 	}
 
 	.next {
-		right: var(--space-3);
+		right: var(--float-margin);
 	}
 
 	.slideshow-bar {
@@ -936,9 +1016,9 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-1);
-		padding: var(--space-1) var(--space-2);
-		border-radius: 999px;
-		background: rgb(0 0 0 / 0.65);
+		padding: 6px var(--space-2);
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-nav);
 		transform: translateX(-50%);
 		transition: opacity var(--duration-normal);
 	}
