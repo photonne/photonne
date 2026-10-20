@@ -5,8 +5,8 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
 		<meta name="color-scheme" content="light dark" />
-		<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-		<meta name="theme-color" content="#111214" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
 		<link rel="icon" href="%sveltekit.assets%/icons/mark.svg" type="image/svg+xml" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
@@ -18,7 +18,7 @@
 				const theme = localStorage.getItem('photonne.theme');
 				if (theme === 'light' || theme === 'dark') {
 					document.documentElement.dataset.theme = theme;
-					const color = theme === 'dark' ? '#111214' : '#ffffff';
+					const color = theme === 'dark' ? '#0a0a0c' : '#f8f9fa';
 					for (const meta of document.querySelectorAll('meta[name="theme-color"]'))
 						meta.content = color;
 				}

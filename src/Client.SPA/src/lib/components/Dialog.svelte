@@ -75,15 +75,32 @@
 		max-height: calc(100dvh - 2 * var(--space-8));
 		padding: 0;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
+		border-radius: var(--radius-xl);
 		background: var(--color-surface-raised);
 		color: var(--color-text);
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-nav);
+	}
+
+	dialog[open] {
+		animation: rise var(--duration-emphasis) var(--ease-spring);
+	}
+
+	@keyframes rise {
+		from {
+			opacity: 0;
+			transform: translateY(8px) scale(0.96);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		dialog[open] {
+			animation: none;
+		}
 	}
 
 	dialog::backdrop {
-		background: rgb(10 10 12 / 0.5);
-		backdrop-filter: blur(2px);
+		background: rgb(10 10 12 / 0.45);
+		backdrop-filter: blur(6px);
 	}
 
 	.content {
@@ -110,9 +127,9 @@
 		display: grid;
 		place-items: center;
 		flex: none;
-		width: var(--control-h-sm);
-		height: var(--control-h-sm);
-		margin: -4px -8px 0 0;
+		width: var(--control-h);
+		height: var(--control-h);
+		margin: -8px -10px 0 0;
 		padding: 0;
 		border: 0;
 		border-radius: 50%;
@@ -145,7 +162,7 @@
 		gap: var(--space-2);
 		min-height: var(--control-h);
 		padding: 0 var(--space-4);
-		border: 1px solid var(--color-border-strong);
+		border: 1px solid var(--color-border);
 		border-radius: var(--radius-control);
 		background: transparent;
 		color: var(--color-text);
@@ -159,9 +176,9 @@
 	}
 
 	.actions :global(button.primary) {
-		border-color: var(--color-accent);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
+		border-color: var(--color-primary-fill);
+		background: var(--color-primary-fill);
+		color: var(--color-on-primary-fill);
 		font-weight: 600;
 	}
 

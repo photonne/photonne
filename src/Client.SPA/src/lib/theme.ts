@@ -27,7 +27,7 @@ export function setTheme(theme: Theme) {
 }
 
 /** --color-bg of each theme (app.css), for the browser's own bar (theme-color). */
-const BAR_COLORS = { light: '#ffffff', dark: '#111214' } as const;
+const BAR_COLORS = { light: '#f8f9fa', dark: '#0a0a0c' } as const;
 
 export function applyTheme(theme: Theme) {
 	if (theme === 'system') delete document.documentElement.dataset.theme;

@@ -132,13 +132,13 @@ test('chooses the theme and the language', async ({ page }) => {
 				(meta) => meta.content
 			)
 		);
-	expect(await barColors()).toEqual(['#111214', '#111214']);
+	expect(await barColors()).toEqual(['#0a0a0c', '#0a0a0c']);
 	await page.reload();
-	expect(await barColors()).toEqual(['#111214', '#111214']);
+	expect(await barColors()).toEqual(['#0a0a0c', '#0a0a0c']);
 
 	await page.getByRole('radio', { name: /Del sistema/ }).check();
 	await expect(page.locator('html')).not.toHaveAttribute('data-theme');
-	expect(await barColors()).toEqual(['#ffffff', '#111214']);
+	expect(await barColors()).toEqual(['#f8f9fa', '#0a0a0c']);
 
 	await page.getByRole('radio', { name: 'English' }).check();
 	await expect(

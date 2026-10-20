@@ -20,31 +20,58 @@
 	--space-6: 1.5rem;
 	--space-8: 2rem;
 
-	--radius-sm: 6px;
-	--radius-md: 10px;
-	--radius-lg: 16px;
-	--radius-control: 8px;
+	/* Shapes follow the native app: generous radii, and every control
+	   (buttons, chips, tabs, menu items) is a pill. Fields keep a rounded
+	   rectangle so a textarea doesn't turn into a capsule. */
+	--radius-xs: 6px;
+	--radius-sm: 8px;
+	--radius-md: 14px;
+	--radius-lg: 22px;
+	--radius-xl: 28px;
+	--radius-pill: 999px;
+	--radius-control: var(--radius-pill);
+	--radius-field: var(--radius-md);
 
 	/* One height per control size, shared by buttons, inputs and selects. */
 	--control-h-sm: 32px;
-	--control-h: 36px;
-	--control-h-lg: 42px;
+	--control-h: 40px;
+	--control-h-lg: 48px;
 
 	/* Space between the content area's edge and a page's content. */
 	--page-gutter: var(--space-6);
 
 	--duration-fast: 120ms;
 	--duration-normal: 200ms;
+	/* The native app's MotionDurations: chrome showing or hiding, overlays
+	   (viewer, sheets) and emphasis (menus opening, zoom). */
+	--duration-chrome: 280ms;
+	--duration-overlay: 320ms;
+	--duration-emphasis: 220ms;
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+	/* A damped spring with a hint of overshoot, as linear() so CSS
+	   transitions get it without JavaScript. */
+	--ease-spring: linear(
+		0,
+		0.06 3%,
+		0.23 7%,
+		0.6 15%,
+		0.84 23%,
+		0.96 32%,
+		1.01 42%,
+		1.02 52%,
+		1.005 70%,
+		1
+	);
 
-	--color-bg: #ffffff;
-	--color-surface: #f4f5f7;
+	--color-bg: #f8f9fa;
+	--color-surface: #eef0f3;
 	--color-surface-raised: #ffffff;
-	--color-border: #dfe1e6;
+	--color-border: #e2e8f0;
 	/* Control outlines (inputs, selects, checkboxes) need 3:1 (WCAG 1.4.11). */
 	--color-border-strong: #868b93;
 	--color-hover: rgb(0 0 0 / 0.05);
-	--color-text: #1d1d1f;
-	--color-text-muted: #5f6368;
+	--color-text: #1e1e2e;
+	--color-text-muted: #5b6577;
 	/* Gold of the native app. The accent is a darker shade of it so text and
 	   buttons in it pass WCAG AA on light surfaces; the brand gold itself is
 	   for the logo and decoration. */
@@ -54,12 +81,16 @@
 	--color-accent: #8a6400;
 	--color-accent-text: #ffffff;
 	--color-accent-soft: #fff1cc;
+	/* The fill of primary buttons: the brand gold itself, with dark text on
+	   it in both themes (6.6:1 on the light gold). */
+	--color-primary-fill: #c8960a;
+	--color-on-primary-fill: #1a1a2e;
 	--color-danger: #b3261e;
 	--color-success: #17703a;
 	--color-warning: #8f5200;
 	--color-badge: #d32f2f;
 	--color-focus: #8a6400;
-	--color-placeholder: #e8eaed;
+	--color-placeholder: #e7eaee;
 	/* Text on a solid badge (--color-badge). */
 	--color-badge-text: #ffffff;
 	/* Over photos, in any theme: text and icons, and the shade behind them. */
@@ -80,7 +111,21 @@
 	--color-space-hidden: var(--color-border-strong);
 	/* The thumb of a scrollbar: a shade of the text, so it fades into the page. */
 	--color-scrollbar: rgb(0 0 0 / 0.28);
-	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
+	--shadow-raised: 0 1px 2px rgb(15 23 42 / 0.06), 0 4px 16px rgb(15 23 42 / 0.08);
+	/* Floating chrome, by role (the native ChromeElevation): small transient
+	   pills, header capsules, and the navigation and action capsules. */
+	--shadow-pill: 0 2px 8px rgb(15 23 42 / 0.12);
+	--shadow-bar: 0 4px 16px rgb(15 23 42 / 0.12);
+	--shadow-nav: 0 6px 24px rgb(15 23 42 / 0.16), 0 1px 3px rgb(15 23 42 / 0.1);
+
+	/* Frosted glass of the floating chrome (the native ChromePill): a grey
+	   base over a 30 px blur. See .glass in lib/styles/ui.css. */
+	--chrome-base: #e9e9ee;
+	--glass-edge: rgb(255 255 255 / 0.6);
+	/* The selected item inside a capsule (a nav tab, a menu item). */
+	--color-active-pill: rgb(0 0 0 / 0.07);
+	/* Room the floating chrome keeps from the window's edges. */
+	--float-margin: 12px;
 
 	--header-height: 56px;
 	--sidebar-width: 232px;
@@ -92,25 +137,26 @@
    Apariencia) pins one with data-theme on <html> (see src/lib/theme.ts). */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
-		--color-bg: #111214;
-		--color-surface: #1b1c1f;
-		--color-surface-raised: #232428;
-		--color-border: #2f3136;
+		--color-bg: #0a0a0c;
+		--color-surface: #1c1c20;
+		--color-surface-raised: #161619;
+		--color-border: #2a2a30;
 		--color-border-strong: #70747c;
 		--color-hover: rgb(255 255 255 / 0.06);
-		--color-text: #e8e8ea;
-		--color-text-muted: #a0a3a8;
+		--color-text: #e2e8f0;
+		--color-text-muted: #9aa5b5;
 		--color-brand: #ffd166;
 		--color-brand-tile: #2a2410;
 		--color-brand-ring: #5c4a1a;
 		--color-accent: #ffd166;
 		--color-accent-text: #1a1a2e;
 		--color-accent-soft: rgb(255 209 102 / 0.14);
+		--color-primary-fill: #ffd166;
 		--color-danger: #ef9a9a;
 		--color-success: #7bd88f;
 		--color-warning: #f6b35a;
 		--color-focus: #ffd166;
-		--color-placeholder: #26282c;
+		--color-placeholder: #1c1c20;
 		--color-toast: #3a3c42;
 		--color-toast-text: #f2f2f4;
 		--color-toast-danger: #8c2a2a;
@@ -118,30 +164,37 @@
 		--color-space-library: #c4a3e8;
 		--color-scrollbar: rgb(255 255 255 / 0.24);
 		--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
+		--shadow-pill: 0 2px 8px rgb(0 0 0 / 0.45);
+		--shadow-bar: 0 4px 16px rgb(0 0 0 / 0.5);
+		--shadow-nav: 0 6px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.5);
+		--chrome-base: #242428;
+		--glass-edge: rgb(255 255 255 / 0.08);
+		--color-active-pill: rgb(255 255 255 / 0.12);
 		color-scheme: dark;
 	}
 }
 
 :root[data-theme='dark'] {
-	--color-bg: #111214;
-	--color-surface: #1b1c1f;
-	--color-surface-raised: #232428;
-	--color-border: #2f3136;
+	--color-bg: #0a0a0c;
+	--color-surface: #1c1c20;
+	--color-surface-raised: #161619;
+	--color-border: #2a2a30;
 	--color-border-strong: #70747c;
 	--color-hover: rgb(255 255 255 / 0.06);
-	--color-text: #e8e8ea;
-	--color-text-muted: #a0a3a8;
+	--color-text: #e2e8f0;
+	--color-text-muted: #9aa5b5;
 	--color-brand: #ffd166;
 	--color-brand-tile: #2a2410;
 	--color-brand-ring: #5c4a1a;
 	--color-accent: #ffd166;
 	--color-accent-text: #1a1a2e;
 	--color-accent-soft: rgb(255 209 102 / 0.14);
+	--color-primary-fill: #ffd166;
 	--color-danger: #ef9a9a;
 	--color-success: #7bd88f;
 	--color-warning: #f6b35a;
 	--color-focus: #ffd166;
-	--color-placeholder: #26282c;
+	--color-placeholder: #1c1c20;
 	--color-toast: #3a3c42;
 	--color-toast-text: #f2f2f4;
 	--color-toast-danger: #8c2a2a;
@@ -149,6 +202,12 @@
 	--color-space-library: #c4a3e8;
 	--color-scrollbar: rgb(255 255 255 / 0.24);
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.4);
+	--shadow-pill: 0 2px 8px rgb(0 0 0 / 0.45);
+	--shadow-bar: 0 4px 16px rgb(0 0 0 / 0.5);
+	--shadow-nav: 0 6px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.5);
+	--chrome-base: #242428;
+	--glass-edge: rgb(255 255 255 / 0.08);
+	--color-active-pill: rgb(255 255 255 / 0.12);
 	color-scheme: dark;
 }
 
@@ -214,30 +273,40 @@ body {
 	:root {
 		--duration-fast: 0ms;
 		--duration-normal: 0ms;
+		--duration-chrome: 0ms;
+		--duration-overlay: 0ms;
+		--duration-emphasis: 0ms;
 	}
 }
 
 /* Always dark, whatever the app theme (the photo viewers): the photo is the light. */
 .dark-surface {
-	--color-bg: #111214;
+	--color-bg: #0a0a0c;
 	--color-surface: #26282c;
 	--color-surface-raised: #1b1c1f;
 	--color-border: #34363b;
 	--color-border-strong: #70747c;
 	--color-hover: rgb(255 255 255 / 0.12);
-	--color-text: #e8e8ea;
-	--color-text-muted: #a0a3a8;
+	--color-text: #e2e8f0;
+	--color-text-muted: #9aa5b5;
 	--color-brand: #ffd166;
 	--color-accent: #ffd166;
 	--color-accent-text: #1a1a2e;
 	--color-accent-soft: rgb(255 209 102 / 0.14);
+	--color-primary-fill: #ffd166;
 	--color-focus: #ffd166;
 	--color-danger: #ef9a9a;
 	--color-success: #7bd88f;
 	--color-warning: #f6b35a;
-	--color-placeholder: #26282c;
+	--color-placeholder: #1c1c20;
 	--color-scrollbar: rgb(255 255 255 / 0.24);
 	--shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.5);
+	--shadow-pill: 0 2px 8px rgb(0 0 0 / 0.45);
+	--shadow-bar: 0 4px 16px rgb(0 0 0 / 0.5);
+	--shadow-nav: 0 6px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.5);
+	--chrome-base: #242428;
+	--glass-edge: rgb(255 255 255 / 0.08);
+	--color-active-pill: rgb(255 255 255 / 0.12);
 	color-scheme: dark;
 }
 

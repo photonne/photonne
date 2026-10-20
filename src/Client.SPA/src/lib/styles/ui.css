@@ -3,9 +3,10 @@
  * inputs and selects, so heights, borders, states and contrast match across
  * the app. Tokens come from src/app.css.
  *
- *   .btn            a text button (36 px); .primary, .danger, .ghost; .sm, .lg
- *   .icon-btn       a round icon-only button (36 px; .sm 32 px); its name goes
+ *   .btn            a pill text button (40 px); .primary, .danger, .ghost; .sm, .lg
+ *   .icon-btn       a round icon-only button (40 px; .sm 32 px); its name goes
  *                   in aria-label
+ *   .glass          the frosted surface of floating chrome (capsules, menus)
  *   .chip           a small pill (filters, badges); [aria-pressed] / .active
  *   .segmented      a row of exclusive options (radio inputs or buttons)
  *   input, select, textarea   styled by default (opt out with .bare)
@@ -20,7 +21,7 @@
 	gap: var(--space-2);
 	min-height: var(--control-h);
 	padding: 0 var(--space-4);
-	border: 1px solid var(--color-border-strong);
+	border: 1px solid var(--color-border);
 	border-radius: var(--radius-control);
 	background: var(--color-surface-raised);
 	color: var(--color-text);
@@ -41,15 +42,15 @@
 }
 
 .btn.primary {
-	border-color: var(--color-accent);
-	background: var(--color-accent);
-	color: var(--color-accent-text);
+	border-color: var(--color-primary-fill);
+	background: var(--color-primary-fill);
+	color: var(--color-on-primary-fill);
 	font-weight: 600;
 }
 
 .btn.primary:hover:not(:disabled) {
-	background: var(--color-accent);
-	box-shadow: inset 0 0 0 100px rgb(255 255 255 / 0.1);
+	background: var(--color-primary-fill);
+	box-shadow: inset 0 0 0 100px rgb(255 255 255 / 0.16);
 }
 
 .btn.danger {
@@ -210,7 +211,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: var(--space-1);
-	min-height: 28px;
+	min-height: var(--control-h-sm);
 	padding: 0 var(--space-3);
 	border: 1px solid var(--color-border);
 	border-radius: 999px;
@@ -237,7 +238,7 @@
 .segmented {
 	display: inline-flex;
 	gap: 2px;
-	padding: 2px;
+	padding: 3px;
 	border-radius: var(--radius-control);
 	background: var(--color-surface);
 }
@@ -247,15 +248,19 @@
 	display: inline-flex;
 	align-items: center;
 	gap: var(--space-1);
-	min-height: calc(var(--control-h) - 4px);
+	min-height: calc(var(--control-h) - 6px);
 	padding: 0 var(--space-3);
 	border: 0;
-	border-radius: calc(var(--radius-control) - 2px);
+	border-radius: var(--radius-control);
 	background: transparent;
 	color: var(--color-text-muted);
 	font-size: var(--font-size-sm);
 	white-space: nowrap;
 	cursor: pointer;
+	transition:
+		background var(--duration-normal) var(--ease-standard),
+		box-shadow var(--duration-normal) var(--ease-standard),
+		color var(--duration-fast);
 }
 
 .segmented > label:has(input:checked),
@@ -263,7 +268,9 @@
 	background: var(--color-surface-raised);
 	color: var(--color-text);
 	font-weight: 600;
-	box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+	box-shadow:
+		0 1px 2px rgb(0 0 0 / 0.12),
+		0 2px 6px rgb(0 0 0 / 0.06);
 }
 
 .segmented > label:has(input:focus-visible) {
@@ -297,8 +304,8 @@
 	min-height: var(--control-h);
 	padding: 0 var(--space-3);
 	border: 1px solid var(--color-border-strong);
-	border-radius: var(--radius-control);
-	background: var(--color-bg);
+	border-radius: var(--radius-field);
+	background: var(--color-surface-raised);
 	color: var(--color-text);
 	font-size: var(--font-size-sm);
 }
@@ -331,7 +338,7 @@
 ):focus-visible {
 	outline: none;
 	border-color: var(--color-focus);
-	box-shadow: 0 0 0 1px var(--color-focus);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 35%, transparent);
 }
 
 :where(input[type='checkbox'], input[type='radio'], input[type='range'], progress) {
@@ -359,4 +366,32 @@
 
 .field .hint {
 	font-size: var(--font-size-xs);
+}
+
+/* ── Glass: the floating chrome ──────────────────────────────────────── */
+
+/* The native app's ChromePill: the chrome-base grey at 60 % over a 30 px
+   blur of whatever scrolls beneath, solid at 92 % where there's no blur or
+   the user asks for less transparency or more contrast. Shape and shadow
+   are the component's (a pill, a rounded panel; --shadow-pill/bar/nav). */
+.glass {
+	background: color-mix(in srgb, var(--chrome-base) 60%, transparent);
+	-webkit-backdrop-filter: blur(30px) saturate(1.6);
+	backdrop-filter: blur(30px) saturate(1.6);
+	border: 1px solid var(--glass-edge);
+	color: var(--color-text);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	.glass {
+		background: color-mix(in srgb, var(--chrome-base) 92%, transparent);
+	}
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+	.glass {
+		background: var(--chrome-base);
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 }

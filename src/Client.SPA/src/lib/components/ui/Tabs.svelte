@@ -64,7 +64,7 @@
 	.list {
 		display: flex;
 		gap: var(--space-1);
-		padding: 0 var(--page-gutter);
+		padding: var(--space-2) var(--page-gutter);
 		overflow-x: auto;
 		scrollbar-width: none;
 	}
@@ -104,16 +104,21 @@
 		position: relative;
 		display: inline-flex;
 		align-items: center;
-		min-height: 44px;
-		padding: 0 var(--space-3);
+		min-height: var(--control-h-sm);
+		padding: 0 var(--space-4);
+		border-radius: var(--radius-pill);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 		font-weight: 500;
 		text-decoration: none;
 		white-space: nowrap;
+		transition:
+			background var(--duration-normal) var(--ease-standard),
+			color var(--duration-fast);
 	}
 
 	a:hover {
+		background: var(--color-hover);
 		color: var(--color-text);
 	}
 
@@ -137,22 +142,13 @@
 	/* Inside the scroll box: drawn inwards, or the box would clip it. */
 	a:focus-visible {
 		outline-offset: -2px;
-		border-radius: var(--radius-sm);
 	}
 
+	/* The current tab is a pill, like the selected tab of the native app's
+	   floating navigation. */
 	a[aria-current='page'] {
+		background: var(--color-active-pill);
 		color: var(--color-text);
 		font-weight: 600;
-	}
-
-	a[aria-current='page']::after {
-		content: '';
-		position: absolute;
-		left: var(--space-3);
-		right: var(--space-3);
-		bottom: -1px;
-		height: 2px;
-		border-radius: 2px 2px 0 0;
-		background: var(--color-accent);
 	}
 </style>
