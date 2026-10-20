@@ -135,6 +135,8 @@ test('shows face recognition progress and queues the pending photos', async ({ p
 });
 
 test('a person page shows their photos, renames and removes photos from them', async ({ page }) => {
+	// The grid renders the rows on screen: tall enough for all 14 at once.
+	await page.setViewportSize({ width: 1280, height: 900 });
 	const api = await fakeApi(page, { signedIn: true });
 	await page.goto('/people/person-ana');
 

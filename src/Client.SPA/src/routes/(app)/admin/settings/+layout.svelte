@@ -59,7 +59,7 @@
 	.side {
 		position: sticky;
 		top: var(--admin-nav-height);
-		max-height: calc(100dvh - var(--header-height) - var(--admin-nav-height));
+		max-height: calc(100dvh - var(--chrome-top) - var(--admin-nav-height));
 		overflow-y: auto;
 		padding: var(--space-6) var(--space-3) var(--space-6) var(--page-gutter);
 	}

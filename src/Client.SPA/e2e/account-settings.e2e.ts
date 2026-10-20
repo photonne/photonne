@@ -65,7 +65,7 @@ test('edits the profile and confirms a username change', async ({ page }) => {
 		email: 'ana@photonne.test'
 	});
 	// The account menu follows the new name.
-	await expect(page.getByRole('banner').getByText('ana.garcia')).toBeVisible();
+	await expect(page.getByRole('banner').getByRole('button', { name: /ana\.garcia/ })).toBeVisible();
 });
 
 test('changes the password, checking the rules as it is typed', async ({ page }) => {

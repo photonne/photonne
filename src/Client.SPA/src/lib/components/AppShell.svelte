@@ -195,7 +195,10 @@
 />
 
 <div class="shell" class:collapsed={rail} class:drawer-open={drawerOpen}>
-	<header class="topbar">
+	<!-- The navigation island: a glass panel floating beside the page, with
+	     the brand and the fold button on top. On a phone its parts float on
+	     their own: the button and the logo in a capsule, the menu as a drawer. -->
+	<div class="island glass">
 		<div class="brand-area">
 			<button
 				bind:this={menuButton}
@@ -214,159 +217,163 @@
 			>
 		</div>
 
-		{#if !onSearchPage}
-			<form class="search" role="search" onsubmit={submitSearch}>
-				<Icon name="search" size={18} />
-				<input
-					type="search"
-					class="bare"
-					aria-label={m.nav_search()}
-					placeholder={m.nav_search()}
-					bind:value={search}
-				/>
-			</form>
-		{/if}
-
-		<div class="tools">
-			{#if uploads.active}
-				<!-- Uploads keep going from any page: how far along, one click from the queue. -->
-				<a
-					class="uploading"
-					href={href('/upload')}
-					title={m.upload_indicator_title({ percent: Math.round(uploads.progress * 100) })}
-				>
-					<Icon name="upload" size={18} />
-					<span class="visually-hidden">{m.upload_indicator()}</span>
-					<span class="upload-count"
-						>{uploads.counts.total - uploads.counts.pending}/{uploads.counts.total}</span
-					>
-					<span class="upload-bar" aria-hidden="true"
-						><span style:width="{uploads.progress * 100}%"></span></span
-					>
-				</a>
-			{/if}
-			<a
-				class="icon bell"
-				href={href('/notifications')}
-				aria-label={unreadCount
-					? m.nav_notifications_unread({ count: unreadCount })
-					: m.nav_notifications()}
-			>
-				<Icon name="notifications" />
-				{#if unreadCount}<span class="badge" aria-hidden="true"
-						>{unreadCount > 99 ? '99+' : unreadCount}</span
-					>{/if}
-			</a>
-			<PopupMenu
-				label={m.account_menu_label({ name: session.user?.username ?? '' })}
-				items={accountItems}
-				triggerClass="account"
-			>
-				{#snippet trigger()}
-					<span class="avatar" aria-hidden="true"
-						>{(session.user?.firstName || session.user?.username || '?').charAt(0)}</span
-					>
-					<span class="username">{session.user?.username}</span>
-				{/snippet}
-				{#snippet header()}
-					<div class="identity">
-						<strong>{fullName || session.user?.username}</strong>
-						<span>{session.user?.email}</span>
-					</div>
-				{/snippet}
-			</PopupMenu>
-		</div>
-	</header>
+		<nav id="sidebar" class="sidebar" aria-label={m.nav_main()} bind:this={sidebar}>
+			{#each navigation.filter((section) => !section.adminOnly || session.isAdmin) as section (section.id)}
+				{#if section.label}
+					<h2 class:visually-hidden={rail}>{section.label()}</h2>
+				{/if}
+				<ul>
+					{#each section.items as item (item.path)}
+						<li>
+							<a
+								href={href(item.path)}
+								aria-current={current(item.path)}
+								title={rail ? item.label() : undefined}
+							>
+								<Icon name={item.icon} size={20} />
+								<span class="label">{item.label()}</span>
+							</a>
+						</li>
+					{/each}
+				</ul>
+				{#if section.id === 'collections'}
+					{#if pinned.length > 0}
+						<h2 class:visually-hidden={rail}>{m.nav_section_pinned()}</h2>
+						<ul>
+							{#each pinned as item (item.kind + item.id)}
+								{@const path = item.kind === 'album' ? `/albums/${item.id}` : `/folders/${item.id}`}
+								<li>
+									<a
+										href={href(path)}
+										class:drop={dropTarget === item.id}
+										aria-current={current(path)}
+										title={item.smart
+											? item.name
+											: item.kind === 'album'
+												? m.drop_add_to_album({ album: item.name })
+												: m.drop_move_to_folder({ folder: item.name })}
+										ondragover={(event) => {
+											if (item.smart || !isAssetDrag(event)) return;
+											event.preventDefault();
+											dropTarget = item.id;
+										}}
+										ondragleave={() => (dropTarget = null)}
+										ondrop={(event) => {
+											if (item.smart) return;
+											event.preventDefault();
+											dropTarget = null;
+											if (item.kind === 'album') dropOnAlbum(event, item);
+											else dropOnFolder(event, item);
+										}}
+									>
+										<Icon
+											path={item.smart ? icons.smart : undefined}
+											name={item.smart ? undefined : item.kind === 'album' ? 'album' : 'folder'}
+											size={20}
+										/>
+										<span class="label">{item.name}</span>
+									</a>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				{/if}
+			{/each}
+		</nav>
+	</div>
 
 	{#if drawerOpen}
 		<!-- The page behind the drawer: a click on it closes the drawer. -->
 		<div class="scrim" aria-hidden="true" onclick={closeDrawer}></div>
 	{/if}
 
-	<nav id="sidebar" class="sidebar" aria-label={m.nav_main()} bind:this={sidebar}>
-		{#each navigation.filter((section) => !section.adminOnly || session.isAdmin) as section (section.id)}
-			{#if section.label}
-				<h2 class:visually-hidden={rail}>{section.label()}</h2>
+	<div class="stage">
+		<!-- No bar: the search and the tools float over the page in two glass
+		     capsules, and the page scrolls beneath them. -->
+		<header class="topbar">
+			{#if !onSearchPage}
+				<form class="search glass" role="search" onsubmit={submitSearch}>
+					<Icon name="search" size={20} />
+					<input
+						type="search"
+						class="bare"
+						aria-label={m.nav_search()}
+						placeholder={m.nav_search()}
+						bind:value={search}
+					/>
+				</form>
 			{/if}
-			<ul>
-				{#each section.items as item (item.path)}
-					<li>
-						<a
-							href={href(item.path)}
-							aria-current={current(item.path)}
-							title={rail ? item.label() : undefined}
-						>
-							<Icon name={item.icon} size={18} />
-							<span class="label">{item.label()}</span>
-						</a>
-					</li>
-				{/each}
-			</ul>
-			{#if section.id === 'collections'}
-				{#if pinned.length > 0}
-					<h2 class:visually-hidden={rail}>{m.nav_section_pinned()}</h2>
-					<ul>
-						{#each pinned as item (item.kind + item.id)}
-							{@const path = item.kind === 'album' ? `/albums/${item.id}` : `/folders/${item.id}`}
-							<li>
-								<a
-									href={href(path)}
-									class:drop={dropTarget === item.id}
-									aria-current={current(path)}
-									title={item.smart
-										? item.name
-										: item.kind === 'album'
-											? m.drop_add_to_album({ album: item.name })
-											: m.drop_move_to_folder({ folder: item.name })}
-									ondragover={(event) => {
-										if (item.smart || !isAssetDrag(event)) return;
-										event.preventDefault();
-										dropTarget = item.id;
-									}}
-									ondragleave={() => (dropTarget = null)}
-									ondrop={(event) => {
-										if (item.smart) return;
-										event.preventDefault();
-										dropTarget = null;
-										if (item.kind === 'album') dropOnAlbum(event, item);
-										else dropOnFolder(event, item);
-									}}
-								>
-									<Icon
-										path={item.smart ? icons.smart : undefined}
-										name={item.smart ? undefined : item.kind === 'album' ? 'album' : 'folder'}
-										size={18}
-									/>
-									<span class="label">{item.name}</span>
-								</a>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			{/if}
-		{/each}
-	</nav>
 
-	<main id="content" class="content" tabindex="-1" inert={drawerOpen}>
-		{@render children()}
-	</main>
+			<div class="tools glass">
+				{#if uploads.active}
+					<!-- Uploads keep going from any page: how far along, one click from the queue. -->
+					<a
+						class="uploading"
+						href={href('/upload')}
+						title={m.upload_indicator_title({ percent: Math.round(uploads.progress * 100) })}
+					>
+						<Icon name="upload" size={18} />
+						<span class="visually-hidden">{m.upload_indicator()}</span>
+						<span class="upload-count"
+							>{uploads.counts.total - uploads.counts.pending}/{uploads.counts.total}</span
+						>
+						<span class="upload-bar" aria-hidden="true"
+							><span style:width="{uploads.progress * 100}%"></span></span
+						>
+					</a>
+				{/if}
+				<a
+					class="icon bell"
+					href={href('/notifications')}
+					aria-label={unreadCount
+						? m.nav_notifications_unread({ count: unreadCount })
+						: m.nav_notifications()}
+				>
+					<Icon name="notifications" />
+					{#if unreadCount}<span class="badge" aria-hidden="true"
+							>{unreadCount > 99 ? '99+' : unreadCount}</span
+						>{/if}
+				</a>
+				<PopupMenu
+					label={m.account_menu_label({ name: session.user?.username ?? '' })}
+					items={accountItems}
+					triggerClass="account"
+				>
+					{#snippet trigger()}
+						<span class="avatar" aria-hidden="true"
+							>{(session.user?.firstName || session.user?.username || '?').charAt(0)}</span
+						>
+					{/snippet}
+					{#snippet header()}
+						<div class="identity">
+							<strong>{fullName || session.user?.username}</strong>
+							<span>{session.user?.email}</span>
+						</div>
+					{/snippet}
+				</PopupMenu>
+			</div>
+		</header>
+
+		<main id="content" class="content" tabindex="-1" inert={drawerOpen}>
+			{@render children()}
+		</main>
+	</div>
 </div>
 
 <style>
 	.shell {
 		--nav-width: var(--sidebar-width);
+		/* Height of the floating chrome above the page: the capsules and the
+		   room around them. Pages scroll under it and start below it. */
+		--chrome-top: calc(var(--float-margin) * 2 + var(--chrome-h));
 		display: grid;
-		grid-template-columns: var(--nav-width) minmax(0, 1fr);
-		grid-template-rows: var(--header-height) 1fr;
-		grid-template-areas:
-			'topbar topbar'
-			'sidebar content';
+		grid-template-columns: calc(var(--nav-width) + var(--float-margin)) minmax(0, 1fr);
 		height: 100dvh;
-		transition: grid-template-columns var(--duration-normal) ease;
+		transition: grid-template-columns var(--duration-chrome) var(--ease-standard);
 	}
 
 	.shell.collapsed {
-		--nav-width: 68px;
+		--nav-width: 64px;
 	}
 
 	.skip-link {
@@ -376,52 +383,205 @@
 		z-index: 10;
 		padding: var(--space-2) var(--space-3);
 		background: var(--color-surface-raised);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-pill);
 	}
 
 	.skip-link:focus {
 		top: var(--space-2);
 	}
 
-	.topbar {
-		grid-area: topbar;
+	/* ── The navigation island ── */
+
+	.island {
 		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		padding: 0 var(--space-4);
-		border-bottom: 1px solid var(--color-border);
+		flex-direction: column;
+		min-height: 0;
+		margin: var(--float-margin) 0 var(--float-margin) var(--float-margin);
+		border-radius: var(--radius-xl);
+		box-shadow: var(--shadow-nav);
+		overflow: hidden;
 	}
 
 	.brand-area {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
-		/* Lines the search box up with the content column; on the rail the
-		   button and the logo need more than its width, so it grows to fit. */
-		width: calc(var(--nav-width) - var(--space-4));
-		min-width: max-content;
+		gap: var(--space-1);
 		flex: none;
-		transition: width var(--duration-normal) ease;
+		min-width: 0;
+		padding: var(--space-3) var(--space-3) var(--space-2) var(--space-2);
+	}
+
+	.collapsed .brand-area {
+		flex-direction: column;
+		gap: var(--space-2);
+		padding: var(--space-3) 0 var(--space-2);
 	}
 
 	.brand {
 		display: flex;
 		align-items: center;
 		min-width: 0;
+		border-radius: var(--radius-pill);
 		color: inherit;
 		text-decoration: none;
 	}
 
-	.search {
+	.sidebar {
 		flex: 1;
+		min-height: 0;
+		overflow-x: hidden;
+		overflow-y: auto;
+		padding: 0 var(--space-2) var(--space-4);
+		scrollbar-width: none;
+	}
+
+	.sidebar h2 {
+		margin: var(--space-4) var(--space-3) var(--space-1);
+		font-size: var(--font-size-2xs);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-text-muted);
+	}
+
+	.sidebar ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 2px;
+	}
+
+	.sidebar a {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		min-height: 38px;
+		padding: 0 var(--space-3);
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+		border-radius: var(--radius-pill);
+		color: inherit;
+		text-decoration: none;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		transition:
+			background var(--duration-fast),
+			scale var(--duration-emphasis) var(--ease-spring);
+	}
+
+	.sidebar a :global(svg) {
+		flex: none;
+		color: var(--color-text-muted);
+	}
+
+	.sidebar a:hover {
+		background: var(--color-hover);
+	}
+
+	/* The current page, as in the native navigation: a neutral pill behind
+	   the item, its icon in gold. */
+	.sidebar a[aria-current] {
+		background: var(--color-active-pill);
+		font-weight: 650;
+	}
+
+	.sidebar a[aria-current] :global(svg) {
+		color: var(--color-accent);
+	}
+
+	.label {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* The rail: icons only, their names in the title and for screen readers. */
+	.collapsed .sidebar {
+		padding-inline: 10px;
+	}
+
+	.collapsed .sidebar a {
+		justify-content: center;
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		border-radius: 50%;
+	}
+
+	.collapsed .sidebar .label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+
+	.collapsed .sidebar ul + h2 {
+		margin-top: var(--space-2);
+	}
+
+	.collapsed .sidebar ul {
+		padding-bottom: var(--space-2);
+		border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+	}
+
+	.collapsed .sidebar ul:last-child {
+		border-bottom: 0;
+	}
+
+	.sidebar a.drop {
+		outline: 2px dashed var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+		scale: 1.03;
+	}
+
+	/* ── The page and the capsules over it ── */
+
+	.stage {
+		position: relative;
 		min-width: 0;
+		min-height: 0;
+	}
+
+	.topbar {
+		position: absolute;
+		inset: var(--float-margin) var(--float-margin) auto var(--page-gutter);
+		z-index: 5;
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		height: var(--chrome-h);
+		/* The page between the capsules stays clickable. */
+		pointer-events: none;
+	}
+
+	.topbar > :global(*) {
+		pointer-events: auto;
+	}
+
+	.search {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: 0 var(--space-3);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
+		width: min(420px, 100%);
+		height: 100%;
+		padding: 0 var(--space-4);
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-bar);
 		color: var(--color-text-muted);
+		transition:
+			width var(--duration-chrome) var(--ease-spring),
+			box-shadow var(--duration-fast);
+	}
+
+	/* Grows as it takes the keys. */
+	.search:focus-within {
+		width: min(620px, 100%);
+		box-shadow:
+			var(--shadow-bar),
+			0 0 0 2px var(--color-focus);
 	}
 
 	.search input {
@@ -434,15 +594,15 @@
 		outline: none;
 	}
 
-	.search:focus-within {
-		outline: 2px solid var(--color-focus);
-	}
-
 	.tools {
 		margin-left: auto;
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: 2px;
+		height: 100%;
+		padding: 0 4px;
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-bar);
 	}
 
 	.icon {
@@ -455,7 +615,7 @@
 	}
 
 	.icon:hover {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.bell {
@@ -468,8 +628,8 @@
 		align-items: center;
 		gap: var(--space-1);
 		height: var(--control-h-sm);
-		padding: 0 var(--space-2);
-		border-radius: var(--radius-control);
+		padding: 0 var(--space-3);
+		border-radius: var(--radius-pill);
 		background: var(--color-accent-soft);
 		color: var(--color-accent);
 		font-size: var(--font-size-xs);
@@ -498,28 +658,29 @@
 
 	.badge {
 		position: absolute;
-		top: 4px;
-		right: 2px;
+		top: 2px;
+		right: 0;
 		min-width: 18px;
 		padding: 0 5px;
 		border-radius: 9px;
 		background: var(--color-badge);
 		color: var(--color-badge-text);
-		box-shadow: 0 0 0 2px var(--color-bg);
+		box-shadow: 0 0 0 2px var(--chrome-base);
 		font-size: var(--font-size-2xs);
 		font-weight: 700;
 		line-height: 18px;
 		text-align: center;
 	}
 
-	/* The account menu's trigger: an avatar and the user's name. */
+	/* The account menu's trigger: the user's initial in a gold disc. */
 	.tools :global(.account) {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-1) var(--space-3);
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		padding: 0;
 		border: 0;
-		border-radius: var(--radius-sm);
+		border-radius: 50%;
 		background: transparent;
 		color: inherit;
 		font: inherit;
@@ -528,19 +689,19 @@
 
 	.tools :global(.account:hover),
 	.tools :global(.account.open) {
-		background: var(--color-surface);
+		background: var(--color-hover);
 	}
 
 	.avatar {
 		display: grid;
 		place-items: center;
-		width: 28px;
-		height: 28px;
+		width: 32px;
+		height: 32px;
 		border-radius: 50%;
-		background: var(--color-accent-soft);
-		color: var(--color-accent);
+		background: linear-gradient(135deg, var(--color-primary-fill), var(--color-brand));
+		color: var(--color-on-primary-fill);
 		font-size: var(--font-size-sm);
-		font-weight: 700;
+		font-weight: 800;
 		text-transform: uppercase;
 	}
 
@@ -559,92 +720,10 @@
 		white-space: nowrap;
 	}
 
-	.sidebar {
-		grid-area: sidebar;
-		overflow-x: hidden;
-		padding: var(--space-2) var(--space-3) var(--space-6);
-		overflow-y: auto;
-	}
-
-	.sidebar h2 {
-		margin: var(--space-4) var(--space-3) var(--space-1);
-		font-size: var(--font-size-2xs);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-muted);
-	}
-
-	.sidebar ul {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: 2px;
-	}
-
-	.sidebar a {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		min-height: 36px;
-		padding: 0 var(--space-3);
-		font-size: var(--font-size-sm);
-		font-weight: 500;
-		border-radius: var(--radius-control);
-		color: inherit;
-		text-decoration: none;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.sidebar a:hover {
-		background: var(--color-surface);
-	}
-
-	.sidebar a[aria-current] {
-		background: var(--color-accent-soft);
-		color: var(--color-accent);
-		font-weight: 600;
-	}
-
-	/* The rail: icons only, their names in the title and for screen readers. */
-	.collapsed .sidebar {
-		padding-inline: var(--space-2);
-	}
-
-	.collapsed .sidebar a {
-		justify-content: center;
-		padding: 0;
-	}
-
-	.collapsed .sidebar .label {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		white-space: nowrap;
-	}
-
-	.collapsed .sidebar ul + h2 {
-		margin-top: var(--space-2);
-	}
-
-	.collapsed .sidebar ul {
-		padding-bottom: var(--space-2);
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.sidebar a.drop {
-		outline: 2px dashed var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 15%, transparent);
-	}
-
 	.content {
-		grid-area: content;
+		height: 100%;
 		overflow: auto;
+		padding-top: var(--chrome-top);
 		outline: none;
 	}
 
@@ -652,51 +731,67 @@
 		display: none;
 	}
 
-	/* Phone-sized: one column, the menu slides in over the page. */
+	/* Phone-sized: one column; the menu button and the logo float in their
+	   own capsule and the menu slides in over the page. */
 	@media (max-width: 700px) {
 		.shell {
 			grid-template-columns: minmax(0, 1fr);
-			grid-template-areas:
-				'topbar'
-				'content';
 		}
 
-		.topbar {
-			gap: var(--space-2);
-			padding: 0 var(--space-2);
+		.island {
+			display: contents;
 		}
 
 		.brand-area {
+			position: fixed;
+			top: var(--float-margin);
+			left: var(--float-margin);
+			z-index: 21;
+			height: var(--chrome-h);
+			padding: 0 var(--space-3) 0 4px;
+			border-radius: var(--radius-pill);
+			background: color-mix(in srgb, var(--chrome-base) 60%, transparent);
+			-webkit-backdrop-filter: blur(30px) saturate(1.6);
+			backdrop-filter: blur(30px) saturate(1.6);
+			border: 1px solid var(--glass-edge);
+			box-shadow: var(--shadow-bar);
+		}
+
+		.stage {
+			grid-column: 1;
+		}
+
+		.topbar {
+			left: calc(var(--float-margin) + 108px);
+			gap: var(--space-2);
+		}
+
+		.search,
+		.search:focus-within {
+			flex: 1;
 			width: auto;
-		}
-
-		.tools {
-			gap: 0;
-		}
-
-		.tools :global(.account) {
-			padding: var(--space-1);
-		}
-
-		.username {
-			display: none;
+			min-width: 0;
 		}
 
 		.sidebar {
 			position: fixed;
-			top: var(--header-height);
-			bottom: 0;
-			left: 0;
+			top: calc(var(--chrome-top) - var(--space-1));
+			bottom: var(--float-margin);
+			left: var(--float-margin);
 			z-index: 20;
 			width: min(300px, 85vw);
-			background: var(--color-bg);
-			border-right: 1px solid var(--color-border);
-			box-shadow: var(--shadow-raised);
-			transform: translateX(-100%);
+			padding-top: var(--space-2);
+			border-radius: var(--radius-xl);
+			background: color-mix(in srgb, var(--chrome-base) 92%, transparent);
+			-webkit-backdrop-filter: blur(30px) saturate(1.6);
+			backdrop-filter: blur(30px) saturate(1.6);
+			border: 1px solid var(--glass-edge);
+			box-shadow: var(--shadow-nav);
+			transform: translateX(calc(-100% - 2 * var(--float-margin)));
 			visibility: hidden;
 			transition:
-				transform var(--duration-normal) ease,
-				visibility var(--duration-normal);
+				transform var(--duration-chrome) var(--ease-standard),
+				visibility var(--duration-chrome);
 		}
 
 		/* Visible at once on opening (focus can go in); hidden only once it
@@ -704,13 +799,13 @@
 		.drawer-open .sidebar {
 			transform: none;
 			visibility: visible;
-			transition: transform var(--duration-normal) ease;
+			transition: transform var(--duration-chrome) var(--ease-spring);
 		}
 
 		.scrim {
 			display: block;
 			position: fixed;
-			inset: var(--header-height) 0 0;
+			inset: 0;
 			z-index: 19;
 			background: var(--color-scrim-soft);
 		}
