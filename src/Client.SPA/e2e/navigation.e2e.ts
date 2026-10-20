@@ -123,30 +123,47 @@ test('the menu follows the window width until the user chooses', async ({ page }
 	await expect(page.getByRole('button', { name: 'Expandir el menú' })).toBeVisible();
 });
 
-test('on a phone the menu is a drawer over the page', async ({ page }) => {
+test('on a phone the three tabs of the native app replace the menu', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 800 });
 	await fakeApi(page, { signedIn: true });
 	await page.goto('/');
 
-	const open = page.getByRole('button', { name: 'Abrir el menú' });
-	const sidebar = page.getByRole('navigation', { name: 'Navegación principal' });
-	await expect(sidebar).toBeHidden();
+	await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toBeHidden();
+	const tabs = page.getByRole('navigation', { name: 'Pestañas principales' });
+	await expect(tabs.getByRole('link')).toHaveCount(3);
+	await expect(tabs.getByRole('link', { name: 'Fotos' })).toHaveAttribute('aria-current', 'page');
 
-	await open.click();
-	await expect(sidebar).toBeVisible();
-	await expect(sidebar.getByRole('link', { name: 'Fotos' })).toBeFocused();
-	await page.keyboard.press('Escape');
-	await expect(sidebar).toBeHidden();
-	await expect(open).toBeFocused();
-
-	// Going somewhere closes it.
-	await open.click();
-	await sidebar.getByRole('link', { name: 'Álbumes' }).click();
+	// Colecciones gathers the collections, and stays current inside one.
+	await tabs.getByRole('link', { name: 'Colecciones' }).click();
+	await expect(page).toHaveURL(/\/collections$/);
+	await page.getByRole('main').getByRole('link', { name: 'Álbumes' }).click();
 	await expect(page).toHaveURL(/\/albums$/);
-	await expect(sidebar).toBeHidden();
+	await expect(tabs.getByRole('link', { name: 'Colecciones' })).toHaveAttribute(
+		'aria-current',
+		'true'
+	);
 
-	// So does a click on the page behind it.
-	await open.click();
-	await page.mouse.click(370, 400);
-	await expect(sidebar).toBeHidden();
+	// Más holds the actions and the account, with the unread count.
+	await tabs.getByRole('link', { name: /^Más/ }).click();
+	await expect(page).toHaveURL(/\/more$/);
+	await expect(page.getByRole('main').getByRole('link', { name: 'Subir' })).toBeVisible();
+	await expect(page.getByRole('main').getByRole('link', { name: /Ajustes/ })).toBeVisible();
+});
+
+test('on a phone a selection takes the place of the tabs', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 800 });
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/');
+
+	const tabs = page.getByRole('navigation', { name: 'Pestañas principales' });
+	await expect(tabs).toBeVisible();
+	await page
+		.getByRole('button', { name: /^Foto, / })
+		.first()
+		.click({ modifiers: ['ControlOrMeta'] });
+	await expect(page.getByRole('toolbar', { name: /^1 seleccionad/ })).toBeVisible();
+	await expect(tabs).not.toBeInViewport();
+
+	await page.getByRole('button', { name: 'Quitar selección' }).click();
+	await expect(tabs).toBeInViewport();
 });
