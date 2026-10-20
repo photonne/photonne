@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/photonne/photonne/compare/native-v2.1.0...native-v2.2.0) (2026-10-20)
+
+
+### Novedades
+
+* **native:** Diálogo del vídeo resumen en Android e iOS ([#109](https://github.com/photonne/photonne/issues/109)) ([c5dcf9c](https://github.com/photonne/photonne/commit/c5dcf9cda52e5bbd5550971bda5f520e5fb051d4))
+
 ## [2.1.0](https://github.com/photonne/photonne/compare/native-v2.0.0...native-v2.1.0) (2026-10-18)
 
 
