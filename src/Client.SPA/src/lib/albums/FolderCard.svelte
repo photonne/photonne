@@ -168,7 +168,7 @@
 		background: var(--color-placeholder);
 		color: var(--color-text-muted);
 		transition:
-			transform var(--duration-normal) ease,
+			transform var(--duration-emphasis) var(--ease-spring),
 			box-shadow var(--duration-normal) ease;
 	}
 
@@ -282,7 +282,7 @@
 
 	.grid a:hover .thumb {
 		transform: translateY(-3px);
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-bar);
 	}
 
 	.grid:has(a:hover) .check,

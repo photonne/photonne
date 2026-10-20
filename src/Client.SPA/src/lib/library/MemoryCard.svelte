@@ -40,8 +40,13 @@
 		position: relative;
 		display: block;
 		overflow: hidden;
-		border-radius: var(--radius-md);
+		/* The native MemoryCardShape: one corner rounder than the rest, the
+		   mark of a memory in both apps. */
+		border-radius: var(--radius-xl) var(--radius-md) var(--radius-md) var(--radius-md);
 		background: var(--color-placeholder);
+		transition:
+			translate var(--duration-emphasis) var(--ease-spring),
+			box-shadow var(--duration-normal);
 		color: var(--color-on-media);
 		text-decoration: none;
 		isolation: isolate;
@@ -67,6 +72,11 @@
 	.card:hover img,
 	.card:focus-visible img {
 		transform: scale(1.04);
+	}
+
+	.card:hover {
+		translate: 0 -3px;
+		box-shadow: var(--shadow-bar);
 	}
 
 	/* Without a cover: a tinted card with a mark, dark text. */
@@ -112,8 +122,9 @@
 	}
 
 	.title {
-		font-weight: 600;
-		line-height: 1.25;
+		font-weight: 700;
+		line-height: 1.2;
+		letter-spacing: -0.01em;
 		text-shadow: 0 1px 2px var(--color-scrim-soft);
 	}
 
