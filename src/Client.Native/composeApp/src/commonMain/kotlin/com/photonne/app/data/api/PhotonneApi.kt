@@ -486,6 +486,17 @@ interface PhotonneApi {
     suspend fun getMemoryFeed(kind: String? = null, limit: Int = 50, personId: String? = null): List<Memory>
     /** One memory with its assets, in display order (index 0 is the cover). */
     suspend fun getMemory(id: String): MemoryDetail
+
+    /** The user's summary videos, newest request first (GET /api/video-summaries). */
+    suspend fun getVideoSummaries(): List<com.photonne.app.data.models.VideoSummary>
+    /** Years with videos to summarise, newest first. */
+    suspend fun getVideoSummaryYears(): List<com.photonne.app.data.models.VideoSummaryYear>
+    /** Asks for (or renders again) the summary of a year or an album. */
+    suspend fun requestVideoSummary(
+        body: com.photonne.app.data.models.RequestVideoSummaryBody
+    ): com.photonne.app.data.models.VideoSummary
+    /** Renders a summary whose clips were chosen ("planned") as they are. */
+    suspend fun renderVideoSummary(id: String): com.photonne.app.data.models.VideoSummary
     suspend fun getAssetDetail(assetId: String): AssetDetail
     /** Flips the heart (`POST /favorite`). Kept for servers without [setFavorite]. */
     suspend fun toggleFavorite(assetId: String): Boolean
@@ -1310,6 +1321,44 @@ class PhotonneApiClient(
         val response: HttpResponse = client.get("$baseUrl/api/memories/$id")
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Memory fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getVideoSummaries(): List<com.photonne.app.data.models.VideoSummary> {
+        val response: HttpResponse = client.get("$baseUrl/api/video-summaries")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Video summaries fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getVideoSummaryYears(): List<com.photonne.app.data.models.VideoSummaryYear> {
+        val response: HttpResponse = client.get("$baseUrl/api/video-summaries/years")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Video summary years fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun requestVideoSummary(
+        body: com.photonne.app.data.models.RequestVideoSummaryBody
+    ): com.photonne.app.data.models.VideoSummary {
+        val response: HttpResponse = client.post("$baseUrl/api/video-summaries") {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+        // 202 when queued; 200 when it was already on its way.
+        if (!response.status.isSuccess()) {
+            throw response.apiException("Video summary request failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun renderVideoSummary(id: String): com.photonne.app.data.models.VideoSummary {
+        val response: HttpResponse = client.post("$baseUrl/api/video-summaries/$id/render")
+        if (!response.status.isSuccess()) {
+            throw response.apiException("Video summary render failed (${response.status.value})")
         }
         return response.body()
     }

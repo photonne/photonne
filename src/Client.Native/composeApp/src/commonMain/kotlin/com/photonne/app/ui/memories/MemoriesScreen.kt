@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +62,8 @@ import com.photonne.app.resources.memories_section_places
 import com.photonne.app.resources.memories_section_this_month
 import com.photonne.app.resources.memories_section_today
 import com.photonne.app.resources.memories_section_trips
+import com.photonne.app.resources.summaries_action_year
+import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.theme.contentWidth
@@ -107,13 +112,26 @@ fun MemoriesScreen(
     onOpenMemory: (MemoryDetail) -> Unit,
     onBack: () -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {},
+    /** Opens the year's summary video dialog; null hides the action. */
+    onVideoSummary: (() -> Unit)? = null,
 ) {
+    val summaryAction: (@Composable RowScope.() -> Unit)? = if (onVideoSummary != null) {
+        {
+            IconButton(onClick = onVideoSummary) {
+                Icon(
+                    PhotonneIcons.VideoSummary,
+                    contentDescription = stringResource(Res.string.summaries_action_year)
+                )
+            }
+        }
+    } else null
     MemoryFeedScaffold(
         title = stringResource(Res.string.explore_section_memories),
         viewModel = viewModel,
         onOpenMemory = onOpenMemory,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
+        actions = summaryAction,
         isEmpty = { it.recuerdos.isEmpty() },
         emptyTitle = stringResource(Res.string.memories_empty_dated),
     ) { state, open ->
@@ -252,6 +270,8 @@ internal fun MemoryFeedScaffold(
     isEmpty: (MemoryFeedUiState) -> Boolean,
     emptyTitle: String,
     onRefresh: () -> Unit = viewModel::refresh,
+    /** Trailing capsule of the chrome; null for none. */
+    actions: (@Composable RowScope.() -> Unit)? = null,
     content: LazyListScope.(MemoryFeedUiState, (Memory) -> Unit) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -333,10 +353,11 @@ internal fun MemoryFeedScaffold(
                 }
             }
 
-            // Sin acciones: una sola cápsula (volver + título).
+            // Sin acciones, una sola cápsula (volver + título).
             SubscreenFloatingChrome(
                 title = title,
                 onBack = onBack,
+                actions = actions,
                 scroll = SubscreenScroll(
                     firstVisibleItemIndex = { listState.firstVisibleItemIndex },
                     firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
