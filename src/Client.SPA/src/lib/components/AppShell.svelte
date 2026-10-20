@@ -29,6 +29,7 @@
 	} from '#lib/navigation/sidebar.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { chrome } from '#lib/navigation/chrome.svelte.js';
+	import CommandPalette, { type PaletteEntry } from './CommandPalette.svelte';
 	import FloatingNav from './FloatingNav.svelte';
 	import Icon from './Icon.svelte';
 	import Logo from './Logo.svelte';
@@ -57,6 +58,43 @@
 			smart: entry.kind === 'album' && isSmart(entry.item)
 		}))
 	);
+
+	// Everywhere the palette (Ctrl/Cmd + K) can go: the menu's sections, the
+	// pinned albums and folders, and the account's pages.
+	const paletteEntries: PaletteEntry[] = $derived([
+		...navigation
+			.filter((section) => !section.adminOnly || session.isAdmin)
+			.flatMap((section) =>
+				section.items.map((item) => ({
+					href: href(item.path),
+					label: item.label(),
+					group: section.label?.(),
+					icon: item.icon
+				}))
+			),
+		...pinned.map((item) => ({
+			href: href(item.kind === 'album' ? `/albums/${item.id}` : `/folders/${item.id}`),
+			label: item.name,
+			group: m.nav_section_pinned(),
+			...(item.smart
+				? { iconPath: icons.smart }
+				: { icon: item.kind === 'album' ? ('album' as const) : ('folder' as const) })
+		})),
+		{
+			href: href('/notifications'),
+			label: m.nav_notifications(),
+			group: m.nav_section_account(),
+			icon: 'notifications'
+		},
+		{
+			href: href('/settings'),
+			label: m.nav_settings(),
+			group: m.nav_section_account(),
+			icon: 'settings'
+		}
+	]);
+	let palette = $state<CommandPalette>();
+	const paletteKeys = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
 
 	let dropTarget = $state<string | null>(null);
 	// A rail of icons or the full menu; narrow windows start as a rail.
@@ -294,6 +332,14 @@
 						placeholder={m.nav_search()}
 						bind:value={search}
 					/>
+					<button
+						type="button"
+						class="palette-hint"
+						title={m.palette_open()}
+						aria-label={m.palette_open()}
+						aria-keyshortcuts="Control+K Meta+K"
+						onclick={() => palette?.open()}>{paletteKeys}</button
+					>
 				</form>
 			{/if}
 
@@ -358,6 +404,7 @@
 	</div>
 
 	<FloatingNav unread={unreadCount} />
+	<CommandPalette bind:this={palette} entries={paletteEntries} />
 </div>
 
 <style>
@@ -597,6 +644,23 @@
 		box-shadow:
 			var(--shadow-bar),
 			0 0 0 2px var(--color-focus);
+	}
+
+	.palette-hint {
+		flex: none;
+		padding: 0 var(--space-2);
+		border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+		border-radius: var(--radius-xs);
+		background: transparent;
+		color: inherit;
+		font-size: var(--font-size-2xs);
+		font-weight: 600;
+		line-height: 20px;
+		cursor: pointer;
+	}
+
+	.palette-hint:hover {
+		color: var(--color-text);
 	}
 
 	.search input {

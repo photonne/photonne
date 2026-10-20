@@ -792,6 +792,43 @@
 		cursor: none;
 	}
 
+	/* Opening: the black fades in and the photo grows into place, the
+	   chrome settling a beat later (the native overlay's 320 ms). */
+	.viewer {
+		animation: viewer-in var(--duration-overlay) var(--ease-standard);
+	}
+
+	.stage {
+		animation: photo-in var(--duration-overlay) var(--ease-standard);
+	}
+
+	.bar,
+	.dock {
+		animation: viewer-in var(--duration-overlay) var(--ease-standard) 80ms backwards;
+	}
+
+	@keyframes viewer-in {
+		from {
+			opacity: 0;
+		}
+	}
+
+	@keyframes photo-in {
+		from {
+			opacity: 0;
+			transform: scale(0.94);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.viewer,
+		.stage,
+		.bar,
+		.dock {
+			animation: none;
+		}
+	}
+
 	.main {
 		position: relative;
 		flex: 1;

@@ -357,18 +357,22 @@
 		height: clamp(180px, 28vh, 300px);
 		margin: var(--space-3) var(--page-gutter) 0;
 		overflow: hidden;
-		border-radius: var(--radius-lg);
+		border-radius: var(--radius-xl);
 		background: var(--color-surface-raised);
 		color: #fff;
-		transition: height var(--duration-normal) ease;
+		transition:
+			height var(--duration-chrome) var(--ease-standard),
+			border-radius var(--duration-chrome) var(--ease-standard);
 		/* What the header snippet draws (description, badges) reads on the photo. */
 		--color-text: #fff;
 		--color-text-muted: rgb(255 255 255 / 0.82);
 		--color-surface: rgb(255 255 255 / 0.18);
 	}
 
+	/* Folded, it becomes a capsule with the title, like the rest of the chrome. */
 	.banner.folded {
 		height: 72px;
+		border-radius: var(--radius-pill);
 	}
 
 	.banner img {

@@ -167,3 +167,27 @@ test('on a phone a selection takes the place of the tabs', async ({ page }) => {
 	await page.getByRole('button', { name: 'Quitar selección' }).click();
 	await expect(tabs).toBeInViewport();
 });
+
+test('Ctrl+K goes anywhere, or searches the photos for the words', async ({ page }) => {
+	await page.setViewportSize({ width: 1400, height: 900 });
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/');
+	await expect(page.getByRole('heading', { name: 'Fotos', level: 1 })).toBeVisible();
+
+	await page.keyboard.press('ControlOrMeta+k');
+	const palette = page.getByRole('dialog', { name: 'Ir a' });
+	await expect(palette).toBeVisible();
+	await palette.getByRole('combobox').fill('albu');
+	await expect(palette.getByRole('option', { selected: true })).toContainText('Buscar «albu»');
+	await page.keyboard.press('ArrowDown');
+	await expect(palette.getByRole('option', { selected: true })).toContainText('Álbumes');
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(/\/albums$/);
+	await expect(palette).toBeHidden();
+
+	// The search capsule's hint opens it too; Enter right away searches.
+	await page.getByRole('button', { name: 'Abrir la paleta de comandos' }).click();
+	await palette.getByRole('combobox').fill('playa');
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(/\/search\?q=playa$/);
+});
