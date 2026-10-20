@@ -192,8 +192,10 @@
 		border-color: transparent;
 		background: var(--color-toast-danger);
 		color: var(--color-toast-text);
-		-webkit-backdrop-filter: none;
-		backdrop-filter: none;
+	}
+
+	.toast.error::before {
+		display: none;
 	}
 
 	span {
