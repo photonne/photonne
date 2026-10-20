@@ -105,9 +105,12 @@
 	}: Props = $props();
 
 	const HEADER_HEIGHT = 52;
+	/** A chevron up (Material keyboard_arrow_up). */
+	const UP_PATH = 'M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z';
 	const SUBHEADER_HEIGHT = 36;
 	const SECTION_GAP = 16;
-	const SPACING = 4;
+	/** Between photos: a hairline, as in the native grid, so it reads as one mosaic. */
+	const SPACING = 2;
 	/** Above the first row and under the last one. */
 	const PADDING = 8;
 	/** At each side: the page gutter (--page-gutter), so rows line up with the title. */
@@ -266,9 +269,25 @@
 		rememberAnchor();
 	}
 
+	// While the view moves, the month floats in a pill at the top and, far
+	// down, a pill leads back to the top; both go a moment after it stops.
+	const SETTLE_MS = 1500;
+	let scrolling = $state(false);
+	let settle: ReturnType<typeof setTimeout> | undefined;
+
 	function onscroll() {
 		scrollTop = scroller!.scrollTop;
 		rememberAnchor();
+		scrolling = true;
+		clearTimeout(settle);
+		settle = setTimeout(() => (scrolling = false), SETTLE_MS);
+	}
+
+	$effect(() => () => clearTimeout(settle));
+
+	function backToTop() {
+		const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		scroller?.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
 	}
 
 	// Ctrl/Cmd + wheel (and a trackpad pinch, which browsers report the same
@@ -594,7 +613,13 @@
 
 <svelte:window onkeydown={onWindowKeydown} onpointerdowncapture={onpointerdown} />
 
-<div class="frame" bind:clientWidth={outerWidth}>
+<!-- The pills centre on the photos: the gutter on the left, the scrubber's
+     column (or a gutter) on the right. -->
+<div
+	class="frame"
+	bind:clientWidth={outerWidth}
+	style:--pill-shift="{(GUTTER - (scrubberShown ? SCRUBBER_WIDTH : GUTTER)) / 2}px"
+>
 	<div
 		class="scroller"
 		bind:this={scroller}
@@ -721,6 +746,17 @@
 		</div>
 	</div>
 
+	{#if scrolling && scrollTop > 0 && currentLabel}
+		<span class="date-pill glass" aria-hidden="true">{currentLabel}</span>
+	{/if}
+
+	<!-- Not while selecting: the actions float at the bottom then. -->
+	{#if scrolling && scrollTop > viewportHeight * 2 && !selection.active}
+		<button type="button" class="top-pill glass" onclick={backToTop}>
+			<Icon path={UP_PATH} size={18} />{m.grid_back_to_top()}
+		</button>
+	{/if}
+
 	{#if scrubberShown}
 		<Scrubber
 			{markers}
@@ -814,9 +850,9 @@
 	}
 
 	.section-check.on {
-		background: var(--color-accent);
-		border-color: var(--color-accent);
-		color: var(--color-accent-text);
+		background: var(--color-primary-fill);
+		border-color: var(--color-primary-fill);
+		color: var(--color-on-primary-fill);
 	}
 
 	.section-check.some {
@@ -827,7 +863,7 @@
 		position: absolute;
 		left: 0;
 		right: 0;
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-xs);
 		background: repeating-linear-gradient(
 			to bottom,
 			var(--color-placeholder) 0 160px,
@@ -869,21 +905,21 @@
 		opacity: 0;
 		transition:
 			opacity var(--duration-normal),
-			transform var(--duration-fast),
-			border-radius var(--duration-fast);
+			transform var(--duration-emphasis) var(--ease-spring),
+			border-radius var(--duration-emphasis);
 	}
 
 	img:global(.loaded) {
 		opacity: 1;
 	}
 
-	/* Selected: the photo shrinks into a rounded inset on a tint of the accent. */
+	/* Selected: the photo shrinks into a rounded inset on a tint of the gold. */
 	.selected {
-		background: var(--color-accent-soft);
+		background: color-mix(in srgb, var(--color-brand) 18%, var(--color-bg));
 	}
 
 	.selected img {
-		transform: scale(0.86);
+		transform: scale(0.88);
 		border-radius: var(--radius-md);
 	}
 
@@ -960,9 +996,9 @@
 		top: 4px;
 		left: 4px;
 		border-color: var(--color-bg);
-		background: var(--color-accent);
+		background: var(--color-primary-fill);
 		box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
-		color: var(--color-accent-text);
+		color: var(--color-on-primary-fill);
 	}
 
 	.badges {
@@ -979,5 +1015,61 @@
 	.selected .badges {
 		top: 6px;
 		right: 6px;
+	}
+
+	/* The floating pills, centred on the photos (the native FloatingDatePill
+	   and ScrollToTopPill). */
+	.date-pill,
+	.top-pill {
+		position: absolute;
+		left: calc(50% + var(--pill-shift, 0px));
+		z-index: 2;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: var(--space-2) var(--space-4);
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-pill);
+		font-size: var(--font-size-sm);
+		font-weight: 650;
+		white-space: nowrap;
+		translate: -50% 0;
+		animation: pill-in var(--duration-emphasis) var(--ease-spring);
+	}
+
+	/* A block, so its first letter can be raised. */
+	.date-pill {
+		top: var(--space-2);
+		display: block;
+		pointer-events: none;
+	}
+
+	.date-pill::first-letter {
+		text-transform: uppercase;
+	}
+
+	.top-pill {
+		bottom: var(--space-4);
+		cursor: pointer;
+	}
+
+	.top-pill:hover {
+		box-shadow:
+			var(--shadow-pill),
+			inset 0 0 0 100px var(--color-hover);
+	}
+
+	@keyframes pill-in {
+		from {
+			opacity: 0;
+			scale: 0.8;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.date-pill,
+		.top-pill {
+			animation: none;
+		}
 	}
 </style>
