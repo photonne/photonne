@@ -373,23 +373,41 @@
 /* The native app's ChromePill: the chrome-base grey at 60 % over a 30 px
    blur of whatever scrolls beneath, solid at 92 % where there's no blur or
    the user asks for less transparency or more contrast. Shape and shadow
-   are the component's (a pill, a rounded panel; --shadow-pill/bar/nav). */
+   are the component's (a pill, a rounded panel; --shadow-pill/bar/nav).
+
+   The blur sits on a layer behind the content, not on the element itself:
+   a backdrop-filter would make the element the containing block of its
+   fixed descendants, and the menus opened from a capsule are fixed. */
+:where(.glass) {
+	position: relative;
+}
+
 .glass {
-	background: color-mix(in srgb, var(--chrome-base) 60%, transparent);
-	-webkit-backdrop-filter: blur(30px) saturate(1.6);
-	backdrop-filter: blur(30px) saturate(1.6);
+	isolation: isolate;
 	border: 1px solid var(--glass-edge);
 	color: var(--color-text);
 }
 
+.glass::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	background: color-mix(in srgb, var(--chrome-base) 60%, transparent);
+	-webkit-backdrop-filter: blur(30px) saturate(1.6);
+	backdrop-filter: blur(30px) saturate(1.6);
+	pointer-events: none;
+}
+
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-	.glass {
+	.glass::before {
 		background: color-mix(in srgb, var(--chrome-base) 92%, transparent);
 	}
 }
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-	.glass {
+	.glass::before {
 		background: var(--chrome-base);
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
