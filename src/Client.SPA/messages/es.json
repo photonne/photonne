@@ -43,6 +43,7 @@
 	"skip_to_content": "Saltar al contenido",
 	"grid_select_section": "Seleccionar {section}",
 	"grid_scrubber": "Saltar a una fecha",
+	"grid_back_to_top": "Volver arriba",
 	"grid_item_photo": "Foto, {date}",
 	"grid_item_video": "Vídeo, {date}",
 	"selection_clear": "Quitar selección",

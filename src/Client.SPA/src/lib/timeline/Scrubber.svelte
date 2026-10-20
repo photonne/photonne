@@ -86,7 +86,15 @@
 		<span class="year" style:top="{marker.fraction * railHeight}px">{marker.label}</span>
 	{/each}
 
-	<span class="thumb" style:top="{fraction * railHeight}px"></span>
+	<!-- A glass handle with its two chevrons, as the native TimelineScrubber. -->
+	<span class="thumb glass" class:dragging style:top="{fraction * railHeight}px">
+		<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"
+			><path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" /></svg
+		>
+		<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"
+			><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" /></svg
+		>
+	</span>
 
 	{#if bubble && bubble.text}
 		<span class="bubble" style:top="{bubble.at * railHeight}px">{bubble.text}</span>
@@ -120,24 +128,51 @@
 
 	.thumb {
 		position: absolute;
-		right: 4px;
-		width: 4px;
-		height: 32px;
+		right: 6px;
+		display: grid;
+		place-items: center;
+		align-content: center;
+		width: 24px;
+		height: 44px;
 		transform: translateY(-50%);
-		border-radius: 2px;
-		background: var(--color-accent);
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-pill);
+		color: var(--color-text);
+		fill: currentColor;
 		pointer-events: none;
+		transition:
+			scale var(--duration-emphasis) var(--ease-spring),
+			color var(--duration-fast);
 	}
 
+	.thumb svg {
+		margin-block: -2px;
+	}
+
+	.rail:hover .thumb,
+	.rail:focus-visible .thumb,
+	.thumb.dragging {
+		color: var(--color-accent);
+	}
+
+	.thumb.dragging {
+		scale: 1.12;
+	}
+
+	/* The date under the pointer: a glass pill, its text in gold. */
 	.bubble {
 		position: absolute;
-		right: 60px;
+		right: 40px;
 		transform: translateY(-50%);
 		padding: var(--space-1) var(--space-3);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-raised);
-		box-shadow: var(--shadow-raised);
+		border-radius: var(--radius-pill);
+		background: color-mix(in srgb, var(--chrome-base) 72%, transparent);
+		-webkit-backdrop-filter: blur(30px) saturate(1.6);
+		backdrop-filter: blur(30px) saturate(1.6);
+		box-shadow: var(--shadow-pill);
+		color: var(--color-accent);
 		font-size: var(--font-size-sm);
+		font-weight: 650;
 		white-space: nowrap;
 		pointer-events: none;
 	}
