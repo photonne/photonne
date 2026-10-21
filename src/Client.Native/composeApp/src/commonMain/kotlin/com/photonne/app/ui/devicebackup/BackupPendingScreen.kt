@@ -28,7 +28,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,7 +35,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -101,6 +99,8 @@ import com.photonne.app.ui.theme.AssetGridSkeleton
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -332,22 +332,22 @@ private fun FailedItemDialog(
         },
         confirmButton = {
             // Retry + Skip share the confirm slot; Close stays the dismiss.
-            Row {
-                TextButton(onClick = onIgnore) {
-                    Text(
-                        stringResource(Res.string.backup_action_ignore),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                TextButton(onClick = onRetry) {
-                    Text(stringResource(Res.string.backup_failed_dialog_retry))
-                }
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.backup_action_ignore),
+                    onClick = onIgnore
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.backup_failed_dialog_retry),
+                    onClick = onRetry
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.backup_failed_dialog_close))
-            }
+            CompactSecondaryButton(
+                label = stringResource(Res.string.backup_failed_dialog_close),
+                onClick = onDismiss
+            )
         }
     )
 }

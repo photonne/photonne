@@ -1423,7 +1423,9 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                 title = stringResource(Res.string.logout_confirm_title),
                 message = message,
                 confirmLabel = stringResource(Res.string.action_logout),
-                isDestructive = true,
+                // Salir no borra nada: se vuelve a entrar. El rojo queda para
+                // lo que no se puede deshacer.
+                isDestructive = false,
                 isSubmitting = false,
                 onDismiss = { appState.showLogoutConfirm = false },
                 onConfirm = {
