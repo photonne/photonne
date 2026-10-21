@@ -309,6 +309,162 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
 .phase .files { font: 0.78rem/1.6 var(--font-mono); color: var(--muted); margin-top: 8px; overflow-wrap: anywhere; }
 .size { display: inline-block; margin-left: 8px; font: 600 0.7rem var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
 
+/* ---------- Full-window pages (v2) ---------- */
+.cap.search .ph-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pair:not(.single) .cap.search { width: 150px; }
+.pair:not(.single) .cap.search kbd { display: none; }
+.desk.tall { height: 470px; }
+.desk .island { z-index: 3; }
+.cap { z-index: 4; }
+.cap.acts { top: 14px; right: 104px; gap: 2px; }
+.cap.acts .txt { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+.cap .btn .dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--chrome); }
+.lead-h { display: flex; align-items: baseline; gap: 10px; padding: 6px 2px 10px; }
+.lead-h b { font: 700 19px var(--font-display); }
+.lead-h span { color: var(--muted); }
+.underlay { position: absolute; inset: 0; z-index: 0; }
+.underlay .photos { position: absolute; inset: 0; }
+
+/* the view menus */
+.vmenu { position: absolute; z-index: 5; width: 250px; border-radius: 22px; padding: 14px; display: grid; gap: 10px; font-size: 12px; }
+.vmenu h4 { margin: 0; font: 650 12.5px var(--font-body); }
+.vmenu .cl, .sheet .cl { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; margin-bottom: -4px; }
+.vseg { display: flex; padding: 3px; border-radius: 999px; background: var(--active-pill); }
+.vseg span { flex: 1; display: inline-flex; justify-content: center; align-items: center; gap: 5px; height: 26px; border-radius: 999px; font-weight: 600; opacity: 0.75; }
+.vseg span.on { background: var(--panel); color: var(--fg); opacity: 1; box-shadow: 0 1px 3px rgb(0 0 0 / 0.15); }
+.vseg svg.i { width: 13px; height: 13px; }
+.vsl { display: grid; gap: 3px; }
+.vsl .r { display: flex; align-items: center; gap: 8px; }
+.vsl .r > svg { width: 14px; height: 14px; opacity: 0.7; }
+.vsl .t { position: relative; flex: 1; height: 18px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px; }
+.vsl .t::before { content: ''; position: absolute; left: 6px; right: 6px; height: 4px; border-radius: 4px; background: color-mix(in srgb, currentColor 15%, transparent); }
+.vsl .t::after { content: ''; position: absolute; left: 6px; width: var(--fill, 50%); height: 4px; border-radius: 4px; background: var(--gold); }
+.vsl .t i { position: relative; z-index: 1; width: 7px; height: 7px; border-radius: 50%; background: var(--panel); box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent); }
+.vsl .t i.p { background: var(--gold); box-shadow: none; }
+.vsl .t i.k { width: 15px; height: 15px; background: var(--gold); box-shadow: 0 0 0 3px var(--panel), 0 1px 4px rgb(0 0 0 / 0.3); }
+.vsl .m { display: flex; justify-content: space-between; padding: 0 28px; font-size: 9px; font-weight: 700; opacity: 0.55; }
+.vsl .m b { opacity: 1; }
+.vlist { display: grid; gap: 2px; }
+.vlist span { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border-radius: 999px; }
+.vlist span::before { content: ''; width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, currentColor 45%, transparent); }
+.vlist span.on { background: var(--active-pill); font-weight: 650; }
+.vlist span.on::before { box-shadow: inset 0 0 0 3.5px var(--gold); }
+.vjump { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 999px; background: var(--active-pill); font-weight: 600; }
+.vjump kbd { margin-left: auto; font: 500 10px var(--font-mono); opacity: 0.6; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 5px; padding: 0 4px; }
+.vdates { display: flex; gap: 6px; }
+.vdates span { flex: 1; display: grid; gap: 2px; font-size: 10px; opacity: 0.85; }
+.vdates span i { font-style: normal; height: 26px; border-radius: 10px; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); display: flex; align-items: center; padding: 0 8px; font-size: 11px; opacity: 1; }
+.menus-row { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+.menus-row .vmenu { position: relative; }
+.menu-col { display: grid; gap: 8px; justify-items: center; align-content: start; }
+.menu-col .label { margin: 0; }
+.board { padding: 22px; border-radius: 18px; border: 1px solid var(--line); background:
+  linear-gradient(135deg, color-mix(in srgb, var(--gold) 18%, var(--bg)), var(--bg) 55%); }
+
+/* layouts compared */
+.layouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; min-width: 760px; }
+.lay { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--bg); padding: 10px; height: 220px; }
+.mas { display: flex; gap: 3px; }
+.mas > div { flex: 1; display: grid; gap: 3px; align-content: start; }
+.mas .ph { width: 100%; }
+.sq { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.sq .ph { aspect-ratio: 1; }
+.just { display: grid; gap: 3px; }
+.just > div { display: flex; gap: 3px; height: 50px; }
+.just .ph { height: 100%; }
+
+/* album */
+.alb-banner { position: relative; height: 150px; border-radius: 22px; overflow: hidden; margin-bottom: 4px; color: #fff;
+  background: radial-gradient(ellipse 30% 45% at 75% 20%, #f7eaa0 0 40%, transparent 41%), linear-gradient(180deg, #d0814e, #b06a3e); }
+.alb-banner::before { content: ''; position: absolute; inset: auto 0 0; height: 45%; background: #2c4258; clip-path: polygon(0 60%, 22% 15%, 40% 55%, 60% 25%, 80% 60%, 100% 30%, 100% 100%, 0 100%); }
+.alb-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgb(0 0 0 / 0.65), transparent 70%); }
+.alb-banner div { position: absolute; left: 18px; bottom: 14px; z-index: 1; display: grid; }
+.alb-banner b { font: 800 22px var(--font-display); }
+.alb-banner small { opacity: 0.85; }
+.rail { position: absolute; right: 6px; top: 66px; bottom: 10px; width: 30px; display: grid; justify-items: center; align-content: start; gap: 46px; font-size: 9.5px; color: var(--muted); z-index: 2; }
+.rail .scrub { position: static; }
+
+/* folders */
+.tree-card { position: absolute; left: 192px; top: 66px; bottom: 12px; width: 176px; border-radius: 24px; border: 1px solid var(--line); background: var(--panel); padding: 12px 8px; display: grid; gap: 4px; align-content: start; z-index: 2; }
+.tree-card .hd { display: flex; justify-content: space-between; align-items: center; font-weight: 650; padding: 0 6px 6px; }
+.tree-card .grp { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; }
+.tree-card .it { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border-radius: 10px; }
+.tree-card .it.sub { padding-left: 24px; }
+.tree-card .it.on { background: var(--accent-soft); font-weight: 650; }
+.tree-card .it em { margin-left: auto; font-style: normal; font-size: 10px; color: var(--muted); }
+.tree-card .tip { position: absolute; left: 14px; right: 14px; bottom: 12px; font-size: 9.5px; color: var(--muted); }
+.fmain { position: absolute; left: 384px; right: 40px; top: 66px; bottom: 0; display: grid; gap: 6px; align-content: start; overflow: hidden; }
+.fsec { display: flex; align-items: center; gap: 6px; font-weight: 650; font-size: 12.5px; }
+.fsec span { color: var(--muted); font-weight: 500; }
+.ftiles { display: flex; gap: 10px; }
+.ftile { width: 96px; display: grid; gap: 3px; font-size: 11px; }
+.ftile i { aspect-ratio: 1; border-radius: 18px; background: var(--accent-soft); display: grid; place-items: center; color: var(--gold); }
+.ftile i svg { width: 24px; height: 24px; }
+.ftile small { color: var(--muted); }
+
+/* map */
+.mapbg { position: absolute; inset: 0; background:
+  linear-gradient(115deg, transparent 47%, color-mix(in srgb, var(--fg) 9%, transparent) 47.3%, transparent 47.8%),
+  linear-gradient(25deg, transparent 60%, color-mix(in srgb, var(--fg) 8%, transparent) 60.3%, transparent 60.8%),
+  linear-gradient(170deg, transparent 30%, color-mix(in srgb, var(--fg) 7%, transparent) 30.3%, transparent 30.7%),
+  radial-gradient(ellipse 22% 18% at 30% 70%, color-mix(in srgb, #7fb7a4 35%, transparent), transparent 70%),
+  radial-gradient(ellipse 30% 40% at 85% 85%, color-mix(in srgb, #9fb4d9 40%, transparent), transparent 70%),
+  repeating-linear-gradient(0deg, transparent 0 38px, color-mix(in srgb, var(--fg) 4%, transparent) 38px 39px),
+  repeating-linear-gradient(90deg, transparent 0 52px, color-mix(in srgb, var(--fg) 4%, transparent) 52px 53px),
+  color-mix(in srgb, var(--fg) 3%, var(--bg)); }
+.mtitle { position: absolute; left: 196px; top: 64px; z-index: 4; height: 38px; padding: 0 16px; border-radius: 999px; display: flex; align-items: baseline; gap: 10px; align-items: center; }
+.mtitle b { font: 700 15px var(--font-display); }
+.mtitle span { opacity: 0.7; }
+.mzoom { position: absolute; left: 196px; top: 112px; z-index: 4; width: 34px; border-radius: 12px; display: grid; }
+.mzoom span { height: 32px; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+.mzoom span + span { border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+.mark { position: absolute; z-index: 1; width: 46px; height: 46px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgb(0 0 0 / 0.35); }
+.mark.on { border-color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 45%, transparent), 0 2px 8px rgb(0 0 0 / 0.35); }
+.mark b { position: absolute; top: -6px; right: -10px; min-width: 20px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--gold); color: #1A1A2E; font-size: 10px; display: grid; place-items: center; }
+.mpanel { position: absolute; right: 12px; top: 66px; bottom: 12px; width: 300px; z-index: 4; border-radius: 24px; border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow-nav); padding: 14px; display: grid; gap: 6px; align-content: start; overflow: hidden; }
+.mpanel .hd { display: flex; align-items: center; gap: 6px; }
+.mpanel .hd b { font: 700 15px var(--font-display); flex: 1; }
+.mpanel .hd span { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; }
+
+/* viewer over the grid */
+.viewer.glassy { background: none; }
+.viewer.glassy .underlay .photos { filter: blur(14px) saturate(1.1); transform: scale(1.06); }
+.viewer.glassy .veil { position: absolute; inset: 0; background: rgb(54 55 61 / 0.8); z-index: 0; }
+.viewer.glassy .shot { position: absolute; z-index: 1; left: 31%; top: 13%; width: 170px; height: 300px; overflow: hidden;
+  background: radial-gradient(circle at 60% 28%, #f7eaa0 0 16%, transparent 17%), linear-gradient(180deg, #d0814e 0%, #c06e44 55%, #2c4258 55.5%, #2c4258 100%); }
+.viewer.glassy .cap, .viewer.glassy .arrow { z-index: 2; }
+.vpanel { position: absolute; z-index: 3; right: 12px; top: 12px; bottom: 12px; width: 260px; border-radius: 28px; background: #1b1c1f; border: 1px solid #34363b; box-shadow: 0 12px 40px rgb(0 0 0 / 0.45); padding: 16px; display: grid; gap: 10px; align-content: start; color: #e8eaef; }
+.vpanel .hd { display: flex; justify-content: space-between; align-items: center; font: 700 15px var(--font-display); }
+.vpanel .tabs { display: flex; padding: 3px; border-radius: 999px; background: rgb(255 255 255 / 0.08); }
+.vpanel .tabs span { flex: 1; text-align: center; padding: 5px 0; border-radius: 999px; font-weight: 600; opacity: 0.7; }
+.vpanel .tabs span.on { background: rgb(255 255 255 / 0.14); opacity: 1; }
+.vpanel .k { font-size: 10.5px; font-weight: 650; opacity: 0.6; }
+.vpanel .v { font-size: 12.5px; }
+.vpanel .fld { height: 44px; border-radius: 14px; border: 1px solid #34363b; padding: 8px 10px; font-size: 11px; opacity: 0.6; }
+.vpanel .chips { display: flex; gap: 6px; }
+.vpanel .chips span { border: 1px solid #34363b; border-radius: 999px; padding: 2px 9px; font-size: 11px; }
+
+/* phones v2 */
+.phone .p-top { position: absolute; z-index: 5; top: 40px; left: 8px; right: 8px; display: flex; gap: 6px; align-items: center; }
+.phone .p-top .cap { position: static; height: 38px; }
+.phone .p-top { gap: 4px; }
+.phone .p-top .cap { padding: 0 2px; gap: 0; }
+.phone .p-top .cap .btn { width: 26px; height: 26px; }
+.phone .p-top .cap .btn svg { width: 15px; height: 15px; }
+.phone .p-top .cap .av { width: 24px !important; height: 24px !important; font-size: 10px; }
+.phone .p-top .brand { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; }
+.phone .p-top .brand i { width: 18px; height: 18px; border-radius: 6px; background: radial-gradient(circle at 50% 45%, #FFD166 0 30%, #C8960A 31% 100%); }
+.phone .p-top .sp { flex: 1; }
+.phone .sheet { position: absolute; z-index: 7; inset: auto 0 0; border-radius: 28px 28px 0 0; padding: 22px 16px 26px; display: grid; gap: 10px; font-size: 12px; }
+.phone .sheet::before { content: ''; position: absolute; top: 8px; left: 50%; translate: -50% 0; width: 36px; height: 4px; border-radius: 999px; background: color-mix(in srgb, currentColor 30%, transparent); }
+.phone .sheet h4 { margin: 0; font: 650 14px var(--font-body); }
+.phone .shade { position: absolute; inset: 0; z-index: 6; background: rgb(0 0 0 / 0.3); }
+.phone .pbody { position: absolute; inset: 0; padding: 92px 10px 0; overflow: hidden; }
+.phone .tree-btn { position: absolute; z-index: 4; top: 88px; left: 10px; height: 30px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 11px; }
+.phone .mpanel { left: 8px; right: 8px; width: auto; top: auto; bottom: 86px; height: 230px; }
+.phone .mtitle { left: 10px; top: 88px; height: 32px; }
+.phone .mzoom { left: 10px; top: 128px; }
+
 .callout { border-radius: 24px; padding: 20px 22px; background: var(--accent-soft); color: var(--fg); display: grid; gap: 8px; }
 .callout h3 { color: var(--accent); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .callout h3 { color: var(--gold); } }
@@ -355,6 +511,15 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
   <symbol id="i-all" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8 12 3 3 5-6"/></symbol>
   <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="2"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v8"/></symbol>
+  <symbol id="i-folderplus" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6M9 13h6"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
+  <symbol id="i-mas" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="10" rx="1.5"/><rect x="13" y="4" width="7" height="6" rx="1.5"/><rect x="4" y="16" width="7" height="4" rx="1.5"/><rect x="13" y="12" width="7" height="8" rx="1.5"/></symbol>
+  <symbol id="i-sq" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -410,7 +575,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
             <div class="photos" style="--cols:6;--row:62px" data-n="42"></div>
           </div>
           <nav class="island glass">
-            <div class="logo"><i></i>Photo<span>nne</span></div>
+            <div class="logo"><i></i><b style="font:inherit">Photo<span>nne</span></b></div>
             <a class="on" href="#shell"><svg class="i fill"><use href="#i-photos"/></svg>Fotos</a>
             <div class="h">Colecciones</div>
             <a href="#shell"><svg class="i"><use href="#i-mem"/></svg>Recuerdos</a>
@@ -736,6 +901,25 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
     <li><strong>Por encima de todo:</strong> el visor se dibuja al final de <code>&lt;body&gt;</code> (<code>portal.ts</code>), fuera del apilamiento de la página que lo abre; abierto desde el panel del mapa, el cromo no tapa su botón de cerrar.</li>
     <li>Al abrirse, el fondo aparece en 320ms y la foto crece hasta su sitio; el cromo llega 80ms después.</li>
   </ul>
+
+  <h3>Con el panel de información</h3>
+  <div class="stage-scroll">
+    <div class="pair single">
+      <div>
+        <div class="label after"><span class="dot"></span>Cristal · fondo gris translúcido</div>
+        <div class="viewer glassy">
+          <div class="underlay"><div class="photos" style="--cols:7;--row:88px" data-n="35"></div></div>
+          <div class="veil"></div>
+          <div class="shot"></div>
+          <div class="cap tl glass"><span class="btn"><svg class="i"><use href="#i-close"/></svg></span><div class="d"><b>28 sept 2026, 10:00</b><small>IMG_2026_0928.jpg</small></div></div>
+          <div class="cap glass" style="right:284px;top:12px;height:46px;padding:0 6px"><span class="btn"><svg class="i"><use href="#i-more"/></svg></span></div>
+          <div class="arrow r glass" style="right:290px"><svg class="i"><use href="#i-right"/></svg></div>
+          <div class="cap bc glass" style="left:calc(50% - 140px)"><span class="btn"><svg class="i"><use href="#i-heart"/></svg></span><span class="btn"><svg class="i"><use href="#i-share"/></svg></span><span class="btn on" style="color:var(--gold)"><svg class="i"><use href="#i-info"/></svg></span></div>
+          <div class="vpanel"><div class="hd">Información <svg class="i"><use href="#i-close"/></svg></div><div class="tabs"><span class="on">Detalles</span><span>Personas</span><span>IA</span></div><span class="k">Descripción</span><div class="fld">Añade una descripción</div><span class="k">Fecha y hora</span><span class="v">Lunes, 28 de septiembre de 2026, 10:00</span><span class="k">Etiquetas</span><div class="chips"><span>familia</span><span>playa</span></div><span class="k">Lugar</span><span class="v">Barcelona</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ============ FULL-WINDOW PAGES ============ -->
@@ -753,6 +937,64 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
     <li><strong>La cabecera es parte del scroll.</strong> <code>PhotoGrid</code> recibe la cabecera de la página como <code>lead</code> y la dibuja encima de las fotos, fuera de la columna del scrubber (la línea temporal nunca tapa la portada de un álbum). La píldora de fecha solo aparece cuando las fotos llegan arriba.</li>
     <li><strong>Los menús del cromo</strong> (<code>ChromeMenu</code>) son popovers de cristal (capa superior, se cierran al pulsar fuera o con <kbd>Esc</kbd>) alineados bajo su botón; en móvil son hojas inferiores con asa.</li>
   </ul>
+
+  <h3>Fotos: la cabecera se va, las herramientas se quedan</h3>
+  <div class="stage-scroll">
+    <div class="pair">
+      <div>
+        <div class="label after"><span class="dot"></span>Arriba del todo</div>
+        <div class="desk after tall">
+          <div class="scroll">
+            <div class="lead-h"><b>Fotos</b><span>327 elementos · 2023 – 2026</span></div>
+            <div class="mh"><span>Septiembre 2026</span></div>
+            <div class="photos sq-rows" style="--cols:6;--row:58px" data-n="36"></div>
+          </div>
+          <nav class="island glass"><div class="logo"><i></i><b style="font:inherit">Photo<span>nne</span></b></div><a class="on" href="#pantalla-completa"><svg class="i fill"><use href="#i-photos"/></svg>Fotos</a><div class="h">Colecciones</div><a href="#pantalla-completa"><svg class="i"><use href="#i-mem"/></svg>Recuerdos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-people"/></svg>Personas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-heart"/></svg>Favoritos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-album"/></svg>Álbumes</a><a href="#pantalla-completa"><svg class="i"><use href="#i-folder"/></svg>Carpetas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-map"/></svg>Mapa</a><a href="#pantalla-completa"><svg class="i"><use href="#i-archive"/></svg>Archivo</a><a href="#pantalla-completa"><svg class="i"><use href="#i-trash"/></svg>Papelera</a></nav>
+          <div class="cap search glass bar"><svg class="i"><use href="#i-search"/></svg><span class="ph-text">Buscar fotos, personas, lugares…</span><kbd>Ctrl K</kbd></div>
+          <div class="cap acts glass bar"><span class="btn"><svg class="i"><use href="#i-filter"/></svg><span class="dot"></span></span><span class="btn on"><svg class="i"><use href="#i-tune"/></svg></span></div>
+          <div class="cap tools glass bar"><span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span><span class="av">M</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="label after"><span class="dot"></span>Con scroll: todo pasa por debajo</div>
+        <div class="desk after tall">
+          <div class="scroll" style="padding-top:0">
+            <div class="photos" style="--cols:6;--row:58px" data-n="48"></div>
+          </div>
+          <nav class="island glass"><div class="logo"><i></i><b style="font:inherit">Photo<span>nne</span></b></div><a class="on" href="#pantalla-completa"><svg class="i fill"><use href="#i-photos"/></svg>Fotos</a><div class="h">Colecciones</div><a href="#pantalla-completa"><svg class="i"><use href="#i-mem"/></svg>Recuerdos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-people"/></svg>Personas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-heart"/></svg>Favoritos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-album"/></svg>Álbumes</a><a href="#pantalla-completa"><svg class="i"><use href="#i-folder"/></svg>Carpetas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-map"/></svg>Mapa</a><a href="#pantalla-completa"><svg class="i"><use href="#i-archive"/></svg>Archivo</a><a href="#pantalla-completa"><svg class="i"><use href="#i-trash"/></svg>Papelera</a></nav>
+          <div class="cap search glass bar"><svg class="i"><use href="#i-search"/></svg><span class="ph-text">Buscar fotos, personas, lugares…</span><kbd>Ctrl K</kbd></div>
+          <div class="cap acts glass bar"><span class="btn"><svg class="i"><use href="#i-filter"/></svg><span class="dot"></span></span><span class="btn on"><svg class="i"><use href="#i-tune"/></svg></span></div>
+          <div class="cap tools glass bar"><span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span><span class="av">M</span></div>
+          <div class="pill-float datepill glass">Agosto 2026</div>
+          <div class="scrub glass" style="top:200px"><svg class="i"><use href="#i-up"/></svg><svg class="i"><use href="#i-dn"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Un álbum: la portada sube, sus acciones flotan</h3>
+  <div class="stage-scroll">
+    <div class="pair single">
+      <div>
+        <div class="label after"><span class="dot"></span>Cristal</div>
+        <div class="desk after tall">
+          <div class="scroll" style="padding-right:44px">
+            <div class="alb-banner"><div><b>Vacaciones</b><small>Verano en la costa · 6 elementos</small></div></div>
+            <div class="photos" style="--cols:7;--row:70px" data-n="28"></div>
+          </div>
+          <nav class="island glass"><div class="logo"><i></i><b style="font:inherit">Photo<span>nne</span></b></div><a href="#pantalla-completa"><svg class="i"><use href="#i-photos"/></svg>Fotos</a><div class="h">Colecciones</div><a href="#pantalla-completa"><svg class="i"><use href="#i-mem"/></svg>Recuerdos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-people"/></svg>Personas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-heart"/></svg>Favoritos</a><a class="on" href="#pantalla-completa"><svg class="i fill"><use href="#i-album"/></svg>Álbumes</a><a href="#pantalla-completa"><svg class="i"><use href="#i-folder"/></svg>Carpetas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-map"/></svg>Mapa</a><a href="#pantalla-completa"><svg class="i"><use href="#i-archive"/></svg>Archivo</a><a href="#pantalla-completa"><svg class="i"><use href="#i-trash"/></svg>Papelera</a></nav>
+          <div class="cap search glass bar"><svg class="i"><use href="#i-search"/></svg><span class="ph-text">Buscar fotos, personas, lugares…</span><kbd>Ctrl K</kbd></div>
+          <div class="cap acts glass bar"><span class="txt"><svg class="i"><use href="#i-share"/></svg>Compartir</span><span class="btn"><svg class="i"><use href="#i-pin"/></svg></span><span class="btn"><svg class="i"><use href="#i-more"/></svg></span><span class="btn"><svg class="i"><use href="#i-tune"/></svg></span></div>
+          <div class="cap tools glass bar"><span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span><span class="av">M</span></div>
+          <div class="rail"><div class="scrub glass"><svg class="i"><use href="#i-up"/></svg><svg class="i"><use href="#i-dn"/></svg></div><span>2026</span><span>2025</span><span>2024</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="changes">
+    <li>La portada y el título suben con el scroll, pero <strong>nunca bajo la línea temporal</strong>: la cabecera deja libre la columna del scrubber, igual que las fotos.</li>
+    <li>Arriba: <strong>Compartir</strong> (con texto en escritorio), <strong>Fijar</strong>, <strong>Más</strong> y <strong>Opciones de visualización</strong>, donde ahora vive el orden del álbum.</li>
+  </ul>
   <h3>Filtros y opciones de visualización</h3>
   <ul class="changes">
     <li><strong>Filtros</strong> (embudo, en Fotos): ir a una fecha (<kbd>G</kbd>), fechas (todas, un día o un rango), agrupar por y orden (más recientes o más antiguas). El botón lleva un punto cuando algo no está en su valor por defecto. Se aplican en el cliente sobre el esqueleto de meses.</li>
@@ -762,9 +1004,39 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
         <li><strong>Proporción</strong>, solo con Cuadrícula: <strong>1:1</strong> (cuadrados iguales, cada foto recortada; por defecto) u <strong>Original</strong> (filas justificadas con la forma de cada foto).</li>
         <li><strong>Tamaño:</strong> un deslizador con <strong>cinco paradas</strong> marcadas (XS–XL) que también recorren <kbd>+</kbd>, <kbd>−</kbd> y <kbd>Ctrl</kbd> + rueda. Sin fotos a la vista (plegadas), no aparece.</li>
       </ul>
+
     </li>
     <li><strong>Una sola preferencia para toda la app.</strong> La distribución y la proporción se eligen en el menú de cualquier página o en <strong>Ajustes › Apariencia</strong>: es el mismo valor, se guarda en el navegador como el tema (<code>photonne.grid.layout</code>, <code>photonne.grid.ratio</code>) y cambia todas las páginas a la vez. La vista por años de Fotos siempre va en filas.</li>
     <li>Las vistas de álbumes y carpetas se llaman <strong>Tarjetas</strong> y <strong>Lista</strong>, para no confundirlas con la Cuadrícula de las fotos.</li>
+  </ul>
+  <h3>Los menús del cromo</h3>
+  <div class="stage-scroll">
+    <div class="board">
+      <div class="menus-row">
+        <div class="menu-col"><div class="label after"><span class="dot"></span>Filtros · Fotos</div><div class="vmenu glass" style=""><h4>Filtros</h4><div class="vjump"><svg class="i"><use href="#i-cal"/></svg>Ir a una fecha…<kbd>G</kbd></div><div class="cl">Fechas</div><div class="vseg"><span class="">Todas</span><span class="">Un día</span><span class="on">Un rango</span></div><div class="vdates"><span>Desde<i>25/08/2026</i></span><span>Hasta<i>27/09/2026</i></span></div><div class="cl">Agrupar por</div><div class="vseg"><span class="">Día</span><span class="on">Mes</span><span class="">Año</span></div><div class="cl">Orden</div><div class="vseg"><span class="">Más recientes</span><span class="on">Más antiguas</span></div></div></div>
+        <div class="menu-col"><div class="label after"><span class="dot"></span>Vista · cualquier página</div><div class="vmenu glass" style=""><h4>Opciones de visualización</h4><div class="cl">Distribución</div><div class="vseg"><span class=""><svg class="i"><use href="#i-mas"/></svg>Mosaico</span><span class="on"><svg class="i"><use href="#i-sq"/></svg>Cuadrícula</span></div><div class="cl">Proporción</div><div class="vseg"><span class="on">1:1</span><span class="">Original</span></div><div class="cl">Tamaño</div><div class="vsl"><div class="r"><svg class="i"><use href="#i-minus"/></svg><div class="t" style="--fill:50%"><i class="p"></i><i class="p"></i><i class="k"></i><i class=""></i><i class=""></i></div><svg class="i"><use href="#i-plus"/></svg></div><div class="m"><span>XS</span><span>S</span><b>M</b><span>L</span><span>XL</span></div></div></div></div>
+        <div class="menu-col"><div class="label after"><span class="dot"></span>Vista · un álbum</div><div class="vmenu glass" style=""><h4>Opciones de visualización</h4><div class="cl">Orden de las fotos</div><div class="vlist"><span class="on">Orden del álbum</span><span>Más recientes primero</span><span>Más antiguas primero</span></div><div class="cl">Distribución</div><div class="vseg"><span class="on"><svg class="i"><use href="#i-mas"/></svg>Mosaico</span><span class=""><svg class="i"><use href="#i-sq"/></svg>Cuadrícula</span></div><div class="cl">Tamaño</div><div class="vsl"><div class="r"><svg class="i"><use href="#i-minus"/></svg><div class="t" style="--fill:50%"><i class="p"></i><i class="p"></i><i class="k"></i><i class=""></i><i class=""></i></div><svg class="i"><use href="#i-plus"/></svg></div><div class="m"><span>XS</span><span>S</span><b>M</b><span>L</span><span>XL</span></div></div></div></div>
+        <div class="menu-col"><div class="label after"><span class="dot"></span>Vista · una carpeta</div><div class="vmenu glass" style=""><h4>Opciones de visualización</h4><div class="cl">Subcarpetas</div><div class="vseg"><span class="on"><svg class="i"><use href="#i-cards"/></svg>Tarjetas</span><span class=""><svg class="i"><use href="#i-list"/></svg>Lista</span></div><div class="vsl"><div class="r"><svg class="i"><use href="#i-minus"/></svg><div class="t" style="--fill:50%"><i class="p"></i><i class="p"></i><i class="k"></i><i class=""></i><i class=""></i></div><svg class="i"><use href="#i-plus"/></svg></div><div class="m"><span>XS</span><span>S</span><b>M</b><span>L</span><span>XL</span></div></div><div class="cl">Distribución</div><div class="vseg"><span class=""><svg class="i"><use href="#i-mas"/></svg>Mosaico</span><span class="on"><svg class="i"><use href="#i-sq"/></svg>Cuadrícula</span></div><div class="cl">Proporción</div><div class="vseg"><span class="on">1:1</span><span class="">Original</span></div><div class="cl">Tamaño</div><div class="vsl"><div class="r"><svg class="i"><use href="#i-minus"/></svg><div class="t" style="--fill:50%"><i class="p"></i><i class="p"></i><i class="k"></i><i class=""></i><i class=""></i></div><svg class="i"><use href="#i-plus"/></svg></div><div class="m"><span>XS</span><span>S</span><b>M</b><span>L</span><span>XL</span></div></div></div></div>
+      </div>
+    </div>
+  </div>
+  <ul class="changes">
+    <li>Primero lo propio de la página (el orden de un álbum, las subcarpetas de una carpeta), después lo de todas: distribución, proporción (solo con Cuadrícula) y tamaño.</li>
+    <li>Sin fotos a la vista (la sección Fotos plegada) el tamaño de las miniaturas no aparece; el resto, sí.</li>
+  </ul>
+
+  <h3>Mosaico, Cuadrícula 1:1 y Cuadrícula original</h3>
+  <div class="stage-scroll">
+    <div class="layouts">
+      <div><div class="label after"><span class="dot"></span>Mosaico</div><div class="lay"><div class="mas" data-n="18"></div></div></div>
+      <div><div class="label after"><span class="dot"></span>Cuadrícula · 1:1</div><div class="lay"><div class="sq" data-n="20"></div></div></div>
+      <div><div class="label after"><span class="dot"></span>Cuadrícula · Original</div><div class="lay"><div class="just" data-n="15"></div></div></div>
+    </div>
+  </div>
+  <ul class="changes">
+    <li><strong>Mosaico:</strong> columnas iguales; cada foto con su forma cae en la columna más corta.</li>
+    <li><strong>Cuadrícula 1:1</strong> (por defecto): filas de cuadrados iguales, cada foto recortada al centro. Las columnas salen del tamaño elegido.</li>
+    <li><strong>Cuadrícula original:</strong> filas justificadas, cada foto con su proporción.</li>
   </ul>
   <h3>Páginas con paneles propios</h3>
   <ul class="changes">
@@ -772,6 +1044,102 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
     <li><strong>Mapa:</strong> ocupa toda la ventana, también por debajo de la isla de navegación. Sus capas quedan contenidas en la página (<code>isolation: isolate</code>), así que el cromo y la isla siempre van por delante. El título flota arriba a la izquierda, «Ver todas» va en el cromo y el panel de un grupo es una isla flotante a la derecha (una hoja sobre la barra inferior en móvil). «Ver todas» y el primer encuadre cuentan con lo que tapa el cromo; al cambiar de tamaño, el mapa mantiene el centro exacto de la URL.</li>
     <li><strong>Carpetas:</strong> subcarpetas y fotos son dos secciones plegables en <strong>un solo scroll</strong>, sin scrolls propios; plegar una deja todo el espacio a la otra. En el cromo: Nueva subcarpeta, Fijar, Más (con «Compartir con personas») y Opciones de visualización. En escritorio el <strong>árbol es una tarjeta</strong> que empieza bajo el cromo y se separa de la isla con el mismo margen que el resto de flotantes; el buscador flota limpio sobre las dos zonas. En móvil, el botón del árbol flota bajo el cromo y se va con él.</li>
   </ul>
+
+  <h3>Mapa: toda la ventana, también bajo la isla</h3>
+  <div class="stage-scroll">
+    <div class="pair single">
+      <div>
+        <div class="label after"><span class="dot"></span>Cristal</div>
+        <div class="desk after tall">
+          <div class="mapbg"></div>
+          <span class="mark" style="left:120px;top:300px;background:linear-gradient(135deg,#e8b6c9,#8c4a6b)"><b>3</b></span>
+          <span class="mark" style="left:330px;top:190px;background:linear-gradient(135deg,#f6c27a,#c0605b)"><b>24</b></span>
+          <span class="mark on" style="left:520px;top:300px;background:linear-gradient(135deg,#7fb7a4,#2e5e6e)"><b>9</b></span>
+          <span class="mark" style="left:430px;top:390px;background:linear-gradient(135deg,#a7d3e8,#3d7ea6)"><b>1</b></span>
+          <nav class="island glass"><div class="logo"><i></i><b style="font:inherit">Photo<span>nne</span></b></div><a href="#pantalla-completa"><svg class="i"><use href="#i-photos"/></svg>Fotos</a><div class="h">Colecciones</div><a href="#pantalla-completa"><svg class="i"><use href="#i-mem"/></svg>Recuerdos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-people"/></svg>Personas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-heart"/></svg>Favoritos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-album"/></svg>Álbumes</a><a href="#pantalla-completa"><svg class="i"><use href="#i-folder"/></svg>Carpetas</a><a class="on" href="#pantalla-completa"><svg class="i fill"><use href="#i-map"/></svg>Mapa</a><a href="#pantalla-completa"><svg class="i"><use href="#i-archive"/></svg>Archivo</a><a href="#pantalla-completa"><svg class="i"><use href="#i-trash"/></svg>Papelera</a></nav>
+          <div class="cap search glass bar"><svg class="i"><use href="#i-search"/></svg><span class="ph-text">Buscar fotos, personas, lugares…</span><kbd>Ctrl K</kbd></div>
+          <div class="cap acts glass bar"><span class="btn"><svg class="i"><use href="#i-fit"/></svg></span></div>
+          <div class="cap tools glass bar"><span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span><span class="av">M</span></div>
+          <div class="mtitle glass bar"><b>Mapa</b><span>34 fotos con ubicación</span></div>
+          <div class="mzoom glass bar"><span>+</span><span>−</span></div>
+          <div class="mpanel"><div class="hd"><b>9 fotos aquí</b><span><svg class="i"><use href="#i-tune"/></svg></span><span><svg class="i"><use href="#i-close"/></svg></span></div><span class="muted">jun 2025 – jul 2025</span><div class="mh" style="font-weight:600;padding:6px 0 2px">Julio de 2025</div><div class="photos" style="--cols:3;--row:84px" data-n="9"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="changes">
+    <li>El mapa llega hasta el borde izquierdo y se intuye a través de la isla de cristal. El título, el zoom y la escala se apartan de la isla (<code>--bleed-left</code>).</li>
+    <li>«Ver todas» es el único botón de la página: va en el cromo. El panel de un grupo es una isla flotante con su propio menú de vista y su cierre.</li>
+    <li>El visor que se abre desde el panel siempre queda por encima del cromo.</li>
+  </ul>
+
+  <h3>Carpetas: un solo scroll y el árbol como tarjeta</h3>
+  <div class="stage-scroll">
+    <div class="pair single">
+      <div>
+        <div class="label after"><span class="dot"></span>Cristal</div>
+        <div class="desk after tall">
+          <nav class="island glass"><div class="logo"><i></i><b style="font:inherit">Photo<span>nne</span></b></div><a href="#pantalla-completa"><svg class="i"><use href="#i-photos"/></svg>Fotos</a><div class="h">Colecciones</div><a href="#pantalla-completa"><svg class="i"><use href="#i-mem"/></svg>Recuerdos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-people"/></svg>Personas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-heart"/></svg>Favoritos</a><a href="#pantalla-completa"><svg class="i"><use href="#i-album"/></svg>Álbumes</a><a class="on" href="#pantalla-completa"><svg class="i fill"><use href="#i-folder"/></svg>Carpetas</a><a href="#pantalla-completa"><svg class="i"><use href="#i-map"/></svg>Mapa</a><a href="#pantalla-completa"><svg class="i"><use href="#i-archive"/></svg>Archivo</a><a href="#pantalla-completa"><svg class="i"><use href="#i-trash"/></svg>Papelera</a></nav>
+          <div class="tree-card"><div class="hd">Carpetas <svg class="i"><use href="#i-folderplus"/></svg></div><div class="grp">Personal</div><div class="it on"><svg class="i"><use href="#i-folder"/></svg>Camera<em>40</em></div><div class="it sub"><svg class="i"><use href="#i-folder"/></svg>2025<em>5</em></div><div class="it"><svg class="i"><use href="#i-folder"/></svg>Documentos<em>12</em></div><div class="tip">Arrastra fotos a una carpeta para moverlas.</div></div>
+          <div class="fmain">
+            <div class="lead-h" style="padding-bottom:0"><b>Camera</b></div>
+            <span class="muted">20 elementos</span>
+            <div class="fsec"><svg class="i"><use href="#i-dn"/></svg>Subcarpetas <span>1</span></div>
+            <div class="ftiles"><div class="ftile"><i><svg class="i"><use href="#i-folder"/></svg></i>2025<small>5 elementos</small></div></div>
+            <div class="fsec"><svg class="i"><use href="#i-dn"/></svg>Fotos <span>20</span></div>
+            <div class="photos" style="--cols:6;--row:76px" data-n="18"></div>
+          </div>
+          <div class="cap search glass bar"><svg class="i"><use href="#i-search"/></svg><span class="ph-text">Buscar fotos, personas, lugares…</span><kbd>Ctrl K</kbd></div>
+          <div class="cap acts glass bar"><span class="txt"><svg class="i"><use href="#i-folderplus"/></svg>Nueva subcarpeta</span><span class="btn"><svg class="i"><use href="#i-pin"/></svg></span><span class="btn"><svg class="i"><use href="#i-more"/></svg></span><span class="btn"><svg class="i"><use href="#i-tune"/></svg></span></div>
+          <div class="cap tools glass bar"><span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span><span class="av">M</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="changes">
+    <li>Subcarpetas y Fotos se pliegan con su chevron; abiertas, comparten <strong>un único scroll</strong> sin barras propias.</li>
+    <li>El árbol empieza bajo el cromo y se separa de la isla con el mismo margen que los demás flotantes: el buscador flota limpio por encima de las dos zonas.</li>
+    <li>Arriba: Nueva subcarpeta, Fijar, Más (editar, compartir con personas, borrar…) y la vista, con Tarjetas o Lista para las subcarpetas.</li>
+  </ul>
+
+  <h3>En móvil</h3>
+  <div class="phones">
+    <div class="phone-col">
+      <div class="phone"><div class="notch"></div>
+        <div class="pbody"><div class="lead-h"><b>Fotos</b><span>327 elementos</span></div><div class="photos" style="--cols:3;--row:84px" data-n="18"></div></div>
+        <div class="p-top"><span class="brand glass bar"><i></i></span><span class="sp"></span><div class="cap glass bar"><span class="btn"><svg class="i"><use href="#i-filter"/></svg></span><span class="btn on"><svg class="i"><use href="#i-tune"/></svg></span></div><div class="cap glass bar"><span class="btn"><svg class="i"><use href="#i-search"/></svg></span><span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span><span class="av" style="width:28px;height:28px">M</span></div></div>
+        <div class="shade"></div>
+        <div class="sheet glass"><h4>Opciones de visualización</h4><div class="cl">Distribución</div><div class="vseg"><span class=""><svg class="i"><use href="#i-mas"/></svg>Mosaico</span><span class="on"><svg class="i"><use href="#i-sq"/></svg>Cuadrícula</span></div><div class="cl">Proporción</div><div class="vseg"><span class="on">1:1</span><span class="">Original</span></div><div class="cl">Tamaño</div><div class="vsl"><div class="r"><svg class="i"><use href="#i-minus"/></svg><div class="t" style="--fill:50%"><i class="p"></i><i class="p"></i><i class="k"></i><i class=""></i><i class=""></i></div><svg class="i"><use href="#i-plus"/></svg></div><div class="m"><span>XS</span><span>S</span><b>M</b><span>L</span><span>XL</span></div></div></div>
+      </div>
+      <span class="muted">Los menús, hojas inferiores con asa</span>
+    </div>
+    <div class="phone-col">
+      <div class="phone"><div class="notch"></div>
+        <div class="pbody" style="padding-top:126px"><div class="lead-h"><b>Camera</b><span>20 elementos</span></div>
+          <div class="fsec"><svg class="i"><use href="#i-dn"/></svg>Subcarpetas <span>1</span></div>
+          <div class="ftiles" style="margin:6px 0 10px"><div class="ftile"><i><svg class="i"><use href="#i-folder"/></svg></i>2025<small>5 elementos</small></div></div>
+          <div class="fsec"><svg class="i"><use href="#i-dn"/></svg>Fotos <span>20</span></div>
+          <div class="photos" style="--cols:3;--row:84px;margin-top:6px" data-n="9"></div></div>
+        <div class="p-top"><span class="brand glass bar"><i></i></span><span class="sp"></span><div class="cap glass bar"><span class="btn"><svg class="i"><use href="#i-folderplus"/></svg></span><span class="btn"><svg class="i"><use href="#i-pin"/></svg></span><span class="btn"><svg class="i"><use href="#i-more"/></svg></span><span class="btn"><svg class="i"><use href="#i-tune"/></svg></span></div><div class="cap glass bar"><span class="btn"><svg class="i"><use href="#i-search"/></svg></span><span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span><span class="av" style="width:28px;height:28px">M</span></div></div>
+        <div class="tree-btn glass bar"><svg class="i"><use href="#i-folder"/></svg>Árbol de carpetas</div>
+        <nav class="navcap glass"><span class="tab on"><svg class="i fill"><use href="#i-photos"/></svg>Fotos</span><span class="tab"><svg class="i"><use href="#i-coll"/></svg>Colecciones</span><span class="tab"><svg class="i"><use href="#i-grid"/></svg>Más</span></nav>
+      </div>
+      <span class="muted">Botones solo con icono; el árbol, bajo el cromo</span>
+    </div>
+    <div class="phone-col">
+      <div class="phone"><div class="notch"></div>
+        <div class="mapbg"></div>
+        <span class="mark" style="left:90px;top:200px;background:linear-gradient(135deg,#f6c27a,#c0605b)"><b>24</b></span>
+        <span class="mark on" style="left:170px;top:290px;background:linear-gradient(135deg,#7fb7a4,#2e5e6e)"><b>9</b></span>
+        <div class="p-top"><span class="brand glass bar"><i></i></span><span class="sp"></span><div class="cap glass bar"><span class="btn"><svg class="i"><use href="#i-fit"/></svg></span></div><div class="cap glass bar"><span class="btn"><svg class="i"><use href="#i-search"/></svg></span><span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span><span class="av" style="width:28px;height:28px">M</span></div></div>
+        <div class="mtitle glass bar"><b>Mapa</b><span>34 fotos</span></div>
+        <div class="mzoom glass bar"><span>+</span><span>−</span></div>
+        <div class="mpanel"><div class="hd"><b>9 fotos aquí</b><span><svg class="i"><use href="#i-tune"/></svg></span><span><svg class="i"><use href="#i-close"/></svg></span></div><span class="muted">jul 2025</span><div class="photos" style="--cols:3;--row:62px" data-n="6"></div></div>
+        <nav class="navcap glass"><span class="tab on"><svg class="i fill"><use href="#i-photos"/></svg>Fotos</span><span class="tab"><svg class="i"><use href="#i-coll"/></svg>Colecciones</span><span class="tab"><svg class="i"><use href="#i-grid"/></svg>Más</span></nav>
+      </div>
+      <span class="muted">Mapa a pantalla completa; el grupo, una hoja</span>
+    </div>
+  </div>
 </section>
 
 <!-- ============ SMALL COMPONENTS ============ -->
@@ -981,6 +1349,32 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
       html += '<div class="ph' + (s ? ' sel' : '') + '" data-i="' + i + '" style="background:' + tile() + '">' + (s ? check : '') + '</div>';
     }
     el.innerHTML = html;
+  });
+  // The three layouts, with photos of mixed shapes.
+  var shapes = [1.5, 0.67, 1, 1.33, 0.75, 1.78, 0.8, 1.5, 1, 0.56];
+  document.querySelectorAll('.mas[data-n]').forEach(function (el) {
+    var n = +el.getAttribute('data-n'), cols = [[], [], []], h = [0, 0, 0];
+    for (var i = 0; i < n; i++) {
+      var a = shapes[i % shapes.length], c = h.indexOf(Math.min.apply(null, h));
+      cols[c].push('<div class="ph" style="aspect-ratio:' + a + ';background:' + tile() + '"></div>');
+      h[c] += 1 / a;
+    }
+    el.innerHTML = cols.map(function (c) { return '<div>' + c.join('') + '</div>'; }).join('');
+  });
+  document.querySelectorAll('.sq[data-n]').forEach(function (el) {
+    var n = +el.getAttribute('data-n'), html = '';
+    for (var i = 0; i < n; i++) html += '<div class="ph" style="background:' + tile() + '"></div>';
+    el.innerHTML = html;
+  });
+  document.querySelectorAll('.just[data-n]').forEach(function (el) {
+    var n = +el.getAttribute('data-n'), rows = '', row = '', sum = 0;
+    for (var i = 0; i < n; i++) {
+      var a = shapes[(i * 3) % shapes.length];
+      row += '<div class="ph" style="flex:' + a + ';background:' + tile() + '"></div>';
+      sum += a;
+      if (sum > 4.2 || i === n - 1) { rows += '<div>' + row + '</div>'; row = ''; sum = 0; }
+    }
+    el.innerHTML = rows;
   });
   var strip = document.getElementById('strip');
   if (strip) {
