@@ -109,22 +109,15 @@
 		color: var(--color-text);
 	}
 
-	/* The current section: the accent mark of the tabs, on its side. */
+	/* The current section, as in the app's navigation: a neutral pill. */
 	a[aria-current='page'] {
-		background: var(--color-accent-soft);
+		background: var(--color-active-pill);
 		color: var(--color-text);
 		font-weight: 600;
 	}
 
-	a[aria-current='page']::before {
-		content: '';
-		position: absolute;
-		left: 0;
-		top: var(--space-2);
-		bottom: var(--space-2);
-		width: 3px;
-		border-radius: 0 2px 2px 0;
-		background: var(--color-accent);
+	a[aria-current='page'] :global(svg) {
+		color: var(--color-accent);
 	}
 
 	.tabs {
@@ -133,7 +126,6 @@
 
 	.content {
 		min-width: 0;
-		border-left: 1px solid var(--color-border);
 	}
 
 	@media (max-width: 1200px) {
@@ -151,10 +143,6 @@
 			position: sticky;
 			top: var(--admin-nav-height);
 			z-index: 2;
-		}
-
-		.content {
-			border-left: none;
 		}
 	}
 </style>

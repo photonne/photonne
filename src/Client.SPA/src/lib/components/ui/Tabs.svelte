@@ -44,29 +44,39 @@
 </script>
 
 <nav class="tabs" class:fade-start={fadeStart} class:fade-end={fadeEnd} aria-label={label}>
-	<div class="list" bind:this={list} onscroll={measure}>
-		{#each tabs as tab (tab.href)}
-			<a href={tab.href} aria-current={tab.current ? 'page' : undefined}
-				>{tab.label}{#if tab.count != null}<span class="count">{formatCount(tab.count)}</span
-					>{/if}</a
-			>
-		{/each}
+	<!-- A glass capsule, as the native app's segmented chrome; the glass sits on
+	     this wrapper so it stays put while the tabs scroll sideways inside. -->
+	<div class="pill glass">
+		<div class="list" bind:this={list} onscroll={measure}>
+			{#each tabs as tab (tab.href)}
+				<a href={tab.href} aria-current={tab.current ? 'page' : undefined}
+					>{tab.label}{#if tab.count != null}<span class="count">{formatCount(tab.count)}</span
+						>{/if}</a
+				>
+			{/each}
+		</div>
 	</div>
 </nav>
 
 <style>
+	/* 40 px of capsule in a 45 px row: pages pin their sticky bars right
+	   below it (--admin-nav-height). */
 	.tabs {
-		position: relative;
-		border-bottom: 1px solid var(--color-border);
-		background: var(--color-bg);
+		padding: 2px var(--page-gutter) 3px;
+	}
+
+	.pill {
+		width: max-content;
+		max-width: 100%;
+		overflow: hidden;
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-bar);
 	}
 
 	.list {
 		display: flex;
-		gap: var(--space-1);
-		/* 32 px pills in a 44 px row, plus the 1 px rule: pages pin their
-		   sticky bars below that (--admin-nav-height). */
-		padding: 6px var(--page-gutter);
+		gap: 2px;
+		padding: 3px;
 		overflow-x: auto;
 		scrollbar-width: none;
 	}
@@ -75,38 +85,31 @@
 		display: none;
 	}
 
-	.tabs::before,
-	.tabs::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		bottom: 1px;
-		width: 48px;
-		pointer-events: none;
-		opacity: 0;
-		transition: opacity var(--duration-fast);
+	/* Tabs that don't fit fade out at the edge with more to scroll. */
+	.fade-start .list {
+		mask-image: linear-gradient(to right, transparent, #000 40px);
 	}
 
-	.tabs::before {
-		left: 0;
-		background: linear-gradient(to right, var(--color-bg), transparent);
+	.fade-end .list {
+		mask-image: linear-gradient(to left, transparent, #000 40px);
 	}
 
-	.tabs::after {
-		right: 0;
-		background: linear-gradient(to left, var(--color-bg), transparent);
-	}
-
-	.fade-start::before,
-	.fade-end::after {
-		opacity: 1;
+	.fade-start.fade-end .list {
+		mask-image: linear-gradient(
+			to right,
+			transparent,
+			#000 40px,
+			#000 calc(100% - 40px),
+			transparent
+		);
 	}
 
 	a {
 		position: relative;
 		display: inline-flex;
 		align-items: center;
-		min-height: var(--control-h-sm);
+		flex: none;
+		min-height: 32px;
 		padding: 0 var(--space-4);
 		border-radius: var(--radius-pill);
 		color: var(--color-text-muted);
@@ -129,7 +132,7 @@
 		min-width: 20px;
 		padding: 0 6px;
 		border-radius: 999px;
-		background: var(--color-surface);
+		background: var(--color-hover);
 		font-size: var(--font-size-2xs);
 		font-weight: 600;
 		line-height: 18px;
@@ -146,8 +149,7 @@
 		outline-offset: -2px;
 	}
 
-	/* The current tab is a pill, like the selected tab of the native app's
-	   floating navigation. */
+	/* The current tab: the neutral pill of the native navigation. */
 	a[aria-current='page'] {
 		background: var(--color-active-pill);
 		color: var(--color-text);
