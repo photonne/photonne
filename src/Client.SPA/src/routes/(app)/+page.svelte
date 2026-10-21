@@ -280,7 +280,7 @@
 				onopen={view.yearView ? openMonthOf : openViewer}
 				size={view.size}
 				grouping={view.yearView ? 'year' : view.grouping === 'day' ? 'day' : 'month'}
-				layout={view.yearView ? 'rows' : gridLayout.value}
+				layout={view.yearView ? 'rows' : gridLayout.mode}
 				onzoom={(direction) => view.step(direction, WHEEL_STEP)}
 				reflowKey={`${view.yearView ? 'years' : 'months'}|${view.order}|${view.range?.from}|${view.range?.to}`}
 				selectable={!view.yearView}

@@ -3,6 +3,7 @@ import {
 	anchorAfterReflow,
 	blocksInRange,
 	buildGridLayout,
+	estimateSquareHeight,
 	nearestSection,
 	sectionAt,
 	sectionSpan,
@@ -73,6 +74,61 @@ describe('buildGridLayout', () => {
 
 		expect(layout.blocks).toEqual([]);
 		expect(layout.totalHeight).toBe(0);
+	});
+});
+
+describe('square', () => {
+	const square = { ...options, layout: 'square' as const, headerHeight: 0 };
+
+	it('lays every photo in an equal square, whatever its shape', () => {
+		const layout = buildGridLayout(
+			[
+				{
+					key: 'a',
+					count: 5,
+					items: [
+						item('a', 0, 2),
+						item('a', 1, 0.5),
+						item('a', 2, 1),
+						item('a', 3, 3),
+						item('a', 4)
+					]
+				}
+			],
+			{ ...square, containerWidth: 620, targetRowHeight: 200, spacing: 10 }
+		);
+		// 620 / 200 ≈ 3 columns of 200px; the fourth and fifth open a second row.
+		const rows = layout.blocks.filter((b) => b.kind === 'row');
+		expect(rows.map((r) => [r.top, r.height])).toEqual([
+			[0, 200],
+			[210, 200]
+		]);
+		const cells = rows.flatMap((r) => (r.kind === 'row' ? r.cells : []));
+		expect(cells.map((c) => c.width)).toEqual([200, 200, 200, 200, 200]);
+		expect(cells.map((c) => c.left)).toEqual([0, 210, 420, 0, 210]);
+		expect(layout.rows).toEqual([
+			['a0', 'a1', 'a2'],
+			['a3', 'a4']
+		]);
+		expect(layout.totalHeight).toBe(410);
+	});
+
+	it('estimates a section not loaded yet as the rows it will fill', () => {
+		const opts = { containerWidth: 620, targetRowHeight: 200, spacing: 10 };
+		expect(estimateSquareHeight(5, opts)).toBe(410);
+		expect(estimateSquareHeight(0, opts)).toBe(0);
+		const layout = buildGridLayout([{ key: 'a', count: 7, items: null }], { ...square, ...opts });
+		expect(layout.totalHeight).toBe(200 * 3 + 10 * 2);
+	});
+
+	it('never has fewer than two columns', () => {
+		const layout = buildGridLayout([{ key: 'a', count: 2, items: items('a', 2) }], {
+			...square,
+			containerWidth: 300,
+			targetRowHeight: 400,
+			spacing: 0
+		});
+		expect(layout.rows).toEqual([['a0', 'a1']]);
 	});
 });
 

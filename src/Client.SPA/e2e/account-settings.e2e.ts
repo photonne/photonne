@@ -159,14 +159,36 @@ test('chooses how collections lay their photos out', async ({ page }) => {
 	expect(new Set(await tops()).size).toBeGreaterThan(2);
 
 	await page.goto('/settings/appearance');
-	await page.getByRole('radio', { name: /Filas/ }).check();
+	await expect(page.getByRole('radio', { name: /^1:1/ })).toHaveCount(0);
+	await page.getByRole('radio', { name: /Cuadrícula/ }).check();
 	expect(await page.evaluate(() => localStorage.getItem('photonne.grid.layout'))).toBe('rows');
+	// A grid of squares by default.
+	await expect(page.getByRole('radio', { name: /^1:1/ })).toBeChecked();
 
-	// Rows: the first row's cells all start at the same height.
+	// Rows of equal squares: the first row's cells share their top and size.
 	await page.goto('/favorites');
 	await expect(cells.first()).toBeVisible();
 	const rowTops = await tops();
 	expect(rowTops.filter((top) => top === rowTops[0]).length).toBeGreaterThan(1);
+	const sizes = async () =>
+		cells.evaluateAll((all) =>
+			all.map(
+				(cell) => `${(cell as HTMLElement).style.width}×${(cell as HTMLElement).style.height}`
+			)
+		);
+	expect(new Set(await sizes()).size).toBe(1);
+
+	// Each photo's own shape, from the page's view options: the same rows,
+	// cells as wide as their photos.
+	await page.getByRole('button', { name: 'Opciones de visualización' }).click();
+	const options = page.getByRole('dialog', { name: 'Opciones de visualización' });
+	await options.getByRole('radio', { name: 'Original' }).check();
+	expect(await page.evaluate(() => localStorage.getItem('photonne.grid.ratio'))).toBe('original');
+	await expect.poll(async () => new Set(await sizes()).size).toBeGreaterThan(1);
+
+	// The ratio is only for a grid.
+	await options.getByRole('radio', { name: 'Mosaico' }).check();
+	await expect(options.getByRole('radio', { name: 'Original' })).toHaveCount(0);
 });
 
 test('hides a shared folder from the timeline, with undo', async ({ page }) => {

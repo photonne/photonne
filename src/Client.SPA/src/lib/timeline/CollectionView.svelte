@@ -278,7 +278,7 @@
 				sections={store.sections}
 				{selection}
 				{headers}
-				layout={gridLayout.value}
+				layout={gridLayout.mode}
 				size={collectionSize.value}
 				onzoom={(direction) => collectionSize.step(direction, WHEEL_STEP)}
 				label={title}

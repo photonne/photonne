@@ -37,11 +37,12 @@ export type GridBlock<T> =
 	| { kind: 'placeholder'; key: string; top: number; height: number };
 
 /**
- * `rows`: justified rows (the timeline). `masonry`: equal-width columns
- * where each photo keeps its shape and drops into the shortest column, so
- * nothing lines up horizontally (search results, albums…).
+ * `rows`: justified rows, each photo in its own shape. `square`: the same
+ * rows of equal squares, cropped (a 1:1 grid). `masonry`: equal-width
+ * columns where each photo keeps its shape and drops into the shortest
+ * column, so nothing lines up horizontally.
  */
-export type GridLayoutMode = 'rows' | 'masonry';
+export type GridLayoutMode = 'rows' | 'square' | 'masonry';
 
 export interface GridOptions extends LayoutOptions {
 	layout?: GridLayoutMode;
@@ -79,6 +80,29 @@ export interface GridLayout<T> {
 export function masonryColumns(containerWidth: number, targetRowHeight: number): number {
 	if (containerWidth <= 0 || targetRowHeight <= 0) return 1;
 	return Math.max(2, Math.round(containerWidth / (targetRowHeight * FALLBACK_ASPECT)));
+}
+
+/**
+ * Columns of a square grid: squares about as tall as a row would be at the
+ * target height. Never under two.
+ */
+export function squareColumns(containerWidth: number, targetRowHeight: number): number {
+	if (containerWidth <= 0 || targetRowHeight <= 0) return 1;
+	return Math.max(2, Math.round(containerWidth / targetRowHeight));
+}
+
+/** Side of a square grid's cells: the columns share the width. */
+function squareSide(options: LayoutOptions) {
+	const columns = squareColumns(options.containerWidth, options.targetRowHeight);
+	return { columns, side: (options.containerWidth - options.spacing * (columns - 1)) / columns };
+}
+
+/** Height of a square grid of `count` items: whole rows of squares. */
+export function estimateSquareHeight(count: number, options: LayoutOptions): number {
+	if (count <= 0 || options.containerWidth <= 0 || options.targetRowHeight <= 0) return 0;
+	const { columns, side } = squareSide(options);
+	const rowCount = Math.ceil(count / columns);
+	return rowCount * side + options.spacing * (rowCount - 1);
 }
 
 /**
@@ -152,8 +176,27 @@ export function buildGridLayout<T extends GridItem>(
 		top = base + Math.max(0, ...heights);
 	};
 
+	// Rows of equal squares: every photo cropped to the same cell.
+	const laySquares = (key: string, items: readonly T[]) => {
+		if (options.containerWidth <= 0 || options.targetRowHeight <= 0) return;
+		const { columns, side } = squareSide(options);
+		for (let start = 0; start < items.length; start += columns) {
+			if (start > 0) top += options.spacing;
+			const cells = items.slice(start, start + columns).map((item, column) => ({
+				item,
+				left: column * (side + options.spacing),
+				width: side
+			}));
+			for (const cell of cells) blockOfItem.set(cell.item.id, blocks.length);
+			rows.push(cells.map((cell) => cell.item.id));
+			blocks.push({ kind: 'row', key, top, height: side, cells });
+			top += side;
+		}
+	};
+
 	const layRows = (key: string, items: readonly T[]) => {
 		if (options.layout === 'masonry') return layMasonry(key, items);
+		if (options.layout === 'square') return laySquares(key, items);
 		const layoutRows = computeRows(
 			items.map((item) => clampAspect(item.aspect)),
 			options
@@ -193,7 +236,9 @@ export function buildGridLayout<T extends GridItem>(
 			const height =
 				options.layout === 'masonry'
 					? estimateMasonryHeight(section.count, options)
-					: estimateHeight(section.count, options);
+					: options.layout === 'square'
+						? estimateSquareHeight(section.count, options)
+						: estimateHeight(section.count, options);
 			blocks.push({ kind: 'placeholder', key: section.key, top, height });
 			top += height;
 		} else if (subgroupOf) {

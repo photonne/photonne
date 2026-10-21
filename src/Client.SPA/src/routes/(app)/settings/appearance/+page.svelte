@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getTheme, setTheme, type Theme } from '#lib/theme.js';
 	import { gridLayout } from '#lib/timeline/grid-layout-preference.svelte.js';
-	import type { GridLayoutMode } from '#lib/timeline/grid-model.js';
+	import type { GridLayoutChoice, GridRatio } from '#lib/timeline/grid-layout-preference.svelte.js';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale, type Locale } from '#lib/paraglide/runtime.js';
@@ -14,13 +14,26 @@
 		{ value: 'dark', label: m.settings_theme_dark, hint: m.settings_theme_dark_hint }
 	];
 
-	const layouts: { value: GridLayoutMode; label: () => string; hint: () => string }[] = [
+	const layouts: { value: GridLayoutChoice; label: () => string; hint: () => string }[] = [
 		{
 			value: 'masonry',
 			label: m.settings_grid_layout_masonry,
 			hint: m.settings_grid_layout_masonry_hint
 		},
 		{ value: 'rows', label: m.settings_grid_layout_rows, hint: m.settings_grid_layout_rows_hint }
+	];
+
+	const ratios: { value: GridRatio; label: () => string; hint: () => string }[] = [
+		{
+			value: 'square',
+			label: m.settings_grid_ratio_square,
+			hint: m.settings_grid_ratio_square_hint
+		},
+		{
+			value: 'original',
+			label: m.settings_grid_ratio_original,
+			hint: m.settings_grid_ratio_original_hint
+		}
 	];
 
 	// Each language in its own name, so it can be found whatever is showing.
@@ -90,6 +103,27 @@
 					</label>
 				{/each}
 			</fieldset>
+			{#if gridLayout.value === 'rows'}
+				<fieldset class="choices">
+					<legend class="sub">{m.settings_grid_ratio()}</legend>
+					{#each ratios as option (option.value)}
+						<label class="choice theme-choice">
+							<input
+								type="radio"
+								name="grid-ratio"
+								value={option.value}
+								checked={gridLayout.ratio === option.value}
+								onchange={() => gridLayout.setRatio(option.value)}
+							/>
+							<span class="swatch layout ratio-{option.value}" aria-hidden="true"></span>
+							<span class="text">
+								<span>{option.label()}</span>
+								<small>{option.hint()}</small>
+							</span>
+						</label>
+					{/each}
+				</fieldset>
+			{/if}
 		</section>
 
 		<section class="card" aria-labelledby="language-title">
@@ -154,7 +188,7 @@
 		background: linear-gradient(135deg, #f8f9fa 50%, #0a0a0c 50%);
 	}
 
-	/* A sketch of each layout: three columns of blocks, or two rows. */
+	/* A sketch of each layout: three columns of blocks, or rows. */
 	.swatch.layout {
 		background-color: var(--color-surface);
 		background-repeat: no-repeat;
@@ -181,7 +215,28 @@
 			24px 12px;
 	}
 
-	.swatch.layout.rows {
+	/* A grid: rows of equal squares. */
+	.swatch.layout.rows,
+	.swatch.layout.ratio-square {
+		background-image:
+			linear-gradient(var(--color-text-muted), var(--color-text-muted)),
+			linear-gradient(var(--color-text-muted), var(--color-text-muted)),
+			linear-gradient(var(--color-text-muted), var(--color-text-muted)),
+			linear-gradient(var(--color-text-muted), var(--color-text-muted)),
+			linear-gradient(var(--color-text-muted), var(--color-text-muted)),
+			linear-gradient(var(--color-text-muted), var(--color-text-muted));
+		background-size: 8px 8px;
+		background-position:
+			4px 4px,
+			14px 4px,
+			24px 4px,
+			4px 16px,
+			14px 16px,
+			24px 16px;
+	}
+
+	/* Each photo's shape: justified rows. */
+	.swatch.layout.ratio-original {
 		background-image:
 			linear-gradient(var(--color-text-muted), var(--color-text-muted)),
 			linear-gradient(var(--color-text-muted), var(--color-text-muted)),
@@ -197,5 +252,13 @@
 			18px 4px,
 			4px 16px,
 			14px 16px;
+	}
+
+	/* The grid's ratio, under the layouts it belongs to. */
+	.sub {
+		margin-bottom: var(--space-2);
+		padding: 0;
+		font-size: var(--font-size-sm);
+		font-weight: 600;
 	}
 </style>
