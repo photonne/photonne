@@ -53,29 +53,35 @@
 </aside>
 
 <style>
+	/* A floating island at the right, under the chrome, over the map. */
 	.panel {
+		/* Its grid is no page: only its own rounded corners to keep clear of. */
+		--bleed-top: var(--space-4);
+		--bleed-bottom: var(--space-2);
+		position: absolute;
+		top: calc(var(--chrome-top, 0px) + var(--space-1));
+		right: var(--float-margin);
+		bottom: var(--float-margin);
+		z-index: 1000;
 		width: min(440px, 45%);
-		flex: none;
 		min-width: 300px;
-		border-left: 1px solid var(--color-border);
+		overflow: hidden;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-xl);
 		background: var(--color-bg);
+		box-shadow: var(--shadow-nav);
 	}
 
 	/* Narrow screens: a sheet over the lower part of the map, not a column
-	   that would leave the map a sliver. Above Leaflet's panes and controls. */
+	   that would leave the map a sliver; above the bottom bar. */
 	@media (max-width: 700px) {
 		.panel {
-			position: absolute;
-			inset: auto 0 0;
-			z-index: 1000;
+			top: auto;
+			left: var(--float-margin);
+			bottom: calc(var(--nav-room, 0px) + var(--space-1));
 			width: auto;
 			min-width: 0;
-			height: 70%;
-			border-left: 0;
-			border-top: 1px solid var(--color-border);
-			border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-			box-shadow: var(--shadow-raised);
-			overflow: hidden;
+			height: 62%;
 		}
 	}
 

@@ -212,8 +212,8 @@
 
 <!-- Embedded: the view options join the page's buttons. -->
 {#snippet ownTools()}
-	{@render toolbar?.()}
 	{#if sizeInBar}{@render viewOptions()}{/if}
+	{@render toolbar?.()}
 {/snippet}
 
 {#snippet heading()}
