@@ -21,10 +21,12 @@ import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -108,8 +110,14 @@ class FavoritesViewModelTest {
     private suspend fun FavoritesViewModel.loadBothPages() {
         ensureLoaded()
         state.first { it.loaded && !it.isInitialLoading }
-        loadMore()
-        state.first { it.items.size == 4 && !it.isAppending }
+        // La carga inicial publica su estado un instante antes de que su
+        // trabajo termine (en el hilo del MockEngine), y loadMore() no arranca
+        // con un trabajo vivo: pedida justo entonces se perdía y el test se
+        // quedaba esperando la segunda página. Se reintenta hasta que entra.
+        while (state.value.items.size < 4 || state.value.isAppending) {
+            loadMore()
+            withContext(Dispatchers.Default) { delay(5) }
+        }
     }
 
     @Test
