@@ -175,8 +175,8 @@
 		--shadow-pill: 0 2px 8px rgb(0 0 0 / 0.45);
 		--shadow-bar: 0 4px 16px rgb(0 0 0 / 0.5);
 		--shadow-nav: 0 6px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.5);
-		--chrome-base: #242428;
-		--glass-edge: rgb(255 255 255 / 0.08);
+		--chrome-base: #26262b;
+		--glass-edge: rgb(255 255 255 / 0.1);
 		--color-active-pill: rgb(255 255 255 / 0.12);
 		color-scheme: dark;
 	}
@@ -213,8 +213,8 @@
 	--shadow-pill: 0 2px 8px rgb(0 0 0 / 0.45);
 	--shadow-bar: 0 4px 16px rgb(0 0 0 / 0.5);
 	--shadow-nav: 0 6px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.5);
-	--chrome-base: #242428;
-	--glass-edge: rgb(255 255 255 / 0.08);
+	--chrome-base: #26262b;
+	--glass-edge: rgb(255 255 255 / 0.1);
 	--color-active-pill: rgb(255 255 255 / 0.12);
 	color-scheme: dark;
 }
@@ -312,8 +312,8 @@ body {
 	--shadow-pill: 0 2px 8px rgb(0 0 0 / 0.45);
 	--shadow-bar: 0 4px 16px rgb(0 0 0 / 0.5);
 	--shadow-nav: 0 6px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.5);
-	--chrome-base: #242428;
-	--glass-edge: rgb(255 255 255 / 0.08);
+	--chrome-base: #26262b;
+	--glass-edge: rgb(255 255 255 / 0.1);
 	--color-active-pill: rgb(255 255 255 / 0.12);
 	color-scheme: dark;
 }

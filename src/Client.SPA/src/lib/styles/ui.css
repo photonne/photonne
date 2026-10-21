@@ -370,9 +370,11 @@
 
 /* ── Glass: the floating chrome ──────────────────────────────────────── */
 
-/* The native app's ChromePill: the chrome-base grey at 60 % over a 30 px
-   blur of whatever scrolls beneath, solid at 92 % where there's no blur or
-   the user asks for less transparency or more contrast. Shape and shadow
+/* The native app's ChromePill: the chrome-base grey over a 30 px blur of
+   whatever scrolls beneath, solid at 92 % where there's no blur or the user
+   asks for less transparency or more contrast. --glass-tint sets how much
+   of the grey: 70 % by default, more where the glass mostly sits on the
+   plain page (the island, the header capsules) and has to stand out. Shape and shadow
    are the component's (a pill, a rounded panel; --shadow-pill/bar/nav).
 
    The blur sits on a layer behind the content, not on the element itself:
@@ -394,7 +396,7 @@
 	inset: 0;
 	z-index: -1;
 	border-radius: inherit;
-	background: color-mix(in srgb, var(--chrome-base) 60%, transparent);
+	background: color-mix(in srgb, var(--chrome-base) var(--glass-tint, 70%), transparent);
 	-webkit-backdrop-filter: blur(30px) saturate(1.6);
 	backdrop-filter: blur(30px) saturate(1.6);
 	pointer-events: none;
