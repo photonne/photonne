@@ -3,18 +3,14 @@ package com.photonne.app.ui.admin
 import com.photonne.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,6 +39,7 @@ import com.photonne.app.ui.theme.SheetHeader
 import com.photonne.app.ui.theme.CompactPrimaryButton
 import com.photonne.app.ui.theme.CompactSecondaryButton
 import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.ui.library.ConfirmActionDialog
 
 @Composable
 fun AdminDeleteUserDialog(
@@ -52,39 +49,16 @@ fun AdminDeleteUserDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(stringResource(Res.string.admin_user_action_delete_title)) },
-        text = {
-            Column {
-                Text(
-                    stringResource(
-                        Res.string.admin_user_action_delete_message,
-                        user.username
-                    )
-                )
-                errorMessage?.let { msg ->
-                    Spacer(Modifier.height(Spacing.sm))
-                    Text(msg, color = MaterialTheme.colorScheme.error)
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                enabled = !isSubmitting && !user.isPrimaryAdmin
-            ) {
-                Text(
-                    stringResource(Res.string.action_delete),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
-            }
-        }
+    ConfirmActionDialog(
+        title = stringResource(Res.string.admin_user_action_delete_title),
+        message = stringResource(Res.string.admin_user_action_delete_message, user.username),
+        confirmLabel = stringResource(Res.string.action_delete),
+        isDestructive = true,
+        isSubmitting = isSubmitting,
+        errorMessage = errorMessage,
+        confirmEnabled = !user.isPrimaryAdmin,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
     )
 }
 
@@ -96,33 +70,15 @@ fun AdminPromoteToPrimaryDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(stringResource(Res.string.admin_user_action_promote_title)) },
-        text = {
-            Column {
-                Text(
-                    stringResource(
-                        Res.string.admin_user_action_promote_message,
-                        targetUser.username
-                    )
-                )
-                errorMessage?.let { msg ->
-                    Spacer(Modifier.height(Spacing.sm))
-                    Text(msg, color = MaterialTheme.colorScheme.error)
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.admin_user_action_promote_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
-            }
-        }
+    ConfirmActionDialog(
+        title = stringResource(Res.string.admin_user_action_promote_title),
+        message = stringResource(Res.string.admin_user_action_promote_message, targetUser.username),
+        confirmLabel = stringResource(Res.string.admin_user_action_promote_confirm),
+        isDestructive = false,
+        isSubmitting = isSubmitting,
+        errorMessage = errorMessage,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
     )
 }
 

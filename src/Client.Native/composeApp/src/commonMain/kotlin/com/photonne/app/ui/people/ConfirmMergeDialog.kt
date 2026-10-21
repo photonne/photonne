@@ -10,7 +10,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +25,8 @@ import com.photonne.app.resources.people_unnamed
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
 
 /**
  * Confirmación de fusión con las dos caras delante: fusionar es irreversible
@@ -96,17 +97,19 @@ fun ConfirmMergeDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !isSubmitting) {
-                Text(
-                    stringResource(Res.string.people_action_merge),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            CompactPrimaryButton(
+                label = stringResource(Res.string.people_action_merge),
+                onClick = onConfirm,
+                isLoading = isSubmitting,
+                destructive = true
+            )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
-            }
+            CompactSecondaryButton(
+                label = stringResource(Res.string.action_cancel),
+                onClick = onDismiss,
+                enabled = !isSubmitting
+            )
         }
     )
 }

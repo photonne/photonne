@@ -9,7 +9,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,6 +21,7 @@ import com.photonne.app.resources.organize_year_chip_format
 import com.photonne.app.resources.organize_move_summary_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.CompactPrimaryButton
 
 /**
  * Compact "2026 · 34   2025 · 12" chips describing how assets split across capture
@@ -73,7 +73,10 @@ fun MoveSummaryDialog(outcome: MoveOutcome, onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_understood)) }
+            CompactPrimaryButton(
+                label = stringResource(Res.string.action_understood),
+                onClick = onDismiss
+            )
         },
     )
 }
