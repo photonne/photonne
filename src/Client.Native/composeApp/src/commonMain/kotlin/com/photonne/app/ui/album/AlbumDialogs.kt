@@ -2,9 +2,7 @@ package com.photonne.app.ui.album
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,9 +29,12 @@ import com.photonne.app.resources.album_delete_title
 import com.photonne.app.resources.album_field_description
 import com.photonne.app.resources.album_field_name
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.resources.action_cancel
 
 /**
  * Form sheet used to both create a new album and edit an existing one.
@@ -99,18 +100,24 @@ fun AlbumFormDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Spacer(Modifier.height(Spacing.xs))
-            PrimaryActionButton(
-                label = confirmLabel,
-                onClick = {
-                    onConfirm(
-                        name.trim(),
-                        description.trim().takeIf { it.isNotEmpty() }
-                    )
-                },
-                enabled = canSubmit,
-                isLoading = isSubmitting
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
+                CompactPrimaryButton(
+                    label = confirmLabel,
+                    onClick = {
+                        onConfirm(
+                            name.trim(),
+                            description.trim().takeIf { it.isNotEmpty() }
+                        )
+                    },
+                    enabled = canSubmit,
+                    isLoading = isSubmitting
+                )
+            }
         }
     }
 }

@@ -39,8 +39,10 @@ import com.photonne.app.resources.admin_user_action_reset_password
 import com.photonne.app.resources.admin_user_action_reset_password_message
 import com.photonne.app.resources.admin_user_action_reset_password_title
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 @Composable
 fun AdminDeleteUserDialog(
@@ -178,13 +180,19 @@ fun AdminResetPasswordDialog(
             errorMessage?.let { msg ->
                 Text(msg, color = MaterialTheme.colorScheme.error)
             }
-            Spacer(Modifier.height(Spacing.xs))
-            PrimaryActionButton(
-                label = stringResource(Res.string.admin_user_action_reset_password),
-                onClick = { onConfirm(newPassword) },
-                enabled = canSubmit,
-                isLoading = isSubmitting
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.admin_user_action_reset_password),
+                    onClick = { onConfirm(newPassword) },
+                    enabled = canSubmit,
+                    isLoading = isSubmitting
+                )
+            }
         }
     }
 }

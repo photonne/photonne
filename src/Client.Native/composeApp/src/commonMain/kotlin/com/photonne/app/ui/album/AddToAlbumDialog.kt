@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +48,9 @@ import com.photonne.app.ui.theme.SheetHeader
 import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.theme.CollectionRow
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,19 +149,18 @@ fun AddToAlbumDialog(
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onCreateNew, enabled = !isSubmitting) {
-                    Icon(PhotonneIcons.Add, contentDescription = null)
-                    Spacer(Modifier.width(Spacing.xs))
-                    Text(stringResource(Res.string.album_action_new))
-                }
-                Spacer(Modifier.width(Spacing.sm))
-                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_close))
-                }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_close),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.album_action_new),
+                    onClick = onCreateNew,
+                    enabled = !isSubmitting,
+                    icon = PhotonneIcons.Add
+                )
             }
         }
     }

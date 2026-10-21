@@ -114,11 +114,13 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PhotonneIcons
-import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates, MediaType }
 
@@ -666,12 +668,17 @@ private fun SearchSelectScaffold(
             SheetHeader(title)
             header()
             body()
-            PrimaryActionButton(
-                label = stringResource(Res.string.action_apply),
-                onClick = onConfirm,
-                enabled = confirmEnabled,
-                modifier = Modifier.padding(top = Spacing.xs),
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_apply),
+                    onClick = onConfirm,
+                    enabled = confirmEnabled,
+                )
+            }
         }
     }
 }
@@ -931,12 +938,17 @@ private fun SelectSheetScaffold(
                 isEmpty -> Text(emptyText, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else -> content()
             }
-            PrimaryActionButton(
-                label = stringResource(Res.string.action_apply),
-                onClick = onConfirm,
-                enabled = confirmEnabled,
-                modifier = Modifier.padding(top = Spacing.sm),
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_apply),
+                    onClick = onConfirm,
+                    enabled = confirmEnabled,
+                )
+            }
         }
     }
 }

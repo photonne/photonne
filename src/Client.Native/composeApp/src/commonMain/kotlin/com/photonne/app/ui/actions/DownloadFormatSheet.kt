@@ -15,7 +15,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,6 +37,8 @@ import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.Spacing
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 /**
  * "Original or JPG?", asked every time a download or a share includes a RAW
@@ -94,13 +95,11 @@ fun DownloadFormatSheet(
                 subtitle = stringResource(Res.string.download_format_jpeg_subtitle),
                 onClick = { onChoose(DownloadFormat.Jpeg) }
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss
+                )
             }
         }
     }

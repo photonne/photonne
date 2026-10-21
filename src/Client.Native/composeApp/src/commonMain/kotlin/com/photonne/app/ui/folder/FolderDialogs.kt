@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
@@ -40,9 +39,12 @@ import com.photonne.app.resources.folder_delete_title
 import com.photonne.app.resources.folder_field_name
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.resources.action_cancel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,13 +124,19 @@ fun FolderFormDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Spacer(Modifier.height(Spacing.xs))
-            PrimaryActionButton(
-                label = confirmLabel,
-                onClick = { onConfirm(name.trim(), showSharedSpaceOption && isSharedSpace) },
-                enabled = canSubmit,
-                isLoading = isSubmitting
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
+                CompactPrimaryButton(
+                    label = confirmLabel,
+                    onClick = { onConfirm(name.trim(), showSharedSpaceOption && isSharedSpace) },
+                    enabled = canSubmit,
+                    isLoading = isSubmitting
+                )
+            }
         }
     }
 }
