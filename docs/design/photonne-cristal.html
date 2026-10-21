@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Photonne Cristal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: columna editorial de 1080px; cada componente es una lámina con maqueta viva (antes → después) y su lista de cambios. */
+:root {
+  --bg: #F8F9FA;
+  --panel: #FFFFFF;
+  --fg: #1E1E2E;
+  --muted: #64748B;
+  --line: #E2E8F0;
+  --gold: #C8960A;
+  --accent: #8A6400;
+  --accent-soft: #FFEFC2;
+  --chrome: #E9E9EE;
+  --chrome-fg: #1E1E2E;
+  --active-pill: rgb(0 0 0 / 0.07);
+  --edge: rgb(255 255 255 / 0.55);
+  --shadow-nav: 0 6px 24px rgb(15 23 42 / 0.16), 0 1px 3px rgb(15 23 42 / 0.10);
+  --shadow-bar: 0 4px 16px rgb(15 23 42 / 0.12);
+  --code-bg: #F1F5F9;
+  --before: #FFFFFF;
+  --before-line: #DFE1E6;
+  --before-soft: #FFF1CC;
+  --font-display: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+  --font-body: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --spring: linear(0, 0.06 3%, 0.23 7%, 0.6 15%, 0.84 23%, 0.96 32%, 1.01 42%, 1.02 52%, 1.005 70%, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A0A0C; --panel: #121214; --fg: #E2E8F0; --muted: #94A3B8; --line: #2A2A30;
+    --gold: #FFD166; --accent: #FFD166; --accent-soft: #564000;
+    --chrome: #242428; --chrome-fg: #F1F5F9; --active-pill: rgb(255 255 255 / 0.12); --edge: rgb(255 255 255 / 0.08);
+    --shadow-nav: 0 6px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.5);
+    --shadow-bar: 0 4px 16px rgb(0 0 0 / 0.5);
+    --code-bg: #1A1A1D; --before: #111214; --before-line: #2F3136; --before-soft: rgb(255 209 102 / 0.14);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A0A0C; --panel: #121214; --fg: #E2E8F0; --muted: #94A3B8; --line: #2A2A30;
+  --gold: #FFD166; --accent: #FFD166; --accent-soft: #564000;
+  --chrome: #242428; --chrome-fg: #F1F5F9; --active-pill: rgb(255 255 255 / 0.12); --edge: rgb(255 255 255 / 0.08);
+  --shadow-nav: 0 6px 24px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.5);
+  --shadow-bar: 0 4px 16px rgb(0 0 0 / 0.5);
+  --code-bg: #1A1A1D; --before: #111214; --before-line: #2F3136; --before-soft: rgb(255 209 102 / 0.14);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: 1080px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 96px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
+h1 { font-size: clamp(2.6rem, 7vw, 5rem); font-weight: 800; line-height: 0.95; }
+h2 { font-size: clamp(1.7rem, 3.6vw, 2.4rem); font-weight: 700; line-height: 1.05; }
+h3 { font-size: 1.2rem; font-weight: 700; }
+p { margin: 0; max-width: 65ch; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 6px; }
+.eyebrow { font: 600 0.75rem/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+
+/* ---------- Hero ---------- */
+.hero { display: grid; gap: 20px; padding-block: 24px 40px; }
+.hero h1 em { font-style: normal; color: var(--gold); }
+.hero .lede { font-size: 1.2rem; color: var(--muted); max-width: 60ch; }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.85rem; color: var(--muted); }
+
+section { display: grid; gap: 20px; padding-block: 56px 8px; border-top: 1px solid var(--line); margin-top: 48px; }
+.sec-head { display: grid; gap: 10px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.cols > * { min-width: 0; }
+ul.changes { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+ul.changes li::marker { color: var(--gold); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 20px; display: grid; gap: 12px; align-content: start; }
+.card h3 { font-size: 1.05rem; }
+
+pre { margin: 0; background: var(--code-bg); border-radius: 18px; padding: 16px 18px; overflow-x: auto; font: 0.82rem/1.6 var(--font-mono); }
+
+/* ---------- Comparison table ---------- */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 0.92rem; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 0.72rem/1.2 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+td.new { color: var(--fg); }
+td.new strong { color: var(--accent); }
+
+/* ---------- Mockup stage ---------- */
+.stage-scroll { overflow-x: auto; padding-bottom: 4px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-width: 860px; }
+.pair.single { grid-template-columns: 1fr; min-width: 720px; }
+.label { display: inline-flex; align-items: center; gap: 8px; font: 600 0.75rem/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.label .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.label.after .dot { background: var(--gold); }
+.label.after { color: var(--accent); }
+
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
+
+/* fake photos */
+.photos { display: grid; gap: 2px; grid-template-columns: repeat(var(--cols, 8), 1fr); grid-auto-rows: var(--row, 64px); }
+.photos.gap4 { gap: 4px; }
+.ph { border-radius: 0; min-width: 0; }
+
+/* glass recipe */
+.glass {
+  background: color-mix(in srgb, var(--chrome) 62%, transparent);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6);
+  backdrop-filter: blur(30px) saturate(1.6);
+  color: var(--chrome-fg);
+  border: 1px solid var(--edge);
+  box-shadow: var(--shadow-nav);
+}
+.glass.bar { box-shadow: var(--shadow-bar); }
+.viewer .glass, .glass.dark {
+  --chrome: #242428; --chrome-fg: #FFFFFF; --edge: rgb(255 255 255 / 0.08); --active-pill: rgb(255 255 255 / 0.12);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: color-mix(in srgb, var(--chrome) 92%, transparent); }
+}
+
+/* ---------- Desktop mockups ---------- */
+.desk { position: relative; height: 420px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); font-size: 12px; }
+.desk.before { background: var(--before); display: grid; grid-template-columns: 150px 1fr; grid-template-rows: 44px 1fr; }
+.b-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-bottom: 1px solid var(--before-line); }
+.b-logo { font: 700 13px var(--font-body); color: var(--fg); width: 126px; }
+.b-logo span { color: var(--gold); }
+.b-search { flex: 1; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--fg) 6%, transparent); display: flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--muted); }
+.b-tools { display: flex; gap: 10px; color: var(--muted); align-items: center; }
+.b-av { width: 22px; height: 22px; border-radius: 50%; background: var(--before-soft); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 10px; }
+.b-side { padding: 8px; display: grid; gap: 2px; align-content: start; }
+.b-side .h { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 8px 8px 2px; }
+.b-side a { display: flex; gap: 8px; align-items: center; height: 26px; padding: 0 8px; border-radius: 8px; color: var(--fg); text-decoration: none; }
+.b-side a.on { background: var(--before-soft); color: var(--accent); font-weight: 600; }
+.b-main { padding: 12px 16px; overflow: hidden; display: grid; gap: 8px; align-content: start; }
+.b-main .t { font: 650 16px var(--font-body); }
+
+.desk.after { background: var(--bg); }
+.desk.after .scroll { position: absolute; inset: 0; padding: 72px 18px 0 196px; overflow: hidden; }
+.desk.after .scroll .mh { font: 600 13px var(--font-body); padding: 10px 2px 8px; display: flex; justify-content: space-between; color: var(--fg); }
+.island {
+  position: absolute; left: 12px; top: 12px; bottom: 12px; width: 168px;
+  border-radius: 28px; padding: 12px 8px; display: grid; gap: 2px; align-content: start;
+}
+.island .logo { display: flex; align-items: center; gap: 8px; font: 800 14px var(--font-display); padding: 2px 8px 10px; }
+.island .logo i { width: 20px; height: 20px; border-radius: 7px; background: radial-gradient(circle at 50% 45%, #FFD166 0 30%, #C8960A 31% 100%); display: block; }
+.island .logo span { color: var(--gold); }
+.island .h { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; margin: 8px 10px 2px; }
+.island a { display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 10px; border-radius: 999px; color: inherit; text-decoration: none; font-weight: 500; }
+.island a.on { background: var(--active-pill); font-weight: 650; }
+.island a.on svg { color: var(--gold); }
+.island a .pin { width: 16px; height: 16px; border-radius: 6px; flex: none; }
+.cap { position: absolute; display: flex; align-items: center; gap: 2px; border-radius: 999px; height: 40px; padding: 0 4px; }
+.cap .btn { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; position: relative; }
+.cap .btn.on { background: var(--active-pill); }
+.cap .badge { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #FF5252; box-shadow: 0 0 0 2px var(--chrome); }
+.cap .av { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #FFD166, #C8960A); color: #1A1A2E; font-weight: 800; display: grid; place-items: center; margin-left: 2px; }
+.cap.search { left: 196px; top: 14px; width: 300px; padding: 0 14px; gap: 8px; }
+.cap.search .ph-text { opacity: 0.6; flex: 1; }
+.cap.search kbd { font: 500 10px var(--font-mono); border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 6px; padding: 1px 5px; opacity: 0.7; }
+.cap.tools { right: 14px; top: 14px; }
+.pill-float { position: absolute; border-radius: 999px; padding: 6px 12px; font-weight: 650; display: flex; gap: 6px; align-items: center; }
+.datepill { left: calc(50% + 90px); transform: translateX(-50%); top: 64px; font-size: 12px; }
+.scrub { position: absolute; right: 8px; top: 170px; width: 22px; height: 44px; border-radius: 999px; display: grid; place-items: center; align-content: center; gap: 0; }
+.scrub svg { width: 12px; height: 12px; }
+.scrub-bubble { right: 38px; top: 180px; font-size: 11px; color: var(--gold); padding: 4px 10px; }
+
+/* ---------- Phone mockups ---------- */
+.phones { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; }
+.phone-col { display: grid; gap: 10px; justify-items: center; }
+.phone {
+  position: relative; width: 280px; height: 580px; border-radius: 44px; overflow: hidden;
+  background: var(--bg); border: 8px solid #1b1b1f; box-shadow: 0 20px 60px rgb(0 0 0 / 0.25);
+  font-size: 12px;
+}
+.phone .notch { position: absolute; top: 8px; left: 50%; translate: -50% 0; width: 84px; height: 22px; border-radius: 999px; background: #000; z-index: 9; }
+.phone .scroll { position: absolute; inset: 0; padding-top: 44px; overflow: hidden; }
+.phone .statusfade { position: absolute; inset: 0 0 auto; height: 56px; background: linear-gradient(rgb(0 0 0 / 0.45), transparent); z-index: 2; pointer-events: none; }
+.phone .mh { padding: 14px 12px 8px; font: 600 13px var(--font-body); display: flex; justify-content: space-between; }
+.phone .topcap { position: absolute; top: 40px; right: 8px; z-index: 3; height: 40px; }
+.phone .topcap.full { left: 8px; justify-content: space-between; }
+.phone .topcap.full .ttl { font: 650 14px var(--font-body); flex: 1; padding-left: 4px; }
+.phone .dp { position: absolute; top: 92px; left: 50%; translate: -50% 0; z-index: 3; font-size: 11px; }
+.navcap {
+  position: absolute; left: 50%; bottom: 14px; translate: -50% 0; z-index: 4;
+  height: 60px; border-radius: 999px; padding: 0 6px; display: flex; gap: 4px; align-items: stretch;
+  transition: translate 420ms var(--spring), opacity 200ms;
+}
+.navcap .tab { margin: 6px 0; min-width: 68px; padding: 0 12px; border-radius: 999px; display: grid; place-items: center; align-content: center; gap: 2px; font-size: 10px; font-weight: 600; position: relative; }
+.navcap .tab.on { background: var(--active-pill); }
+.navcap .tab.on svg { color: var(--gold); }
+.navcap .tab .cnt { position: absolute; top: 4px; right: 14px; min-width: 14px; height: 14px; border-radius: 999px; background: #FF5252; color: #fff; font-size: 8px; display: grid; place-items: center; padding: 0 3px; }
+.navcap.hide { translate: -50% 90px; }
+.navcap.sel .tab { min-width: 56px; }
+.phone .sel-cell { position: relative; }
+.ctrl { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ctrl button {
+  font: 600 0.85rem var(--font-body); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer;
+}
+.ctrl button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--gold); }
+.ctrl button:focus-visible, .seg button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* selected thumbs */
+.ph.sel { position: relative; background-clip: content-box !important; padding: 7px; border-radius: 0; }
+.ph.sel::before { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--gold) 20%, transparent); }
+.ph.sel.r { border-radius: 0; }
+.ph.sel span { position: absolute; top: 4px; left: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--gold); display: grid; place-items: center; color: #1A1A2E; }
+.ph.sel span svg { width: 11px; height: 11px; stroke-width: 3; }
+
+/* ---------- Viewer ---------- */
+.viewer { position: relative; height: 440px; border-radius: 18px; overflow: hidden; background: #000; color: #fff; font-size: 12px; }
+.viewer .photo { position: absolute; inset: 0; background:
+  radial-gradient(ellipse 40% 30% at 70% 30%, rgb(255 214 140 / 0.95), transparent 70%),
+  radial-gradient(ellipse 90% 50% at 50% 110%, #12324a, transparent 70%),
+  linear-gradient(180deg, #f2a65a 0%, #d9645a 38%, #5b3b6e 62%, #183048 100%); }
+.viewer .hill { position: absolute; inset: auto 0 0; height: 42%; background: #0f1e2c; clip-path: polygon(0 40%, 18% 22%, 34% 44%, 52% 18%, 70% 40%, 86% 26%, 100% 38%, 100% 100%, 0 100%); }
+.viewer .tl { left: 12px; top: 12px; padding: 0 14px 0 4px; height: 46px; gap: 8px; }
+.viewer .tl .d { display: grid; line-height: 1.25; }
+.viewer .tl .d b { font-size: 12.5px; }
+.viewer .tl .d small { opacity: 0.85; font-size: 10.5px; }
+.viewer .tr { right: 12px; top: 12px; height: 46px; padding: 0 6px; }
+.viewer .bc { left: 50%; translate: -50% 0; bottom: 64px; height: 54px; padding: 0 8px; gap: 6px; }
+.viewer .bc .btn { width: 40px; height: 40px; }
+.viewer .bc .btn.fav { color: #FF5252; }
+.viewer .arrow { position: absolute; top: 50%; translate: 0 -50%; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
+.viewer .arrow.l { left: 14px; } .viewer .arrow.r { right: 14px; }
+.strip { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; display: flex; align-items: flex-end; gap: 3px; }
+.strip i { display: block; width: 24px; height: 24px; border-radius: 6px; opacity: 0.85; }
+.strip i.c { width: 38px; height: 38px; opacity: 1; box-shadow: 0 0 0 2px #fff; }
+.strip i.n { width: 26px; height: 26px; }
+.viewer.before .bar { position: absolute; inset: 0 0 auto; height: 52px; background: linear-gradient(rgb(0 0 0 / 0.6), transparent); display: flex; align-items: center; gap: 10px; padding: 0 12px; }
+.viewer.before .bar .sp { flex: 1; }
+.viewer.before .nav { position: absolute; top: 50%; translate: 0 -50%; width: 44px; height: 44px; border-radius: 50%; background: rgb(0 0 0 / 0.35); display: grid; place-items: center; opacity: 0.7; }
+
+/* ---------- Small components ---------- */
+.mini { position: relative; border-radius: 18px; overflow: hidden; height: 260px; border: 1px solid var(--line); background: var(--bg); }
+.mini .photos { position: absolute; inset: 0; }
+.menu { position: absolute; border-radius: 22px; padding: 6px; width: 200px; display: grid; gap: 1px; font-size: 12.5px; }
+.menu .it { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 12px; border-radius: 999px; }
+.menu .it.hl { background: var(--active-pill); }
+.menu .it.dg { color: #FF6B6B; }
+.menu hr { border: 0; height: 1px; background: color-mix(in srgb, currentColor 12%, transparent); margin: 4px 10px; }
+.menu kbd { margin-left: auto; font: 500 10px var(--font-mono); opacity: 0.6; }
+.dialog { position: absolute; inset: 24px; margin: auto; width: 260px; height: max-content; border-radius: 28px; padding: 22px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow-nav); display: grid; gap: 10px; font-size: 12.5px; color: var(--fg); }
+.dialog b { font: 700 16px var(--font-display); }
+.dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+.b-pill { height: 34px; padding: 0 16px; border-radius: 999px; display: inline-flex; align-items: center; font-weight: 600; font-size: 12.5px; border: 1px solid var(--line); }
+.b-pill.pri { background: var(--gold); color: #1A1A2E; border-color: transparent; }
+.b-pill.dang { background: #E5484D; color: #fff; border-color: transparent; }
+.toast { position: absolute; left: 50%; translate: -50% 0; top: 16px; border-radius: 999px; height: 44px; padding: 0 6px 0 16px; display: flex; gap: 12px; align-items: center; font-size: 12.5px; white-space: nowrap; }
+.toast .undo { color: var(--gold); font-weight: 700; padding: 6px 12px; border-radius: 999px; background: var(--active-pill); }
+.scrim-dim { position: absolute; inset: 0; background: rgb(10 10 12 / 0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+.buttons-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 7%, transparent); }
+.seg button { border: 0; background: transparent; color: var(--fg); font: 600 12.5px var(--font-body); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--panel); box-shadow: 0 1px 3px rgb(0 0 0 / 0.15); }
+.field { height: 40px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); display: flex; align-items: center; padding: 0 14px; color: var(--muted); font-size: 13px; min-width: 200px; }
+.chip { height: 32px; border-radius: 999px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); font-size: 12.5px; font-weight: 600; }
+.chip.on { background: var(--accent-soft); border-color: var(--gold); color: var(--accent); }
+
+/* album cards */
+.albums { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+.alb { display: grid; gap: 8px; }
+.alb .cv { aspect-ratio: 1; border-radius: 22px; position: relative; overflow: hidden; max-width: 100%; }
+.alb .cv .cnt { position: absolute; right: 8px; bottom: 8px; border-radius: 999px; padding: 3px 9px; font-size: 11px; font-weight: 700; }
+.alb.mem .cv { border-radius: 28px 14px 14px 14px; aspect-ratio: 3 / 4; }
+.alb.mem .cv b { position: absolute; left: 12px; bottom: 12px; right: 12px; color: #fff; font: 800 1.05rem/1.1 var(--font-display); text-shadow: 0 1px 8px rgb(0 0 0 / 0.5); }
+.alb .nm { font-weight: 650; font-size: 0.95rem; }
+.alb .mt { font-size: 0.82rem; color: var(--muted); }
+
+/* tokens */
+.radii { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; }
+.rad { display: grid; gap: 6px; justify-items: center; font-size: 0.78rem; color: var(--muted); }
+.rad i { display: block; width: 64px; height: 64px; background: var(--accent-soft); border: 2px solid var(--gold); }
+.rad b { font: 500 0.78rem var(--font-mono); color: var(--fg); }
+.elev { display: flex; flex-wrap: wrap; gap: 18px; }
+.elev div { width: 120px; height: 52px; border-radius: 999px; background: var(--panel); display: grid; place-items: center; font: 500 0.8rem var(--font-mono); }
+
+/* phases */
+.phases { display: grid; gap: 14px; }
+.phase { display: grid; grid-template-columns: 64px 1fr; gap: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 18px 20px; }
+.phase > div { min-width: 0; }
+.phase .n { font: 800 2rem/1 var(--font-display); color: var(--gold); }
+.phase h3 { margin-bottom: 4px; }
+.phase .files { font: 0.78rem/1.6 var(--font-mono); color: var(--muted); margin-top: 8px; overflow-wrap: anywhere; }
+.size { display: inline-block; margin-left: 8px; font: 600 0.7rem var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
+
+.callout { border-radius: 24px; padding: 20px 22px; background: var(--accent-soft); color: var(--fg); display: grid; gap: 8px; }
+.callout h3 { color: var(--accent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .callout h3 { color: var(--gold); } }
+:root[data-theme="dark"] .callout h3 { color: var(--gold); }
+
+@media (max-width: 640px) {
+  .phase { grid-template-columns: 1fr; gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navcap { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-photos" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></symbol>
+  <symbol id="i-coll" viewBox="0 0 24 24"><path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.2"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m6-6-6 6 6 6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></symbol>
+  <symbol id="i-album" viewBox="0 0 24 24"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M21 7v12a2 2 0 0 1-2 2H7M10 7v6M7 10h6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-dn" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3 6"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M12 21s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="i-mem" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5m-5 5 5-5 5 5M5 20h14"/></symbol>
+  <symbol id="i-all" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="2"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+</svg>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="eyebrow">Guía de diseño · SPA y Native</span>
+  <h1>Photonne <em>Cristal</em></h1>
+  <p class="lede">La SPA era una aplicación web clásica: una barra superior con borde, un menú lateral pegado a la página y fotos encajadas entre ambos. La Native ya hablaba otro idioma: las fotos ocupan toda la pantalla y el cromo flota encima en cápsulas de cristal. Cristal es ese idioma, escrito para los dos clientes: la Native lo estrenó y la SPA lo adopta, con lo que la web hace mejor (teclado y ventanas anchas). Esta página es la referencia de ambos: tokens, componentes y reglas.</p>
+  <div class="tags">
+    <span class="tag">Cápsulas de cristal (ChromePill)</span>
+    <span class="tag">Navegación flotante</span>
+    <span class="tag">Radios generosos, todo en píldora</span>
+    <span class="tag">Movimiento con muelle</span>
+    <span class="tag">Sin dependencias nuevas</span>
+  </div>
+</header>
+
+<!-- ============ DESKTOP SHELL ============ -->
+<div>
+  <div class="stage-scroll">
+    <div class="pair">
+      <div>
+        <div class="label"><span class="dot"></span>Antes</div>
+        <div class="desk before">
+          <div class="b-top">
+            <div class="b-logo">☀ Photo<span>nne</span></div>
+            <div class="b-search"><svg class="i"><use href="#i-search"/></svg>Buscar fotos, personas, lugares…</div>
+            <div class="b-tools"><svg class="i"><use href="#i-bell"/></svg><span class="b-av">M</span>marc</div>
+          </div>
+          <nav class="b-side">
+            <a class="on" href="#shell"><svg class="i"><use href="#i-photos"/></svg>Fotos</a>
+            <div class="h">Colecciones</div>
+            <a href="#shell"><svg class="i"><use href="#i-mem"/></svg>Recuerdos</a>
+            <a href="#shell"><svg class="i"><use href="#i-people"/></svg>Personas</a>
+            <a href="#shell"><svg class="i"><use href="#i-heart"/></svg>Favoritos</a>
+            <a href="#shell"><svg class="i"><use href="#i-album"/></svg>Álbumes</a>
+            <a href="#shell"><svg class="i"><use href="#i-folder"/></svg>Carpetas</a>
+            <a href="#shell"><svg class="i"><use href="#i-map"/></svg>Mapa</a>
+            <div class="h">Acciones</div>
+            <a href="#shell"><svg class="i"><use href="#i-upload"/></svg>Subir</a>
+          </nav>
+          <div class="b-main">
+            <div class="t">Fotos</div>
+            <div class="photos gap4" style="--cols:6;--row:58px" data-n="30"></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="label after"><span class="dot"></span>Cristal</div>
+        <div class="desk after">
+          <div class="scroll">
+            <div class="mh"><span>Octubre 2026</span><span class="muted">412</span></div>
+            <div class="photos" style="--cols:6;--row:62px" data-n="42"></div>
+          </div>
+          <nav class="island glass">
+            <div class="logo"><i></i>Photo<span>nne</span></div>
+            <a class="on" href="#shell"><svg class="i fill"><use href="#i-photos"/></svg>Fotos</a>
+            <div class="h">Colecciones</div>
+            <a href="#shell"><svg class="i"><use href="#i-mem"/></svg>Recuerdos</a>
+            <a href="#shell"><svg class="i"><use href="#i-people"/></svg>Personas</a>
+            <a href="#shell"><svg class="i"><use href="#i-heart"/></svg>Favoritos</a>
+            <a href="#shell"><svg class="i"><use href="#i-album"/></svg>Álbumes</a>
+            <a href="#shell"><svg class="i"><use href="#i-map"/></svg>Mapa</a>
+            <div class="h">Fijados</div>
+            <a href="#shell"><i class="pin" style="background:linear-gradient(135deg,#f6c27a,#c0605b)"></i>Verano en Menorca</a>
+            <a href="#shell"><i class="pin" style="background:linear-gradient(135deg,#7fb7a4,#2e5e6e)"></i>Pirineo</a>
+          </nav>
+          <div class="cap search glass bar"><svg class="i"><use href="#i-search"/></svg><span class="ph-text">Buscar fotos, personas, lugares…</span><kbd>Ctrl K</kbd></div>
+          <div class="cap tools glass bar">
+            <span class="btn"><svg class="i"><use href="#i-cal"/></svg></span>
+            <span class="btn"><svg class="i"><use href="#i-tune"/></svg></span>
+            <span class="btn"><svg class="i"><use href="#i-bell"/></svg><i class="badge"></i></span>
+            <span class="av">M</span>
+          </div>
+          <div class="pill-float datepill glass">Octubre 2026</div>
+          <div class="pill-float scrub-bubble glass">Agosto 2025</div>
+          <div class="scrub glass"><svg class="i"><use href="#i-up"/></svg><svg class="i"><use href="#i-dn"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DIAGNÓSTICO ============ -->
+<section id="diagnostico">
+  <div class="sec-head">
+    <span class="eyebrow">De dónde venimos</span>
+    <h2>Qué separaba a las dos apps</h2>
+    <p class="muted">Compartían la paleta dorada y los iconos Material, así que la marca ya estaba alineada. Lo que las separaba era la forma y la profundidad.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Elemento</th><th>SPA antes</th><th>Native</th><th>SPA con Cristal</th></tr></thead>
+      <tbody>
+        <tr><td>Navegación</td><td>Sidebar pegado, 232px, sin fondo</td><td>Cápsula de cristal flotante, 3 pestañas</td><td class="new"><strong>Isla de cristal</strong> en escritorio y <strong>cápsula inferior</strong> en móvil</td></tr>
+        <tr><td>Barra superior</td><td>56px, ancho completo, borde inferior</td><td>Cápsulas flotantes que se acoplan al hacer scroll</td><td class="new">Desaparece como barra: <strong>búsqueda y herramientas en dos cápsulas</strong></td></tr>
+        <tr><td>Estado activo</td><td>Fondo dorado suave + texto dorado</td><td>Overlay neutro en píldora + icono relleno</td><td class="new">Overlay neutro en píldora, <strong>icono relleno en oro</strong></td></tr>
+        <tr><td>Radios</td><td>6 / 8 / 10 / 16px</td><td>6 / 10 / 12 / 16 / 24dp + píldora 50%</td><td class="new">Escala 6 → 28px y <strong>píldora para todo control</strong> (los campos, 14px)</td></tr>
+        <tr><td>Selección</td><td>Barra opaca a lo ancho sobre la cabecera</td><td>Cápsula arriba + cápsula de acciones abajo</td><td class="new">El mismo par de cápsulas, <strong>la de acciones sustituye a la navegación</strong></td></tr>
+        <tr><td>Desenfoque</td><td>Solo en 5 sitios (2–6px)</td><td>Haze, blur 30dp, tinte al 60%</td><td class="new"><code>backdrop-filter: blur(30px)</code> en todo el cromo</td></tr>
+        <tr><td>Rejilla</td><td>Huecos de 4px</td><td>Huecos de 2dp, esquinas rectas</td><td class="new">2px, el contenido pasa <strong>por debajo</strong> del cromo</td></tr>
+        <tr><td>Fondo oscuro</td><td><code>#111214</code></td><td><code>#0A0A0C</code></td><td class="new">Neutros de la Native (<code>#0A0A0C</code>, <code>#121214</code>…)</td></tr>
+        <tr><td>Toasts</td><td>Rectángulo abajo, sin animación</td><td>Snackbar arriba, entra deslizando</td><td class="new">Píldora de cristal arriba, con muelle</td></tr>
+        <tr><td>Movimiento</td><td>120 / 200ms, ease</td><td>280 / 320 / 220ms + muelle en la nav</td><td class="new">Mismos tiempos + muelle CSS con <code>linear()</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ TOKENS ============ -->
+<section id="tokens">
+  <div class="sec-head">
+    <span class="eyebrow">Cimientos · src/app.css · ui/theme/*.kt</span>
+    <h2>Tokens: la base de todo lo demás</h2>
+    <p class="muted">En la SPA todo sale de <code>src/app.css</code> y <code>src/lib/styles/ui.css</code>; en la Native, de <code>ui/theme/</code> y <code>ChromeTokens.kt</code>. Un componente nuevo usa estos tokens, nunca valores sueltos.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <h3>Escala de radios</h3>
+      <div class="radii">
+        <div class="rad"><i style="border-radius:6px"></i><b>xs 6</b>miniaturas</div>
+        <div class="rad"><i style="border-radius:8px"></i><b>sm 8</b>detalles</div>
+        <div class="rad"><i style="border-radius:14px"></i><b>md 14</b>campos, selección</div>
+        <div class="rad"><i style="border-radius:22px"></i><b>lg 22</b>tarjetas, menús</div>
+        <div class="rad"><i style="border-radius:28px"></i><b>xl 28</b>isla, diálogos</div>
+        <div class="rad"><i style="border-radius:999px"></i><b>pill</b>todo control</div>
+      </div>
+      <p class="muted" style="font-size:.9rem">Botones, items de menú, pestañas, chips y segmentados pasan a <code>--radius-pill</code>. El rectángulo de 8px desaparece de los controles.</p>
+    </div>
+    <div class="card">
+      <h3>Elevación por rol</h3>
+      <div class="elev">
+        <div style="box-shadow:0 2px 8px rgb(0 0 0 / .12)">pill</div>
+        <div style="box-shadow:var(--shadow-bar)">bar</div>
+        <div style="box-shadow:var(--shadow-nav)">nav</div>
+      </div>
+      <p class="muted" style="font-size:.9rem">Es el mismo modelo que <code>ChromeElevation</code> (2 / 4 / 6dp) y sustituye al <code>--shadow-raised</code> único que hoy comparten 17 componentes.</p>
+    </div>
+  </div>
+<pre>:root {
+  /* Forma: todo control es una píldora; los campos, un rectángulo de 14px */
+  --radius-xs: 6px;  --radius-sm: 8px;  --radius-md: 14px;
+  --radius-lg: 22px; --radius-xl: 28px; --radius-pill: 999px;
+  --radius-control: var(--radius-pill); --radius-field: var(--radius-md);
+  --control-h-sm: 32px; --control-h: 40px; --control-h-lg: 48px;
+
+  /* Cristal (ChromePill): gris base, oscuro #242428; ver .glass */
+  --chrome-base: #e9e9ee;
+  --glass-edge: rgb(255 255 255 / 0.6);    /* oscuro: rgb(255 255 255 / .08) */
+  --color-active-pill: rgb(0 0 0 / 0.07);  /* oscuro: rgb(255 255 255 / .12) */
+
+  /* Elevación por rol (ChromeElevation 2 / 4 / 6dp) */
+  --shadow-pill: 0 2px 8px rgb(15 23 42 / .12);
+  --shadow-bar:  0 4px 16px rgb(15 23 42 / .12);
+  --shadow-nav:  0 6px 24px rgb(15 23 42 / .16), 0 1px 3px rgb(15 23 42 / .10);
+
+  /* Movimiento (MotionDurations) */
+  --duration-chrome: 280ms; --duration-overlay: 320ms; --duration-emphasis: 220ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: linear(0, .06 3%, .23 7%, .6 15%, .84 23%, .96 32%,
+                        1.01 42%, 1.02 52%, 1.005 70%, 1);
+
+  /* Geometría flotante */
+  --float-margin: 12px; --chrome-h: 48px; --nav-pill-h: 64px;
+
+  /* Color */
+  --color-primary-fill: #c8960a;   /* oscuro: #ffd166; texto #1a1a2e */
+  --color-favorite: #ff5252;
+}
+
+/* El desenfoque va en una capa detrás del contenido: un backdrop-filter en el
+   propio elemento lo haría bloque contenedor de sus menús fijos. */
+:where(.glass) { position: relative; }
+.glass { isolation: isolate; border: 1px solid var(--glass-edge); }
+.glass::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  background: color-mix(in srgb, var(--chrome-base) 60%, transparent);
+  backdrop-filter: blur(30px) saturate(1.6);
+}
+@supports not (backdrop-filter: blur(1px)) { .glass::before { background: color-mix(in srgb, var(--chrome-base) 92%, transparent); } }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .glass::before { background: var(--chrome-base); backdrop-filter: none; }
+}</pre>
+  <ul class="changes">
+    <li><strong>Neutros de la Native.</strong> Fondo claro <code>#F8F9FA</code>, texto <code>#1E1E2E</code> y secundario pizarra <code>#64748B</code>. En oscuro, <code>#0A0A0C</code> / <code>#121214</code> / <code>#1C1C20</code>: es más negro, así que las fotos destacan más y el cristal se lee mejor.</li>
+    <li><strong>Dos oros.</strong> <code>--color-accent</code> (#8A6400 en claro) es para texto e iconos activos porque cumple AA. El oro de marca #C8960A / #FFD166 rellena el botón principal (con texto oscuro, 6,6:1), el check de selección y el avatar.</li>
+    <li><strong>Altura de control 40px</strong>, más cerca de los 48dp táctiles de la Native, y <code>--control-h-lg</code> 48px.</li>
+  </ul>
+</section>
+
+<!-- ============ SHELL ============ -->
+<section id="shell">
+  <div class="sec-head">
+    <span class="eyebrow">AppShell.svelte · MainScaffold.kt</span>
+    <h2>El shell: las fotos llegan hasta el borde</h2>
+    <p class="muted">Es el cambio más visible y el que más hace parecer las dos apps hermanas (la maqueta de arriba). La página arranca bajo un hueco de <code>--float-margin × 2 + --chrome-h</code> (72px) y se desplaza por debajo de las cápsulas.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <h3>La isla de navegación</h3>
+      <ul class="changes">
+        <li>El sidebar se convierte en un panel de cristal separado 12px de los bordes, con radio 28px y <code>--shadow-nav</code>.</li>
+        <li>Los items son píldoras de 36px. El activo lleva el overlay neutro <code>--color-active-pill</code> y el icono relleno en oro, como <code>FloatingNavBarItem</code>.</li>
+        <li>El logo pasa del topbar a la cabecera de la isla, que al fin y al cabo es el sitio de la marca.</li>
+                <li>Al arrastrar fotos sobre un fijado, la píldora se ilumina en oro y escala a 1.03 con muelle.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Rail y cápsulas superiores</h3>
+      <ul class="changes">
+        <li><strong>Rail (por debajo de 1100px, o cuando el usuario la pliega):</strong> la isla se estrecha a una cápsula vertical de 64px con iconos en círculos de 44px y el nombre en el <code>title</code>.</li>
+        <li><strong>Búsqueda:</strong> cápsula de 48px que se ensancha al enfocarla (de 420 a 620px con muelle). Lleva el atajo <kbd>Ctrl K</kbd> de la paleta de comandos.</li>
+        <li><strong>Herramientas:</strong> otra cápsula a la derecha con fecha, filtros, campana y avatar, como el <code>HeaderChromePill</code> del timeline.</li>
+        <li>Un <code>sticky</code> dentro de la página se pega bajo el cromo sin tocar nada: en Chrome su <code>top</code> se mide desde el borde interior del <code>padding</code> del contenedor.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MOBILE ============ -->
+<section id="movil">
+  <div class="sec-head">
+    <span class="eyebrow">≤ 700px · FloatingNav.svelte · MainNavigationBar</span>
+    <h2>En móvil, la misma app que la Native</h2>
+    <p class="muted">La misma estructura que la Native: tres pestañas en una cápsula inferior, cromo que se esconde al hacer scroll y una barra de acciones que ocupa el sitio de la navegación al seleccionar. Puedes probarlo en la maqueta.</p>
+  </div>
+  <div class="phones">
+    <div class="phone-col">
+      <div class="phone" id="phoneA">
+        <div class="notch"></div>
+        <div class="statusfade"></div>
+        <div class="scroll">
+          <div class="mh"><span>Octubre 2026</span><span class="muted">412</span></div>
+          <div class="photos" style="--cols:4;--row:68px" data-n="36" id="gridA"></div>
+        </div>
+        <div class="cap topcap glass bar" id="topA">
+          <span class="btn"><svg class="i"><use href="#i-search"/></svg></span>
+          <span class="btn"><svg class="i"><use href="#i-cal"/></svg></span>
+          <span class="btn"><svg class="i"><use href="#i-tune"/></svg></span>
+        </div>
+        <div class="pill-float dp glass">Octubre 2026</div>
+        <nav class="navcap glass" id="navA">
+          <span class="tab on"><svg class="i fill"><use href="#i-photos"/></svg>Fotos</span>
+          <span class="tab"><svg class="i"><use href="#i-coll"/></svg>Colecciones</span>
+          <span class="tab"><svg class="i"><use href="#i-grid"/></svg>Más<i class="cnt">3</i></span>
+        </nav>
+      </div>
+      <div class="ctrl">
+        <button type="button" id="btnScroll" aria-pressed="false">Simular scroll</button>
+        <button type="button" id="btnSel" aria-pressed="false">Simular selección</button>
+      </div>
+    </div>
+    <div class="phone-col" style="max-width:360px; align-content:center">
+      <div class="card">
+        <h3>Qué cambia</h3>
+        <ul class="changes">
+          <li><strong>Cápsula inferior</strong> de 64px, tan ancha como su contenido, separada 12px de los lados y 8px del borde más <code>env(safe-area-inset-bottom)</code>. Las tres pestañas tienen el mismo ancho, como <code>EqualWidthRow</code>.</li>
+          <li><strong>Pestañas:</strong> Fotos, Colecciones (recuerdos, personas, álbumes, carpetas, mapa…) y Más (subir, organizar, enlaces, utilidades, ajustes y admin), con el contador de notificaciones.</li>
+          <li><strong>Se esconde al bajar</strong> con un umbral de 10px y vuelve al subir o al llegar arriba, como <code>ImmersiveChromeEffect</code>. Lo lleva el estado compartido <code>chrome.immersive</code>.</li>
+          <li><strong>Selección:</strong> arriba, una cápsula a lo ancho con cerrar, «12 seleccionadas» y seleccionar todo. Abajo, compartir, álbum, descargar y más en la misma cápsula de la navegación.</li>
+          <li>El <strong>degradado de la barra de estado</strong> mantiene legible el reloj sobre las fotos.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SELECTION + TIMELINE ============ -->
+<section id="timeline">
+  <div class="sec-head">
+    <span class="eyebrow">SelectionBar · BatchActionBar · PhotoGrid · Scrubber</span>
+    <h2>Selección y timeline en escritorio</h2>
+  </div>
+  <div class="stage-scroll">
+    <div class="pair single">
+      <div>
+        <div class="label after"><span class="dot"></span>Cristal · modo selección</div>
+        <div class="desk after" id="deskSel">
+          <div class="scroll" style="padding-left:96px">
+            <div class="mh"><span>Septiembre 2026</span><span class="muted">3 de 188</span></div>
+            <div class="photos" style="--cols:9;--row:66px" data-n="54" data-sel="2,3,11"></div>
+          </div>
+          <nav class="island glass" style="width:64px; padding:12px 8px; justify-items:center">
+            <div class="logo" style="padding:2px 0 10px"><i></i></div>
+            <a class="on" href="#timeline" style="width:44px;height:44px;padding:0;justify-content:center" aria-label="Fotos"><svg class="i fill"><use href="#i-photos"/></svg></a>
+            <a href="#timeline" style="width:44px;height:44px;padding:0;justify-content:center" aria-label="Recuerdos"><svg class="i"><use href="#i-mem"/></svg></a>
+            <a href="#timeline" style="width:44px;height:44px;padding:0;justify-content:center" aria-label="Personas"><svg class="i"><use href="#i-people"/></svg></a>
+            <a href="#timeline" style="width:44px;height:44px;padding:0;justify-content:center" aria-label="Álbumes"><svg class="i"><use href="#i-album"/></svg></a>
+            <a href="#timeline" style="width:44px;height:44px;padding:0;justify-content:center" aria-label="Mapa"><svg class="i"><use href="#i-map"/></svg></a>
+          </nav>
+          <div class="cap glass bar" style="left:96px; right:14px; top:14px; height:48px; padding:0 6px; gap:6px">
+            <span class="btn"><svg class="i"><use href="#i-close"/></svg></span>
+            <b style="font-size:14px; flex:1">3 seleccionadas</b>
+            <span class="btn"><svg class="i"><use href="#i-all"/></svg></span>
+          </div>
+          <div class="cap glass" style="left:calc(50% + 40px); translate:-50% 0; bottom:16px; height:60px; padding:0 8px; gap:6px">
+            <span class="btn" style="width:auto;padding:0 12px;border-radius:999px;display:flex;gap:6px"><svg class="i"><use href="#i-share"/></svg>Compartir</span>
+            <span class="btn" style="width:auto;padding:0 12px;border-radius:999px;display:flex;gap:6px"><svg class="i"><use href="#i-album"/></svg>Álbum</span>
+            <span class="btn"><svg class="i"><use href="#i-heart"/></svg></span>
+            <span class="btn"><svg class="i"><use href="#i-down"/></svg></span>
+            <span class="btn"><svg class="i"><use href="#i-archive"/></svg></span>
+            <span class="btn" style="color:#FF6B6B"><svg class="i"><use href="#i-trash"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <h3>Selección</h3>
+      <ul class="changes">
+        <li>La barra opaca se divide en dos: la <strong>cápsula superior</strong> (cerrar, recuento, seleccionar todo) ocupa el sitio de búsqueda y herramientas, y la <strong>cápsula de acciones</strong> flota abajo en el centro.</li>
+                <li>Al papelera o archivar no hay diálogo: se aplica y aparece un toast con Deshacer, como en la Native.</li>
+        <li>Entran con <code>translateY</code> y muelle (280ms) y cruzan su opacidad con el cromo normal.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Rejilla y timeline</h3>
+      <ul class="changes">
+        <li>El <strong>hueco baja de 4 a 2px</strong> (<code>SPACING</code> en PhotoGrid) y las esquinas siguen rectas: la rejilla se lee como un mosaico continuo.</li>
+        <li>Una miniatura seleccionada se encoge (escala 0,88, radio 14px) con muelle sobre oro al 18%, con el check del oro de marca.</li>
+        <li><strong>Píldora de fecha flotante</strong> arriba en el centro mientras se desplaza la vista; desaparece 1,5s después de parar.</li>
+        <li><strong>Scrubber:</strong> el thumb de 4×32px pasa a un asa de cristal de 28×52px con chevrons, más una burbuja con la fecha en oro y marcas de año en píldoras, que solo se ven mientras se arrastra.</li>
+        <li><strong>Píldora «Volver arriba»</strong> cuando estás a más de dos pantallas del principio; no aparece mientras hay selección, porque abajo están las acciones.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VIEWER ============ -->
+<section id="visor">
+  <div class="sec-head">
+    <span class="eyebrow">AssetViewer.svelte · ViewerPanel.svelte · AssetDetailScreen.kt</span>
+    <h2>El visor: la foto primero, los controles después</h2>
+  </div>
+  <div class="stage-scroll">
+    <div class="pair">
+      <div>
+        <div class="label"><span class="dot"></span>Antes</div>
+        <div class="viewer before">
+          <div class="photo"></div><div class="hill"></div>
+          <div class="bar">
+            <svg class="i"><use href="#i-close"/></svg>
+            <div style="display:grid;line-height:1.3"><b>14 ago 2025</b><small style="opacity:.7">IMG_4821.HEIC</small></div>
+            <span class="sp"></span>
+            <svg class="i"><use href="#i-share"/></svg><svg class="i"><use href="#i-heart"/></svg><svg class="i"><use href="#i-info"/></svg><svg class="i"><use href="#i-more"/></svg>
+          </div>
+          <div class="nav" style="left:12px"><svg class="i"><use href="#i-left"/></svg></div>
+          <div class="nav" style="right:12px"><svg class="i"><use href="#i-right"/></svg></div>
+        </div>
+      </div>
+      <div>
+        <div class="label after"><span class="dot"></span>Cristal</div>
+        <div class="viewer">
+          <div class="photo"></div><div class="hill"></div>
+          <div class="cap tl glass"><span class="btn"><svg class="i"><use href="#i-back"/></svg></span><div class="d"><b>14 ago 2025 · 21:04</b><small>Cala Macarella, Menorca</small></div></div>
+          <div class="cap tr glass"><span class="btn"><svg class="i"><use href="#i-more"/></svg></span></div>
+          <div class="arrow l glass"><svg class="i"><use href="#i-left"/></svg></div>
+          <div class="arrow r glass"><svg class="i"><use href="#i-right"/></svg></div>
+          <div class="cap bc glass">
+            <span class="btn fav"><svg class="i" style="fill:currentColor;fill-opacity:1"><use href="#i-heart"/></svg></span>
+            <span class="btn"><svg class="i"><use href="#i-share"/></svg></span>
+            <span class="btn"><svg class="i"><use href="#i-info"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="changes">
+    <li><strong>Dos cápsulas arriba con un hueco entre ellas</strong> por donde se ve la foto: a la izquierda cerrar, la fecha y el archivo (la Native muestra el lugar); a la derecha las herramientas y «más». El cristal es siempre el gris oscuro <code>#242428</code>, también en tema claro (<code>.dark-surface</code> / <code>ViewerChromeColor</code>).</li>
+    <li><strong>Base de acciones abajo en el centro:</strong> favorito (corazón rojo <code>--color-favorite</code> cuando está activo), compartir e información. En un vídeo se quedan arriba, para no tapar sus controles. El resto va al menú «más».</li>
+    <li><strong>Tira de miniaturas con lupa</strong> (<code>AssetThumbnailStrip</code>): solo en la Native por ahora. En la SPA el visor solo conoce la foto anterior y la siguiente.</li>
+    <li>Las flechas anterior y siguiente son círculos de cristal de 48px, discretos hasta que el puntero entra en la foto.</li>
+    <li>El panel de info es una isla de cristal con radio 28px separada 12px del borde, en lugar de un panel pegado. En móvil es una hoja inferior con radio 28px y un asa.</li>
+    <li>Al abrirse, el negro aparece en 320ms y la foto crece hasta su sitio; el cromo llega 80ms después.</li>
+  </ul>
+</section>
+
+<!-- ============ SMALL COMPONENTS ============ -->
+<section id="componentes">
+  <div class="sec-head">
+    <span class="eyebrow">PopupMenu · Dialog · Toaster · CommandPalette · ui.css</span>
+    <h2>Menús, diálogos, toasts y controles</h2>
+  </div>
+  <div class="cols">
+    <div>
+      <div class="mini">
+        <div class="photos" style="--cols:5;--row:52px" data-n="25"></div>
+        <div class="menu glass" style="right:16px; top:16px">
+          <div class="it hl"><svg class="i"><use href="#i-heart"/></svg>Favorito<kbd>F</kbd></div>
+          <div class="it"><svg class="i"><use href="#i-down"/></svg>Descargar</div>
+          <div class="it"><svg class="i"><use href="#i-cal"/></svg>Editar fecha</div>
+          <div class="it"><svg class="i"><use href="#i-people"/></svg>Caras</div>
+          <hr>
+          <div class="it dg"><svg class="i"><use href="#i-trash"/></svg>Mover a la papelera<kbd>Supr</kbd></div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:.9rem;margin-top:10px"><strong style="color:var(--fg)">Menú:</strong> de cristal con radio 22px y items en píldora. Se abre escalando desde el origen (0.92 → 1) con muelle en 220ms.</p>
+    </div>
+    <div>
+      <div class="mini">
+        <div class="photos" style="--cols:5;--row:52px" data-n="25"></div>
+        <div class="scrim-dim"></div>
+        <div class="dialog">
+          <b>¿Vaciar la papelera?</b>
+          <span class="muted">Se borrarán 23 elementos para siempre. Esta acción no se puede deshacer.</span>
+          <div class="row"><span class="b-pill">Cancelar</span><span class="b-pill dang">Vaciar</span></div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:.9rem;margin-top:10px"><strong style="color:var(--fg)">Diálogo:</strong> radio 28px y botones en píldora. El fondo se oscurece y se desenfoca 6px. Solo se usa para acciones que no se pueden deshacer.</p>
+    </div>
+    <div>
+      <div class="mini">
+        <div class="photos" style="--cols:5;--row:52px" data-n="25"></div>
+        <div class="toast glass"><svg class="i"><use href="#i-trash"/></svg>3 fotos en la papelera<span class="undo">Deshacer</span></div>
+      </div>
+      <p class="muted" style="font-size:.9rem;margin-top:10px"><strong style="color:var(--fg)">Toast:</strong> píldora de cristal arriba en el centro, como el <code>TopSnackbarHost</code> de la Native, y deja libre la zona inferior para la navegación. Entra con muelle y se pausa mientras tienes el ratón encima.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Controles de ui.css</h3>
+    <div class="buttons-row">
+      <span class="b-pill pri">Subir fotos</span>
+      <span class="b-pill">Cancelar</span>
+      <span class="b-pill dang">Eliminar</span>
+      <div class="seg" role="group" aria-label="Agrupar por">
+        <button type="button" aria-pressed="false">Año</button>
+        <button type="button" aria-pressed="true">Mes</button>
+        <button type="button" aria-pressed="false">Día</button>
+      </div>
+      <span class="chip on"><svg class="i" style="width:14px;height:14px"><use href="#i-check"/></svg>Playa</span>
+      <span class="chip">Montaña</span>
+      <span class="field">Nombre del álbum</span>
+    </div>
+    <ul class="changes">
+      <li><code>.btn</code>: píldora de 40px. El <code>.primary</code> es oro sólido con texto oscuro; el resto lleva un borde sutil y el hover rellena.</li>
+      <li><code>.segmented</code>: pista y opción activa en píldora, con un fundido entre opciones.</li>
+      <li>Inputs y selects con radio 14px (<code>--radius-field</code>) y foco con anillo de 3px en oro al 35%.</li>
+      <li>Las pestañas (<code>Tabs.svelte</code>) marcan la actual con una píldora neutra, el mismo patrón que la navegación, en una fila de 44px de la que dependen las barras fijas de la administración.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ CARDS ============ -->
+<section id="tarjetas">
+  <div class="sec-head">
+    <span class="eyebrow">AlbumCard · FolderCard · recuerdos</span>
+    <h2>Tarjetas con más carácter</h2>
+  </div>
+  <div class="albums" id="albums">
+    <div class="alb mem"><div class="cv" style="background:linear-gradient(160deg,#f6c27a,#c0605b 60%,#5b3b6e)"><b>Hace un año en Menorca</b></div></div>
+    <div class="alb mem"><div class="cv" style="background:linear-gradient(160deg,#a7d3e8,#3d7ea6 55%,#1f3b5a)"><b>Primera nevada</b></div></div>
+    <div class="alb"><div class="cv" style="background:linear-gradient(135deg,#7fb7a4,#2e5e6e)"><span class="cnt glass dark">248</span></div><span class="nm">Pirineo</span><span class="mt">Jul 2025</span></div>
+    <div class="alb"><div class="cv" style="background:linear-gradient(135deg,#e8b6c9,#8c4a6b)"><span class="cnt glass dark">96</span></div><span class="nm">Boda de Laia</span><span class="mt">May 2026</span></div>
+    <div class="alb"><div class="cv" style="background:linear-gradient(135deg,#f0d58a,#b07a2a)"><span class="cnt glass dark">1.204</span></div><span class="nm">Selección dorada</span><span class="mt">Álbum inteligente</span></div>
+  </div>
+  <ul class="changes">
+    <li>Las portadas de álbum pasan a radio 22px y el contador es una píldora de cristal oscuro.</li>
+    <li>Los recuerdos usan la <strong>forma asimétrica de la Native</strong> (<code>MemoryCardShape</code>: 28px arriba a la izquierda y 14px en el resto), en formato 3:4, con el título encima de la foto. Esta forma pasa a ser la seña de los recuerdos en las dos apps.</li>
+    <li>Al pasar el ratón la tarjeta sube 3px y la portada hace un zoom de 1.04 con muelle.</li>
+    <li>El banner de colección (<code>CollectionView</code>) pasa a ser una isla con radio 28px, y al plegarse se convierte en una cápsula de cristal con el título.</li>
+  </ul>
+</section>
+
+<!-- ============ BEYOND NATIVE ============ -->
+<section id="rompedor">
+  <div class="sec-head">
+    <span class="eyebrow">Lo que la web añade</span>
+    <h2>Más allá de copiar la Native</h2>
+    <p class="muted">Usan lo que el navegador ya trae, sin dependencias nuevas. Las marcadas como pendientes siguen siendo la dirección a seguir.</p>
+  </div>
+  <div class="cols">
+    <div class="card"><h3>Morph de la miniatura al visor <span class="size">pendiente</span></h3><p class="muted">Hoy el visor se abre con un fundido y la foto creciendo. Con la View Transitions API (<code>onNavigate</code> + <code>document.startViewTransition</code> en SvelteKit), la miniatura crece hasta convertirse en la foto del visor y vuelve a su sitio al cerrar. Es el equivalente del <code>SharedTransitionLayout</code> de la Native, con 320ms. Durante la transición el navegador no atiende clics, así que hay que cuidar los e2e.</p></div>
+    <div class="card"><h3>Cristal que toma el color de la foto <span class="size">pendiente</span></h3><p class="muted">En el visor, el tinte del cristal mezclaría un 10% del <code>dominantColor</code> de la foto; falta que el detalle del asset lo devuelva. Un atardecer da un cromo cálido y un paisaje nevado uno frío. Cuesta una variable CSS por foto.</p></div>
+    <div class="card"><h3>Paleta de comandos</h3><p class="muted"><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> abre desde cualquier página un cristal centrado para ir a cualquier sección, álbum o carpeta fijados, o buscar las palabras en las fotos (<code>CommandPalette.svelte</code>).</p></div>
+    <div class="card"><h3>Movimiento con muelle en CSS</h3><p class="muted">Un token <code>--ease-spring</code> con <code>linear()</code> da muelles reales sin JavaScript a las cápsulas, los menús, los diálogos y las tarjetas. Con <code>prefers-reduced-motion</code>, todo pasa a 0ms, como ahora.</p></div>
+  </div>
+</section>
+
+<!-- ============ A11Y / PERF ============ -->
+<section id="riesgos">
+  <div class="sec-head">
+    <span class="eyebrow">Reglas</span>
+    <h2>Accesibilidad y rendimiento</h2>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <h3>Contraste sobre el cristal</h3>
+      <p class="muted">El texto sobre cristal puede perder contraste encima de una foto clara. El tinte al 60% más <code>saturate</code> lo evita en la mayoría de casos. Con <code>prefers-reduced-transparency</code> y <code>prefers-contrast: more</code>, el cristal pasa al fondo sólido al 92%. Los iconos del cromo mantienen 3:1 (WCAG 1.4.11).</p>
+    </div>
+    <div class="card">
+      <h3>Coste del desenfoque</h3>
+      <p class="muted"><code>backdrop-filter</code> sobre una rejilla virtualizada que se desplaza puede costar fotogramas en equipos modestos. El desenfoque se limita al cromo (5–6 elementos a la vez) y nunca se aplica a las miniaturas. Conviene medirlo con el panel Performance en equipos modestos.</p>
+    </div>
+    <div class="card">
+      <h3>Teclado y foco</h3>
+      <p class="muted">La isla y las cápsulas conservan el orden de foco y el enlace «Saltar al contenido». Un elemento que flota por CSS va en el DOM donde toca en el orden de foco (la base del visor va antes de las flechas). Las cápsulas que se esconden llevan <code>inert</code>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MAP ============ -->
+<section id="equivalencias">
+  <div class="sec-head">
+    <span class="eyebrow">Native ↔ SPA</span>
+    <h2>Dónde vive cada pieza</h2>
+    <p class="muted">Un cambio de diseño se hace en los dos lados a la vez. Esta tabla dice qué tocar en cada uno.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pieza</th><th>Native (Compose)</th><th>SPA (Svelte)</th></tr></thead>
+      <tbody>
+        <tr><td>Paleta</td><td><code>ui/theme/PhotonneTheme.kt</code>, <code>SemanticColors.kt</code></td><td><code>src/app.css</code> (<code>--color-*</code>)</td></tr>
+        <tr><td>Cristal</td><td><code>ChromePill</code> + Haze, <code>ChromeBackdropTint.kt</code></td><td><code>.glass</code> en <code>src/lib/styles/ui.css</code></td></tr>
+        <tr><td>Elevación</td><td><code>ChromeElevation</code> (pill, bar, nav)</td><td><code>--shadow-pill</code>, <code>--shadow-bar</code>, <code>--shadow-nav</code></td></tr>
+        <tr><td>Formas</td><td><code>Shapes</code>, <code>PillShape</code>, <code>MemoryCardShape</code></td><td><code>--radius-*</code></td></tr>
+        <tr><td>Movimiento</td><td><code>MotionDurations</code></td><td><code>--duration-*</code>, <code>--ease-spring</code></td></tr>
+        <tr><td>Navegación</td><td><code>MainNavigationBar</code> en <code>MainScaffold.kt</code></td><td><code>FloatingNav.svelte</code> (móvil), isla en <code>AppShell.svelte</code></td></tr>
+        <tr><td>Cromo inmersivo</td><td><code>ImmersiveChromeEffect</code></td><td><code>chrome.svelte.ts</code> + <code>onscroll</code> de <code>AppShell</code></td></tr>
+        <tr><td>Selección</td><td><code>SelectionTopChrome</code>, <code>FloatingSelectionBar</code></td><td><code>SelectionBar.svelte</code></td></tr>
+        <tr><td>Píldoras del timeline</td><td><code>FloatingDatePill</code>, <code>ScrollToTopPill</code>, <code>TimelineScrubber</code></td><td><code>PhotoGrid.svelte</code>, <code>Scrubber.svelte</code></td></tr>
+        <tr><td>Visor</td><td><code>AssetDetailScreen.kt</code></td><td><code>AssetViewer.svelte</code>, <code>ViewerPanel.svelte</code></td></tr>
+        <tr><td>Avisos</td><td><code>TopSnackbarHost</code></td><td><code>Toaster.svelte</code></td></tr>
+        <tr><td>Paleta de comandos</td><td>—</td><td><code>CommandPalette.svelte</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="decisiones">
+  <div class="callout">
+    <h3>Decisiones tomadas</h3>
+    <ul class="changes">
+      <li><strong>Escritorio:</strong> la isla con etiquetas a partir de 1100px y el rail por debajo, salvo que el usuario elija otra cosa.</li>
+      <li><strong>Móvil:</strong> tres pestañas como la Native (Fotos, Colecciones, Más), con las páginas <code>/collections</code> y <code>/more</code> en la SPA. No hay cajón lateral.</li>
+      <li><strong>Toasts:</strong> arriba en todas las anchuras, como el snackbar de la Native.</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  // Deterministic "photos": soft gradients in photographic hues.
+  var palettes = [
+    ['#f6c27a', '#c0605b'], ['#7fb7a4', '#2e5e6e'], ['#a7d3e8', '#3d7ea6'], ['#e8b6c9', '#8c4a6b'],
+    ['#f0d58a', '#b07a2a'], ['#c9d6a3', '#5f7a3a'], ['#d8c3a5', '#7a5c3e'], ['#9fb4d9', '#3a4f7a'],
+    ['#f2a65a', '#5b3b6e'], ['#bfe0d4', '#4a8a7a'], ['#e9d7c0', '#a07850'], ['#7d8fa8', '#2a3140']
+  ];
+  var seed = 7;
+  function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+  function tile() {
+    var p = palettes[Math.floor(rnd() * palettes.length)];
+    var a = Math.floor(rnd() * 360);
+    return 'linear-gradient(' + a + 'deg,' + p[0] + ',' + p[1] + ')';
+  }
+  var check = '<span><svg class="i" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>';
+  document.querySelectorAll('.photos[data-n]').forEach(function (el) {
+    var n = +el.getAttribute('data-n');
+    var sel = (el.getAttribute('data-sel') || '').split(',').filter(Boolean).map(Number);
+    var html = '';
+    for (var i = 0; i < n; i++) {
+      var s = sel.indexOf(i) !== -1;
+      html += '<div class="ph' + (s ? ' sel' : '') + '" data-i="' + i + '" style="background:' + tile() + '">' + (s ? check : '') + '</div>';
+    }
+    el.innerHTML = html;
+  });
+  var strip = document.getElementById('strip');
+  if (strip) {
+    var h = '';
+    for (var j = 0; j < 9; j++) {
+      var cls = j === 4 ? 'c' : (j === 3 || j === 5 ? 'n' : '');
+      h += '<i class="' + cls + '" style="background:' + tile() + '"></i>';
+    }
+    strip.innerHTML = h;
+  }
+
+  // Phone demo: hide on scroll, selection mode replaces the nav.
+  var nav = document.getElementById('navA');
+  var top = document.getElementById('topA');
+  var grid = document.getElementById('gridA');
+  var bScroll = document.getElementById('btnScroll');
+  var bSel = document.getElementById('btnSel');
+  var navHome = nav.innerHTML, topHome = top.innerHTML;
+  var navSel =
+    '<span class="tab"><svg class="i"><use href="#i-share"/></svg>Compartir</span>' +
+    '<span class="tab"><svg class="i"><use href="#i-album"/></svg>Álbum</span>' +
+    '<span class="tab"><svg class="i"><use href="#i-down"/></svg>Descargar</span>' +
+    '<span class="tab"><svg class="i"><use href="#i-more"/></svg>Más</span>';
+  var topSel =
+    '<span class="btn"><svg class="i"><use href="#i-close"/></svg></span>' +
+    '<span class="ttl">3 seleccionadas</span>' +
+    '<span class="btn"><svg class="i"><use href="#i-all"/></svg></span>';
+  bScroll.addEventListener('click', function () {
+    var on = bScroll.getAttribute('aria-pressed') !== 'true';
+    bScroll.setAttribute('aria-pressed', String(on));
+    nav.classList.toggle('hide', on);
+  });
+  bSel.addEventListener('click', function () {
+    var on = bSel.getAttribute('aria-pressed') !== 'true';
+    bSel.setAttribute('aria-pressed', String(on));
+    nav.classList.toggle('sel', on);
+    nav.innerHTML = on ? navSel : navHome;
+    top.innerHTML = on ? topSel : topHome;
+    top.classList.toggle('full', on);
+    if (on) { nav.classList.remove('hide'); bScroll.setAttribute('aria-pressed', 'false'); }
+    [1, 2, 6].forEach(function (i) {
+      var c = grid.children[i];
+      if (!c) return;
+      c.classList.toggle('sel', on);
+      c.innerHTML = on ? check : '';
+    });
+  });
+})();
+</script>
+</body>
+</html>
