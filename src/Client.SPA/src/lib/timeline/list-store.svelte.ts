@@ -57,14 +57,25 @@ export class ListStore implements GridHost {
 	}
 }
 
-/** Consecutive items of the same `yyyy-MM` (items come newest first). */
+/**
+ * Consecutive items of the same `yyyy-MM` (items come newest first). A list
+ * in another order (the trash, by deletion) can come back to a month after
+ * another: that run is a section of its own, keyed `yyyy-MM~2`, `~3`… so
+ * every key stays unique. The first seven characters are always the month.
+ */
 export function groupByMonth(items: readonly GridAsset[]): GridSection<GridAsset>[] {
 	const sections: GridSection<GridAsset>[] = [];
+	const runs: Record<string, number> = {};
 	for (const item of items) {
-		const key = item.capturedAt.slice(0, 7);
+		const month = item.capturedAt.slice(0, 7);
 		const last = sections.at(-1);
-		if (last?.key === key) (last.items as GridAsset[]).push(item);
-		else sections.push({ key, count: 0, items: [item] });
+		if (last?.key.slice(0, 7) === month) {
+			(last.items as GridAsset[]).push(item);
+			continue;
+		}
+		const run = (runs[month] ?? 0) + 1;
+		runs[month] = run;
+		sections.push({ key: run === 1 ? month : `${month}~${run}`, count: 0, items: [item] });
 	}
 	for (const section of sections) section.count = section.items!.length;
 	return sections;

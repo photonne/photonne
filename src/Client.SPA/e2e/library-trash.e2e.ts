@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fakeApi } from './fake-api';
-import { libraryState } from './fakes/library';
+import { libraryState, timelineItem } from './fakes/library';
 
 test.use({ locale: 'es-ES', viewport: { width: 1280, height: 800 } });
 
@@ -166,4 +166,24 @@ test('switches to the shared folders trash when there is one', async ({ page }) 
 	await expect(page.getByText('1 restaurada')).toBeVisible();
 	await expect(cells(page)).toHaveCount(1);
 	expect(libraryState(api.state).calls).toEqual(['shared-restore']);
+});
+
+test('opens when a capture month comes back after another', async ({ page }) => {
+	// The trash goes by deletion, newest first: what was deleted at different
+	// times interleaves capture months (March, July, March again).
+	const deleted = (id: string) => timelineItem(id, { deletedAt: '2026-10-01T10:00:00Z' });
+	const api = await openTrash(page, (state) => {
+		state.trash = [
+			deleted('2023-03-0'),
+			deleted('2023-03-1'),
+			deleted('2024-07-0'),
+			deleted('2023-03-2'),
+			deleted('2023-03-3')
+		];
+	});
+	void api;
+
+	await expect(cells(page)).toHaveCount(5);
+	await expect(page.getByRole('heading', { name: 'Marzo de 2023' })).toHaveCount(2);
+	await expect(page.getByRole('heading', { name: 'Julio de 2024' })).toBeVisible();
 });
