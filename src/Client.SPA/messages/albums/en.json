@@ -294,7 +294,7 @@
 	"albums_unshared_with_user": "No longer shared with {name}",
 	"albums_select_named": "Select “{name}”",
 	"albums_view": "View",
-	"albums_view_grid": "Grid",
+	"albums_view_grid": "Cards",
 	"albums_view_list": "List",
 	"albums_group_by_year": "Group by year",
 	"albums_year_section": "Albums created in {year}",

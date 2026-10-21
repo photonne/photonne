@@ -23,8 +23,10 @@
 		};
 	});
 
+	// Only when it has some: the page header may have put its own there.
 	$effect(() => {
-		const own = actions ?? null;
+		if (!actions) return;
+		const own = actions;
 		chrome.actions = own;
 		return () => {
 			if (chrome.actions === own) chrome.actions = null;

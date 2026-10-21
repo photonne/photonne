@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import ChromeMenu from '#lib/components/ui/ChromeMenu.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import {
@@ -11,9 +12,18 @@
 	/**
 	 * The view options of a photo grid, in a menu of the floating chrome: the
 	 * layout and, for a grid, its cells' ratio (shared by every grid, as in
-	 * Settings › Appearance), and the size of this grid's thumbnails.
+	 * Settings › Appearance), and the size of this grid's thumbnails. The
+	 * page adds its own (an album's order, a folder's subfolders) before them.
 	 */
-	let { size, onsize }: { size: number; onsize: (size: number) => void } = $props();
+	interface Props {
+		/** The thumbnails' size; none while the photos aren't showing. */
+		size?: number | null;
+		onsize: (size: number) => void;
+		/** The page's own options, each a `.group` (see ViewOptionsGroup). */
+		children?: Snippet;
+	}
+
+	let { size = null, onsize, children }: Props = $props();
 
 	// Material "tune" (Apache 2.0): two sliders.
 	const TUNE =
@@ -40,49 +50,52 @@
 </script>
 
 <ChromeMenu label={m.view_options()} iconPath={TUNE}>
-	<div class="group" role="radiogroup" aria-label={m.view_layout()}>
-		<span class="caption">{m.view_layout()}</span>
-		<div class="segmented">
-			{#each layouts as layout (layout.value)}
-				<label>
-					<input
-						type="radio"
-						name="grid-layout"
-						value={layout.value}
-						checked={gridLayout.value === layout.value}
-						onchange={() => gridLayout.set(layout.value)}
-					/>
-					<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"
-						><path d={layout.icon} fill="currentColor" /></svg
-					>
-					{layout.label()}
-				</label>
-			{/each}
-		</div>
-	</div>
-	{#if gridLayout.value === 'rows'}
-		<div class="group" role="radiogroup" aria-label={m.settings_grid_ratio()}>
-			<span class="caption">{m.settings_grid_ratio()}</span>
+	{@render children?.()}
+	{#if size !== null}
+		<div class="group" role="radiogroup" aria-label={m.view_layout()}>
+			<span class="caption">{m.view_layout()}</span>
 			<div class="segmented">
-				{#each ratios as ratio (ratio.value)}
-					<label title={ratio.hint()}>
+				{#each layouts as layout (layout.value)}
+					<label>
 						<input
 							type="radio"
-							name="grid-ratio"
-							value={ratio.value}
-							checked={gridLayout.ratio === ratio.value}
-							onchange={() => gridLayout.setRatio(ratio.value)}
+							name="grid-layout"
+							value={layout.value}
+							checked={gridLayout.value === layout.value}
+							onchange={() => gridLayout.set(layout.value)}
 						/>
-						{ratio.label()}
+						<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"
+							><path d={layout.icon} fill="currentColor" /></svg
+						>
+						{layout.label()}
 					</label>
 				{/each}
 			</div>
 		</div>
+		{#if gridLayout.value === 'rows'}
+			<div class="group" role="radiogroup" aria-label={m.settings_grid_ratio()}>
+				<span class="caption">{m.settings_grid_ratio()}</span>
+				<div class="segmented">
+					{#each ratios as ratio (ratio.value)}
+						<label title={ratio.hint()}>
+							<input
+								type="radio"
+								name="grid-ratio"
+								value={ratio.value}
+								checked={gridLayout.ratio === ratio.value}
+								onchange={() => gridLayout.setRatio(ratio.value)}
+							/>
+							{ratio.label()}
+						</label>
+					{/each}
+				</div>
+			</div>
+		{/if}
+		<div class="group">
+			<span class="caption">{m.view_size()}</span>
+			<SizeControl value={size} onchange={onsize} marks />
+		</div>
 	{/if}
-	<div class="group">
-		<span class="caption">{m.view_size()}</span>
-		<SizeControl value={size} onchange={onsize} marks />
-	</div>
 </ChromeMenu>
 
 <style>

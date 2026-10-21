@@ -3,7 +3,8 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import type { ListView } from './album-list.js';
 
-	let { view = $bindable() }: { view: ListView } = $props();
+	/** `labelled`: the names show next to the icons (in a menu). */
+	let { view = $bindable(), labelled = false }: { view: ListView; labelled?: boolean } = $props();
 
 	const name = $props.id();
 	// Material "view_module" and "view_list" (Apache 2.0).
@@ -21,12 +22,12 @@
 	];
 </script>
 
-<div class="segmented toggle" role="radiogroup" aria-label={m.albums_view()}>
+<div class="segmented" class:toggle={!labelled} role="radiogroup" aria-label={m.albums_view()}>
 	{#each options as option (option.key)}
 		<label title={option.label()}>
 			<input type="radio" {name} value={option.key} bind:group={view} />
 			<Icon path={option.path} size={18} />
-			<span class="visually-hidden">{option.label()}</span>
+			<span class:visually-hidden={!labelled}>{option.label()}</span>
 		</label>
 	{/each}
 </div>

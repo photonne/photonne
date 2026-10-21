@@ -299,9 +299,15 @@ test('a folder with subfolders and photos folds either section and shares the vi
 	await expect(subfolders.getByRole('link', { name: /2025/ })).toBeVisible();
 	await expect(subfolders).toHaveClass(/grid/);
 
-	// The tiles or rows chosen here are the folders index's too.
-	await page.getByRole('radio', { name: 'Lista' }).check();
+	// The tiles or rows chosen here, in the view options, are the folders
+	// index's too.
+	await page.getByRole('button', { name: 'Opciones de visualización' }).click();
+	await page
+		.getByRole('dialog', { name: 'Opciones de visualización' })
+		.getByRole('radio', { name: 'Lista' })
+		.check();
 	await expect(subfolders).toHaveClass(/list/);
+	await page.keyboard.press('Escape');
 	await page
 		.getByRole('navigation', { name: 'Navegación principal' })
 		.getByRole('link', { name: 'Carpetas', exact: true })
@@ -352,7 +358,8 @@ test('a folder with subfolders and photos folds either section and shares the vi
 test('shares a folder with a person', async ({ page }) => {
 	const state = await open(page, '/folders/folder-1');
 
-	await page.getByRole('button', { name: 'Compartir', exact: true }).click();
+	await page.getByRole('button', { name: 'Más acciones' }).click();
+	await page.getByRole('menuitem', { name: 'Compartir con personas' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Compartir «Camera»' });
 	await expect(dialog.getByRole('tab')).toHaveCount(0);
 	await dialog.getByRole('combobox', { name: 'Elige a quién…' }).selectOption('user-luis');
@@ -401,8 +408,11 @@ test('subfolder tiles are resized from inside a folder too', async ({ page }) =>
 	const width = async () => (await tile.boundingBox())!.width;
 	const before = await width();
 
+	// With the subfolders' other options, in the view options.
+	await page.getByRole('button', { name: 'Opciones de visualización' }).click();
 	await slider.fill('0');
 	await expect.poll(width).toBeLessThan(before);
+	await page.keyboard.press('Escape');
 
 	// The same size as the folders index.
 	await page
@@ -438,10 +448,14 @@ test('subfolders and photos share one scroll; the photos size is in the view opt
 	await expect.poll(height).toBeLessThan(before);
 	await page.keyboard.press('Escape');
 
-	// Folded photos take the view options with them.
+	// Folded photos take their size with them; the subfolders' options stay.
 	await page.mouse.wheel(0, -2000);
 	await photosHead.click();
-	await expect(optionsButton).toHaveCount(0);
+	await optionsButton.click();
+	await expect(options.getByRole('slider', { name: 'Tamaño de las miniaturas' })).toHaveCount(0);
+	await expect(options.getByRole('radio', { name: 'Lista' })).toBeVisible();
+	await page.keyboard.press('Escape');
 	await photosHead.click();
-	await expect(optionsButton).toBeVisible();
+	await optionsButton.click();
+	await expect(options.getByRole('slider', { name: 'Tamaño de las miniaturas' })).toBeVisible();
 });

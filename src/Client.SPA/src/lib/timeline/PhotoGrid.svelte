@@ -668,7 +668,15 @@
 	>
 		<div class="room" aria-hidden="true" bind:clientHeight={roomHeight}></div>
 		{#if lead}
-			<div class="lead" bind:clientHeight={leadHeight}>{@render lead()}</div>
+			<!-- Clear of the scrubber's column, as the photos are: the rail
+			     never lies over the header (an album's cover). -->
+			<div
+				class="lead"
+				style:margin-right="{withScrubber ? SCRUBBER_WIDTH - GUTTER : 0}px"
+				bind:clientHeight={leadHeight}
+			>
+				{@render lead()}
+			</div>
 		{/if}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div

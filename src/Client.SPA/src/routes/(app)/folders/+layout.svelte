@@ -148,6 +148,7 @@
 			initial={TREE.initial}
 			storageKey={TREE.key}
 			controls="folders-tree"
+			quiet
 		/>
 	{/if}
 
@@ -178,16 +179,23 @@
 		height: 100%;
 	}
 
-	/* A folder takes the whole window (its photos pass under the chrome):
-	   the tree keeps clear of the chrome inside its own scroll. */
 	.pane {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
 		min-height: 0;
-		padding: calc(var(--bleed-top, 0px) + var(--space-3)) var(--space-2)
-			calc(var(--bleed-bottom, 0px) + var(--space-3)) var(--space-3);
+		padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
 		overflow-y: auto;
+	}
+
+	/* Beside the page, the tree is a card of its own under the chrome: a
+	   folder's photos pass beneath the chrome, the tree never does, and the
+	   chrome's capsules float over one clear band across both. */
+	.folders:not(.narrow) .pane {
+		margin: var(--bleed-top, 0px) 0 var(--float-margin);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-xl);
+		background: var(--color-surface-raised);
 	}
 
 	.pane-head {

@@ -879,6 +879,43 @@
 		margin-left: 0;
 	}
 
+	/* The page's buttons, whatever they were in its header: flat pills in
+	   the capsule (a primary or a danger one keeps its colour). */
+	.page-actions {
+		min-width: 0;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	.page-actions :global(.btn) {
+		flex: none;
+		min-height: calc(var(--chrome-h) - 10px);
+		padding: 0 var(--space-3);
+		border-color: transparent;
+		font-size: var(--font-size-sm);
+	}
+
+	.page-actions :global(.btn:not(.primary):not(.danger):not(:hover)) {
+		background: transparent;
+	}
+
+	.page-actions :global(.icon-btn) {
+		flex: none;
+	}
+
+	/* A phone has no room for words: buttons with an icon show only it (the
+	   text stays their name). */
+	@media (max-width: 700px) {
+		.page-actions :global(.btn:has(svg)) {
+			width: calc(var(--chrome-h) - 8px);
+			padding: 0;
+			gap: 0;
+			justify-content: center;
+			border-radius: 50%;
+			font-size: 0;
+		}
+	}
+
 	.brand-pill {
 		display: grid;
 		place-items: center;

@@ -23,6 +23,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
+	import ViewOptionsGroup from '#lib/timeline/ViewOptionsGroup.svelte';
 	import { PagedList } from '#lib/timeline/paged-list.svelte.js';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
 	import SizeControl from '#lib/timeline/SizeControl.svelte';
@@ -208,6 +209,23 @@
 		</div>
 	</div>
 {:else}
+	<!-- The subfolders' tiles or rows, and the tiles' size: the same as the
+	     folders index's. -->
+	{#snippet subfolderOptions()}
+		<ViewOptionsGroup label={m.folders_subfolders()}>
+			<ListViewToggle bind:view={folderView.value} labelled />
+			{#if folderView.value === 'grid'}
+				<SizeControl
+					value={cardSize.value}
+					onchange={(size) => cardSize.set(size)}
+					label={m.cards_size()}
+					smallerLabel={m.cards_smaller()}
+					largerLabel={m.cards_larger()}
+					marks
+				/>
+			{/if}
+		</ViewOptionsGroup>
+	{/snippet}
 	<CollectionView
 		store={list.store}
 		title={folder?.name ?? ''}
@@ -215,6 +233,7 @@
 		emptyText={subfolders.length ? m.folders_empty_with_subfolders() : m.folders_empty()}
 		viewerActions={['trash', 'album']}
 		collapsed={!photosShown}
+		viewOptionsExtra={subfolders.length && subfoldersShown ? subfolderOptions : undefined}
 	>
 		{#snippet toolbar()}
 			{#if folder}
@@ -227,16 +246,6 @@
 					>
 						<Icon path={icons.newFolder} size={18} /><span class="label">{m.folders_new_sub()}</span
 						>
-					</button>
-				{/if}
-				{#if folder.isOwner}
-					<button
-						type="button"
-						class="btn sm tool"
-						title={m.albums_share()}
-						onclick={() => (sharing = true)}
-					>
-						<Icon name="share" size={18} /><span class="label">{m.albums_share()}</span>
 					</button>
 				{/if}
 				<button
@@ -305,19 +314,6 @@
 										<span class="count">{subfolders.length}</span>
 									</button>
 								</h2>
-								<!-- The same tiles or rows, and tile size, as the folders index. -->
-								{#if subfoldersShown}
-									{#if folderView.value === 'grid'}
-										<SizeControl
-											value={cardSize.value}
-											onchange={(size) => cardSize.set(size)}
-											label={m.cards_size()}
-											smallerLabel={m.cards_smaller()}
-											largerLabel={m.cards_larger()}
-										/>
-									{/if}
-									<ListViewToggle bind:view={folderView.value} />
-								{/if}
 							</div>
 							<div id={subfoldersId} class="section-body" hidden={!subfoldersShown}>
 								<FolderList

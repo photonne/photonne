@@ -53,10 +53,16 @@
 		viewerActions?: readonly ('trash' | 'archive' | 'album')[];
 		/** The page's own viewer buttons; receives the open asset id. */
 		viewerExtra?: Snippet<[string]>;
-		/** Next to the title: page-level buttons (empty trash, edit album…). */
+		/** Page-level buttons (empty trash, edit album…): in the floating chrome. */
 		toolbar?: Snippet;
 		/** Above the grid, under the title (album description, filters…). */
 		header?: Snippet;
+		/**
+		 * The page's own view options (an album's order, a folder's
+		 * subfolders), in the view options menu before the layout and size:
+		 * ViewOptionsGroup blocks.
+		 */
+		viewOptionsExtra?: Snippet;
 		/**
 		 * A cover photo: the title and header then sit on it as a banner, which
 		 * folds to a slim bar once the grid scrolls.
@@ -106,6 +112,7 @@
 		viewerExtra,
 		toolbar,
 		header,
+		viewOptionsExtra,
 		cover = null,
 		collapsed = false,
 		onnearend,
@@ -156,7 +163,11 @@
 	/** The grid is on screen, so its size can change. */
 	const sizable = $derived(!collapsed && status === 'ready' && store.items.length > 0);
 	const sizeInBar = $derived(sizable && sizeInToolbar);
-	const tools = $derived(chrome === 'none' && sizeInBar ? ownTools : toolbar);
+	/** The view options menu: the photos' size, or the page's own options. */
+	const hasOptions = $derived(sizeInBar || !!viewOptionsExtra);
+	const hasTools = $derived(!!toolbar || hasOptions);
+	/** In the header only when it is part of another page; else in the chrome. */
+	const tools = $derived(chrome === 'none' && hasTools ? ownTools : undefined);
 
 	// + / − resize the grid, like on the timeline, while nothing covers it.
 	function onkeydown(event: KeyboardEvent) {
@@ -199,22 +210,28 @@
 
 <svelte:window {onkeydown} />
 
-<!-- The page's own buttons, after the size of the grid. -->
 {#snippet viewOptions()}
-	<ViewOptions size={collectionSize.value} onsize={(size) => collectionSize.set(size)} />
+	<ViewOptions
+		size={sizeInBar ? collectionSize.value : null}
+		onsize={(size) => collectionSize.set(size)}
+	>
+		{@render viewOptionsExtra?.()}
+	</ViewOptions>
+{/snippet}
+
+<!-- The page's buttons, then its view options; inside another page they
+     come first, its buttons (a close) last. -->
+{#snippet ownTools()}
+	{#if hasOptions && chrome === 'none'}{@render viewOptions()}{/if}
+	{@render toolbar?.()}
+	{#if hasOptions && chrome !== 'none'}{@render viewOptions()}{/if}
 {/snippet}
 
 <!-- The whole window: the header scrolls away with the photos, and the
-     grid's tools wait in the floating chrome. -->
+     page's buttons wait in the floating chrome, always at hand. -->
 {#if chrome !== 'none'}
-	<PageChrome bleed={chrome === 'page'} actions={sizeInBar ? viewOptions : undefined} />
+	<PageChrome bleed={chrome === 'page'} actions={hasTools ? ownTools : undefined} />
 {/if}
-
-<!-- Embedded: the view options join the page's buttons. -->
-{#snippet ownTools()}
-	{#if sizeInBar}{@render viewOptions()}{/if}
-	{@render toolbar?.()}
-{/snippet}
 
 {#snippet heading()}
 	{#if cover}
@@ -239,10 +256,10 @@
 		{#if leading}
 			<div class="with-leading">
 				<div class="leading">{@render leading()}</div>
-				<PageHeader {title} {count} actions={tools} />
+				<PageHeader {title} {count} actions={tools} float={false} />
 			</div>
 		{:else}
-			<PageHeader {title} {count} actions={tools} />
+			<PageHeader {title} {count} actions={tools} float={false} />
 		{/if}
 		{@render header?.()}
 	{/if}

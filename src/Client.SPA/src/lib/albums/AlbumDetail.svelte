@@ -19,6 +19,7 @@
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
+	import ViewOptionsGroup from '#lib/timeline/ViewOptionsGroup.svelte';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
 	import { AlbumList } from './album-list-store.svelte.js';
 	import { isSmart } from './album-list.js';
@@ -55,6 +56,13 @@
 		);
 	});
 	list.start();
+
+	// A smart album has no order of its own: newest first is its order.
+	const orders = $derived<{ value: ItemOrder; label: () => string }[]>([
+		...(smart ? [] : [{ value: 'album' as const, label: m.albums_order_album }]),
+		{ value: smart ? 'album' : 'newest', label: m.albums_order_newest },
+		{ value: 'oldest', label: m.albums_order_oldest }
+	]);
 
 	function reorder(next: ItemOrder) {
 		order = next;
@@ -220,16 +228,28 @@
 		headers={false}
 		viewerActions={ownsPhotos ? ['trash', 'album'] : ['album']}
 	>
+		{#snippet viewOptionsExtra()}
+			{#if album}
+				<ViewOptionsGroup label={m.albums_order()}>
+					<div class="orders">
+						{#each orders as option (option.value)}
+							<label>
+								<input
+									type="radio"
+									name="album-order"
+									checked={order === option.value}
+									onchange={() => reorder(option.value)}
+								/>
+								{option.label()}
+							</label>
+						{/each}
+					</div>
+				</ViewOptionsGroup>
+			{/if}
+		{/snippet}
+
 		{#snippet toolbar()}
 			{#if album}
-				<label class="order">
-					<span class="visually-hidden">{m.albums_order()}</span>
-					<select value={order} onchange={(e) => reorder(e.currentTarget.value as ItemOrder)}>
-						{#if !smart}<option value="album">{m.albums_order_album()}</option>{/if}
-						<option value={smart ? 'album' : 'newest'}>{m.albums_order_newest()}</option>
-						<option value="oldest">{m.albums_order_oldest()}</option>
-					</select>
-				</label>
 				{#if album.canManagePermissions || canWrite}
 					<button
 						type="button"
@@ -359,8 +379,33 @@
 />
 
 <style>
-	.order select {
-		min-height: var(--control-h-sm);
+	/* The orders, one per row, as a menu's choices. */
+	.orders {
+		display: grid;
+		gap: 2px;
+	}
+
+	.orders label {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		min-height: 36px;
+		padding: 0 var(--space-3);
+		border-radius: var(--radius-pill);
+		cursor: pointer;
+	}
+
+	.orders label:hover {
+		background: var(--color-hover);
+	}
+
+	.orders label:has(:checked) {
+		background: var(--color-active-pill);
+		font-weight: 600;
+	}
+
+	.orders input {
+		accent-color: var(--color-primary-fill);
 	}
 
 	/* Narrow windows keep the icon; the text stays as the accessible name. */

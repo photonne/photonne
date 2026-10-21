@@ -224,6 +224,17 @@
 	</div>
 
 	{#snippet toolbar()}
+		{#if roots.length}
+			<div class="search" role="search" aria-label={m.folders_filters()}>
+				<Icon name="search" size={18} />
+				<input
+					type="search"
+					aria-label={m.folders_search()}
+					placeholder={m.folders_search()}
+					bind:value={options.query}
+				/>
+			</div>
+		{/if}
 		<div class="filters" role="group" aria-label={m.folders_filters()}>
 			<div class="segmented" role="radiogroup" aria-label={m.folders_scope()}>
 				{#each scopes as scope (scope.key)}
@@ -272,21 +283,7 @@
 		title={m.nav_folders()}
 		subtitle={roots.length && !searching ? m.folders_intro() : null}
 		toolbar={roots.length ? toolbar : undefined}
-	>
-		{#snippet actions()}
-			{#if roots.length}
-				<div class="search" role="search" aria-label={m.folders_filters()}>
-					<Icon name="search" size={18} />
-					<input
-						type="search"
-						aria-label={m.folders_search()}
-						placeholder={m.folders_search()}
-						bind:value={options.query}
-					/>
-				</div>
-			{/if}
-		{/snippet}
-	</PageHeader>
+	/>
 
 	{#if treeQuery.isPending}
 		<Skeleton variant="cards" count={10} />

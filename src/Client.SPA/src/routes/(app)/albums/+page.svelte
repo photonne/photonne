@@ -218,17 +218,6 @@
 
 	<PageHeader title={m.nav_albums()} toolbar={empty ? undefined : toolbar}>
 		{#snippet actions()}
-			{#if !empty}
-				<div class="search" role="search" aria-label={m.albums_filters()}>
-					<Icon name="search" size={18} />
-					<input
-						type="search"
-						aria-label={m.albums_search()}
-						placeholder={m.albums_search()}
-						bind:value={options.query}
-					/>
-				</div>
-			{/if}
 			<button type="button" class="btn" onclick={() => (creating = 'smart')}>
 				<Icon path={icons.smart} size={18} />{m.albums_new_smart()}
 			</button>
@@ -239,6 +228,17 @@
 	</PageHeader>
 
 	{#snippet toolbar()}
+		{#if !empty}
+			<div class="search" role="search" aria-label={m.albums_filters()}>
+				<Icon name="search" size={18} />
+				<input
+					type="search"
+					aria-label={m.albums_search()}
+					placeholder={m.albums_search()}
+					bind:value={options.query}
+				/>
+			</div>
+		{/if}
 		<div class="filters" role="group" aria-label={m.albums_filters()}>
 			<div class="segmented" role="radiogroup" aria-label={m.albums_scope()}>
 				{#each scopes as scope (scope.key)}

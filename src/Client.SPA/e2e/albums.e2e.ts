@@ -100,11 +100,16 @@ test.describe('album detail', () => {
 		await open(page, '/albums/album-1');
 		await expect(cells(page)).toHaveCount(6);
 
-		await page.getByRole('combobox', { name: 'Orden de las fotos' }).selectOption('oldest');
+		// The order is a view option, in the floating chrome.
+		await page.getByRole('button', { name: 'Opciones de visualización' }).click();
+		const order = page
+			.getByRole('dialog', { name: 'Opciones de visualización' })
+			.getByRole('group', { name: 'Orden de las fotos' });
+		await order.getByRole('radio', { name: 'Más antiguas primero' }).check();
 		// Fake capture days run 28, 27… so the last added is the oldest.
 		await expect(cells(page).first()).toHaveAttribute('data-id', '2026-09-5');
 
-		await page.getByRole('combobox', { name: 'Orden de las fotos' }).selectOption('album');
+		await order.getByRole('radio', { name: 'Orden del álbum' }).check();
 		await expect(cells(page).first()).toHaveAttribute('data-id', '2026-09-0');
 	});
 

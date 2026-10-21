@@ -294,7 +294,7 @@
 	"albums_unshared_with_user": "Ya no se comparte con {name}",
 	"albums_select_named": "Seleccionar «{name}»",
 	"albums_view": "Vista",
-	"albums_view_grid": "Cuadrícula",
+	"albums_view_grid": "Tarjetas",
 	"albums_view_list": "Lista",
 	"albums_group_by_year": "Agrupar por año",
 	"albums_year_section": "Álbumes creados en {year}",

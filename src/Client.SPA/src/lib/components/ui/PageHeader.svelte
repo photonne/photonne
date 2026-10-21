@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { chrome } from '#lib/navigation/chrome.svelte.js';
 
 	interface Props {
 		title: string;
@@ -13,9 +14,32 @@
 		toolbar?: Snippet;
 		/** For pages whose h1 is elsewhere (or a tab's own heading level). */
 		level?: 1 | 2;
+		/**
+		 * The actions float in the chrome, so they stay at hand while the page
+		 * scrolls (a page's own header, by default). Off where the header is
+		 * part of another page (the map's panel).
+		 */
+		float?: boolean;
 	}
 
-	let { title, count = null, subtitle = null, actions, toolbar, level = 1 }: Props = $props();
+	let {
+		title,
+		count = null,
+		subtitle = null,
+		actions,
+		toolbar,
+		level = 1,
+		float = level === 1
+	}: Props = $props();
+
+	$effect(() => {
+		if (!float || !actions) return;
+		const own = actions;
+		chrome.actions = own;
+		return () => {
+			if (chrome.actions === own) chrome.actions = null;
+		};
+	});
 </script>
 
 <header class="page-header">
@@ -26,7 +50,7 @@
 			</svelte:element>
 			{#if subtitle}<p class="subtitle">{subtitle}</p>{/if}
 		</div>
-		{#if actions}<div class="actions">{@render actions()}</div>{/if}
+		{#if actions && !float}<div class="actions">{@render actions()}</div>{/if}
 	</div>
 	{#if toolbar}<div class="toolbar">{@render toolbar()}</div>{/if}
 </header>
