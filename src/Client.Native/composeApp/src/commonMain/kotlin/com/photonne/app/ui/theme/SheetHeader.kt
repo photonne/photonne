@@ -1,5 +1,11 @@
 package com.photonne.app.ui.theme
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -86,3 +92,52 @@ fun SheetActions(
         content = content
     )
 }
+
+/**
+ * Fila de opción de una hoja (formato de descarga, compartir, tipo de álbum,
+ * añadir condición): icono en `primary`, título y una línea opcional debajo, y
+ * tocarla la elige. Había cuatro copias privadas con rellenos (8 o 14 dp) y
+ * estilos (bodyMedium o bodyLarge) distintos.
+ *
+ * Por defecto va a sangre en una hoja sin margen, con el margen de la hoja
+ * dentro para alinear con la cabecera. En una hoja con la columna ya en
+ * `Spacing.lg`, [contentPadding] solo lleva el vertical.
+ */
+@Composable
+fun SheetOptionRow(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.lg, vertical = Spacing.md),
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(contentPadding),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.lg)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(IconSize.lg)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            if (subtitle != null) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/** Relleno de [SheetOptionRow] dentro de una hoja cuya columna ya lleva margen. */
+val SheetOptionRowInsetPadding: PaddingValues = PaddingValues(vertical = Spacing.md)

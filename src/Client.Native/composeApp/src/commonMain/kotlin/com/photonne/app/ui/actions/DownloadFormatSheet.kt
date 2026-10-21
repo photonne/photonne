@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -39,6 +38,8 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.SheetHeader
 import com.photonne.app.ui.theme.CompactSecondaryButton
 import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.ui.theme.SheetOptionRow
+import com.photonne.app.ui.theme.SheetOptionRowInsetPadding
 
 /**
  * "Original or JPG?", asked every time a download or a share includes a RAW
@@ -83,17 +84,19 @@ fun DownloadFormatSheet(
                     )
                 }
             )
-            FormatOptionRow(
+            SheetOptionRow(
                 icon = Icons.Outlined.InsertDriveFile,
                 title = originalTitle(chooser.extensions),
                 subtitle = stringResource(Res.string.download_format_original_subtitle),
-                onClick = { onChoose(DownloadFormat.Original) }
+                onClick = { onChoose(DownloadFormat.Original) },
+                contentPadding = SheetOptionRowInsetPadding
             )
-            FormatOptionRow(
+            SheetOptionRow(
                 icon = Icons.Outlined.Image,
                 title = stringResource(Res.string.download_format_jpeg),
                 subtitle = stringResource(Res.string.download_format_jpeg_subtitle),
-                onClick = { onChoose(DownloadFormat.Jpeg) }
+                onClick = { onChoose(DownloadFormat.Jpeg) },
+                contentPadding = SheetOptionRowInsetPadding
             )
             SheetActions {
                 CompactSecondaryButton(
@@ -113,37 +116,5 @@ private fun originalTitle(extensions: List<String>): String {
         stringResource(Res.string.download_format_original_extension, single.uppercase())
     } else {
         stringResource(Res.string.download_format_original)
-    }
-}
-
-@Composable
-private fun FormatOptionRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(IconSize.lg)
-        )
-        Column(modifier = Modifier.padding(end = Spacing.sm)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }

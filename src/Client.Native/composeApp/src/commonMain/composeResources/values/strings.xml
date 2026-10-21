@@ -455,6 +455,10 @@
     <string name="folder_picker_recent">Recientes</string>
     <string name="folder_picker_root">Raíz (sin carpeta padre)</string>
     <string name="folder_picker_empty">No hay carpetas disponibles como destino.</string>
+    <string name="folder_picker_search_placeholder">Buscar carpeta…</string>
+    <string name="folder_picker_organize_by_year">Organizar por año</string>
+    <string name="folder_picker_organize_by_year_hint">Se crearán subcarpetas por año (2026, 2025…) dentro del destino.</string>
+    <string name="folder_picker_year_breakdown">Se repartirán en:</string>
     <string name="folder_picker_new_in">Dentro de «%1$s»</string>
     <string name="folder_picker_new_in_root">En tus carpetas personales</string>
     <string name="folder_picker_new_slash">El nombre no puede llevar «/» ni «\\».</string>

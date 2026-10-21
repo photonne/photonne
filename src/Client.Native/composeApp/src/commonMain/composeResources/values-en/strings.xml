@@ -372,6 +372,10 @@
     <string name="folder_picker_recent">Recent</string>
     <string name="folder_picker_root">Root (no parent)</string>
     <string name="folder_picker_empty">No folders available as a target.</string>
+    <string name="folder_picker_search_placeholder">Search folders…</string>
+    <string name="folder_picker_organize_by_year">Organize by year</string>
+    <string name="folder_picker_organize_by_year_hint">Year subfolders (2026, 2025…) will be created inside the destination.</string>
+    <string name="folder_picker_year_breakdown">They will be split into:</string>
     <string name="folder_picker_new_in">Inside “%1$s”</string>
     <string name="folder_picker_new_in_root">In your personal folders</string>
     <string name="folder_picker_new_slash">The name can’t contain “/” or “\\”.</string>

@@ -122,6 +122,7 @@ import com.photonne.app.ui.theme.CompactPrimaryButton
 import com.photonne.app.ui.theme.CompactSecondaryButton
 import com.photonne.app.ui.theme.SheetActions
 import com.photonne.app.ui.theme.PickerField
+import com.photonne.app.ui.theme.SheetOptionRow
 
 internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates, MediaType }
 
@@ -423,31 +424,22 @@ private fun SmartPreviewSection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddConditionMenuSheet(onDismiss: () -> Unit, onPick: (EditorSheet) -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         Column(Modifier.fillMaxWidth().padding(bottom = Spacing.xl)) {
             SheetHeader(
                 stringResource(Res.string.smart_album_add_condition),
                 modifier = Modifier.padding(horizontal = Spacing.lg).padding(bottom = Spacing.md),
             )
-            MenuRow(PhotonneIcons.Person, stringResource(Res.string.smart_album_cond_people)) { onPick(EditorSheet.People) }
-            MenuRow(PhotonneIcons.Folder, stringResource(Res.string.smart_album_cond_folders)) { onPick(EditorSheet.Folders) }
-            MenuRow(Icons.Outlined.DateRange, stringResource(Res.string.smart_album_cond_dates)) { onPick(EditorSheet.Dates) }
-            MenuRow(Icons.Outlined.Image, stringResource(Res.string.smart_album_cond_scenes)) { onPick(EditorSheet.Scenes) }
-            MenuRow(Icons.Outlined.Category, stringResource(Res.string.smart_album_cond_objects)) { onPick(EditorSheet.Objects) }
-            MenuRow(PhotonneIcons.Videos, stringResource(Res.string.smart_album_cond_media_type)) { onPick(EditorSheet.MediaType) }
+            SheetOptionRow(PhotonneIcons.Person, stringResource(Res.string.smart_album_cond_people), onClick = { onPick(EditorSheet.People) })
+            SheetOptionRow(PhotonneIcons.Folder, stringResource(Res.string.smart_album_cond_folders), onClick = { onPick(EditorSheet.Folders) })
+            SheetOptionRow(Icons.Outlined.DateRange, stringResource(Res.string.smart_album_cond_dates), onClick = { onPick(EditorSheet.Dates) })
+            SheetOptionRow(Icons.Outlined.Image, stringResource(Res.string.smart_album_cond_scenes), onClick = { onPick(EditorSheet.Scenes) })
+            SheetOptionRow(Icons.Outlined.Category, stringResource(Res.string.smart_album_cond_objects), onClick = { onPick(EditorSheet.Objects) })
+            SheetOptionRow(PhotonneIcons.Videos, stringResource(Res.string.smart_album_cond_media_type), onClick = { onPick(EditorSheet.MediaType) })
         }
-    }
-}
-
-@Composable
-private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Spacing.lg, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(Spacing.lg))
-        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -663,8 +655,8 @@ private fun SearchSelectScaffold(
                 .fillMaxWidth()
                 .fillMaxHeight(0.92f)
                 .padding(horizontal = Spacing.lg)
-                .padding(bottom = Spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             SheetHeader(title)
             header()
@@ -936,7 +928,10 @@ private fun SelectSheetScaffold(
     confirmEnabled: Boolean,
     content: @Composable () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         Column(
             Modifier
                 .fillMaxWidth()

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -49,6 +48,8 @@ import com.photonne.app.ui.theme.SheetHeader
 import com.photonne.app.ui.theme.CompactPrimaryButton
 import com.photonne.app.ui.theme.CompactSecondaryButton
 import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.ui.theme.SheetOptionRow
+import com.photonne.app.ui.theme.SheetOptionRowInsetPadding
 
 /**
  * Two-option chooser shown when the user taps "Share" on the selection
@@ -75,16 +76,20 @@ fun ShareAssetsDialog(
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             SheetHeader(stringResource(Res.string.action_share))
-            ShareOptionRow(
+            SheetOptionRow(
+                icon = PhotonneIcons.Share,
                 title = stringResource(Res.string.share_choice_direct),
                 subtitle = stringResource(Res.string.share_choice_direct_subtitle),
-                onClick = onShareDirectly
+                onClick = onShareDirectly,
+                contentPadding = SheetOptionRowInsetPadding
             )
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                ShareOptionRow(
+                SheetOptionRow(
+                    icon = PhotonneIcons.Share,
                     title = stringResource(Res.string.share_choice_link),
                     subtitle = stringResource(Res.string.share_choice_link_subtitle),
-                    onClick = { onCreateLink(albumName.trim()) }
+                    onClick = { onCreateLink(albumName.trim()) },
+                    contentPadding = SheetOptionRowInsetPadding
                 )
                 OutlinedTextField(
                     value = albumName,
@@ -104,37 +109,6 @@ fun ShareAssetsDialog(
                     onClick = onDismiss
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun ShareOptionRow(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-    ) {
-        Icon(
-            imageVector = PhotonneIcons.Share,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(IconSize.lg)
-        )
-        Column(modifier = Modifier.padding(end = Spacing.sm)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

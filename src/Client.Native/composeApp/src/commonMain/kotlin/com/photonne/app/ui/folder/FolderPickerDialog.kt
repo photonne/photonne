@@ -65,6 +65,14 @@ import com.photonne.app.ui.theme.CompactPrimaryButton
 import com.photonne.app.ui.theme.CompactSecondaryButton
 import com.photonne.app.ui.theme.SheetActions
 import com.photonne.app.resources.action_cancel
+import com.photonne.app.resources.folder_picker_search_placeholder
+import com.photonne.app.resources.action_clear
+import com.photonne.app.resources.folders_scope_personal
+import com.photonne.app.resources.folders_scope_shared
+import com.photonne.app.resources.folder_picker_organize_by_year
+import com.photonne.app.resources.folder_picker_organize_by_year_hint
+import com.photonne.app.resources.folder_picker_year_breakdown
+import com.photonne.app.resources.search_no_results
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -212,12 +220,12 @@ fun FolderPickerDialog(
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                placeholder = { Text("Buscar carpeta…") },
+                placeholder = { Text(stringResource(Res.string.folder_picker_search_placeholder)) },
                 leadingIcon = { Icon(PhotonneIcons.Search, contentDescription = null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { query = "" }) {
-                            Icon(PhotonneIcons.Close, contentDescription = "Limpiar")
+                            Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_clear))
                         }
                     }
                 },
@@ -250,12 +258,16 @@ fun FolderPickerDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            if (searching) "Sin resultados" else stringResource(Res.string.folder_picker_empty),
+                            if (searching) stringResource(Res.string.search_no_results) else stringResource(Res.string.folder_picker_empty),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 } else {
+                    // El constructor de la lista no es composable: los textos se
+                    // resuelven antes.
+                    val personalLabel = stringResource(Res.string.folders_scope_personal)
+                    val sharedLabel = stringResource(Res.string.folders_scope_shared)
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
                         modifier = Modifier.fillMaxWidth()
@@ -273,7 +285,7 @@ fun FolderPickerDialog(
                             }
                         }
                         folderGroup(
-                            groupId = "grp:personal", label = "Personales", nodes = personalNodes,
+                            groupId = "grp:personal", label = personalLabel, nodes = personalNodes,
                             searching = searching, userExpanded = expanded, effExpanded = effExpanded,
                             onToggleGroup = { expanded = expanded.toggleMember("grp:personal") },
                             onToggleExpand = { id -> expanded = expanded.toggleMember(id) },
@@ -282,7 +294,7 @@ fun FolderPickerDialog(
                             trailing = trailing,
                         )
                         folderGroup(
-                            groupId = "grp:shared", label = "Compartidas", nodes = sharedNodes,
+                            groupId = "grp:shared", label = sharedLabel, nodes = sharedNodes,
                             searching = searching, userExpanded = expanded, effExpanded = effExpanded,
                             onToggleGroup = { expanded = expanded.toggleMember("grp:shared") },
                             onToggleExpand = { id -> expanded = expanded.toggleMember(id) },
@@ -357,9 +369,9 @@ fun FolderPickerDialog(
                     )
                     Spacer(Modifier.width(Spacing.xs))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Organizar por año", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(Res.string.folder_picker_organize_by_year), style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "Se crearán subcarpetas por año (2026, 2025…) dentro del destino.",
+                            stringResource(Res.string.folder_picker_organize_by_year_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -371,7 +383,7 @@ fun FolderPickerDialog(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            "Se repartirán en:",
+                            stringResource(Res.string.folder_picker_year_breakdown),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
