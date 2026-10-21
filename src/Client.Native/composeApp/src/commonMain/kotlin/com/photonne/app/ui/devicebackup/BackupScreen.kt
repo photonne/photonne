@@ -38,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -154,6 +153,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.SecondaryActionButton
+import com.photonne.app.ui.theme.DestructiveActionButton
 
 /**
  * The Backup tab's landing screen. Order matters here: the master switch, then
@@ -784,54 +785,34 @@ private fun BackupStatusCard(
                     // huge folder and a multi-gigabyte batch alike used to be
                     // unstoppable short of killing the app.
                     if (state.canStopCurrentPass) {
-                        OutlinedButton(
-                            onClick = onStop,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(Res.string.backup_status_stop))
-                        }
+                        SecondaryActionButton(
+                            label = stringResource(Res.string.backup_status_stop),
+                            onClick = onStop
+                        )
                     } else if (pendingCount > 0 && !state.isSyncing && !state.isCheckingHashes) {
                         com.photonne.app.ui.theme.PrimaryActionButton(
                             label = stringResource(Res.string.backup_status_upload_now),
                             onClick = onUploadNow
                         )
                     }
-                    OutlinedButton(
-                        onClick = onOpenPending,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(Res.string.backup_pending_view))
-                    }
+                    SecondaryActionButton(
+                        label = stringResource(Res.string.backup_pending_view),
+                        onClick = onOpenPending
+                    )
                     // Reclaiming space belongs with the backup verdict that
                     // makes it safe, not as a loose destructive row at the very
                     // bottom of the screen.
                     if (state.syncedCount > 0) {
                         val freeSpaceBlock = state.freeSpaceBlock
-                        TextButton(
+                        DestructiveActionButton(
+                            label = stringResource(
+                                Res.string.device_backup_action_free_space_sized,
+                                state.syncedCount,
+                                humanBytes(state.syncedBytes)
+                            ),
                             onClick = onFreeSpace,
-                            enabled = freeSpaceBlock == null,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                PhotonneIcons.Delete,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(IconSize.chip)
-                            )
-                            Spacer(Modifier.size(8.dp))
-                            Text(
-                                text = stringResource(
-                                    Res.string.device_backup_action_free_space_sized,
-                                    state.syncedCount,
-                                    humanBytes(state.syncedBytes)
-                                ),
-                                color = if (freeSpaceBlock == null) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                }
-                            )
-                        }
+                            enabled = freeSpaceBlock == null
+                        )
                         // Disabled without a word read as broken: say why.
                         val blockedReason = when (freeSpaceBlock) {
                             FreeSpaceBlock.Verifying ->

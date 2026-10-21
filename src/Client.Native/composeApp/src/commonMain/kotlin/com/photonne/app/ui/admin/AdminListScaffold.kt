@@ -155,11 +155,17 @@ fun AdminEditorScaffold(
     onRetry: () -> Unit,
     resultMessage: String? = null,
     onResultShown: () -> Unit = {},
+    hasUnsavedChanges: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     ResultSnackbar(resultMessage, onResultShown)
 
-    AdminPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
+    AdminPageScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        hasUnsavedChanges = hasUnsavedChanges
+    ) { page ->
         when {
             isResolving -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -185,12 +191,14 @@ fun AdminPageScaffold(
     title: String,
     onBack: () -> Unit,
     onChromeVisibleChange: (Boolean) -> Unit = {},
+    hasUnsavedChanges: Boolean = false,
     body: @Composable (page: @Composable (@Composable ColumnScope.() -> Unit) -> Unit) -> Unit
 ) {
     FormPageScaffold(
         title = title,
         onBack = onBack,
         onChromeVisibleChange = onChromeVisibleChange,
+        hasUnsavedChanges = hasUnsavedChanges,
         body = body
     )
 }
