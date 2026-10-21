@@ -102,6 +102,7 @@
 	emptyText={notice === 'too_short' ? m.search_semantic_too_short() : m.search_no_results()}
 	headers={!search.semantic}
 	onnearend={() => !search.semantic && list.more()}
+	chrome="inline"
 >
 	{#snippet header()}
 		{#if countText}<p class="count" role="status">{countText}</p>{/if}
