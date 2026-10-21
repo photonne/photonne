@@ -923,6 +923,10 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
         <tr><td>Menús del cromo</td><td>—</td><td><code>ChromeMenu.svelte</code>, <code>TimelineFilters.svelte</code>, <code>ViewOptions.svelte</code>, <code>ViewOptionsGroup.svelte</code></td></tr>
         <tr><td>Acciones de página</td><td>—</td><td><code>PageHeader.svelte</code> (<code>float</code>), cápsula <code>.page-actions</code> en <code>AppShell.svelte</code></td></tr>
         <tr><td>Distribución de la rejilla</td><td>—</td><td><code>grid-layout-preference.svelte.ts</code>, <code>grid-model.ts</code> (<code>rows</code>, <code>square</code>, <code>masonry</code>)</td></tr>
+        <tr><td>Diálogos</td><td><code>ConfirmActionDialog</code> (<code>ui/library</code>)</td><td><code>Dialog.svelte</code>, <code>ConfirmDialog.svelte</code></td></tr>
+        <tr><td>Botones de hoja y diálogo</td><td><code>SheetActions</code>, <code>CompactPrimaryButton</code>, <code>CompactSecondaryButton</code></td><td><code>.actions</code> de <code>Dialog.svelte</code> (<code>button.primary</code>, <code>button.danger</code>)</td></tr>
+        <tr><td>Botones de formulario</td><td><code>PrimaryActionButton</code>, <code>SecondaryActionButton</code>, <code>DestructiveActionButton</code></td><td><code>.btn</code> en <code>src/lib/styles/ui.css</code></td></tr>
+        <tr><td>Campo de fecha u hora</td><td><code>PickerField</code></td><td>—</td></tr>
         <tr><td>Avisos</td><td><code>TopSnackbarHost</code></td><td><code>Toaster.svelte</code></td></tr>
         <tr><td>Paleta de comandos</td><td>—</td><td><code>CommandPalette.svelte</code></td></tr>
       </tbody>
@@ -945,6 +949,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
       <li><strong>Cuadrícula:</strong> proporción 1:1 por defecto u Original; distribución y proporción, una preferencia global editable desde el menú de cada página o desde Ajustes › Apariencia.</li>
       <li><strong>Mapa:</strong> a todo el ancho, por debajo de la isla de navegación.</li>
       <li><strong>Carpetas:</strong> un solo scroll con secciones plegables; el árbol, una tarjeta separada de la isla.</li>
+      <li><strong>Botones de hojas y diálogos:</strong> píldoras de 40 dp alineadas a la derecha, "Cancelar" o "Cerrar" con contorno y la acción rellena (oro, o rojo si no se puede deshacer). Las hojas de filtros, orden y menús no llevan pie. En la Native, las pantallas de formulario guardan con el botón principal a todo el ancho al final del contenido, nunca con texto en el cromo.</li>
     </ul>
   </div>
 </section>

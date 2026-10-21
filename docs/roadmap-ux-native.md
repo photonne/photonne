@@ -212,7 +212,7 @@ punto.
 Las cuatro preguntas que bloqueaban trabajo ya tienen respuesta de Marc:
 
 - **43 — patrón de i18n.** Se queda en español, sin traducir los ~160 literales de los ViewModels. Cerrado sin migración.
-- **44 — pie de las hojas.** Botón principal a todo el ancho (`PrimaryActionButton`); cancelar es deslizar la hoja o el gesto atrás. Aplicado en las 10 hojas (`9fbc285`).
+- **44 — pie de las hojas.** ~~Botón principal a todo el ancho (`PrimaryActionButton`); cancelar es deslizar la hoja o el gesto atrás (`9fbc285`).~~ Revisado el 2026-10-21 (rama `feat/native-consistent-actions`): en una hoja de un campo el botón de 56 dp a todo el ancho pesaba demasiado, y las hojas de gestión seguían con TextButton que parecían enlaces. Ahora todas las hojas con pie usan `SheetActions`: píldoras compactas a la derecha, "Cancelar" (formularios) o "Cerrar" (gestión y listas) con contorno y la acción rellena, igual que los diálogos y el `Dialog` de la SPA. `PrimaryActionButton` queda para las pantallas de formulario.
 - **46 — radio de 8 dp.** Fundido en `MaterialTheme.shapes.small` (10 dp). Aplicado (`9fbc285`).
 - **23 — cadena de calidad del visor.** Original automático al superar 2x de zoom, conservando el botón HD/ORIG. Aplicado (`9fbc285`).
 
@@ -246,8 +246,10 @@ Cerrada en la rama `claude/roadmap-ux-pendientes` (2026-09-20): 52 (`7946f0a`),
 - **47**: `Role.Button` en los 119 `clickable` sin rol.
 - **50**: `WindowSizeClass` (dependencia nueva) si algún día hace falta más que
   `GridCells.Adaptive` y `contentWidth()`.
-- **44**: los dos formularios en `AlertDialog` (etiqueta nueva, asignar cara) y
-  el cromo acoplado de SmartAlbumEditor, DeviceAssetPreview y Subida.
+- **44**: el cromo acoplado de DeviceAssetPreview y Subida. Los formularios en
+  `AlertDialog` (etiqueta nueva, asignar cara y también el resumen de vídeo)
+  ya son hojas, y SmartAlbumEditor usa `FormPageScaffold` con el guardado al
+  final (rama `feat/native-consistent-actions`).
 
 ### Depende de una idea mayor
 
