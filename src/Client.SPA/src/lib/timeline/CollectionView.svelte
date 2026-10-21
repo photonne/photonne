@@ -268,7 +268,7 @@
 				size={collectionSize.value}
 				onzoom={(direction) => collectionSize.step(direction, WHEEL_STEP)}
 				label={title}
-				sectionTitle={monthTitle}
+				sectionTitle={(key) => monthTitle(key.slice(0, 7))}
 				{itemLabel}
 				onneedsection={() => {}}
 				onopen={(item) => viewer.open(item.id)}
