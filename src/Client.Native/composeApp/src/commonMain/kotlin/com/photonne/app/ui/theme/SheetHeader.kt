@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,4 +60,29 @@ fun SheetHeader(
             )
         }
     }
+}
+
+/**
+ * Pie de una hoja inferior: los botones compactos ([CompactSecondaryButton] y
+ * [CompactPrimaryButton], en ese orden) alineados a la derecha, como el pie de
+ * un diálogo. Antes convivían cuatro pies: botón de 56 dp a todo el ancho, fila
+ * de TextButton, FilledTonalButton suelto y nada.
+ *
+ * Una hoja con formulario lleva "Cancelar" + la acción; una de gestión o lista,
+ * "Cerrar" + la acción de crear si la tiene. Las de filtros, orden o menú no
+ * llevan pie: se aplican al tocar.
+ */
+@Composable
+fun SheetActions(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content
+    )
 }
