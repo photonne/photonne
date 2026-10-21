@@ -80,6 +80,14 @@
 		 * batch in Organizar) or keeps it across views.
 		 */
 		selection?: Selection;
+		/**
+		 * How it sits in the window. 'page': the whole of it, the header
+		 * scrolling away under the floating chrome, which carries the view
+		 * options. 'inline': under the page's own bars (search, admin), the
+		 * options still in the chrome. 'none': a part of another page (the
+		 * map's panel), the options among its own buttons.
+		 */
+		chrome?: 'page' | 'inline' | 'none';
 	}
 
 	let {
@@ -103,7 +111,8 @@
 		onnearend,
 		sizeShortcuts = true,
 		sizeInToolbar = true,
-		selection: given
+		selection: given,
+		chrome = 'page'
 	}: Props = $props();
 
 	// A bigger rendition for the banner when the server has one.
@@ -147,6 +156,7 @@
 	/** The grid is on screen, so its size can change. */
 	const sizable = $derived(!collapsed && status === 'ready' && store.items.length > 0);
 	const sizeInBar = $derived(sizable && sizeInToolbar);
+	const tools = $derived(chrome === 'none' && sizeInBar ? ownTools : toolbar);
 
 	// + / − resize the grid, like on the timeline, while nothing covers it.
 	function onkeydown(event: KeyboardEvent) {
@@ -196,7 +206,15 @@
 
 <!-- The whole window: the header scrolls away with the photos, and the
      grid's tools wait in the floating chrome. -->
-<PageChrome bleed actions={sizeInBar ? viewOptions : undefined} />
+{#if chrome !== 'none'}
+	<PageChrome bleed={chrome === 'page'} actions={sizeInBar ? viewOptions : undefined} />
+{/if}
+
+<!-- Embedded: the view options join the page's buttons. -->
+{#snippet ownTools()}
+	{@render toolbar?.()}
+	{#if sizeInBar}{@render viewOptions()}{/if}
+{/snippet}
 
 {#snippet heading()}
 	{#if cover}
@@ -214,17 +232,17 @@
 				<div class="banner-header">{@render header?.()}</div>
 			</div>
 		</section>
-		{#if toolbar}<div class="head bar">
-				<div class="toolbar">{@render toolbar()}</div>
+		{#if tools}<div class="head bar">
+				<div class="toolbar">{@render tools()}</div>
 			</div>{/if}
 	{:else}
 		{#if leading}
 			<div class="with-leading">
 				<div class="leading">{@render leading()}</div>
-				<PageHeader {title} {count} actions={toolbar} />
+				<PageHeader {title} {count} actions={tools} />
 			</div>
 		{:else}
-			<PageHeader {title} {count} actions={toolbar} />
+			<PageHeader {title} {count} actions={tools} />
 		{/if}
 		{@render header?.()}
 	{/if}

@@ -148,6 +148,7 @@
 			emptyText={m.admin_strash_empty()}
 			viewerActions={[]}
 			onnearend={more}
+			chrome="inline"
 		>
 			{#snippet toolbar()}
 				<RefreshButton onclick={load} busy={status === 'pending'} />

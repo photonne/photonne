@@ -33,6 +33,7 @@
 		status="ready"
 		emptyText={m.map_cluster_empty()}
 		sizeShortcuts={false}
+		chrome="none"
 	>
 		{#snippet toolbar()}
 			<button
