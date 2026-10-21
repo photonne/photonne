@@ -4,9 +4,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +32,7 @@ import com.photonne.app.resources.admin_libraries_not_found
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import com.photonne.app.ui.theme.DestructiveActionButton
 
 /**
  * Full-page editor used to create or edit an external library, replacing
@@ -68,6 +66,15 @@ fun AdminLibraryEditorScreen(
     // Read-only in the demo: the server refuses to create, save or delete one.
     val isDemo = com.photonne.app.ui.demo.LocalDemoMode.current
     val canSubmit = !isSubmitting && !isDemo && name.isNotBlank() && path.isNotBlank()
+    // Salir con cambios a medias pide confirmación, como el resto de formularios.
+    val hasUnsavedChanges = !isDemo && if (existing != null) {
+        name != existing.name ||
+            path != existing.path ||
+            importSubfolders != existing.importSubfolders ||
+            cron != existing.cronSchedule.orEmpty()
+    } else {
+        !isEdit && listOf(name, path, cron).any { it.isNotBlank() }
+    }
 
     AdminEditorScaffold(
         title = title,
@@ -79,6 +86,7 @@ fun AdminLibraryEditorScreen(
         onRetry = viewModel::refresh,
         resultMessage = state.statusMessage,
         onResultShown = viewModel::consumeStatus,
+        hasUnsavedChanges = hasUnsavedChanges,
     ) {
         if (isDemo) AdminDemoNotice(stringResource(Res.string.admin_libraries_demo_locked))
         OutlinedTextField(
@@ -149,19 +157,14 @@ fun AdminLibraryEditorScreen(
         )
 
         if (isEdit) {
-            OutlinedButton(
+            DestructiveActionButton(
+                label = stringResource(Res.string.admin_libraries_action_delete),
                 onClick = {
                     viewModel.clearMessages()
                     showDelete = true
                 },
-                enabled = !isSubmitting && !isDemo,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    stringResource(Res.string.admin_libraries_action_delete),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+                enabled = !isSubmitting && !isDemo
+            )
         }
     }
 

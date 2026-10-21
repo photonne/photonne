@@ -1,42 +1,29 @@
 package com.photonne.app.ui.album.smart
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_create
-import com.photonne.app.resources.admin_settings_discard_confirm
-import com.photonne.app.resources.admin_settings_discard_message
-import com.photonne.app.resources.admin_settings_discard_title
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.smart_album_description_label
 import com.photonne.app.resources.smart_album_edit_title
@@ -44,19 +31,12 @@ import com.photonne.app.resources.smart_album_editor_title
 import com.photonne.app.resources.smart_album_preserved_note
 import com.photonne.app.resources.smart_album_unknown_ref
 import com.photonne.app.resources.smart_album_name_label
-import com.photonne.app.ui.library.ConfirmActionDialog
-import com.photonne.app.ui.main.SubscreenFloatingChrome
-import com.photonne.app.ui.main.SubscreenScroll
-import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.subscreenChromeReservedTop
-import com.photonne.app.ui.navigation.PlatformBackHandler
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
-import com.photonne.app.ui.theme.contentWidth
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.main.FormPageScaffold
+import com.photonne.app.ui.theme.PrimaryActionButton
 
 /**
  * "Nuevo álbum inteligente" / "Editar álbum inteligente" — the dedicated rule
@@ -77,9 +57,6 @@ fun SmartAlbumEditorScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pickers by viewModel.pickers.collectAsStateWithLifecycle()
     val baseUrl = rememberApiBaseUrl()
-    val hazeState = remember { HazeState() }
-    val scrollState = rememberScrollState()
-    val reservedTop = subscreenChromeReservedTop()
 
     // The VM is reused across entries (single ViewModelStoreOwner in the hand-rolled
     // nav), so start each "Nuevo álbum" from a blank slate instead of the last edit,
@@ -91,29 +68,21 @@ fun SmartAlbumEditorScreen(
 
     // Salir descartaba el borrador sin avisar: con nombre o condiciones puestos
     // (o, al editar, cambios sobre lo cargado) hay trabajo que perder, así que
-    // atrás pasa por una confirmación.
+    // atrás pasa por la confirmación del andamio.
     val isDirty = viewModel.isDirty(state)
-    var confirmDiscard by remember { mutableStateOf(false) }
-    val guardedBack = { if (isDirty) confirmDiscard = true else onBack() }
-    PlatformBackHandler(enabled = isDirty) { confirmDiscard = true }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .hazeSource(hazeState)
-                .contentWidth()
-                .padding(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = reservedTop,
-                    bottom = floatingNavBarReservedHeight(),
-                ),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Spacer(Modifier.height(Spacing.xs))
-
+    // El andamio de todos los formularios: antes el editor pegaba el suyo, con
+    // "Crear/Guardar" como texto en el cromo (el único de la app; el resto de
+    // pantallas guarda con el botón principal al final).
+    FormPageScaffold(
+        title = stringResource(
+            if (editAlbum != null) Res.string.smart_album_edit_title else Res.string.smart_album_editor_title
+        ),
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        hasUnsavedChanges = isDirty,
+    ) { page ->
+        page {
             // El error vivía al final, debajo del editor de condiciones: con la
             // lista crecida quedaba fuera de pantalla justo cuando importaba.
             state.error?.let { err ->
@@ -189,57 +158,16 @@ fun SmartAlbumEditorScreen(
                 }
             }
 
-            Spacer(Modifier.height(Spacing.xl))
+            Spacer(Modifier.height(Spacing.xs))
+            // Crear resuelve reglas en el servidor y puede tardar: el spinner
+            // ocupa el sitio de la etiqueta mientras tanto. Sin cambios sobre lo
+            // cargado no hay nada que guardar.
+            PrimaryActionButton(
+                label = stringResource(if (editAlbum != null) Res.string.action_save else Res.string.action_create),
+                onClick = { viewModel.save(onSaved) },
+                enabled = state.canSave && isDirty,
+                isLoading = state.isCreating,
+            )
         }
-
-        // Cromo flotante como el resto de subpantallas (la barra acoplada de
-        // Material se comía el alto y no casaba con el andamio de la app).
-        SubscreenFloatingChrome(
-            title = stringResource(
-                if (editAlbum != null) Res.string.smart_album_edit_title else Res.string.smart_album_editor_title
-            ),
-            onBack = guardedBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
-                firstVisibleItemScrollOffset = { scrollState.value },
-                isScrollInProgress = { scrollState.isScrollInProgress },
-                scrollToTopMinIndex = 1,
-                onScrollToTop = { scrollState.animateScrollTo(0) },
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange,
-            actions = {
-                TextButton(
-                    onClick = { viewModel.save(onSaved) },
-                    enabled = state.canSave,
-                ) {
-                    // Crear resuelve reglas en el servidor y puede tardar: sin
-                    // indicador el botón parecía no haber hecho nada.
-                    if (state.isCreating) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.size(8.dp))
-                    }
-                    Text(stringResource(if (editAlbum != null) Res.string.action_save else Res.string.action_create))
-                }
-            },
-        )
-    }
-
-    if (confirmDiscard) {
-        ConfirmActionDialog(
-            title = stringResource(Res.string.admin_settings_discard_title),
-            message = stringResource(Res.string.admin_settings_discard_message),
-            confirmLabel = stringResource(Res.string.admin_settings_discard_confirm),
-            isDestructive = true,
-            isSubmitting = false,
-            onDismiss = { confirmDiscard = false },
-            onConfirm = {
-                confirmDiscard = false
-                onBack()
-            },
-        )
     }
 }

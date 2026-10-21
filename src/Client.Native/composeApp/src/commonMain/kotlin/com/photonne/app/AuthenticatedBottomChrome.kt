@@ -24,6 +24,7 @@ import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.MainTab
 import kotlinx.coroutines.launch
+import com.photonne.app.resources.device_backup_action_sync
 
 /**
  * Barra inferior del Scaffold de [AuthenticatedApp], o null para la nav flotante
@@ -570,6 +571,23 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                         icon = com.photonne.app.ui.theme.PhotonneIcons.Delete,
                         destructive = true,
                         onClick = { appState.showDuplicatesConfirm = true }
+                    )
+                }
+            }
+            // Pendientes de copia: subir lo marcado es la acción de la pantalla,
+            // con la misma cápsula que Duplicados (antes era el último FAB).
+            appState.moreSubscreen == MoreSubscreen.DeviceBackupPending &&
+                deviceBackupState.syncableSelectedCount > 0 -> {
+                {
+                    com.photonne.app.ui.main.ConfirmCapsule(
+                        label = stringResource(
+                            Res.string.device_backup_action_sync,
+                            deviceBackupState.syncableSelectedCount
+                        ),
+                        enabled = !deviceBackupState.isSyncing,
+                        isWorking = deviceBackupState.isSyncing,
+                        icon = com.photonne.app.ui.theme.PhotonneIcons.Upload,
+                        onClick = deviceBackupViewModel::syncSelected
                     )
                 }
             }

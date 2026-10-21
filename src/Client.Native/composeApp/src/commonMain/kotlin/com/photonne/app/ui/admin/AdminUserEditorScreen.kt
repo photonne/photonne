@@ -5,8 +5,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +41,8 @@ import com.photonne.app.resources.admin_user_not_found
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import com.photonne.app.ui.theme.SecondaryActionButton
+import com.photonne.app.ui.theme.DestructiveActionButton
 
 internal const val ADMIN_USER_MIN_PASSWORD_LENGTH = 8
 
@@ -124,6 +124,22 @@ fun AdminUserEditorScreen(
         email.isNotBlank() &&
         (isEdit || password.length >= ADMIN_USER_MIN_PASSWORD_LENGTH)
 
+    // Salir con cambios a medias pide confirmación, como el resto de formularios.
+    // En una cuenta nueva solo cuenta lo escrito: rol, estado y cuota llegan
+    // rellenos con los valores por defecto del servidor.
+    val hasUnsavedChanges = !demoLocksAccount && if (existing != null) {
+        username != existing.username ||
+            email != existing.email ||
+            firstName != existing.firstName.orEmpty() ||
+            lastName != existing.lastName.orEmpty() ||
+            password.isNotEmpty() ||
+            isAdmin != existing.role.equals("Admin", ignoreCase = true) ||
+            isActive != existing.isActive ||
+            quotaMb != initialQuotaMb
+    } else {
+        !isEdit && listOf(username, email, firstName, lastName, password).any { it.isNotBlank() }
+    }
+
     AdminEditorScaffold(
         title = title,
         onBack = onBack,
@@ -134,6 +150,7 @@ fun AdminUserEditorScreen(
         onRetry = viewModel::refresh,
         resultMessage = state.statusMessage,
         onResultShown = viewModel::consumeStatus,
+        hasUnsavedChanges = hasUnsavedChanges,
     ) {
         if (isDemo) AdminDemoNotice(stringResource(Res.string.admin_users_demo_locked))
         OutlinedTextField(
@@ -275,41 +292,32 @@ fun AdminUserEditorScreen(
         )
 
         if (isEdit) {
-            OutlinedButton(
+            SecondaryActionButton(
+                label = stringResource(Res.string.admin_user_action_reset_password),
                 onClick = {
                     viewModel.clearMessages()
                     showResetPassword = true
                 },
-                enabled = !isSubmitting && !demoLocksAccount,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(Res.string.admin_user_action_reset_password))
-            }
+                enabled = !isSubmitting && !demoLocksAccount
+            )
             if (canPromoteToPrimary) {
-                OutlinedButton(
+                SecondaryActionButton(
+                    label = stringResource(Res.string.admin_user_action_promote),
                     onClick = {
-                    viewModel.clearMessages()
-                    showPromoteToPrimary = true
-                },
-                    enabled = !isSubmitting,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(Res.string.admin_user_action_promote))
-                }
+                        viewModel.clearMessages()
+                        showPromoteToPrimary = true
+                    },
+                    enabled = !isSubmitting
+                )
             }
-            OutlinedButton(
+            DestructiveActionButton(
+                label = stringResource(Res.string.action_delete),
                 onClick = {
                     viewModel.clearMessages()
                     showDelete = true
                 },
-                enabled = !isSubmitting && !demoLocksAccount && existing?.isPrimaryAdmin != true,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    stringResource(Res.string.action_delete),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+                enabled = !isSubmitting && !demoLocksAccount && existing?.isPrimaryAdmin != true
+            )
         }
     }
 

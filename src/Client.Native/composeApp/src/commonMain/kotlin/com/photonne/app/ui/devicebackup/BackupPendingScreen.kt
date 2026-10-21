@@ -31,7 +31,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -74,7 +73,6 @@ import com.photonne.app.resources.backup_summary_counts
 import com.photonne.app.resources.backup_summary_title
 import com.photonne.app.resources.backup_uploading_count
 import com.photonne.app.resources.device_backup_action_pick_folder
-import com.photonne.app.resources.device_backup_action_sync
 import com.photonne.app.resources.device_backup_empty_folder
 import com.photonne.app.resources.device_backup_intro
 import com.photonne.app.resources.device_backup_not_supported
@@ -195,26 +193,6 @@ fun BackupPendingScreen(
                     onIgnoreAllFailed = viewModel::ignoreFailed
                 )
             }
-        }
-
-        if (state.syncableSelectedCount > 0 && !state.isSyncing) {
-            ExtendedFloatingActionButton(
-                onClick = viewModel::syncSelected,
-                icon = { Icon(Icons.Filled.PlayArrow, contentDescription = null) },
-                text = {
-                    Text(
-                        stringResource(
-                            Res.string.device_backup_action_sync,
-                            state.syncableSelectedCount
-                        )
-                    )
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    // Por encima de la nav flotante, que dibuja a sangre.
-                    .padding(bottom = floatingNavBarReservedHeight())
-                    .padding(Spacing.lg)
-            )
         }
     }
 

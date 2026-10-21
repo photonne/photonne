@@ -24,7 +24,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.photonne.app.ui.main.FormPageScaffold
 import com.photonne.app.ui.library.ConfirmActionDialog
-import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_delete_button
 import com.photonne.app.resources.account_delete_confirm
@@ -42,6 +41,7 @@ import com.photonne.app.resources.account_security_new
 import com.photonne.app.resources.account_security_submit
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.DestructiveActionButton
 
 @Composable
 fun AccountSecurityScreen(
@@ -59,7 +59,16 @@ fun AccountSecurityScreen(
 
     // Un único toggle para los tres campos: si enseñas una, quieres verlas.
     var passwordsVisible by remember { androidx.compose.runtime.mutableStateOf(false) }
-    FormPageScaffold(title = title, onBack = onBack, onChromeVisibleChange = onChromeVisibleChange) { page ->
+    // Salir con contraseñas escritas a medias pide confirmación, como Perfil.
+    val hasUnsavedChanges = !state.isSubmitting && listOf(
+        state.currentPassword, state.newPassword, state.confirmPassword
+    ).any { it.isNotEmpty() }
+    FormPageScaffold(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
+        hasUnsavedChanges = hasUnsavedChanges
+    ) { page ->
         page {
             OutlinedTextField(
                 value = state.currentPassword,
@@ -143,16 +152,11 @@ fun AccountSecurityScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            androidx.compose.material3.OutlinedButton(
+            DestructiveActionButton(
+                label = stringResource(Res.string.account_delete_button),
                 onClick = viewModel::openDeleteAccount,
-                enabled = !state.isSubmitting,
-                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                ),
-                modifier = Modifier.fillMaxWidth().actionButtonHeight()
-            ) {
-                Text(stringResource(Res.string.account_delete_button))
-            }
+                enabled = !state.isSubmitting
+            )
         }
     }
 
