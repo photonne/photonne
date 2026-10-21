@@ -64,6 +64,8 @@ import com.photonne.app.resources.admin_libraries_scan_starting
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -350,13 +352,11 @@ private fun LibraryPermissionsDialog(
                     }
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.action_close))
-                }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_close),
+                    onClick = onDismiss
+                )
             }
         }
     }

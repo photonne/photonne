@@ -4,12 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -17,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,6 +46,9 @@ import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 /**
  * Two-option chooser shown when the user taps "Share" on the selection
@@ -99,13 +98,11 @@ fun ShareAssetsDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss
+                )
             }
         }
     }
@@ -169,24 +166,20 @@ fun ShareLinkResultDialog(
             SelectionContainer {
                 Text(url, style = MaterialTheme.typography.bodyMedium)
             }
-            Spacer(Modifier.height(Spacing.xs))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = {
-                    clipboard.setText(AnnotatedString(url))
-                    snackbar?.show(copiedMessage)
-                    onDismiss()
-                }) {
-                    Icon(PhotonneIcons.Copy, contentDescription = null)
-                    Spacer(Modifier.width(Spacing.xs))
-                    Text(stringResource(Res.string.share_link_copy))
-                }
-                Spacer(Modifier.width(Spacing.sm))
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.action_close))
-                }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_close),
+                    onClick = onDismiss
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.share_link_copy),
+                    onClick = {
+                        clipboard.setText(AnnotatedString(url))
+                        snackbar?.show(copiedMessage)
+                        onDismiss()
+                    },
+                    icon = PhotonneIcons.Copy
+                )
             }
         }
     }

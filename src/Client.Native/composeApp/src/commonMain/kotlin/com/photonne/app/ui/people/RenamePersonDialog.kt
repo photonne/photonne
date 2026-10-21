@@ -2,9 +2,7 @@ package com.photonne.app.ui.people
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,9 +27,12 @@ import com.photonne.app.resources.action_save
 import com.photonne.app.resources.people_rename_field
 import com.photonne.app.resources.people_rename_title
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.resources.action_cancel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,12 +81,18 @@ fun RenamePersonDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Spacer(Modifier.height(Spacing.xs))
-            PrimaryActionButton(
-                label = stringResource(Res.string.action_save),
-                onClick = { onConfirm(name.trim().takeIf { it.isNotEmpty() }) },
-                isLoading = isSubmitting
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_save),
+                    onClick = { onConfirm(name.trim().takeIf { it.isNotEmpty() }) },
+                    isLoading = isSubmitting
+                )
+            }
         }
     }
 }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,7 +16,6 @@ import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +68,10 @@ import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.resources.action_close
 
 /** How often the sheet re-reads the asset while an analysis is queued or
  *  running. A single photo takes the workers seconds, not minutes. */
@@ -193,14 +195,17 @@ fun AssetAiSheet(
                 )
             }
 
-            if (rows != null) {
-                Spacer(Modifier.height(Spacing.xs))
-                FilledTonalButton(
-                    onClick = { launch(rows.map { it.analysis }) },
-                    enabled = !anyBusy,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(Res.string.asset_ai_run_all))
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_close),
+                    onClick = onDismiss
+                )
+                if (rows != null) {
+                    CompactPrimaryButton(
+                        label = stringResource(Res.string.asset_ai_run_all),
+                        onClick = { launch(rows.map { it.analysis }) },
+                        enabled = !anyBusy
+                    )
                 }
             }
         }

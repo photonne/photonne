@@ -3,7 +3,6 @@ package com.photonne.app.ui.asset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -62,11 +61,13 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
-import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,11 +96,16 @@ fun EditDescriptionDialog(
                 minLines = 3,
                 maxLines = 6
             )
-            Spacer(Modifier.height(Spacing.xs))
-            PrimaryActionButton(
-                label = stringResource(Res.string.action_save),
-                onClick = { onConfirm(value.trim().takeIf { it.isNotEmpty() }) }
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_save),
+                    onClick = { onConfirm(value.trim().takeIf { it.isNotEmpty() }) }
+                )
+            }
         }
     }
 }
@@ -266,16 +272,22 @@ fun EditCaptureDateDialog(
                 )
             }
 
-            PrimaryActionButton(
-                label = stringResource(Res.string.action_save),
-                onClick = {
-                    val combined = LocalDateTime(
-                        selectedDate.year, selectedDate.monthNumber, selectedDate.dayOfMonth,
-                        timeSeed.first, timeSeed.second, 0
-                    ).toInstant(TimeZone.UTC)
-                    onConfirm(combined, writeToFile && !isReadOnly)
-                }
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_save),
+                    onClick = {
+                        val combined = LocalDateTime(
+                            selectedDate.year, selectedDate.monthNumber, selectedDate.dayOfMonth,
+                            timeSeed.first, timeSeed.second, 0
+                        ).toInstant(TimeZone.UTC)
+                        onConfirm(combined, writeToFile && !isReadOnly)
+                    }
+                )
+            }
         }
     }
 

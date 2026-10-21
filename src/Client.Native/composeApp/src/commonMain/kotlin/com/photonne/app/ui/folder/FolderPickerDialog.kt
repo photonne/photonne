@@ -57,11 +57,14 @@ import com.photonne.app.resources.folder_picker_empty
 import com.photonne.app.resources.folder_picker_root
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PhotonneIcons
-import com.photonne.app.ui.theme.PrimaryActionButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.resources.action_cancel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,8 +225,8 @@ fun FolderPickerDialog(
             )
             // El árbol es lo ÚNICO elástico de la hoja: se queda con el espacio que
             // sobre (y scrollea dentro) en vez de reservarse una altura fija. Con una
-            // altura fija, todo lo que va detrás —organizar por año, los chips y la
-            // fila Cancelar/Mover— se desbordaba por debajo del borde de la hoja, y
+            // altura fija, todo lo que va detrás —organizar por año, los chips y el
+            // pie Cancelar/Mover— se desbordaba por debajo del borde de la hoja, y
             // como aquí no hay scroll exterior el botón quedaba inalcanzable.
             Column(
                 modifier = Modifier
@@ -376,19 +379,26 @@ fun FolderPickerDialog(
                     }
                 }
             }
-            PrimaryActionButton(
-                label = confirmLabel ?: stringResource(Res.string.action_move),
-                onClick = {
-                    onConfirm(
-                        if (rootSelected) null else selectedId,
-                        showOrganizeByDate && organizeByYear
-                    )
-                },
-                enabled = canSubmit,
-                // Crear la carpeta puede ocupar al mismo ViewModel que mueve
-                // (mover carpetas en bloque): eso no es "moviendo".
-                isLoading = isSubmitting && !creatingFolder
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
+                CompactPrimaryButton(
+                    label = confirmLabel ?: stringResource(Res.string.action_move),
+                    onClick = {
+                        onConfirm(
+                            if (rootSelected) null else selectedId,
+                            showOrganizeByDate && organizeByYear
+                        )
+                    },
+                    enabled = canSubmit,
+                    // Crear la carpeta puede ocupar al mismo ViewModel que mueve
+                    // (mover carpetas en bloque): eso no es "moviendo".
+                    isLoading = isSubmitting && !creatingFolder
+                )
+            }
         }
     }
 }

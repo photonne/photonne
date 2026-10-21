@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AssistChip
@@ -24,7 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,6 +48,9 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 /*
  * Hojas de miembros compartidas por álbumes y carpetas. Eran dos ficheros
@@ -122,19 +123,18 @@ fun ManageMembersSheet(
                     Text(err.userMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onInvite, enabled = !isMutating) {
-                    Icon(PhotonneIcons.Add, contentDescription = null)
-                    Spacer(Modifier.width(Spacing.xs))
-                    Text(stringResource(Res.string.action_invite))
-                }
-                Spacer(Modifier.width(Spacing.sm))
-                TextButton(onClick = onDismiss, enabled = !isMutating) {
-                    Text(stringResource(Res.string.action_close))
-                }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_close),
+                    onClick = onDismiss,
+                    enabled = !isMutating
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_invite),
+                    onClick = onInvite,
+                    enabled = !isMutating,
+                    icon = PhotonneIcons.Add
+                )
             }
         }
     }
@@ -272,13 +272,12 @@ fun InviteMemberSheet(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_close))
-                }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_close),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
             }
         }
     }

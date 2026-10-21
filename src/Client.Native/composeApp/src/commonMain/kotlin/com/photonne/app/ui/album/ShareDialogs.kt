@@ -96,9 +96,11 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import com.photonne.app.ui.theme.PhotonneIcons
-import com.photonne.app.ui.theme.PrimaryActionButton
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -174,19 +176,18 @@ fun ManageSharesDialog(
                     Text(err.userMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onCreate, enabled = !state.isMutating) {
-                    Icon(PhotonneIcons.Add, contentDescription = null)
-                    Spacer(Modifier.width(Spacing.xs))
-                    Text(stringResource(Res.string.share_action_new))
-                }
-                Spacer(Modifier.width(Spacing.sm))
-                TextButton(onClick = onDismiss, enabled = !state.isMutating) {
-                    Text(stringResource(Res.string.action_close))
-                }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_close),
+                    onClick = onDismiss,
+                    enabled = !state.isMutating
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.share_action_new),
+                    onClick = onCreate,
+                    enabled = !state.isMutating,
+                    icon = PhotonneIcons.Add
+                )
             }
         }
     }
@@ -387,20 +388,27 @@ fun CreateShareDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            PrimaryActionButton(
-                label = stringResource(Res.string.action_create),
-                onClick = {
-                    onConfirm(
-                        if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
-                        if (passwordEnabled) password else null,
-                        allowDownload,
-                        if (maxViewsEnabled) maxViews.toIntOrNull() else null,
-                        allowUpload
-                    )
-                },
-                enabled = canSubmit,
-                isLoading = isSubmitting
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_create),
+                    onClick = {
+                        onConfirm(
+                            if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
+                            if (passwordEnabled) password else null,
+                            allowDownload,
+                            if (maxViewsEnabled) maxViews.toIntOrNull() else null,
+                            allowUpload
+                        )
+                    },
+                    enabled = canSubmit,
+                    isLoading = isSubmitting
+                )
+            }
         }
     }
     if (showExpiryPicker) {
@@ -586,25 +594,32 @@ fun EditShareDialog(
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
-            PrimaryActionButton(
-                label = stringResource(Res.string.action_save),
-                onClick = {
-                    val passwordPayload = when (passwordAction) {
-                        EditPasswordAction.Keep -> null
-                        EditPasswordAction.Remove -> ""
-                        EditPasswordAction.Change -> newPassword
-                    }
-                    onConfirm(
-                        if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
-                        passwordPayload,
-                        allowDownload,
-                        if (maxViewsEnabled) maxViews.toIntOrNull() else null,
-                        allowUpload
-                    )
-                },
-                enabled = canSubmit,
-                isLoading = isSubmitting
-            )
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                    enabled = !isSubmitting
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_save),
+                    onClick = {
+                        val passwordPayload = when (passwordAction) {
+                            EditPasswordAction.Keep -> null
+                            EditPasswordAction.Remove -> ""
+                            EditPasswordAction.Change -> newPassword
+                        }
+                        onConfirm(
+                            if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
+                            passwordPayload,
+                            allowDownload,
+                            if (maxViewsEnabled) maxViews.toIntOrNull() else null,
+                            allowUpload
+                        )
+                    },
+                    enabled = canSubmit,
+                    isLoading = isSubmitting
+                )
+            }
         }
     }
     if (showExpiryPicker) {
