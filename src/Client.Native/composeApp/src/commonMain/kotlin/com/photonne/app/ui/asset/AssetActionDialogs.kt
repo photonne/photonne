@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
@@ -12,7 +11,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -68,6 +66,11 @@ import com.photonne.app.ui.theme.SheetHeader
 import com.photonne.app.ui.theme.CompactPrimaryButton
 import com.photonne.app.ui.theme.CompactSecondaryButton
 import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.resources.action_accept
+import com.photonne.app.ui.theme.PickerField
+import com.photonne.app.ui.theme.PhotonneIcons
+import com.photonne.app.resources.asset_date_field_date
+import com.photonne.app.resources.asset_date_field_time
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -174,15 +177,20 @@ fun EditCaptureDateDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                OutlinedButton(
+                PickerField(
+                    label = stringResource(Res.string.asset_date_field_date),
+                    value = dateLabel,
+                    icon = PhotonneIcons.Calendar,
                     onClick = { showDatePicker = true },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(dateLabel, style = MaterialTheme.typography.bodyLarge)
-                }
-                OutlinedButton(onClick = { showTimePicker = true }) {
-                    Text(timeLabel, style = MaterialTheme.typography.bodyLarge)
-                }
+                )
+                PickerField(
+                    label = stringResource(Res.string.asset_date_field_time),
+                    value = timeLabel,
+                    icon = PhotonneIcons.Time,
+                    onClick = { showTimePicker = true },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             // "What would the server recover?" — per-asset preview of the EXIF
@@ -302,20 +310,22 @@ fun EditCaptureDateDialog(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    dateState.selectedDateMillis?.let { millis ->
-                        selectedDate = Instant.fromEpochMilliseconds(millis)
-                            .toLocalDateTime(TimeZone.UTC).date
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_accept),
+                    onClick = {
+                        dateState.selectedDateMillis?.let { millis ->
+                            selectedDate = Instant.fromEpochMilliseconds(millis)
+                                .toLocalDateTime(TimeZone.UTC).date
+                        }
+                        showDatePicker = false
                     }
-                    showDatePicker = false
-                }) {
-                    Text(stringResource(Res.string.action_save))
-                }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = { showDatePicker = false }
+                )
             }
         ) {
             DatePicker(state = dateState, title = null, showModeToggle = false)
@@ -330,17 +340,19 @@ fun EditCaptureDateDialog(
             onDismissRequest = { showTimePicker = false },
             text = { TimeInput(state = dialogTimeState) },
             confirmButton = {
-                TextButton(onClick = {
-                    timeSeed = dialogTimeState.hour to dialogTimeState.minute
-                    showTimePicker = false
-                }) {
-                    Text(stringResource(Res.string.action_save))
-                }
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_accept),
+                    onClick = {
+                        timeSeed = dialogTimeState.hour to dialogTimeState.minute
+                        showTimePicker = false
+                    }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = { showTimePicker = false }
+                )
             }
         )
     }

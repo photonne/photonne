@@ -199,7 +199,7 @@
     <string name="share_option_allow_upload">Let people upload photos</string>
     <string name="share_option_allow_upload_hint">Anyone with the link can add photos to the album without an account</string>
     <string name="share_option_expiry">Expiration date</string>
-    <string name="share_option_expiry_pick">Pick a date</string>
+    <string name="share_option_expiry_date">Expires on</string>
     <string name="share_option_expiry_change">Change</string>
     <string name="share_action_edit">Edit link</string>
     <string name="share_edit_title">Edit share link</string>
@@ -259,6 +259,8 @@
     <string name="asset_description_dialog_title">Edit description</string>
     <string name="asset_description_field">Description</string>
     <string name="asset_date_dialog_title">Edit capture date</string>
+    <string name="asset_date_field_date">Date</string>
+    <string name="asset_date_field_time">Time</string>
     <string name="asset_date_write_to_file">Write the date into the original file (EXIF)</string>
     <string name="asset_date_write_to_file_caption">Writes EXIF into images and sets the file\'s modified date on every format, videos included.</string>
     <string name="asset_date_suggestion_button">Recover automatically</string>

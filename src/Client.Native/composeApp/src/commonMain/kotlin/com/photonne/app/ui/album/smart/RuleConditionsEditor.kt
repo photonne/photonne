@@ -121,6 +121,7 @@ import com.photonne.app.ui.theme.SheetHeader
 import com.photonne.app.ui.theme.CompactPrimaryButton
 import com.photonne.app.ui.theme.CompactSecondaryButton
 import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.ui.theme.PickerField
 
 internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates, MediaType }
 
@@ -822,12 +823,20 @@ private fun DateRangeSheet(
         confirmEnabled = from != null || to != null,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-            androidx.compose.material3.OutlinedButton(onClick = { picking = true }, modifier = Modifier.weight(1f)) {
-                Text(from ?: stringResource(Res.string.smart_album_date_from))
-            }
-            androidx.compose.material3.OutlinedButton(onClick = { picking = false }, modifier = Modifier.weight(1f)) {
-                Text(to ?: stringResource(Res.string.smart_album_date_to))
-            }
+            PickerField(
+                label = stringResource(Res.string.smart_album_date_from),
+                value = from,
+                icon = PhotonneIcons.Calendar,
+                onClick = { picking = true },
+                modifier = Modifier.weight(1f)
+            )
+            PickerField(
+                label = stringResource(Res.string.smart_album_date_to),
+                value = to,
+                icon = PhotonneIcons.Calendar,
+                onClick = { picking = false },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 
@@ -890,17 +899,23 @@ private fun DatePickerSheet(initialIso: String?, onPick: (String?) -> Unit) {
     androidx.compose.material3.DatePickerDialog(
         onDismissRequest = { onPick(initialIso) },
         confirmButton = {
-            TextButton(onClick = {
-                val millis = pickerState.selectedDateMillis
-                val iso = millis?.let {
-                    kotlin.time.Instant.fromEpochMilliseconds(it)
-                        .toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date.toString()
+            CompactPrimaryButton(
+                label = stringResource(Res.string.action_accept),
+                onClick = {
+                    val millis = pickerState.selectedDateMillis
+                    val iso = millis?.let {
+                        kotlin.time.Instant.fromEpochMilliseconds(it)
+                            .toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date.toString()
+                    }
+                    onPick(iso)
                 }
-                onPick(iso)
-            }) { Text(stringResource(Res.string.action_accept)) }
+            )
         },
         dismissButton = {
-            TextButton(onClick = { onPick(initialIso) }) { Text(stringResource(Res.string.action_cancel)) }
+            CompactSecondaryButton(
+                label = stringResource(Res.string.action_cancel),
+                onClick = { onPick(initialIso) }
+            )
         },
     ) {
         androidx.compose.material3.DatePicker(state = pickerState)

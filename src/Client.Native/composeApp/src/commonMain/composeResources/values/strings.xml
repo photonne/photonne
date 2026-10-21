@@ -203,7 +203,7 @@
     <string name="share_option_allow_upload">Permitir que suban fotos</string>
     <string name="share_option_allow_upload_hint">Cualquiera con el enlace podrá añadir fotos al álbum sin cuenta</string>
     <string name="share_option_expiry">Fecha de expiración</string>
-    <string name="share_option_expiry_pick">Elegir fecha</string>
+    <string name="share_option_expiry_date">Caduca el</string>
     <string name="share_option_expiry_change">Cambiar</string>
     <string name="share_action_edit">Editar enlace</string>
     <string name="share_edit_title">Editar enlace</string>
@@ -264,6 +264,8 @@
     <string name="asset_description_dialog_title">Editar descripción</string>
     <string name="asset_description_field">Descripción</string>
     <string name="asset_date_dialog_title">Editar fecha de captura</string>
+    <string name="asset_date_field_date">Fecha</string>
+    <string name="asset_date_field_time">Hora</string>
     <string name="asset_date_write_to_file">Escribir la fecha en el archivo original (EXIF)</string>
     <string name="asset_date_write_to_file_caption">Escribe el EXIF en imágenes y ajusta la fecha de modificación del archivo en todos los formatos, vídeos incluidos.</string>
     <string name="asset_date_suggestion_button">Recuperar automáticamente</string>
