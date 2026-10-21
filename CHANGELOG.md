@@ -1,5 +1,42 @@
 # Changelog
 
+## [2.8.0](https://github.com/photonne/photonne/compare/server-v2.7.0...server-v2.8.0) (2026-10-21)
+
+
+### Novedades
+
+* **spa:** Cuadrícula con proporción 1:1 u original, en las opciones de visualización y en Ajustes ([76f10ac](https://github.com/photonne/photonne/commit/76f10acf45b62d156ef13037d4264b1e578fe94a))
+* **spa:** El mapa ocupa toda la ventana, con el título y el panel flotando ([6ec26a5](https://github.com/photonne/photonne/commit/6ec26a53c1384f0ae4f96d6c8d993dd6af91eae9))
+* **spa:** El visor deja ver la rejilla borrosa detrás, sobre un gris translúcido ([348cb06](https://github.com/photonne/photonne/commit/348cb06427b266063a647b52f83a843dcf876328))
+* **spa:** Fondo del visor más claro, para que destaquen el panel y las cápsulas ([3f7cfbe](https://github.com/photonne/photonne/commit/3f7cfbe3409f539a5fa85163815e73f6c0391939))
+* **spa:** Fotos y colecciones a pantalla completa, con menús de filtros y de vista ([09b5e85](https://github.com/photonne/photonne/commit/09b5e8571d1a34b15700681c475606b0958da7ad))
+* **spa:** Las subcarpetas y las fotos de una carpeta comparten un solo scroll ([229d2a3](https://github.com/photonne/photonne/commit/229d2a3b8b2168c3d2fa6318054b4a452e5f7573))
+* **spa:** Navegación de tres pestañas en móvil y selección en cápsulas ([bb9f66c](https://github.com/photonne/photonne/commit/bb9f66c10fbb14e6be2b1c230c78ff6a131650b2))
+* **spa:** Navegador con la foto entera y el recuadro de lo que se ve al hacer zoom en el visor ([6184256](https://github.com/photonne/photonne/commit/6184256a1e03ce7a0b5170f2edbb513fc67b0172))
+* **spa:** Páginas a pantalla completa y botones de página en el cromo ([f9f3af4](https://github.com/photonne/photonne/commit/f9f3af4d2fe2cda62681762b795cd36949a62663))
+* **spa:** Paleta de comandos, apertura del visor y tarjetas redondeadas ([4fb6a88](https://github.com/photonne/photonne/commit/4fb6a88284ae0380587686122ff86ae1a60255c6))
+* **spa:** Shell flotante de cristal en escritorio ([c4f5c1c](https://github.com/photonne/photonne/commit/c4f5c1cfa2388b5a8f4589159c497156b78c18c2))
+* **spa:** Timeline con píldoras flotantes y scrubber de cristal ([2aa2721](https://github.com/photonne/photonne/commit/2aa2721ca48b93d1f4b107a3f15e364396e249e5))
+* **spa:** Tokens y controles del rediseño de cristal ([6435a41](https://github.com/photonne/photonne/commit/6435a41dd3718ccfc1422e78ca91d1cf28e42888))
+* **spa:** Visor con cápsulas de cristal flotantes ([07f45ef](https://github.com/photonne/photonne/commit/07f45ef0c38bdbd9a5046ab4fb0cffee4c03f0a1))
+
+
+### Correcciones
+
+* **spa:** El árbol de carpetas se separa del menú lateral flotante ([36ca67d](https://github.com/photonne/photonne/commit/36ca67d33bced91ba4499854adae3c2029444ffd))
+* **spa:** El cristal no descoloca los menús que se abren desde una cápsula ([f9ed66c](https://github.com/photonne/photonne/commit/f9ed66c9b1c098f32ca80845241c2fa254186fed))
+* **spa:** El mapa llega bajo el menú lateral y el visor abierto desde él se puede cerrar ([a33c360](https://github.com/photonne/photonne/commit/a33c360b3bcc1254d09b4f64fea85412638df855))
+* **spa:** El mapa mantiene el lugar exacto de la URL al cambiar de tamaño ([6f7eb65](https://github.com/photonne/photonne/commit/6f7eb65380af392d63b849364655d385848bab7d))
+* **spa:** En el móvil las fotos ocupan la pantalla al bajar y el cromo vuelve al parar ([aa8b47d](https://github.com/photonne/photonne/commit/aa8b47d3f21ea35d4f6e2e162548ba8cca69b9e9))
+* **spa:** Isla de navegación a su medida, foto bajo el panel de información y fondo del visor más claro ([20fa3be](https://github.com/photonne/photonne/commit/20fa3beb121ef6071ca4d2d2065065cf29dafaac))
+* **spa:** La papelera ya no falla cuando un mes vuelve tras otro ([4a48547](https://github.com/photonne/photonne/commit/4a485479409f4e4c3ba0d9f7b993dead745d6d0a))
+* **spa:** Las acciones de cada página flotan en el cromo y no quedan tapadas por la rejilla ([7515acf](https://github.com/photonne/photonne/commit/7515acf5b3ff6dc94bf8135e7db89ce6027568e0))
+* **spa:** Las cabeceras no se salen de la pantalla en el móvil ([91afadc](https://github.com/photonne/photonne/commit/91afadc953061b0c3a7b7c81548c1027c25581bb))
+* **spa:** Las colecciones incrustadas no toman la ventana entera ([848c57a](https://github.com/photonne/photonne/commit/848c57a9ca36ef8992c3ee0b0be228d17baec809))
+* **spa:** Más contraste en el cristal y pestañas en cápsula flotante ([57185aa](https://github.com/photonne/photonne/commit/57185aa7038657b729eda2a692fef03d9f9f8ccb))
+* **spa:** Saltar a una fecha deja su cabecera arriba con cualquier ancho ([0663f85](https://github.com/photonne/photonne/commit/0663f8524008a2c0ee6de14374604b2dbe425a4a))
+* **spa:** Sin línea entre la foto y el panel de información flotante ([5e018bb](https://github.com/photonne/photonne/commit/5e018bb2484c0f511bae4f4a56a00bfc91b1f0b5))
+
 ## [2.7.0](https://github.com/photonne/photonne/compare/server-v2.6.1...server-v2.7.0) (2026-10-20)
 
 
