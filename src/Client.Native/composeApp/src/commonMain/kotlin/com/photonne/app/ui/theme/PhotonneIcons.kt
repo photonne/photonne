@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Check
@@ -110,6 +112,10 @@ object PhotonneIcons {
     /** Pestaña «Más» de la nav flotante. */
     val MoreTab: ImageVector = Icons.Outlined.GridView
     val MoreTabActive: ImageVector = Icons.Filled.GridView
+
+    // ── Campos de selección (PickerField) ───────────────────────────────
+    val Calendar: ImageVector = Icons.Outlined.CalendarMonth
+    val Time: ImageVector = Icons.Outlined.Schedule
 
     // ── Acciones sobre fotos y colecciones ──────────────────────────────
     val Add: ImageVector = Icons.Outlined.Add

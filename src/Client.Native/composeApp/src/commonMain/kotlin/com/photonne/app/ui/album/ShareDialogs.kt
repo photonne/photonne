@@ -28,7 +28,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -72,7 +71,6 @@ import com.photonne.app.resources.share_option_allow_downloads
 import com.photonne.app.resources.share_option_allow_upload
 import com.photonne.app.resources.share_option_allow_upload_hint
 import com.photonne.app.resources.share_option_expiry
-import com.photonne.app.resources.share_option_expiry_pick
 import com.photonne.app.resources.share_option_max_views
 import com.photonne.app.resources.share_option_max_views_field
 import com.photonne.app.resources.share_option_password
@@ -101,6 +99,9 @@ import com.photonne.app.ui.theme.SheetHeader
 import com.photonne.app.ui.theme.CompactPrimaryButton
 import com.photonne.app.ui.theme.CompactSecondaryButton
 import com.photonne.app.ui.theme.SheetActions
+import com.photonne.app.resources.action_accept
+import com.photonne.app.ui.theme.PickerField
+import com.photonne.app.resources.share_option_expiry_date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -375,15 +376,14 @@ fun CreateShareDialog(
                 enabled = !isSubmitting
             )
             if (expiryEnabled) {
-                TextButton(
+                PickerField(
+                    label = stringResource(Res.string.share_option_expiry_date),
+                    value = expiryDate?.let { com.photonne.app.ui.search.formatFilterDate(it) },
+                    icon = PhotonneIcons.Calendar,
                     onClick = { showExpiryPicker = true },
-                    enabled = !isSubmitting
-                ) {
-                    Text(
-                        expiryDate?.toString()
-                            ?: stringResource(Res.string.share_option_expiry_pick)
-                    )
-                }
+                    enabled = !isSubmitting,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             if (errorMessage != null) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
@@ -580,15 +580,14 @@ fun EditShareDialog(
                 enabled = !isSubmitting
             )
             if (expiryEnabled) {
-                TextButton(
+                PickerField(
+                    label = stringResource(Res.string.share_option_expiry_date),
+                    value = expiryDate?.let { com.photonne.app.ui.search.formatFilterDate(it) },
+                    icon = PhotonneIcons.Calendar,
                     onClick = { showExpiryPicker = true },
-                    enabled = !isSubmitting
-                ) {
-                    Text(
-                        expiryDate?.toString()
-                            ?: stringResource(Res.string.share_option_expiry_pick)
-                    )
-                }
+                    enabled = !isSubmitting,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             if (errorMessage != null) {
@@ -678,20 +677,24 @@ private fun ShareExpiryDatePickerDialog(
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = {
-                val millis = state.selectedDateMillis
-                if (millis != null) {
-                    val days = (millis / 86_400_000L).toInt()
-                    onPick(LocalDate.fromEpochDays(days))
-                } else {
-                    onPick(null)
+            CompactPrimaryButton(
+                label = stringResource(Res.string.action_accept),
+                onClick = {
+                    val millis = state.selectedDateMillis
+                    if (millis != null) {
+                        val days = (millis / 86_400_000L).toInt()
+                        onPick(LocalDate.fromEpochDays(days))
+                    } else {
+                        onPick(null)
+                    }
                 }
-            }) { Text(stringResource(Res.string.action_save)) }
+            )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.action_cancel))
-            }
+            CompactSecondaryButton(
+                label = stringResource(Res.string.action_cancel),
+                onClick = onDismiss
+            )
         }
     ) {
         DatePicker(state = state)

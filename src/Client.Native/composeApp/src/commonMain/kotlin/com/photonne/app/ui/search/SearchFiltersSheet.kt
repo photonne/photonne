@@ -21,7 +21,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,6 +63,11 @@ import androidx.compose.ui.text.input.ImeAction
 import com.photonne.app.ui.theme.PhotonneIcons
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.PickerField
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -139,28 +143,27 @@ fun SearchFiltersSheet(
                 stringResource(Res.string.search_date_range),
                 style = MaterialTheme.typography.titleMedium
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                OutlinedButton(
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PickerField(
+                    label = stringResource(Res.string.search_date_from),
+                    value = state.from?.let { formatFilterDate(it) },
+                    icon = PhotonneIcons.Calendar,
                     onClick = { datePickerFor = DateField.From },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        state.from?.let { formatFilterDate(it) }
-                            ?: stringResource(Res.string.search_date_from)
-                    )
-                }
-                OutlinedButton(
+                )
+                PickerField(
+                    label = stringResource(Res.string.search_date_to),
+                    value = state.to?.let { formatFilterDate(it) },
+                    icon = PhotonneIcons.Calendar,
                     onClick = { datePickerFor = DateField.To },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        state.to?.let { formatFilterDate(it) }
-                            ?: stringResource(Res.string.search_date_to)
-                    )
-                }
+                )
                 if (state.from != null || state.to != null) {
-                    TextButton(onClick = { onDateRangeChange(null, null) }) {
-                        Text(stringResource(Res.string.action_clear))
+                    IconButton(onClick = { onDateRangeChange(null, null) }) {
+                        Icon(PhotonneIcons.Close, contentDescription = stringResource(Res.string.action_clear))
                     }
                 }
             }
@@ -318,29 +321,37 @@ private fun DateFieldPicker(
     DatePickerDialog(
         onDismissRequest = { onPick(null) },
         confirmButton = {
-            TextButton(onClick = {
-                val millis = state.selectedDateMillis
-                if (millis != null) {
-                    val date = Instant.fromEpochMilliseconds(millis)
-                        .toLocalDateTime(TimeZone.UTC).date
-                    onPick(date)
-                } else {
-                    onPick(null)
+            CompactPrimaryButton(
+                label = stringResource(Res.string.action_accept),
+                onClick = {
+                    val millis = state.selectedDateMillis
+                    if (millis != null) {
+                        val date = Instant.fromEpochMilliseconds(millis)
+                            .toLocalDateTime(TimeZone.UTC).date
+                        onPick(date)
+                    } else {
+                        onPick(null)
+                    }
                 }
-            }) { Text(stringResource(Res.string.action_accept)) }
+            )
         },
         dismissButton = {
-            TextButton(onClick = { onPick(null) }) {
-                Text(stringResource(Res.string.action_cancel))
-            }
+            CompactSecondaryButton(
+                label = stringResource(Res.string.action_cancel),
+                onClick = { onPick(null) }
+            )
         }
     ) {
         DatePicker(state = state)
     }
 }
 
-/** Fecha corta legible ("12 mar 2024" según la plataforma), no ISO crudo. */
+/**
+ * Fecha corta legible ("12 mar 2024" según la plataforma), no ISO crudo.
+ * `formatProfileDate` pinta en la zona del dispositivo, así que el día se
+ * ancla ahí: con UTC, al oeste de Greenwich salía el día anterior.
+ */
 internal fun formatFilterDate(date: LocalDate): String =
     com.photonne.app.ui.settings.formatProfileDate(
-        date.atStartOfDayIn(TimeZone.UTC)
+        date.atStartOfDayIn(TimeZone.currentSystemDefault())
     )

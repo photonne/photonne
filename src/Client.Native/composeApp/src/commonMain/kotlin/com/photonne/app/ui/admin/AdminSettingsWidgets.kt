@@ -89,6 +89,9 @@ import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.Spacing
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.resources.action_accept
 
 /**
  * Vertically scrolling form shell shared by every Ajustes subpage. Draws its
@@ -572,17 +575,19 @@ fun SettingTimeField(
             onDismissRequest = { open = false },
             text = { TimeInput(state = picker) },
             confirmButton = {
-                TextButton(onClick = {
-                    onChange(formatTime(picker.hour, picker.minute))
-                    open = false
-                }) {
-                    Text(stringResource(Res.string.action_save))
-                }
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.action_accept),
+                    onClick = {
+                        onChange(formatTime(picker.hour, picker.minute))
+                        open = false
+                    }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { open = false }) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = { open = false }
+                )
             }
         )
     }
