@@ -18,6 +18,7 @@
 	import PaneResizer from '#lib/components/PaneResizer.svelte';
 	import { savedWidth } from '#lib/components/pane-width.js';
 	import { toasts } from '#lib/components/toasts.svelte.js';
+	import { chrome } from '#lib/navigation/chrome.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -66,7 +67,13 @@
 
 <svelte:window {onkeydown} />
 
-<div class="folders" class:narrow={narrow.current} style:--tree-width="{treeWidth}px">
+<div
+	class="folders"
+	class:narrow={narrow.current}
+	class:bleed={chrome.bleed}
+	class:immersive={chrome.immersive}
+	style:--tree-width="{treeWidth}px"
+>
 	{#if narrow.current && treeOpen}
 		<button
 			type="button"
@@ -171,12 +178,15 @@
 		height: 100%;
 	}
 
+	/* A folder takes the whole window (its photos pass under the chrome):
+	   the tree keeps clear of the chrome inside its own scroll. */
 	.pane {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
 		min-height: 0;
-		padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
+		padding: calc(var(--bleed-top, 0px) + var(--space-3)) var(--space-2)
+			calc(var(--bleed-bottom, 0px) + var(--space-3)) var(--space-3);
 		overflow-y: auto;
 	}
 
@@ -267,5 +277,35 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
+	}
+
+	/* A phone with a folder open: the tree's button floats under the chrome
+	   (and goes with it while scrolling down), the photos pass beneath. */
+	.narrow.bleed {
+		grid-template-rows: minmax(0, 1fr);
+	}
+
+	.narrow.bleed .tree-bar {
+		position: absolute;
+		top: var(--bleed-top);
+		left: 0;
+		z-index: 5;
+		transition:
+			translate var(--duration-emphasis) var(--ease-standard),
+			opacity var(--duration-emphasis) var(--ease-standard);
+	}
+
+	.narrow.bleed.immersive .tree-bar {
+		translate: 0 calc(-1 * var(--bleed-top) - 100%);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.narrow.bleed .tree-bar .btn {
+		box-shadow: var(--shadow-bar);
+	}
+
+	.narrow.bleed .main {
+		--bleed-top: calc(var(--chrome-top) + var(--control-h-sm) + var(--space-2));
 	}
 </style>
