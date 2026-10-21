@@ -517,6 +517,7 @@
 <div
 	class="viewer dark-surface"
 	class:slideshow
+	class:video={isVideo}
 	class:idle={slideshow && controlsIdle}
 	role="dialog"
 	aria-modal="true"
@@ -777,15 +778,33 @@
 {/snippet}
 
 <style>
-	/* The viewer is always dark, whatever the app theme (.dark-surface): the photo is the light. */
+	/* The viewer is always dark, whatever the app theme (.dark-surface): the
+	   photo is the light. A deep, see-through grey over the blurred grid, so
+	   the floating panel and buttons stand apart from it; a slideshow and a
+	   video, black, as on a screen. */
 	.viewer {
 		position: fixed;
 		inset: 0;
 		z-index: 50;
 		display: flex;
-		background: #000;
+		background: rgb(22 22 26 / 0.86);
+		-webkit-backdrop-filter: blur(28px) saturate(1.2);
+		backdrop-filter: blur(28px) saturate(1.2);
 		color: #fff;
 		outline: none;
+	}
+
+	.viewer.slideshow,
+	.viewer.video {
+		background: #000;
+	}
+
+	@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+		.viewer {
+			background: rgb(22 22 26);
+			-webkit-backdrop-filter: none;
+			backdrop-filter: none;
+		}
 	}
 
 	.viewer.idle {
