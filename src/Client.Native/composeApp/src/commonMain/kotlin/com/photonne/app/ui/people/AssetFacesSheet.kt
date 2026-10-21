@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,6 +57,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.SheetHeader
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.focusRequester
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -311,6 +317,12 @@ private fun FaceActions(
     }
 }
 
+/**
+ * Asignar una cara: el campo busca personas y, si no hay nadie con ese
+ * nombre, es el de la persona nueva. Hoja como el resto de formularios
+ * (antes un AlertDialog sobre la hoja de caras, con TextButton por fila).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AssignPersonDialog(
     people: List<com.photonne.app.data.models.Person>,
@@ -326,102 +338,112 @@ private fun AssignPersonDialog(
     // El campo sirve para las dos cosas: filtra la lista (en el servidor) y,
     // si no hay nadie con ese nombre, es el nombre de la persona nueva.
     val newName = query
-    AlertDialog(
+    val submit: () -> Unit = {
+        when {
+            exactMatch != null -> onPickExisting(exactMatch.id)
+            newName.trim().isNotEmpty() -> onCreateNew(newName)
+        }
+    }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.people_face_assign)) },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = onQueryChange,
-                    label = { Text(stringResource(Res.string.people_face_assign_new)) },
-                    trailingIcon = if (isSearching) {
-                        {
-                            CircularProgressIndicator(
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    } else null,
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words,
-                        imeAction = ImeAction.Done
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
+        ) {
+            SheetHeader(stringResource(Res.string.people_face_assign))
+            OutlinedTextField(
+                value = newName,
+                onValueChange = onQueryChange,
+                label = { Text(stringResource(Res.string.people_face_assign_new)) },
+                trailingIcon = if (isSearching) {
+                    {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(IconSize.chip)
+                        )
+                    }
+                } else null,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focus)
+            )
+            if (people.isEmpty()) {
+                Text(
+                    stringResource(Res.string.people_face_unknown),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(Spacing.sm))
-                if (people.isEmpty()) {
-                    Text(
-                        stringResource(Res.string.people_face_unknown),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)
-                    ) {
-                        items(people, key = { it.id }) { person ->
-                            val displayName = person.name?.takeIf { it.isNotBlank() }
-                                ?: stringResource(Res.string.people_unnamed)
-                            Row(
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)
+                ) {
+                    items(people, key = { it.id }) { person ->
+                        val displayName = person.name?.takeIf { it.isNotBlank() }
+                            ?: stringResource(Res.string.people_unnamed)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.small)
+                                .clickable(role = Role.Button) { onPickExisting(person.id) }
+                                .padding(vertical = Spacing.sm),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                        ) {
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                ) {
-                                    person.coverFaceId?.let { faceId ->
-                                        AsyncImage(
-                                            model = "$baseUrl/api/faces/$faceId/thumbnail",
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.size(36.dp)
-                                        )
-                                    }
-                                }
-                                TextButton(
-                                    onClick = { onPickExisting(person.id) },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(displayName)
+                                person.coverFaceId?.let { faceId ->
+                                    AsyncImage(
+                                        model = "$baseUrl/api/faces/$faceId/thumbnail",
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.size(36.dp)
+                                    )
                                 }
                             }
+                            Text(displayName, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            if (exactMatch != null) {
-                // Ya hay alguien con ese nombre: asignar, no duplicar.
-                TextButton(onClick = { onPickExisting(exactMatch.id) }) {
-                    Text(
-                        stringResource(
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss
+                )
+                if (exactMatch != null) {
+                    // Ya hay alguien con ese nombre: asignar, no duplicar.
+                    CompactPrimaryButton(
+                        label = stringResource(
                             Res.string.people_face_assign_to,
                             exactMatch.name.orEmpty()
-                        )
+                        ),
+                        onClick = { onPickExisting(exactMatch.id) }
+                    )
+                } else {
+                    CompactPrimaryButton(
+                        label = stringResource(Res.string.action_save),
+                        onClick = { onCreateNew(newName) },
+                        enabled = newName.trim().isNotEmpty()
                     )
                 }
-            } else {
-                TextButton(
-                    onClick = { onCreateNew(newName) },
-                    enabled = newName.trim().isNotEmpty()
-                ) {
-                    Text(stringResource(Res.string.action_save))
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.action_cancel))
             }
         }
-    )
+    }
 }

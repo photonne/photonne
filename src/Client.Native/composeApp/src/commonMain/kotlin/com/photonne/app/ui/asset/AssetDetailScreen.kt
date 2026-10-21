@@ -249,6 +249,11 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.photonne.app.ui.platform.KeepScreenOn
 import com.photonne.app.ui.theme.Spacing
+import com.photonne.app.ui.theme.SheetHeader
+import androidx.compose.ui.focus.focusRequester
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 private const val PAGER_PREFETCH_THRESHOLD = 8
 private const val PAGER_DISABLE_THRESHOLD = 1.05f
@@ -2387,7 +2392,15 @@ private fun autoTagLabel(tag: String): String = when (tag.lowercase()) {
 /** Máximo de sugerencias bajo el campo: más no caben sin tapar el teclado. */
 private const val TAG_SUGGESTION_LIMIT = 6
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+/**
+ * "Añadir etiqueta": un campo y sus sugerencias, en hoja como el resto de
+ * formularios de un campo (descripción, renombrar). Antes era un AlertDialog
+ * con dos TextButton, en la misma pantalla que la hoja de la descripción.
+ */
+@OptIn(
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
 private fun AddTagDialog(
     existingTags: List<String>,
@@ -2409,45 +2422,62 @@ private fun AddTagDialog(
             .take(TAG_SUGGESTION_LIMIT)
             .toList()
     }
-    androidx.compose.material3.AlertDialog(
+    // Foco inicial en el campo: la hoja existe para escribirlo.
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.asset_detail_tag_dialog_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                androidx.compose.material3.OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
-                    ),
-                    placeholder = { Text(stringResource(Res.string.asset_detail_tag_placeholder)) }
-                )
-                if (suggestions.isNotEmpty()) {
-                    androidx.compose.foundation.layout.FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-                    ) {
-                        suggestions.forEach { suggestion ->
-                            androidx.compose.material3.SuggestionChip(
-                                onClick = { onConfirm(suggestion) },
-                                label = { Text(suggestion) }
-                            )
-                        }
+        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
+        ) {
+            SheetHeader(stringResource(Res.string.asset_detail_tag_dialog_title))
+            androidx.compose.material3.OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                    if (text.isNotBlank()) onConfirm(text)
+                }),
+                placeholder = { Text(stringResource(Res.string.asset_detail_tag_placeholder)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focus)
+            )
+            if (suggestions.isNotEmpty()) {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    suggestions.forEach { suggestion ->
+                        androidx.compose.material3.SuggestionChip(
+                            onClick = { onConfirm(suggestion) },
+                            label = { Text(suggestion) }
+                        )
                     }
                 }
             }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(
-                onClick = { onConfirm(text) },
-                enabled = text.isNotBlank()
-            ) { Text(stringResource(Res.string.asset_detail_tag_add)) }
-        },
-        dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss
+                )
+                CompactPrimaryButton(
+                    label = stringResource(Res.string.asset_detail_tag_add),
+                    onClick = { onConfirm(text) },
+                    enabled = text.isNotBlank()
+                )
+            }
         }
-    )
+    }
 }
 
 /**
