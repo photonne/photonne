@@ -34,6 +34,8 @@
 <style>
 	.page-header {
 		display: grid;
+		/* Never wider than the page: actions and tools wrap on a phone. */
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--space-3);
 		padding: var(--space-6) var(--page-gutter) var(--space-3);
 	}
@@ -77,6 +79,7 @@
 	}
 
 	.actions {
+		max-width: 100%;
 		margin-left: auto;
 		display: flex;
 		flex-wrap: wrap;

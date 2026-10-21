@@ -238,9 +238,17 @@
 .segmented {
 	display: inline-flex;
 	gap: 2px;
+	/* On a narrow screen the options scroll instead of spilling out. */
+	max-width: 100%;
+	overflow-x: auto;
+	scrollbar-width: none;
 	padding: 3px;
 	border-radius: var(--radius-control);
 	background: var(--color-surface);
+}
+
+.segmented > * {
+	flex: none;
 }
 
 .segmented > label,
