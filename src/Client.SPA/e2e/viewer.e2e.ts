@@ -147,3 +147,39 @@ test('a video sits below the bar and fits the screen, so its controls stay reach
 	expect(box.y).toBeGreaterThanOrEqual(bar.y + bar.height);
 	expect(box.y + box.height).toBeLessThanOrEqual(800);
 });
+
+test('when zoomed, a navigator frames the part on screen and moves the view there', async ({
+	page
+}) => {
+	// A photo much larger than the screen, so a zoom has room to move.
+	const big = `<svg xmlns="http://www.w3.org/2000/svg" width="3000" height="2000"><rect width="3000" height="2000" fill="#c87846"/><circle cx="2150" cy="550" r="250" fill="#f0eba0"/></svg>`;
+	await fakeApi(page, { signedIn: true });
+	// After the fake API's routes: the last one registered answers first.
+	await page.route(/\/api\/assets\/2026-09-0\/(thumbnail|content)/, (route) =>
+		route.fulfill({ contentType: 'image/svg+xml', body: big })
+	);
+	await page.goto('/?asset=2026-09-0');
+	const photo = page.getByRole('dialog').locator('img').first();
+	const navigator = page.locator('.navigator');
+	await expect(photo).toBeVisible();
+	await expect(navigator).toHaveCount(0);
+
+	// Zoomed in: the navigator frames a part of the photo.
+	const box = (await photo.boundingBox())!;
+	await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+	await expect(navigator).toBeVisible();
+	const frame = navigator.locator('.frame');
+	expect(
+		parseFloat((await frame.getAttribute('style'))!.match(/width: ([\d.]+)%/)![1])
+	).toBeLessThan(60);
+
+	// A click on its top left corner takes the view there.
+	const map = (await navigator.locator('.map').boundingBox())!;
+	await page.mouse.click(map.x + 2, map.y + 2);
+	await expect(frame).toHaveAttribute('style', /left: 0%; top: 0%/);
+	await expect(photo).toHaveAttribute('style', /translate\([1-9][\d.]*px, [1-9][\d.]*px\)/);
+
+	// Back to the fitted photo: no navigator.
+	await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+	await expect(navigator).toHaveCount(0);
+});

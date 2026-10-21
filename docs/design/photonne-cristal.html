@@ -444,6 +444,13 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
 .vpanel .chips { display: flex; gap: 6px; }
 .vpanel .chips span { border: 1px solid #34363b; border-radius: 999px; padding: 2px 9px; font-size: 11px; }
 
+/* zoom navigator */
+.viewer.zoomed { background: radial-gradient(circle at 80% 10%, #f0eba0 0 22%, transparent 22.5%), linear-gradient(150deg, #c87846 0 62%, #2c4258 62.3%); }
+.navmini { position: absolute; left: 12px; bottom: 24px; z-index: 2; padding: 4px; border-radius: 14px; background: rgb(36 36 40 / 0.72); border: 1px solid rgb(255 255 255 / 0.1); box-shadow: 0 6px 24px rgb(0 0 0 / 0.4); }
+.navmini .m { position: relative; width: 150px; aspect-ratio: 3 / 2; border-radius: 10px; overflow: hidden;
+  background: radial-gradient(circle at 72% 28%, #f0eba0 0 9%, transparent 9.5%), linear-gradient(160deg, #c87846 0 55%, #2c4258 55.3%); }
+.navmini .f { position: absolute; left: 52%; top: 8%; width: 38%; height: 40%; border: 2px solid #fff; border-radius: 3px; box-shadow: 0 0 0 999px rgb(0 0 0 / 0.5); }
+
 /* phones v2 */
 .phone .p-top { position: absolute; z-index: 5; top: 40px; left: 8px; right: 8px; display: flex; gap: 6px; align-items: center; }
 .phone .p-top .cap { position: static; height: 38px; }
@@ -921,6 +928,26 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
       </div>
     </div>
   </div>
+
+  <h3>Con zoom: el navegador</h3>
+  <div class="stage-scroll">
+    <div class="pair single">
+      <div>
+        <div class="label after"><span class="dot"></span>Cristal · ZoomNavigator.svelte</div>
+        <div class="viewer zoomed">
+          <div class="cap tl glass"><span class="btn"><svg class="i"><use href="#i-close"/></svg></span><div class="d"><b>28 sept 2026, 10:00</b><small>IMG_2026_0928.jpg</small></div></div>
+          <div class="cap tr glass"><span class="btn"><svg class="i"><use href="#i-more"/></svg></span></div>
+          <div class="cap bc glass"><span class="btn"><svg class="i"><use href="#i-heart"/></svg></span><span class="btn"><svg class="i"><use href="#i-share"/></svg></span><span class="btn"><svg class="i"><use href="#i-info"/></svg></span></div>
+          <div class="navmini"><div class="m"><span class="f"></span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="changes">
+    <li>Con la foto ampliada aparece, abajo a la izquierda, <strong>la foto entera en pequeño con un recuadro</strong> sobre la parte que se ve; lo de fuera queda oscurecido. Sin zoom, desaparece.</li>
+    <li>Un clic o un arrastre en él lleva la vista a ese punto, sin salir de los bordes de la foto. Las teclas, la rueda y los gestos siguen moviendo la foto como antes.</li>
+    <li>Como mucho 168×120 (112×84 en móvil, por encima de la base de acciones), con la forma de la foto; vidrio oscuro como el resto del visor. Es una ayuda para el puntero: los lectores de pantalla no lo anuncian.</li>
+  </ul>
 </section>
 
 <!-- ============ FULL-WINDOW PAGES ============ -->

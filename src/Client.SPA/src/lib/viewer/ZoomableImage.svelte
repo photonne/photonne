@@ -1,6 +1,15 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { clampPan, fitSize, IDENTITY, zoomAt, type ZoomState } from './zoom.js';
+	import {
+		centerOn,
+		clampPan,
+		fitSize,
+		IDENTITY,
+		visibleRect,
+		zoomAt,
+		type ZoomState
+	} from './zoom.js';
+	import ZoomNavigator from './ZoomNavigator.svelte';
 
 	interface Props {
 		/** Shown at once (usually the Large thumbnail, already cached). */
@@ -237,6 +246,14 @@
 		>
 			{@render overlay(zoom.scale)}
 		</div>
+	{/if}
+	{#if zoom.scale > 1 && natural.width > 0}
+		<ZoomNavigator
+			src={previewSrc}
+			aspect={natural.width / natural.height}
+			frame={visibleRect(zoom, fitted, stageSize)}
+			onpan={(point) => (zoom = centerOn(zoom, point, fitted, stageSize))}
+		/>
 	{/if}
 </div>
 

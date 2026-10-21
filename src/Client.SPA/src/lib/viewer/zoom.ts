@@ -73,3 +73,54 @@ export function clampPan(
 		y: Math.min(maxY, Math.max(-maxY, state.y))
 	};
 }
+
+/** A part of the image, as fractions of its width and height (0–1). */
+export interface ImageRect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+/**
+ * The part of the image the stage shows at this zoom: what the navigator
+ * frames. The whole image at scale 1.
+ */
+export function visibleRect(
+	state: ZoomState,
+	fitted: { width: number; height: number },
+	stage: { width: number; height: number }
+): ImageRect {
+	const along = (size: number, room: number, shift: number) => {
+		const shown = size * state.scale;
+		if (shown <= 0) return { start: 0, length: 1 };
+		const start = room / 2 + shift - shown / 2;
+		const from = Math.min(1, Math.max(0, -start / shown));
+		const to = Math.min(1, Math.max(0, (room - start) / shown));
+		return { start: from, length: to - from };
+	};
+	const h = along(fitted.width, stage.width, state.x);
+	const v = along(fitted.height, stage.height, state.y);
+	return { x: h.start, y: v.start, width: h.length, height: v.length };
+}
+
+/**
+ * Pans so the image point at (fx, fy), fractions of the image, sits at the
+ * stage's centre (as far as the edges allow): a click on the navigator.
+ */
+export function centerOn(
+	state: ZoomState,
+	point: { x: number; y: number },
+	fitted: { width: number; height: number },
+	stage: { width: number; height: number }
+): ZoomState {
+	return clampPan(
+		{
+			scale: state.scale,
+			x: fitted.width * state.scale * (0.5 - point.x),
+			y: fitted.height * state.scale * (0.5 - point.y)
+		},
+		fitted,
+		stage
+	);
+}

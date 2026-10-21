@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampPan, fitSize, IDENTITY, MAX_SCALE, zoomAt } from './zoom.js';
+import { centerOn, clampPan, fitSize, IDENTITY, MAX_SCALE, visibleRect, zoomAt } from './zoom.js';
 
 const stage = { width: 1000, height: 800 };
 
@@ -34,5 +34,44 @@ describe('clampPan', () => {
 		const clamped = clampPan({ scale: 2, x: 5000, y: -5000 }, { width: 1000, height: 750 }, stage);
 
 		expect(clamped).toEqual({ scale: 2, x: 500, y: -350 });
+	});
+});
+
+describe('visibleRect', () => {
+	const fitted = { width: 1000, height: 750 };
+
+	it('is the whole image when not zoomed', () => {
+		expect(visibleRect(IDENTITY, fitted, stage)).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+	});
+
+	it('frames the centre half at 2× without a pan', () => {
+		// 2000×1500 shown in 1000×800: half the width, 800/1500 of the height.
+		const rect = visibleRect({ scale: 2, x: 0, y: 0 }, fitted, stage);
+		expect(rect.x).toBeCloseTo(0.25, 6);
+		expect(rect.width).toBeCloseTo(0.5, 6);
+		expect(rect.height).toBeCloseTo(800 / 1500, 6);
+		expect(rect.y).toBeCloseTo((1 - 800 / 1500) / 2, 6);
+	});
+
+	it('moves to the left edge when panned all the way right', () => {
+		const rect = visibleRect({ scale: 2, x: 500, y: 0 }, fitted, stage);
+		expect(rect.x).toBeCloseTo(0, 6);
+		expect(rect.width).toBeCloseTo(0.5, 6);
+	});
+});
+
+describe('centerOn', () => {
+	const fitted = { width: 1000, height: 750 };
+
+	it('brings a point of the image to the centre, and back to the frame it names', () => {
+		const state = centerOn({ scale: 4, x: 0, y: 0 }, { x: 0.3, y: 0.6 }, fitted, stage);
+		const rect = visibleRect(state, fitted, stage);
+		expect(rect.x + rect.width / 2).toBeCloseTo(0.3, 6);
+		expect(rect.y + rect.height / 2).toBeCloseTo(0.6, 6);
+	});
+
+	it('stops at the edges', () => {
+		const state = centerOn({ scale: 2, x: 0, y: 0 }, { x: 0, y: 1 }, fitted, stage);
+		expect(state).toEqual(clampPan({ scale: 2, x: 5000, y: -5000 }, fitted, stage));
 	});
 });
