@@ -88,6 +88,7 @@
 		storageKey={PANEL.key}
 		controls="viewer-panel"
 		side="right"
+		quiet
 	/>
 {/if}
 
