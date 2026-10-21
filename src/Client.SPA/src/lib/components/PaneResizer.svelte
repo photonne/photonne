@@ -15,6 +15,8 @@
 		controls: string;
 		/** Which side of the separator the pane sits on: a pane on the right grows leftwards. */
 		side?: 'left' | 'right';
+		/** No line at rest, for a pane that floats apart (an island): it only shows in use. */
+		quiet?: boolean;
 	}
 
 	let {
@@ -24,7 +26,8 @@
 		initial,
 		storageKey,
 		controls,
-		side = 'left'
+		side = 'left',
+		quiet = false
 	}: Props = $props();
 
 	const direction = $derived(side === 'left' ? 1 : -1);
@@ -79,6 +82,7 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
 	class="resizer"
+	class:quiet
 	class:dragging
 	role="separator"
 	aria-orientation="vertical"
@@ -114,6 +118,10 @@
 		inset: 0 4px;
 		background: var(--color-border);
 		transition: background var(--duration-fast);
+	}
+
+	.quiet::after {
+		background: transparent;
 	}
 
 	.resizer:hover::after,
