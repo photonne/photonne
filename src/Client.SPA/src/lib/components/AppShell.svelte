@@ -250,6 +250,7 @@
 	class:reclaimed={chrome.reclaimed && mobile}
 	class:selecting={chrome.selecting > 0}
 	class:bleed={chrome.bleed}
+	class:wide={chrome.wide}
 >
 	<!-- The navigation island: a glass panel floating beside the page, with
 	     the brand and the fold button on top. Not on a phone: FloatingNav. -->
@@ -839,6 +840,7 @@
 	.content {
 		--bleed-top: 0px;
 		--bleed-bottom: 0px;
+		--bleed-left: 0px;
 		height: 100%;
 		overflow: auto;
 		padding-top: var(--chrome-top);
@@ -851,6 +853,14 @@
 		--bleed-top: var(--chrome-top);
 		padding-top: 0;
 		overflow: hidden;
+	}
+
+	/* …and under the navigation island, which floats over it (the island
+	   comes first, the page keeps its own stacking: see the map). */
+	.wide .content {
+		--bleed-left: var(--stage-left);
+		width: calc(100% + var(--stage-left));
+		margin-left: calc(-1 * var(--stage-left));
 	}
 
 	.page-actions {

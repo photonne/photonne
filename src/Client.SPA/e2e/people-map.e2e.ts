@@ -70,9 +70,15 @@ test('a cluster opens its photos beside the map, and the viewer from there', asy
 	await expect(cells.first()).toBeVisible();
 
 	await cells.first().click();
-	await expect(page.getByRole('dialog', { name: /^IMG_/ })).toBeVisible();
+	const viewer = page.getByRole('dialog', { name: /^IMG_/ });
+	await expect(viewer).toBeVisible();
 	await page.keyboard.press('Escape');
-	await expect(page.getByRole('dialog', { name: /^IMG_/ })).toBeHidden();
+	await expect(viewer).toBeHidden();
+
+	// Over the floating chrome too: its own close button takes the click.
+	await cells.first().click();
+	await viewer.getByRole('button', { name: 'Cerrar', exact: true }).click();
+	await expect(viewer).toBeHidden();
 
 	await panel.getByRole('button', { name: 'Cerrar el panel' }).click();
 	await expect(panel).toBeHidden();

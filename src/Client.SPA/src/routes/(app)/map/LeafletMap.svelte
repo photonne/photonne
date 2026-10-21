@@ -40,14 +40,37 @@
 	const markers = new Map<string, { marker: L.Marker; cluster: MapCluster }>();
 	let layer: L.LayerGroup | undefined;
 
+	/**
+	 * What the floating chrome covers on each side, in pixels: the map runs
+	 * under it (--bleed-*), which its scroll-padding resolves.
+	 */
+	function covered() {
+		const style = container ? getComputedStyle(container) : null;
+		const px = (value?: string) => parseFloat(value ?? '') || 0;
+		return {
+			top: px(style?.scrollPaddingTop),
+			bottom: px(style?.scrollPaddingBottom),
+			left: px(style?.scrollPaddingLeft)
+		};
+	}
+
 	/** Moves the view to a place; the host calls it to open on the newest photo. */
 	export function show(lat: number, lng: number, zoom: number) {
-		map?.setView([lat, lng], zoom);
+		if (!map) return;
+		// Centred on what the chrome leaves in sight.
+		const { top, bottom, left } = covered();
+		map.setView([lat, lng], zoom, { animate: false });
+		map.panBy([-left / 2, (bottom - top) / 2], { animate: false });
 	}
 
 	/** Moves the view to show the box; the host calls it for "show all". */
 	export function fit(bounds: L.LatLngBoundsExpression) {
-		map?.fitBounds(bounds, { padding: [48, 48], maxZoom: 15 });
+		const { top, bottom, left } = covered();
+		map?.fitBounds(bounds, {
+			paddingTopLeft: [left + 48, top + 48],
+			paddingBottomRight: [48, bottom + 48],
+			maxZoom: 15
+		});
 	}
 
 	function emitView() {
@@ -214,6 +237,8 @@
 	.map {
 		width: 100%;
 		height: 100%;
+		/* Read back by covered(): the chrome's room around the map. */
+		scroll-padding: var(--bleed-top, 0px) 0 var(--bleed-bottom, 0px) var(--bleed-left, 0px);
 		background: var(--color-surface);
 		font: inherit;
 	}

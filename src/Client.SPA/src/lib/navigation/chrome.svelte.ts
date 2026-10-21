@@ -22,6 +22,12 @@ class Chrome {
 	 * as padding (--bleed-top, --bleed-bottom), so they pass beneath it.
 	 */
 	bleed = $state(false);
+	/**
+	 * With bleed, the page also reaches under the navigation island, to the
+	 * window's left edge (the map). What must stay clear of the island keeps
+	 * --bleed-left.
+	 */
+	wide = $state(false);
 	/** The page's own buttons, in a capsule of the chrome next to the search. */
 	actions = $state<Snippet | null>(null);
 }

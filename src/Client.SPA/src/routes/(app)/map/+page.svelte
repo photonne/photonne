@@ -107,7 +107,7 @@
 		<Icon path={icons.fitAll} />
 	</button>
 {/snippet}
-<PageChrome bleed actions={fitAll} />
+<PageChrome bleed wide actions={fitAll} />
 
 <div class="page">
 	<div class="title glass">
@@ -149,9 +149,12 @@
 </div>
 
 <style>
+	/* Leaflet's panes and controls stack up to z-index 1000: kept inside
+	   the page, under the floating chrome and the navigation island. */
 	.page {
 		position: relative;
 		height: 100%;
+		isolation: isolate;
 	}
 
 	.body {
@@ -169,12 +172,12 @@
 		--glass-tint: 82%;
 		position: absolute;
 		top: calc(var(--bleed-top) + var(--space-1));
-		left: var(--float-margin);
+		left: calc(var(--bleed-left) + var(--float-margin));
 		z-index: 900;
 		display: flex;
 		align-items: baseline;
 		gap: var(--space-3);
-		max-width: calc(100% - 2 * var(--float-margin));
+		max-width: calc(100% - var(--bleed-left) - 2 * var(--float-margin));
 		padding: var(--space-2) var(--space-4);
 		border-radius: var(--radius-pill);
 		box-shadow: var(--shadow-bar);
@@ -196,6 +199,10 @@
 	   phone, the bottom bar. */
 	.map :global(.leaflet-top) {
 		top: calc(var(--bleed-top) + 52px);
+	}
+
+	.map :global(.leaflet-left) {
+		left: var(--bleed-left);
 	}
 
 	.map :global(.leaflet-bottom) {

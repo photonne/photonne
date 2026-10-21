@@ -732,7 +732,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
     <li><strong>Tira de miniaturas con lupa</strong> (<code>AssetThumbnailStrip</code>): solo en la Native por ahora. En la SPA el visor solo conoce la foto anterior y la siguiente.</li>
     <li>Las flechas anterior y siguiente son círculos de cristal de 48px, discretos hasta que el puntero entra en la foto.</li>
     <li>El panel de info es una isla de cristal con radio 28px separada 12px del borde, en lugar de un panel pegado. En móvil es una hoja inferior con radio 28px y un asa.</li>
-    <li><strong>Fondo gris translúcido</strong> (<code>rgb(22 22 26 / .86)</code> con <code>blur(28px)</code>) en lugar de negro: detrás se intuye la rejilla borrosa y el panel de info y las cápsulas se distinguen del fondo. El pase de diapositivas y los vídeos siguen en negro. Con <code>prefers-reduced-transparency</code> o más contraste, el gris es opaco.</li>
+    <li><strong>Fondo gris translúcido</strong> (<code>rgb(54 55 61 / .8)</code> con <code>blur(28px)</code>, más claro que el panel y las cápsulas) en lugar de negro: detrás se intuye la rejilla borrosa y el panel de info y las cápsulas se distinguen del fondo. El pase de diapositivas y los vídeos siguen en negro. Con <code>prefers-reduced-transparency</code> o más contraste, el gris es opaco.</li>
     <li>Al abrirse, el fondo aparece en 320ms y la foto crece hasta su sitio; el cromo llega 80ms después.</li>
   </ul>
 </section>
@@ -751,7 +751,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
     <li><strong>Opciones de visualización</strong> (ajustes): disposición Mosaico o Filas y el tamaño, ahora un deslizador con <strong>cinco paradas</strong> marcadas (XS–XL) que también recorren <kbd>+</kbd>, <kbd>−</kbd> y <kbd>Ctrl</kbd> + rueda.</li>
     <li><strong>Los menús del cromo</strong> (<code>ChromeMenu</code>) son popovers de cristal (capa superior, se cierran al pulsar fuera o con <kbd>Esc</kbd>) alineados bajo su botón; en móvil son hojas inferiores con asa.</li>
     <li><strong>Colecciones</strong> (<code>CollectionView</code>): <code>chrome="page"</code> por defecto; <code>"inline"</code> bajo las barras de su página (búsqueda, papelera compartida de administración), y <code>"none"</code> dentro de otra página (el panel del mapa), con las opciones entre sus propios botones.</li>
-    <li><strong>Mapa:</strong> ocupa toda la ventana. El título flota arriba a la izquierda, «Ver todas» va en el cromo y el panel de un grupo es una isla flotante a la derecha (una hoja sobre la barra inferior en móvil).</li>
+    <li><strong>Mapa:</strong> ocupa toda la ventana, también por debajo de la isla de navegación (<code><li><strong>Mapa:</strong> ocupa toda la ventana. El títulolt;PageChrome bleed wide<li><strong>Mapa:</strong> ocupa toda la ventana. El títulogt;</code>, <code>--bleed-left</code>). El título flota arriba a la izquierda, «Ver todas» va en el cromo y el panel de un grupo es una isla flotante a la derecha (una hoja sobre la barra inferior en móvil).</li>
     <li><strong>Carpetas:</strong> subcarpetas y fotos son dos secciones plegables en <strong>un solo scroll</strong>, sin scrolls propios. Plegar una deja todo el espacio a la otra. El tamaño de las fotos va a las opciones de visualización; el de las tarjetas, junto a las subcarpetas. En móvil, el botón del árbol flota bajo el cromo y se va con él.</li>
   </ul>
 </section>
