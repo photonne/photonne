@@ -25,7 +25,6 @@
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
 	import { PagedList } from '#lib/timeline/paged-list.svelte.js';
 	import type { Selection } from '#lib/timeline/selection.svelte.js';
-	import { collectionSize } from '#lib/timeline/size-preference.svelte.js';
 	import SizeControl from '#lib/timeline/SizeControl.svelte';
 	import { invalidateFolders, toggleFolderPin } from './cache.js';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -87,9 +86,9 @@
 	const canWrite = $derived(folder?.canWrite ?? false);
 	const isLibrary = $derived(!!folder?.externalLibraryId);
 
-	// A folder with subfolders and photos shows them as two sections, each
-	// of which folds away (folderView remembers) so the other has the page.
-	// With only one of them there is nothing to fold: what it has fills the page.
+	// A folder with subfolders and photos shows them as two sections in one
+	// scroll, each of which folds away (folderView remembers) so the other
+	// has the page. With only one of them there is nothing to fold.
 	const hasPhotos = $derived(list.status !== 'ready' || list.store.items.length > 0);
 	const twoSections = $derived(subfolders.length > 0 && hasPhotos);
 	const photosShown = $derived(!twoSections || folderView.sections.photos);
@@ -216,7 +215,6 @@
 		emptyText={subfolders.length ? m.folders_empty_with_subfolders() : m.folders_empty()}
 		viewerActions={['trash', 'album']}
 		collapsed={!photosShown}
-		sizeInToolbar={!twoSections}
 	>
 		{#snippet toolbar()}
 			{#if folder}
@@ -257,7 +255,7 @@
 
 		{#snippet header()}
 			{#if folder}
-				<div class="about" class:fill={!photosShown}>
+				<div class="about">
 					{#if ancestors.length}
 						<nav aria-label={m.folders_breadcrumb()}>
 							<ol class="crumbs">
@@ -291,7 +289,7 @@
 						{/if}
 					</p>
 					{#if subfolders.length}
-						<section class="section" class:fill={!photosShown}>
+						<section class="section">
 							<div class="section-head">
 								<h2>
 									<button
@@ -352,13 +350,6 @@
 										{/if}
 									</button>
 								</h2>
-								<!-- The photos' size, next to them rather than up by the title. -->
-								{#if photosShown && list.status === 'ready'}
-									<SizeControl
-										value={collectionSize.value}
-										onchange={(size) => collectionSize.set(size)}
-									/>
-								{/if}
 							</div>
 						{/if}
 					{/if}
@@ -488,17 +479,6 @@
 		padding: var(--space-1) var(--space-4) var(--space-2);
 	}
 
-	/* The photos folded away: the subfolders get the page's height and
-	   scroll on their own. */
-	/* With the photos folded the header has the page: it scrolls as a whole,
-	   so the folded Fotos heading stays right under the subfolders instead of
-	   at the bottom of the screen. */
-	.about.fill {
-		flex: 1;
-		min-height: 0;
-		overflow-y: auto;
-	}
-
 	.crumbs {
 		display: flex;
 		flex-wrap: wrap;
@@ -551,7 +531,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		min-height: 0;
 	}
 
 	.section-head {
@@ -607,23 +586,14 @@
 		color: var(--color-text-muted);
 	}
 
-	/* With the photos under it the list keeps to a band (at least a row of
-	   tiles) and scrolls inside; a hovered tile lifts a little, so the band
-	   leaves it room at the top. */
+	/* No scroll of its own: the page scrolls the subfolders and the photos
+	   together. A hovered tile lifts a little, so it keeps room at the top. */
 	.section-body {
-		min-height: 0;
-		max-height: max(30vh, 320px);
-		overflow-y: auto;
 		padding: var(--space-1) 2px 2px;
 	}
 
 	.section-body[hidden] {
 		display: none;
-	}
-
-	.fill .section-body {
-		max-height: none;
-		overflow: visible;
 	}
 
 	.missing {

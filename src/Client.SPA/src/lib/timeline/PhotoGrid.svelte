@@ -788,7 +788,9 @@
 		<div class="end" aria-hidden="true" bind:clientHeight={endHeight}></div>
 	</div>
 
-	{#if scrolling && scrollTop > 0 && currentLabel}
+	<!-- Once the photos reach the top: over the page's header it would say
+	     the month of photos still below. -->
+	{#if scrolling && scrollTop > 0 && scrollTop >= leadHeight && currentLabel}
 		<span class="date-pill glass" aria-hidden="true">{currentLabel}</span>
 	{/if}
 
