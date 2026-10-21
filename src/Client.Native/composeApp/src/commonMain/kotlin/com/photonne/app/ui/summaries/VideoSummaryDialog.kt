@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -19,7 +18,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -78,12 +76,20 @@ import com.photonne.app.ui.util.SegmentedChoiceRow
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import com.photonne.app.ui.theme.SheetHeader
+import com.photonne.app.ui.theme.CompactPrimaryButton
+import com.photonne.app.ui.theme.CompactSecondaryButton
+import com.photonne.app.ui.theme.SheetActions
 
 /**
  * The summary video dialog: the same options as on the web. [album] null asks
  * for the summary of a year. Reviewing the clips one by one happens on the web;
  * here a "planned" summary can be rendered as the server chose it.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideoSummaryDialog(
     album: SummarySource.Album?,
@@ -106,18 +112,28 @@ fun VideoSummaryDialog(
     val current = state.current
     val done = current != null && current.status in setOf("completed", "failed", "planned")
 
-    AlertDialog(
+    // Hoja, como el resto de formularios con opciones: antes era un AlertDialog
+    // con scroll propio y dos TextButton.
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            SheetHeader(
                 stringResource(
                     if (album == null) Res.string.summaries_title_year else Res.string.summaries_title_album
                 )
             )
-        },
-        text = {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
                 Hint(stringResource(Res.string.summaries_hint))
@@ -207,10 +223,11 @@ fun VideoSummaryDialog(
                         Text(stringResource(Res.string.summaries_music), style = MaterialTheme.typography.labelLarge)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(music.name, modifier = Modifier.weight(1f), maxLines = 1)
-                            TextButton(
+                            CompactSecondaryButton(
+                                label = stringResource(Res.string.summaries_music_remove),
                                 onClick = { viewModel.updateOptions { it.copy(music = null) } },
                                 enabled = editable,
-                            ) { Text(stringResource(Res.string.summaries_music_remove)) }
+                            )
                         }
                         Hint(stringResource(Res.string.summaries_music_web_hint))
                     }
@@ -256,9 +273,11 @@ fun VideoSummaryDialog(
                             }
                             "planned" -> {
                                 Text(stringResource(Res.string.summaries_planned, current.title))
-                                TextButton(onClick = viewModel::renderAsPlanned, enabled = !state.isSubmitting) {
-                                    Text(stringResource(Res.string.summaries_render_as_is))
-                                }
+                                CompactSecondaryButton(
+                                    label = stringResource(Res.string.summaries_render_as_is),
+                                    onClick = viewModel::renderAsPlanned,
+                                    enabled = !state.isSubmitting,
+                                )
                             }
                             "completed" -> Text(stringResource(Res.string.summaries_ready, current.title))
                             "failed" -> Text(
@@ -273,16 +292,20 @@ fun VideoSummaryDialog(
 
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = viewModel::submit, enabled = state.canSubmit && !state.isLoading) {
-                Text(stringResource(if (done) Res.string.summaries_regenerate else Res.string.summaries_create))
+            SheetActions {
+                CompactSecondaryButton(
+                    label = stringResource(Res.string.summaries_close),
+                    onClick = onDismiss,
+                )
+                CompactPrimaryButton(
+                    label = stringResource(if (done) Res.string.summaries_regenerate else Res.string.summaries_create),
+                    onClick = viewModel::submit,
+                    enabled = state.canSubmit && !state.isLoading,
+                    isLoading = state.isSubmitting,
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.summaries_close)) }
-        },
-    )
+        }
+    }
 }
 
 @Composable
