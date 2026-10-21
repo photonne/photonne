@@ -733,6 +733,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
     <li>Las flechas anterior y siguiente son círculos de cristal de 48px, discretos hasta que el puntero entra en la foto.</li>
     <li>El panel de info es una isla de cristal con radio 28px separada 12px del borde, en lugar de un panel pegado. En móvil es una hoja inferior con radio 28px y un asa.</li>
     <li><strong>Fondo gris translúcido</strong> (<code>rgb(54 55 61 / .8)</code> con <code>blur(28px)</code>, más claro que el panel y las cápsulas) en lugar de negro: detrás se intuye la rejilla borrosa y el panel de info y las cápsulas se distinguen del fondo. El pase de diapositivas y los vídeos siguen en negro. Con <code>prefers-reduced-transparency</code> o más contraste, el gris es opaco.</li>
+    <li><strong>Por encima de todo:</strong> el visor se dibuja al final de <code>&lt;body&gt;</code> (<code>portal.ts</code>), fuera del apilamiento de la página que lo abre; abierto desde el panel del mapa, el cromo no tapa su botón de cerrar.</li>
     <li>Al abrirse, el fondo aparece en 320ms y la foto crece hasta su sitio; el cromo llega 80ms después.</li>
   </ul>
 </section>
@@ -740,19 +741,36 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
 <!-- ============ FULL-WINDOW PAGES ============ -->
 <section id="pantalla-completa">
   <div class="sec-head">
-    <span class="eyebrow">PageChrome.svelte · ChromeMenu.svelte · TimelineFilters.svelte · ViewOptions.svelte</span>
+    <span class="eyebrow">PageChrome.svelte · PageHeader.svelte · ChromeMenu.svelte · TimelineFilters.svelte · ViewOptions.svelte · ViewOptionsGroup.svelte</span>
     <h2>Páginas a pantalla completa, con sus herramientas en el cromo</h2>
-    <p class="muted">Las páginas de fotos ya no guardan un margen fijo arriba para el cromo: la cabecera sube con el scroll y las fotos pasan por debajo del buscador, las notificaciones y las herramientas de la página.</p>
+    <p class="muted">Las páginas de fotos ya no guardan un margen fijo arriba para el cromo: la cabecera sube con el scroll y las fotos pasan por debajo del buscador, las notificaciones y las herramientas de la página. Lo que hace falta a mano se queda flotando arriba.</p>
   </div>
+  <h3>El cromo de cada página</h3>
   <ul class="changes">
-    <li><strong><code>&lt;PageChrome bleed actions={…}&gt;</code></strong>: la página ocupa toda la ventana (<code>chrome.bleed</code>) y pone sus botones en una cápsula del cromo, entre el buscador y las herramientas. Sus paneles con scroll propio guardan el hueco dentro, como relleno: <code>--bleed-top</code> (la altura del cromo) y, en móvil, <code>--bleed-bottom</code> (la barra inferior).</li>
-    <li><strong>La cabecera es parte del scroll.</strong> <code>PhotoGrid</code> recibe la cabecera de la página como <code>lead</code> y la dibuja encima de las fotos; la píldora de fecha solo aparece cuando las fotos llegan arriba.</li>
-    <li><strong>Filtros</strong> (embudo): ir a una fecha (<kbd>G</kbd>), fechas (todas, un día o un rango), agrupar por y orden (más recientes o más antiguas). El botón lleva un punto cuando algo no está en su valor por defecto. Los filtros se aplican en el cliente sobre el esqueleto de meses.</li>
-    <li><strong>Opciones de visualización</strong> (ajustes): disposición Mosaico o Filas y el tamaño, ahora un deslizador con <strong>cinco paradas</strong> marcadas (XS–XL) que también recorren <kbd>+</kbd>, <kbd>−</kbd> y <kbd>Ctrl</kbd> + rueda.</li>
+    <li><strong><code>&lt;PageChrome bleed wide actions={…}&gt;</code></strong>: con <code>bleed</code> la página ocupa toda la ventana (<code>chrome.bleed</code>); con <code>wide</code>, también por debajo de la isla de navegación (<code>chrome.wide</code>, solo el mapa). Sus paneles con scroll propio guardan el hueco dentro, como relleno: <code>--bleed-top</code> (la altura del cromo), <code>--bleed-left</code> (la isla, con <code>wide</code>) y, en móvil, <code>--bleed-bottom</code> (la barra inferior).</li>
+    <li><strong>Las acciones de la página flotan.</strong> Los botones que cada página tenía junto a su título (<code>PageHeader</code> con <code>actions</code>) van a una cápsula del cromo, entre el buscador y las herramientas, y siguen a mano al hacer scroll: compartir y fijar un álbum, nueva subcarpeta, restaurar o vaciar la papelera, desarchivar todo, reconocimiento facial, nuevo álbum, mover a la papelera en archivos grandes… En escritorio son píldoras con icono y texto (una primaria o de peligro conserva su color); en móvil, solo el icono, con el texto como nombre accesible. <code>PageHeader float={false}</code> las deja en su sitio cuando la cabecera es parte de otra página (el panel del mapa).</li>
+    <li><strong>Las filas de filtros no flotan</strong> (pestañas, tipos, orden de un índice, búsqueda dentro de la lista): suben con la cabecera. Un campo de búsqueda es un filtro, no una acción: en los índices de álbumes y carpetas está en esa fila.</li>
+    <li><strong>La cabecera es parte del scroll.</strong> <code>PhotoGrid</code> recibe la cabecera de la página como <code>lead</code> y la dibuja encima de las fotos, fuera de la columna del scrubber (la línea temporal nunca tapa la portada de un álbum). La píldora de fecha solo aparece cuando las fotos llegan arriba.</li>
     <li><strong>Los menús del cromo</strong> (<code>ChromeMenu</code>) son popovers de cristal (capa superior, se cierran al pulsar fuera o con <kbd>Esc</kbd>) alineados bajo su botón; en móvil son hojas inferiores con asa.</li>
-    <li><strong>Colecciones</strong> (<code>CollectionView</code>): <code>chrome="page"</code> por defecto; <code>"inline"</code> bajo las barras de su página (búsqueda, papelera compartida de administración), y <code>"none"</code> dentro de otra página (el panel del mapa), con las opciones entre sus propios botones.</li>
-    <li><strong>Mapa:</strong> ocupa toda la ventana, también por debajo de la isla de navegación (<code><li><strong>Mapa:</strong> ocupa toda la ventana. El títulolt;PageChrome bleed wide<li><strong>Mapa:</strong> ocupa toda la ventana. El títulogt;</code>, <code>--bleed-left</code>). El título flota arriba a la izquierda, «Ver todas» va en el cromo y el panel de un grupo es una isla flotante a la derecha (una hoja sobre la barra inferior en móvil).</li>
-    <li><strong>Carpetas:</strong> subcarpetas y fotos son dos secciones plegables en <strong>un solo scroll</strong>, sin scrolls propios. Plegar una deja todo el espacio a la otra. El tamaño de las fotos va a las opciones de visualización; el de las tarjetas, junto a las subcarpetas. En móvil, el botón del árbol flota bajo el cromo y se va con él.</li>
+  </ul>
+  <h3>Filtros y opciones de visualización</h3>
+  <ul class="changes">
+    <li><strong>Filtros</strong> (embudo, en Fotos): ir a una fecha (<kbd>G</kbd>), fechas (todas, un día o un rango), agrupar por y orden (más recientes o más antiguas). El botón lleva un punto cuando algo no está en su valor por defecto. Se aplican en el cliente sobre el esqueleto de meses.</li>
+    <li><strong>Opciones de visualización</strong> (ajustes), en toda página de fotos. Primero las opciones propias de la página, en bloques <code>ViewOptionsGroup</code>: el <strong>orden de un álbum</strong> (del álbum, más recientes, más antiguas) o las <strong>subcarpetas</strong> de una carpeta (Tarjetas o Lista y su tamaño). Después, las de todas:
+      <ul>
+        <li><strong>Distribución:</strong> Mosaico (columnas, cada foto con su forma) o Cuadrícula (filas alineadas).</li>
+        <li><strong>Proporción</strong>, solo con Cuadrícula: <strong>1:1</strong> (cuadrados iguales, cada foto recortada; por defecto) u <strong>Original</strong> (filas justificadas con la forma de cada foto).</li>
+        <li><strong>Tamaño:</strong> un deslizador con <strong>cinco paradas</strong> marcadas (XS–XL) que también recorren <kbd>+</kbd>, <kbd>−</kbd> y <kbd>Ctrl</kbd> + rueda. Sin fotos a la vista (plegadas), no aparece.</li>
+      </ul>
+    </li>
+    <li><strong>Una sola preferencia para toda la app.</strong> La distribución y la proporción se eligen en el menú de cualquier página o en <strong>Ajustes › Apariencia</strong>: es el mismo valor, se guarda en el navegador como el tema (<code>photonne.grid.layout</code>, <code>photonne.grid.ratio</code>) y cambia todas las páginas a la vez. La vista por años de Fotos siempre va en filas.</li>
+    <li>Las vistas de álbumes y carpetas se llaman <strong>Tarjetas</strong> y <strong>Lista</strong>, para no confundirlas con la Cuadrícula de las fotos.</li>
+  </ul>
+  <h3>Páginas con paneles propios</h3>
+  <ul class="changes">
+    <li><strong>Colecciones</strong> (<code>CollectionView</code>): <code>chrome="page"</code> por defecto; <code>"inline"</code> bajo las barras de su página (búsqueda, papelera compartida de administración), y <code>"none"</code> dentro de otra página (el panel del mapa), con las opciones y sus botones en su propia cabecera.</li>
+    <li><strong>Mapa:</strong> ocupa toda la ventana, también por debajo de la isla de navegación. Sus capas quedan contenidas en la página (<code>isolation: isolate</code>), así que el cromo y la isla siempre van por delante. El título flota arriba a la izquierda, «Ver todas» va en el cromo y el panel de un grupo es una isla flotante a la derecha (una hoja sobre la barra inferior en móvil). «Ver todas» y el primer encuadre cuentan con lo que tapa el cromo; al cambiar de tamaño, el mapa mantiene el centro exacto de la URL.</li>
+    <li><strong>Carpetas:</strong> subcarpetas y fotos son dos secciones plegables en <strong>un solo scroll</strong>, sin scrolls propios; plegar una deja todo el espacio a la otra. En el cromo: Nueva subcarpeta, Fijar, Más (con «Compartir con personas») y Opciones de visualización. En escritorio el <strong>árbol es una tarjeta</strong> que empieza bajo el cromo y se separa de la isla con el mismo margen que el resto de flotantes; el buscador flota limpio sobre las dos zonas. En móvil, el botón del árbol flota bajo el cromo y se va con él.</li>
   </ul>
 </section>
 
@@ -902,7 +920,9 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
         <tr><td>Píldoras del timeline</td><td><code>FloatingDatePill</code>, <code>ScrollToTopPill</code>, <code>TimelineScrubber</code></td><td><code>PhotoGrid.svelte</code>, <code>Scrubber.svelte</code></td></tr>
         <tr><td>Visor</td><td><code>AssetDetailScreen.kt</code></td><td><code>AssetViewer.svelte</code>, <code>ViewerPanel.svelte</code></td></tr>
         <tr><td>Páginas a pantalla completa</td><td>—</td><td><code>PageChrome.svelte</code>, <code>chrome.bleed</code> / <code>chrome.actions</code></td></tr>
-        <tr><td>Menús del cromo</td><td>—</td><td><code>ChromeMenu.svelte</code>, <code>TimelineFilters.svelte</code>, <code>ViewOptions.svelte</code></td></tr>
+        <tr><td>Menús del cromo</td><td>—</td><td><code>ChromeMenu.svelte</code>, <code>TimelineFilters.svelte</code>, <code>ViewOptions.svelte</code>, <code>ViewOptionsGroup.svelte</code></td></tr>
+        <tr><td>Acciones de página</td><td>—</td><td><code>PageHeader.svelte</code> (<code>float</code>), cápsula <code>.page-actions</code> en <code>AppShell.svelte</code></td></tr>
+        <tr><td>Distribución de la rejilla</td><td>—</td><td><code>grid-layout-preference.svelte.ts</code>, <code>grid-model.ts</code> (<code>rows</code>, <code>square</code>, <code>masonry</code>)</td></tr>
         <tr><td>Avisos</td><td><code>TopSnackbarHost</code></td><td><code>Toaster.svelte</code></td></tr>
         <tr><td>Paleta de comandos</td><td>—</td><td><code>CommandPalette.svelte</code></td></tr>
       </tbody>
@@ -920,7 +940,11 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
       <li><strong>Fotos y colecciones:</strong> la cabecera sube con el scroll; filtros y opciones de visualización en dos menús del cromo, en todas las páginas de fotos.</li>
       <li><strong>Fechas:</strong> el usuario filtra por un día o por un rango, y puede ordenar de más antiguas a más recientes.</li>
       <li><strong>Tamaño:</strong> cinco paradas, también con <kbd>Ctrl</kbd> + rueda.</li>
-      <li><strong>Visor:</strong> gris translúcido sobre la rejilla borrosa, mientras los elementos flotantes se distingan bien.</li>
+      <li><strong>Visor:</strong> gris translúcido sobre la rejilla borrosa, más claro que el panel y las cápsulas para que destaquen.</li>
+      <li><strong>Acciones de página:</strong> flotan en el cromo en todas las páginas; las filas de filtros suben con la cabecera.</li>
+      <li><strong>Cuadrícula:</strong> proporción 1:1 por defecto u Original; distribución y proporción, una preferencia global editable desde el menú de cada página o desde Ajustes › Apariencia.</li>
+      <li><strong>Mapa:</strong> a todo el ancho, por debajo de la isla de navegación.</li>
+      <li><strong>Carpetas:</strong> un solo scroll con secciones plegables; el árbol, una tarjeta separada de la isla.</li>
     </ul>
   </div>
 </section>
