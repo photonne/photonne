@@ -123,7 +123,7 @@
 		const query = window.matchMedia(PHONE_QUERY);
 		const follow = () => {
 			mobile = query.matches;
-			if (!mobile) chrome.immersive = false;
+			if (!mobile) resetImmersive();
 		};
 		query.addEventListener('change', follow);
 		return () => query.removeEventListener('change', follow);
@@ -138,24 +138,44 @@
 	const menuLabel = $derived(collapsed ? m.nav_expand() : m.nav_collapse());
 
 	// Immersive on a phone, as the native ImmersiveChromeEffect: scrolling
-	// down any pane of the page hides the chrome, scrolling up or reaching
-	// the top brings it back. A few pixels of slack ignore jitter.
+	// down any pane of the page hides the chrome; scrolling up, reaching the
+	// top or stopping for a moment brings it back. A few pixels of slack
+	// ignore jitter.
 	const SCROLL_SLACK = 10;
+	const SETTLE_MS = 600;
 	const lastTops = new WeakMap<Element, number>();
+	let content = $state<HTMLElement>();
+	let settle: ReturnType<typeof setTimeout> | undefined;
 
 	function onscroll(event: Event) {
 		const pane = event.target;
 		if (!mobile || !(pane instanceof Element)) return;
 		const top = pane.scrollTop;
 		const last = lastTops.get(pane) ?? 0;
-		if (top <= SCROLL_SLACK) chrome.immersive = false;
-		else if (top - last > SCROLL_SLACK) chrome.immersive = true;
-		else if (last - top > SCROLL_SLACK) chrome.immersive = false;
+		// The page itself scrolls under the chrome already; a grid with its
+		// own scroll needs the room around the page given back.
+		const inner = pane !== content;
+		clearTimeout(settle);
+		if (top <= SCROLL_SLACK) {
+			chrome.immersive = false;
+			if (inner) chrome.reclaimed = false;
+		} else if (top - last > SCROLL_SLACK) {
+			chrome.immersive = true;
+			if (inner) chrome.reclaimed = true;
+		} else if (last - top > SCROLL_SLACK) chrome.immersive = false;
 		else return;
 		lastTops.set(pane, top);
+		if (chrome.immersive) settle = setTimeout(() => (chrome.immersive = false), SETTLE_MS);
 	}
 
-	afterNavigate(() => (chrome.immersive = false));
+	function resetImmersive() {
+		clearTimeout(settle);
+		chrome.immersive = false;
+		chrome.reclaimed = false;
+	}
+
+	afterNavigate(resetImmersive);
+	$effect(() => () => clearTimeout(settle));
 	let search = $state('');
 
 	/**
@@ -226,6 +246,7 @@
 	class="shell"
 	class:collapsed={rail}
 	class:immersive={chrome.immersive}
+	class:reclaimed={chrome.reclaimed && mobile}
 	class:selecting={chrome.selecting > 0}
 >
 	<!-- The navigation island: a glass panel floating beside the page, with
@@ -398,7 +419,7 @@
 			</div>
 		</header>
 
-		<main id="content" class="content" tabindex="-1">
+		<main id="content" class="content" tabindex="-1" bind:this={content}>
 			{@render children()}
 		</main>
 	</div>
@@ -848,9 +869,28 @@
 
 		/* The last of the page clears the tabs. */
 		.content {
-			padding-bottom: calc(
+			--nav-room: calc(
 				var(--nav-pill-h) + 8px + var(--float-margin) + env(safe-area-inset-bottom, 0px)
 			);
+			padding-bottom: var(--nav-room);
+			transition:
+				padding-top var(--duration-chrome) var(--ease-standard),
+				padding-bottom var(--duration-chrome) var(--ease-standard);
+		}
+
+		/* A grid scrolled down takes the whole screen; the chrome floats over
+		   its photos, and the grid ends with room to clear the tabs. */
+		/* Over the photos only the tools stay, top right, as the native
+		   timeline's header capsule once scrolled. */
+		.reclaimed .brand-pill {
+			opacity: 0;
+			visibility: hidden;
+		}
+
+		.reclaimed .content {
+			--grid-end-room: var(--nav-room);
+			padding-top: 0;
+			padding-bottom: 0;
 		}
 	}
 

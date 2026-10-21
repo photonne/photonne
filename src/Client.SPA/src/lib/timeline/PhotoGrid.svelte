@@ -782,6 +782,9 @@
 		   would fight it when estimated months turn into real ones. */
 		overflow-anchor: none;
 		scrollbar-width: none;
+		/* Room after the last row when the page's own (for the phone's tabs)
+		   has gone to the photos. */
+		padding-bottom: var(--grid-end-room, 0px);
 	}
 
 	.scroller::-webkit-scrollbar {
@@ -1049,7 +1052,7 @@
 	}
 
 	.top-pill {
-		bottom: var(--space-4);
+		bottom: calc(var(--grid-end-room, 0px) + var(--space-4));
 		cursor: pointer;
 	}
 
