@@ -1,6 +1,9 @@
+import type { Snippet } from 'svelte';
+
 /**
  * The floating chrome's shared state: whether a selection has taken over
- * the navigation, and whether the page is scrolling down (immersive).
+ * the navigation, whether the page is scrolling down (immersive), and what
+ * the page on screen adds to it (see PageChrome.svelte).
  */
 class Chrome {
 	/** How many selection bars are showing (each page has at most one). */
@@ -13,6 +16,14 @@ class Chrome {
 	 * chrome floats over them until that pane is back at its top.
 	 */
 	reclaimed = $state(false);
+	/**
+	 * The page takes the whole window: no room kept above (and, on a phone,
+	 * below) for the chrome. Its own scrolling panes keep that room inside,
+	 * as padding (--bleed-top, --bleed-bottom), so they pass beneath it.
+	 */
+	bleed = $state(false);
+	/** The page's own buttons, in a capsule of the chrome next to the search. */
+	actions = $state<Snippet | null>(null);
 }
 
 export const chrome = new Chrome();

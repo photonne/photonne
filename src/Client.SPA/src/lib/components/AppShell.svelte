@@ -154,7 +154,8 @@
 		const last = lastTops.get(pane) ?? 0;
 		// The page itself scrolls under the chrome already; a grid with its
 		// own scroll needs the room around the page given back.
-		const inner = pane !== content;
+		// (A full-window page keeps that room inside its panes already.)
+		const inner = pane !== content && !chrome.bleed;
 		clearTimeout(settle);
 		if (top <= SCROLL_SLACK) {
 			chrome.immersive = false;
@@ -248,6 +249,7 @@
 	class:immersive={chrome.immersive}
 	class:reclaimed={chrome.reclaimed && mobile}
 	class:selecting={chrome.selecting > 0}
+	class:bleed={chrome.bleed}
 >
 	<!-- The navigation island: a glass panel floating beside the page, with
 	     the brand and the fold button on top. Not on a phone: FloatingNav. -->
@@ -362,6 +364,14 @@
 						onclick={() => palette?.open()}>{paletteKeys}</button
 					>
 				</form>
+			{/if}
+
+			{#if chrome.actions}
+				<!-- The page's own buttons (filters, view options…), between the
+				     search and the user's tools. -->
+				<div class="page-actions glass" role="group" aria-label={m.nav_page_tools()}>
+					{@render chrome.actions()}
+				</div>
 			{/if}
 
 			<div class="tools glass">
@@ -827,10 +837,36 @@
 	}
 
 	.content {
+		--bleed-top: 0px;
+		--bleed-bottom: 0px;
 		height: 100%;
 		overflow: auto;
 		padding-top: var(--chrome-top);
 		outline: none;
+	}
+
+	/* A page that takes the whole window (PageChrome bleed): its panes keep
+	   the chrome's room inside, so they scroll beneath it. */
+	.bleed .content {
+		--bleed-top: var(--chrome-top);
+		padding-top: 0;
+		overflow: hidden;
+	}
+
+	.page-actions {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		height: 100%;
+		margin-left: auto;
+		padding: 0 4px;
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-bar);
+	}
+
+	/* Right after the page's buttons, the tools close the row. */
+	.page-actions + .tools {
+		margin-left: 0;
 	}
 
 	.brand-pill {
@@ -885,6 +921,11 @@
 		.reclaimed .brand-pill {
 			opacity: 0;
 			visibility: hidden;
+		}
+
+		.bleed .content {
+			--bleed-bottom: var(--nav-room);
+			padding-bottom: 0;
 		}
 
 		.reclaimed .content {
