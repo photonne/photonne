@@ -27,4 +27,22 @@ describe('groupByMonth', () => {
 			['2026-07', 1]
 		]);
 	});
+
+	it('gives a month that comes back after another a key of its own', () => {
+		const sections = groupByMonth([
+			asset('a', '2023-03-02T10:00:00Z'),
+			asset('b', '2024-07-01T10:00:00Z'),
+			asset('c', '2023-03-20T10:00:00Z'),
+			asset('d', '2024-07-09T10:00:00Z'),
+			asset('e', '2023-03-05T10:00:00Z')
+		]);
+
+		expect(sections.map((s) => [s.key, s.count])).toEqual([
+			['2023-03', 1],
+			['2024-07', 1],
+			['2023-03~2', 1],
+			['2024-07~2', 1],
+			['2023-03~3', 1]
+		]);
+	});
 });
