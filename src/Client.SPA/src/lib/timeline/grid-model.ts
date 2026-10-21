@@ -289,16 +289,19 @@ export function sectionSpan<T>(layout: GridLayout<T>, key: string) {
 
 /**
  * The section to show for `target` (a `yyyy-MM` or `yyyy` key) among `keys`,
- * newest first: the target itself, else the closest older one, else the
- * oldest. Keys of different lengths compare on their common prefix, so a
- * year finds its newest month and a month finds its year.
+ * newest first or oldest first: the target itself, else the closest older
+ * one, else the oldest. Keys of different lengths compare on their common
+ * prefix, so a year finds its newest month and a month finds its year.
  */
 export function nearestSection(keys: readonly string[], target: string): string | null {
-	for (const key of keys) {
+	// Oldest first (the timeline sorted that way): walk it newest first.
+	const ascending = keys.length > 1 && keys[0] < keys.at(-1)!;
+	const ordered = ascending ? [...keys].reverse() : keys;
+	for (const key of ordered) {
 		const length = Math.min(key.length, target.length);
 		if (key.slice(0, length) <= target.slice(0, length)) return key;
 	}
-	return keys.at(-1) ?? null;
+	return ordered.at(-1) ?? null;
 }
 
 /**

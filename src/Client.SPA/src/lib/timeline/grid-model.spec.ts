@@ -244,6 +244,12 @@ describe('nearestSection', () => {
 		expect(nearestSection([], '2020-01')).toBeNull();
 	});
 
+	it('finds the same month when the oldest come first', () => {
+		const oldest = [...months].reverse();
+		expect(nearestSection(oldest, '2026-07')).toBe('2026-06');
+		expect(nearestSection(oldest, '2020-01')).toBe('2023-03');
+	});
+
 	it('maps years onto months and months onto years', () => {
 		expect(nearestSection(months, '2024')).toBe('2024-07');
 		expect(nearestSection(['2026', '2024', '2023'], '2024-07')).toBe('2024');

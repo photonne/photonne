@@ -9,6 +9,7 @@ import {
 import type { GridSection } from './grid-model.js';
 import { indexById, withChangedItems, withoutItems } from './collection-ops.js';
 import type { GridHost } from './grid-host.js';
+import { arrangeItems, monthInRange, NO_FILTER, type TimelineFilter } from './timeline-filter.js';
 import { toGridAsset, type GridAsset } from './types.js';
 
 /**
@@ -21,14 +22,24 @@ export class TimelineStore implements GridHost {
 	#requested = new SvelteSet<string>();
 	#queryClient: QueryClient;
 	#buckets: () => readonly TimelineBucketResponse[] | undefined;
+	#filter: () => TimelineFilter;
 
-	sections: GridSection<GridAsset>[] = $derived.by(() =>
-		(this.#buckets() ?? []).map((bucket) => ({
-			key: bucket.key,
-			count: bucket.count,
-			items: this.#months.get(bucket.key) ?? null
-		}))
-	);
+	// The months of the range, in the chosen order. A month not loaded yet
+	// keeps its whole count (a range's first and last months shrink once
+	// they arrive); one with nothing in the range goes.
+	sections: GridSection<GridAsset>[] = $derived.by(() => {
+		const filter = this.#filter();
+		const range = filter.range;
+		const months = (this.#buckets() ?? [])
+			.filter((bucket) => !range || monthInRange(bucket.key, range))
+			.map((bucket) => {
+				const loaded = this.#months.get(bucket.key);
+				const items = loaded ? arrangeItems(loaded, filter) : null;
+				return { key: bucket.key, count: items?.length ?? bucket.count, items };
+			})
+			.filter((section) => section.count > 0);
+		return filter.order === 'oldest' ? months.reverse() : months;
+	});
 
 	byId = $derived(indexById(this.sections));
 
@@ -37,10 +48,12 @@ export class TimelineStore implements GridHost {
 
 	constructor(
 		queryClient: QueryClient,
-		buckets: () => readonly TimelineBucketResponse[] | undefined
+		buckets: () => readonly TimelineBucketResponse[] | undefined,
+		filter: () => TimelineFilter = () => NO_FILTER
 	) {
 		this.#queryClient = queryClient;
 		this.#buckets = buckets;
+		this.#filter = filter;
 	}
 
 	// The request of each month in flight or done, so a caller that needs the

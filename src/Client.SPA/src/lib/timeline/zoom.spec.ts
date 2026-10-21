@@ -12,6 +12,8 @@ import {
 	rowHeightFor,
 	sizeKeyDirection,
 	stepSize,
+	clampSize,
+	sizeLevel,
 	WheelZoom,
 	yearRowHeightFor,
 	yearSampleSize
@@ -52,15 +54,22 @@ describe('thumbnail size', () => {
 		expect(yearRowHeightFor(0, 400)).toBeGreaterThanOrEqual(32);
 	});
 
-	it('steps and stops at both ends', () => {
-		expect(stepSize(50, 1)).toBe(60);
-		expect(stepSize(50, -1, 5)).toBe(45);
-		expect(stepSize(95, 1)).toBe(MAX_SIZE);
-		expect(stepSize(3, -1)).toBe(MIN_SIZE);
+	it('steps from level to level and stops at both ends', () => {
+		expect(stepSize(50, 1)).toBe(75);
+		expect(stepSize(50, -1)).toBe(25);
+		expect(stepSize(100, 1)).toBe(MAX_SIZE);
+		expect(stepSize(0, -1)).toBe(MIN_SIZE);
+	});
+
+	it('puts any size on the nearest of the five levels', () => {
+		expect(clampSize(60)).toBe(50);
+		expect(clampSize(63)).toBe(75);
+		expect(clampSize(-20)).toBe(0);
+		expect(sizeLevel(75)).toBe(3);
 	});
 
 	it('reads a saved size and ignores anything else', () => {
-		expect(parseSize('30')).toBe(30);
+		expect(parseSize('30')).toBe(25);
 		expect(parseSize('130')).toBe(MAX_SIZE);
 		expect(parseSize('huge')).toBe(DEFAULT_SIZE);
 		expect(parseSize('')).toBe(DEFAULT_SIZE);

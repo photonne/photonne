@@ -390,31 +390,33 @@ test.describe('sharing', () => {
 	});
 });
 
-test('an album with a cover opens under it as a banner that folds when scrolling', async ({
+test('an album with a cover opens under it as a banner that scrolls away with the photos', async ({
 	page
 }) => {
-	// Low enough for the album's photos to scroll under the banner, and narrow
-	// enough for its six photos to take more than one row (without a scrubber
-	// the grid has the whole width).
+	// Low enough for the album's photos to scroll, and narrow enough for its
+	// six photos to take more than one row (without a scrubber the grid has
+	// the whole width).
 	await page.setViewportSize({ width: 1024, height: 420 });
 	// With the full menu: at this width it would start as a rail.
 	await page.addInitScript(() => localStorage.setItem('photonne.sidebar', 'full'));
 	await open(page, '/albums/album-1');
 
-	const banner = page.getByRole('region', { name: 'Vacaciones', exact: true }).filter({
-		has: page.getByRole('heading', { level: 1 })
-	});
+	const banner = page
+		.locator('section')
+		.filter({ has: page.getByRole('heading', { name: 'Vacaciones', level: 1 }) });
 	await expect(banner.getByRole('heading', { name: 'Vacaciones', level: 1 })).toBeVisible();
 	// The large rendition, not the card's medium one.
 	await expect(banner.locator(':scope > img')).toHaveAttribute('src', /size=Large/);
-	const tall = (await banner.boundingBox())!.height;
+	const top = (await banner.boundingBox())!.y;
 
 	await page
 		.getByRole('button', { name: /^(Foto|Vídeo), / })
 		.first()
 		.hover();
 	await page.mouse.wheel(0, 600);
-	await expect.poll(async () => (await banner.boundingBox())!.height).toBeLessThan(tall);
+	await expect
+		.poll(async () => (await banner.boundingBox())?.y ?? -Infinity)
+		.toBeLessThan(top - 100);
 });
 
 test('album tiles get smaller and bigger, only in the grid view', async ({ page }) => {
@@ -427,10 +429,10 @@ test('album tiles get smaller and bigger, only in the grid view', async ({ page 
 	await slider.fill('100');
 	await expect.poll(width).toBeGreaterThan(before);
 	await page.getByRole('button', { name: 'Tarjetas más pequeñas' }).click();
-	await expect(slider).toHaveValue('90');
+	await expect(slider).toHaveValue('75');
 
 	await page.reload();
-	await expect(slider).toHaveValue('90');
+	await expect(slider).toHaveValue('75');
 });
 
 test('small album tiles keep only the icons of their badges', async ({ page }) => {

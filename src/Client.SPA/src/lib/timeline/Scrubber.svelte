@@ -104,8 +104,8 @@
 <style>
 	.rail {
 		position: absolute;
-		top: 16px;
-		bottom: 16px;
+		top: calc(var(--bleed-top, 0px) + 16px);
+		bottom: calc(var(--bleed-bottom, 0px) + 16px);
 		right: 0;
 		width: 56px;
 		cursor: ns-resize;

@@ -5,10 +5,14 @@
  */
 export const MIN_SIZE = 0;
 export const MAX_SIZE = 100;
-/** What + and − (and one step of the wheel) move the size by. */
-export const SIZE_STEP = 10;
-/** What one step of Ctrl + wheel (or a pinch) moves it by: finer, it comes in streams. */
-export const WHEEL_STEP = 5;
+/**
+ * Five sizes, as the native app's zoom levels: the slider stops on them, and
+ * +, − and Ctrl + wheel (or a pinch) go from one to the next.
+ */
+export const SIZE_STEP = 25;
+export const SIZE_LEVELS = [0, 25, 50, 75, 100] as const;
+/** One step of Ctrl + wheel: a whole level, like + and −. */
+export const WHEEL_STEP = SIZE_STEP;
 /** The grid as it always was: medium rows. */
 export const DEFAULT_SIZE = 50;
 
@@ -33,8 +37,15 @@ const ROW_HEIGHTS: [number, number, number][] = [
 const YEAR_ROW_HEIGHTS: [number, number, number] = [48, 56, 64];
 const MIN_YEAR_ROW_HEIGHT = 32;
 
+/** Within the range, on the nearest of the five levels. */
 export function clampSize(size: number): number {
-	return Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(size)));
+	const clamped = Math.min(MAX_SIZE, Math.max(MIN_SIZE, size));
+	return Math.round(clamped / SIZE_STEP) * SIZE_STEP;
+}
+
+/** Which of the five levels a size is, 0 (the smallest) to 4. */
+export function sizeLevel(size: number): number {
+	return clampSize(size) / SIZE_STEP;
 }
 
 function bucket(containerWidth: number): 0 | 1 | 2 {

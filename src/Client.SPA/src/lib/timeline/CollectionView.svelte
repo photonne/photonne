@@ -22,7 +22,8 @@
 	import PhotoGrid from './PhotoGrid.svelte';
 	import SelectionBar from './SelectionBar.svelte';
 	import { collectionSize } from './size-preference.svelte.js';
-	import SizeControl from './SizeControl.svelte';
+	import PageChrome from '#lib/components/PageChrome.svelte';
+	import ViewOptions from './ViewOptions.svelte';
 	import { Selection } from './selection.svelte.js';
 	import type { GridAsset } from './types.js';
 	import { sizeKeyDirection, WHEEL_STEP } from './zoom.js';
@@ -105,14 +106,6 @@
 		selection: given
 	}: Props = $props();
 
-	let scrolled = $state(false);
-	/** The banner's folded height and its smallest open one (see .banner below). */
-	const FOLDED_HEIGHT = 72;
-	const MIN_OPEN_HEIGHT = 180;
-	/** What the banner gives back when it folds: its height, open, minus the folded one. */
-	let bannerHeight = $state(0);
-	// While it unfolds again its height is still growing: count at least the minimum.
-	const foldGain = $derived(Math.max(bannerHeight, MIN_OPEN_HEIGHT) - FOLDED_HEIGHT);
 	// A bigger rendition for the banner when the server has one.
 	const coverSrc = $derived(cover?.replace(/([?&]size=)Medium\b/, '$1Large') ?? null);
 	let coverFailed = $state(false);
@@ -197,31 +190,17 @@
 <svelte:window {onkeydown} />
 
 <!-- The page's own buttons, after the size of the grid. -->
-{#snippet tools()}
-	{#if sizeInBar}
-		<SizeControl value={collectionSize.value} onchange={(size) => collectionSize.set(size)} />
-	{/if}
-	{@render toolbar?.()}
+{#snippet viewOptions()}
+	<ViewOptions size={collectionSize.value} onsize={(size) => collectionSize.set(size)} />
 {/snippet}
 
-<div class="page">
-	<SelectionBar {selection}>
-		{#snippet actions()}
-			{#if selectionActions}
-				{@render selectionActions(selection, batch)}
-			{:else}
-				<BatchActionBar actions={batch} {selection} {available} />
-			{/if}
-		{/snippet}
-	</SelectionBar>
+<!-- The whole window: the header scrolls away with the photos, and the
+     grid's tools wait in the floating chrome. -->
+<PageChrome bleed actions={sizeInBar ? viewOptions : undefined} />
 
+{#snippet heading()}
 	{#if cover}
-		<section
-			class="banner dark-surface"
-			class:folded={scrolled}
-			aria-labelledby="collection-title"
-			bind:clientHeight={bannerHeight}
-		>
+		<section class="banner dark-surface" aria-labelledby="collection-title">
 			<img
 				src={coverFailed ? cover : coverSrc}
 				alt=""
@@ -235,29 +214,46 @@
 				<div class="banner-header">{@render header?.()}</div>
 			</div>
 		</section>
-		{#if toolbar || sizeInBar}<div class="head bar">
-				<div class="toolbar">{@render tools()}</div>
+		{#if toolbar}<div class="head bar">
+				<div class="toolbar">{@render toolbar()}</div>
 			</div>{/if}
 	{:else}
 		{#if leading}
 			<div class="with-leading">
 				<div class="leading">{@render leading()}</div>
-				<PageHeader {title} {count} actions={toolbar || sizeInBar ? tools : undefined} />
+				<PageHeader {title} {count} actions={toolbar} />
 			</div>
 		{:else}
-			<PageHeader {title} {count} actions={toolbar || sizeInBar ? tools : undefined} />
+			<PageHeader {title} {count} actions={toolbar} />
 		{/if}
 		{@render header?.()}
 	{/if}
+{/snippet}
 
-	{#if collapsed}
-		<!-- The host folded the grid away. -->
-	{:else if status === 'pending'}
-		<Skeleton variant="grid" />
-	{:else if status === 'error'}
-		<p class="status" role="alert">{m.error_loading()}</p>
-	{:else if store.items.length === 0}
-		<EmptyState icon="photos" title={emptyText} hint={emptyHint} action={emptyAction} compact />
+<div class="page">
+	<SelectionBar {selection}>
+		{#snippet actions()}
+			{#if selectionActions}
+				{@render selectionActions(selection, batch)}
+			{:else}
+				<BatchActionBar actions={batch} {selection} {available} />
+			{/if}
+		{/snippet}
+	</SelectionBar>
+
+	{#if collapsed || status !== 'ready' || store.items.length === 0}
+		<div class="scroll">
+			{@render heading()}
+			{#if collapsed}
+				<!-- The host folded the grid away. -->
+			{:else if status === 'pending'}
+				<Skeleton variant="grid" />
+			{:else if status === 'error'}
+				<p class="status" role="alert">{m.error_loading()}</p>
+			{:else}
+				<EmptyState icon="photos" title={emptyText} hint={emptyHint} action={emptyAction} compact />
+			{/if}
+		</div>
 	{:else}
 		<div class="grid">
 			<PhotoGrid
@@ -273,12 +269,7 @@
 				onneedsection={() => {}}
 				onopen={(item) => viewer.open(item.id)}
 				{onnearend}
-				onscrolled={(top, max) => {
-					// Only folds when the grid would still scroll once it gets the
-					// banner's room; otherwise folding would undo the scroll and loop.
-					if (top <= 0) scrolled = false;
-					else if (top > 24 && max > foldGain) scrolled = true;
-				}}
+				lead={heading}
 				bind:this={grid}
 			/>
 		</div>
@@ -360,19 +351,10 @@
 		border-radius: var(--radius-xl);
 		background: var(--color-surface-raised);
 		color: #fff;
-		transition:
-			height var(--duration-chrome) var(--ease-standard),
-			border-radius var(--duration-chrome) var(--ease-standard);
 		/* What the header snippet draws (description, badges) reads on the photo. */
 		--color-text: #fff;
 		--color-text-muted: rgb(255 255 255 / 0.82);
 		--color-surface: rgb(255 255 255 / 0.18);
-	}
-
-	/* Folded, it becomes a capsule with the title, like the rest of the chrome. */
-	.banner.folded {
-		height: 72px;
-		border-radius: var(--radius-pill);
 	}
 
 	.banner img {
@@ -403,19 +385,10 @@
 		font-size: var(--font-size-2xl);
 		line-height: 1.15;
 		text-shadow: 0 1px 8px rgb(0 0 0 / 0.4);
-		transition: font-size var(--duration-normal) ease;
 	}
 
 	.banner-header :global(.about) {
 		padding: 0;
-	}
-
-	.folded h1 {
-		font-size: var(--font-size-lg);
-	}
-
-	.folded .banner-header {
-		display: none;
 	}
 
 	/* A select among the page's buttons takes their small height. */
@@ -458,6 +431,16 @@
 	.grid {
 		flex: 1;
 		min-height: 0;
+	}
+
+	/* Without the grid (loading, empty…): the header and the rest scroll
+	   together, clear of the floating chrome. */
+	.scroll {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		padding-top: var(--bleed-top, 0px);
+		padding-bottom: var(--bleed-bottom, 0px);
 	}
 
 	.status {

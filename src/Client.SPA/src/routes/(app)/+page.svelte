@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
@@ -14,6 +14,7 @@
 		getTimelineBucketsOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
+	import PageChrome from '#lib/components/PageChrome.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
 	import { longDate, monthTitle } from '#lib/format.js';
@@ -25,6 +26,7 @@
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
 	import { TimelineStore } from '#lib/timeline/timeline-store.svelte.js';
+	import type { TimelineFilter } from '#lib/timeline/timeline-filter.js';
 	import TimelineTools from '#lib/timeline/TimelineTools.svelte';
 	import { WHEEL_STEP } from '#lib/timeline/zoom.js';
 	import { TimelineView } from '#lib/timeline/timeline-view.svelte.js';
@@ -36,19 +38,39 @@
 
 	const queryClient = useQueryClient();
 	const buckets = createQuery(() => getTimelineBucketsOptions());
-	const store = new TimelineStore(queryClient, () => buckets.data);
+	// The filters (order, a day or a range) live in the view, made below.
+	const store: TimelineStore = new TimelineStore(
+		queryClient,
+		() => buckets.data,
+		(): TimelineFilter => view.filter
+	);
 	const selection = new Selection();
 	const batch = new BatchActions(store, selection);
 
-	// The header's facts: how many items, and the years they span.
-	const total = $derived((buckets.data ?? []).reduce((sum, month) => sum + month.count, 0));
+	// The header's facts: how many items, and the years they span (or the
+	// days chosen in the filters).
+	const total = $derived(store.sections.reduce((sum, month) => sum + month.count, 0));
 	const span = $derived.by(() => {
-		const years = (buckets.data ?? [])
+		const range = view.range;
+		if (range)
+			return range.from === range.to
+				? m.filters_active_day({ date: longDate(range.from) })
+				: m.filters_active_range({ from: longDate(range.from), to: longDate(range.to) });
+		const years = store.sections
 			.filter((month) => month.count > 0)
 			.map((month) => Number(month.key.slice(0, 4)));
 		if (years.length === 0) return null;
 		const [from, to] = [Math.min(...years), Math.max(...years)];
 		return from === to ? String(from) : m.timeline_range({ from, to });
+	});
+
+	// A range's first and last months only count the right days once
+	// loaded: load them now, so the header says how many there are.
+	$effect(() => {
+		if (!view.range) return;
+		const keys = store.sections.map((section) => section.key);
+		const ends = [keys[0], keys.at(-1)].filter((key): key is string => !!key);
+		untrack(() => store.loadMany(ends));
 	});
 	const facts = $derived(
 		[m.timeline_year_items({ count: total }), span].filter(Boolean).join(' · ')
@@ -61,7 +83,7 @@
 
 	// --- Zoom and "go to a date" ------------------------------------------
 
-	const view = new TimelineView(() => store.sections);
+	const view: TimelineView = new TimelineView(() => store.sections);
 
 	// The year view's sampled photos aren't the timeline's: they can't be
 	// selected, and opening one goes to its month instead of the viewer.
@@ -187,6 +209,24 @@
 	<title>{m.photos_title()} · {m.app_name()}</title>
 </svelte:head>
 
+{#snippet tools()}
+	<TimelineTools
+		{view}
+		months={buckets.data ?? []}
+		current={() => grid?.currentSection() ?? null}
+		onjump={jumpTo}
+		paused={!!openId}
+	/>
+{/snippet}
+
+<!-- The whole window: the title scrolls away with the photos and the
+     filters and view options wait in the floating chrome. -->
+<PageChrome bleed actions={(buckets.data?.length ?? 0) > 0 ? tools : undefined} />
+
+{#snippet heading()}
+	<PageHeader title={m.photos_title()} count={store.sections.length > 0 ? facts : null} />
+{/snippet}
+
 <div class="page">
 	<SelectionBar {selection}>
 		{#snippet actions()}
@@ -194,33 +234,38 @@
 		{/snippet}
 	</SelectionBar>
 
-	<PageHeader title={m.photos_title()} count={store.sections.length > 0 ? facts : null}>
-		{#snippet actions()}
-			{#if store.sections.length > 0}
-				<TimelineTools
-					{view}
-					months={buckets.data ?? []}
-					current={() => grid?.currentSection() ?? null}
-					onjump={jumpTo}
-					paused={!!openId}
-				/>
+	{#if buckets.isPending || buckets.isError || store.sections.length === 0}
+		<div class="scroll">
+			{@render heading()}
+			{#if buckets.isPending}
+				<Skeleton variant="grid" />
+			{:else if buckets.isError}
+				<p class="status" role="alert">{m.error_loading()}</p>
+			{:else if (buckets.data?.length ?? 0) > 0}
+				<!-- The filters leave nothing. -->
+				<EmptyState icon="photos" title={m.filters_none_in_range()}>
+					{#snippet action()}
+						<button
+							type="button"
+							class="btn"
+							onclick={() => {
+								view.setRange(null);
+								view.setOrder('newest');
+							}}>{m.filters_clear()}</button
+						>
+					{/snippet}
+				</EmptyState>
+			{:else}
+				<EmptyState icon="photos" title={m.timeline_empty_title()} hint={m.timeline_empty_hint()}>
+					{#snippet action()}
+						<a class="btn primary" href={appHref('/upload')}>
+							<Icon name="upload" size={18} />
+							{m.timeline_upload()}
+						</a>
+					{/snippet}
+				</EmptyState>
 			{/if}
-		{/snippet}
-	</PageHeader>
-
-	{#if buckets.isPending}
-		<Skeleton variant="grid" />
-	{:else if buckets.isError}
-		<p class="status" role="alert">{m.error_loading()}</p>
-	{:else if store.sections.length === 0}
-		<EmptyState icon="photos" title={m.timeline_empty_title()} hint={m.timeline_empty_hint()}>
-			{#snippet action()}
-				<a class="btn primary" href={appHref('/upload')}>
-					<Icon name="upload" size={18} />
-					{m.timeline_upload()}
-				</a>
-			{/snippet}
-		</EmptyState>
+		</div>
 	{:else}
 		<div class="grid" bind:clientWidth={view.width}>
 			<PhotoGrid
@@ -237,8 +282,9 @@
 				grouping={view.yearView ? 'year' : view.grouping === 'day' ? 'day' : 'month'}
 				layout={view.yearView ? 'rows' : gridLayout.value}
 				onzoom={(direction) => view.step(direction, WHEEL_STEP)}
-				reflowKey={view.yearView ? 'years' : 'months'}
+				reflowKey={`${view.yearView ? 'years' : 'months'}|${view.order}|${view.range?.from}|${view.range?.to}`}
 				selectable={!view.yearView}
+				lead={heading}
 				bind:this={grid}
 			/>
 		</div>
@@ -292,10 +338,14 @@
 		min-height: 0;
 	}
 
-	.page > :global(.page-header) {
-		flex: none;
-		/* At least the selection bar's height, which covers it while selecting. */
-		min-height: 64px;
+	/* Without the grid (loading, empty…): the header and the rest scroll
+	   together, clear of the floating chrome. */
+	.scroll {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		padding-top: var(--bleed-top, 0px);
+		padding-bottom: var(--bleed-bottom, 0px);
 	}
 
 	.status {
