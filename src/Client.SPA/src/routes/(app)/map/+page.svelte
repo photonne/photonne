@@ -8,7 +8,7 @@
 		getSettingOptions
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
-	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import PageChrome from '#lib/components/PageChrome.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import { icons } from '#lib/people/icons.js';
@@ -94,23 +94,26 @@
 	<title>{m.nav_map()} · {m.app_name()}</title>
 </svelte:head>
 
-<div class="page">
-	<PageHeader
-		title={m.nav_map()}
-		count={points.data ? m.map_count({ count: points.data.length }) : null}
+<!-- The map takes the whole window; the title and "show all" float over it. -->
+{#snippet fitAll()}
+	<button
+		type="button"
+		class="icon-btn"
+		aria-label={m.map_fit()}
+		title={m.map_fit()}
+		disabled={!bounds}
+		onclick={() => bounds && map?.fit(bounds)}
 	>
-		{#snippet actions()}
-			<button
-				type="button"
-				class="btn sm"
-				disabled={!bounds}
-				onclick={() => bounds && map?.fit(bounds)}
-			>
-				<Icon path={icons.fitAll} size={18} />
-				{m.map_fit()}
-			</button>
-		{/snippet}
-	</PageHeader>
+		<Icon path={icons.fitAll} />
+	</button>
+{/snippet}
+<PageChrome bleed actions={fitAll} />
+
+<div class="page">
+	<div class="title glass">
+		<h1>{m.nav_map()}</h1>
+		{#if points.data}<span class="count">{m.map_count({ count: points.data.length })}</span>{/if}
+	</div>
 
 	<div class="body">
 		<div class="map">
@@ -147,23 +150,56 @@
 
 <style>
 	.page {
-		display: flex;
-		flex-direction: column;
+		position: relative;
 		height: 100%;
 	}
 
 	.body {
-		position: relative;
-		flex: 1;
-		min-height: 0;
-		display: flex;
-		border-top: 1px solid var(--color-border);
+		position: absolute;
+		inset: 0;
 	}
 
 	.map {
-		position: relative;
-		flex: 1;
-		min-width: 0;
+		position: absolute;
+		inset: 0;
+	}
+
+	/* Under the chrome, at the left: what the page is, over the map. */
+	.title {
+		--glass-tint: 82%;
+		position: absolute;
+		top: calc(var(--bleed-top) + var(--space-1));
+		left: var(--float-margin);
+		z-index: 900;
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-3);
+		max-width: calc(100% - 2 * var(--float-margin));
+		padding: var(--space-2) var(--space-4);
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-bar);
+	}
+
+	.title h1 {
+		margin: 0;
+		font-size: var(--font-size-lg);
+		font-weight: 650;
+	}
+
+	.count {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+		white-space: nowrap;
+	}
+
+	/* Leaflet's controls keep clear of the chrome, the title and, on a
+	   phone, the bottom bar. */
+	.map :global(.leaflet-top) {
+		top: calc(var(--bleed-top) + 52px);
+	}
+
+	.map :global(.leaflet-bottom) {
+		bottom: var(--bleed-bottom);
 	}
 
 	.overlay {
