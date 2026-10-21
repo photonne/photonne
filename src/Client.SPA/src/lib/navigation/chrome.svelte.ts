@@ -7,6 +7,12 @@ class Chrome {
 	selecting = $state(0);
 	/** On a phone, scrolling down hides the chrome; scrolling up brings it back. */
 	immersive = $state(false);
+	/**
+	 * A pane with its own scroll (a photo grid) has gone down: the room kept
+	 * for the chrome above and below the page goes to the photos, and the
+	 * chrome floats over them until that pane is back at its top.
+	 */
+	reclaimed = $state(false);
 }
 
 export const chrome = new Chrome();
