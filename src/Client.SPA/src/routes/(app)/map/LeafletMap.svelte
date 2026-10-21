@@ -73,8 +73,11 @@
 		});
 	}
 
+	/** While the container is being resized: the place hasn't moved yet. */
+	let resizing = false;
+
 	function emitView() {
-		if (!map) return;
+		if (!map || resizing) return;
 		const bounds = map.getBounds();
 		onview(
 			{
@@ -120,8 +123,18 @@
 		map = instance;
 		emitView();
 
-		// The container changes size with the side panel and the window.
-		const resize = new ResizeObserver(() => instance.invalidateSize());
+		// The container changes size with the window and the page's layout
+		// (it reaches under the navigation once the chrome takes its place):
+		// the same place stays at the centre, to the degree, not rounded to
+		// Leaflet's pixel pan, so the URL keeps the place it was given.
+		const resize = new ResizeObserver(() => {
+			const center = instance.getCenter();
+			resizing = true;
+			instance.invalidateSize({ pan: false });
+			resizing = false;
+			// Leaflet's own option (1.9), missing from its types: no pan, a reset.
+			instance.setView(center, instance.getZoom(), { reset: true } as L.ZoomPanOptions);
+		});
 		resize.observe(container!);
 
 		return () => {
