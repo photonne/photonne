@@ -441,7 +441,12 @@
 
 	/* ── The navigation island ── */
 
+	/* On the plain page, not on photos: more frost, so it stands apart from
+	   the background in both themes. */
 	.island {
+		--glass-tint: 90%;
+		position: relative;
+		z-index: 6;
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
@@ -595,6 +600,7 @@
 	}
 
 	.topbar {
+		--glass-tint: 84%;
 		position: absolute;
 		inset: var(--float-margin) var(--float-margin) auto var(--page-gutter);
 		z-index: 5;

@@ -62,7 +62,6 @@
 
 	.side {
 		padding: var(--space-6) var(--space-3) var(--space-8) var(--page-gutter);
-		border-right: 1px solid var(--color-border);
 	}
 
 	.side h2 {
@@ -105,8 +104,10 @@
 		background: var(--color-hover);
 	}
 
+	/* The current section, as in the app's navigation: a neutral pill, its
+	   icon in gold. */
 	a[aria-current='page'] {
-		background: var(--color-accent-soft);
+		background: var(--color-active-pill);
 		font-weight: 600;
 	}
 
