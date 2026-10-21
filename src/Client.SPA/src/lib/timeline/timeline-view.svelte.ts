@@ -5,10 +5,18 @@ import { m } from '#lib/paraglide/messages.js';
 import type { GridSection } from './grid-model.js';
 import { toGridAsset, type GridAsset } from './types.js';
 import { SizePreference } from './size-preference.svelte.js';
+import {
+	arrangeItems,
+	yearInRange,
+	type DateRange,
+	type TimelineFilter,
+	type TimelineOrder
+} from './timeline-filter.js';
 import { migrateZoomLevel, parseGrouping, yearSampleSize, type Grouping } from './zoom.js';
 
 const SIZE_KEY = 'photonne.timeline.size';
 const GROUPING_KEY = 'photonne.timeline.grouping';
+const ORDER_KEY = 'photonne.timeline.order';
 /** Where the timeline kept a level that set both size and grouping. */
 const LEGACY_ZOOM_KEY = 'photonne.timeline.zoom';
 
@@ -24,6 +32,19 @@ const GRID_CHROME = 24 + 56;
 export class TimelineView {
 	#size = new SizePreference(SIZE_KEY, () => legacy()?.size ?? null);
 	grouping = $state<Grouping>(readGrouping());
+	/** Newest or oldest first: remembered, like the grouping. */
+	order = $state<TimelineOrder>(readOrder());
+	/** Only the photos of a day or a range of days: for this visit only. */
+	range = $state<DateRange | null>(null);
+
+	get filter(): TimelineFilter {
+		return { order: this.order, range: this.range };
+	}
+
+	/** Something narrows or reorders the photos: the filters' button says so. */
+	get filtered() {
+		return this.range !== null || this.order !== 'newest';
+	}
 	/** The grid's outer width, bound by the page: the year samples depend on it. */
 	width = $state(0);
 
@@ -56,18 +77,22 @@ export class TimelineView {
 
 	sections: GridSection<GridAsset>[] = $derived.by(() => {
 		if (!this.yearView) return this.#months();
-		return (this.#years.data ?? [])
-			.filter((year) => year.items.length > 0)
-			.map((year) => ({
-				key: String(year.year),
-				count: year.items.length,
-				items: year.items.map(toGridAsset)
-			}));
+		const filter = this.filter;
+		const years = (this.#years.data ?? [])
+			.filter((year) => !filter.range || yearInRange(String(year.year), filter.range))
+			.map((year) => {
+				const items = arrangeItems(year.items.map(toGridAsset), filter);
+				return { key: String(year.year), count: items.length, items };
+			})
+			.filter((year) => year.count > 0);
+		return filter.order === 'oldest' ? years.reverse() : years;
 	});
 
 	sectionTitle = (key: string) => (key.length === 4 ? key : monthTitle(key));
 
 	sectionSubtitle = (key: string) => {
+		// A year's total counts every day of it, not just those of a range.
+		if (this.range) return '';
 		const count = this.#yearCounts[key];
 		return count === undefined ? '' : m.timeline_year_items({ count });
 	};
@@ -79,6 +104,19 @@ export class TimelineView {
 	/** One step bigger (+1) or smaller (-1); `step` overrides the size of the step. */
 	step(direction: 1 | -1, step?: number) {
 		this.#size.step(direction, step);
+	}
+
+	setOrder(order: TimelineOrder) {
+		this.order = order;
+		try {
+			localStorage.setItem(ORDER_KEY, order);
+		} catch {
+			// Storage may be unavailable (private mode); the choice lasts the visit.
+		}
+	}
+
+	setRange(range: DateRange | null) {
+		this.range = range;
 	}
 
 	setGrouping(grouping: Grouping) {
@@ -105,5 +143,13 @@ function readGrouping(): Grouping {
 		return own !== null ? parseGrouping(own) : (legacy()?.grouping ?? parseGrouping(null));
 	} catch {
 		return parseGrouping(null);
+	}
+}
+
+function readOrder(): TimelineOrder {
+	try {
+		return localStorage.getItem(ORDER_KEY) === 'oldest' ? 'oldest' : 'newest';
+	} catch {
+		return 'newest';
 	}
 }

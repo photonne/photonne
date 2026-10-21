@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts" generics="T extends GridAsset">
-	import { tick, untrack } from 'svelte';
+	import { tick, untrack, type Snippet } from 'svelte';
 	import { startAssetDrag } from '#lib/actions/drag-assets.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { dayTitle } from '#lib/format.js';
@@ -76,6 +76,11 @@
 		/** The scroll offset and how far it can go, e.g. to fold a header above it. */
 		onscrolled?: (top: number, max: number) => void;
 		/**
+		 * The page's header, above the photos and scrolling with them, so the
+		 * grid takes the whole height once it goes up.
+		 */
+		lead?: Snippet;
+		/**
 		 * Loads placeholder sections, so a Shift range or Select all covers the
 		 * photos of months not loaded yet. Without it (a paged list, which has
 		 * no placeholders for its unloaded pages) they cover the loaded ones.
@@ -101,6 +106,7 @@
 		selectable = true,
 		sectionSubtitle,
 		onscrolled,
+		lead,
 		onloadsections
 	}: Props = $props();
 
@@ -121,6 +127,19 @@
 	let scroller = $state<HTMLDivElement>();
 	let scrollTop = $state(0);
 	let viewportHeight = $state(0);
+	// Inside the scroll, around the photos: the room kept for the floating
+	// chrome above (--bleed-top) and below, and the page's header (lead).
+	let roomHeight = $state(0);
+	let leadHeight = $state(0);
+	let endHeight = $state(0);
+	/**
+	 * From scrollTop to a y on the layout at the top of the view, under the
+	 * chrome. The room above shifts both the photos and the view's top
+	 * edge, so only the header and the padding count.
+	 */
+	const offset = $derived(PADDING + leadHeight);
+	/** The view's height between the chrome above and below. */
+	const clearHeight = $derived(Math.max(0, viewportHeight - roomHeight - endHeight));
 
 	$effect(() => {
 		onscrolled?.(scrollTop, maxScroll);
@@ -164,13 +183,22 @@
 
 	const layout = $derived(buildGridLayout(sections, options, byDay ? dayOf : undefined));
 	const visible = $derived(
-		blocksInRange(layout, scrollTop - viewportHeight, scrollTop + viewportHeight * 2)
+		blocksInRange(
+			layout,
+			scrollTop - offset - viewportHeight,
+			scrollTop - offset + viewportHeight * 2
+		)
 	);
 	const order = $derived(layout.rows.flat());
 	const itemsBySection = $derived(
 		new Map(sections.map((s) => [s.key, s.items?.map((item) => item.id) ?? []]))
 	);
-	const maxScroll = $derived(Math.max(0, layout.totalHeight + PADDING * 2 - viewportHeight));
+	const maxScroll = $derived(
+		Math.max(
+			0,
+			roomHeight + leadHeight + layout.totalHeight + PADDING * 2 + endHeight - viewportHeight
+		)
+	);
 	// Years on the rail: where the months start, or, without month sections
 	// (an album in one section), where the rows' own dates change year.
 	const yearOf = (item: T) => item.capturedAt.slice(0, 4);
@@ -208,7 +236,11 @@
 	});
 
 	$effect(() => {
-		if (onnearend && viewportHeight > 0 && scrollTop + viewportHeight * 2 >= layout.totalHeight) {
+		if (
+			onnearend &&
+			viewportHeight > 0 &&
+			scrollTop - offset + viewportHeight * 2 >= layout.totalHeight
+		) {
 			untrack(() => onnearend());
 		}
 	});
@@ -219,7 +251,7 @@
 	let anchor: { key: string; offset: number } | null = null;
 
 	function rememberAnchor() {
-		const y = scrollTop - PADDING;
+		const y = scrollTop - offset;
 		const key = sectionAt(layout, y);
 		anchor = key === null ? null : { key, offset: y - layout.sectionTops.get(key)! };
 	}
@@ -247,7 +279,7 @@
 			if (!anchor || scrollTop <= 0) return;
 			const top = current.sectionTops.get(anchor.key);
 			if (top === undefined) return;
-			const target = top + anchor.offset + PADDING;
+			const target = top + anchor.offset + offset;
 			if (Math.abs(target - scroller.scrollTop) > 1) scroller.scrollTop = target;
 		});
 	});
@@ -260,10 +292,10 @@
 		// `scrollTop` (state) still holds the offset the old layout was seen at;
 		// the element's own may already be clamped to the new, shorter canvas.
 		const screenY = pointer?.screenY ?? 0;
-		const y = scrollTop - PADDING + screenY;
+		const y = scrollTop - offset + screenY;
 		const target = anchorAfterReflow(before, after, y, pointer?.x);
 		if (target === null) return;
-		const top = Math.max(0, target + PADDING - screenY);
+		const top = Math.max(0, target + offset - screenY);
 		scroller!.scrollTop = top;
 		scrollTop = scroller!.scrollTop;
 		rememberAnchor();
@@ -326,7 +358,7 @@
 		// Rounded up: section tops can be fractional (masonry) and the browser
 		// truncates scrollTop, which would leave the view a hair inside the
 		// section above, anchored to it as that one loads.
-		scroller.scrollTop = Math.ceil(layout.sectionTops.get(key)! + PADDING);
+		scroller.scrollTop = Math.ceil(layout.sectionTops.get(key)! + offset);
 		scrollTop = scroller.scrollTop;
 		rememberAnchor();
 		return key;
@@ -334,7 +366,7 @@
 
 	/** Where the view is: the section at the top and how far into it. */
 	export function position(): GridPosition | null {
-		const y = scrollTop - PADDING;
+		const y = scrollTop - offset;
 		const key = sectionAt(layout, y);
 		return key === null ? null : { key, offset: y - layout.sectionTops.get(key)! };
 	}
@@ -357,7 +389,7 @@
 			scrollToSection(target.key);
 			return;
 		}
-		scroller.scrollTop = top + target.offset + PADDING;
+		scroller.scrollTop = top + target.offset + offset;
 		scrollTop = scroller.scrollTop;
 		rememberAnchor();
 	}
@@ -372,7 +404,7 @@
 	export function currentSection() {
 		// A pixel of slack: the browser rounds scrollTop, so a section scrolled
 		// to exactly (scrollToSection) can sit a fraction below the top.
-		return sectionAt(layout, Math.max(0, scrollTop - PADDING + 1));
+		return sectionAt(layout, Math.max(0, scrollTop - offset + 1));
 	}
 
 	function seek(fraction: number) {
@@ -391,10 +423,10 @@
 		return row ? sectionTitle(row.cells[0].item.capturedAt.slice(0, 7)) : '';
 	}
 
-	const currentLabel = $derived(monthLabelAt(scrollTop));
+	const currentLabel = $derived(monthLabelAt(Math.max(0, scrollTop - offset)));
 
 	function labelAt(fraction: number) {
-		return monthLabelAt(fraction * maxScroll);
+		return monthLabelAt(Math.max(0, fraction * maxScroll - offset));
 	}
 
 	// --- Selection -------------------------------------------------------
@@ -531,7 +563,12 @@
 	function onWindowKeydown(event: KeyboardEvent) {
 		if (event.key !== 'Escape' || !selectable || !selection.active || event.defaultPrevented)
 			return;
-		if (document.querySelector('dialog[open], [role="dialog"], [role="menu"]')) return;
+		// Something open over the grid takes the Escape: a dialog, a menu, a
+		// popover menu. A closed one (the chrome's menus) stays in the page,
+		// and the toaster is a manual popover that is always open.
+		const open =
+			'dialog[open], [role="dialog"]:not([popover]), [popover="auto"]:popover-open, [role="menu"]';
+		if (document.querySelector(open)) return;
 		const target = event.target as HTMLElement | null;
 		if (target?.closest('input, textarea, select')) return;
 		event.preventDefault();
@@ -544,11 +581,11 @@
 		const blockIndex = layout.blockOfItem.get(id);
 		if (blockIndex === undefined || !scroller) return;
 		const block = layout.blocks[blockIndex];
-		const top = block.top + PADDING;
+		const top = block.top + offset;
 		const bottom = top + block.height;
 		if (top < scroller.scrollTop + HEADER_HEIGHT) scroller.scrollTop = top - HEADER_HEIGHT;
-		else if (bottom > scroller.scrollTop + viewportHeight)
-			scroller.scrollTop = bottom - viewportHeight + PADDING;
+		else if (bottom > scroller.scrollTop + clearHeight)
+			scroller.scrollTop = bottom - clearHeight + PADDING;
 		scrollTop = scroller.scrollTop;
 		await tick();
 		scroller.querySelector<HTMLElement>(`[data-id="${id}"]`)?.focus({ preventScroll: true });
@@ -629,6 +666,10 @@
 		role="region"
 		aria-label={label}
 	>
+		<div class="room" aria-hidden="true" bind:clientHeight={roomHeight}></div>
+		{#if lead}
+			<div class="lead" bind:clientHeight={leadHeight}>{@render lead()}</div>
+		{/if}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="canvas"
@@ -744,6 +785,7 @@
 				{/if}
 			{/each}
 		</div>
+		<div class="end" aria-hidden="true" bind:clientHeight={endHeight}></div>
 	</div>
 
 	{#if scrolling && scrollTop > 0 && currentLabel}
@@ -782,9 +824,18 @@
 		   would fight it when estimated months turn into real ones. */
 		overflow-anchor: none;
 		scrollbar-width: none;
-		/* Room after the last row when the page's own (for the phone's tabs)
-		   has gone to the photos. */
-		padding-bottom: var(--grid-end-room, 0px);
+	}
+
+	/* The floating chrome's room, inside the scroll so the photos pass
+	   beneath it (a full-window page sets --bleed-top and --bleed-bottom). */
+	.room {
+		height: var(--bleed-top, 0px);
+	}
+
+	/* After the last row: the chrome below, or the phone's tabs when the
+	   page's own room has gone to the photos (--grid-end-room). */
+	.end {
+		height: calc(var(--bleed-bottom, 0px) + var(--grid-end-room, 0px));
 	}
 
 	.scroller::-webkit-scrollbar {
@@ -1042,7 +1093,7 @@
 
 	/* A block, so its first letter can be raised. */
 	.date-pill {
-		top: var(--space-2);
+		top: calc(var(--bleed-top, 0px) + var(--space-2));
 		display: block;
 		pointer-events: none;
 	}
@@ -1052,7 +1103,7 @@
 	}
 
 	.top-pill {
-		bottom: calc(var(--grid-end-room, 0px) + var(--space-4));
+		bottom: calc(var(--bleed-bottom, 0px) + var(--grid-end-room, 0px) + var(--space-4));
 		cursor: pointer;
 	}
 
