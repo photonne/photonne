@@ -25,6 +25,7 @@
 		getAssetDetailQueryKey
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Dialog from '#lib/components/Dialog.svelte';
+	import { portal } from '#lib/components/portal.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { dateTime } from '#lib/format.js';
@@ -514,210 +515,215 @@
 <!-- Shortcuts work wherever the focus is while the viewer is open. -->
 <svelte:window {onkeydown} />
 
-<div
-	class="viewer dark-surface"
-	class:slideshow
-	class:video={isVideo}
-	class:idle={slideshow && controlsIdle}
-	role="dialog"
-	aria-modal="true"
-	aria-label={asset?.fileName ?? m.viewer_title()}
-	tabindex="-1"
-	bind:this={dialog}
-	onpointermove={slideshow ? wake : undefined}
->
-	<div class="main">
-		{#if !slideshow}
-			<!-- A video gets the bar above it, not over it: its own controls stay reachable. -->
-			<header class="bar" class:solid={isVideo}>
-				<!-- Two glass capsules, the photo showing between them (as the
+<!-- The viewer lives at the end of <body> (portal): no stacking of the page
+     it opens from (the map's panel) puts the floating chrome over it. -->
+<div class="viewer-anchor">
+	<div
+		{@attach portal}
+		class="viewer dark-surface"
+		class:slideshow
+		class:video={isVideo}
+		class:idle={slideshow && controlsIdle}
+		role="dialog"
+		aria-modal="true"
+		aria-label={asset?.fileName ?? m.viewer_title()}
+		tabindex="-1"
+		bind:this={dialog}
+		onpointermove={slideshow ? wake : undefined}
+	>
+		<div class="main">
+			{#if !slideshow}
+				<!-- A video gets the bar above it, not over it: its own controls stay reachable. -->
+				<header class="bar" class:solid={isVideo}>
+					<!-- Two glass capsules, the photo showing between them (as the
 				     native viewer): where and when on the left, the tools right. -->
-				<div class="lead glass">
+					<div class="lead glass">
+						<button
+							type="button"
+							class="icon-btn"
+							bind:this={closeButton}
+							title="{m.viewer_close()} · Esc"
+							aria-label={m.viewer_close()}
+							aria-keyshortcuts="Escape"
+							onclick={onclose}
+						>
+							<Icon name="close" />
+						</button>
+						<div class="title">
+							{#if asset}
+								<span>{dateTime(asUtc(asset.capturedAt))}</span>
+								<span class="muted">{asset.fileName}</span>
+							{/if}
+						</div>
+					</div>
+					<div class="actions glass">
+						{@render actions?.()}
+						{#if isLive && !isVideo}
+							<button
+								type="button"
+								class="live"
+								aria-pressed={playingLive}
+								onclick={() => (playingLive = !playingLive)}
+							>
+								<Icon name="livePhoto" size={18} />
+								{m.viewer_live()}
+							</button>
+						{/if}
+						<!-- A video keeps them up here: a dock would cover its controls. -->
+						{#if isVideo}{@render quickActions()}{/if}
+						{#if isVideo}{@render infoButton()}{/if}
+						<PopupMenu label={m.viewer_more()} items={moreItems} />
+					</div>
+				</header>
+			{/if}
+
+			<!-- Before the stage in the tab order, wherever it floats: the arrows
+		     stay the last stops. -->
+			{#if !slideshow && !isVideo}
+				<div class="dock glass">{@render quickActions()}{@render infoButton()}</div>
+			{/if}
+
+			<div class="stage">
+				{#key slideshow ? assetId : null}
+					<div class="slide">
+						{#if isVideo}
+							<!-- svelte-ignore a11y_media_has_caption -->
+							<video
+								bind:this={video}
+								src={contentSrc}
+								poster={previewSrc}
+								controls={!slideshow}
+								autoplay
+								playsinline
+								aria-label={asset?.fileName}
+								onended={videoEnded}
+								onerror={videoEnded}
+							></video>
+						{:else}
+							<ZoomableImage
+								bind:this={image}
+								bind:zoom
+								{previewSrc}
+								fullSrc={contentSrc}
+								alt={asset?.caption || asset?.fileName || ''}
+								overlay={boxes.length ? faceOverlay : undefined}
+								onswipe={(direction) => {
+									const target = direction > 0 ? next : previous;
+									if (target) onnavigate(target);
+								}}
+								ondismiss={slideshow ? stopSlideshow : onclose}
+							/>
+							{#if playingLive}
+								<video
+									class="live-clip"
+									src="/api/assets/{assetId}/motion"
+									autoplay
+									muted
+									playsinline
+									onended={() => (playingLive = false)}
+								></video>
+							{/if}
+						{/if}
+					</div>
+				{/key}
+
+				{#if !slideshow}
+					{#if previous}
+						<button
+							type="button"
+							class="nav previous glass"
+							aria-label={m.viewer_previous()}
+							onclick={() => onnavigate(previous)}
+						>
+							<Icon name="chevronLeft" size={28} />
+						</button>
+					{/if}
+					{#if next}
+						<button
+							type="button"
+							class="nav next glass"
+							aria-label={m.viewer_next()}
+							onclick={() => onnavigate(next)}
+						>
+							<Icon name="chevronRight" size={28} />
+						</button>
+					{/if}
+				{/if}
+			</div>
+
+			{#if slideshow}
+				<div class="slideshow-bar glass" role="toolbar" aria-label={m.viewer_slideshow_label()}>
 					<button
 						type="button"
 						class="icon-btn"
-						bind:this={closeButton}
-						title="{m.viewer_close()} · Esc"
-						aria-label={m.viewer_close()}
+						aria-label={m.viewer_previous()}
+						disabled={!previous}
+						onclick={() => previous && onnavigate(previous)}
+					>
+						<Icon name="chevronLeft" />
+					</button>
+					<button
+						type="button"
+						class="icon-btn"
+						aria-keyshortcuts="Space"
+						aria-label={paused ? m.viewer_slideshow_play() : m.viewer_slideshow_pause()}
+						onclick={() => (paused = !paused)}
+					>
+						<Icon path={paused ? playPath : pausePath} />
+					</button>
+					<button
+						type="button"
+						class="icon-btn"
+						aria-label={m.viewer_next()}
+						disabled={!next}
+						onclick={advance}
+					>
+						<Icon name="chevronRight" />
+					</button>
+					<select
+						aria-label={m.viewer_slideshow_interval()}
+						value={interval}
+						onchange={changeInterval}
+					>
+						{#each SLIDESHOW_INTERVALS as seconds (seconds)}
+							<option value={seconds}>{m.viewer_slideshow_seconds({ seconds })}</option>
+						{/each}
+					</select>
+					<span class="state" role="status">
+						{#if paused}{m.viewer_slideshow_paused()}{:else if !next}{m.viewer_slideshow_end()}{/if}
+					</span>
+					<button
+						type="button"
+						class="icon-btn"
 						aria-keyshortcuts="Escape"
-						onclick={onclose}
+						aria-label={m.viewer_slideshow_exit()}
+						onclick={stopSlideshow}
 					>
 						<Icon name="close" />
 					</button>
-					<div class="title">
-						{#if asset}
-							<span>{dateTime(asUtc(asset.capturedAt))}</span>
-							<span class="muted">{asset.fileName}</span>
-						{/if}
-					</div>
 				</div>
-				<div class="actions glass">
-					{@render actions?.()}
-					{#if isLive && !isVideo}
-						<button
-							type="button"
-							class="live"
-							aria-pressed={playingLive}
-							onclick={() => (playingLive = !playingLive)}
-						>
-							<Icon name="livePhoto" size={18} />
-							{m.viewer_live()}
-						</button>
-					{/if}
-					<!-- A video keeps them up here: a dock would cover its controls. -->
-					{#if isVideo}{@render quickActions()}{/if}
-					{#if isVideo}{@render infoButton()}{/if}
-					<PopupMenu label={m.viewer_more()} items={moreItems} />
-				</div>
-			</header>
-		{/if}
+			{/if}
 
-		<!-- Before the stage in the tab order, wherever it floats: the arrows
-		     stay the last stops. -->
-		{#if !slideshow && !isVideo}
-			<div class="dock glass">{@render quickActions()}{@render infoButton()}</div>
-		{/if}
-
-		<div class="stage">
-			{#key slideshow ? assetId : null}
-				<div class="slide">
-					{#if isVideo}
-						<!-- svelte-ignore a11y_media_has_caption -->
-						<video
-							bind:this={video}
-							src={contentSrc}
-							poster={previewSrc}
-							controls={!slideshow}
-							autoplay
-							playsinline
-							aria-label={asset?.fileName}
-							onended={videoEnded}
-							onerror={videoEnded}
-						></video>
-					{:else}
-						<ZoomableImage
-							bind:this={image}
-							bind:zoom
-							{previewSrc}
-							fullSrc={contentSrc}
-							alt={asset?.caption || asset?.fileName || ''}
-							overlay={boxes.length ? faceOverlay : undefined}
-							onswipe={(direction) => {
-								const target = direction > 0 ? next : previous;
-								if (target) onnavigate(target);
-							}}
-							ondismiss={slideshow ? stopSlideshow : onclose}
-						/>
-						{#if playingLive}
-							<video
-								class="live-clip"
-								src="/api/assets/{assetId}/motion"
-								autoplay
-								muted
-								playsinline
-								onended={() => (playingLive = false)}
-							></video>
-						{/if}
-					{/if}
-				</div>
-			{/key}
-
-			{#if !slideshow}
-				{#if previous}
-					<button
-						type="button"
-						class="nav previous glass"
-						aria-label={m.viewer_previous()}
-						onclick={() => onnavigate(previous)}
-					>
-						<Icon name="chevronLeft" size={28} />
-					</button>
-				{/if}
-				{#if next}
-					<button
-						type="button"
-						class="nav next glass"
-						aria-label={m.viewer_next()}
-						onclick={() => onnavigate(next)}
-					>
-						<Icon name="chevronRight" size={28} />
-					</button>
-				{/if}
+			{#if pickingFrame && !slideshow}
+				<FramePicker {assetId} onclose={() => (pickingFrame = false)} onsaved={frameSaved} />
 			{/if}
 		</div>
 
-		{#if slideshow}
-			<div class="slideshow-bar glass" role="toolbar" aria-label={m.viewer_slideshow_label()}>
-				<button
-					type="button"
-					class="icon-btn"
-					aria-label={m.viewer_previous()}
-					disabled={!previous}
-					onclick={() => previous && onnavigate(previous)}
-				>
-					<Icon name="chevronLeft" />
-				</button>
-				<button
-					type="button"
-					class="icon-btn"
-					aria-keyshortcuts="Space"
-					aria-label={paused ? m.viewer_slideshow_play() : m.viewer_slideshow_pause()}
-					onclick={() => (paused = !paused)}
-				>
-					<Icon path={paused ? playPath : pausePath} />
-				</button>
-				<button
-					type="button"
-					class="icon-btn"
-					aria-label={m.viewer_next()}
-					disabled={!next}
-					onclick={advance}
-				>
-					<Icon name="chevronRight" />
-				</button>
-				<select
-					aria-label={m.viewer_slideshow_interval()}
-					value={interval}
-					onchange={changeInterval}
-				>
-					{#each SLIDESHOW_INTERVALS as seconds (seconds)}
-						<option value={seconds}>{m.viewer_slideshow_seconds({ seconds })}</option>
-					{/each}
-				</select>
-				<span class="state" role="status">
-					{#if paused}{m.viewer_slideshow_paused()}{:else if !next}{m.viewer_slideshow_end()}{/if}
-				</span>
-				<button
-					type="button"
-					class="icon-btn"
-					aria-keyshortcuts="Escape"
-					aria-label={m.viewer_slideshow_exit()}
-					onclick={stopSlideshow}
-				>
-					<Icon name="close" />
-				</button>
-			</div>
-		{/if}
-
-		{#if pickingFrame && !slideshow}
-			<FramePicker {assetId} onclose={() => (pickingFrame = false)} onsaved={frameSaved} />
+		{#if showInfo && asset && !slideshow}
+			<ViewerPanel
+				{asset}
+				{tab}
+				ontab={openTab}
+				onchanged={changed}
+				onopen={onnavigate}
+				{selectedFaceId}
+				onselectface={(id) => (selectedFaceId = id)}
+				showFaceBoxes={showFaces}
+				ontogglefaceboxes={toggleFaces}
+				onclose={toggleInfo}
+			/>
 		{/if}
 	</div>
-
-	{#if showInfo && asset && !slideshow}
-		<ViewerPanel
-			{asset}
-			{tab}
-			ontab={openTab}
-			onchanged={changed}
-			onopen={onnavigate}
-			{selectedFaceId}
-			onselectface={(id) => (selectedFaceId = id)}
-			showFaceBoxes={showFaces}
-			ontogglefaceboxes={toggleFaces}
-			onclose={toggleInfo}
-		/>
-	{/if}
 </div>
 
 <Dialog open={showingKeys} title={m.viewer_shortcuts_title()} onclose={() => (showingKeys = false)}>
@@ -779,7 +785,7 @@
 
 <style>
 	/* The viewer is always dark, whatever the app theme (.dark-surface): the
-	   photo is the light. A deep, see-through grey over the blurred grid, so
+	   photo is the light. A mid, see-through grey over the blurred grid, so
 	   the floating panel and buttons stand apart from it; a slideshow and a
 	   video, black, as on a screen. */
 	.viewer {
@@ -787,7 +793,7 @@
 		inset: 0;
 		z-index: 50;
 		display: flex;
-		background: rgb(22 22 26 / 0.86);
+		background: rgb(54 55 61 / 0.8);
 		-webkit-backdrop-filter: blur(28px) saturate(1.2);
 		backdrop-filter: blur(28px) saturate(1.2);
 		color: #fff;
@@ -801,7 +807,7 @@
 
 	@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
 		.viewer {
-			background: rgb(22 22 26);
+			background: rgb(54 55 61);
 			-webkit-backdrop-filter: none;
 			backdrop-filter: none;
 		}
