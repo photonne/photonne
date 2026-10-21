@@ -95,6 +95,10 @@
 	const detail = createQuery(() => getAssetDetailOptions({ path: { assetId } }));
 
 	let dialog = $state<HTMLDivElement>();
+	// What the info panel takes at the side: the photo runs on beneath it.
+	let viewerWidth = $state(0);
+	let mainWidth = $state(0);
+	const panelRoom = $derived(Math.max(0, viewerWidth - mainWidth));
 	let closeButton = $state<HTMLButtonElement>();
 	let image = $state<ZoomableImage>();
 	let zoom = $state(IDENTITY);
@@ -529,9 +533,11 @@
 		aria-label={asset?.fileName ?? m.viewer_title()}
 		tabindex="-1"
 		bind:this={dialog}
+		bind:clientWidth={viewerWidth}
+		style:--panel-room="{panelRoom}px"
 		onpointermove={slideshow ? wake : undefined}
 	>
-		<div class="main">
+		<div class="main" bind:clientWidth={mainWidth}>
 			{#if !slideshow}
 				<!-- A video gets the bar above it, not over it: its own controls stay reachable. -->
 				<header class="bar" class:solid={isVideo}>
@@ -793,7 +799,7 @@
 		inset: 0;
 		z-index: 50;
 		display: flex;
-		background: rgb(54 55 61 / 0.8);
+		background: rgb(66 67 74 / 0.8);
 		-webkit-backdrop-filter: blur(28px) saturate(1.2);
 		backdrop-filter: blur(28px) saturate(1.2);
 		color: #fff;
@@ -807,7 +813,7 @@
 
 	@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
 		.viewer {
-			background: rgb(54 55 61);
+			background: rgb(66 67 74);
 			-webkit-backdrop-filter: none;
 			backdrop-filter: none;
 		}
@@ -986,10 +992,13 @@
 		background: rgb(255 255 255 / 0.2);
 	}
 
+	/* The photo takes the whole width, the info panel floating over its
+	   side: no strip of background between the two. */
 	.stage {
 		position: relative;
 		flex: 1;
 		min-height: 0;
+		margin-right: calc(-1 * var(--panel-room, 0px));
 		display: grid;
 		place-items: center;
 	}
@@ -1066,8 +1075,9 @@
 		left: var(--float-margin);
 	}
 
+	/* Clear of the info panel, which floats over the photo's side. */
 	.next {
-		right: var(--float-margin);
+		right: calc(var(--float-margin) + var(--panel-room, 0px));
 	}
 
 	.slideshow-bar {

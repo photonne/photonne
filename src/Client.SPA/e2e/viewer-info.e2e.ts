@@ -138,9 +138,10 @@ test('resizes the panel by dragging or with the keyboard, and remembers it', asy
 	await expect(handle).toHaveAttribute('aria-valuenow', '472');
 	expect(Math.round((await panel.boundingBox())!.width)).toBe(472);
 
+	// The panel stays open (remembered) once the photo loads: wait for it,
+	// not toggle it (an "i" before it shows would close it).
 	await page.reload();
-	await expect(page.getByRole('dialog').first()).toBeVisible();
-	if (!(await handle.isVisible())) await page.keyboard.press('i');
+	await expect(handle).toBeVisible();
 	await expect(handle).toHaveAttribute('aria-valuenow', '472');
 
 	// A narrower window caps it so the photo keeps most of the room.

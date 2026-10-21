@@ -142,7 +142,10 @@
 
 <style>
 	/* An island beside the photo, like the app's navigation. */
+	/* Positioned, after the photo: over its side (the resize handle stays
+	   on top, by its own z-index). */
 	.panel {
+		position: relative;
 		flex: none;
 		width: var(--panel-width);
 		height: calc(100% - 2 * var(--float-margin));

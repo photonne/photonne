@@ -429,8 +429,8 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
 /* viewer over the grid */
 .viewer.glassy { background: none; }
 .viewer.glassy .underlay .photos { filter: blur(14px) saturate(1.1); transform: scale(1.06); }
-.viewer.glassy .veil { position: absolute; inset: 0; background: rgb(54 55 61 / 0.8); z-index: 0; }
-.viewer.glassy .shot { position: absolute; z-index: 1; left: 31%; top: 13%; width: 170px; height: 300px; overflow: hidden;
+.viewer.glassy .veil { position: absolute; inset: 0; background: rgb(66 67 74 / 0.8); z-index: 0; }
+.viewer.glassy .shot { position: absolute; z-index: 1; left: 22%; right: -20px; top: 7%; bottom: 7%; overflow: hidden;
   background: radial-gradient(circle at 60% 28%, #f7eaa0 0 16%, transparent 17%), linear-gradient(180deg, #d0814e 0%, #c06e44 55%, #2c4258 55.5%, #2c4258 100%); }
 .viewer.glassy .cap, .viewer.glassy .arrow { z-index: 2; }
 .vpanel { position: absolute; z-index: 3; right: 12px; top: 12px; bottom: 12px; width: 260px; border-radius: 28px; background: #1b1c1f; border: 1px solid #34363b; box-shadow: 0 12px 40px rgb(0 0 0 / 0.45); padding: 16px; display: grid; gap: 10px; align-content: start; color: #e8eaef; }
@@ -897,7 +897,8 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
     <li><strong>Tira de miniaturas con lupa</strong> (<code>AssetThumbnailStrip</code>): solo en la Native por ahora. En la SPA el visor solo conoce la foto anterior y la siguiente.</li>
     <li>Las flechas anterior y siguiente son círculos de cristal de 48px, discretos hasta que el puntero entra en la foto.</li>
     <li>El panel de info es una isla de cristal con radio 28px separada 12px del borde, en lugar de un panel pegado. En móvil es una hoja inferior con radio 28px y un asa.</li>
-    <li><strong>Fondo gris translúcido</strong> (<code>rgb(54 55 61 / .8)</code> con <code>blur(28px)</code>, más claro que el panel y las cápsulas) en lugar de negro: detrás se intuye la rejilla borrosa y el panel de info y las cápsulas se distinguen del fondo. El pase de diapositivas y los vídeos siguen en negro. Con <code>prefers-reduced-transparency</code> o más contraste, el gris es opaco.</li>
+    <li><strong>Fondo gris translúcido</strong> (<code>rgb(66 67 74 / .8)</code> con <code>blur(28px)</code>, bastante más claro que el panel y las cápsulas) en lugar de negro: detrás se intuye la rejilla borrosa y el panel de info y las cápsulas se distinguen del fondo. El pase de diapositivas y los vídeos siguen en negro. Con <code>prefers-reduced-transparency</code> o más contraste, el gris es opaco.</li>
+    <li><strong>El panel de información flota sobre la foto:</strong> la foto ocupa todo el ancho y sigue por debajo del panel, sin una franja de fondo entre las dos; la flecha «siguiente» se aparta del panel. En móvil el panel es una hoja inferior sobre la foto.</li>
     <li><strong>Por encima de todo:</strong> el visor se dibuja al final de <code>&lt;body&gt;</code> (<code>portal.ts</code>), fuera del apilamiento de la página que lo abre; abierto desde el panel del mapa, el cromo no tapa su botón de cerrar.</li>
     <li>Al abrirse, el fondo aparece en 320ms y la foto crece hasta su sitio; el cromo llega 80ms después.</li>
   </ul>
@@ -906,11 +907,11 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
   <div class="stage-scroll">
     <div class="pair single">
       <div>
-        <div class="label after"><span class="dot"></span>Cristal · fondo gris translúcido</div>
+        <div class="label after"><span class="dot"></span>Cristal · la foto sigue bajo el panel</div>
         <div class="viewer glassy">
           <div class="underlay"><div class="photos" style="--cols:7;--row:88px" data-n="35"></div></div>
           <div class="veil"></div>
-          <div class="shot"></div>
+          <div class="shot" style="background:radial-gradient(circle at 78% 28%, #f7eaa0 0 9%, transparent 9.5%), linear-gradient(160deg, #d0814e 0 52%, #2c4258 52.3%)"></div>
           <div class="cap tl glass"><span class="btn"><svg class="i"><use href="#i-close"/></svg></span><div class="d"><b>28 sept 2026, 10:00</b><small>IMG_2026_0928.jpg</small></div></div>
           <div class="cap glass" style="right:284px;top:12px;height:46px;padding:0 6px"><span class="btn"><svg class="i"><use href="#i-more"/></svg></span></div>
           <div class="arrow r glass" style="right:290px"><svg class="i"><use href="#i-right"/></svg></div>
@@ -932,6 +933,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
   <h3>El cromo de cada página</h3>
   <ul class="changes">
     <li><strong><code>&lt;PageChrome bleed wide actions={…}&gt;</code></strong>: con <code>bleed</code> la página ocupa toda la ventana (<code>chrome.bleed</code>); con <code>wide</code>, también por debajo de la isla de navegación (<code>chrome.wide</code>, solo el mapa). Sus paneles con scroll propio guardan el hueco dentro, como relleno: <code>--bleed-top</code> (la altura del cromo), <code>--bleed-left</code> (la isla, con <code>wide</code>) y, en móvil, <code>--bleed-bottom</code> (la barra inferior).</li>
+    <li><strong>La isla de navegación mide lo que sus elementos</strong>, no todo el alto de la ventana; si la lista no cabe, se desplaza por dentro.</li>
     <li><strong>Las acciones de la página flotan.</strong> Los botones que cada página tenía junto a su título (<code>PageHeader</code> con <code>actions</code>) van a una cápsula del cromo, entre el buscador y las herramientas, y siguen a mano al hacer scroll: compartir y fijar un álbum, nueva subcarpeta, restaurar o vaciar la papelera, desarchivar todo, reconocimiento facial, nuevo álbum, mover a la papelera en archivos grandes… En escritorio son píldoras con icono y texto (una primaria o de peligro conserva su color); en móvil, solo el icono, con el texto como nombre accesible. <code>PageHeader float={false}</code> las deja en su sitio cuando la cabecera es parte de otra página (el panel del mapa).</li>
     <li><strong>Las filas de filtros no flotan</strong> (pestañas, tipos, orden de un índice, búsqueda dentro de la lista): suben con la cabecera. Un campo de búsqueda es un filtro, no una acción: en los índices de álbumes y carpetas está en esa fila.</li>
     <li><strong>La cabecera es parte del scroll.</strong> <code>PhotoGrid</code> recibe la cabecera de la página como <code>lead</code> y la dibuja encima de las fotos, fuera de la columna del scrubber (la línea temporal nunca tapa la portada de un álbum). La píldora de fecha solo aparece cuando las fotos llegan arriba.</li>

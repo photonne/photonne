@@ -474,14 +474,17 @@
 	/* ── The navigation island ── */
 
 	/* On the plain page, not on photos: more frost, so it stands apart from
-	   the background in both themes. */
+	   the background in both themes. As tall as its items, no taller: the
+	   page shows below it; a long list scrolls inside, within the window. */
 	.island {
 		--glass-tint: 90%;
 		position: relative;
 		z-index: 6;
+		align-self: start;
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
+		max-height: calc(100dvh - 2 * var(--float-margin));
 		margin: var(--float-margin) 0 var(--float-margin) var(--float-margin);
 		border-radius: var(--radius-xl);
 		box-shadow: var(--shadow-nav);
@@ -513,7 +516,7 @@
 	}
 
 	.sidebar {
-		flex: 1;
+		flex: 0 1 auto;
 		min-height: 0;
 		overflow-x: hidden;
 		overflow-y: auto;
