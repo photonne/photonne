@@ -353,6 +353,8 @@
 <style>
 	.page {
 		display: grid;
+		/* One column no wider than the screen: its rows wrap, not overflow. */
+		grid-template-columns: minmax(0, 1fr);
 		align-content: start;
 		padding-bottom: var(--space-8);
 	}
@@ -386,7 +388,7 @@
 	}
 
 	.search input {
-		width: 240px;
+		width: min(240px, 100%);
 		padding-left: calc(var(--space-3) + 26px);
 	}
 
