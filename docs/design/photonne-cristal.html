@@ -453,7 +453,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
         <tr><td>Estado activo</td><td>Fondo dorado suave + texto dorado</td><td>Overlay neutro en píldora + icono relleno</td><td class="new">Overlay neutro en píldora, <strong>icono relleno en oro</strong></td></tr>
         <tr><td>Radios</td><td>6 / 8 / 10 / 16px</td><td>6 / 10 / 12 / 16 / 24dp + píldora 50%</td><td class="new">Escala 6 → 28px y <strong>píldora para todo control</strong> (los campos, 14px)</td></tr>
         <tr><td>Selección</td><td>Barra opaca a lo ancho sobre la cabecera</td><td>Cápsula arriba + cápsula de acciones abajo</td><td class="new">El mismo par de cápsulas, <strong>la de acciones sustituye a la navegación</strong></td></tr>
-        <tr><td>Desenfoque</td><td>Solo en 5 sitios (2–6px)</td><td>Haze, blur 30dp, tinte al 60%</td><td class="new"><code>backdrop-filter: blur(30px)</code> en todo el cromo</td></tr>
+        <tr><td>Desenfoque</td><td>Solo en 5 sitios (2–6px)</td><td>Haze, blur 30dp, tinte al 60%</td><td class="new"><code>backdrop-filter: blur(30px)</code> en todo el cromo, con más tinte sobre la página lisa</td></tr>
         <tr><td>Rejilla</td><td>Huecos de 4px</td><td>Huecos de 2dp, esquinas rectas</td><td class="new">2px, el contenido pasa <strong>por debajo</strong> del cromo</td></tr>
         <tr><td>Fondo oscuro</td><td><code>#111214</code></td><td><code>#0A0A0C</code></td><td class="new">Neutros de la Native (<code>#0A0A0C</code>, <code>#121214</code>…)</td></tr>
         <tr><td>Toasts</td><td>Rectángulo abajo, sin animación</td><td>Snackbar arriba, entra deslizando</td><td class="new">Píldora de cristal arriba, con muelle</td></tr>
@@ -500,9 +500,12 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
   --radius-control: var(--radius-pill); --radius-field: var(--radius-md);
   --control-h-sm: 32px; --control-h: 40px; --control-h-lg: 48px;
 
-  /* Cristal (ChromePill): gris base, oscuro #242428; ver .glass */
+  /* Cristal (ChromePill): gris base, oscuro #26262b; ver .glass */
   --chrome-base: #e9e9ee;
-  --glass-edge: rgb(255 255 255 / 0.6);    /* oscuro: rgb(255 255 255 / .08) */
+  --glass-edge: rgb(255 255 255 / 0.6);    /* oscuro: rgb(255 255 255 / .1) */
+  /* Tinte por componente: 70 % por defecto; 90 % la isla y 84 % las
+     cápsulas de arriba, que casi siempre están sobre la página lisa */
+  --glass-tint: 70%;
   --color-active-pill: rgb(0 0 0 / 0.07);  /* oscuro: rgb(255 255 255 / .12) */
 
   /* Elevación por rol (ChromeElevation 2 / 4 / 6dp) */
@@ -530,7 +533,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
 .glass { isolation: isolate; border: 1px solid var(--glass-edge); }
 .glass::before {
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
-  background: color-mix(in srgb, var(--chrome-base) 60%, transparent);
+  background: color-mix(in srgb, var(--chrome-base) var(--glass-tint, 70%), transparent);
   backdrop-filter: blur(30px) saturate(1.6);
 }
 @supports not (backdrop-filter: blur(1px)) { .glass::before { background: color-mix(in srgb, var(--chrome-base) 92%, transparent); } }
@@ -612,7 +615,7 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
         <ul class="changes">
           <li><strong>Cápsula inferior</strong> de 64px, tan ancha como su contenido, separada 12px de los lados y 8px del borde más <code>env(safe-area-inset-bottom)</code>. Las tres pestañas tienen el mismo ancho, como <code>EqualWidthRow</code>.</li>
           <li><strong>Pestañas:</strong> Fotos, Colecciones (recuerdos, personas, álbumes, carpetas, mapa…) y Más (subir, organizar, enlaces, utilidades, ajustes y admin), con el contador de notificaciones.</li>
-          <li><strong>Se esconde al bajar</strong> con un umbral de 10px y vuelve al subir o al llegar arriba, como <code>ImmersiveChromeEffect</code>. Lo lleva el estado compartido <code>chrome.immersive</code>.</li>
+          <li><strong>Se esconde al bajar</strong> con un umbral de 10px y vuelve al subir, al llegar arriba o 600ms después de parar, como <code>ImmersiveChromeEffect</code>. En una rejilla con scroll propio, el hueco reservado arriba y abajo pasa a las fotos y el cromo vuelve flotando sobre ellas, con solo las herramientas arriba (<code>chrome.immersive</code>, <code>chrome.reclaimed</code>).</li>
           <li><strong>Selección:</strong> arriba, una cápsula a lo ancho con cerrar, «12 seleccionadas» y seleccionar todo. Abajo, compartir, álbum, descargar y más en la misma cápsula de la navegación.</li>
           <li>El <strong>degradado de la barra de estado</strong> mantiene legible el reloj sobre las fotos.</li>
         </ul>
@@ -792,7 +795,8 @@ svg.i.fill { fill: currentColor; fill-opacity: 0.22; }
       <li><code>.btn</code>: píldora de 40px. El <code>.primary</code> es oro sólido con texto oscuro; el resto lleva un borde sutil y el hover rellena.</li>
       <li><code>.segmented</code>: pista y opción activa en píldora, con un fundido entre opciones.</li>
       <li>Inputs y selects con radio 14px (<code>--radius-field</code>) y foco con anillo de 3px en oro al 35%.</li>
-      <li>Las pestañas (<code>Tabs.svelte</code>) marcan la actual con una píldora neutra, el mismo patrón que la navegación, en una fila de 44px de la que dependen las barras fijas de la administración.</li>
+      <li>Las pestañas (<code>Tabs.svelte</code>) son una cápsula de cristal que flota, nunca una banda de lado a lado; la actual es una píldora neutra, como en la navegación. Ocupan una fila de 45px de la que dependen las barras fijas de la administración.</li>
+      <li>Los menús laterales de una sección (Ajustes) no llevan líneas de separación: la sección actual es la misma píldora neutra con el icono en oro.</li>
     </ul>
   </div>
 </section>
