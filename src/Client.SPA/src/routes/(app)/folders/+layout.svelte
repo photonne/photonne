@@ -175,7 +175,9 @@
 <style>
 	.folders {
 		display: grid;
-		grid-template-columns: var(--tree-width) auto minmax(0, 1fr);
+		/* The tree's own width, and the room that sets it apart from the
+		   navigation island. */
+		grid-template-columns: calc(var(--tree-width) + var(--float-margin)) auto minmax(0, 1fr);
 		height: 100%;
 	}
 
@@ -192,7 +194,7 @@
 	   folder's photos pass beneath the chrome, the tree never does, and the
 	   chrome's capsules float over one clear band across both. */
 	.folders:not(.narrow) .pane {
-		margin: var(--bleed-top, 0px) 0 var(--float-margin);
+		margin: var(--bleed-top, 0px) 0 var(--float-margin) var(--float-margin);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-xl);
 		background: var(--color-surface-raised);
