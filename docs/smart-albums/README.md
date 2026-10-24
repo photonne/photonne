@@ -47,8 +47,9 @@ Piezas de visibilidad reutilizables:
 
 ## 3. Idea central
 
-> **Álbum condicional = consulta guardada** (árbol de predicados) que se resuelve
-> **dinámicamente** contra el pipeline de assets, en vez de una lista fija de `AlbumAsset`.
+> **Álbum condicional = consulta guardada** (árbol de predicados) cuyo resultado se
+> **materializa** como filas `AlbumAsset`, en vez de una lista que el usuario mantiene a mano.
+> Una vez escritas, el álbum es un conjunto de fotos como cualquier otro (ver §6 y §7b).
 
 ## 4. Modelo de datos (mínimo, reutilizando `Album`)
 
@@ -57,12 +58,13 @@ No se crea una entidad paralela: se extiende `Shared/Models/Album.cs`.
 ```csharp
 public AlbumKind Kind { get; set; }               // Manual = 0, Smart = 1
 public string? SmartRule { get; set; }             // JSONB, null en manuales
-public SmartResolveMode ResolveMode { get; set; }  // Dynamic | Materialized
+public SmartResolveMode ResolveMode { get; set; }  // siempre Materialized (Dynamic = legado)
 public DateTime? LastMaterializedAt { get; set; }
 ```
 
 - `Kind == Manual` → todo sigue igual (`AlbumAsset`). **Cero regresión.**
-- `Kind == Smart` → la membresía sale de `SmartRule` (ver `rule-schema.md`).
+- `Kind == Smart` → la membresía sale de `SmartRule` (ver `rule-schema.md`) y se guarda en
+  `AlbumAsset`. No admite añadir ni quitar fotos a mano (400 `smart_album_rule_managed`).
 - **Compartición, portada y permisos sin tocar**: un smart album se comparte con el mismo
   `AlbumPermission` (flags `CanRead/Write/Delete/ManagePermissions`) que ya existe.
 - **Overrides manuales sobre un smart album**: reutilizar `AlbumAsset` con una columna
@@ -92,16 +94,23 @@ mismo código de filtrado** (un solo sitio que mantener, consistencia garantizad
 | Coste lectura | Query por apertura | Barato (lista escrita) |
 | Portada/orden | Recalcular | Estable |
 
-**Decisión: híbrido, arrancando en dinámico.**
+~~Decisión: híbrido, arrancando en dinámico.~~ → **Decisión (revisada con Marc): siempre
+materializada.**
 
-- **Dinámico por defecto**: al abrir, ejecutar `AssetQueryBuilder` con la regla + gate de
-  visibilidad + paginado keyset por `CapturedAt` (idéntico al timeline). Simple y siempre correcto.
-- **Materialización opcional** (`ResolveMode.Materialized`) para álbumes pesados o muy
-  compartidos: un worker estilo `AssetEnrichmentTask` reconcilia `AlbumAsset` en background,
-  re-disparado por eventos: import de asset, `FaceRecognitionCompletedAt`, asignación de cara,
-  cambio de permisos de carpeta. Invalida la caché `albums:{userId}` existente.
+Resolver al abrir obligaba a resolver también en cada comprobación de permisos: una miniatura
+pregunta "¿puede este usuario leer esta foto?", y con una membresía que solo existe al
+calcularla no hay fila que mirar. La versión dinámica acabó intersecando con la visibilidad
+del espectador (ver §7b), que es justo lo que dejaba vacío un álbum compartido.
 
-Empezar dinámico; añadir materialización solo si la medición lo pide.
+- `SmartAlbumMaterializer` resuelve la regla **como la ve el dueño** y reconcilia las filas
+  `AlbumAsset` (inserta lo que entra, borra lo que sale; una pasada por álbum a la vez).
+- Se ejecuta al **guardar la regla**, al **abrir el álbum** (`GET /api/albums/{id}/assets`,
+  el enlace público, los resúmenes en vídeo) y en el **barrido** de
+  `SmartAlbumMaterializationWorker` cada 15 min, que también rellena los álbumes antiguos al
+  arrancar. Abrirlo siempre muestra lo último; el barrido mantiene al día contador, portada y
+  permisos de los que nadie abre.
+- Lista, portada, contador, miniaturas y permisos leen las filas: el mismo coste que un
+  álbum manual. Si cambian las filas, se invalida `albums:{userId}` del dueño y los invitados.
 
 ## 7. Los tres temas espinosos
 
@@ -113,9 +122,19 @@ muestra "las fotos del dueño que cumplen la regla, tal como el dueño las ve"; 
 se les muestra ese resultado. Descartada la "vista personal por-espectador" para el MVP.
 
 ### b) Visibilidad al compartir
-Aun anclando al dueño, hay que gatear: un invitado no debe ver por la regla una foto a la
-que no llega. → resolver con la **intersección** de `AssetVisibilityService` del dueño **y**
-del espectador (`AssetPredicate()` ya da ese `Expression`).
+~~Intersecar la visibilidad del dueño con la del espectador.~~ Dejaba vacío el álbum para
+cualquier invitado que no llegara por su cuenta a las fotos (p. ej. de una carpeta compartida
+de la que no es miembro), y un álbum compartido así no comparte nada.
+→ **Decisión (revisada con Marc): compartir un álbum, manual o inteligente, da lectura sobre
+lo que contiene.** Todo invitado es como mínimo lector.
+- El gate está **al entrar**, no al leer: la regla se resuelve con la visibilidad del dueño,
+  así que solo entra lo que el dueño puede ver. Igual que en uno manual, donde añadir una foto
+  (`POST /api/albums/{id}/assets[/batch]`) exige poder leerla.
+- Las filas materializadas entran en el bucket de álbumes de `AssetVisibilityService`, así que
+  `CanReadAsync`, búsqueda y recuerdos del invitado las ven sin código específico.
+- Lo que alguien ve **solo** a través de un álbum inteligente compartido con él no alimenta
+  sus propias reglas (`GetScopeAsync(includeSmartAlbumGrants: false)`): dos álbumes que se
+  alimentaran mutuamente mantendrían viva una foto después de que su dueño perdiera el acceso.
 
 ### c) Lugares = el único hueco real
 Hoy solo hay lat/long crudas (`AssetExif`), sin nombres ni índice geo.
@@ -150,7 +169,9 @@ de primera clase, en discusión. Ver **`creation-ux.md`**.
    Compila commonMain + Android. Strings en literal español (pendiente extraer a `Res.string`).
 4. **Overrides** manuales (pin/exclude) sobre smart albums.
 5. **Lugares** (radio → geocoding inverso).
-6. **Materialización** en background (solo si el rendimiento lo pide).
+6. ✅ **Materialización** — adelantada: no por rendimiento sino porque compartir un álbum
+   inteligente no compartía nada (§6, §7b). `SmartAlbumMaterializer` +
+   `SmartAlbumMaterializationWorker`; tests en `tests/…/Albums/SmartAlbumSharingTests.cs`.
 
 Piezas implementadas (fases 1-2): `Shared/Services/AssetQueryBuilder.cs` + `AssetFilter`,
 `Shared/Services/SmartAlbums/{PredicateBuilder,AssetConditions,SmartRuleNode,SmartRuleCompiler,SmartAlbumResolver}.cs`,

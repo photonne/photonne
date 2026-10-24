@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Extensions;
@@ -20,6 +21,10 @@ public class AlbumsEndpoint : IEndpoint
     // Smart-album rules are stored/read as camelCase JSON matching the schema
     // in docs/smart-albums/rule-schema.md.
     private static readonly JsonSerializerOptions SmartRuleJson = new(JsonSerializerDefaults.Web);
+
+    // A smart album's members come from its rule; edit the rule instead.
+    private static readonly ApiError SmartAlbumIsRuleManaged =
+        new("A smart album's photos come from its rule", "smart_album_rule_managed");
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -124,7 +129,6 @@ public class AlbumsEndpoint : IEndpoint
     private async Task<Results<Ok<List<AlbumResponse>>, UnauthorizedHttpResult>> GetAllAlbums(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
-        [FromServices] SmartAlbumResolver smartResolver,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -140,9 +144,6 @@ public class AlbumsEndpoint : IEndpoint
 
         // Obtener álbumes donde el usuario es propietario o tiene permisos
         var albums = await dbContext.Albums
-            .Include(a => a.AlbumAssets)
-                .ThenInclude(aa => aa.Asset)
-                    .ThenInclude(asset => asset.Thumbnails)
             .Include(a => a.CoverAsset)
                 .ThenInclude(ca => ca!.Thumbnails)
             .Include(a => a.Permissions)
@@ -182,11 +183,7 @@ public class AlbumsEndpoint : IEndpoint
             .Where(p => p.UserId == userId && albumIds.Contains(p.AlbumId))
             .ToDictionaryAsync(p => p.AlbumId, cancellationToken);
 
-        // Smart albums keep no AlbumAssets rows: resolve membership live so
-        // count, cover and preview reflect the rule (owner-anchored, viewer-gated).
-        var smartData = new Dictionary<Guid, (int Count, List<Guid> SampleIds)>();
-        foreach (var sa in albums.Where(a => a.Kind == AlbumKind.Smart && a.SmartRule != null))
-            smartData[sa.Id] = await ResolveSmartSummaryAsync(smartResolver, sa, userId, cancellationToken);
+        var contents = await LoadContentsAsync(dbContext, albums, cancellationToken);
 
         var response = albums.Select(a => new AlbumResponse
         {
@@ -195,7 +192,7 @@ public class AlbumsEndpoint : IEndpoint
             Description = a.Description,
             CreatedAt = a.CreatedAt,
             UpdatedAt = a.UpdatedAt,
-            AssetCount = smartData.TryGetValue(a.Id, out var sdCount) ? sdCount.Count : a.AlbumAssets.Count,
+            AssetCount = contents[a.Id].Count,
             IsOwner = a.OwnerId == userId,
             IsShared = a.Permissions.Any(p => p.CanRead),
             SharedWithCount = albumSharedCounts.TryGetValue(a.Id, out var count) ? count : 0,
@@ -211,18 +208,10 @@ public class AlbumsEndpoint : IEndpoint
             CoverThumbnailUrl = a.CoverAsset?.Thumbnails
                 .FirstOrDefault(t => t.Size == ThumbnailSize.Medium) != null
                 ? $"/api/assets/{a.CoverAssetId}/thumbnail?size=Medium"
-                : smartData.TryGetValue(a.Id, out var sdCover) && sdCover.SampleIds.Count > 0
-                    ? $"/api/assets/{sdCover.SampleIds[0]}/thumbnail?size=Medium"
-                    : a.AlbumAssets.OrderBy(aa => aa.Order).FirstOrDefault()?.Asset != null
-                        ? $"/api/assets/{a.AlbumAssets.OrderBy(aa => aa.Order).First().AssetId}/thumbnail?size=Medium"
-                        : null,
-            PreviewThumbnailUrls = smartData.TryGetValue(a.Id, out var sdPrev)
-                ? sdPrev.SampleIds.Select(id => $"/api/assets/{id}/thumbnail?size=Small").ToList()
-                : a.AlbumAssets
-                    .OrderBy(aa => aa.Order)
-                    .Take(4)
-                    .Select(aa => $"/api/assets/{aa.AssetId}/thumbnail?size=Small")
-                    .ToList()
+                : contents[a.Id].PreviewIds.Count > 0
+                    ? $"/api/assets/{contents[a.Id].PreviewIds[0]}/thumbnail?size=Medium"
+                    : null,
+            PreviewThumbnailUrls = PreviewUrls(contents[a.Id])
         }).ToList();
 
         cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
@@ -231,7 +220,6 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<Results<Ok<AlbumResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> GetAlbumById(
         [FromServices] ApplicationDbContext dbContext,
-        [FromServices] SmartAlbumResolver smartResolver,
         [FromRoute] Guid albumId,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -243,9 +231,6 @@ public class AlbumsEndpoint : IEndpoint
         }
 
         var album = await dbContext.Albums
-            .Include(a => a.AlbumAssets)
-                .ThenInclude(aa => aa.Asset)
-                    .ThenInclude(asset => asset.Thumbnails)
             .Include(a => a.CoverAsset)
                 .ThenInclude(ca => ca!.Thumbnails)
             .Include(a => a.Permissions)
@@ -266,10 +251,7 @@ public class AlbumsEndpoint : IEndpoint
         var sharedCount = await dbContext.AlbumPermissions
             .CountAsync(p => p.AlbumId == albumId && p.CanRead && p.UserId != album.OwnerId, cancellationToken) + 1;
 
-        // Smart album: resolve membership live for count + cover fallback.
-        (int Count, List<Guid> SampleIds)? smartData = null;
-        if (album.Kind == AlbumKind.Smart && album.SmartRule != null)
-            smartData = await ResolveSmartSummaryAsync(smartResolver, album, userId, cancellationToken);
+        var contents = (await LoadContentsAsync(dbContext, new[] { album }, cancellationToken))[album.Id];
 
         var pin = await GetPinAsync(dbContext, albumId, userId, cancellationToken);
 
@@ -278,16 +260,16 @@ public class AlbumsEndpoint : IEndpoint
         {
             coverUrl = $"/api/assets/{album.CoverAssetId}/thumbnail?size=Medium";
         }
-        else if (smartData is { SampleIds.Count: > 0 } sd)
+        else if (contents.PreviewIds.Count > 0)
         {
-            coverUrl = $"/api/assets/{sd.SampleIds[0]}/thumbnail?size=Medium";
-        }
-        else if (album.AlbumAssets.Any())
-        {
-            var firstAsset = album.AlbumAssets.OrderBy(aa => aa.Order).First().Asset;
-            if (firstAsset?.Thumbnails.Any(t => t.Size == ThumbnailSize.Medium) == true)
+            var firstId = contents.PreviewIds[0];
+            var firstHasMedium = await dbContext.Assets
+                .Where(a => a.Id == firstId)
+                .SelectMany(a => a.Thumbnails)
+                .AnyAsync(t => t.Size == ThumbnailSize.Medium, cancellationToken);
+            if (firstHasMedium)
             {
-                coverUrl = $"/api/assets/{firstAsset.Id}/thumbnail?size=Medium";
+                coverUrl = $"/api/assets/{firstId}/thumbnail?size=Medium";
             }
         }
 
@@ -298,7 +280,7 @@ public class AlbumsEndpoint : IEndpoint
             Description = album.Description,
             CreatedAt = album.CreatedAt,
             UpdatedAt = album.UpdatedAt,
-            AssetCount = smartData?.Count ?? album.AlbumAssets.Count,
+            AssetCount = contents.Count,
             IsOwner = album.OwnerId == userId,
             IsShared = album.Permissions.Any(p => p.CanRead),
             SharedWithCount = sharedCount,
@@ -378,44 +360,61 @@ public class AlbumsEndpoint : IEndpoint
                 CollectRuleIds(child, personIds, folderIds);
     }
 
-    /// <summary>
-    /// Resolves a smart album's live membership to a total count plus up to four
-    /// sample asset ids (newest first, thumbnailed) for cover/preview. Returns
-    /// zero on an invalid rule so a broken album still lists cleanly.
-    /// </summary>
-    private static async Task<(int Count, List<Guid> SampleIds)> ResolveSmartSummaryAsync(
-        SmartAlbumResolver smartResolver,
-        Album album,
-        Guid viewerId,
-        CancellationToken cancellationToken)
-    {
-        var rule = JsonSerializer.Deserialize<SmartRuleNode>(album.SmartRule!, SmartRuleJson);
-        if (rule == null)
-            return (0, new List<Guid>());
+    private sealed record AlbumContents(int Count, List<Guid> PreviewIds);
 
-        try
-        {
-            var query = await smartResolver.ResolveAsync(rule, album.OwnerId, viewerId, cancellationToken);
-            var count = await query.CountAsync(cancellationToken);
-            var sampleIds = await query
-                .Where(a => a.Thumbnails.Any())
-                .OrderByDescending(a => a.CapturedAt)
-                .ThenByDescending(a => a.FileModifiedAt)
-                .ThenBy(a => a.Id)
-                .Take(4)
-                .Select(a => a.Id)
-                .ToListAsync(cancellationToken);
-            return (count, sampleIds);
-        }
-        catch (SmartRuleException)
-        {
-            return (0, new List<Guid>());
-        }
+    /// <summary>
+    /// Member count plus up to four preview ids per album, projected in SQL
+    /// rather than loading the rows — a smart album can hold thousands. Manual
+    /// albums preview in their own order; smart ones newest first, skipping
+    /// photos without thumbnails yet, and count what opening them would show.
+    /// </summary>
+    private static async Task<Dictionary<Guid, AlbumContents>> LoadContentsAsync(
+        ApplicationDbContext dbContext, IEnumerable<Album> albums, CancellationToken cancellationToken)
+    {
+        var list = albums.ToList();
+        var manualIds = list.Where(a => a.Kind != AlbumKind.Smart).Select(a => a.Id).ToList();
+        var smartIds = list.Where(a => a.Kind == AlbumKind.Smart).Select(a => a.Id).ToList();
+
+        var manual = manualIds.Count == 0 ? [] : await dbContext.Albums.AsNoTracking()
+            .Where(a => manualIds.Contains(a.Id))
+            .Select(a => new
+            {
+                a.Id,
+                Count = a.AlbumAssets.Count(),
+                PreviewIds = a.AlbumAssets.OrderBy(aa => aa.Order).Take(4).Select(aa => aa.AssetId).ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        var smart = smartIds.Count == 0 ? [] : await dbContext.Albums.AsNoTracking()
+            .Where(a => smartIds.Contains(a.Id))
+            .Select(a => new
+            {
+                a.Id,
+                Count = a.AlbumAssets.Count(aa =>
+                    aa.Asset.DeletedAt == null && !aa.Asset.IsArchived && !aa.Asset.IsFileMissing),
+                PreviewIds = a.AlbumAssets
+                    .Where(aa => aa.Asset.DeletedAt == null && !aa.Asset.IsArchived && !aa.Asset.IsFileMissing
+                              && aa.Asset.Thumbnails.Any())
+                    .OrderByDescending(aa => aa.Asset.CapturedAt)
+                    .ThenByDescending(aa => aa.Asset.FileModifiedAt)
+                    .ThenBy(aa => aa.AssetId)
+                    .Take(4)
+                    .Select(aa => aa.AssetId)
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        return manual.Select(m => (m.Id, new AlbumContents(m.Count, m.PreviewIds)))
+            .Concat(smart.Select(m => (m.Id, new AlbumContents(m.Count, m.PreviewIds))))
+            .ToDictionary(x => x.Id, x => x.Item2);
     }
 
-    private async Task<Results<Ok<List<TimelineResponse>>, UnauthorizedHttpResult, ForbidHttpResult, BadRequest<ApiError>>> GetAlbumAssets(
+    private static List<string> PreviewUrls(AlbumContents contents) =>
+        contents.PreviewIds.Select(id => $"/api/assets/{id}/thumbnail?size=Small").ToList();
+
+    private async Task<Results<Ok<List<TimelineResponse>>, UnauthorizedHttpResult, ForbidHttpResult>> GetAlbumAssets(
         [FromServices] ApplicationDbContext dbContext,
-        [FromServices] SmartAlbumResolver smartResolver,
+        [FromServices] SmartAlbumMaterializer materializer,
         [FromRoute] Guid albumId,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -433,30 +432,21 @@ public class AlbumsEndpoint : IEndpoint
             return TypedResults.Forbid();
         }
 
-        // Smart album (dynamic): membership is resolved live from the rule,
-        // owner-anchored and intersected with the viewer's visibility.
-        var smart = await dbContext.Albums
-            .AsNoTracking()
-            .Where(a => a.Id == albumId && a.Kind == AlbumKind.Smart
-                     && a.ResolveMode == SmartResolveMode.Dynamic && a.SmartRule != null)
-            .Select(a => new { a.OwnerId, a.SmartRule })
-            .FirstOrDefaultAsync(cancellationToken);
+        // Smart album: refresh its rows from the rule on open, so what was
+        // indexed or tagged since shows up, then read them like any album's —
+        // newest first, as the rule has no order of its own.
+        var isSmart = await dbContext.Albums
+            .AnyAsync(a => a.Id == albumId && a.Kind == AlbumKind.Smart, cancellationToken);
 
-        if (smart != null)
+        if (isSmart)
         {
-            var rule = JsonSerializer.Deserialize<SmartRuleNode>(smart.SmartRule!, SmartRuleJson);
-            if (rule == null)
-                return TypedResults.Ok(new List<TimelineResponse>());
+            await materializer.MaterializeAsync(albumId, cancellationToken);
 
-            IQueryable<Asset> query;
-            try
-            {
-                query = await smartResolver.ResolveAsync(rule, smart.OwnerId, userId, cancellationToken);
-            }
-            catch (SmartRuleException ex)
-            {
-                return TypedResults.BadRequest(new ApiError(ex.Message, "invalid_rule"));
-            }
+            var query = dbContext.AlbumAssets
+                .AsNoTracking()
+                .Where(aa => aa.AlbumId == albumId)
+                .Select(aa => aa.Asset)
+                .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing);
 
             var smartResponse = await query
                 .OrderByDescending(a => a.CapturedAt)
@@ -535,6 +525,7 @@ public class AlbumsEndpoint : IEndpoint
     private async Task<Results<Created<AlbumResponse>, UnauthorizedHttpResult, BadRequest<ApiError>>> CreateAlbum(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
+        [FromServices] SmartAlbumMaterializer materializer,
         [FromBody] CreateAlbumRequest? request,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -561,7 +552,7 @@ public class AlbumsEndpoint : IEndpoint
 
         // Smart album: validate the rule compiles (so a broken tree is a 400,
         // not a runtime failure on first open) and store it verbatim — the
-        // original folder ids are kept and subtree-expanded fresh on each read.
+        // original folder ids are kept and subtree-expanded fresh on each pass.
         if (request.SmartRule != null)
         {
             try
@@ -574,12 +565,17 @@ public class AlbumsEndpoint : IEndpoint
             }
 
             album.Kind = AlbumKind.Smart;
+            album.ResolveMode = SmartResolveMode.Materialized;
             album.SmartRule = JsonSerializer.Serialize(request.SmartRule, SmartRuleJson);
         }
 
         dbContext.Albums.Add(album);
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (album.Kind == AlbumKind.Smart)
+            await materializer.MaterializeAsync(album.Id, cancellationToken);
         cache.Remove($"albums:{userId}");
+
+        var contents = (await LoadContentsAsync(dbContext, new[] { album }, cancellationToken))[album.Id];
 
         var response = new AlbumResponse
         {
@@ -588,7 +584,7 @@ public class AlbumsEndpoint : IEndpoint
             Description = album.Description,
             CreatedAt = album.CreatedAt,
             UpdatedAt = album.UpdatedAt,
-            AssetCount = 0,
+            AssetCount = contents.Count,
             IsOwner = true,
             CanRead = true,
             CanWrite = true,
@@ -603,7 +599,7 @@ public class AlbumsEndpoint : IEndpoint
     private async Task<Results<Ok<AlbumResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>, BadRequest<ApiError>>> UpdateAlbum(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
-        [FromServices] SmartAlbumResolver smartResolver,
+        [FromServices] SmartAlbumMaterializer materializer,
         [FromRoute] Guid albumId,
         [FromBody] UpdateAlbumRequest? request,
         ClaimsPrincipal user,
@@ -663,11 +659,11 @@ public class AlbumsEndpoint : IEndpoint
         album.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (request.SmartRule != null)
+            await materializer.MaterializeAsync(album.Id, cancellationToken);
         cache.Remove($"albums:{userId}");
 
-        (int Count, List<Guid> SampleIds)? smartData = null;
-        if (album.Kind == AlbumKind.Smart && album.SmartRule != null)
-            smartData = await ResolveSmartSummaryAsync(smartResolver, album, userId, cancellationToken);
+        var contents = (await LoadContentsAsync(dbContext, new[] { album }, cancellationToken))[album.Id];
 
         var response = new AlbumResponse
         {
@@ -676,8 +672,7 @@ public class AlbumsEndpoint : IEndpoint
             Description = album.Description,
             CreatedAt = album.CreatedAt,
             UpdatedAt = album.UpdatedAt,
-            AssetCount = smartData?.Count
-                ?? await dbContext.AlbumAssets.CountAsync(aa => aa.AlbumId == albumId, cancellationToken),
+            AssetCount = contents.Count,
             Kind = album.Kind.ToString(),
             IsOwner = album.OwnerId == userId,
             CanRead = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanRead),
@@ -776,6 +771,7 @@ public class AlbumsEndpoint : IEndpoint
     private async Task<Results<Ok<AlbumMessageResponse>, UnauthorizedHttpResult, ForbidHttpResult, BadRequest<ApiError>, NotFound<ApiError>>> AddAssetToAlbum(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
+        [FromServices] AssetVisibilityService visibility,
         [FromRoute] Guid albumId,
         [FromBody] AddAssetRequest? request,
         ClaimsPrincipal user,
@@ -807,7 +803,17 @@ public class AlbumsEndpoint : IEndpoint
             return TypedResults.NotFound(new ApiError($"Album with ID {albumId} not found", "album_not_found"));
         }
 
+        if (album.Kind == AlbumKind.Smart)
+        {
+            return TypedResults.BadRequest(SmartAlbumIsRuleManaged);
+        }
+
+        // Adding a photo to an album shares it with everyone who reads the
+        // album, so only a photo the caller can read may go in. One they can't
+        // is "not found", like an id that doesn't exist.
+        var scope = await visibility.GetScopeAsync(userId, cancellationToken);
         var asset = await dbContext.Assets
+            .Where(scope.AssetPredicate())
             .FirstOrDefaultAsync(a => a.Id == request.AssetId && a.DeletedAt == null, cancellationToken);
 
         if (asset == null)
@@ -859,6 +865,7 @@ public class AlbumsEndpoint : IEndpoint
     private async Task<Results<Ok<AddAssetsBatchResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>, BadRequest<ApiError>>> AddAssetsToAlbumBatch(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
+        [FromServices] AssetVisibilityService visibility,
         [FromRoute] Guid albumId,
         [FromBody] AddAssetsBatchRequest request,
         ClaimsPrincipal user,
@@ -874,6 +881,7 @@ public class AlbumsEndpoint : IEndpoint
 
         var album = await dbContext.Albums.FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
         if (album == null) return TypedResults.NotFound(new ApiError($"Album with ID {albumId} not found", "album_not_found"));
+        if (album.Kind == AlbumKind.Smart) return TypedResults.BadRequest(SmartAlbumIsRuleManaged);
 
         if (request.AssetIds.Count == 0)
             return TypedResults.BadRequest(new ApiError("AssetIds must not be empty", "asset_ids_required"));
@@ -886,8 +894,11 @@ public class AlbumsEndpoint : IEndpoint
 
         var toAdd = request.AssetIds.Distinct().Where(id => !existingIds.Contains(id)).ToList();
 
-        // Validate all asset IDs exist
+        // Validate all asset IDs exist and the caller can read them — the album
+        // shares them with its readers (see AddAssetToAlbum). The rest are skipped.
+        var scope = await visibility.GetScopeAsync(userId, cancellationToken);
         var validIds = await dbContext.Assets
+            .Where(scope.AssetPredicate())
             .Where(a => toAdd.Contains(a.Id) && a.DeletedAt == null)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken);
@@ -911,7 +922,7 @@ public class AlbumsEndpoint : IEndpoint
         return TypedResults.Ok(new AddAssetsBatchResponse(validIds.Count, request.AssetIds.Count - validIds.Count));
     }
 
-    private async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>>> RemoveAssetFromAlbum(
+    private async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>, BadRequest<ApiError>>> RemoveAssetFromAlbum(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
         [FromRoute] Guid albumId,
@@ -930,6 +941,11 @@ public class AlbumsEndpoint : IEndpoint
         if (!hasAccess || !canEdit)
         {
             return TypedResults.Forbid();
+        }
+
+        if (await dbContext.Albums.AnyAsync(a => a.Id == albumId && a.Kind == AlbumKind.Smart, cancellationToken))
+        {
+            return TypedResults.BadRequest(SmartAlbumIsRuleManaged);
         }
 
         var albumAsset = await dbContext.AlbumAssets
@@ -1033,7 +1049,6 @@ public class AlbumsEndpoint : IEndpoint
     private async Task<Results<Ok<AlbumResponse>, UnauthorizedHttpResult, ForbidHttpResult, BadRequest<ApiError>, NotFound<ApiError>>> SetAlbumCover(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
-        [FromServices] SmartAlbumResolver smartResolver,
         [FromRoute] Guid albumId,
         [FromBody] SetCoverRequest? request,
         ClaimsPrincipal user,
@@ -1058,9 +1073,6 @@ public class AlbumsEndpoint : IEndpoint
         }
 
         var album = await dbContext.Albums
-            .Include(a => a.AlbumAssets)
-                .ThenInclude(aa => aa.Asset)
-                    .ThenInclude(asset => asset.Thumbnails)
             .Include(a => a.Permissions)
             .FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
 
@@ -1069,26 +1081,10 @@ public class AlbumsEndpoint : IEndpoint
             return TypedResults.NotFound(new ApiError($"Album with ID {albumId} not found", "album_not_found"));
         }
 
-        // Membership: manual albums check AlbumAssets; smart albums have none,
-        // so the cover must be an asset the live rule actually resolves.
-        var isSmart = album.Kind == AlbumKind.Smart && album.SmartRule != null;
-        if (isSmart)
-        {
-            var rule = JsonSerializer.Deserialize<SmartRuleNode>(album.SmartRule!, SmartRuleJson);
-            var inAlbum = false;
-            if (rule != null)
-            {
-                try
-                {
-                    var q = await smartResolver.ResolveAsync(rule, album.OwnerId, userId, cancellationToken);
-                    inAlbum = await q.AnyAsync(a => a.Id == request.AssetId, cancellationToken);
-                }
-                catch (SmartRuleException) { inAlbum = false; }
-            }
-            if (!inAlbum)
-                return TypedResults.BadRequest(new ApiError("Asset must be in the album to set it as cover", "cover_not_in_album"));
-        }
-        else if (album.AlbumAssets.All(aa => aa.AssetId != request.AssetId))
+        // Both kinds keep their members as AlbumAsset rows.
+        var inAlbum = await dbContext.AlbumAssets
+            .AnyAsync(aa => aa.AlbumId == albumId && aa.AssetId == request.AssetId, cancellationToken);
+        if (!inAlbum)
         {
             return TypedResults.BadRequest(new ApiError("Asset must be in the album to set it as cover", "cover_not_in_album"));
         }
@@ -1105,15 +1101,12 @@ public class AlbumsEndpoint : IEndpoint
                            (l.MaxViews == null || l.ViewCount < l.MaxViews),
                 cancellationToken);
 
-        // Works for both kinds: the cover asset may not be in AlbumAssets (smart).
         var coverHasMediumThumbnail = await dbContext.Assets
             .Where(a => a.Id == request.AssetId)
             .SelectMany(a => a.Thumbnails)
             .AnyAsync(t => t.Size == ThumbnailSize.Medium, cancellationToken);
 
-        var smartData = isSmart
-            ? await ResolveSmartSummaryAsync(smartResolver, album, userId, cancellationToken)
-            : ((int Count, List<Guid> SampleIds)?)null;
+        var contents = (await LoadContentsAsync(dbContext, new[] { album }, cancellationToken))[album.Id];
 
         var response = new AlbumResponse
         {
@@ -1122,7 +1115,7 @@ public class AlbumsEndpoint : IEndpoint
             Description = album.Description,
             CreatedAt = album.CreatedAt,
             UpdatedAt = album.UpdatedAt,
-            AssetCount = smartData?.Count ?? album.AlbumAssets.Count,
+            AssetCount = contents.Count,
             IsOwner = album.OwnerId == userId,
             IsShared = album.Permissions.Any(p => p.CanRead),
             SharedWithCount = album.Permissions.Count(p => p.CanRead && p.UserId != album.OwnerId),
@@ -1134,13 +1127,7 @@ public class AlbumsEndpoint : IEndpoint
             CoverThumbnailUrl = coverHasMediumThumbnail
                 ? $"/api/assets/{request.AssetId}/thumbnail?size=Medium"
                 : null,
-            PreviewThumbnailUrls = smartData != null
-                ? smartData.Value.SampleIds.Select(id => $"/api/assets/{id}/thumbnail?size=Small").ToList()
-                : album.AlbumAssets
-                    .OrderBy(aa => aa.Order)
-                    .Take(4)
-                    .Select(aa => $"/api/assets/{aa.AssetId}/thumbnail?size=Small")
-                    .ToList()
+            PreviewThumbnailUrls = PreviewUrls(contents)
         };
         var pin = await GetPinAsync(dbContext, album.Id, userId, cancellationToken);
         response.IsPinned = pin != null;

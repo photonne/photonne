@@ -87,6 +87,8 @@ public static class DependencyInjection
         builder.Services.AddScoped<FaceRecognitionService>();
         builder.Services.AddScoped<AssetVisibilityService>();
         builder.Services.AddScoped<SmartAlbumResolver>();
+        builder.Services.AddScoped<SmartAlbumMaterializer>();
+        builder.Services.AddHostedService<SmartAlbumMaterializationWorker>();
         builder.Services.AddSingleton<FaceClusteringQueue>();
         builder.Services.AddHostedService<FaceClusteringBackgroundService>();
 

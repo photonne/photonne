@@ -51,7 +51,7 @@ public class ShareUploadEndpoint : IEndpoint
         [FromServices] SettingsService settingsService,
         [FromServices] INotificationService notificationService,
         [FromServices] IMemoryCache cache,
-        [FromServices] SmartAlbumResolver smartResolver,
+        [FromServices] SmartAlbumMaterializer smartMaterializer,
         [FromServices] ILogger<ShareUploadEndpoint> logger,
         CancellationToken cancellationToken)
     {
@@ -150,7 +150,7 @@ public class ShareUploadEndpoint : IEndpoint
                 await AddToAlbumAsync(dbContext, cache, link, existingAsset.Id, owner.Id, cancellationToken);
 
                 return TypedResults.Ok(new ShareUploadResponse("Asset already exists",
-                    await SharedAssetAsync(dbContext, smartResolver, link, existingAsset.Id, pw, cancellationToken)));
+                    await SharedAssetAsync(dbContext, smartMaterializer, link, existingAsset.Id, pw, cancellationToken)));
             }
 
             var finalFileName = file.FileName;
@@ -220,7 +220,7 @@ public class ShareUploadEndpoint : IEndpoint
             }
 
             return TypedResults.Ok(new ShareUploadResponse("Asset uploaded successfully",
-                await SharedAssetAsync(dbContext, smartResolver, link, asset.Id, pw, cancellationToken)));
+                await SharedAssetAsync(dbContext, smartMaterializer, link, asset.Id, pw, cancellationToken)));
         }
         catch (Exception ex)
         {
@@ -244,6 +244,14 @@ public class ShareUploadEndpoint : IEndpoint
         CancellationToken ct)
     {
         var albumId = link.AlbumId!.Value;
+
+        // A smart album's rows come from its rule (see SharedAssetAsync).
+        if (link.Album!.Kind == AlbumKind.Smart)
+        {
+            link.UploadCount++;
+            await dbContext.SaveChangesAsync(ct);
+            return;
+        }
 
         var alreadyInAlbum = await dbContext.AlbumAssets
             .AnyAsync(aa => aa.AlbumId == albumId && aa.AssetId == assetId, ct);
@@ -284,13 +292,17 @@ public class ShareUploadEndpoint : IEndpoint
     /// </summary>
     private static async Task<SharedAssetDto?> SharedAssetAsync(
         ApplicationDbContext dbContext,
-        SmartAlbumResolver smartResolver,
+        SmartAlbumMaterializer smartMaterializer,
         SharedLink link,
         Guid assetId,
         string? pw,
         CancellationToken ct)
     {
-        if (!await SharedAlbumAssets.ContainsAsync(dbContext, smartResolver, link.Album!, assetId, ct))
+        // A smart album takes the photo only if its rule does: refresh its rows.
+        if (link.Album!.Kind == AlbumKind.Smart)
+            await smartMaterializer.MaterializeAsync(link.Album.Id, ct);
+
+        if (!await SharedAlbumAssets.ContainsAsync(dbContext, link.Album, assetId, ct))
             return null;
 
         var assets = await SharedAssetDto.ListAsync(

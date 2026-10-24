@@ -6,7 +6,6 @@ using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
-using Photonne.Server.Api.Shared.Services.SmartAlbums;
 using static Photonne.Server.Api.Shared.Services.SharePasswordHasher;
 
 namespace Photonne.Server.Api.Features.Share;
@@ -30,7 +29,6 @@ public class ShareMediaEndpoint : IEndpoint
 
     private static async Task<Results<PhysicalFileHttpResult, NotFound, ForbidHttpResult>> HandleAlbumAssetThumbnail(
         [FromServices] ApplicationDbContext db,
-        [FromServices] SmartAlbumResolver smartResolver,
         [FromServices] ThumbnailGeneratorService thumbnailService,
         [FromServices] SettingsService settings,
         [FromRoute] string token,
@@ -44,7 +42,7 @@ public class ShareMediaEndpoint : IEndpoint
             .FirstOrDefaultAsync(l => l.Token == token && l.AlbumId != null, ct);
 
         if (!IsValidLink(link, pw)) return TypedResults.NotFound();
-        if (!await SharedAlbumAssets.ContainsAsync(db, smartResolver, link!.Album!, assetId, ct)) return TypedResults.Forbid();
+        if (!await SharedAlbumAssets.ContainsAsync(db, link!.Album!, assetId, ct)) return TypedResults.Forbid();
 
         var asset = await db.Assets.Include(a => a.Thumbnails).FirstOrDefaultAsync(a => a.Id == assetId, ct);
         if (asset == null) return TypedResults.NotFound();
@@ -54,7 +52,6 @@ public class ShareMediaEndpoint : IEndpoint
 
     private static async Task<Results<PhysicalFileHttpResult, FileContentHttpResult, NotFound, ForbidHttpResult>> HandleAlbumAssetContent(
         [FromServices] ApplicationDbContext db,
-        [FromServices] SmartAlbumResolver smartResolver,
         [FromServices] SettingsService settings,
         [FromRoute] string token,
         [FromRoute] Guid assetId,
@@ -67,7 +64,7 @@ public class ShareMediaEndpoint : IEndpoint
             .FirstOrDefaultAsync(l => l.Token == token && l.AlbumId != null, ct);
 
         if (!IsValidLink(link, pw)) return TypedResults.NotFound();
-        if (!await SharedAlbumAssets.ContainsAsync(db, smartResolver, link!.Album!, assetId, ct)) return TypedResults.Forbid();
+        if (!await SharedAlbumAssets.ContainsAsync(db, link!.Album!, assetId, ct)) return TypedResults.Forbid();
         if (download == true && !link.AllowDownload) return TypedResults.Forbid();
 
         var asset = await db.Assets.FirstOrDefaultAsync(a => a.Id == assetId, ct);

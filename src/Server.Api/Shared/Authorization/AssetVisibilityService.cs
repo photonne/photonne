@@ -24,7 +24,8 @@ namespace Photonne.Server.Api.Shared.Authorization;
 ///   * the asset lives in an <see cref="ExternalLibrary"/> the user has an
 ///     <see cref="ExternalLibraryPermission"/> for;
 ///   * the asset is included in any <see cref="Album"/> the user has an
-///     <see cref="AlbumPermission"/> with <c>CanRead</c>.
+///     <see cref="AlbumPermission"/> with <c>CanRead</c> — manual or smart
+///     alike: a smart album keeps its members as AlbumAsset rows too.
 ///
 /// Scopes are computed once per request, cached on the instance, and re-used
 /// across queries within the same scope. Don't long-live them across requests
@@ -55,7 +56,17 @@ public class AssetVisibilityService
     /// <summary>
     /// Pre-fetches the four ID buckets for the given user. Call once per request.
     /// </summary>
-    public async Task<AssetVisibilityScope> GetScopeAsync(Guid userId, CancellationToken ct)
+    public Task<AssetVisibilityScope> GetScopeAsync(Guid userId, CancellationToken ct) =>
+        GetScopeAsync(userId, includeSmartAlbumGrants: true, ct);
+
+    /// <param name="includeSmartAlbumGrants">False leaves out what reaches the
+    /// user only through a smart album shared with them. That's the scope a
+    /// smart album's own rule resolves in (<see cref="Services.SmartAlbums.SmartAlbumResolver"/>):
+    /// its materialized members grant read access, so letting them feed another
+    /// rule would chain albums together — and two albums feeding each other
+    /// would keep a photo alive after its owner lost access to it.</param>
+    public async Task<AssetVisibilityScope> GetScopeAsync(
+        Guid userId, bool includeSmartAlbumGrants, CancellationToken ct)
     {
         var userRootPath = await ResolveUserRootPathAsync(userId, ct);
 
@@ -78,6 +89,7 @@ public class AssetVisibilityService
         var albumVisibleAssetIds = await _db.AlbumPermissions
             .AsNoTracking()
             .Where(p => p.UserId == userId && p.CanRead)
+            .Where(p => includeSmartAlbumGrants || p.Album.Kind == AlbumKind.Manual)
             .SelectMany(p => p.Album.AlbumAssets.Select(aa => aa.AssetId))
             .Distinct()
             .ToHashSetAsync(ct);

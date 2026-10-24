@@ -26,7 +26,7 @@ public class GetShareEndpoint : IEndpoint
     private static async Task<Results<Ok<SharedContentResponse>, NotFound<ApiError>, JsonHttpResult<ApiError>>> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] INotificationService notificationService,
-        [FromServices] SmartAlbumResolver smartResolver,
+        [FromServices] SmartAlbumMaterializer smartMaterializer,
         [FromRoute] string token,
         [FromQuery] string? pw,
         CancellationToken ct)
@@ -74,9 +74,12 @@ public class GetShareEndpoint : IEndpoint
         if (link.AlbumId.HasValue && link.Album != null)
         {
             var album = link.Album;
-            // Manual or smart: the same photos the album shows in the app.
+            // Manual or smart: the same photos the album shows in the app, a
+            // smart album refreshed from its rule as opening it in the app would.
+            if (album.Kind == AlbumKind.Smart)
+                await smartMaterializer.MaterializeAsync(album.Id, ct);
             var assets = await SharedAssetDto.ListAsync(
-                await SharedAlbumAssets.QueryAsync(dbContext, smartResolver, album, ct), token, pw, ct);
+                SharedAlbumAssets.Query(dbContext, album), token, pw, ct);
 
             return TypedResults.Ok(new SharedContentResponse
             {
