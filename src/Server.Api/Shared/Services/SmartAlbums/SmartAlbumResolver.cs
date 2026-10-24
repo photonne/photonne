@@ -8,11 +8,14 @@ namespace Photonne.Server.Api.Shared.Services.SmartAlbums;
 /// <summary>
 /// Turns a smart-album rule into a live <c>IQueryable&lt;Asset&gt;</c>: expands
 /// folder subtrees, compiles the rule owner-anchored, and gates the result by
-/// visibility. The base gate mirrors <see cref="Features.Timeline.TimelineQuery"/>
+/// the OWNER's visibility. The base gate mirrors <see cref="Features.Timeline.TimelineQuery"/>
 /// (not deleted/archived/missing, not a Live-Photo motion part) and the scope
-/// gate uses <see cref="AssetVisibilityService"/>: the OWNER's scope always, and
-/// — when a viewer other than the owner opens a shared album — intersected with
-/// the VIEWER's scope so nobody sees an asset they can't reach
+/// gate uses <see cref="AssetVisibilityService"/>.
+///
+/// There is no viewer leg: the result is what the album holds, and
+/// <see cref="SmartAlbumMaterializer"/> writes it as AlbumAsset rows. Sharing
+/// the album then grants read on those rows exactly like it does for a manual
+/// album — the owner can only put in what they can reach themselves
 /// (docs/smart-albums/README.md §7).
 /// </summary>
 public sealed class SmartAlbumResolver
@@ -26,32 +29,23 @@ public sealed class SmartAlbumResolver
         _visibility = visibility;
     }
 
-    /// <param name="ownerId">Album owner — resolves person identities and the primary scope.</param>
-    /// <param name="viewerId">User opening the album; equals owner during creation/preview.</param>
-    public async Task<IQueryable<Asset>> ResolveAsync(
-        SmartRuleNode root, Guid ownerId, Guid viewerId, CancellationToken ct)
+    /// <param name="ownerId">Album owner — resolves person identities and the scope.</param>
+    public async Task<IQueryable<Asset>> ResolveAsync(SmartRuleNode root, Guid ownerId, CancellationToken ct)
     {
         await ExpandFoldersAsync(root, ct);
         var rule = SmartRuleCompiler.Compile(root, _db, ownerId);
 
-        // Discovery on both legs: a smart album goes and finds photos on someone's
-        // behalf, so a folder they keep out of their surfaces has no business
-        // being pulled into one. The viewer leg stays a security gate either way —
-        // DiscoveryPredicate is AssetPredicate with a subtraction, never wider.
-        var ownerScope = await _visibility.GetScopeAsync(ownerId, ct);
-        var query = _db.Assets
+        // Discovery: a smart album goes and finds photos on the owner's behalf,
+        // so a folder they keep out of their surfaces has no business being
+        // pulled into one. Smart-album grants stay out of the scope so albums
+        // don't feed each other (see GetScopeAsync).
+        var ownerScope = await _visibility.GetScopeAsync(ownerId, includeSmartAlbumGrants: false, ct);
+        return _db.Assets
             .AsNoTracking()
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                      && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))
-            .Where(ownerScope.DiscoveryPredicate());
-
-        if (viewerId != ownerId)
-        {
-            var viewerScope = await _visibility.GetScopeAsync(viewerId, ct);
-            query = query.Where(viewerScope.DiscoveryPredicate());
-        }
-
-        return query.Where(rule);
+            .Where(ownerScope.DiscoveryPredicate())
+            .Where(rule);
     }
 
     /// <summary>

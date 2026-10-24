@@ -8,7 +8,6 @@ using Microsoft.Net.Http.Headers;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Features.Share;
 using Photonne.Server.Api.Shared.Dtos;
-using Photonne.Server.Api.Shared.Services.SmartAlbums;
 
 namespace Photonne.Server.Api.Shared.Extensions;
 
@@ -83,7 +82,6 @@ public static partial class SpaHosting
         HttpContext context,
         IWebHostEnvironment environment,
         ApplicationDbContext dbContext,
-        SmartAlbumResolver smartResolver,
         CancellationToken ct)
     {
         var html = ReadIndex(environment);
@@ -103,8 +101,7 @@ public static partial class SpaHosting
         Guid? coverId = null;
         if (open)
         {
-            var assets = await SharedAlbumAssets.QueryAsync(dbContext, smartResolver, link!.Album!, ct);
-            coverId = await assets.Select(a => (Guid?)a.Id).FirstOrDefaultAsync(ct);
+            coverId = await SharedAlbumAssets.Query(dbContext, link!.Album!).Select(a => (Guid?)a.Id).FirstOrDefaultAsync(ct);
         }
 
         if (open)

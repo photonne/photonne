@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
@@ -12,24 +11,21 @@ namespace Photonne.Server.Api.Features.VideoSummaries;
 /// the same as wherever the user would browse that material themselves:
 ///   * a year is the timeline's set (not archived, not a Live Photo's clip,
 ///     discoverable to the user) captured in that calendar year;
-///   * an album is what the album shows the requester — its members for a
-///     manual album, the live rule (owner-anchored, intersected with the
-///     requester's own visibility) for a smart one.
+///   * an album is what the album shows the requester: its members, which
+///     for a smart album are its rule's materialized result.
 /// Generated summaries are never material for another summary.
 /// </summary>
 public sealed class VideoSummarySources
 {
-    private static readonly JsonSerializerOptions SmartRuleJson = new(JsonSerializerDefaults.Web);
-
     private readonly ApplicationDbContext _db;
     private readonly AssetVisibilityService _visibility;
-    private readonly SmartAlbumResolver _smartResolver;
+    private readonly SmartAlbumMaterializer _smartMaterializer;
 
-    public VideoSummarySources(ApplicationDbContext db, AssetVisibilityService visibility, SmartAlbumResolver smartResolver)
+    public VideoSummarySources(ApplicationDbContext db, AssetVisibilityService visibility, SmartAlbumMaterializer smartMaterializer)
     {
         _db = db;
         _visibility = visibility;
-        _smartResolver = smartResolver;
+        _smartMaterializer = smartMaterializer;
     }
 
     public async Task<IQueryable<Asset>> ForYearAsync(Guid userId, int year, CancellationToken ct)
@@ -53,15 +49,12 @@ public sealed class VideoSummarySources
         var album = await GetReadableAlbumAsync(userId, albumId, ct);
         if (album == null) return null;
 
-        if (album.Kind == AlbumKind.Smart && album.ResolveMode == SmartResolveMode.Dynamic && album.SmartRule != null)
-        {
-            var rule = JsonSerializer.Deserialize<SmartRuleNode>(album.SmartRule, SmartRuleJson);
-            if (rule == null) return Material(_db.Assets.Where(_ => false));
-            return Material(await _smartResolver.ResolveAsync(rule, album.OwnerId, userId, ct));
-        }
+        // A smart album's rows are refreshed first, as opening it would.
+        if (album.Kind == AlbumKind.Smart)
+            await _smartMaterializer.MaterializeAsync(albumId, ct);
 
-        // Manual albums (and materialized smart ones) show their members to
-        // anyone who can open the album — the same set GET /albums/{id}/assets returns.
+        // Both kinds show their members to anyone who can open the album —
+        // the same set GET /albums/{id}/assets returns.
         var members = _db.AlbumAssets
             .Where(aa => aa.AlbumId == albumId)
             .Select(aa => aa.Asset)

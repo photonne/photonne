@@ -117,8 +117,9 @@ encaja mejor como criterio de orden/curación que como filtro booleano duro.
 Toda resolución se **interseca** con el gate de visibilidad antes de devolver resultados:
 
 1. Base: `DeletedAt == null && !IsArchived && !IsFileMissing` (como `TimelineQuery.VisibleAssets`).
-2. Alcance: intersección del `AssetVisibilityService.AssetPredicate()` del **dueño** y del
-   **espectador** (ver `README.md` §7b).
+2. Alcance: el `AssetVisibilityService.DiscoveryPredicate()` del **dueño**, sin lo que le
+   llega solo por otros álbumes inteligentes (ver `README.md` §7b). El resultado se guarda como
+   filas `AlbumAsset`, y quien lee el álbum lee esas filas.
 
 El `AssetQueryBuilder` (fase 1) aplica **solo las condiciones de la regla**; la visibilidad
 la pone el llamante (endpoint), igual que hoy Search pone su propio gate por carpetas.
