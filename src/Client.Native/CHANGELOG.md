@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/photonne/photonne/compare/native-v2.3.0...native-v2.4.0) (2026-10-24)
+
+
+### Novedades
+
+* **native:** Fijados en el orden que el usuario elige en la web ([a6e96cd](https://github.com/photonne/photonne/commit/a6e96cdc93242a1bffebb7c9797ddc19f492bd68))
+
 ## [2.3.0](https://github.com/photonne/photonne/compare/native-v2.2.0...native-v2.3.0) (2026-10-21)
 
 
