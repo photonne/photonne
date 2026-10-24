@@ -24,6 +24,7 @@ const folder = (
 	excludedFromDiscovery: false,
 	isPinned: false,
 	pinnedAt: null,
+	pinPosition: null,
 	subFolders: [],
 	...overrides
 });

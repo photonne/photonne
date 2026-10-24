@@ -36,9 +36,10 @@ public class FolderResponse
 
     // The requesting user's own pin (FolderPins); null when not pinned. Pins are
     // personal, like album pins: Colecciones mixes both in "Fijados", ordered by
-    // PinnedAt on the client.
+    // PinPosition on the client (the user's own order, shared with album pins).
     public bool IsPinned { get; set; }
     public DateTime? PinnedAt { get; set; }
+    public int? PinPosition { get; set; }
 
     public List<FolderResponse> SubFolders { get; set; } = new();
 }

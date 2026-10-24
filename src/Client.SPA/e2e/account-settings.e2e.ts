@@ -211,6 +211,7 @@ test('hides a shared folder from the timeline, with undo', async ({ page }) => {
 		excludedFromDiscovery: excluded,
 		isPinned: false,
 		pinnedAt: null,
+		pinPosition: null,
 		subFolders: []
 	});
 	await page.route('**/api/folders', (route) =>

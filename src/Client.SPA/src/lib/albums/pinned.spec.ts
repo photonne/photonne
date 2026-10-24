@@ -21,6 +21,7 @@ const album = (overrides: Partial<AlbumResponse>): AlbumResponse => ({
 	hasActiveShareLink: false,
 	isPinned: false,
 	pinnedAt: null,
+	pinPosition: null,
 	kind: 'Manual',
 	...overrides
 });
@@ -43,6 +44,7 @@ const folder = (overrides: Partial<FolderResponse>): FolderResponse => ({
 	excludedFromDiscovery: false,
 	isPinned: false,
 	pinnedAt: null,
+	pinPosition: null,
 	subFolders: [],
 	...overrides
 });
@@ -64,6 +66,27 @@ describe('mergePinned', () => {
 			'album:perros',
 			'folder:camara',
 			'album:viaje'
+		]);
+	});
+
+	it("follows the user's own order, and puts pins without one last, the newest first", () => {
+		const entries = mergePinned(
+			[
+				album({ id: 'viaje', isPinned: true, pinnedAt: '2026-09-01T00:00:00Z', pinPosition: 1 }),
+				album({ id: 'perros', isPinned: true, pinnedAt: '2026-10-01T00:00:00Z', pinPosition: 2 }),
+				album({ id: 'viejo', isPinned: true, pinnedAt: '2026-01-01T00:00:00Z' })
+			],
+			[
+				folder({ id: 'camara', isPinned: true, pinnedAt: '2026-09-15T00:00:00Z', pinPosition: 0 }),
+				folder({ id: 'nuevo', isPinned: true, pinnedAt: '2026-10-20T00:00:00Z' })
+			]
+		);
+		expect(entries.map((entry) => `${entry.kind}:${entry.item.id}`)).toEqual([
+			'folder:camara',
+			'album:viaje',
+			'album:perros',
+			'folder:nuevo',
+			'album:viejo'
 		]);
 	});
 });

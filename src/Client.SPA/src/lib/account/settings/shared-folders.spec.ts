@@ -21,6 +21,7 @@ function folder(id: string, path: string, extra: Partial<FolderResponse> = {}): 
 		excludedFromDiscovery: false,
 		isPinned: false,
 		pinnedAt: null,
+		pinPosition: null,
 		subFolders: [],
 		...extra
 	};

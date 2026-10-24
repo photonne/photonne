@@ -154,6 +154,7 @@ const handle: FakeHandler = async (context: FakeContext) => {
 			hasActiveShareLink: false,
 			isPinned: false,
 			pinnedAt: null,
+			pinPosition: null,
 			kind: 'Manual'
 		});
 	}

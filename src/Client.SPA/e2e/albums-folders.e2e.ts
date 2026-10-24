@@ -290,6 +290,40 @@ test('pinned albums and folders share the sidebar; each index shows only its own
 	await expect(page.getByRole('heading', { name: 'Carpetas principales' })).toBeVisible();
 });
 
+test('reorders the sidebar pins by dragging them, or with Alt and the arrows', async ({ page }) => {
+	const state = await open(page, '/folders/folder-4');
+	await page.getByRole('button', { name: 'Fijar en la barra lateral' }).click();
+	const sidebar = page.getByRole('navigation', { name: 'Navegación principal' });
+	await sidebar.getByRole('link', { name: 'Álbumes' }).click();
+	await page.getByRole('button', { name: 'Fijar «Perros»' }).click();
+
+	// The last pinned first, until the user says otherwise.
+	const pins = sidebar.locator('[data-pin]');
+	await expect(pins).toHaveText(['Perros', 'Familia', 'Vacaciones']);
+
+	await pins.nth(2).dragTo(pins.nth(0), { targetPosition: { x: 20, y: 4 } });
+	await expect(pins).toHaveText(['Vacaciones', 'Perros', 'Familia']);
+	expect(calls(state, 'PUT /api/pins/order').at(-1)?.body).toEqual({
+		pins: [
+			{ kind: 'album', id: 'album-1' },
+			{ kind: 'album', id: 'album-2' },
+			{ kind: 'folder', id: 'folder-4' }
+		]
+	});
+
+	await pins.nth(0).focus();
+	await page.keyboard.press('Alt+ArrowDown');
+	await expect(pins).toHaveText(['Perros', 'Vacaciones', 'Familia']);
+	await expect(pins.nth(1)).toBeFocused();
+	await expect(sidebar.getByText('«Vacaciones» movido a la posición 2 de 3')).toBeAttached();
+
+	// The albums page follows the same order.
+	await expect(page.getByRole('region', { name: 'Fijados' }).getByRole('link')).toHaveText([
+		/Perros/,
+		/Vacaciones/
+	]);
+});
+
 test('a folder with subfolders and photos folds either section and shares the view', async ({
 	page
 }) => {

@@ -10,6 +10,7 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Features.Pins;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -115,14 +116,17 @@ public class FoldersEndpoint : IEndpoint
     }
 
     /// <summary>The viewer's own folder pins, by folder id. Pins are per user.</summary>
-    private static Task<Dictionary<Guid, DateTime>> GetPinsAsync(
+    private static Task<Dictionary<Guid, FolderPin>> GetPinsAsync(
         ApplicationDbContext dbContext, Guid userId, CancellationToken cancellationToken) =>
-        dbContext.FolderPins
+        dbContext.FolderPins.AsNoTracking()
             .Where(p => p.UserId == userId)
-            .ToDictionaryAsync(p => p.FolderId, p => p.PinnedAt, cancellationToken);
+            .ToDictionaryAsync(p => p.FolderId, cancellationToken);
 
-    private static DateTime? PinnedAtOrNull(Dictionary<Guid, DateTime> pins, Guid folderId) =>
-        pins.TryGetValue(folderId, out var pinnedAt) ? pinnedAt : null;
+    private static DateTime? PinnedAtOrNull(Dictionary<Guid, FolderPin> pins, Guid folderId) =>
+        pins.GetValueOrDefault(folderId)?.PinnedAt;
+
+    private static int? PinPositionOrNull(Dictionary<Guid, FolderPin> pins, Guid folderId) =>
+        pins.GetValueOrDefault(folderId)?.Position;
 
     private async Task<Results<Ok<FolderResponse>, UnauthorizedHttpResult, NotFound<ApiError>, ForbidHttpResult>> GetLibraryRootFolder(
         [FromServices] ApplicationDbContext dbContext,
@@ -216,6 +220,7 @@ public class FoldersEndpoint : IEndpoint
             ExternalLibraryId = rootFolder.ExternalLibraryId,
             IsPinned = libPins.ContainsKey(rootFolder.Id),
             PinnedAt = PinnedAtOrNull(libPins, rootFolder.Id),
+            PinPosition = PinPositionOrNull(libPins, rootFolder.Id),
             SubFolders = rootFolder.SubFolders.Select(sf => new FolderResponse
             {
                 Id = sf.Id,
@@ -238,7 +243,8 @@ public class FoldersEndpoint : IEndpoint
                 IsShared = false,
                 ExternalLibraryId = sf.ExternalLibraryId,
                 IsPinned = libPins.ContainsKey(sf.Id),
-                PinnedAt = PinnedAtOrNull(libPins, sf.Id)
+                PinnedAt = PinnedAtOrNull(libPins, sf.Id),
+                PinPosition = PinPositionOrNull(libPins, sf.Id)
             }).ToList()
         };
 
@@ -330,7 +336,8 @@ public class FoldersEndpoint : IEndpoint
                 ExternalLibraryId = f.ExternalLibraryId,
                 ExcludedFromDiscovery = excludedFolderIds.Contains(f.Id),
                 IsPinned = pins.ContainsKey(f.Id),
-                PinnedAt = PinnedAtOrNull(pins, f.Id)
+                PinnedAt = PinnedAtOrNull(pins, f.Id),
+                PinPosition = PinPositionOrNull(pins, f.Id)
             };
         }).ToList();
 
@@ -462,6 +469,7 @@ public class FoldersEndpoint : IEndpoint
             ExcludedFromDiscovery = excludedFolderIds.Contains(folder.Id),
             IsPinned = pins.ContainsKey(folder.Id),
             PinnedAt = PinnedAtOrNull(pins, folder.Id),
+            PinPosition = PinPositionOrNull(pins, folder.Id),
             SubFolders = folder.SubFolders.Select(sf => new FolderResponse
             {
                 Id = sf.Id,
@@ -487,7 +495,8 @@ public class FoldersEndpoint : IEndpoint
                 ExternalLibraryId = sf.ExternalLibraryId,
                 ExcludedFromDiscovery = excludedFolderIds.Contains(sf.Id),
                 IsPinned = pins.ContainsKey(sf.Id),
-                PinnedAt = PinnedAtOrNull(pins, sf.Id)
+                PinnedAt = PinnedAtOrNull(pins, sf.Id),
+                PinPosition = PinPositionOrNull(pins, sf.Id)
             }).ToList()
         };
 
@@ -663,6 +672,7 @@ public class FoldersEndpoint : IEndpoint
                 SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                 IsPinned = treePins.ContainsKey(f.Id),
                 PinnedAt = PinnedAtOrNull(treePins, f.Id),
+                PinPosition = PinPositionOrNull(treePins, f.Id),
                 SubFolders = new List<FolderResponse>()
             };
         });
@@ -955,12 +965,12 @@ public class FoldersEndpoint : IEndpoint
             AssetCount = await dbContext.Assets.CountAsync(a => a.FolderId == folder.Id && a.DeletedAt == null, cancellationToken),
             CanWrite = await CanWriteFolderAsync(dbContext, userId, folder.Id, user.IsInRole("Admin"), cancellationToken),
             CanDelete = await CanDeleteFolderAsync(dbContext, userId, folder.Id, user.IsInRole("Admin"), cancellationToken),
-            PinnedAt = await dbContext.FolderPins
-                .Where(p => p.UserId == userId && p.FolderId == folder.Id)
-                .Select(p => (DateTime?)p.PinnedAt)
-                .FirstOrDefaultAsync(cancellationToken)
         };
-        response.IsPinned = response.PinnedAt.HasValue;
+        var pin = await dbContext.FolderPins.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.FolderId == folder.Id, cancellationToken);
+        response.IsPinned = pin != null;
+        response.PinnedAt = pin?.PinnedAt;
+        response.PinPosition = pin?.Position;
 
         return TypedResults.Ok(response);
     }
@@ -1083,7 +1093,13 @@ public class FoldersEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.UserId == userId && p.FolderId == folderId, cancellationToken);
         if (existing == null)
         {
-            existing = new FolderPin { UserId = userId, FolderId = folderId, PinnedAt = DateTime.UtcNow.ToDatabasePrecision() };
+            existing = new FolderPin
+            {
+                UserId = userId,
+                FolderId = folderId,
+                PinnedAt = DateTime.UtcNow.ToDatabasePrecision(),
+                Position = await PinOrder.TopPositionAsync(dbContext, userId, cancellationToken)
+            };
             dbContext.FolderPins.Add(existing);
             try
             {

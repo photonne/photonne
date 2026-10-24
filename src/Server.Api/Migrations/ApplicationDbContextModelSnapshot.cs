@@ -151,6 +151,9 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<DateTime>("PinnedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
                     b.HasKey("UserId", "AlbumId");
 
                     b.HasIndex("AlbumId");
@@ -945,6 +948,9 @@ namespace Photonne.Server.Api.Migrations
 
                     b.Property<DateTime>("PinnedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
 
                     b.HasKey("UserId", "FolderId");
 

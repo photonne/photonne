@@ -29,6 +29,7 @@ const album = (overrides: Partial<AlbumResponse>): AlbumResponse => ({
 	hasActiveShareLink: false,
 	isPinned: false,
 	pinnedAt: null,
+	pinPosition: null,
 	kind: 'Manual',
 	...overrides
 });

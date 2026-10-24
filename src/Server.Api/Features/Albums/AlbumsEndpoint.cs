@@ -10,6 +10,7 @@ using Photonne.Server.Api.Shared.Extensions;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.SmartAlbums;
+using Photonne.Server.Api.Features.Pins;
 using Photonne.Server.Api.Features.Timeline;
 
 namespace Photonne.Server.Api.Features.Albums;
@@ -115,12 +116,10 @@ public class AlbumsEndpoint : IEndpoint
     }
 
     /// <summary>The viewer's own pin on an album, or null. Pins are per user.</summary>
-    private static Task<DateTime?> GetPinnedAtAsync(
+    private static Task<AlbumPin?> GetPinAsync(
         ApplicationDbContext dbContext, Guid albumId, Guid userId, CancellationToken cancellationToken) =>
-        dbContext.AlbumPins
-            .Where(p => p.UserId == userId && p.AlbumId == albumId)
-            .Select(p => (DateTime?)p.PinnedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+        dbContext.AlbumPins.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.AlbumId == albumId, cancellationToken);
 
     private async Task<Results<Ok<List<AlbumResponse>>, UnauthorizedHttpResult>> GetAllAlbums(
         [FromServices] ApplicationDbContext dbContext,
@@ -179,9 +178,9 @@ public class AlbumsEndpoint : IEndpoint
 
         // Pins are personal: only the viewer's own rows. The list order is
         // left alone — clients sort and group pinned albums themselves.
-        var pins = await dbContext.AlbumPins
+        var pins = await dbContext.AlbumPins.AsNoTracking()
             .Where(p => p.UserId == userId && albumIds.Contains(p.AlbumId))
-            .ToDictionaryAsync(p => p.AlbumId, p => p.PinnedAt, cancellationToken);
+            .ToDictionaryAsync(p => p.AlbumId, cancellationToken);
 
         // Smart albums keep no AlbumAssets rows: resolve membership live so
         // count, cover and preview reflect the rule (owner-anchored, viewer-gated).
@@ -206,7 +205,8 @@ public class AlbumsEndpoint : IEndpoint
             CanManagePermissions = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
             HasActiveShareLink = albumsWithActiveLinks.Contains(a.Id),
             IsPinned = pins.ContainsKey(a.Id),
-            PinnedAt = pins.TryGetValue(a.Id, out var pinnedAt) ? pinnedAt : null,
+            PinnedAt = pins.GetValueOrDefault(a.Id)?.PinnedAt,
+            PinPosition = pins.GetValueOrDefault(a.Id)?.Position,
             Kind = a.Kind.ToString(),
             CoverThumbnailUrl = a.CoverAsset?.Thumbnails
                 .FirstOrDefault(t => t.Size == ThumbnailSize.Medium) != null
@@ -271,7 +271,7 @@ public class AlbumsEndpoint : IEndpoint
         if (album.Kind == AlbumKind.Smart && album.SmartRule != null)
             smartData = await ResolveSmartSummaryAsync(smartResolver, album, userId, cancellationToken);
 
-        var pinnedAt = await GetPinnedAtAsync(dbContext, albumId, userId, cancellationToken);
+        var pin = await GetPinAsync(dbContext, albumId, userId, cancellationToken);
 
         string? coverUrl = null;
         if (album.CoverAssetId.HasValue && album.CoverAsset?.Thumbnails.Any(t => t.Size == ThumbnailSize.Medium) == true)
@@ -307,8 +307,9 @@ public class AlbumsEndpoint : IEndpoint
             CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
             CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
             CoverThumbnailUrl = coverUrl,
-            IsPinned = pinnedAt.HasValue,
-            PinnedAt = pinnedAt,
+            IsPinned = pin != null,
+            PinnedAt = pin?.PinnedAt,
+            PinPosition = pin?.Position,
             Kind = album.Kind.ToString()
         };
 
@@ -682,10 +683,12 @@ public class AlbumsEndpoint : IEndpoint
             CanRead = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanRead),
             CanWrite = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanWrite),
             CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
-            CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
-            PinnedAt = await GetPinnedAtAsync(dbContext, albumId, userId, cancellationToken)
+            CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions)
         };
-        response.IsPinned = response.PinnedAt.HasValue;
+        var pin = await GetPinAsync(dbContext, albumId, userId, cancellationToken);
+        response.IsPinned = pin != null;
+        response.PinnedAt = pin?.PinnedAt;
+        response.PinPosition = pin?.Position;
 
         return TypedResults.Ok(response);
     }
@@ -978,7 +981,13 @@ public class AlbumsEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.UserId == userId && p.AlbumId == albumId, cancellationToken);
         if (existing == null)
         {
-            existing = new AlbumPin { UserId = userId, AlbumId = albumId, PinnedAt = DateTime.UtcNow.ToDatabasePrecision() };
+            existing = new AlbumPin
+            {
+                UserId = userId,
+                AlbumId = albumId,
+                PinnedAt = DateTime.UtcNow.ToDatabasePrecision(),
+                Position = await PinOrder.TopPositionAsync(dbContext, userId, cancellationToken)
+            };
             dbContext.AlbumPins.Add(existing);
             try
             {
@@ -1122,7 +1131,6 @@ public class AlbumsEndpoint : IEndpoint
             CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
             CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
             HasActiveShareLink = hasActiveShareLink,
-            PinnedAt = await GetPinnedAtAsync(dbContext, album.Id, userId, cancellationToken),
             CoverThumbnailUrl = coverHasMediumThumbnail
                 ? $"/api/assets/{request.AssetId}/thumbnail?size=Medium"
                 : null,
@@ -1134,7 +1142,10 @@ public class AlbumsEndpoint : IEndpoint
                     .Select(aa => $"/api/assets/{aa.AssetId}/thumbnail?size=Small")
                     .ToList()
         };
-        response.IsPinned = response.PinnedAt.HasValue;
+        var pin = await GetPinAsync(dbContext, album.Id, userId, cancellationToken);
+        response.IsPinned = pin != null;
+        response.PinnedAt = pin?.PinnedAt;
+        response.PinPosition = pin?.Position;
 
         return TypedResults.Ok(response);
     }
@@ -1159,8 +1170,10 @@ public class AlbumResponse
     public bool CanManagePermissions { get; set; }
     public bool HasActiveShareLink { get; set; }
     // Personal to the viewer: pinning never shows up for other members.
+    // PinPosition is the user's own order in "Fijados", shared with folder pins.
     public bool IsPinned { get; set; }
     public DateTime? PinnedAt { get; set; }
+    public int? PinPosition { get; set; }
     // "Manual" or "Smart" (docs/smart-albums/).
     public string Kind { get; set; } = nameof(AlbumKind.Manual);
 }

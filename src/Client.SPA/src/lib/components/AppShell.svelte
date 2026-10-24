@@ -3,7 +3,7 @@
 	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import type { Snippet } from 'svelte';
-	import { createQuery } from '@tanstack/svelte-query';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -16,6 +16,7 @@
 	import DropZone from '#lib/account/upload/DropZone.svelte';
 	import { isSmart } from '#lib/albums/album-list.js';
 	import { icons } from '#lib/albums/icons.js';
+	import { isPinDrag, movePin, PIN_MIME, savePinOrder } from '#lib/albums/pin-order.js';
 	import { mergePinned } from '#lib/albums/pinned.js';
 	import { uploads } from '#lib/account/upload/uploads.svelte.js';
 	import { session } from '#lib/auth/session.svelte.js';
@@ -97,6 +98,61 @@
 	const paletteKeys = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
 
 	let dropTarget = $state<string | null>(null);
+
+	// Reordering "Pinned": by dragging an item, or Alt + ↑/↓ on the focused one.
+	const queryClient = useQueryClient();
+	const pinKey = (item: { kind: string; id: string }) => `${item.kind}:${item.id}`;
+	let draggedPin = $state<string | null>(null);
+	let pinDrop = $state<{ key: string; after: boolean } | null>(null);
+	let pinMoved = $state('');
+	// The pin moved with the keyboard: the list redraws, so focus goes back to it.
+	let refocusPin: string | null = null;
+
+	function reorderPinned(from: number, target: number, after = false) {
+		const order = movePin(pinned, from, target, after);
+		if (order.every((item, index) => item === pinned[index])) return false;
+		const moved = pinned[from];
+		savePinOrder(queryClient, order);
+		pinMoved = m.nav_pinned_moved({
+			name: moved.name,
+			position: order.indexOf(moved) + 1,
+			total: order.length
+		});
+		return true;
+	}
+
+	function pinKeydown(event: KeyboardEvent, index: number) {
+		if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+		event.preventDefault();
+		const up = event.key === 'ArrowUp';
+		if (reorderPinned(index, up ? index - 1 : index + 1, !up)) refocusPin = pinKey(pinned[index]);
+	}
+
+	$effect(() => {
+		if (!pinned.length || !refocusPin) return;
+		document.querySelector<HTMLElement>(`[data-pin="${refocusPin}"]`)?.focus();
+		refocusPin = null;
+	});
+
+	/** Over the lower half of an item, the dragged pin lands after it. */
+	function dropsAfter(event: DragEvent) {
+		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		return event.clientY > box.top + box.height / 2;
+	}
+
+	function pinDragOver(event: DragEvent, key: string) {
+		if (!draggedPin) return;
+		event.preventDefault();
+		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+		pinDrop = { key, after: dropsAfter(event) };
+	}
+
+	function pinDropped(event: DragEvent, index: number) {
+		event.preventDefault();
+		const from = pinned.findIndex((item) => pinKey(item) === draggedPin);
+		if (from >= 0) reorderPinned(from, index, dropsAfter(event));
+		draggedPin = pinDrop = null;
+	}
 	// A rail of icons or the full menu; narrow windows start as a rail.
 	let collapsed = $state(initialCollapsed(window.innerWidth));
 
@@ -295,25 +351,42 @@
 					{#if pinned.length > 0}
 						<h2 class:visually-hidden={rail}>{m.nav_section_pinned()}</h2>
 						<ul>
-							{#each pinned as item (item.kind + item.id)}
+							{#each pinned as item, index (item.kind + item.id)}
 								{@const path = item.kind === 'album' ? `/albums/${item.id}` : `/folders/${item.id}`}
-								<li>
+								{@const key = pinKey(item)}
+								<li
+									class:dragging={draggedPin === key}
+									class:drop-before={pinDrop?.key === key && !pinDrop.after}
+									class:drop-after={pinDrop?.key === key && pinDrop.after}
+								>
 									<a
 										href={href(path)}
+										data-pin={key}
 										class:drop={dropTarget === item.id}
 										aria-current={current(path)}
+										aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
 										title={item.smart
 											? item.name
 											: item.kind === 'album'
 												? m.drop_add_to_album({ album: item.name })
 												: m.drop_move_to_folder({ folder: item.name })}
+										onkeydown={(event) => pinKeydown(event, index)}
+										ondragstart={(event) => {
+											if (!event.dataTransfer) return;
+											event.dataTransfer.setData(PIN_MIME, key);
+											event.dataTransfer.effectAllowed = 'move';
+											draggedPin = key;
+										}}
+										ondragend={() => (draggedPin = pinDrop = null)}
 										ondragover={(event) => {
+											if (isPinDrag(event)) return pinDragOver(event, key);
 											if (item.smart || !isAssetDrag(event)) return;
 											event.preventDefault();
 											dropTarget = item.id;
 										}}
-										ondragleave={() => (dropTarget = null)}
+										ondragleave={() => (dropTarget = pinDrop = null)}
 										ondrop={(event) => {
+											if (isPinDrag(event)) return pinDropped(event, index);
 											if (item.smart) return;
 											event.preventDefault();
 											dropTarget = null;
@@ -331,6 +404,7 @@
 								</li>
 							{/each}
 						</ul>
+						<span class="visually-hidden" aria-live="polite">{pinMoved}</span>
 					{/if}
 				{/if}
 			{/each}
@@ -618,6 +692,35 @@
 
 	.collapsed .sidebar ul:last-child {
 		border-bottom: 0;
+	}
+
+	/* A pin being dragged within "Pinned", and the line where it would land. */
+	.sidebar li.dragging {
+		opacity: 0.5;
+	}
+
+	.sidebar li.drop-before,
+	.sidebar li.drop-after {
+		position: relative;
+	}
+
+	.sidebar li.drop-before::before,
+	.sidebar li.drop-after::after {
+		content: '';
+		position: absolute;
+		inset-inline: var(--space-2);
+		height: 2px;
+		border-radius: 1px;
+		background: var(--color-accent);
+		pointer-events: none;
+	}
+
+	.sidebar li.drop-before::before {
+		top: -2px;
+	}
+
+	.sidebar li.drop-after::after {
+		bottom: -2px;
 	}
 
 	.sidebar a.drop {
