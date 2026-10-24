@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.9.0](https://github.com/photonne/photonne/compare/server-v2.8.0...server-v2.9.0) (2026-10-24)
+
+
+### Novedades
+
+* **spa:** Asa de arrastre en los fijados del menú lateral para saber que se pueden reordenar ([#120](https://github.com/photonne/photonne/issues/120)) ([015a3f8](https://github.com/photonne/photonne/commit/015a3f892ca38b5c1ea23ecdb2240080bb138c7c))
+* **spa:** Los fijados del menú lateral se reordenan arrastrándolos o con Alt + ↑/↓ ([d6abd15](https://github.com/photonne/photonne/commit/d6abd155188ddd51b542e4495efa861d24ccf209))
+
+
+### Correcciones
+
+* **server:** compartir un álbum inteligente da acceso a sus fotos ([b786b53](https://github.com/photonne/photonne/commit/b786b53e929a4d15f142e511c1ad305a6210cbc8))
+* **spa:** Los estados vacíos de las colecciones a tamaño completo y con icono propio ([904b48e](https://github.com/photonne/photonne/commit/904b48e3497a757abc6189e1988344d79046ea5e))
+* **spa:** Todos los estados vacíos con icono, título y subtítulo ([455b022](https://github.com/photonne/photonne/commit/455b0221462eb4c09b544cad646013eb67f23607))
+
 ## [2.8.0](https://github.com/photonne/photonne/compare/server-v2.7.0...server-v2.8.0) (2026-10-21)
 
 
