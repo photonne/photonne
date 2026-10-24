@@ -57,6 +57,7 @@ function album(overrides: Partial<AlbumResponse> & Pick<AlbumResponse, 'id' | 'n
 		hasActiveShareLink: false,
 		isPinned: false,
 		pinnedAt: null,
+		pinPosition: null,
 		kind: 'Manual',
 		...overrides
 	} satisfies AlbumResponse;
@@ -80,6 +81,7 @@ function folder(
 		excludedFromDiscovery: false,
 		isPinned: false,
 		pinnedAt: null,
+		pinPosition: null,
 		subFolders: [],
 		...overrides
 	};
@@ -274,7 +276,9 @@ function stateOf(context: FakeContext): AlbumsState {
 
 const handle: FakeHandler = async (context) => {
 	const { method, path, request, json, route } = context;
-	if (!/^\/api\/(albums|folders|share|users\/shareable|people|objects|scenes)(\/|$)/.test(path))
+	if (
+		!/^\/api\/(albums|folders|pins|share|users\/shareable|people|objects|scenes)(\/|$)/.test(path)
+	)
 		return false;
 	const s = stateOf(context);
 	const body = () => (request.postData() ? request.postDataJSON() : undefined);
@@ -288,6 +292,23 @@ const handle: FakeHandler = async (context) => {
 	if (path === '/api/users/shareable') return ok(users);
 	if (path === '/api/people') return ok(people);
 	if (path === '/api/objects/labels' || path === '/api/scenes/labels') return ok(labels);
+
+	// --- The sidebar's "Pinned": one order across albums and folders ---
+	const pinnedItems = () => [...s.albums, ...s.folders].filter((item) => item.isPinned);
+	/** A new pin goes on top, as on the server. */
+	const topPosition = () => {
+		const positions = pinnedItems().flatMap((item) => item.pinPosition ?? []);
+		return positions.length ? Math.min(...positions) - 1 : 0;
+	};
+	if (path === '/api/pins/order' && method === 'PUT') {
+		const { pins } = body() as { pins: { kind: string; id: string }[] };
+		log({ pins });
+		pins.forEach((pin, index) => {
+			const found = (pin.kind === 'album' ? s.albums : s.folders).find((i) => i.id === pin.id);
+			if (found?.isPinned) found.pinPosition = index;
+		});
+		return noContent();
+	}
 
 	// --- Albums ---
 	if (parts[0] === 'albums') {
@@ -359,6 +380,7 @@ const handle: FakeHandler = async (context) => {
 		}
 		if (sub === 'pin') {
 			log();
+			found.pinPosition = method === 'PUT' ? topPosition() : null;
 			found.isPinned = method === 'PUT';
 			found.pinnedAt = found.isPinned ? '2026-10-08T00:00:00Z' : null;
 			return ok({ albumId: id, isPinned: found.isPinned, pinnedAt: found.pinnedAt });
@@ -522,6 +544,7 @@ const handle: FakeHandler = async (context) => {
 		}
 		if (sub === 'pin') {
 			log();
+			found.pinPosition = method === 'PUT' ? topPosition() : null;
 			found.isPinned = method === 'PUT';
 			found.pinnedAt = found.isPinned ? '2026-10-08T00:00:00Z' : null;
 			return ok({ folderId: id, isPinned: found.isPinned, pinnedAt: found.pinnedAt });

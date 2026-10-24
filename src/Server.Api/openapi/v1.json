@@ -7329,6 +7329,45 @@
         ]
       }
     },
+    "/api/pins/order": {
+      "put": {
+        "tags": [
+          "Pins"
+        ],
+        "description": "Sets the order of the current user\u0027s pinned albums and folders",
+        "operationId": "ReorderPins",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderPinsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/people/face-recognition/backfill": {
       "post": {
         "tags": [
@@ -11650,6 +11689,7 @@
           "hasActiveShareLink",
           "isPinned",
           "pinnedAt",
+          "pinPosition",
           "kind"
         ],
         "type": "object",
@@ -11725,6 +11765,13 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "pinPosition": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           },
           "kind": {
             "type": "string"
@@ -13279,6 +13326,7 @@
           "excludedFromDiscovery",
           "isPinned",
           "pinnedAt",
+          "pinPosition",
           "subFolders"
         ],
         "type": "object",
@@ -13357,6 +13405,13 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "pinPosition": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           },
           "subFolders": {
             "type": "array",
@@ -14957,6 +15012,18 @@
           }
         }
       },
+      "PinReference": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "PreviewRequest": {
         "type": "object",
         "properties": {
@@ -15322,6 +15389,17 @@
           "foldersToUpdate": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "ReorderPinsRequest": {
+        "type": "object",
+        "properties": {
+          "pins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PinReference"
+            }
           }
         }
       },
@@ -18181,6 +18259,9 @@
     },
     {
       "name": "Settings"
+    },
+    {
+      "name": "Pins"
     },
     {
       "name": "Maintenance"

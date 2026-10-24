@@ -15,4 +15,8 @@ public class AlbumPin
     public Album Album { get; set; } = null!;
 
     public DateTime PinnedAt { get; set; } = DateTime.UtcNow;
+
+    // Place in the user's "Fijados", one sequence shared by album and folder
+    // pins (lowest first). A new pin takes the top; PUT /api/pins/order rewrites it.
+    public int Position { get; set; }
 }

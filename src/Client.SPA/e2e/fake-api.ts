@@ -287,6 +287,7 @@ const albums = [
 		hasActiveShareLink: false,
 		isPinned: true,
 		pinnedAt: '2026-01-01T00:00:00Z',
+		pinPosition: null,
 		kind: 'Manual'
 	}
 ];
@@ -310,6 +311,7 @@ const folders = [
 		excludedFromDiscovery: false,
 		isPinned: false,
 		pinnedAt: null,
+		pinPosition: null,
 		subFolders: []
 	}
 ];
