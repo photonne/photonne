@@ -301,6 +301,14 @@ test('reorders the sidebar pins by dragging them, or with Alt and the arrows', a
 	const pins = sidebar.locator('[data-pin]');
 	await expect(pins).toHaveText(['Perros', 'Familia', 'Vacaciones']);
 
+	// A handle says they can be reordered: on the item under the pointer.
+	const grip = pins.nth(2).locator('.grip');
+	await expect(grip).toHaveCSS('opacity', '0');
+	await pins.nth(2).hover();
+	await expect(grip).toHaveCSS('opacity', '1');
+	await expect(grip).toHaveAttribute('title', 'Arrastra para reordenar · Alt + ↑/↓');
+	await expect(pins.nth(2)).toHaveAccessibleDescription('Arrastra para reordenar · Alt + ↑/↓');
+
 	await pins.nth(2).dragTo(pins.nth(0), { targetPosition: { x: 20, y: 4 } });
 	await expect(pins).toHaveText(['Vacaciones', 'Perros', 'Familia']);
 	expect(calls(state, 'PUT /api/pins/order').at(-1)?.body).toEqual({

@@ -365,6 +365,7 @@
 										class:drop={dropTarget === item.id}
 										aria-current={current(path)}
 										aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+										aria-describedby="pinned-reorder-hint"
 										title={item.smart
 											? item.name
 											: item.kind === 'album'
@@ -400,10 +401,15 @@
 											size={20}
 										/>
 										<span class="label">{item.name}</span>
+										<!-- Says the pins can be reordered; the whole item is what drags. -->
+										<span class="grip" aria-hidden="true" title={m.nav_pinned_reorder_hint()}>
+											<Icon name="dragIndicator" size={18} />
+										</span>
 									</a>
 								</li>
 							{/each}
 						</ul>
+						<span id="pinned-reorder-hint" hidden>{m.nav_pinned_reorder_hint()}</span>
 						<span class="visually-hidden" aria-live="polite">{pinMoved}</span>
 					{/if}
 				{/if}
@@ -721,6 +727,25 @@
 
 	.sidebar li.drop-after::after {
 		bottom: -2px;
+	}
+
+	/* The pins' drag handle: shown on the item under the pointer or with the
+	   focus; the rail has no room for it. */
+	.sidebar .grip {
+		display: flex;
+		margin-inline-start: auto;
+		opacity: 0;
+		cursor: grab;
+		transition: opacity var(--duration-fast);
+	}
+
+	.sidebar a:hover .grip,
+	.sidebar a:focus-visible .grip {
+		opacity: 1;
+	}
+
+	.collapsed .sidebar .grip {
+		display: none;
 	}
 
 	.sidebar a.drop {
