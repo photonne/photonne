@@ -74,6 +74,7 @@ import com.photonne.app.resources.search_discover_see_all
 import com.photonne.app.resources.tab_collections
 import com.photonne.app.resources.tab_search
 import com.photonne.app.ui.album.AlbumCover
+import com.photonne.app.ui.util.sortedByPinOrder
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -122,8 +123,8 @@ private val PersonTileWidth = 76.dp
 private const val PersonAvatarSize = 68
 
 /**
- * Lo que va en la sección "Fijados": álbumes y carpetas mezclados por fecha de
- * fijado (el último arriba), como pide Colecciones.
+ * Lo que va en la sección "Fijados": álbumes y carpetas mezclados en el orden
+ * del usuario ([sortedByPinOrder]), como pide Colecciones.
  */
 sealed interface PinnedEntry {
     val key: String
@@ -136,9 +137,10 @@ sealed interface PinnedEntry {
 }
 
 fun mergePinned(albums: List<AlbumSummary>, folders: List<FolderSummary>): List<PinnedEntry> {
-    val entries = albums.filter { it.isPinned }.map { it.pinnedAt to PinnedEntry.Album(it) } +
-        folders.filter { it.isPinned }.map { it.pinnedAt to PinnedEntry.Folder(it) }
-    return entries.sortedByDescending { it.first }.map { it.second }
+    val entries =
+        albums.filter { it.isPinned }.map { Triple(it.pinPosition, it.pinnedAt, PinnedEntry.Album(it)) } +
+            folders.filter { it.isPinned }.map { Triple(it.pinPosition, it.pinnedAt, PinnedEntry.Folder(it)) }
+    return entries.sortedByPinOrder({ it.first }, { it.second }).map { it.third }
 }
 
 /** Todo lo que pinta Colecciones, ya resuelto por el host desde sus ViewModels. */
