@@ -40,6 +40,8 @@
 	"nav_collapse": "Contraer el menú",
 	"nav_expand": "Expandir el menú",
 	"error_loading": "No se ha podido cargar. Inténtalo de nuevo.",
+	"error_loading_title": "No se ha podido cargar",
+	"error_loading_hint": "Comprueba la conexión e inténtalo de nuevo.",
 	"skip_to_content": "Saltar al contenido",
 	"grid_select_section": "Seleccionar {section}",
 	"grid_scrubber": "Saltar a una fecha",

@@ -14,6 +14,7 @@
 		title={`#${tag}`}
 		filter={{ q: tag }}
 		emptyText={m.explore_label_no_photos()}
+		emptyHint={m.explore_label_no_photos_hint()}
 		crumb={{ href: appHref('/explore'), label: m.nav_explore() }}
 	>
 		<p class="note">{m.explore_tag_note()}</p>

@@ -95,10 +95,16 @@
 	{#if labels.isPending}
 		<Skeleton variant="cards" count={12} />
 	{:else if labels.isError}
-		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+		<div role="alert">
+			<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+		</div>
 	{:else if visible.length === 0}
 		{#if query}
-			<EmptyState icon="search" title={m.explore_label_no_match()} />
+			<EmptyState
+				icon="search"
+				title={m.explore_label_no_match()}
+				hint={m.explore_label_no_match_hint()}
+			/>
 		{:else}
 			<EmptyState
 				iconPath={icons.label}

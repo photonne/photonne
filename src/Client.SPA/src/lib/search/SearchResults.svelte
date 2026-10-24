@@ -100,6 +100,9 @@
 	title={m.search_results()}
 	{status}
 	emptyText={notice === 'too_short' ? m.search_semantic_too_short() : m.search_no_results()}
+	emptyHint={notice === 'too_short'
+		? m.search_semantic_too_short_hint()
+		: m.search_no_results_hint()}
 	emptyIcon="search"
 	headers={!search.semantic}
 	onnearend={() => !search.semantic && list.more()}

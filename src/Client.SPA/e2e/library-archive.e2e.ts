@@ -46,7 +46,7 @@ test('unarchives everything after confirming', async ({ page }) => {
 	await dialog.getByRole('button', { name: 'Desarchivar todo' }).click();
 
 	await expect(page.getByText('Todo desarchivado')).toBeVisible();
-	await expect(page.getByText('No hay nada archivado.')).toBeVisible();
+	await expect(page.getByText('No hay nada archivado')).toBeVisible();
 	expect(libraryState(api.state).calls).toEqual(['unarchive-all']);
 	await expect(page.getByRole('button', { name: 'Desarchivar todo' })).toBeDisabled();
 });

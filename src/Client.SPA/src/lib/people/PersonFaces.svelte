@@ -214,7 +214,9 @@
 {#if faces.isPending}
 	<Skeleton variant="cards" count={16} />
 {:else if faces.isError}
-	<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+	<div role="alert">
+		<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+	</div>
 {:else if items.length === 0}
 	<EmptyState iconPath={icons.face} title={m.people_faces_empty()} />
 {:else}

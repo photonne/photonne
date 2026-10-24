@@ -68,9 +68,15 @@
 	{#if tree.isPending}
 		<Skeleton variant="rows" count={8} />
 	{:else if tree.isError}
-		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+		<div role="alert">
+			<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+		</div>
 	{:else if roots.length === 0}
-		<EmptyState icon="folder" title={m.utilities_locations_empty()} />
+		<EmptyState
+			icon="folder"
+			title={m.utilities_locations_empty()}
+			hint={m.utilities_locations_empty_hint()}
+		/>
 	{:else}
 		<div class="tree">
 			{#if shown.length === 0}

@@ -1,9 +1,12 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"favorites_empty": "Mark photos as favorites with the heart and they show up here.",
-	"videos_empty": "No videos yet. The ones you upload or index will show up here, newest first.",
+	"favorites_empty": "No favorites yet",
+	"favorites_empty_hint": "Mark photos as favorites with the heart and they show up here.",
+	"videos_empty": "No videos yet",
+	"videos_empty_hint": "The ones you upload or index will show up here, newest first.",
 	"library_breadcrumb": "Breadcrumb",
-	"archive_empty": "Nothing is archived. What you archive leaves the timeline and is kept here.",
+	"archive_empty": "Nothing archived",
+	"archive_empty_hint": "What you archive leaves the timeline and is kept here.",
 	"archive_hint": "Archived photos stay out of the timeline and memories, but remain in your albums and folders.",
 	"archive_unarchive": "Unarchive",
 	"archive_unarchive_all": "Unarchive all",
@@ -23,8 +26,10 @@
 		}
 	],
 	"archive_unarchived_all": "Everything unarchived",
-	"trash_empty": "The trash is empty.",
-	"trash_shared_empty": "Nothing has been deleted from the shared folders you manage.",
+	"trash_empty": "The trash is empty",
+	"trash_empty_hint": "What you delete lands here, and you can restore it before it’s gone.",
+	"trash_shared_empty": "Nothing deleted",
+	"trash_shared_empty_hint": "What gets deleted from the shared folders you manage shows up here.",
 	"trash_restore": "Restore",
 	"trash_restore_all": "Restore all",
 	"trash_restore_all_confirm": "Everything in the trash will go back where it was.",
@@ -103,7 +108,8 @@
 	"memories_empty": "No memories yet.",
 	"memories_empty_hint": "Photonne prepares them every night from your photos: this day in other years, this month and people through time.",
 	"memories_on_this_day": "On this day",
-	"memories_on_this_day_empty": "No photos from this day in earlier years.",
+	"memories_on_this_day_empty": "Nothing from this day",
+	"memories_on_this_day_empty_hint": "No photos from this day in earlier years.",
 	"memories_photo_count": [
 		{
 			"declarations": [
@@ -118,8 +124,10 @@
 			}
 		}
 	],
-	"memories_missing": "This memory no longer exists.",
-	"memories_no_photos": "This memory has no photos left.",
+	"memories_missing": "This memory no longer exists",
+	"memories_missing_hint": "It may have been deleted. The rest are in Memories.",
+	"memories_no_photos": "This memory has no photos left",
+	"memories_no_photos_hint": "Its photos were deleted or archived.",
 	"memories_play": "Play",
 	"memories_story_play": "Resume",
 	"memories_story_pause": "Pause",
@@ -135,6 +143,7 @@
 	"explore_objects_empty": "No objects recognised yet.",
 	"explore_label_search": "Search {kind}",
 	"explore_label_no_match": "Nothing matches the search.",
+	"explore_label_no_match_hint": "Try another word, or just part of it.",
 	"explore_label_count": [
 		{
 			"declarations": [
@@ -149,7 +158,8 @@
 			}
 		}
 	],
-	"explore_label_no_photos": "No photos with this label.",
+	"explore_label_no_photos": "No photos with this label",
+	"explore_label_no_photos_hint": "They may have been deleted or archived.",
 	"explore_sort": "Sort",
 	"explore_sort_count": "Most photos",
 	"explore_sort_name": "Name",
@@ -160,8 +170,10 @@
 	"explore_text_submit": "Search",
 	"explore_text_title": "“{query}”",
 	"explore_text_hint": "Find photos by the text in them: signs, receipts, documents or screenshots.",
-	"explore_text_no_photos": "No photo contains that text.",
-	"explore_theme_missing": "This theme is no longer among your memories.",
+	"explore_text_no_photos": "No photo contains that text",
+	"explore_text_no_photos_hint": "Try another word, or just part of it.",
+	"explore_theme_missing": "This theme no longer exists",
+	"explore_theme_missing_hint": "It’s no longer among your memories; the rest are in Explore.",
 	"explore_theme_count": [
 		{
 			"declarations": [

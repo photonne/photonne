@@ -155,6 +155,9 @@
 		count={batch ? m.organize_batch_selected({ count: selection.size }) : null}
 		status={shown.status}
 		emptyText={batch && scope === 'batch' ? m.organize_batch_empty() : m.organize_inbox_empty()}
+		emptyHint={batch && scope === 'batch'
+			? m.organize_batch_empty_hint()
+			: m.organize_inbox_empty_hint()}
 		emptyIcon="inbox"
 		onnearend={shown === list ? () => list.more() : undefined}
 		{selection}

@@ -62,6 +62,8 @@
 	title={m.nav_organize()}
 	status={list.status}
 	emptyText={m.organize_excluded_empty()}
+	emptyHint={m.organize_excluded_empty_hint()}
+	emptyIcon="inbox"
 	onnearend={() => list.more()}
 >
 	{#snippet header()}

@@ -82,5 +82,5 @@ test('says when a memory no longer exists', async ({ page }) => {
 	await fakeApi(page, { signedIn: true });
 	await page.goto('/memories/gone');
 
-	await expect(page.getByText('Este recuerdo ya no existe.')).toBeVisible();
+	await expect(page.getByText('Este recuerdo ya no existe')).toBeVisible();
 });

@@ -81,9 +81,15 @@
 	{#if status === 'pending'}
 		<Skeleton variant="rows" count={8} />
 	{:else if status === 'error'}
-		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+		<div role="alert">
+			<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+		</div>
 	{:else if files.length === 0}
-		<EmptyState iconPath={filePath} title={m.utilities_unsupported_empty()} />
+		<EmptyState
+			iconPath={filePath}
+			title={m.utilities_unsupported_empty()}
+			hint={m.utilities_unsupported_empty_hint()}
+		/>
 	{:else}
 		<div class="table-wrap">
 			<table>

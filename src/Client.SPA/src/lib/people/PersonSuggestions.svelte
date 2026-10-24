@@ -160,7 +160,9 @@
 {#if suggestions.isPending}
 	<Skeleton variant="cards" count={12} />
 {:else if suggestions.isError}
-	<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+	<div role="alert">
+		<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+	</div>
 {:else if items.length === 0}
 	<EmptyState icon="check" title={m.people_suggestions_empty()} />
 {:else}

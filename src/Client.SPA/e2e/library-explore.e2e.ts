@@ -77,7 +77,7 @@ test('finds photos by the text in them', async ({ page }) => {
 
 	await page.getByRole('searchbox', { name: 'Buscar texto en las fotos' }).fill('nada');
 	await page.keyboard.press('Enter');
-	await expect(page.getByText('Ninguna foto contiene ese texto.')).toBeVisible();
+	await expect(page.getByText('Ninguna foto contiene ese texto')).toBeVisible();
 });
 
 test('opens the photos of a tag', async ({ page }) => {

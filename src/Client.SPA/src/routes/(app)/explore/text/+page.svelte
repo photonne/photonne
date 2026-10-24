@@ -15,6 +15,7 @@
 			title={m.explore_text_title({ query })}
 			filter={{ textQuery: query }}
 			emptyText={m.explore_text_no_photos()}
+			emptyHint={m.explore_text_no_photos_hint()}
 			crumb={{ href: appHref('/explore'), label: m.nav_explore() }}
 		>
 			<div class="form"><TextSearchForm value={query} /></div>

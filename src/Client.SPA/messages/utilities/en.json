@@ -24,7 +24,8 @@
 		}
 	],
 	"utilities_duplicates_lead": "Mark the spare copies in each group; they go to the trash and can be recovered from there.",
-	"utilities_duplicates_empty": "There are no exact copies in your library.",
+	"utilities_duplicates_empty": "No duplicates",
+	"utilities_duplicates_empty_hint": "There are no exact copies in your library.",
 	"utilities_duplicates_summary": [
 		{
 			"declarations": [
@@ -141,7 +142,8 @@
 		}
 	],
 	"utilities_large_files_lead": "The {count} items that take the most space, largest first.",
-	"utilities_large_files_empty": "No files found.",
+	"utilities_large_files_empty": "No files",
+	"utilities_large_files_empty_hint": "Once you have photos and videos, the largest show up here.",
 	"utilities_large_files_total": "Together they take {size}",
 	"utilities_show": "Show",
 	"utilities_trash_selected": [
@@ -172,7 +174,8 @@
 	"utilities_locations": "Locations",
 	"utilities_locations_description": "The folders your files live in.",
 	"utilities_locations_lead": "Folders and paths where your files are stored, with what each one holds.",
-	"utilities_locations_empty": "No folders found.",
+	"utilities_locations_empty": "No folders",
+	"utilities_locations_empty_hint": "Your libraries’ folders show up here once they’re indexed.",
 	"utilities_expand_all": "Expand all",
 	"utilities_collapse_all": "Collapse all",
 	"utilities_filter_folders": "Filter folders",
@@ -253,7 +256,8 @@
 		}
 	],
 	"utilities_unsupported_lead": "Found while scanning your folders. They don't show in the library; you can download them or delete them from disk.",
-	"utilities_unsupported_empty": "There are no unsupported files.",
+	"utilities_unsupported_empty": "Everything is supported",
+	"utilities_unsupported_empty_hint": "There are no files Photonne can’t show.",
 	"utilities_load_more": "Load more",
 	"utilities_download": "Download",
 	"utilities_download_file": "Download {name}",

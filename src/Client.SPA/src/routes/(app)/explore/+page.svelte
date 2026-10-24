@@ -71,7 +71,9 @@
 	</PageHeader>
 
 	{#if failed}
-		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+		<div role="alert">
+			<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+		</div>
 	{:else if empty}
 		<EmptyState icon="explore" title={m.explore_empty()} hint={m.explore_empty_hint()} />
 	{:else}

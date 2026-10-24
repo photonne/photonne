@@ -74,7 +74,7 @@ test('empties the trash and restores everything, each after confirming', async (
 	await dialog.getByRole('button', { name: 'Vaciar papelera' }).click();
 
 	await expect(page.getByText('Papelera vaciada')).toBeVisible();
-	await expect(page.getByText('La papelera está vacía.')).toBeVisible();
+	await expect(page.getByText('La papelera está vacía')).toBeVisible();
 	expect(libraryState(api.state).calls).toEqual(['empty']);
 	await expect(page.getByRole('button', { name: 'Restaurar todo' })).toBeDisabled();
 });
@@ -89,7 +89,7 @@ test('restores everything', async ({ page }) => {
 		.click();
 
 	await expect(page.getByText('Papelera restaurada')).toBeVisible();
-	await expect(page.getByText('La papelera está vacía.')).toBeVisible();
+	await expect(page.getByText('La papelera está vacía')).toBeVisible();
 	expect(libraryState(api.state).calls).toEqual(['restore-all']);
 });
 

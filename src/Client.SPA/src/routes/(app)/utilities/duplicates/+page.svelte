@@ -144,9 +144,15 @@
 	{#if groups === null && !failed}
 		<Skeleton variant="cards" count={8} />
 	{:else if failed}
-		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+		<div role="alert">
+			<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+		</div>
 	{:else if all.length === 0}
-		<EmptyState iconPath={duplicatesPath} title={m.utilities_duplicates_empty()} />
+		<EmptyState
+			iconPath={duplicatesPath}
+			title={m.utilities_duplicates_empty()}
+			hint={m.utilities_duplicates_empty_hint()}
+		/>
 	{:else}
 		<p class="summary" aria-live="polite">
 			{m.utilities_duplicates_summary({ count: all.length, size: formatBytes(recoverable) })}
