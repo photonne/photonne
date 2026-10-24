@@ -10,6 +10,7 @@ import com.photonne.app.ui.util.SortDirection
 import com.photonne.app.ui.util.applyDirection
 import com.photonne.app.ui.util.parseSortDirection
 import com.photonne.app.ui.util.sortedByNatural
+import com.photonne.app.ui.util.sortedByPinOrder
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -102,12 +103,12 @@ data class AlbumsUiState(
         get() = !hasActiveQuery && albums.any { it.isPinned }
 
     /**
-     * Fijados visibles (el ámbito se respeta), del último fijado al primero.
+     * Fijados visibles (el ámbito se respeta), en el orden del usuario.
      * Vacía si [showsPinnedSection] es false.
      */
     val pinnedAlbums: List<AlbumSummary>
         get() = if (!showsPinnedSection) emptyList()
-        else visibleAlbums.filter { it.isPinned }.sortedByDescending { it.pinnedAt }
+        else visibleAlbums.filter { it.isPinned }.sortedByPinOrder({ it.pinPosition }, { it.pinnedAt })
 
     /**
      * Lo que va debajo de los fijados, en el orden elegido. Sin sección, es
@@ -191,15 +192,14 @@ class AlbumsViewModel(
         val current = _state.value.albums.firstOrNull { it.id == albumId } ?: return
         if (!pinsInFlight.add(albumId)) return
         val pin = !current.isPinned
-        val previousPinnedAt = current.pinnedAt
-        setPinned(albumId, pin, if (pin) Clock.System.now() else null)
+        setPinned(albumId, pin, if (pin) Clock.System.now() else null, null)
         viewModelScope.launch {
             try {
                 repository.setPinned(albumId, pin)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                setPinned(albumId, current.isPinned, previousPinnedAt)
+                setPinned(albumId, current.isPinned, current.pinnedAt, current.pinPosition)
                 onFailure(pin)
             } finally {
                 pinsInFlight.remove(albumId)
@@ -207,11 +207,13 @@ class AlbumsViewModel(
         }
     }
 
-    private fun setPinned(albumId: String, pinned: Boolean, pinnedAt: Instant?) {
+    private fun setPinned(albumId: String, pinned: Boolean, pinnedAt: Instant?, pinPosition: Int?) {
         _state.update { previous ->
             previous.copy(
                 albums = previous.albums.map {
-                    if (it.id == albumId) it.copy(isPinned = pinned, pinnedAt = pinnedAt) else it
+                    if (it.id == albumId) {
+                        it.copy(isPinned = pinned, pinnedAt = pinnedAt, pinPosition = pinPosition)
+                    } else it
                 }
             )
         }
@@ -611,7 +613,7 @@ class AlbumsViewModel(
  * conserva el que ya teníamos.
  */
 private fun AlbumSummary.keepingPinOf(previous: AlbumSummary): AlbumSummary =
-    copy(isPinned = previous.isPinned, pinnedAt = previous.pinnedAt)
+    copy(isPinned = previous.isPinned, pinnedAt = previous.pinnedAt, pinPosition = previous.pinPosition)
 
 /**
  * The cached card with the name and description an edit answered. The update

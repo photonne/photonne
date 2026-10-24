@@ -25,6 +25,9 @@ data class AlbumSummary(
     // antiguos no lo envían → false.
     val isPinned: Boolean = false,
     @Serializable(with = FlexibleInstantSerializer::class) val pinnedAt: Instant? = null,
+    // Mi orden en "Fijados" (uno para álbumes y carpetas, el más bajo arriba).
+    // Servidores antiguos no lo envían → null, y se ordena por pinnedAt.
+    val pinPosition: Int? = null,
     // "Manual" or "Smart" (docs/smart-albums/). Defaults keep decode safe
     // against older servers that don't emit the field.
     val kind: String = "Manual"

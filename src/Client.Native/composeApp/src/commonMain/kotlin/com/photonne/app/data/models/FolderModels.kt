@@ -30,5 +30,8 @@ data class FolderSummary(
     // My own pin (personal, like album pins); Colecciones mixes both in "Fijados".
     val isPinned: Boolean = false,
     @Serializable(with = FlexibleInstantSerializer::class) val pinnedAt: Instant? = null,
+    // Mi orden en "Fijados" (uno para álbumes y carpetas, el más bajo arriba).
+    // Servidores antiguos no lo envían → null, y se ordena por pinnedAt.
+    val pinPosition: Int? = null,
     val subFolders: List<FolderSummary> = emptyList()
 )

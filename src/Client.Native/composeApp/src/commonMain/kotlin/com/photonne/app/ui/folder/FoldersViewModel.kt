@@ -11,6 +11,7 @@ import com.photonne.app.data.folder.writableMoveDestinations
 import com.photonne.app.data.organize.OrganizeRepository
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.ui.util.SortDirection
+import com.photonne.app.ui.util.sortedByPinOrder
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -551,14 +552,14 @@ class FoldersViewModel(
         val current = allFolders.firstOrNull { it.id == folderId } ?: return
         if (!pinsInFlight.add(folderId)) return
         val pin = !current.isPinned
-        setPinned(folderId, pin, if (pin) Clock.System.now() else null)
+        setPinned(folderId, pin, if (pin) Clock.System.now() else null, null)
         viewModelScope.launch {
             try {
                 repository.setPinned(folderId, pin)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                setPinned(folderId, current.isPinned, current.pinnedAt)
+                setPinned(folderId, current.isPinned, current.pinnedAt, current.pinPosition)
                 onFailure(pin)
             } finally {
                 pinsInFlight.remove(folderId)
@@ -566,9 +567,11 @@ class FoldersViewModel(
         }
     }
 
-    private fun setPinned(folderId: String, pinned: Boolean, pinnedAt: Instant?) {
+    private fun setPinned(folderId: String, pinned: Boolean, pinnedAt: Instant?, pinPosition: Int?) {
         allFolders = allFolders.map {
-            if (it.id == folderId) it.copy(isPinned = pinned, pinnedAt = pinnedAt) else it
+            if (it.id == folderId) {
+                it.copy(isPinned = pinned, pinnedAt = pinnedAt, pinPosition = pinPosition)
+            } else it
         }
         repartition()
     }
@@ -607,7 +610,8 @@ class FoldersViewModel(
                 sharedDescendants = partition.sharedDescendants,
                 externalDescendants = partition.externalDescendants,
                 moveDestinations = sorted(writableMoveDestinations(allFolders, username)),
-                pinnedFolders = allFolders.filter { f -> f.isPinned }.sortedByDescending { f -> f.pinnedAt }
+                pinnedFolders = allFolders.filter { f -> f.isPinned }
+                    .sortedByPinOrder({ f -> f.pinPosition }, { f -> f.pinnedAt })
             )
         }
     }
