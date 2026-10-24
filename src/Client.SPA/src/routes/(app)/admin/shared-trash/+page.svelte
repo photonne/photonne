@@ -146,6 +146,7 @@
 			title={m.admin_shared_trash()}
 			{status}
 			emptyText={m.admin_strash_empty()}
+			emptyIcon="delete"
 			viewerActions={[]}
 			onnearend={more}
 			chrome="inline"

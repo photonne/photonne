@@ -31,6 +31,7 @@
 	title={m.memories_on_this_day()}
 	status={list.status}
 	emptyText={m.memories_on_this_day_empty()}
+	emptyIcon="history"
 >
 	{#snippet toolbar()}
 		<ToolButton

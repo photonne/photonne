@@ -81,6 +81,7 @@
 	title={name}
 	status={list.status}
 	emptyText={m.people_photos_empty()}
+	emptyIcon="person"
 	onnearend={() => list.more()}
 >
 	{#snippet toolbar()}

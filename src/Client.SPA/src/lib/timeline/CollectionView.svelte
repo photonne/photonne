@@ -8,6 +8,7 @@
 	import ShareAssetsDialog from '#lib/actions/ShareAssetsDialog.svelte';
 	import type { AssetDetailResponse } from '#lib/api/index.js';
 	import { getAssetDetailQueryKey } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import type { IconName } from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
@@ -35,6 +36,8 @@
 		title: string;
 		status: 'pending' | 'error' | 'ready';
 		emptyText: string;
+		/** The empty state's icon: an Icon.svelte name or a 24×24 path from icons.ts. */
+		emptyIcon?: IconName | { path: string };
 		/** Under the empty text: what to do about it. */
 		emptyHint?: string | null;
 		/** The way out of the empty state (a .btn link or button). */
@@ -101,6 +104,7 @@
 		title,
 		status,
 		emptyText,
+		emptyIcon = 'photos',
 		emptyHint = null,
 		emptyAction,
 		count = null,
@@ -286,7 +290,15 @@
 			{:else if status === 'error'}
 				<p class="status" role="alert">{m.error_loading()}</p>
 			{:else}
-				<EmptyState icon="photos" title={emptyText} hint={emptyHint} action={emptyAction} compact />
+				<!-- Full size like any page's; small only inside another page's panel. -->
+				<EmptyState
+					icon={typeof emptyIcon === 'string' ? emptyIcon : undefined}
+					iconPath={typeof emptyIcon === 'string' ? undefined : emptyIcon.path}
+					title={emptyText}
+					hint={emptyHint}
+					action={emptyAction}
+					compact={chrome === 'none'}
+				/>
 			{/if}
 		</div>
 	{:else}
