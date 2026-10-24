@@ -231,6 +231,7 @@
 		title={folder?.name ?? ''}
 		status={folderQuery.isPending ? 'pending' : list.status}
 		emptyText={subfolders.length ? m.folders_empty_with_subfolders() : m.folders_empty()}
+		emptyHint={subfolders.length ? m.folders_empty_with_subfolders_hint() : m.folders_empty_hint()}
 		emptyIcon="folder"
 		viewerActions={['trash', 'album']}
 		collapsed={!photosShown}

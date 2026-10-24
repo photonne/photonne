@@ -139,7 +139,7 @@ test('turning semantic on and off keeps the words', async ({ page }) => {
 
 	await page.goBack();
 	await expect(page.getByRole('switch', { name: 'Semántica' })).not.toBeChecked();
-	await expect(page.getByText('Sin resultados.')).toBeVisible();
+	await expect(page.getByText('Sin resultados')).toBeVisible();
 });
 
 test('the empty search offers people, scenes and objects', async ({ page }) => {

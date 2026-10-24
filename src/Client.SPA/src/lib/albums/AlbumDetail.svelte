@@ -225,6 +225,7 @@
 		cover={album?.coverThumbnailUrl}
 		status={albumQuery.isPending ? 'pending' : list.status}
 		emptyText={smart ? m.albums_empty_smart() : m.albums_empty_album()}
+		emptyHint={smart ? m.albums_empty_smart_hint() : m.albums_empty_album_hint()}
 		emptyIcon="album"
 		headers={false}
 		viewerActions={ownsPhotos ? ['trash', 'album'] : ['album']}

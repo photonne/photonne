@@ -55,7 +55,9 @@
 	{#if feed.isPending}
 		<Skeleton variant="cards" count={6} />
 	{:else if feed.isError && todayAssets.length === 0}
-		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+		<div role="alert">
+			<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+		</div>
 	{:else if blocks.length === 0 && todayAssets.length === 0}
 		<EmptyState iconPath={icons.sparkle} title={m.memories_empty()} hint={m.memories_empty_hint()}>
 			{#snippet action()}

@@ -146,6 +146,7 @@
 			title={m.admin_shared_trash()}
 			{status}
 			emptyText={m.admin_strash_empty()}
+			emptyHint={m.admin_strash_empty_hint()}
 			emptyIcon="delete"
 			viewerActions={[]}
 			onnearend={more}

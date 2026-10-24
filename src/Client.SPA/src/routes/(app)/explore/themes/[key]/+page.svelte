@@ -32,9 +32,15 @@
 	{#if feed.isPending}
 		<Skeleton variant="cards" count={6} />
 	{:else if feed.isError}
-		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+		<div role="alert">
+			<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+		</div>
 	{:else if !row}
-		<EmptyState icon="explore" title={m.explore_theme_missing()}>
+		<EmptyState
+			icon="explore"
+			title={m.explore_theme_missing()}
+			hint={m.explore_theme_missing_hint()}
+		>
 			{#snippet action()}
 				<a class="btn" href={appHref('/explore')}>{m.nav_explore()}</a>
 			{/snippet}

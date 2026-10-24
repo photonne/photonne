@@ -14,12 +14,13 @@
 		/** The search that finds the photos (a scene, an object, a tag, a text). */
 		filter: Filter;
 		emptyText: string;
+		emptyHint?: string | null;
 		crumb: { href: string; label: string };
 		/** Under the crumb: a note on what's being matched, a search box… */
 		children?: Snippet;
 	}
 
-	let { title, filter, emptyText, crumb, children }: Props = $props();
+	let { title, filter, emptyText, emptyHint = null, crumb, children }: Props = $props();
 
 	const PAGE_SIZE = 200;
 
@@ -44,6 +45,8 @@
 	{title}
 	status={list.status}
 	{emptyText}
+	{emptyHint}
+	emptyIcon="search"
 	onnearend={() => list.more()}
 >
 	{#snippet header()}

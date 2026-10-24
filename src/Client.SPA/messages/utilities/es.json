@@ -24,7 +24,8 @@
 		}
 	],
 	"utilities_duplicates_lead": "Marca en cada grupo las copias que sobran; van a la papelera y se pueden recuperar desde allí.",
-	"utilities_duplicates_empty": "No hay copias exactas en tu biblioteca.",
+	"utilities_duplicates_empty": "No hay duplicados",
+	"utilities_duplicates_empty_hint": "No hay copias exactas en tu biblioteca.",
 	"utilities_duplicates_summary": [
 		{
 			"declarations": [
@@ -141,7 +142,8 @@
 		}
 	],
 	"utilities_large_files_lead": "Los {count} elementos que más ocupan, del más grande al más pequeño.",
-	"utilities_large_files_empty": "No se han encontrado archivos.",
+	"utilities_large_files_empty": "No hay archivos",
+	"utilities_large_files_empty_hint": "Cuando tengas fotos y vídeos, los que más ocupan aparecerán aquí.",
 	"utilities_large_files_total": "Entre todos ocupan {size}",
 	"utilities_show": "Mostrar",
 	"utilities_trash_selected": [
@@ -172,7 +174,8 @@
 	"utilities_locations": "Ubicaciones",
 	"utilities_locations_description": "Las carpetas donde viven tus archivos.",
 	"utilities_locations_lead": "Carpetas y rutas donde se guardan tus archivos, con lo que contiene cada una.",
-	"utilities_locations_empty": "No se han encontrado carpetas.",
+	"utilities_locations_empty": "No hay carpetas",
+	"utilities_locations_empty_hint": "Las carpetas de tus bibliotecas aparecerán aquí cuando se indexen.",
 	"utilities_expand_all": "Expandir todo",
 	"utilities_collapse_all": "Contraer todo",
 	"utilities_filter_folders": "Filtrar carpetas",
@@ -253,7 +256,8 @@
 		}
 	],
 	"utilities_unsupported_lead": "Encontrados al escanear tus carpetas. No salen en la biblioteca; puedes descargarlos o borrarlos del disco.",
-	"utilities_unsupported_empty": "No hay archivos no compatibles.",
+	"utilities_unsupported_empty": "Todo es compatible",
+	"utilities_unsupported_empty_hint": "No hay archivos que Photonne no pueda mostrar.",
 	"utilities_load_more": "Cargar más",
 	"utilities_download": "Descargar",
 	"utilities_download_file": "Descargar {name}",

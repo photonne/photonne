@@ -14,6 +14,7 @@
 		title={displayLabel(label, getLocale())}
 		filter={{ sceneLabel: [label] }}
 		emptyText={m.explore_label_no_photos()}
+		emptyHint={m.explore_label_no_photos_hint()}
 		crumb={{ href: appHref('/explore/scenes'), label: m.explore_scenes() }}
 	/>
 {/key}

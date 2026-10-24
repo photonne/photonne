@@ -201,12 +201,18 @@
 		{#if people.isPending}
 			<div class="loading"><Skeleton variant="cards" round count={16} /></div>
 		{:else if people.isError}
-			<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+			<div role="alert">
+				<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+			</div>
 		{:else if items.length === 0}
 			{#if debounced}
-				<EmptyState icon="search" title={m.people_search_empty({ query: debounced })} />
+				<EmptyState
+					icon="search"
+					title={m.people_search_empty({ query: debounced })}
+					hint={m.people_search_empty_hint()}
+				/>
 			{:else if showHidden}
-				<EmptyState icon="people" title={m.people_empty_title()} />
+				<EmptyState icon="people" title={m.people_empty_title()} hint={m.people_empty_hint()} />
 			{:else}
 				<EmptyState icon="people" title={m.people_empty_title()} hint={m.people_empty_hint()}>
 					{#snippet action()}

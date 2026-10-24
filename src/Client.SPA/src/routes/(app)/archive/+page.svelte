@@ -50,6 +50,7 @@
 	title={m.nav_archive()}
 	status={list.status}
 	emptyText={m.archive_empty()}
+	emptyHint={m.archive_empty_hint()}
 	emptyIcon="archive"
 	viewerActions={['trash', 'album']}
 	onnearend={() => list.more()}

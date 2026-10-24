@@ -126,9 +126,15 @@
 	{#if files.isPending}
 		<Skeleton variant="rows" count={10} />
 	{:else if files.isError}
-		<div role="alert"><EmptyState icon="info" title={m.error_loading()} /></div>
+		<div role="alert">
+			<EmptyState icon="info" title={m.error_loading_title()} hint={m.error_loading_hint()} />
+		</div>
 	{:else if items.length === 0}
-		<EmptyState iconPath={storagePath} title={m.utilities_large_files_empty()} />
+		<EmptyState
+			iconPath={storagePath}
+			title={m.utilities_large_files_empty()}
+			hint={m.utilities_large_files_empty_hint()}
+		/>
 	{:else}
 		<p class="summary" aria-live="polite">
 			{m.utilities_large_files_total({ size: formatBytes(total) })}

@@ -108,6 +108,7 @@
 		title={m.nav_trash()}
 		status={list.status}
 		emptyText={scope === 'shared' ? m.trash_shared_empty() : m.trash_empty()}
+		emptyHint={scope === 'shared' ? m.trash_shared_empty_hint() : m.trash_empty_hint()}
 		emptyIcon="delete"
 		viewerActions={[]}
 		onnearend={() => list.more()}
