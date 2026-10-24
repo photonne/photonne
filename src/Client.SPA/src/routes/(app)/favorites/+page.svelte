@@ -31,5 +31,6 @@
 	title={m.nav_favorites()}
 	status={list.status}
 	emptyText={m.favorites_empty()}
+	emptyIcon="favoriteOutline"
 	onnearend={() => list.more()}
 />

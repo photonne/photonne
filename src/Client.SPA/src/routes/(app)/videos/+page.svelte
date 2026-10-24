@@ -20,5 +20,6 @@
 	title={m.nav_videos()}
 	status={list.status}
 	emptyText={m.videos_empty()}
+	emptyIcon="videoLibrary"
 	onnearend={() => list.more()}
 />

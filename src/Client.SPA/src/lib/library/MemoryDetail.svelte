@@ -63,6 +63,7 @@
 	{title}
 	status={missing ? 'ready' : list.status}
 	emptyText={missing ? m.memories_missing() : m.memories_no_photos()}
+	emptyIcon={{ path: icons.sparkle }}
 >
 	{#snippet toolbar()}
 		<ToolButton
