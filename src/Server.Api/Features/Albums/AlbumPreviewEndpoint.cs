@@ -11,9 +11,9 @@ namespace Photonne.Server.Api.Features.Albums;
 /// <summary>
 /// Dry-run resolution of a smart-album rule WITHOUT persisting anything. Powers
 /// the live "N fotos coinciden" preview in the rule editor
-/// (docs/smart-albums/creation-ux.md). Resolves owner-anchored with owner ==
-/// viewer == requester (you only preview your own draft), so it reuses the exact
-/// same <see cref="SmartAlbumResolver"/> the saved album will use — preview
+/// (docs/smart-albums/creation-ux.md). Resolves owner-anchored to the requester
+/// (you only preview your own draft) with the exact same
+/// <see cref="SmartAlbumResolver"/> that materializes the saved album — preview
 /// equals real content.
 /// </summary>
 public sealed class AlbumPreviewEndpoint : IEndpoint
@@ -46,7 +46,7 @@ public sealed class AlbumPreviewEndpoint : IEndpoint
         IQueryable<Shared.Models.Asset> query;
         try
         {
-            query = await resolver.ResolveAsync(request.Rule, ownerId: userId, viewerId: userId, ct);
+            query = await resolver.ResolveAsync(request.Rule, ownerId: userId, ct);
         }
         catch (SmartRuleException ex)
         {
