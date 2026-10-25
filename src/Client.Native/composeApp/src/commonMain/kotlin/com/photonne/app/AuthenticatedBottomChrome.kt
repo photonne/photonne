@@ -172,14 +172,16 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                                             ) {
                                                 if (albumId != null) {
                                                     coroutineScope.launch {
+                                                        // Restaurar, no volver a añadir: así
+                                                        // vuelven a su sitio en el álbum.
                                                         runCatching {
-                                                            albumsRepository.addAssetsBatch(
+                                                            albumsRepository.restoreAssets(
                                                                 albumId, removedIds
                                                             )
-                                                        }.onSuccess {
+                                                        }.onSuccess { restored ->
                                                             albumDetailViewModel.refresh()
                                                             albumsViewModel.applyAssetsAdded(
-                                                                albumId, removedIds.size
+                                                                albumId, restored.size
                                                             )
                                                         }
                                                     }

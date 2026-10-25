@@ -9,6 +9,7 @@ import com.photonne.app.data.error.ErrorMessages
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.RemovedAlbumAsset
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.selection.applying
@@ -434,13 +435,12 @@ class AlbumDetailViewModel(
     }
 
     /**
-     * Detach every selected asset from this album. The repo only exposes a
-     * per-asset endpoint, so we fan out one call per id and surface the
-     * count we managed to remove for the album-list badge to stay correct.
+     * Detach every selected asset from this album in one request: the server
+     * does it all or nothing and keeps a record of each, so they can be
+     * restored for 30 days ("Quitadas recientemente").
      *
      * [onResult] recibe los ids quitados (para ofrecer Deshacer) o el error.
-     * Un fallo A MEDIAS ya no restaura la lista local entera — el servidor
-     * pudo quitar parte, así que se re-sincroniza con [refresh].
+     * Si falla, se re-sincroniza con [refresh] en vez de adivinar qué quedó.
      */
     fun bulkRemoveFromAlbum(
         onSuccess: (removed: Int) -> Unit = {},
@@ -458,19 +458,46 @@ class AlbumDetailViewModel(
             )
         }
         viewModelScope.launch {
-            runCatching {
-                for (id in ids) repository.removeAsset(albumId, id)
-            }
-                .onSuccess {
+            suspendRunCatching { repository.removeAssets(albumId, ids) }
+                .onSuccess { removed ->
                     _state.update { it.copy(isBulkMutating = false) }
-                    onSuccess(ids.size)
-                    onResult(ids, null)
+                    onSuccess(removed.size)
+                    onResult(removed, null)
                 }
                 .onFailure { error ->
                     val uiError = errorFactory.from(error, "No se pudo quitar del álbum")
                     _state.update { it.copy(isBulkMutating = false, error = uiError) }
                     refresh()
-                    onResult(ids, uiError)
+                    onResult(emptyList(), uiError)
+                }
+        }
+    }
+
+    /** Lo quitado de este álbum en los últimos 30 días, lo más reciente primero. */
+    suspend fun loadRemoved(): Result<List<RemovedAlbumAsset>> {
+        val albumId = _state.value.albumId
+            ?: return Result.failure(IllegalStateException("No album open"))
+        return suspendRunCatching { repository.removedAssets(albumId) }
+    }
+
+    /**
+     * Devuelve fotos quitadas a su sitio (Deshacer, "Quitadas recientemente")
+     * y recarga el álbum. [onResult] recibe los ids que han vuelto o el error.
+     */
+    fun restoreRemoved(
+        assetIds: List<String>,
+        onResult: (restoredIds: List<String>, error: UiError?) -> Unit = { _, _ -> }
+    ) {
+        val albumId = _state.value.albumId ?: return
+        if (assetIds.isEmpty()) return
+        viewModelScope.launch {
+            suspendRunCatching { repository.restoreAssets(albumId, assetIds) }
+                .onSuccess { restored ->
+                    if (restored.isNotEmpty()) refresh()
+                    onResult(restored, null)
+                }
+                .onFailure { error ->
+                    onResult(emptyList(), errorFactory.from(error, "No se pudo restaurar"))
                 }
         }
     }

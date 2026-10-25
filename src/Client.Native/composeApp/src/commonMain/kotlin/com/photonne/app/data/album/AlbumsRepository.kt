@@ -5,6 +5,7 @@ import com.photonne.app.data.models.AlbumMemberRole
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.RemovedAlbumAsset
 import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.SmartAlbumRuleDetails
 import com.photonne.app.data.models.SmartAlbumPreview
@@ -55,6 +56,17 @@ class AlbumsRepository(
     suspend fun removeAsset(albumId: String, assetId: String) {
         api.removeAssetFromAlbum(albumId = albumId, assetId = assetId)
     }
+
+    /** Los ids que estaban en el álbum y se han quitado, en su orden. */
+    suspend fun removeAssets(albumId: String, assetIds: List<String>): List<String> =
+        api.removeAssetsFromAlbum(albumId = albumId, assetIds = assetIds).removed
+
+    suspend fun removedAssets(albumId: String): List<RemovedAlbumAsset> =
+        api.getRemovedAlbumAssets(albumId)
+
+    /** Los ids que han vuelto al álbum. */
+    suspend fun restoreAssets(albumId: String, assetIds: List<String>): List<String> =
+        api.restoreAlbumAssets(albumId = albumId, assetIds = assetIds).restored
 
     suspend fun setCover(albumId: String, assetId: String): AlbumSummary =
         api.setAlbumCover(albumId = albumId, assetId = assetId)

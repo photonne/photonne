@@ -5,6 +5,9 @@ import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.SentShareLink
 import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.RemoveAlbumAssetsResult
+import com.photonne.app.data.models.RemovedAlbumAsset
+import com.photonne.app.data.models.RestoreAlbumAssetsResult
 import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SmartAlbumRuleDetails
@@ -710,6 +713,12 @@ interface PhotonneApi {
     suspend fun checkChecksums(checksums: List<String>): Map<String, String>
     suspend fun getMapPoints(): List<MapPoint>
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
+    /** Quita varias de una vez; se pueden restaurar durante 30 días. */
+    suspend fun removeAssetsFromAlbum(albumId: String, assetIds: List<String>): RemoveAlbumAssetsResult
+    /** Lo quitado del álbum en los últimos 30 días, lo más reciente primero. */
+    suspend fun getRemovedAlbumAssets(albumId: String): List<RemovedAlbumAsset>
+    /** Devuelve fotos quitadas a su sitio en el álbum. */
+    suspend fun restoreAlbumAssets(albumId: String, assetIds: List<String>): RestoreAlbumAssetsResult
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
     /** Fija o desfija un álbum solo para el usuario actual (idempotente). */
@@ -2110,6 +2119,44 @@ class PhotonneApiClient(
         ) {
             throw response.apiException("Remove asset from album failed (${response.status.value})")
         }
+    }
+
+    override suspend fun removeAssetsFromAlbum(
+        albumId: String,
+        assetIds: List<String>
+    ): RemoveAlbumAssetsResult {
+        if (assetIds.isEmpty()) return RemoveAlbumAssetsResult()
+        val response: HttpResponse = client.post("$baseUrl/api/albums/$albumId/assets/remove") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Remove assets from album failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun getRemovedAlbumAssets(albumId: String): List<RemovedAlbumAsset> {
+        val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId/assets/removed")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Removed album assets fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun restoreAlbumAssets(
+        albumId: String,
+        assetIds: List<String>
+    ): RestoreAlbumAssetsResult {
+        if (assetIds.isEmpty()) return RestoreAlbumAssetsResult()
+        val response: HttpResponse = client.post("$baseUrl/api/albums/$albumId/assets/restore") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Restore album assets failed (${response.status.value})")
+        }
+        return response.body()
     }
 
     override suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary {

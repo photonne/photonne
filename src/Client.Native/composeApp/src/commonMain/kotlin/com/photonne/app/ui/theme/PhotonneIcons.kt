@@ -188,6 +188,9 @@ object PhotonneIcons {
     /** Sección Recuerdos (entradas desde Fotos, Explorar y Buscar). */
     val Memories: ImageVector = Icons.Outlined.History
 
+    /** "Quitadas recientemente" de un álbum: lo que se puede devolver. */
+    val RecentlyRemoved: ImageVector = Icons.Outlined.History
+
     // ── Búsqueda, orden y filtros ───────────────────────────────────────
     val Search: ImageVector = Icons.Outlined.Search
     val SearchActive: ImageVector = Icons.Filled.Search

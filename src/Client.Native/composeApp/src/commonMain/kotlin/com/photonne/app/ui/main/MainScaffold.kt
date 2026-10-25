@@ -160,6 +160,8 @@ import com.photonne.app.resources.selection_label_more
 import com.photonne.app.resources.selection_label_move
 import com.photonne.app.resources.folder_move_assets_title
 import com.photonne.app.resources.selection_label_remove
+import com.photonne.app.resources.album_remove_confirm_message
+import com.photonne.app.resources.album_remove_confirm_title
 import com.photonne.app.resources.selection_label_select_all
 import com.photonne.app.resources.selection_label_set_cover
 import com.photonne.app.resources.selection_label_share
@@ -1043,6 +1045,13 @@ fun AssetSelectionBottomBar(
         selectedCount,
         selectedCount
     )
+    var confirmRemove by remember { mutableStateOf(false) }
+    // Quitar del álbum se deshace, así que solo pregunta en lotes grandes.
+    fun requestRemoveFromAlbum() {
+        val remove = onRemoveFromAlbum ?: return
+        if (com.photonne.app.ui.album.albumRemovalNeedsConfirm(selectedCount)) confirmRemove = true
+        else remove()
+    }
     var confirmTrash by remember { mutableStateOf(false) }
     fun requestTrash() {
         when {
@@ -1087,6 +1096,24 @@ fun AssetSelectionBottomBar(
             onConfirm = {
                 confirmTrash = false
                 runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
+            }
+        )
+    }
+    if (confirmRemove && onRemoveFromAlbum != null) {
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = pluralStringResource(
+                Res.plurals.album_remove_confirm_title,
+                selectedCount,
+                selectedCount
+            ),
+            message = stringResource(Res.string.album_remove_confirm_message),
+            confirmLabel = stringResource(Res.string.selection_label_remove),
+            isDestructive = true,
+            isSubmitting = isMutating,
+            onDismiss = { confirmRemove = false },
+            onConfirm = {
+                confirmRemove = false
+                onRemoveFromAlbum()
             }
         )
     }
@@ -1159,7 +1186,7 @@ fun AssetSelectionBottomBar(
         }
         if (onRemoveFromAlbum != null) {
             FloatingSelectionBarItem(
-                onClick = onRemoveFromAlbum,
+                onClick = { requestRemoveFromAlbum() },
                 enabled = !isMutating,
                 label = stringResource(Res.string.selection_label_remove),
                 icon = {

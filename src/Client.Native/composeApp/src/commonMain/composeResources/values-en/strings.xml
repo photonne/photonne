@@ -536,6 +536,29 @@
         <item quantity="one">%1$d photo removed from the album</item>
         <item quantity="other">%1$d photos removed from the album</item>
     </plurals>
+    <plurals name="album_remove_confirm_title">
+        <item quantity="one">Remove %1$d photo from the album?</item>
+        <item quantity="other">Remove %1$d photos from the album?</item>
+    </plurals>
+    <string name="album_remove_confirm_message">They stay in your library, and for 30 days you can put them back from “Recently removed”.</string>
+    <string name="album_action_removed_recent">Recently removed</string>
+    <string name="album_removed_hint">What was removed in the last 30 days. Restored photos go back to their place in the album.</string>
+    <string name="album_removed_empty">Nothing was removed in the last 30 days.</string>
+    <string name="album_removed_load_failed">Couldn’t load what was removed.</string>
+    <string name="album_removed_by">%1$s, by %2$s</string>
+    <plurals name="album_removed_count">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
+    <string name="album_restore">Restore</string>
+    <plurals name="album_restore_selected">
+        <item quantity="one">Restore %1$d</item>
+        <item quantity="other">Restore %1$d</item>
+    </plurals>
+    <plurals name="album_restored">
+        <item quantity="one">%1$d photo back in the album</item>
+        <item quantity="other">%1$d photos back in the album</item>
+    </plurals>
     <string name="selection_archive_confirm_title">Archive photos</string>
     <string name="timeline_local_only_not_selectable">Not uploaded yet: it can’t be selected</string>
     <string name="actions_working_download">Preparing the download…</string>
