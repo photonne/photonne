@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.9.0](https://github.com/photonne/photonne/compare/server-v2.8.0...server-v2.9.0) (2026-10-25)
+
+
+### Novedades
+
+* **native:** Fijados en el orden que el usuario elige en la web ([a6e96cd](https://github.com/photonne/photonne/commit/a6e96cdc93242a1bffebb7c9797ddc19f492bd68))
+* **server:** Guardar las fotos quitadas de un álbum para poder listarlas y devolverlas ([cfed530](https://github.com/photonne/photonne/commit/cfed5300dead6d59dbcd4da9593645f97a393c99))
+* **server:** Quitar fotos de un álbum por lotes, listar las quitadas y restaurarlas ([2a0d5ef](https://github.com/photonne/photonne/commit/2a0d5efb1a5f9007f1d9206c636ea65c66a1d493))
+* **spa:** Asa de arrastre en los fijados del menú lateral para saber que se pueden reordenar ([#120](https://github.com/photonne/photonne/issues/120)) ([015a3f8](https://github.com/photonne/photonne/commit/015a3f892ca38b5c1ea23ecdb2240080bb138c7c))
+* **spa:** Los fijados del menú lateral se reordenan arrastrándolos o con Alt + ↑/↓ ([d6abd15](https://github.com/photonne/photonne/commit/d6abd155188ddd51b542e4495efa861d24ccf209))
+* **spa:** Quitadas recientemente en los álbumes, y confirmar al quitar muchas fotos ([4e4f5b0](https://github.com/photonne/photonne/commit/4e4f5b05090cf24f8375d4f4b0dd301cfd77292d))
+
+
+### Correcciones
+
+* **server:** compartir un álbum inteligente da acceso a sus fotos ([b786b53](https://github.com/photonne/photonne/commit/b786b53e929a4d15f142e511c1ad305a6210cbc8))
+* **spa:** Los estados vacíos de las colecciones a tamaño completo y con icono propio ([904b48e](https://github.com/photonne/photonne/commit/904b48e3497a757abc6189e1988344d79046ea5e))
+* **spa:** Todos los estados vacíos con icono, título y subtítulo ([455b022](https://github.com/photonne/photonne/commit/455b0221462eb4c09b544cad646013eb67f23607))
+
 ## [2.8.0](https://github.com/photonne/photonne/compare/server-v2.7.0...server-v2.8.0) (2026-10-21)
 
 
