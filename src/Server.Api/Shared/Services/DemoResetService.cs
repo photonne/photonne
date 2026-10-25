@@ -112,6 +112,7 @@ public sealed class DemoResetService : BackgroundService
         dbContext.AssetUserTags.RemoveRange(dbContext.AssetUserTags);
         dbContext.AssetEnrichmentTasks.RemoveRange(dbContext.AssetEnrichmentTasks);
         dbContext.AlbumAssets.RemoveRange(dbContext.AlbumAssets);
+        dbContext.AlbumAssetRemovals.RemoveRange(dbContext.AlbumAssetRemovals);
         dbContext.AlbumPermissions.RemoveRange(dbContext.AlbumPermissions);
         dbContext.Albums.RemoveRange(dbContext.Albums);
         dbContext.SharedLinks.RemoveRange(dbContext.SharedLinks);

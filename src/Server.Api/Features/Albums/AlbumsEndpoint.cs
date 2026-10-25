@@ -26,6 +26,9 @@ public class AlbumsEndpoint : IEndpoint
     private static readonly ApiError SmartAlbumIsRuleManaged =
         new("A smart album's photos come from its rule", "smart_album_rule_managed");
 
+    // How long a photo taken out of an album can still be listed and put back.
+    public static readonly TimeSpan RemovalRetention = TimeSpan.FromDays(30);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/albums")
@@ -75,6 +78,18 @@ public class AlbumsEndpoint : IEndpoint
         group.MapDelete("{albumId:guid}/assets/{assetId:guid}", RemoveAssetFromAlbum)
             .WithName("RemoveAssetFromAlbum")
             .WithDescription("Removes an asset from an album");
+
+        group.MapPost("{albumId:guid}/assets/remove", RemoveAssetsFromAlbumBatch)
+            .WithName("RemoveAssetsFromAlbumBatch")
+            .WithDescription("Removes multiple assets from an album in a single request; they can be restored for a while");
+
+        group.MapGet("{albumId:guid}/assets/removed", GetRemovedAlbumAssets)
+            .WithName("GetRemovedAlbumAssets")
+            .WithDescription("Lists the assets recently removed from an album, newest removal first, with who removed them");
+
+        group.MapPost("{albumId:guid}/assets/restore", RestoreAlbumAssets)
+            .WithName("RestoreAlbumAssets")
+            .WithDescription("Puts recently removed assets back in an album, in their original place");
 
         group.MapPut("{albumId:guid}/cover", SetAlbumCover)
             .WithName("SetAlbumCover")
@@ -499,28 +514,31 @@ public class AlbumsEndpoint : IEndpoint
             .ThenBy(aa => aa.AddedAt)
             .ToListAsync(cancellationToken);
 
-        var response = albumAssets.Select(aa => new TimelineResponse
-        {
-            Id = aa.Asset.Id,
-            FileName = aa.Asset.FileName,
-            FullPath = aa.Asset.FullPath,
-            FileSize = aa.Asset.FileSize,
-            FileCreatedAt = aa.Asset.FileCreatedAt,
-            FileModifiedAt = aa.Asset.FileModifiedAt,
-            Extension = aa.Asset.Extension,
-            ScannedAt = aa.Asset.ScannedAt,
-            Type = aa.Asset.Type.ToString(),
-            Checksum = aa.Asset.Checksum,
-            HasExif = aa.Asset.Exif != null,
-            HasThumbnails = aa.Asset.Thumbnails.Any(),
-            IsFavorite = aa.Asset.IsFavorite,
-            SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
-            DeletedAt = aa.Asset.DeletedAt,
-            IsReadOnly = aa.Asset.ExternalLibraryId.HasValue
-        }.WithThumbnailShape(aa.Asset)).ToList();
+        var response = albumAssets.Select(aa => ToAlbumItem(aa.Asset)).ToList();
 
         return TypedResults.Ok(response);
     }
+
+    /// <summary>A manual album's photo as the grids read it; Exif and Thumbnails must be loaded.</summary>
+    private static TimelineResponse ToAlbumItem(Asset asset) => new TimelineResponse
+    {
+        Id = asset.Id,
+        FileName = asset.FileName,
+        FullPath = asset.FullPath,
+        FileSize = asset.FileSize,
+        FileCreatedAt = asset.FileCreatedAt,
+        FileModifiedAt = asset.FileModifiedAt,
+        Extension = asset.Extension,
+        ScannedAt = asset.ScannedAt,
+        Type = asset.Type.ToString(),
+        Checksum = asset.Checksum,
+        HasExif = asset.Exif != null,
+        HasThumbnails = asset.Thumbnails.Any(),
+        IsFavorite = asset.IsFavorite,
+        SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
+        DeletedAt = asset.DeletedAt,
+        IsReadOnly = asset.ExternalLibraryId.HasValue
+    }.WithThumbnailShape(asset);
 
     private async Task<Results<Created<AlbumResponse>, UnauthorizedHttpResult, BadRequest<ApiError>>> CreateAlbum(
         [FromServices] ApplicationDbContext dbContext,
@@ -848,6 +866,7 @@ public class AlbumsEndpoint : IEndpoint
         };
 
         dbContext.AlbumAssets.Add(albumAsset);
+        await ForgetRemovalsAsync(dbContext, albumId, [request.AssetId], cancellationToken);
 
         // If album has no cover, set this as cover
         if (album.CoverAssetId == null)
@@ -911,6 +930,7 @@ public class AlbumsEndpoint : IEndpoint
         {
             dbContext.AlbumAssets.Add(new AlbumAsset { AlbumId = albumId, AssetId = assetId, Order = ++order });
         }
+        await ForgetRemovalsAsync(dbContext, albumId, validIds, cancellationToken);
 
         if (album.CoverAssetId == null && validIds.Count > 0)
             album.CoverAssetId = validIds[0];
@@ -948,32 +968,251 @@ public class AlbumsEndpoint : IEndpoint
             return TypedResults.BadRequest(SmartAlbumIsRuleManaged);
         }
 
-        var albumAsset = await dbContext.AlbumAssets
-            .FirstOrDefaultAsync(aa => aa.AlbumId == albumId && aa.AssetId == assetId, cancellationToken);
+        var album = await dbContext.Albums
+            .FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
 
-        if (albumAsset == null)
+        if (album == null)
+        {
+            return TypedResults.NotFound(new ApiError($"Album with ID {albumId} not found", "album_not_found"));
+        }
+
+        var removed = await RemoveFromAlbumAsync(dbContext, album, [assetId], userId, cancellationToken);
+        if (removed.Count == 0)
         {
             return TypedResults.NotFound(new ApiError("Asset not found in this album", "asset_not_in_album"));
         }
 
-        var album = await dbContext.Albums
-            .FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
-
-        if (album != null)
-        {
-            // If this was the cover asset, clear it
-            if (album.CoverAssetId == assetId)
-            {
-                album.CoverAssetId = null;
-            }
-            album.UpdatedAt = DateTime.UtcNow;
-        }
-
-        dbContext.AlbumAssets.Remove(albumAsset);
         await dbContext.SaveChangesAsync(cancellationToken);
         cache.Remove($"albums:{userId}");
 
         return TypedResults.NoContent();
+    }
+
+    /// <summary>
+    /// Takes several photos out of a manual album at once, so a failure can't
+    /// leave it half done. Answers with the ids that were in it; the rest
+    /// (not in the album) are skipped. They can be restored for
+    /// <see cref="RemovalRetention"/> (see RestoreAlbumAssets).
+    /// </summary>
+    private async Task<Results<Ok<RemoveAssetsBatchResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>, BadRequest<ApiError>>> RemoveAssetsFromAlbumBatch(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
+        [FromRoute] Guid albumId,
+        [FromBody] AlbumAssetIdsRequest request,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return TypedResults.Unauthorized();
+
+        var (hasAccess, canEdit, _, _) = await CheckAlbumPermissionsAsync(dbContext, albumId, userId, cancellationToken);
+        if (!hasAccess || !canEdit)
+            return TypedResults.Forbid();
+
+        var album = await dbContext.Albums.FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
+        if (album == null) return TypedResults.NotFound(new ApiError($"Album with ID {albumId} not found", "album_not_found"));
+        if (album.Kind == AlbumKind.Smart) return TypedResults.BadRequest(SmartAlbumIsRuleManaged);
+
+        if (request.AssetIds.Count == 0)
+            return TypedResults.BadRequest(new ApiError("AssetIds must not be empty", "asset_ids_required"));
+
+        var removed = await RemoveFromAlbumAsync(dbContext, album, request.AssetIds, userId, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"albums:{userId}");
+
+        return TypedResults.Ok(new RemoveAssetsBatchResponse(removed, request.AssetIds.Distinct().Count() - removed.Count));
+    }
+
+    /// <summary>
+    /// What was taken out of the album in the last <see cref="RemovalRetention"/>,
+    /// newest removal first, with who did it — so a removal that went by
+    /// unnoticed can still be found and undone. Only for those who can edit
+    /// the album, the ones who could put the photos back. Photos sent to the
+    /// trash since are left out.
+    /// </summary>
+    private async Task<Results<Ok<List<RemovedAlbumAssetResponse>>, UnauthorizedHttpResult, ForbidHttpResult>> GetRemovedAlbumAssets(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromRoute] Guid albumId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return TypedResults.Unauthorized();
+
+        var (hasAccess, canEdit, _, _) = await CheckAlbumPermissionsAsync(dbContext, albumId, userId, cancellationToken);
+        if (!hasAccess || !canEdit)
+            return TypedResults.Forbid();
+
+        var cutoff = DateTime.UtcNow - RemovalRetention;
+        var removals = await dbContext.AlbumAssetRemovals
+            .AsNoTracking()
+            .Include(r => r.Asset)
+                .ThenInclude(a => a.Exif)
+            .Include(r => r.Asset)
+                .ThenInclude(a => a.Thumbnails)
+            .Include(r => r.RemovedByUser)
+            .Where(r => r.AlbumId == albumId && r.RemovedAt >= cutoff && r.Asset.DeletedAt == null)
+            .OrderByDescending(r => r.RemovedAt)
+            .ThenBy(r => r.Order)
+            .ToListAsync(cancellationToken);
+
+        return TypedResults.Ok(removals.Select(r => new RemovedAlbumAssetResponse
+        {
+            Asset = ToAlbumItem(r.Asset),
+            RemovedAt = r.RemovedAt,
+            RemovedByUserId = r.RemovedByUserId,
+            RemovedByUsername = r.RemovedByUser?.Username
+        }).ToList());
+    }
+
+    /// <summary>
+    /// Puts recently removed photos back in the album with the place and the
+    /// "added" date they had, and as the cover again if they were it and the
+    /// album has none now. Skipped: what wasn't removed in the last
+    /// <see cref="RemovalRetention"/> and what is in the trash. One already
+    /// back in the album (added again by hand) only loses its record.
+    /// </summary>
+    private async Task<Results<Ok<RestoreAlbumAssetsResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>, BadRequest<ApiError>>> RestoreAlbumAssets(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
+        [FromRoute] Guid albumId,
+        [FromBody] AlbumAssetIdsRequest request,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return TypedResults.Unauthorized();
+
+        var (hasAccess, canEdit, _, _) = await CheckAlbumPermissionsAsync(dbContext, albumId, userId, cancellationToken);
+        if (!hasAccess || !canEdit)
+            return TypedResults.Forbid();
+
+        var album = await dbContext.Albums.FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
+        if (album == null) return TypedResults.NotFound(new ApiError($"Album with ID {albumId} not found", "album_not_found"));
+        if (album.Kind == AlbumKind.Smart) return TypedResults.BadRequest(SmartAlbumIsRuleManaged);
+
+        if (request.AssetIds.Count == 0)
+            return TypedResults.BadRequest(new ApiError("AssetIds must not be empty", "asset_ids_required"));
+
+        var ids = request.AssetIds.Distinct().ToList();
+        var cutoff = DateTime.UtcNow - RemovalRetention;
+        var removals = await dbContext.AlbumAssetRemovals
+            .Include(r => r.Asset)
+            .Where(r => r.AlbumId == albumId && ids.Contains(r.AssetId) && r.RemovedAt >= cutoff)
+            .OrderBy(r => r.Order)
+            .ToListAsync(cancellationToken);
+
+        var present = await dbContext.AlbumAssets
+            .Where(aa => aa.AlbumId == albumId && ids.Contains(aa.AssetId))
+            .Select(aa => aa.AssetId)
+            .ToHashSetAsync(cancellationToken);
+
+        var restored = new List<Guid>();
+        foreach (var removal in removals)
+        {
+            // In the trash: keep the record, it can come back once restored from there.
+            if (removal.Asset.DeletedAt != null) continue;
+
+            dbContext.AlbumAssetRemovals.Remove(removal);
+            if (present.Contains(removal.AssetId)) continue;
+
+            dbContext.AlbumAssets.Add(new AlbumAsset
+            {
+                AlbumId = albumId,
+                AssetId = removal.AssetId,
+                Order = removal.Order,
+                AddedAt = removal.AddedAt
+            });
+            restored.Add(removal.AssetId);
+            if (removal.WasCover && album.CoverAssetId == null)
+                album.CoverAssetId = removal.AssetId;
+        }
+
+        if (restored.Count > 0)
+        {
+            album.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"albums:{userId}");
+
+        return TypedResults.Ok(new RestoreAlbumAssetsResponse(restored, ids.Count - restored.Count));
+    }
+
+    /// <summary>
+    /// Takes the given photos out of a manual album and keeps a record of each
+    /// (see <see cref="AlbumAssetRemoval"/>), clearing the cover if it was one
+    /// of them. Returns the ids that were in the album, in its order; the
+    /// caller saves.
+    /// </summary>
+    private static async Task<List<Guid>> RemoveFromAlbumAsync(
+        ApplicationDbContext dbContext,
+        Album album,
+        IReadOnlyCollection<Guid> assetIds,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+
+        // Expired records go first, before one of them is loaded to be refreshed.
+        var cutoff = now - RemovalRetention;
+        await dbContext.AlbumAssetRemovals
+            .Where(r => r.AlbumId == album.Id && r.RemovedAt < cutoff)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var ids = assetIds.Distinct().ToList();
+        var rows = await dbContext.AlbumAssets
+            .Where(aa => aa.AlbumId == album.Id && ids.Contains(aa.AssetId))
+            .OrderBy(aa => aa.Order)
+            .ThenBy(aa => aa.AddedAt)
+            .ToListAsync(cancellationToken);
+        if (rows.Count == 0) return [];
+
+        var removedIds = rows.Select(aa => aa.AssetId).ToList();
+        var previous = await dbContext.AlbumAssetRemovals
+            .Where(r => r.AlbumId == album.Id && removedIds.Contains(r.AssetId))
+            .ToDictionaryAsync(r => r.AssetId, cancellationToken);
+
+        foreach (var row in rows)
+        {
+            if (!previous.TryGetValue(row.AssetId, out var removal))
+            {
+                removal = new AlbumAssetRemoval { AlbumId = album.Id, AssetId = row.AssetId };
+                dbContext.AlbumAssetRemovals.Add(removal);
+            }
+            removal.Order = row.Order;
+            removal.AddedAt = row.AddedAt;
+            removal.WasCover = album.CoverAssetId == row.AssetId;
+            removal.RemovedAt = now;
+            removal.RemovedByUserId = userId;
+        }
+
+        dbContext.AlbumAssets.RemoveRange(rows);
+        if (album.CoverAssetId is { } coverId && removedIds.Contains(coverId))
+        {
+            album.CoverAssetId = null;
+        }
+        album.UpdatedAt = now;
+
+        return removedIds;
+    }
+
+    /// <summary>The photos are in the album again: what said they were removed no longer holds.</summary>
+    private static async Task ForgetRemovalsAsync(
+        ApplicationDbContext dbContext,
+        Guid albumId,
+        IReadOnlyCollection<Guid> assetIds,
+        CancellationToken cancellationToken)
+    {
+        if (assetIds.Count == 0) return;
+        var ids = assetIds.ToList();
+        var stale = await dbContext.AlbumAssetRemovals
+            .Where(r => r.AlbumId == albumId && ids.Contains(r.AssetId))
+            .ToListAsync(cancellationToken);
+        dbContext.AlbumAssetRemovals.RemoveRange(stale);
     }
 
     private async Task<Results<Ok<AlbumPinResponse>, UnauthorizedHttpResult, NotFound<ApiError>>> PinAlbum(
@@ -1230,3 +1469,23 @@ public class SetCoverRequest
 public sealed record AlbumMessageResponse(string Message);
 
 public sealed record AddAssetsBatchResponse(int Added, int Skipped);
+
+public class AlbumAssetIdsRequest
+{
+    public List<Guid> AssetIds { get; set; } = new();
+}
+
+/// <summary>Removed: the ids taken out, in album order. Skipped: the ones that weren't in it.</summary>
+public sealed record RemoveAssetsBatchResponse(List<Guid> Removed, int Skipped);
+
+/// <summary>Restored: the ids back in the album. Skipped: the rest of the request.</summary>
+public sealed record RestoreAlbumAssetsResponse(List<Guid> Restored, int Skipped);
+
+public class RemovedAlbumAssetResponse
+{
+    public TimelineResponse Asset { get; set; } = null!;
+    public DateTime RemovedAt { get; set; }
+    // Null once that user's account is gone.
+    public Guid? RemovedByUserId { get; set; }
+    public string? RemovedByUsername { get; set; }
+}
