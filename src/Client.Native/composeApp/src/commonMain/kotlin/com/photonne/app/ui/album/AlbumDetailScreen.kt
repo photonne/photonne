@@ -60,6 +60,7 @@ import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_action_album_actions
+import com.photonne.app.resources.album_action_removed_recent
 import com.photonne.app.resources.album_action_members
 import com.photonne.app.resources.summaries_action_album
 import com.photonne.app.resources.album_action_pin
@@ -95,6 +96,7 @@ import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.main.HeaderChromePill
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.Spacing
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun AlbumDetailScreen(
@@ -136,6 +138,11 @@ fun AlbumDetailScreen(
     val isPinned = rememberAlbumPinned(album.id, fallback = album.isPinned)
     val togglePin = rememberAlbumPinToggle()
     var showSortSheet by rememberSaveable { mutableStateOf(false) }
+    // "Quitadas recientemente": solo quien puede quitar (y no en un álbum
+    // inteligente, donde manda la regla).
+    val canReviewRemoved = !album.isSmart && (album.canWrite || album.isOwner)
+    var reviewingRemoved by rememberSaveable { mutableStateOf(false) }
+    val albumsViewModel: AlbumsViewModel = koinViewModel()
     var isScrubbing by remember { mutableStateOf(false) }
     // La misma barra se acopla arriba (sobre la portada del hero) y flota como
     // cápsula al bajar, y se esconde/vuelve con el scroll igual que en Fotos.
@@ -378,6 +385,9 @@ fun AlbumDetailScreen(
                     onManageMembers = onManageMembers,
                     onLeave = onLeave,
                     onVideoSummary = { summarising = true },
+                    onReviewRemoved = if (canReviewRemoved) {
+                        { reviewingRemoved = true }
+                    } else null,
                     hazeState = albumHazeState,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -386,6 +396,14 @@ fun AlbumDetailScreen(
             }
         }
       }
+    }
+
+    if (reviewingRemoved) {
+        RemovedPhotosSheet(
+            viewModel = viewModel,
+            onDismiss = { reviewingRemoved = false },
+            onRestored = { count -> albumsViewModel.applyAssetsAdded(album.id, count) }
+        )
     }
 
     if (showSortSheet) {
@@ -429,6 +447,8 @@ private fun AlbumDetailTopBar(
     onManageMembers: () -> Unit,
     onLeave: () -> Unit,
     onVideoSummary: () -> Unit,
+    /** Null → sin "Quitadas recientemente" en el menú. */
+    onReviewRemoved: (() -> Unit)? = null,
     /**
      * Fuente de blur de las cápsulas, pasada explícitamente (es la rejilla que
      * scrollea por detrás). Sin ella las cápsulas caen al gris de reserva.
@@ -493,7 +513,8 @@ private fun AlbumDetailTopBar(
                     onDelete = onDelete,
                     onManageMembers = onManageMembers,
                     onLeave = onLeave,
-                    onVideoSummary = onVideoSummary
+                    onVideoSummary = onVideoSummary,
+                    onReviewRemoved = onReviewRemoved
                 )
             }
         }
@@ -648,7 +669,8 @@ private fun AlbumActionsOverflowMenu(
     onDelete: () -> Unit,
     onManageMembers: () -> Unit,
     onLeave: () -> Unit,
-    onVideoSummary: () -> Unit
+    onVideoSummary: () -> Unit,
+    onReviewRemoved: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -691,6 +713,13 @@ private fun AlbumActionsOverflowMenu(
                     text = { Text(stringResource(Res.string.action_edit)) },
                     leadingIcon = { Icon(PhotonneIcons.Edit, contentDescription = null) },
                     onClick = { menuOpen = false; onEdit() }
+                )
+            }
+            if (onReviewRemoved != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.album_action_removed_recent)) },
+                    leadingIcon = { Icon(PhotonneIcons.RecentlyRemoved, contentDescription = null) },
+                    onClick = { menuOpen = false; onReviewRemoved() }
                 )
             }
             if (canManageMembers) {

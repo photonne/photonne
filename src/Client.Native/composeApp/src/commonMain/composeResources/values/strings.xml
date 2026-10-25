@@ -639,6 +639,29 @@
         <item quantity="one">%1$d foto quitada del álbum</item>
         <item quantity="other">%1$d fotos quitadas del álbum</item>
     </plurals>
+    <plurals name="album_remove_confirm_title">
+        <item quantity="one">¿Quitar %1$d foto del álbum?</item>
+        <item quantity="other">¿Quitar %1$d fotos del álbum?</item>
+    </plurals>
+    <string name="album_remove_confirm_message">Seguirán en tu biblioteca, y durante 30 días podrás devolverlas desde «Quitadas recientemente».</string>
+    <string name="album_action_removed_recent">Quitadas recientemente</string>
+    <string name="album_removed_hint">Lo quitado en los últimos 30 días. Al restaurarlo vuelve a su sitio en el álbum.</string>
+    <string name="album_removed_empty">No se ha quitado nada en los últimos 30 días.</string>
+    <string name="album_removed_load_failed">No se ha podido cargar lo quitado.</string>
+    <string name="album_removed_by">%1$s, por %2$s</string>
+    <plurals name="album_removed_count">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="other">%1$d fotos</item>
+    </plurals>
+    <string name="album_restore">Restaurar</string>
+    <plurals name="album_restore_selected">
+        <item quantity="one">Restaurar %1$d</item>
+        <item quantity="other">Restaurar %1$d</item>
+    </plurals>
+    <plurals name="album_restored">
+        <item quantity="one">%1$d foto devuelta al álbum</item>
+        <item quantity="other">%1$d fotos devueltas al álbum</item>
+    </plurals>
     <string name="selection_archive_confirm_title">Archivar fotos</string>
     <string name="timeline_local_only_not_selectable">Aún no se ha subido: no se puede seleccionar</string>
     <string name="actions_working_download">Preparando la descarga…</string>
