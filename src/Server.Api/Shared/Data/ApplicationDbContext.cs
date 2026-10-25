@@ -34,6 +34,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Setting> Settings { get; set; }
     public DbSet<Album> Albums { get; set; }
     public DbSet<AlbumAsset> AlbumAssets { get; set; }
+    public DbSet<AlbumAssetRemoval> AlbumAssetRemovals { get; set; }
     public DbSet<AlbumPermission> AlbumPermissions { get; set; }
     public DbSet<AlbumPin> AlbumPins { get; set; }
     public DbSet<FolderPin> FolderPins { get; set; }
@@ -477,6 +478,32 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.AlbumId);
             entity.HasIndex(e => e.AssetId);
             entity.Property(e => e.AddedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure AlbumAssetRemoval entity — composite PK (AlbumId, AssetId)
+        modelBuilder.Entity<AlbumAssetRemoval>(entity =>
+        {
+            entity.HasKey(e => new { e.AlbumId, e.AssetId });
+
+            entity.HasOne(e => e.Album)
+                .WithMany()
+                .HasForeignKey(e => e.AlbumId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Asset)
+                .WithMany()
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.RemovedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.RemovedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.AssetId);
+            entity.HasIndex(e => e.RemovedAt);
+            entity.Property(e => e.AddedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.RemovedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure AlbumPermission entity

@@ -96,6 +96,40 @@ namespace Photonne.Server.Api.Migrations
                     b.ToTable("AlbumAssets");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AlbumAssetRemoval", b =>
+                {
+                    b.Property<Guid>("AlbumId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("RemovedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("RemovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("WasCover")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("AlbumId", "AssetId");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("RemovedAt");
+
+                    b.HasIndex("RemovedByUserId");
+
+                    b.ToTable("AlbumAssetRemovals");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AlbumPermission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1703,6 +1737,32 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Album");
 
                     b.Navigation("Asset");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AlbumAssetRemoval", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Album", "Album")
+                        .WithMany()
+                        .HasForeignKey("AlbumId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.User", "RemovedByUser")
+                        .WithMany()
+                        .HasForeignKey("RemovedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Album");
+
+                    b.Navigation("Asset");
+
+                    b.Navigation("RemovedByUser");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AlbumPermission", b =>
