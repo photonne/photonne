@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.4.0](https://github.com/photonne/photonne/compare/native-v2.3.0...native-v2.4.0) (2026-10-25)
+
+
+### Novedades
+
+* **native:** Fijados en el orden que el usuario elige en la web ([a6e96cd](https://github.com/photonne/photonne/commit/a6e96cdc93242a1bffebb7c9797ddc19f492bd68))
+* **native:** Quitadas recientemente en los álbumes, y confirmar al quitar muchas fotos ([676593a](https://github.com/photonne/photonne/commit/676593aa407adf46acd98ad4a6fb62c473a798ba))
+
+
+### Correcciones
+
+* **native:** Import correcto de ExperimentalLayoutApi en Quitadas recientemente ([a9c35e7](https://github.com/photonne/photonne/commit/a9c35e762120d5846faf9736468812752dcbb55c))
+
 ## [2.3.0](https://github.com/photonne/photonne/compare/native-v2.2.0...native-v2.3.0) (2026-10-21)
 
 
