@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { fakeApi } from './fake-api';
+import { fakeApi, library } from './fake-api';
 import { albumsApi } from './fakes/albums';
 
 test.use({ locale: 'es-ES', viewport: { width: 1280, height: 800 } });
@@ -128,15 +128,66 @@ test.describe('album detail', () => {
 		await expect(page.getByText('2 quitadas del álbum')).toBeVisible();
 		await expect(cells(page)).toHaveCount(4);
 		await expect(page.getByRole('toolbar')).toBeHidden();
-		expect(
-			state.log.filter((e) => e.call.startsWith('DELETE /api/albums/album-1/assets/'))
-		).toHaveLength(2);
+		expect(calls(state, 'POST /api/albums/album-1/assets/remove')[0].body).toEqual({
+			assetIds: ['2026-09-0', '2026-09-1']
+		});
 
 		await page.getByRole('button', { name: 'Deshacer' }).click();
 		await expect(cells(page)).toHaveCount(6);
-		expect(calls(state, 'POST /api/albums/album-1/assets/batch')[0].body).toEqual({
+		await expect(cells(page).first()).toHaveAttribute('data-id', '2026-09-0');
+		expect(calls(state, 'POST /api/albums/album-1/assets/restore')[0].body).toEqual({
 			assetIds: ['2026-09-0', '2026-09-1']
 		});
+	});
+
+	test('lists what was removed and puts it back', async ({ page }) => {
+		const state = await open(page, '/albums/album-1');
+		await expect(cells(page)).toHaveCount(6);
+		for (const index of [0, 2])
+			await cells(page)
+				.nth(index)
+				.click({ modifiers: ['ControlOrMeta'] });
+		await page.getByRole('button', { name: 'Quitar del álbum' }).click();
+		await expect(cells(page)).toHaveCount(4);
+
+		await page.getByRole('button', { name: 'Más acciones' }).click();
+		await page.getByRole('menuitem', { name: 'Quitadas recientemente' }).click();
+		const dialog = page.getByRole('dialog', { name: 'Quitadas recientemente' });
+		await expect(dialog.getByRole('heading', { name: /por ana · 2 elementos/ })).toBeVisible();
+
+		await dialog.getByRole('button', { name: 'Restaurar', exact: true }).click();
+		await expect(page.getByText('2 devueltas al álbum')).toBeVisible();
+		await expect(dialog.getByText('No se ha quitado nada en los últimos 30 días.')).toBeVisible();
+		await expect(cells(page)).toHaveCount(6);
+		expect(calls(state, 'POST /api/albums/album-1/assets/restore')[0].body).toEqual({
+			assetIds: ['2026-09-0', '2026-09-2']
+		});
+	});
+
+	test('asks before removing many photos at once', async ({ page }) => {
+		const api = await fakeApi(page, { signedIn: true });
+		const state = await albumsApi(page, api.state);
+		const many = library.buckets.flatMap((bucket) => library.items(bucket.key)).slice(0, 24);
+		state.members['album-1'] = many.map((item) => item.id);
+		await page.goto('/albums/album-1');
+		await expect(cells(page)).toHaveCount(24);
+
+		await cells(page)
+			.first()
+			.click({ modifiers: ['ControlOrMeta'] });
+		await page.keyboard.press('ControlOrMeta+a');
+		await page.getByRole('button', { name: 'Quitar del álbum' }).click();
+
+		const dialog = page.getByRole('dialog', { name: '¿Quitar 24 fotos del álbum?' });
+		await expect(dialog).toBeVisible();
+		await dialog.getByRole('button', { name: 'Cancelar' }).click();
+		expect(calls(state, 'POST /api/albums/album-1/assets/remove')).toHaveLength(0);
+		await expect(cells(page)).toHaveCount(24);
+
+		await page.getByRole('button', { name: 'Quitar del álbum' }).click();
+		await dialog.getByRole('button', { name: 'Quitar del álbum' }).click();
+		await expect(page.getByText('24 quitadas del álbum')).toBeVisible();
+		await expect(cells(page)).toHaveCount(0);
 	});
 
 	test('sets a photo as the cover', async ({ page }) => {

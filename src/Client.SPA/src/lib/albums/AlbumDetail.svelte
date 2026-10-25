@@ -6,11 +6,11 @@
 	import type { BatchActions } from '#lib/actions/batch-actions.svelte.js';
 	import {
 		apiErrorCode,
-		addAssetsToAlbumBatch,
 		deleteAlbum,
 		getAlbumAssets,
 		leaveAlbum,
-		removeAssetFromAlbum,
+		removeAssetsFromAlbumBatch,
+		restoreAlbumAssets,
 		setAlbumCover
 	} from '#lib/api/index.js';
 	import { getAlbumByIdOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
@@ -29,6 +29,8 @@
 	import { icons } from './icons.js';
 	import { orderItems, type ItemOrder } from './item-order.js';
 	import PopupMenu, { type MenuEntry } from '#lib/components/ui/PopupMenu.svelte';
+	import RemovedPhotosDialog from './RemovedPhotosDialog.svelte';
+	import { removalNeedsConfirm } from './removed.js';
 	import ShareDialog from './ShareDialog.svelte';
 	import { ICON_MOVIE } from '#lib/summaries/icons.js';
 	import VideoSummaryDialog from '#lib/summaries/VideoSummaryDialog.svelte';
@@ -81,6 +83,9 @@
 	let sharing = $state<'people' | 'links' | null>(null);
 	let confirming = $state<'delete' | 'leave' | null>(null);
 	let summarising = $state(false);
+	let reviewingRemoved = $state(false);
+	/** A large removal waiting for its confirmation. */
+	let confirmingRemoval = $state<Selection | null>(null);
 	let busy = $state(false);
 
 	const menu = $derived.by(() => {
@@ -95,6 +100,12 @@
 			});
 		if (canWrite)
 			items.push({ label: m.albums_share_links(), icon: 'link', run: () => (sharing = 'links') });
+		if (canRemove)
+			items.push({
+				label: m.albums_removed_recent(),
+				icon: 'history',
+				run: () => (reviewingRemoved = true)
+			});
 		items.push({
 			label: m.summaries_action_album(),
 			icon: { path: ICON_MOVIE },
@@ -117,17 +128,28 @@
 		return items;
 	});
 
+	/** Large removals ask first; any removal offers Undo and stays in "Quitadas recientemente". */
+	function requestRemove(selection: Selection) {
+		if (!selection.size || busy) return;
+		if (removalNeedsConfirm(selection.size)) confirmingRemoval = selection;
+		else void removeFromAlbum(selection);
+	}
+
 	async function removeFromAlbum(selection: Selection) {
 		const ids = [...selection.ids];
 		if (!ids.length || busy) return;
 		busy = true;
-		// No batch endpoint for removal: one request per photo.
-		const results = await Promise.all(
-			ids.map((assetId) => removeAssetFromAlbum({ path: { albumId, assetId } }))
-		);
+		const { data, error } = await removeAssetsFromAlbumBatch({
+			path: { albumId },
+			body: { assetIds: ids }
+		});
 		busy = false;
-		const removed = ids.filter((_, i) => !results[i].error);
-		if (removed.length < ids.length) toasts.error(m.action_failed());
+		confirmingRemoval = null;
+		if (error || !data) {
+			toasts.error(m.action_failed());
+			return;
+		}
+		const removed = data.removed;
 		if (!removed.length) return;
 		list.store.remove(removed);
 		selection.set(removed, false);
@@ -136,18 +158,20 @@
 			action: {
 				label: m.action_undo(),
 				run: async () => {
-					const { error } = await addAssetsToAlbumBatch({
+					const { error } = await restoreAlbumAssets({
 						path: { albumId },
 						body: { assetIds: removed }
 					});
 					if (error) toasts.error(m.action_failed());
-					else {
-						invalidateAlbums(queryClient, albumId);
-						list.store.reload();
-					}
+					else restored();
 				}
 			}
 		});
+	}
+
+	function restored() {
+		invalidateAlbums(queryClient, albumId);
+		list.store.reload();
 	}
 
 	async function setCover(assetId: string | undefined, selection?: Selection) {
@@ -322,7 +346,7 @@
 					title={m.albums_remove()}
 					aria-label={m.albums_remove()}
 					disabled={busy}
-					onclick={() => removeFromAlbum(selection)}
+					onclick={() => requestRemove(selection)}
 				>
 					<Icon path={icons.remove} />
 				</button>
@@ -354,6 +378,10 @@
 	/>
 {/if}
 
+{#if reviewingRemoved}
+	<RemovedPhotosDialog {albumId} onclose={() => (reviewingRemoved = false)} onrestored={restored} />
+{/if}
+
 {#if sharing && album}
 	<ShareDialog
 		kind="album"
@@ -378,6 +406,17 @@
 	{busy}
 	onconfirm={confirm}
 	onclose={() => (confirming = null)}
+/>
+
+<ConfirmDialog
+	danger
+	open={confirmingRemoval !== null}
+	title={m.albums_remove_confirm_title({ count: confirmingRemoval?.size ?? 0 })}
+	message={m.albums_remove_confirm_message()}
+	confirmLabel={m.albums_remove()}
+	{busy}
+	onconfirm={() => confirmingRemoval && removeFromAlbum(confirmingRemoval)}
+	onclose={() => (confirmingRemoval = null)}
 />
 
 <style>

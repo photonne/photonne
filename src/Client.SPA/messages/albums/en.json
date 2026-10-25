@@ -162,6 +162,21 @@
 	"albums_pin_named": "Pin “{name}”",
 	"albums_pinned": "“{name}” pinned",
 	"albums_remove": "Remove from album",
+	"albums_remove_confirm_message": "They stay in your library, and for 30 days you can put them back from “Recently removed”.",
+	"albums_remove_confirm_title": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Remove {countFormatted} photo from the album?",
+				"countPlural=other": "Remove {countFormatted} photos from the album?"
+			}
+		}
+	],
 	"albums_removed": [
 		{
 			"declarations": [
@@ -173,6 +188,39 @@
 			"match": {
 				"countPlural=one": "{countFormatted} removed from the album",
 				"countPlural=other": "{countFormatted} removed from the album"
+			}
+		}
+	],
+	"albums_removed_by": "{when}, by {name}",
+	"albums_removed_empty": "Nothing was removed in the last 30 days.",
+	"albums_removed_hint": "What was removed in the last 30 days. Restored photos go back to their place in the album.",
+	"albums_removed_recent": "Recently removed",
+	"albums_restore": "Restore",
+	"albums_restore_selected": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Restore {countFormatted}",
+				"countPlural=other": "Restore {countFormatted}"
+			}
+		}
+	],
+	"albums_restored": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} back in the album",
+				"countPlural=other": "{countFormatted} back in the album"
 			}
 		}
 	],
