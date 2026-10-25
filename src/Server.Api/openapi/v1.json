@@ -10412,6 +10412,180 @@
         ]
       }
     },
+    "/api/albums/{albumId}/assets/remove": {
+      "post": {
+        "tags": [
+          "Albums"
+        ],
+        "description": "Removes multiple assets from an album in a single request; they can be restored for a while",
+        "operationId": "RemoveAssetsFromAlbumBatch",
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlbumAssetIdsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoveAssetsBatchResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/albums/{albumId}/assets/removed": {
+      "get": {
+        "tags": [
+          "Albums"
+        ],
+        "description": "Lists the assets recently removed from an album, newest removal first, with who removed them",
+        "operationId": "GetRemovedAlbumAssets",
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RemovedAlbumAssetResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/albums/{albumId}/assets/restore": {
+      "post": {
+        "tags": [
+          "Albums"
+        ],
+        "description": "Puts recently removed assets back in an album, in their original place",
+        "operationId": "RestoreAlbumAssets",
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlbumAssetIdsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreAlbumAssetsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/albums/{albumId}/cover": {
       "put": {
         "tags": [
@@ -11577,6 +11751,18 @@
           "libraryBytes": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "AlbumAssetIdsRequest": {
+        "type": "object",
+        "properties": {
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },
@@ -15290,6 +15476,57 @@
           }
         }
       },
+      "RemoveAssetsBatchResponse": {
+        "required": [
+          "removed",
+          "skipped"
+        ],
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RemovedAlbumAssetResponse": {
+        "required": [
+          "asset",
+          "removedAt",
+          "removedByUserId",
+          "removedByUsername"
+        ],
+        "type": "object",
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/TimelineResponse"
+          },
+          "removedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "removedByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "removedByUsername": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "RemoveFolderAssetsRequest": {
         "type": "object",
         "properties": {
@@ -15480,6 +15717,26 @@
         "properties": {
           "newPassword": {
             "type": "string"
+          }
+        }
+      },
+      "RestoreAlbumAssetsResponse": {
+        "required": [
+          "restored",
+          "skipped"
+        ],
+        "type": "object",
+        "properties": {
+          "restored": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
