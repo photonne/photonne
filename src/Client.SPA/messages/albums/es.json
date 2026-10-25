@@ -162,6 +162,21 @@
 	"albums_pin_named": "Fijar «{name}»",
 	"albums_pinned": "«{name}» fijado",
 	"albums_remove": "Quitar del álbum",
+	"albums_remove_confirm_message": "Seguirán en tu biblioteca, y durante 30 días podrás devolverlas desde «Quitadas recientemente».",
+	"albums_remove_confirm_title": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "¿Quitar {countFormatted} foto del álbum?",
+				"countPlural=other": "¿Quitar {countFormatted} fotos del álbum?"
+			}
+		}
+	],
 	"albums_removed": [
 		{
 			"declarations": [
@@ -173,6 +188,39 @@
 			"match": {
 				"countPlural=one": "{countFormatted} quitada del álbum",
 				"countPlural=other": "{countFormatted} quitadas del álbum"
+			}
+		}
+	],
+	"albums_removed_by": "{when}, por {name}",
+	"albums_removed_empty": "No se ha quitado nada en los últimos 30 días.",
+	"albums_removed_hint": "Lo quitado en los últimos 30 días. Al restaurarlo vuelve a su sitio en el álbum.",
+	"albums_removed_recent": "Quitadas recientemente",
+	"albums_restore": "Restaurar",
+	"albums_restore_selected": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Restaurar {countFormatted}",
+				"countPlural=other": "Restaurar {countFormatted}"
+			}
+		}
+	],
+	"albums_restored": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} devuelta al álbum",
+				"countPlural=other": "{countFormatted} devueltas al álbum"
 			}
 		}
 	],

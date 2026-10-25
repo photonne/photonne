@@ -91,6 +91,8 @@ export interface AlbumsState {
 	albums: AlbumResponse[];
 	/** Album id → asset ids in album order. */
 	members: Record<string, string[]>;
+	/** Album id → what was taken out of it, newest removal first, with its old place. */
+	removed: Record<string, { assetId: string; index: number; removedAt: string }[]>;
 	rules: Record<string, SmartRuleNode>;
 	permissions: Record<string, AlbumPermissionDto[]>;
 	links: ShareLinkResponse[];
@@ -142,6 +144,7 @@ function seed(): AlbumsState {
 				assetCount: 3
 			})
 		],
+		removed: {},
 		members: {
 			'album-1': september.slice(0, 6),
 			'album-2': library
@@ -353,7 +356,7 @@ const handle: FakeHandler = async (context) => {
 				return noContent();
 			}
 		}
-		if (sub === 'assets' && method === 'GET') {
+		if (sub === 'assets' && !extra && method === 'GET') {
 			return ok(
 				(s.members[id] ?? []).flatMap((a) => (assets.has(a) ? [asset(assets.get(a)!)] : []))
 			);
@@ -364,6 +367,41 @@ const handle: FakeHandler = async (context) => {
 			s.members[id] = [...new Set([...(s.members[id] ?? []), ...assetIds])];
 			found.assetCount = s.members[id].length;
 			return ok({ added: assetIds.length, skipped: 0 });
+		}
+		if (sub === 'assets' && extra === 'remove') {
+			const { assetIds } = body() as { assetIds: string[] };
+			log({ assetIds });
+			const members = s.members[id] ?? [];
+			const removedAt = '2026-10-25T10:00:00Z';
+			const taken = members.flatMap((a, index) =>
+				assetIds.includes(a) ? [{ assetId: a, index, removedAt }] : []
+			);
+			s.members[id] = members.filter((a) => !assetIds.includes(a));
+			s.removed[id] = [...taken, ...(s.removed[id] ?? [])];
+			found.assetCount = s.members[id].length;
+			return ok({ removed: taken.map((t) => t.assetId), skipped: assetIds.length - taken.length });
+		}
+		if (sub === 'assets' && extra === 'removed') {
+			return ok(
+				(s.removed[id] ?? []).map((r) => ({
+					asset: asset(assets.get(r.assetId)!),
+					removedAt: r.removedAt,
+					removedByUserId: 'user-ana',
+					removedByUsername: 'ana'
+				}))
+			);
+		}
+		if (sub === 'assets' && extra === 'restore') {
+			const { assetIds } = body() as { assetIds: string[] };
+			log({ assetIds });
+			const back = (s.removed[id] ?? []).filter((r) => assetIds.includes(r.assetId));
+			const members = [...(s.members[id] ?? [])];
+			for (const r of [...back].sort((a, b) => a.index - b.index))
+				members.splice(r.index, 0, r.assetId);
+			s.members[id] = members;
+			s.removed[id] = (s.removed[id] ?? []).filter((r) => !assetIds.includes(r.assetId));
+			found.assetCount = members.length;
+			return ok({ restored: back.map((r) => r.assetId), skipped: assetIds.length - back.length });
 		}
 		if (sub === 'assets' && method === 'DELETE') {
 			log();
