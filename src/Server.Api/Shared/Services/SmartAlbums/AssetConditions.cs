@@ -168,6 +168,34 @@ public static class AssetConditions
     public static Expression<Func<Asset, bool>> HasTagType(AssetTagType tagType) =>
         a => a.Tags.Any(t => t.TagType == tagType);
 
+    /// <summary>
+    /// Has a tag with exactly this name, ignoring case and accents: a user tag,
+    /// or the structural tag of that name ("Panorama", "Screenshot"…).
+    /// </summary>
+    public static Expression<Func<Asset, bool>> HasTagNamed(string name)
+    {
+        var tagType = Enum.TryParse<AssetTagType>(name.Trim(), ignoreCase: true, out var parsed)
+            ? (AssetTagType?)parsed
+            : null;
+        var pattern = SearchText.ExactPattern(name);
+        return a =>
+            a.UserTags.Any(ut => EF.Functions.ILike(SearchText.Unaccent(ut.UserTag.Name), pattern)) ||
+            (tagType.HasValue && a.Tags.Any(t => t.TagType == tagType.Value));
+    }
+
+    /// <summary>Taken with this camera model (and make, when given), as EXIF records it.</summary>
+    public static Expression<Func<Asset, bool>> TakenWith(string? make, string model)
+    {
+        var trimmedModel = model.Trim();
+        var trimmedMake = string.IsNullOrWhiteSpace(make) ? null : make.Trim();
+        return a => a.Exif != null && a.Exif.CameraModel == trimmedModel &&
+                    (trimmedMake == null || a.Exif.CameraMake == trimmedMake);
+    }
+
+    /// <summary>Reverse-geocoded to this place (GeoNames, see <see cref="Place"/>).</summary>
+    public static Expression<Func<Asset, bool>> AtPlace(Guid placeId) =>
+        a => a.Exif != null && a.Exif.PlaceId == placeId;
+
     public static Expression<Func<Asset, bool>> IsFavorite(bool value) =>
         a => a.IsFavorite == value;
 

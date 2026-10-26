@@ -46,6 +46,17 @@ public sealed class AssetFilter
 
     /// <summary>Only photos or only videos (search's <c>type</c>).</summary>
     public AssetType? MediaType { get; init; }
+
+    /// <summary>A tag name, matched whole (a user tag or a structural one).</summary>
+    public string? TagName { get; init; }
+
+    /// <summary>EXIF camera model; <see cref="CameraMake"/> narrows it when set.</summary>
+    public string? CameraModel { get; init; }
+
+    public string? CameraMake { get; init; }
+
+    /// <summary>The place the photo was reverse-geocoded to.</summary>
+    public Guid? PlaceId { get; init; }
 }
 
 /// <summary>
@@ -102,6 +113,15 @@ public static class AssetQueryBuilder
 
         if (filter.MediaType.HasValue)
             query = query.Where(AssetConditions.OfType(filter.MediaType.Value));
+
+        if (!string.IsNullOrWhiteSpace(filter.TagName))
+            query = query.Where(AssetConditions.HasTagNamed(filter.TagName));
+
+        if (!string.IsNullOrWhiteSpace(filter.CameraModel))
+            query = query.Where(AssetConditions.TakenWith(filter.CameraMake, filter.CameraModel));
+
+        if (filter.PlaceId.HasValue)
+            query = query.Where(AssetConditions.AtPlace(filter.PlaceId.Value));
 
         if (filter.PersonIds is { Count: > 0 })
             foreach (var pid in filter.PersonIds)

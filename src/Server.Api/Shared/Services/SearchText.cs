@@ -68,5 +68,13 @@ public static class SearchText
     /// vez de convertirse en "cualquier cosa".
     /// </summary>
     public static string ContainsPattern(string? value) =>
-        "%" + Fold(value).Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+        "%" + ExactPattern(value) + "%";
+
+    /// <summary>
+    /// Patrón <c>ILIKE</c> de "es exactamente esto", plegado y con los comodines
+    /// escapados: una etiqueta tocada en el visor busca esa etiqueta, no las que
+    /// la contienen.
+    /// </summary>
+    public static string ExactPattern(string? value) =>
+        Fold(value).Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 }

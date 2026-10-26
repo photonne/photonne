@@ -18,7 +18,7 @@ public class SearchEndpoint : IEndpoint
         app.MapGet("/api/assets/search", Handle)
             .WithName("SearchAssets")
             .WithTags("Assets")
-            .WithDescription("Search assets by filename, path, tags, date range or media type")
+            .WithDescription("Search assets by filename, path, tags, date range, media type, tag, camera or place")
             .RequireAuthorization();
     }
 
@@ -37,6 +37,10 @@ public class SearchEndpoint : IEndpoint
         [FromQuery(Name = "sceneLabel")] string[]? sceneLabels,
         [FromQuery] string? textQuery,
         [FromQuery] string? type,
+        [FromQuery] string? tag,
+        [FromQuery] string? cameraMake,
+        [FromQuery] string? cameraModel,
+        [FromQuery] Guid? placeId,
         CancellationToken ct)
     {
         var effectivePageSize = pageSize is > 0 ? Math.Min(pageSize.Value, 200) : 100;
@@ -61,7 +65,10 @@ public class SearchEndpoint : IEndpoint
             : null;
 
         // Require at least one filter to avoid returning everything
-        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter && !hasTextFilter && mediaType == null)
+        var hasTagFilter = !string.IsNullOrWhiteSpace(tag);
+        var hasCameraFilter = !string.IsNullOrWhiteSpace(cameraModel);
+        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter && !hasTextFilter && mediaType == null
+            && !hasTagFilter && !hasCameraFilter && placeId == null)
             return TypedResults.Ok(new SearchResponse());
 
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
@@ -107,7 +114,11 @@ public class SearchEndpoint : IEndpoint
             SceneLabels = sceneLabels,
             OcrText = textQuery,
             PersonIds = validPersonIds,
-            MediaType = mediaType
+            MediaType = mediaType,
+            TagName = tag,
+            CameraMake = cameraMake,
+            CameraModel = cameraModel,
+            PlaceId = placeId
         }, dbContext, userId);
 
         var dbItems = await query

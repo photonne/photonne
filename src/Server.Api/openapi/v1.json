@@ -2037,7 +2037,7 @@
         "tags": [
           "Assets"
         ],
-        "description": "Search assets by filename, path, tags, date range or media type",
+        "description": "Search assets by filename, path, tags, date range, media type, tag, camera or place",
         "operationId": "SearchAssets",
         "parameters": [
           {
@@ -2129,6 +2129,35 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cameraMake",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cameraModel",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "placeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
