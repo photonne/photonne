@@ -89,6 +89,9 @@ public static class DependencyInjection
         builder.Services.AddScoped<SmartAlbumResolver>();
         builder.Services.AddScoped<SmartAlbumMaterializer>();
         builder.Services.AddHostedService<SmartAlbumMaterializationWorker>();
+        builder.Services.Configure<Shared.Services.Auth.OidcOptions>(builder.Configuration.GetSection("Oidc"));
+        builder.Services.AddSingleton<Shared.Services.Auth.IOidcProvider, Shared.Services.Auth.OidcProvider>();
+        builder.Services.AddSingleton<Shared.Services.Auth.OidcFlowStore>();
         builder.Services.AddScoped<ThumbHashBackfill>();
         builder.Services.AddHostedService<ThumbHashBackfillWorker>();
         builder.Services.AddScoped<Shared.Services.Video.VideoPlaybackService>();

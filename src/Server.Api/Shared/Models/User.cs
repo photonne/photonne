@@ -52,6 +52,13 @@ public class User
 
     public long? TotpLastStep { get; set; }
 
+    /// <summary>
+    /// The OpenID provider's subject ("sub") of this account, once signed in
+    /// through it: later sign-ins match on it, not on the email.
+    /// </summary>
+    [MaxLength(255)]
+    public string? OidcSubject { get; set; }
+
     // Navigation properties
     public ICollection<FolderPermission> FolderPermissions { get; set; } = new List<FolderPermission>();
     public ICollection<Asset> Assets { get; set; } = new List<Asset>();

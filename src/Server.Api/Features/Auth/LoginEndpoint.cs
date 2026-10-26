@@ -83,64 +83,14 @@ public class LoginEndpoint : IEndpoint
             }
         }
 
-        // Actualizar último login
-        user.LastLoginAt = DateTime.UtcNow;
-
         // Hashes from before PBKDF2 are upgraded while we hold the password.
         if (authService.NeedsRehash(user.PasswordHash))
         {
             user.PasswordHash = authService.HashPassword(request.Password);
         }
 
-        // Eliminar tokens previos del mismo dispositivo
-        var existingTokens = await dbContext.RefreshTokens
-            .Where(rt => rt.UserId == user.Id && rt.DeviceId == deviceId)
-            .ToListAsync(cancellationToken);
-        if (existingTokens.Count > 0)
-        {
-            dbContext.RefreshTokens.RemoveRange(existingTokens);
-        }
-
-        var refreshToken = RefreshTokenHelper.GenerateToken();
-        var refreshTokenHash = RefreshTokenHelper.HashToken(refreshToken);
-        var refreshEntity = new RefreshToken
-        {
-            UserId = user.Id,
-            DeviceId = deviceId,
-            TokenHash = refreshTokenHash,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddDays(30)
-        };
-        dbContext.RefreshTokens.Add(refreshEntity);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        var token = await authService.GenerateTokenAsync(user);
-        MediaSessionCookie.Append(httpContext, token);
-        if (request.RefreshTokenInCookie)
-        {
-            RefreshTokenCookie.Append(httpContext, refreshToken, refreshEntity.ExpiresAt);
-        }
-
-        return TypedResults.Ok(new LoginResponse
-        {
-            Token = token,
-            RefreshToken = request.RefreshTokenInCookie ? string.Empty : refreshToken,
-            User = new UserDto
-            {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                Role = user.Role,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                IsActive = user.IsActive,
-                IsPrimaryAdmin = user.IsPrimaryAdmin,
-                CreatedAt = user.CreatedAt,
-                LastLoginAt = user.LastLoginAt,
-                StorageQuotaBytes = user.StorageQuotaBytes
-            }
-        });
+        return TypedResults.Ok(await SessionIssuer.IssueAsync(
+            user, deviceId, request.RefreshTokenInCookie, dbContext, authService, httpContext, cancellationToken));
     }
 }
 

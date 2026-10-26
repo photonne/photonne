@@ -29,6 +29,15 @@ services:
       # AVI…), one at a time, under /data/thumbnails/.playback. Off on a
       # server too weak to transcode: the originals are played as they are.
       - Video__PlaybackCopies=${VIDEO_PLAYBACK_COPIES:-true}
+      # Sign-in with an OpenID Connect provider (Authentik, Keycloak,
+      # Authelia…). Redirect URI to register: <public URL>/api/auth/oidc/callback
+      - Oidc__Enabled=${OIDC_ENABLED:-false}
+      - Oidc__Authority=${OIDC_AUTHORITY:-}
+      - Oidc__ClientId=${OIDC_CLIENT_ID:-}
+      - Oidc__ClientSecret=${OIDC_CLIENT_SECRET:-}
+      - Oidc__DisplayName=${OIDC_DISPLAY_NAME:-SSO}
+      - Oidc__AutoCreateUsers=${OIDC_AUTO_CREATE_USERS:-false}
+      - Oidc__PublicUrl=${OIDC_PUBLIC_URL:-}
       # Run the server as this uid/gid (NAS convention). On boot the
       # entrypoint also fixes the ownership of /data/* so uploads can
       # always create their folders; set PHOTONNE_SKIP_CHOWN=1 to manage
