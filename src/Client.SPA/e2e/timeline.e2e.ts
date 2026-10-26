@@ -89,7 +89,9 @@ test('paints a selection by dragging across the cells', async ({ page }) => {
 	await expect(page.getByText('3 seleccionados')).toBeVisible();
 });
 
-test('paints the blurred sketch of a photo under its thumbnail until it loads', async ({ page }) => {
+test('paints the blurred sketch of a photo under its thumbnail until it loads', async ({
+	page
+}) => {
 	await fakeApi(page, { signedIn: true });
 	await page.goto('/');
 	const first = page.locator('.cell').first();
@@ -97,4 +99,16 @@ test('paints the blurred sketch of a photo under its thumbnail until it loads', 
 	// The first photo has a ThumbHash; the second doesn't.
 	await expect(first).toHaveCSS('background-image', /^url\("data:image\/png;base64,/);
 	await expect(page.locator('.cell').nth(1)).toHaveCSS('background-image', 'none');
+});
+
+test('reloads the timeline when the server says the library changed', async ({ page }) => {
+	const api = await fakeApi(page, { signedIn: true });
+	await page.goto('/');
+	await expect(page.getByRole('heading', { name: 'Septiembre de 2026' })).toBeVisible();
+
+	const reloaded = page.waitForRequest((request) =>
+		/\/api\/assets\/timeline\/buckets\/?$/.test(new URL(request.url()).pathname)
+	);
+	api.state.events = ['library'];
+	await reloaded;
 });

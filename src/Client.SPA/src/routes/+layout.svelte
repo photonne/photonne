@@ -7,6 +7,7 @@
 	import { configureApiClient } from '#lib/api/index.js';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import { session } from '#lib/auth/session.svelte.js';
+	import { startEventStream } from '#lib/realtime/event-stream.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import { page } from '$app/state';
@@ -26,6 +27,15 @@
 	// user sees the link inside the app.
 	const isPublic = $derived(page.route.id?.startsWith('/share') ?? false);
 	session.restore();
+
+	// While signed in, the server says when photos or notifications change.
+	$effect(() => {
+		if (session.status !== 'signedIn') return;
+		return startEventStream({
+			accessToken: () => session.accessToken,
+			refresh: () => session.refresh()
+		});
+	});
 </script>
 
 <QueryClientProvider client={queryClient}>
