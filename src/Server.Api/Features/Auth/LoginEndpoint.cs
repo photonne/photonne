@@ -7,6 +7,7 @@ using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
+using Photonne.Server.Api.Shared.Services.Auth;
 
 namespace Photonne.Server.Api.Features.Auth;
 
@@ -25,7 +26,7 @@ public class LoginEndpoint : IEndpoint
         login.RequireRateLimiting("demo-login");
     }
 
-    private async Task<Results<Ok<LoginResponse>, BadRequest<ApiError>, UnauthorizedHttpResult>> Handle(
+    private async Task<Results<Ok<LoginResponse>, BadRequest<ApiError>, UnauthorizedHttpResult, JsonHttpResult<ApiError>>> Handle(
         [FromBody] LoginRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
@@ -55,6 +56,31 @@ public class LoginEndpoint : IEndpoint
         if (!authService.VerifyPassword(request.Password, user.PasswordHash))
         {
             return TypedResults.Unauthorized();
+        }
+
+        // Two-step verification: the password was right, now the code (or a
+        // recovery code). Told apart from bad credentials so the client asks
+        // for the code instead of saying the password is wrong.
+        if (user.TotpEnabled && !string.IsNullOrEmpty(user.TotpSecret))
+        {
+            if (string.IsNullOrWhiteSpace(request.TotpCode))
+                return TypedResults.Json(new ApiError("Two-step verification code required", "totp_required"),
+                    statusCode: StatusCodes.Status401Unauthorized);
+
+            var step = Totp.Verify(user.TotpSecret, request.TotpCode, DateTimeOffset.UtcNow, user.TotpLastStep);
+            if (step is not null)
+            {
+                user.TotpLastStep = step;
+            }
+            else if (RecoveryCodes.Consume(user.TotpRecoveryCodes, request.TotpCode) is { } left)
+            {
+                user.TotpRecoveryCodes = left;
+            }
+            else
+            {
+                return TypedResults.Json(new ApiError("Two-step verification code is not right", "totp_invalid"),
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
         }
 
         // Actualizar último login
@@ -129,6 +155,13 @@ public class LoginRequest
     /// response body (see <see cref="RefreshTokenCookie"/>).
     /// </summary>
     public bool RefreshTokenInCookie { get; set; }
+
+    /// <summary>
+    /// The authenticator code (or a recovery code) of an account with
+    /// two-step verification; without it such a login answers 401
+    /// <c>totp_required</c>.
+    /// </summary>
+    public string? TotpCode { get; set; }
 }
 
 public class LoginResponse
