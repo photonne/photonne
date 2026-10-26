@@ -239,3 +239,14 @@ test('hides a shared folder from the timeline, with undo', async ({ page }) => {
 			{ folderId: 'f-fam', included: true }
 		]);
 });
+
+test('the mobile app section shows a QR code to connect to this server', async ({ page }) => {
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/settings/mobile');
+
+	await expect(page.getByRole('heading', { name: 'App móvil', level: 1 })).toBeVisible();
+	const qr = page.getByRole('figure', { name: 'Código QR para conectar la app' });
+	await expect(qr.locator('svg')).toBeVisible();
+	const origin = new URL(page.url()).origin;
+	await expect(page.locator('code')).toHaveText(origin);
+});

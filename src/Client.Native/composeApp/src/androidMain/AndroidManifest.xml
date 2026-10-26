@@ -81,6 +81,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="photonne" android:host="share" />
+                <!-- photonne://connect?server=…: el QR de Ajustes → App móvil de la web. -->
+                <data android:scheme="photonne" android:host="connect" />
             </intent-filter>
         </activity>
 

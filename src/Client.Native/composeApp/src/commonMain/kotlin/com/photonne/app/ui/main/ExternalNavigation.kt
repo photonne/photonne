@@ -62,6 +62,21 @@ object ExternalNavigation {
     private var sharedFiles: List<PickedFile> = emptyList()
     private var sharedLink: SharedLinkTarget? = null
 
+    private val _connectServer = MutableStateFlow<String?>(null)
+
+    /**
+     * Servidor de un enlace `photonne://connect?server=…` (el QR de Ajustes →
+     * App móvil en la web) aún sin atender. Lo atiende el login, que lo
+     * comprueba y lo guarda; con la sesión abierta se descarta.
+     */
+    val connectServer: StateFlow<String?> = _connectServer.asStateFlow()
+
+    fun consumeConnectServer(): String? {
+        val server = _connectServer.value
+        _connectServer.value = null
+        return server
+    }
+
     fun request(destination: ExternalDestination) {
         _pending.value = destination
     }
@@ -97,11 +112,35 @@ object ExternalNavigation {
      * false si la URL no es de este esquema o no trae un token válido.
      */
     fun handleUrl(url: String): Boolean {
+        parseConnectUrl(url)?.let { server ->
+            _connectServer.value = server
+            return true
+        }
         val target = parseShareUrl(url) ?: return false
         sharedLink = target
         request(ExternalDestination.SharedLink)
         return true
     }
+
+    /** El servidor de `photonne://connect?server=<origen>`, o null si no es eso. */
+    internal fun parseConnectUrl(url: String): String? {
+        val prefix = "$SCHEME://connect"
+        if (!url.startsWith(prefix, ignoreCase = true)) return null
+        return serverParam(url.substring(prefix.length).substringAfter('?', "").substringBefore('#'))
+    }
+
+    /** `server=` de una query, decodificado y solo si es http(s). */
+    private fun serverParam(query: String): String? =
+        query.split('&')
+            .firstOrNull { it.startsWith("server=") }
+            ?.removePrefix("server=")
+            ?.let { runCatching { it.decodeURLQueryComponent() }.getOrNull() }
+            ?.trim()
+            ?.trimEnd('/')
+            ?.takeIf {
+                it.startsWith("https://", ignoreCase = true) ||
+                    it.startsWith("http://", ignoreCase = true)
+            }
 
     internal fun parseShareUrl(url: String): SharedLinkTarget? {
         val prefix = "$SCHEME://share/"
@@ -112,17 +151,7 @@ object ExternalNavigation {
         if (token.isEmpty() || !token.all { it.isLetterOrDigit() || it == '-' || it == '_' }) {
             return null
         }
-        val query = rest.substringAfter('?', "").substringBefore('#')
-        val server = query.split('&')
-            .firstOrNull { it.startsWith("server=") }
-            ?.removePrefix("server=")
-            ?.let { runCatching { it.decodeURLQueryComponent() }.getOrNull() }
-            ?.trim()
-            ?.trimEnd('/')
-            ?.takeIf {
-                it.startsWith("https://", ignoreCase = true) ||
-                    it.startsWith("http://", ignoreCase = true)
-            }
+        val server = serverParam(rest.substringAfter('?', "").substringBefore('#'))
         return SharedLinkTarget(token = token, serverUrl = server)
     }
 }

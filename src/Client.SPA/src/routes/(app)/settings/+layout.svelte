@@ -5,6 +5,7 @@
 		ICON_AUTO_AWESOME,
 		ICON_FOLDER_SHARED,
 		ICON_PALETTE,
+		ICON_SMARTPHONE,
 		ICON_STORAGE
 	} from '#lib/account/icons.js';
 	import Icon, { type IconName } from '#lib/components/Icon.svelte';
@@ -21,7 +22,8 @@
 		{ path: '/settings/appearance', label: m.settings_appearance, iconPath: ICON_PALETTE },
 		{ path: '/settings/storage', label: m.settings_storage, iconPath: ICON_STORAGE },
 		{ path: '/settings/shared-folders', label: m.settings_discovery, iconPath: ICON_FOLDER_SHARED },
-		{ path: '/settings/analysis', label: m.settings_analysis, iconPath: ICON_AUTO_AWESOME }
+		{ path: '/settings/analysis', label: m.settings_analysis, iconPath: ICON_AUTO_AWESOME },
+		{ path: '/settings/mobile', label: m.settings_mobile, iconPath: ICON_SMARTPHONE }
 	];
 
 	const tabs = $derived(
