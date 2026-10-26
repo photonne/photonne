@@ -39,7 +39,9 @@ data class TimelineItem(
      * (fileName, fileSize) heuristics, which need the server side to
      * happen to expose comparable values.
      */
-    @Transient val localServerAssetId: String? = null
+    @Transient val localServerAssetId: String? = null,
+    /** When it went to the trash; only the trash listing sends it. */
+    @Serializable(with = FlexibleInstantSerializer::class) val deletedAt: Instant? = null
 ) {
     val isVideo: Boolean get() = type.equals("VIDEO", ignoreCase = true)
     val isLocalOnly: Boolean get() = localUri != null
