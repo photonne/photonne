@@ -8,13 +8,16 @@ services:
       - AdminUser__Email=${ADMIN_EMAIL:-admin@photonne.local}
       - AdminUser__FirstName=${ADMIN_FIRSTNAME:-Administrador}
       - AdminUser__LastName=${ADMIN_LASTNAME:-Sistema}
-      - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
+      # Sin ADMIN_PASSWORD el primer arranque genera una y la escribe en el log.
+      - AdminUser__Password=${ADMIN_PASSWORD:-}
       - AdminUser__Username=${ADMIN_USERNAME:-admin}
       - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
       - HTTPS_REDIRECT=${HTTPS_REDIRECT:-false}
       - Jwt__Audience=Photonne
       - Jwt__Issuer=Photonne
-      - Jwt__Key=${JWT_KEY:-TOKEN_SUPER_SECRET}
+      # Sin JWT_KEY (o con una de ejemplo) el servidor genera una clave y la
+      # guarda en /data/config/jwt.key.
+      - Jwt__Key=${JWT_KEY:-}
       - Ml__Embedding__Enabled=${IMAGE_EMBEDDING_ENABLED:-true}
       - Ml__Embedding__ModelVersion=${IMAGE_EMBEDDING_MODEL_VERSION:-mclip-vit-b32-v1}
       - Ml__FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
@@ -32,6 +35,7 @@ services:
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
+      - ${CONFIG_HOST_PATH:-./data/config}:/data/config
     depends_on:
       postgresql:
         condition: service_healthy
@@ -99,8 +103,12 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Solo para depurar la base de datos: no arranca con `docker compose up`.
+  # Actívalo con `docker compose --profile pgadmin up -d`. Escucha solo en
+  # localhost porque entra en la base de datos sin pedir contraseña maestra.
   pgadmin:
     image: dpage/pgadmin4:latest
+    profiles: [pgadmin]
     container_name: photonne-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
@@ -108,7 +116,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:

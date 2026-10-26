@@ -103,7 +103,9 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddPhotonneOpenApi();
 
 // Configurar JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+var jwtKey = JwtSigningKey.Resolve(builder.Configuration, message => Console.WriteLine($"[WARN] {message}"));
+// AuthService signs with Jwt:Key: hand it the resolved key, not the placeholder.
+builder.Configuration["Jwt:Key"] = jwtKey;
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Photonne";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "Photonne";
 

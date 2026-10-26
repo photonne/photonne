@@ -11,8 +11,8 @@ services:
     # el 5000 porque AirPlay Receiver lo ocupa por defecto).
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - Jwt__Key=${JWT_KEY:-dev-secret-key-change-in-production-min-32-chars}
-      - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
+      - Jwt__Key=${JWT_KEY:-}
+      - AdminUser__Password=${ADMIN_PASSWORD:-}
 
   photonne-ml:
     build:
