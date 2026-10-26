@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.upload_item_progress
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_remove
 import com.photonne.app.resources.action_retry
@@ -318,12 +319,34 @@ private fun UploadRow(
                 )
             }
             if (item.status == UploadStatus.Uploading) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = Spacing.xs)
-                        .height(ProgressHeight.inline)
-                )
+                val fraction = uploadFraction(item)
+                if (fraction != null) {
+                    // How far this file is, in bytes: a big video used to show
+                    // the same endless bar for minutes.
+                    LinearProgressIndicator(
+                        progress = { fraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = Spacing.xs)
+                            .height(ProgressHeight.inline)
+                    )
+                    Text(
+                        stringResource(
+                            Res.string.upload_item_progress,
+                            humanBytes(item.sentBytes),
+                            humanBytes(item.sizeBytes)
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = Spacing.xs)
+                            .height(ProgressHeight.inline)
+                    )
+                }
             }
             val failureText = item.failureReason?.let { uploadErrorHint(it) } ?: item.errorMessage
             failureText?.takeIf { item.status == UploadStatus.Failed }?.let { message ->
@@ -435,3 +458,7 @@ private fun RowAction(
     }
 }
 
+/** The share of [item] already sent, or null while unknown (no size or nothing sent yet). */
+internal fun uploadFraction(item: UploadItem): Float? =
+    if (item.sizeBytes > 0 && item.sentBytes > 0) (item.sentBytes.toFloat() / item.sizeBytes).coerceIn(0f, 1f)
+    else null
