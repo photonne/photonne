@@ -16,7 +16,12 @@ import { getDeviceId } from './device-id.js';
  */
 export type SessionStatus = 'restoring' | 'signedIn' | 'signedOut' | 'unreachable';
 
-export type LoginFailure = 'invalidCredentials' | 'rateLimited' | 'network' | 'server';
+/**
+ * `totpRequired`: the password was right and the account has two-step
+ * verification — ask for the code and log in again with it.
+ */
+export type LoginFailure =
+	'invalidCredentials' | 'totpRequired' | 'totpInvalid' | 'rateLimited' | 'network' | 'server';
 
 /**
  * Who is signed in, for the whole app.
@@ -72,9 +77,15 @@ export class Session {
 		}
 	}
 
-	async login(username: string, password: string): Promise<LoginFailure | null> {
+	async login(username: string, password: string, totpCode?: string): Promise<LoginFailure | null> {
 		const { data, response, error } = await loginRequest({
-			body: { username, password, deviceId: getDeviceId(), refreshTokenInCookie: true }
+			body: {
+				username,
+				password,
+				deviceId: getDeviceId(),
+				refreshTokenInCookie: true,
+				totpCode: totpCode || null
+			}
 		});
 
 		// No response at all: the request never reached the server.
@@ -85,6 +96,8 @@ export class Session {
 			this.status = 'signedIn';
 			return null;
 		}
+		if (apiErrorCode(error) === 'totp_required') return 'totpRequired';
+		if (apiErrorCode(error) === 'totp_invalid') return 'totpInvalid';
 		if (response.status === 401 || apiErrorCode(error) === 'credentials_required') {
 			return 'invalidCredentials';
 		}

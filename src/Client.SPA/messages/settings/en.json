@@ -169,6 +169,37 @@
 	"settings_discovery_shown": "“{name}” is back in your photos",
 	"settings_discovery_hidden": "“{name}” no longer shows in your photos",
 	"settings_analysis": "Photo analysis",
+	"settings_totp_title": "Two-step verification",
+	"settings_totp_lead": "Besides the password, signing in asks for a code from the authenticator app on your phone (Google Authenticator, 1Password, Aegis…).",
+	"settings_totp_enable": "Turn on",
+	"settings_totp_scan": "Scan the code with your authenticator app and enter the 6-digit code it shows.",
+	"settings_totp_secret": "If you can't scan it, enter this key by hand:",
+	"settings_totp_qr_label": "QR code for the authenticator app",
+	"settings_totp_code": "Code from the app",
+	"settings_totp_confirm": "Turn on",
+	"settings_totp_error_code": "That code is not right. Check that your phone's clock is right and try the next one.",
+	"settings_totp_codes_title": "Recovery codes.",
+	"settings_totp_codes_lead": "Keep them somewhere safe: if you lose your phone, each one works once instead of the code. They won't be shown again.",
+	"settings_totp_codes_copy": "Copy",
+	"settings_totp_codes_copied": "Codes copied",
+	"settings_totp_codes_done": "I've saved them",
+	"settings_totp_disable": "Turn off",
+	"settings_totp_disable_warning": "Signing in won't ask for the phone's code any more. Confirm with your password.",
+	"settings_totp_disabled": "Two-step verification turned off",
+	"settings_totp_on": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "On · {countFormatted} recovery code left",
+				"countPlural=other": "On · {countFormatted} recovery codes left"
+			}
+		}
+	],
 	"settings_mobile": "Mobile app",
 	"settings_mobile_lead": "Connect the Photonne mobile app to this server without typing the address.",
 	"settings_mobile_qr_label": "QR code to connect the app",

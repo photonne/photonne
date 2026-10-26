@@ -250,3 +250,47 @@ test('the mobile app section shows a QR code to connect to this server', async (
 	const origin = new URL(page.url()).origin;
 	await expect(page.locator('code')).toHaveText(origin);
 });
+
+test('turns two-step verification on with a QR code and shows the recovery codes once', async ({
+	page
+}) => {
+	await fakeApi(page, { signedIn: true });
+	let enabled = false;
+	await page.route('**/api/auth/totp**', async (route) => {
+		const path = new URL(route.request().url()).pathname;
+		const json = (body: unknown, status = 200) =>
+			route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+		if (path.endsWith('/setup'))
+			return json({
+				secret: 'JBSWY3DPEHPK3PXP',
+				otpAuthUri: 'otpauth://totp/Photonne:ana?secret=JBSWY3DPEHPK3PXP'
+			});
+		if (path.endsWith('/enable')) {
+			if (route.request().postDataJSON().code !== '123456')
+				return json({ error: 'No', code: 'totp_invalid' }, 400);
+			enabled = true;
+			return json({ recoveryCodes: ['abcd-efgh', 'jkmn-pqrs'] });
+		}
+		return json({ enabled, recoveryCodesLeft: enabled ? 2 : 0 });
+	});
+	await page.goto('/settings/security');
+
+	const card = page.getByRole('region', { name: 'Verificación en dos pasos' });
+	await card.getByRole('button', { name: 'Activar' }).click();
+	await expect(
+		card.getByRole('figure', { name: 'Código QR para la app de autenticación' })
+	).toBeVisible();
+	await expect(card.getByText('JBSWY3DPEHPK3PXP')).toBeVisible();
+
+	await card.getByLabel('Código de la app').fill('111111');
+	await card.getByRole('button', { name: 'Activar' }).click();
+	await expect(card.getByRole('alert')).toHaveText(/Ese código no es correcto/);
+
+	await card.getByLabel('Código de la app').fill('123456');
+	await card.getByRole('button', { name: 'Activar' }).click();
+	await expect(
+		card.getByRole('list', { name: 'Códigos de recuperación.' }).getByRole('listitem')
+	).toHaveText(['abcd-efgh', 'jkmn-pqrs']);
+	await card.getByRole('button', { name: 'Ya los he guardado' }).click();
+	await expect(card.getByText('Activada · quedan 2 códigos de recuperación')).toBeVisible();
+});

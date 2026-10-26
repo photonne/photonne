@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import PasswordInput from '#lib/account/settings/PasswordInput.svelte';
+	import TwoStepCard from '#lib/account/settings/TwoStepCard.svelte';
 	import {
 		isStrongPassword,
 		passwordRules,
@@ -185,6 +186,8 @@
 				</button>
 			</div>
 		</form>
+
+		<TwoStepCard />
 
 		<section class="card danger" aria-labelledby="delete-title">
 			<header>

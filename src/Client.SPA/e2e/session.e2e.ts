@@ -64,3 +64,22 @@ test('a proxy saying the server is down also offers a retry, not the login', asy
 	await page.getByRole('button', { name: 'Reintentar' }).click();
 	await expect(page.getByRole('heading', { name: 'Fotos' })).toBeVisible();
 });
+
+test('with two-step verification, asks for the code after the password', async ({ page }) => {
+	await fakeApi(page);
+	await page.goto('/login');
+
+	await page.getByLabel('Usuario o correo').fill('eva');
+	await page.getByLabel('Contraseña', { exact: true }).fill('secreto');
+	await page.getByRole('button', { name: 'Entrar' }).click();
+
+	const code = page.getByLabel('Código de verificación');
+	await expect(code).toBeFocused();
+	await code.fill('000000');
+	await page.getByRole('button', { name: 'Verificar' }).click();
+	await expect(page.getByRole('alert')).toHaveText(/Ese código no es correcto/);
+
+	await code.fill('123456');
+	await page.getByRole('button', { name: 'Verificar' }).click();
+	await expect(page.getByRole('heading', { name: 'Fotos' })).toBeVisible();
+});

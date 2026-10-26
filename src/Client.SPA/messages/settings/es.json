@@ -169,6 +169,37 @@
 	"settings_discovery_shown": "«{name}» vuelve a tus fotos",
 	"settings_discovery_hidden": "«{name}» ya no aparece en tus fotos",
 	"settings_analysis": "Análisis de fotos",
+	"settings_totp_title": "Verificación en dos pasos",
+	"settings_totp_lead": "Además de la contraseña, al entrar se pide un código de la app de autenticación del móvil (Google Authenticator, 1Password, Aegis…).",
+	"settings_totp_enable": "Activar",
+	"settings_totp_scan": "Escanea el código con la app de autenticación y escribe el código de 6 cifras que muestra.",
+	"settings_totp_secret": "Si no puedes escanearlo, introduce esta clave a mano:",
+	"settings_totp_qr_label": "Código QR para la app de autenticación",
+	"settings_totp_code": "Código de la app",
+	"settings_totp_confirm": "Activar",
+	"settings_totp_error_code": "Ese código no es correcto. Comprueba que la hora del móvil es la correcta y prueba con el siguiente.",
+	"settings_totp_codes_title": "Códigos de recuperación.",
+	"settings_totp_codes_lead": "Guárdalos en un lugar seguro: si pierdes el móvil, cada uno sirve una vez en lugar del código. No se vuelven a mostrar.",
+	"settings_totp_codes_copy": "Copiar",
+	"settings_totp_codes_copied": "Códigos copiados",
+	"settings_totp_codes_done": "Ya los he guardado",
+	"settings_totp_disable": "Desactivar",
+	"settings_totp_disable_warning": "Al entrar ya no se pedirá el código del móvil. Confirma con tu contraseña.",
+	"settings_totp_disabled": "Verificación en dos pasos desactivada",
+	"settings_totp_on": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "Activada · queda {countFormatted} código de recuperación",
+				"countPlural=other": "Activada · quedan {countFormatted} códigos de recuperación"
+			}
+		}
+	],
 	"settings_mobile": "App móvil",
 	"settings_mobile_lead": "Conecta la app de Photonne del móvil a este servidor sin escribir la dirección.",
 	"settings_mobile_qr_label": "Código QR para conectar la app",
