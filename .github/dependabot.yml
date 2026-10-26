@@ -1,0 +1,82 @@
+# Actualizaciones de dependencias. Una PR al mes por ecosistema, con las
+# versiones menores y de parche agrupadas; las mayores llegan cada una en su PR
+# porque suelen pedir cambios. Los mensajes siguen Conventional Commits para
+# que release-please no las cuente como novedades (build no sale en el changelog).
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build(server)
+    groups:
+      nuget-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /src/Client.SPA
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build(spa)
+    groups:
+      npm-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: gradle
+    directory: /src/Client.Native
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build(native)
+    groups:
+      gradle-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: /src/Server.Ml
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build(ml)
+    groups:
+      pip-minor:
+        update-types: [minor, patch]
+    ignore:
+      # Van clavados a mano: onnxruntime-gpu se queda en la última rueda
+      # compilada contra CUDA 12 y onnxruntime tiene que coincidir con ella en
+      # requirements-gpu.txt (ver el comentario de ese fichero).
+      - dependency-name: onnxruntime
+      - dependency-name: onnxruntime-gpu
+
+  - package-ecosystem: docker
+    directories:
+      - /src/Server.Api
+      - /src/Server.Ml
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build(docker)
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build(docker)
+    ignore:
+      # Una versión mayor de PostgreSQL necesita pg_upgrade o volcar y restaurar
+      # (docs/postgres-operations.md): se sube a mano.
+      - dependency-name: pgvector/pgvector
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
