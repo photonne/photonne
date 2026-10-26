@@ -93,6 +93,7 @@ import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
@@ -815,6 +816,12 @@ interface PhotonneApi {
     suspend fun listSceneLabels(q: String? = null, limit: Int? = null): List<SceneLabel>
     /** Places of the user's photos, most photographed first. Empty on a server without them. */
     suspend fun listPlaces(limit: Int? = null): List<com.photonne.app.data.models.PlaceFacet>
+    /**
+     * One connection to `GET /api/events`: the names of the events the server
+     * sends ("library", "notifications") until the stream ends. Throws when
+     * it can't connect; reconnecting is the caller's business.
+     */
+    fun serverEvents(): Flow<String>
     suspend fun listPeople(
         search: String? = null,
         includeHidden: Boolean = false,
@@ -3448,6 +3455,20 @@ class PhotonneApiClient(
             throw response.apiException("Backup restore failed")
         }
         return response.body()
+    }
+
+    override fun serverEvents(): Flow<String> = channelFlow {
+        client.prepareGet("$baseUrl/api/events") { disableStreamTimeouts() }.execute { response ->
+            ensureStreamSuccess(response, "Events stream failed")
+            val channel = response.bodyAsChannel()
+            val parser = com.photonne.app.data.realtime.SseParser()
+            val chunk = ByteArray(1024)
+            while (true) {
+                val read = channel.readAvailable(chunk, 0, chunk.size)
+                if (read == -1) break
+                if (read > 0) parser.push(chunk, read).forEach { send(it) }
+            }
+        }
     }
 
     /** Shared streaming helper for the progress endpoints: reads NDJSON
