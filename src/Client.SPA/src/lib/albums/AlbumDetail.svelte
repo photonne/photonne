@@ -6,6 +6,7 @@
 	import type { BatchActions } from '#lib/actions/batch-actions.svelte.js';
 	import {
 		apiErrorCode,
+		convertToManualAlbum,
 		deleteAlbum,
 		getAlbumAssets,
 		leaveAlbum,
@@ -82,6 +83,7 @@
 	let editing = $state(false);
 	let sharing = $state<'people' | 'links' | null>(null);
 	let confirming = $state<'delete' | 'leave' | null>(null);
+	let confirmingConvert = $state(false);
 	let summarising = $state(false);
 	let reviewingRemoved = $state(false);
 	/** A large removal waiting for its confirmation. */
@@ -100,6 +102,12 @@
 			});
 		if (canWrite)
 			items.push({ label: m.albums_share_links(), icon: 'link', run: () => (sharing = 'links') });
+		if (smart && album.isOwner)
+			items.push({
+				label: m.albums_convert_manual(),
+				icon: { path: icons.photoAlbum },
+				run: () => (confirmingConvert = true)
+			});
 		if (canRemove)
 			items.push({
 				label: m.albums_removed_recent(),
@@ -209,6 +217,22 @@
 		await goto(appHref('/albums'), { replace: true });
 	}
 
+	/** Freezes the smart album: it keeps today's photos and loses its rule. */
+	async function convertToManual() {
+		busy = true;
+		const { error } = await convertToManualAlbum({ path: { albumId } });
+		busy = false;
+		confirmingConvert = false;
+		if (error) {
+			toasts.error(m.action_failed());
+			return;
+		}
+		invalidateAlbums(queryClient, albumId);
+		order = 'album';
+		list.store.reload();
+		toasts.show(m.albums_converted());
+	}
+
 	function saved() {
 		editing = false;
 		invalidateAlbums(queryClient, albumId);
@@ -306,7 +330,18 @@
 					{#if album.description}<p class="description">{album.description}</p>{/if}
 					<p class="meta">
 						<span>{m.albums_items({ count: album.assetCount })}</span>
-						{#if smart}
+						{#if smart && album.isOwner}
+							<!-- The rule lives behind this pill: it opens the editor. -->
+							<button
+								type="button"
+								class="pill"
+								title={m.albums_smart_hint()}
+								aria-label={m.albums_rules_edit()}
+								onclick={() => (editing = true)}
+							>
+								<Icon path={icons.smart} size={14} />{m.albums_rules()}
+							</button>
+						{:else if smart}
 							<span class="pill" title={m.albums_smart_hint()}>
 								<Icon path={icons.smart} size={14} />{m.albums_smart()}
 							</span>
@@ -409,6 +444,16 @@
 />
 
 <ConfirmDialog
+	open={confirmingConvert}
+	title={m.albums_convert_manual_title()}
+	message={m.albums_convert_manual_message({ count: album?.assetCount ?? 0 })}
+	confirmLabel={m.albums_convert_manual_action()}
+	{busy}
+	onconfirm={convertToManual}
+	onclose={() => (confirmingConvert = false)}
+/>
+
+<ConfirmDialog
 	danger
 	open={confirmingRemoval !== null}
 	title={m.albums_remove_confirm_title({ count: confirmingRemoval?.size ?? 0 })}
@@ -507,6 +552,16 @@
 		color: var(--color-text);
 		font-size: var(--font-size-xs);
 		font-weight: 600;
+	}
+
+	button.pill {
+		border: 1px solid var(--color-border);
+		cursor: pointer;
+	}
+
+	button.pill:hover {
+		border-color: var(--color-accent);
+		background: var(--color-accent-soft);
 	}
 
 	.viewer-action:hover {

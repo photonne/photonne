@@ -229,6 +229,15 @@
 	"albums_rule_any": "any condition",
 	"albums_rule_counting": "Counting…",
 	"albums_rule_date": "Dates",
+	"albums_rule_date_mode": "Photos",
+	"albums_rule_date_between": "Between two dates",
+	"albums_rule_date_last": "From the last…",
+	"albums_rule_window_amount": "Amount",
+	"albums_rule_window_unit": "Unit",
+	"albums_rule_window_days": "days",
+	"albums_rule_window_months": "months",
+	"albums_rule_window_years": "years",
+	"albums_rule_window_hint": "Counts back from today and keeps itself up to date: what falls out of the window leaves the album.",
 	"albums_rule_empty": "Add at least one condition to choose which photos go in.",
 	"albums_rule_favorite": "Favorites",
 	"albums_rule_folder": "Folders",
@@ -324,6 +333,22 @@
 	"albums_shared_with_you": "Shared with you",
 	"albums_smart": "Smart",
 	"albums_smart_hint": "Smart album: its conditions fill it",
+	"albums_rules": "Rules",
+	"albums_rules_edit": "Edit the smart album's rules",
+	"albums_convert_manual": "Convert to a regular album",
+	"albums_convert_manual_title": "Convert to a regular album?",
+	"albums_convert_manual_message": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "It keeps the {n} photo it has now and stops following its rules: new photos won't join on their own, and you can remove and reorder photos by hand. This can't be undone.",
+				"p=other": "It keeps the {n} photos it has now and stops following its rules: new photos won't join on their own, and you can remove and reorder photos by hand. This can't be undone."
+			}
+		}
+	],
+	"albums_convert_manual_action": "Convert",
+	"albums_converted": "It's now a regular album",
 	"albums_sort": "Sort by",
 	"albums_sort_ascending": "Ascending",
 	"albums_sort_count": "Number of items",

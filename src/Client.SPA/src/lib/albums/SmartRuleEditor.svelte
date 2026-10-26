@@ -207,26 +207,58 @@
 						</select>
 					</label>
 				{:else if condition.type === 'dateRange'}
-					<div class="row">
-						<label class="inline">
-							<span>{m.albums_rule_from()}</span>
-							<input
-								type="date"
-								bind:value={condition.from}
-								onchange={() =>
-									Object.assign(condition, orderedRange(condition.from, condition.to))}
-							/>
-						</label>
-						<label class="inline">
-							<span>{m.albums_rule_to()}</span>
-							<input
-								type="date"
-								bind:value={condition.to}
-								onchange={() =>
-									Object.assign(condition, orderedRange(condition.from, condition.to))}
-							/>
-						</label>
-					</div>
+					<label class="inline">
+						<span>{m.albums_rule_date_mode()}</span>
+						<select bind:value={condition.mode}>
+							<option value="between">{m.albums_rule_date_between()}</option>
+							<option value="last">{m.albums_rule_date_last()}</option>
+						</select>
+					</label>
+					{#if condition.mode === 'last'}
+						<div class="row">
+							<label class="inline">
+								<span>{m.albums_rule_window_amount()}</span>
+								<input
+									type="number"
+									min="1"
+									max="9999"
+									step="1"
+									class="amount"
+									bind:value={condition.amount}
+								/>
+							</label>
+							<label class="inline">
+								<span>{m.albums_rule_window_unit()}</span>
+								<select bind:value={condition.unit}>
+									<option value="d">{m.albums_rule_window_days()}</option>
+									<option value="m">{m.albums_rule_window_months()}</option>
+									<option value="y">{m.albums_rule_window_years()}</option>
+								</select>
+							</label>
+						</div>
+						<p class="note">{m.albums_rule_window_hint()}</p>
+					{:else}
+						<div class="row">
+							<label class="inline">
+								<span>{m.albums_rule_from()}</span>
+								<input
+									type="date"
+									bind:value={condition.from}
+									onchange={() =>
+										Object.assign(condition, orderedRange(condition.from, condition.to))}
+								/>
+							</label>
+							<label class="inline">
+								<span>{m.albums_rule_to()}</span>
+								<input
+									type="date"
+									bind:value={condition.to}
+									onchange={() =>
+										Object.assign(condition, orderedRange(condition.from, condition.to))}
+								/>
+							</label>
+						</div>
+					{/if}
 				{:else if condition.type === 'folder'}
 					<MultiPicker
 						label={title}
@@ -343,6 +375,10 @@
 		align-items: center;
 		gap: var(--space-2);
 		font-size: var(--font-size-sm);
+	}
+
+	.amount {
+		width: 7ch;
 	}
 
 	.grow,

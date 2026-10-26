@@ -229,6 +229,15 @@
 	"albums_rule_any": "alguna condición",
 	"albums_rule_counting": "Contando…",
 	"albums_rule_date": "Fechas",
+	"albums_rule_date_mode": "Fotos",
+	"albums_rule_date_between": "Entre dos fechas",
+	"albums_rule_date_last": "De los últimos…",
+	"albums_rule_window_amount": "Cantidad",
+	"albums_rule_window_unit": "Unidad",
+	"albums_rule_window_days": "días",
+	"albums_rule_window_months": "meses",
+	"albums_rule_window_years": "años",
+	"albums_rule_window_hint": "Cuenta hacia atrás desde hoy y se actualiza solo: lo que se queda fuera de la ventana sale del álbum.",
 	"albums_rule_empty": "Añade al menos una condición para decidir qué fotos entran.",
 	"albums_rule_favorite": "Favoritas",
 	"albums_rule_folder": "Carpetas",
@@ -324,6 +333,22 @@
 	"albums_shared_with_you": "Compartido contigo",
 	"albums_smart": "Inteligente",
 	"albums_smart_hint": "Álbum inteligente: lo llenan sus condiciones",
+	"albums_rules": "Reglas",
+	"albums_rules_edit": "Editar las reglas del álbum inteligente",
+	"albums_convert_manual": "Convertir en álbum normal",
+	"albums_convert_manual_title": "¿Convertir en álbum normal?",
+	"albums_convert_manual_message": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "Se queda con la {n} foto que tiene ahora y deja de seguir sus reglas: lo nuevo ya no entrará solo, y podrás quitar fotos y ordenarlas a mano. No se puede deshacer.",
+				"p=other": "Se queda con las {n} fotos que tiene ahora y deja de seguir sus reglas: lo nuevo ya no entrará solo, y podrás quitar fotos y ordenarlas a mano. No se puede deshacer."
+			}
+		}
+	],
+	"albums_convert_manual_action": "Convertir",
+	"albums_converted": "Ahora es un álbum normal",
 	"albums_sort": "Ordenar por",
 	"albums_sort_ascending": "Orden ascendente",
 	"albums_sort_count": "Número de elementos",
