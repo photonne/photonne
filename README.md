@@ -169,6 +169,7 @@ El servidor de desarrollo de Vite hace de proxy de `/api`, así que el navegador
 | `POSTGRES_DB` | Nombre de la base de datos | `photonne` |
 | `POSTGRES_USER` | Usuario de PostgreSQL | `photonne_user` |
 | `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | `photonne_password` |
+| `POSTGRES_TAG` | Versión de la imagen de PostgreSQL (`pg17` o `pg18`). Pasar una base existente a 18 requiere volcarla y restaurarla: ver [docs/postgres-operations.md](docs/postgres-operations.md#pasar-a-postgresql-18) | `pg17` |
 | `Jwt__Key` | Clave secreta para JWT (mín. 32 caracteres) — usar `JWT_KEY` en `.env`. Vacía o de ejemplo: se genera en `/data/config/jwt.key` | *(generada)* |
 | `Jwt__Issuer` | Emisor del token | `Photonne` |
 | `Jwt__Audience` | Audiencia del token | `Photonne` |

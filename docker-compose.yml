@@ -91,7 +91,9 @@ services:
     restart: unless-stopped
 
   postgresql:
-    image: pgvector/pgvector:pg17
+    # pg17 by default. Moving an existing database to pg18 takes a dump and
+    # restore: docs/postgres-operations.md, "Pasar a PostgreSQL 18".
+    image: pgvector/pgvector:${POSTGRES_TAG:-pg17}
     container_name: photonne-db
     # Docker gives /dev/shm 64 MB; Postgres puts parallel-query and parallel
     # index-build memory there, and the pgvector HNSW builds need far more.
@@ -105,6 +107,10 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-photonne}
       - POSTGRES_USER=${POSTGRES_USER:-photonne_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-photonne_password}
+      # Where the volume below is mounted. pg17's default; the pg18 image
+      # moved it to /var/lib/postgresql/18/docker and refuses the old mount
+      # unless told so.
+      - PGDATA=/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:

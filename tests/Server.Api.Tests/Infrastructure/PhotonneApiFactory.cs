@@ -24,7 +24,12 @@ public sealed class PhotonneApiFactory : WebApplicationFactory<Program>, IAsyncL
     // Match the production image (docker-compose.yml). The migrations register
     // the pgvector extension and the Faces table uses vector(512), so the bare
     // `postgres:*-alpine` image fails with `extension "vector" is not available`.
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(
+        // PHOTONNE_TEST_POSTGRES_IMAGE=pgvector/pgvector:pg18 runs the suite on
+        // the next major version before moving the compose to it.
+        Environment.GetEnvironmentVariable("PHOTONNE_TEST_POSTGRES_IMAGE") is { Length: > 0 } image
+            ? image
+            : "pgvector/pgvector:pg17")
         .WithDatabase("photonne_test")
         .WithUsername("photonne")
         .WithPassword("photonne")
