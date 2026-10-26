@@ -2331,6 +2331,35 @@
         ]
       }
     },
+    "/api/events": {
+      "get": {
+        "tags": [
+          "Realtime"
+        ],
+        "description": "Server-Sent Events stream of what changed for the caller (library, notifications)",
+        "operationId": "StreamEvents",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/places": {
       "get": {
         "tags": [
@@ -18765,6 +18794,9 @@
     },
     {
       "name": "Scenes"
+    },
+    {
+      "name": "Realtime"
     },
     {
       "name": "Places"

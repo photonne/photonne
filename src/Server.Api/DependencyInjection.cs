@@ -286,8 +286,11 @@ public static class DependencyInjection
         var connectionString = builder.Configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("Connection string 'Postgres' not found.");
 
-        builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString, o => o.UseVector()));
+        builder.Services.AddSingleton<Shared.Services.Realtime.UserEventBus>();
+        builder.Services.AddSingleton<Shared.Services.Realtime.RealtimeChangesInterceptor>();
+        builder.Services.AddDbContext<ApplicationDbContext>((services, options) =>
+            options.UseNpgsql(connectionString, o => o.UseVector())
+                .AddInterceptors(services.GetRequiredService<Shared.Services.Realtime.RealtimeChangesInterceptor>()));
     }
 
     public static void RegisterEndpoints(this IEndpointRouteBuilder app)
