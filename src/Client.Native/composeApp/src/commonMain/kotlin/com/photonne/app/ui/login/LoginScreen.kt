@@ -66,6 +66,10 @@ import com.photonne.app.resources.login_continue
 import com.photonne.app.resources.login_step_credentials
 import com.photonne.app.resources.login_username
 import com.photonne.app.resources.login_password
+import com.photonne.app.resources.login_totp_hint
+import com.photonne.app.resources.login_totp_code
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import com.photonne.app.resources.login_password_hide
 import com.photonne.app.resources.login_password_show
 import com.photonne.app.resources.login_remember_me
@@ -288,6 +292,33 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
                 onFill = viewModel::onPasswordChange
             )
     )
+
+    if (state.needsTotp) {
+        // Two-step verification: the code from the authenticator app (or a
+        // recovery code, hence plain text rather than digits only).
+        val codeFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { codeFocus.requestFocus() }
+        OutlinedTextField(
+            value = state.totpCode,
+            onValueChange = viewModel::onTotpCodeChange,
+            label = { Text(stringResource(Res.string.login_totp_code)) },
+            supportingText = { Text(stringResource(Res.string.login_totp_hint)) },
+            enabled = !state.isSubmitting,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Ascii,
+                capitalization = KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                imeAction = ImeAction.Go
+            ),
+            keyboardActions = KeyboardActions(onGo = {
+                if (!state.isSubmitting) viewModel.submit()
+            }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(codeFocus)
+        )
+    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,

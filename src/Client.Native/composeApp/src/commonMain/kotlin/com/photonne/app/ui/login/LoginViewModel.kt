@@ -34,6 +34,9 @@ data class LoginUiState(
     val username: String = "",
     val password: String = "",
     val rememberMe: Boolean = false,
+    /** The password was right and the account has two-step verification: ask for its code. */
+    val needsTotp: Boolean = false,
+    val totpCode: String = "",
     val isSubmitting: Boolean = false,
     val error: UiError? = null,
 )
@@ -108,7 +111,8 @@ class LoginViewModel(
     }
 
     fun onUsernameChange(value: String) {
-        _state.value = _state.value.copy(username = value, error = null)
+        // Another account: whatever code the previous one asked for no longer applies.
+        _state.value = _state.value.copy(username = value, error = null, needsTotp = false, totpCode = "")
     }
 
     fun onPasswordChange(value: String) {
@@ -127,6 +131,10 @@ class LoginViewModel(
         if (name.isEmpty() || current.isSubmitting) return
         if (current.username.equals(name, ignoreCase = true)) return
         _state.value = current.copy(username = name, password = "", error = null)
+    }
+
+    fun onTotpCodeChange(value: String) {
+        _state.value = _state.value.copy(totpCode = value, error = null)
     }
 
     fun onRememberMeChange(value: Boolean) {
@@ -253,7 +261,11 @@ class LoginViewModel(
         _state.value = current.copy(isSubmitting = true, error = null)
         viewModelScope.launch {
             val username = current.username.trim()
-            val result = authRepository.login(username, current.password)
+            val result = authRepository.login(
+                username,
+                current.password,
+                totpCode = current.totpCode.trim().takeIf { current.needsTotp && it.isNotEmpty() }
+            )
             _state.value = if (result.isSuccess) {
                 if (current.rememberMe) {
                     rememberedCredentialsStore.save(username, current.password)
@@ -269,10 +281,21 @@ class LoginViewModel(
                     rememberMe = current.rememberMe
                 )
             } else {
-                _state.value.copy(
-                    isSubmitting = false,
-                    error = result.exceptionOrNull()?.let(::loginError)
-                )
+                val cause = result.exceptionOrNull()
+                when (totpAnswer(cause)) {
+                    // Right password, now the code: no error, just the field.
+                    "totp_required" -> _state.value.copy(isSubmitting = false, needsTotp = true, error = null)
+                    "totp_invalid" -> _state.value.copy(
+                        isSubmitting = false,
+                        needsTotp = true,
+                        totpCode = "",
+                        error = UiError(userMessage = "Ese código no es correcto. Prueba con el siguiente que muestre la app.")
+                    )
+                    else -> _state.value.copy(
+                        isSubmitting = false,
+                        error = cause?.let(::loginError)
+                    )
+                }
             }
         }
     }
@@ -282,6 +305,14 @@ class LoginViewModel(
      * es mentira: aquí el 401 es la contraseña. Y un fallo de conexión debe
      * decir contra qué host se intentó, no "Error desconocido".
      */
+    /** The two-step answer of a 401 login ("totp_required" / "totp_invalid"), if it is one. */
+    private fun totpAnswer(cause: Throwable?): String? {
+        val api = cause as? PhotonneApiException ?: return null
+        if (api.status != 401) return null
+        val body = api.responseBody ?: return null
+        return listOf("totp_required", "totp_invalid").firstOrNull { body.contains("\"$it\"") }
+    }
+
     private fun loginError(cause: Throwable): UiError {
         val api = cause as? PhotonneApiException
         val host = runCatching { Url(serverUrlStore.requireBaseUrl()).host }.getOrNull()
