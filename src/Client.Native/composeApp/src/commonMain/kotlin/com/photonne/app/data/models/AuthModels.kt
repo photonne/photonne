@@ -12,6 +12,13 @@ data class LoginRequest(
     val totpCode: String? = null
 )
 
+/** Whether the server signs in through an OpenID provider, and the button's name. */
+@Serializable
+data class OidcConfig(val enabled: Boolean = false, val displayName: String? = null)
+
+@Serializable
+data class OidcExchangeRequest(val ticket: String, val deviceId: String, val refreshTokenInCookie: Boolean = false)
+
 @Serializable
 data class LoginResponse(
     val token: String,

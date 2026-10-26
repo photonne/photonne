@@ -66,6 +66,8 @@ import com.photonne.app.resources.login_continue
 import com.photonne.app.resources.login_step_credentials
 import com.photonne.app.resources.login_username
 import com.photonne.app.resources.login_password
+import com.photonne.app.resources.login_oidc
+import com.photonne.app.resources.login_or
 import com.photonne.app.resources.login_totp_hint
 import com.photonne.app.resources.login_totp_code
 import androidx.compose.ui.focus.focusRequester
@@ -348,6 +350,23 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
         onClick = viewModel::submit,
         isLoading = state.isSubmitting
     )
+
+    state.oidcName?.let { provider ->
+        Text(
+            stringResource(Res.string.login_or),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        androidx.compose.material3.OutlinedButton(
+            onClick = viewModel::startOidc,
+            enabled = !state.isSubmitting,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(Res.string.login_oidc, provider))
+        }
+    }
 
     TextButton(
         onClick = viewModel::changeServer,

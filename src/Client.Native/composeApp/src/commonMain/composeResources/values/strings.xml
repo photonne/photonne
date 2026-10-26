@@ -2069,4 +2069,6 @@
     <string name="welcome_start">Empezar</string>
     <string name="login_totp_code">Código de verificación</string>
     <string name="login_totp_hint">El código de 6 cifras de tu app de autenticación, o uno de recuperación.</string>
+    <string name="login_or">o</string>
+    <string name="login_oidc">Entrar con %1$s</string>
 </resources>

@@ -71,6 +71,21 @@ object ExternalNavigation {
      */
     val connectServer: StateFlow<String?> = _connectServer.asStateFlow()
 
+    private val _oidcReturn = MutableStateFlow<OidcReturn?>(null)
+
+    /**
+     * The browser came back from the OpenID provider
+     * (`photonne://oidc?ticket=…` or `?error=…`), not yet handled. The login
+     * screen takes it.
+     */
+    val oidcReturn: StateFlow<OidcReturn?> = _oidcReturn.asStateFlow()
+
+    fun consumeOidcReturn(): OidcReturn? {
+        val value = _oidcReturn.value
+        _oidcReturn.value = null
+        return value
+    }
+
     fun consumeConnectServer(): String? {
         val server = _connectServer.value
         _connectServer.value = null
@@ -116,10 +131,32 @@ object ExternalNavigation {
             _connectServer.value = server
             return true
         }
+        parseOidcUrl(url)?.let { result ->
+            _oidcReturn.value = result
+            return true
+        }
         val target = parseShareUrl(url) ?: return false
         sharedLink = target
         request(ExternalDestination.SharedLink)
         return true
+    }
+
+    /** `photonne://oidc?ticket=…` or `?error=…`, or null when it isn't that. */
+    internal fun parseOidcUrl(url: String): OidcReturn? {
+        val prefix = "$SCHEME://oidc"
+        if (!url.startsWith(prefix, ignoreCase = true)) return null
+        val params = url.substring(prefix.length).substringAfter('?', "").substringBefore('#')
+            .split('&')
+            .mapNotNull { pair ->
+                val key = pair.substringBefore('=', "")
+                if (key.isEmpty()) null
+                else key to (runCatching { pair.substringAfter('=').decodeURLQueryComponent() }.getOrNull() ?: "")
+            }
+            .toMap()
+        val ticket = params["ticket"]?.takeIf { it.isNotBlank() }
+        val error = params["error"]?.takeIf { it.isNotBlank() }
+        if (ticket == null && error == null) return null
+        return OidcReturn(ticket = ticket, error = error)
     }
 
     /** El servidor de `photonne://connect?server=<origen>`, o null si no es eso. */
@@ -155,3 +192,6 @@ object ExternalNavigation {
         return SharedLinkTarget(token = token, serverUrl = server)
     }
 }
+
+/** How the OpenID sign-in came back: a ticket to exchange, or the reason it didn't work. */
+data class OidcReturn(val ticket: String?, val error: String?)
