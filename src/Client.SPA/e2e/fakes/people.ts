@@ -337,6 +337,28 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 		return done(page(rows, url) satisfies PeoplePageResponse);
 	}
 
+	if (method === 'GET' && path === '/api/people/suggestions') {
+		const faces = s.faces
+			.filter((f) => f.suggestedPersonId !== null && f.personId === null && !f.rejected)
+			.flatMap((f) => {
+				const who = s.people.find((p) => p.id === f.suggestedPersonId);
+				return who && !who.isHidden
+					? [
+							{
+								id: f.id,
+								assetId: f.assetId,
+								confidence: 0.95,
+								suggestedDistance: 0.42,
+								personId: who.id,
+								personName: who.name,
+								personCoverFaceId: who.coverFaceId
+							}
+						]
+					: [];
+			});
+		return done(page(faces, url));
+	}
+
 	const person = find(parts[1]);
 	if (!person) return notFound();
 

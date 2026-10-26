@@ -5,6 +5,7 @@ import {
 	displayName,
 	faceThumbnailUrl,
 	initials,
+	namesake,
 	nextOffset,
 	parseSort,
 	peopleQuery,
@@ -126,5 +127,22 @@ describe('uniqueById', () => {
 	it('keeps the first of each id in order', () => {
 		const items = [{ id: 'a' }, { id: 'b' }, { id: 'a' }, { id: 'c' }];
 		expect(uniqueById(items).map((item) => item.id)).toEqual(['a', 'b', 'c']);
+	});
+});
+
+describe('namesake', () => {
+	const people = [
+		{ id: 'a', name: 'José' },
+		{ id: 'b', name: null },
+		{ id: 'c', name: 'Ana' }
+	];
+
+	it('finds another person with the same name, ignoring case and accents', () => {
+		expect(namesake(people, ' jose ', 'c')?.id).toBe('a');
+	});
+
+	it('is not the person being renamed, nor a blank name', () => {
+		expect(namesake(people, 'Ana', 'c')).toBeNull();
+		expect(namesake(people, '  ', 'a')).toBeNull();
 	});
 });

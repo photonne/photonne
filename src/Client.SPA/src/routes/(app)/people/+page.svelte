@@ -1,7 +1,10 @@
 <script lang="ts">
-	import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { createInfiniteQuery, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { PersonDto } from '#lib/api/index.js';
-	import { getApiPeopleInfiniteOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import {
+		getApiPeopleInfiniteOptions,
+		listFaceSuggestionsOptions
+	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
@@ -51,6 +54,13 @@
 		const timer = setTimeout(() => (debounced = value), 250);
 		return () => clearTimeout(timer);
 	});
+
+	// How many faces wait in "¿Quién es?" (an older server: none, no button).
+	const queue = createQuery(() => ({
+		...listFaceSuggestionsOptions({ query: { limit: 1 } }),
+		retry: false
+	}));
+	const queued = $derived(queue.data?.total ?? 0);
 
 	const people = createInfiniteQuery(() => ({
 		...getApiPeopleInfiniteOptions({
@@ -174,6 +184,13 @@
 		subtitle={m.people_selection_hint()}
 	>
 		{#snippet actions()}
+			{#if queued > 0}
+				<a class="btn primary" href={appHref('/people/suggestions')}>
+					<Icon path={icons.face} size={18} />
+					{m.people_queue_title()}
+					<span class="badge">{queued}</span>
+				</a>
+			{/if}
 			<button type="button" class="btn" onclick={() => (recognitionOpen = true)}>
 				<Icon path={icons.face} size={18} />
 				{m.people_recognition()}
@@ -279,6 +296,7 @@
 	person={renaming}
 	onclose={() => (renaming = null)}
 	onrenamed={() => selection.clear()}
+	onmerged={() => selection.clear()}
 />
 <MergeDialog people={merging} onclose={() => (merging = null)} onmerged={() => selection.clear()} />
 <FaceRecognitionDialog open={recognitionOpen} onclose={() => (recognitionOpen = false)} />
@@ -470,5 +488,16 @@
 		.pick {
 			opacity: 1;
 		}
+	}
+
+	.badge {
+		min-width: 20px;
+		padding: 0 6px;
+		border-radius: var(--radius-pill);
+		background: var(--color-surface);
+		color: var(--color-text);
+		font-size: var(--font-size-xs);
+		font-weight: 650;
+		text-align: center;
 	}
 </style>

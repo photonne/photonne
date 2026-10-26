@@ -1,4 +1,5 @@
 import type { GetApiPeopleData, MemoryResponse, PersonDto } from '#lib/api/index.js';
+import { fold } from '#lib/search/text.js';
 
 /**
  * The "most photos together with" row of a person's page: their memories of
@@ -113,4 +114,20 @@ export function nextOffset<T>(
 export function uniqueById<T extends { id: string }>(items: readonly T[]): T[] {
 	const seen = new Set<string>();
 	return items.filter((item) => !seen.has(item.id) && !!seen.add(item.id));
+}
+
+/**
+ * Another person already called `name` (ignoring case and accents), among
+ * `people`: renaming to it is likely the same person, worth merging.
+ */
+export function namesake<T extends Pick<PersonDto, 'id' | 'name'>>(
+	people: readonly T[],
+	name: string,
+	exceptId: string
+): T | null {
+	const wanted = fold(name.trim());
+	if (!wanted) return null;
+	return (
+		people.find((person) => person.id !== exceptId && fold(person.name ?? '') === wanted) ?? null
+	);
 }
