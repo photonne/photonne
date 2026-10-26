@@ -1,5 +1,10 @@
 package com.photonne.app.ui.asset
 
+import com.photonne.app.resources.asset_detail_tag_photos
+import com.photonne.app.resources.asset_detail_open_folder
+import com.photonne.app.resources.asset_detail_place_photos
+import com.photonne.app.resources.asset_detail_camera_photos
+import com.photonne.app.resources.asset_detail_month_in_timeline
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -289,6 +294,8 @@ fun AssetDetailScreen(
     /** Toque en una escena / un objeto del panel: búsqueda filtrada por ella. */
     onSearchScene: (label: String) -> Unit = {},
     onSearchObject: (label: String) -> Unit = {},
+    /** Tags, camera, place, folder, month and map of the info panel. */
+    metadataLinks: ViewerMetadataLinks = ViewerMetadataLinks(),
     /** Bumped by the host when the faces sheet closes, so the inline faces of
      *  the visible asset are re-read (the sheet may have changed them). */
     facesRevision: Int = 0,
@@ -807,6 +814,8 @@ fun AssetDetailScreen(
                         sceneLabels = if (isCurrent) state.sceneLabels else emptyList(),
                         onSearchScene = onSearchScene,
                         onSearchObject = onSearchObject,
+                        // In the trash the photos those links lead to don't include this one.
+                        links = if (isTrashMode) ViewerMetadataLinks() else metadataLinks,
                         onAddTag = { tag -> viewModel.addTag(item.id, tag) },
                         onRemoveTag = { tag -> viewModel.removeTag(item.id, tag) },
                         tagSuggestions = viewModel::userTagSuggestions,
@@ -1862,6 +1871,7 @@ private fun AssetMetadataPanel(
     sceneLabels: List<String>,
     onSearchScene: (String) -> Unit,
     onSearchObject: (String) -> Unit,
+    links: ViewerMetadataLinks,
     onAddTag: (String) -> Unit,
     onRemoveTag: (String) -> Unit,
     tagSuggestions: suspend () -> List<String>,
@@ -1904,6 +1914,13 @@ private fun AssetMetadataPanel(
                 placeholder = "",
                 onClick = onEditDate
             )
+            links.onMonth?.let { onMonth ->
+                MetadataActionRow(
+                    leadingIcon = PhotonneIcons.Photos,
+                    label = stringResource(Res.string.asset_detail_month_in_timeline),
+                    onClick = { onMonth(captureDate) }
+                )
+            }
         } else if (detail != null) {
             // Solo lectura: mismos datos, sin la invitación a editarlos.
             detail.caption?.takeIf { it.isNotBlank() }?.let {
@@ -1914,6 +1931,13 @@ private fun AssetMetadataPanel(
                 stringResource(Res.string.asset_detail_capture_date),
                 formatInstant(captureDate.toString())
             )
+            links.onMonth?.let { onMonth ->
+                MetadataActionRow(
+                    leadingIcon = PhotonneIcons.Photos,
+                    label = stringResource(Res.string.asset_detail_month_in_timeline),
+                    onClick = { onMonth(captureDate) }
+                )
+            }
         } else {
             MetadataRow(stringResource(Res.string.asset_detail_created), formatInstant(fallback.fileCreatedAt.toString()))
         }
@@ -1936,7 +1960,17 @@ private fun AssetMetadataPanel(
         ExifGrid(stats)
 
         exif?.cameraDisplay?.let {
-            MetadataInfoRow(leadingIcon = Icons.Outlined.PhotoCamera, label = stringResource(Res.string.asset_detail_camera), value = it)
+            val model = exif.cameraModel
+            val onCamera = links.onCamera
+            MetadataInfoRow(
+                leadingIcon = Icons.Outlined.PhotoCamera,
+                label = stringResource(Res.string.asset_detail_camera),
+                value = it,
+                onClick = if (onCamera != null && !model.isNullOrBlank()) {
+                    { onCamera(exif.cameraMake, model) }
+                } else null,
+                clickLabel = stringResource(Res.string.asset_detail_camera_photos)
+            )
         }
 
         // Location: a cropped map centred exactly on the point (now below EXIF).
@@ -1944,9 +1978,15 @@ private fun AssetMetadataPanel(
         val lon = exif?.longitude
         if (lat != null && lon != null) {
             formatPlaceName(exif.placeName, exif.placeCountryCode)?.let { place ->
+                val placeId = exif.placeId
+                val onPlace = links.onPlace
+                val placePhotos = stringResource(Res.string.asset_detail_place_photos)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    modifier = if (onPlace != null && placeId != null) {
+                        Modifier.clickable(onClickLabel = placePhotos) { onPlace(placeId, exif.placeName ?: place) }
+                    } else Modifier
                 ) {
                     Icon(
                         imageVector = PhotonneIcons.Location,
@@ -1962,7 +2002,12 @@ private fun AssetMetadataPanel(
                     )
                 }
             }
-            LocationMap(latitude = lat, longitude = lon, tileApiKey = mapTileApiKey)
+            LocationMap(
+                latitude = lat,
+                longitude = lon,
+                tileApiKey = mapTileApiKey,
+                onOpenMap = links.onMap?.let { open -> { open(lat, lon) } }
+            )
         }
 
         // Detected faces — thumbnails inline; tapping the card opens the full
@@ -1989,14 +2034,36 @@ private fun AssetMetadataPanel(
             EditableTagsSection(
                 userTags = detail.userTags,
                 autoTags = detail.autoTags,
+                onTagClick = links.onTag,
                 onAddTag = onAddTag,
                 onRemoveTag = onRemoveTag,
                 tagSuggestions = tagSuggestions
             )
         } else if (detail != null) {
-            val tags = detail.autoTags.map { autoTagLabel(it) } + detail.userTags
-            if (tags.isNotEmpty()) {
-                MetadataRow(stringResource(Res.string.asset_detail_tags_label), tags.joinToString(", "))
+            val onTag = links.onTag
+            if (onTag != null && (detail.autoTags.isNotEmpty() || detail.userTags.isNotEmpty())) {
+                // Solo lectura, pero cada etiqueta sigue llevando a sus fotos.
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    Text(
+                        stringResource(Res.string.asset_detail_tags_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                    ) {
+                        detail.autoTags.forEach { tag ->
+                            TagChip(label = autoTagLabel(tag), onRemove = null, onClick = { onTag(tag) })
+                        }
+                        detail.userTags.forEach { tag -> TagChip(label = tag, onRemove = null, onClick = { onTag(tag) }) }
+                    }
+                }
+            } else {
+                val tags = detail.autoTags.map { autoTagLabel(it) } + detail.userTags
+                if (tags.isNotEmpty()) {
+                    MetadataRow(stringResource(Res.string.asset_detail_tags_label), tags.joinToString(", "))
+                }
             }
         } else {
             // Sin detalle no se sabe cuáles son automáticas: se traducen las que
@@ -2027,7 +2094,21 @@ private fun AssetMetadataPanel(
             }
         }
 
-        detail?.folderPath?.let { MetadataRow(stringResource(Res.string.asset_detail_folder), it) }
+        detail?.folderPath?.let { path ->
+            val folderId = detail.folderId
+            val onFolder = links.onFolder
+            if (onFolder != null && folderId != null) {
+                MetadataInfoRow(
+                    leadingIcon = PhotonneIcons.Folder,
+                    label = stringResource(Res.string.asset_detail_folder),
+                    value = path,
+                    onClick = { onFolder(folderId) },
+                    clickLabel = stringResource(Res.string.asset_detail_open_folder)
+                )
+            } else {
+                MetadataRow(stringResource(Res.string.asset_detail_folder), path)
+            }
+        }
 
         // Related assets: more of the same people, then more from the same day.
         if (samePersonAssets.isNotEmpty()) {
@@ -2187,6 +2268,7 @@ private fun FacesSection(
 private fun EditableTagsSection(
     userTags: List<String>,
     autoTags: List<String>,
+    onTagClick: ((String) -> Unit)?,
     onAddTag: (String) -> Unit,
     onRemoveTag: (String) -> Unit,
     tagSuggestions: suspend () -> List<String>
@@ -2202,8 +2284,12 @@ private fun EditableTagsSection(
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
-            autoTags.forEach { tag -> TagChip(label = autoTagLabel(tag), onRemove = null) }
-            userTags.forEach { tag -> TagChip(label = tag, onRemove = { onRemoveTag(tag) }) }
+            autoTags.forEach { tag ->
+                TagChip(label = autoTagLabel(tag), onRemove = null, onClick = onTagClick?.let { { it(tag) } })
+            }
+            userTags.forEach { tag ->
+                TagChip(label = tag, onRemove = { onRemoveTag(tag) }, onClick = onTagClick?.let { { it(tag) } })
+            }
             AddTagChip(onClick = { showAddDialog = true })
         }
     }
@@ -2313,10 +2399,15 @@ private fun AiLabelsSection(title: String, labels: List<String>, onClick: (Strin
 }
 
 @Composable
-private fun TagChip(label: String, onRemove: (() -> Unit)?) {
+private fun TagChip(label: String, onRemove: (() -> Unit)?, onClick: (() -> Unit)? = null) {
+    val tagPhotos = stringResource(Res.string.asset_detail_tag_photos, label)
     Surface(
         shape = PillShape,
-        color = MaterialTheme.colorScheme.surfaceVariant
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        // El nombre lleva a sus fotos; la ✕, si la hay, sigue siendo su propio botón.
+        modifier = if (onClick != null) {
+            Modifier.clip(PillShape).clickable(onClickLabel = tagPhotos, onClick = onClick)
+        } else Modifier
     ) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = if (onRemove != null) 6.dp else 12.dp, top = 6.dp, bottom = 6.dp),
@@ -2564,9 +2655,19 @@ private fun MetadataEditableRow(
 
 /** A non-interactive labelled card (e.g. camera). */
 @Composable
-private fun MetadataInfoRow(leadingIcon: ImageVector, label: String, value: String) {
+private fun MetadataInfoRow(
+    leadingIcon: ImageVector,
+    label: String,
+    value: String,
+    /** Leads to the photos that share this detail; null = plain info. */
+    onClick: (() -> Unit)? = null,
+    clickLabel: String? = null
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .let { if (onClick != null) it.clickable(onClickLabel = clickLabel, onClick = onClick) else it },
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
@@ -2584,6 +2685,14 @@ private fun MetadataInfoRow(leadingIcon: ImageVector, label: String, value: Stri
             Column(modifier = Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            }
+            if (onClick != null) {
+                Icon(
+                    imageVector = PhotonneIcons.Chevron,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(IconSize.md)
+                )
             }
         }
     }
@@ -2635,7 +2744,13 @@ private fun MetadataActionRow(leadingIcon: ImageVector, label: String, onClick: 
  * the WHOLE grid is shifted by a single offset to centre the point.
  */
 @Composable
-private fun LocationMap(latitude: Double, longitude: Double, tileApiKey: String?) {
+private fun LocationMap(
+    latitude: Double,
+    longitude: Double,
+    tileApiKey: String?,
+    /** The app's own map; null → an external map, as before. */
+    onOpenMap: (() -> Unit)? = null
+) {
     val mapsUrl = "https://www.google.com/maps/?q=$latitude,$longitude"
     val useCarto = !tileApiKey.isNullOrBlank()
     val darkTiles = useCarto && MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -2674,7 +2789,7 @@ private fun LocationMap(latitude: Double, longitude: Double, tileApiKey: String?
                         else -> MapBackgroundLight
                     }
                 )
-                .clickable { openExternalUrl(mapsUrl) }
+                .clickable { if (onOpenMap != null) onOpenMap() else openExternalUrl(mapsUrl) }
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val tilePx = with(density) { MAP_TILE_DP.toPx() }

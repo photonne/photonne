@@ -803,7 +803,12 @@ interface PhotonneApi {
         /** "image" o "video"; null, los dos. */
         mediaType: String? = null,
         pageSize: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
+        /** A whole tag name (user or structural), as the viewer shows it. */
+        tag: String? = null,
+        cameraMake: String? = null,
+        cameraModel: String? = null,
+        placeId: String? = null
     ): SearchResponse
     suspend fun semanticSearch(q: String, limit: Int? = null): SemanticSearchResponse
     suspend fun listObjectLabels(q: String? = null, limit: Int? = null): List<ObjectLabel>
@@ -2508,7 +2513,11 @@ class PhotonneApiClient(
         textQuery: String?,
         mediaType: String?,
         pageSize: Int?,
-        offset: Int?
+        offset: Int?,
+        tag: String?,
+        cameraMake: String?,
+        cameraModel: String?,
+        placeId: String?
     ): SearchResponse {
         val response: HttpResponse = client.get("$baseUrl/api/assets/search") {
             if (!q.isNullOrBlank()) parameter("q", q)
@@ -2522,6 +2531,12 @@ class PhotonneApiClient(
             for (label in sceneLabels) parameter("sceneLabel", label)
             if (!textQuery.isNullOrBlank()) parameter("textQuery", textQuery)
             if (!mediaType.isNullOrBlank()) parameter("type", mediaType)
+            if (!tag.isNullOrBlank()) parameter("tag", tag)
+            if (!cameraModel.isNullOrBlank()) {
+                parameter("cameraModel", cameraModel)
+                if (!cameraMake.isNullOrBlank()) parameter("cameraMake", cameraMake)
+            }
+            if (!placeId.isNullOrBlank()) parameter("placeId", placeId)
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Search failed (${response.status.value})")

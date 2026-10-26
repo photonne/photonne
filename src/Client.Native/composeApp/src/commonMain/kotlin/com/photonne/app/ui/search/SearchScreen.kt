@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -60,6 +61,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.search_clear_all
+import com.photonne.app.resources.search_pinned_remove
 import com.photonne.app.resources.search_empty_results
 import com.photonne.app.resources.search_filters
 import com.photonne.app.resources.search_input_hint
@@ -161,7 +163,7 @@ fun SearchScreen(
                         // resultados: son la explicación de por qué no hay
                         // nada, y tocarlos abre la hoja para relajarlos.
                         Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
-                            ActiveFiltersRow(state = state, onClick = onOpenFilters)
+                            ActiveFiltersRow(state = state, onClick = onOpenFilters, onClearPinned = viewModel::clearPinned)
                             Box(modifier = Modifier.weight(1f)) {
                                 EmptyState(
                                     icon = PhotonneIcons.NoResults,
@@ -190,7 +192,7 @@ fun SearchScreen(
                         // se desplazan con los resultados en vez de flotar.
                         header = {
                             Column {
-                                ActiveFiltersRow(state = state, onClick = onOpenFilters)
+                                ActiveFiltersRow(state = state, onClick = onOpenFilters, onClearPinned = viewModel::clearPinned)
                                 // La semántica no pagina: con el tope lleno se
                                 // dice, en vez de dar a entender que no hay más.
                                 if (state.semanticCapped) {
@@ -320,7 +322,11 @@ private fun SearchModeMenu(
 }
 
 @Composable
-private fun ActiveFiltersRow(state: SearchUiState, onClick: () -> Unit = {}) {
+private fun ActiveFiltersRow(
+    state: SearchUiState,
+    onClick: () -> Unit = {},
+    onClearPinned: () -> Unit = {}
+) {
     val mediaTypeLabel = when (state.mediaType) {
         SearchMediaType.Image -> stringResource(Res.string.search_media_type_only_photos)
         SearchMediaType.Video -> stringResource(Res.string.search_media_type_only_videos)
@@ -350,13 +356,29 @@ private fun ActiveFiltersRow(state: SearchUiState, onClick: () -> Unit = {}) {
             for (label in state.selectedSceneLabels) add(label)
         }
     }
-    if (chips.isEmpty()) return
+    val pinned = state.pinned
+    if (chips.isEmpty() && pinned == null) return
+    val removeLabel = pinned?.let { stringResource(Res.string.search_pinned_remove, it.label) }
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Spacing.md, vertical = Spacing.xs)
     ) {
+        // Lo que se tocó en el visor (etiqueta, cámara, lugar) no tiene control
+        // en la hoja de filtros: su chip se quita con la ✕.
+        if (pinned != null) {
+            item(key = "pinned") {
+                InputChip(
+                    selected = true,
+                    onClick = onClearPinned,
+                    label = { Text(pinned.label) },
+                    trailingIcon = {
+                        Icon(PhotonneIcons.Close, contentDescription = removeLabel, modifier = Modifier.size(18.dp))
+                    }
+                )
+            }
+        }
         items(chips) { chip ->
             AssistChip(onClick = onClick, label = { Text(chip) })
         }
