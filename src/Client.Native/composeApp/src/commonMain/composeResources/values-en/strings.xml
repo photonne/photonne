@@ -27,7 +27,14 @@
     <string name="action_account">Account</string>
     <string name="action_logout">Log out</string>
     <string name="action_jump_to_date">Jump to a date</string>
-    <string name="action_jump">Jump</string>
+    <string name="timeline_jump_title">Go to a date</string>
+    <string name="timeline_jump_hint">Months without photos are disabled.</string>
+    <string name="timeline_jump_year">Year</string>
+    <plurals name="timeline_jump_month">
+        <item quantity="one">%1$s, %2$s item</item>
+        <item quantity="other">%1$s, %2$s items</item>
+    </plurals>
+    <string name="timeline_jump_month_empty">%1$s, no photos</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_close">Close</string>
     <string name="action_back">Back</string>
