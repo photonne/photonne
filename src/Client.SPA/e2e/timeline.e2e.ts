@@ -88,3 +88,13 @@ test('paints a selection by dragging across the cells', async ({ page }) => {
 
 	await expect(page.getByText('3 seleccionados')).toBeVisible();
 });
+
+test('paints the blurred sketch of a photo under its thumbnail until it loads', async ({ page }) => {
+	await fakeApi(page, { signedIn: true });
+	await page.goto('/');
+	const first = page.locator('.cell').first();
+	await expect(first).toBeVisible();
+	// The first photo has a ThumbHash; the second doesn't.
+	await expect(first).toHaveCSS('background-image', /^url\("data:image\/png;base64,/);
+	await expect(page.locator('.cell').nth(1)).toHaveCSS('background-image', 'none');
+});

@@ -9,6 +9,8 @@ export interface GridAsset extends GridItem {
 	isLivePhoto: boolean;
 	isFavorite: boolean;
 	dominantColor: string | null;
+	/** The blurred sketch (base64) painted until the thumbnail arrives. */
+	thumbHash?: string | null;
 	thumbnailVersion: string | null;
 	/** Bytes on disk; absent where the source doesn't say (map points). */
 	fileSize?: number;
@@ -34,6 +36,7 @@ export function toGridAsset(asset: TimelineResponse): GridAsset {
 		isLivePhoto: asset.tags.includes('LivePhoto'),
 		isFavorite: asset.isFavorite,
 		dominantColor: asset.dominantColor ?? null,
+		thumbHash: asset.thumbHash ?? null,
 		thumbnailVersion: asset.thumbnailsGeneratedAt ?? null,
 		fileSize: asset.fileSize,
 		deletedAt: asset.deletedAt ?? null
