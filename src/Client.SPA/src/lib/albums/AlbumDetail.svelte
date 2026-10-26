@@ -3,8 +3,10 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
+	import LibraryPickerDialog from '#lib/actions/LibraryPickerDialog.svelte';
 	import type { BatchActions } from '#lib/actions/batch-actions.svelte.js';
 	import {
+		addAssetsToAlbumBatch,
 		apiErrorCode,
 		convertToManualAlbum,
 		deleteAlbum,
@@ -84,6 +86,7 @@
 	let sharing = $state<'people' | 'links' | null>(null);
 	let confirming = $state<'delete' | 'leave' | null>(null);
 	let confirmingConvert = $state(false);
+	let picking = $state(false);
 	let summarising = $state(false);
 	let reviewingRemoved = $state(false);
 	/** A large removal waiting for its confirmation. */
@@ -217,6 +220,22 @@
 		await goto(appHref('/albums'), { replace: true });
 	}
 
+	/** Adds photos chosen in the library picker; what was already in stays once. */
+	async function addFromLibrary(ids: string[]) {
+		const { data, error } = await addAssetsToAlbumBatch({
+			path: { albumId },
+			body: { assetIds: ids }
+		});
+		if (error || !data) {
+			toasts.error(m.action_failed());
+			return;
+		}
+		picking = false;
+		invalidateAlbums(queryClient, albumId);
+		list.store.reload();
+		toasts.show(m.albums_added_from_library({ count: data.added }));
+	}
+
 	/** Freezes the smart album: it keeps today's photos and loses its rule. */
 	async function convertToManual() {
 		busy = true;
@@ -275,6 +294,7 @@
 		emptyText={smart ? m.albums_empty_smart() : m.albums_empty_album()}
 		emptyHint={smart ? m.albums_empty_smart_hint() : m.albums_empty_album_hint()}
 		emptyIcon="album"
+		emptyAction={canRemove ? addPhotosAction : undefined}
 		headers={false}
 		viewerActions={ownsPhotos ? ['trash', 'album'] : ['album']}
 	>
@@ -300,6 +320,16 @@
 
 		{#snippet toolbar()}
 			{#if album}
+				{#if canRemove}
+					<button
+						type="button"
+						class="btn sm tool"
+						title={m.albums_add_photos()}
+						onclick={() => (picking = true)}
+					>
+						<Icon name="add" size={18} /><span class="label">{m.albums_add_photos()}</span>
+					</button>
+				{/if}
 				{#if album.canManagePermissions || canWrite}
 					<button
 						type="button"
@@ -442,6 +472,21 @@
 	onconfirm={confirm}
 	onclose={() => (confirming = null)}
 />
+
+{#snippet addPhotosAction()}
+	<button type="button" class="btn primary" onclick={() => (picking = true)}>
+		<Icon name="add" size={18} />{m.albums_add_photos()}
+	</button>
+{/snippet}
+
+{#if picking}
+	<LibraryPickerDialog
+		title={m.albums_add_photos_to({ name: album?.name ?? '' })}
+		confirmLabel={(count) => m.albums_add_photos_confirm({ count })}
+		onconfirm={addFromLibrary}
+		onclose={() => (picking = false)}
+	/>
+{/if}
 
 <ConfirmDialog
 	open={confirmingConvert}

@@ -520,3 +520,23 @@ test('subfolders and photos share one scroll; the photos size is in the view opt
 	await optionsButton.click();
 	await expect(options.getByRole('slider', { name: 'Tamaño de las miniaturas' })).toBeVisible();
 });
+
+test('brings photos from the library into the folder', async ({ page }) => {
+	const state = await open(page, '/folders/folder-3');
+
+	await page.getByRole('button', { name: 'Traer fotos' }).first().click();
+	const dialog = page.getByRole('dialog', { name: 'Mover fotos a «Documentos»' });
+	await dialog
+		.getByRole('button', { name: /^(Foto|Vídeo), / })
+		.first()
+		.click();
+	await dialog.getByRole('button', { name: 'Mover 1 foto aquí' }).click();
+
+	await expect(dialog).toBeHidden();
+	await expect(page.getByText('1 movida a «Documentos»')).toBeVisible();
+	expect(calls(state, 'POST /api/folders/assets/move')[0].body).toMatchObject({
+		sourceFolderId: null,
+		targetFolderId: 'folder-3',
+		assetIds: [expect.any(String)]
+	});
+});

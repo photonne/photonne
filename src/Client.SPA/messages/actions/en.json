@@ -123,6 +123,7 @@
 	"folder_picker_new_external": "Folders can’t be created inside an external library.",
 	"dialog_close": "Close dialog",
 	"dialog_cancel": "Cancel",
+	"picker_hint": "Choose the photos: a click picks one and Shift picks a run.",
 	"drop_add_to_album": "Drop to add to “{album}”",
 	"drop_move_to_folder": "Drop to move to “{folder}”"
 }

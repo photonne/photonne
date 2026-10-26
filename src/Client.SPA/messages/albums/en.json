@@ -12,7 +12,29 @@
 	"albums_edit": "Edit album",
 	"albums_edit_title": "Edit album",
 	"albums_empty_album": "This album is empty",
-	"albums_empty_album_hint": "Add photos from Photos with “Add to album”, or drag them onto a pinned album.",
+	"albums_empty_album_hint": "Choose photos from your library, add them from Photos with “Add to album”, or drag them onto a pinned album.",
+	"albums_add_photos": "Add photos",
+	"albums_add_photos_to": "Add photos to “{name}”",
+	"albums_add_photos_confirm": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "Add {n} photo",
+				"p=other": "Add {n} photos"
+			}
+		}
+	],
+	"albums_added_from_library": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "{n} photo added to the album",
+				"p=other": "{n} photos added to the album"
+			}
+		}
+	],
 	"albums_empty_body": "Create an album and add photos, or a smart album that fills itself.",
 	"albums_empty_smart": "No matching photos",
 	"albums_empty_smart_hint": "No photos meet this album’s conditions; try changing them.",

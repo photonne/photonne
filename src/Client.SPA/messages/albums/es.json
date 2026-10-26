@@ -12,7 +12,29 @@
 	"albums_edit": "Editar álbum",
 	"albums_edit_title": "Editar álbum",
 	"albums_empty_album": "Este álbum está vacío",
-	"albums_empty_album_hint": "Añade fotos desde Fotos con «Añadir a un álbum», o arrástralas a un álbum fijado.",
+	"albums_empty_album_hint": "Elige fotos de tu biblioteca, añádelas desde Fotos con «Añadir a un álbum» o arrástralas a un álbum fijado.",
+	"albums_add_photos": "Añadir fotos",
+	"albums_add_photos_to": "Añadir fotos a «{name}»",
+	"albums_add_photos_confirm": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "Añadir {n} foto",
+				"p=other": "Añadir {n} fotos"
+			}
+		}
+	],
+	"albums_added_from_library": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "{n} foto añadida al álbum",
+				"p=other": "{n} fotos añadidas al álbum"
+			}
+		}
+	],
 	"albums_empty_body": "Crea un álbum y añade fotos, o un álbum inteligente que se llena solo.",
 	"albums_empty_smart": "Ninguna foto coincide",
 	"albums_empty_smart_hint": "Ninguna foto cumple las condiciones de este álbum; prueba a cambiarlas.",
