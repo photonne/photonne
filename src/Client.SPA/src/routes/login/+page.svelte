@@ -5,6 +5,8 @@
 	import { page } from '$app/state';
 	import { session, type LoginFailure } from '#lib/auth/session.svelte.js';
 	import { safeReturnTo } from '#lib/navigation/return-to.js';
+	import { createQuery } from '@tanstack/svelte-query';
+	import { getOidcConfigOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	let username = $state('');
@@ -17,6 +19,40 @@
 
 	const returnTo = $derived(safeReturnTo(page.url.searchParams.get('returnTo')));
 
+	// Sign-in through the OpenID provider, when the server has one: the
+	// provider sends the browser back here with a one-use ticket, or an error.
+	const oidc = createQuery(() => getOidcConfigOptions());
+	const oidcTicket = page.url.searchParams.get('oidc_ticket');
+	let oidcFailed = $state(page.url.searchParams.get('oidc_error') !== null);
+	if (oidcTicket) {
+		submitting = true;
+		session.loginWithTicket(oidcTicket).then((result) => {
+			submitting = false;
+			if (result) oidcFailed = true;
+		});
+	}
+
+	function startOidc() {
+		// The provider sends the browser back to /login: where to go after waits here.
+		try {
+			sessionStorage.setItem('oidc-return-to', returnTo);
+		} catch {
+			// Private mode: the timeline it is.
+		}
+		location.href = '/api/auth/oidc/start?client=web';
+	}
+
+	function afterSignIn() {
+		if (!oidcTicket) return returnTo;
+		try {
+			const saved = sessionStorage.getItem('oidc-return-to');
+			sessionStorage.removeItem('oidc-return-to');
+			return safeReturnTo(saved);
+		} catch {
+			return '/';
+		}
+	}
+
 	const failureText: Record<LoginFailure, () => string> = {
 		invalidCredentials: m.login_error_invalid,
 		totpRequired: m.login_totp_hint,
@@ -27,7 +63,7 @@
 	};
 
 	$effect(() => {
-		if (session.status === 'signedIn') goto(returnTo, { replace: true });
+		if (session.status === 'signedIn') goto(afterSignIn(), { replace: true });
 	});
 
 	async function submit(event: SubmitEvent) {
@@ -118,6 +154,15 @@
 			<button type="submit" disabled={submitting}>
 				{submitting ? m.login_submitting() : m.login_submit()}
 			</button>
+			{#if oidc.data?.enabled}
+				{#if oidcFailed}
+					<p class="error" role="alert">{m.login_oidc_failed()}</p>
+				{/if}
+				<p class="or" aria-hidden="true">{m.login_or()}</p>
+				<button type="button" class="secondary" disabled={submitting} onclick={startOidc}>
+					{m.login_oidc({ provider: oidc.data.displayName ?? 'SSO' })}
+				</button>
+			{/if}
 		{/if}
 	</form>
 </main>
@@ -173,6 +218,19 @@
 		margin: 0;
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
+	}
+
+	.or {
+		margin: 0;
+		text-align: center;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	button.secondary {
+		background: none;
+		border: 1px solid var(--color-border);
+		color: var(--color-text);
 	}
 
 	button.link {

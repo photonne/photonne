@@ -83,3 +83,39 @@ test('with two-step verification, asks for the code after the password', async (
 	await page.getByRole('button', { name: 'Verificar' }).click();
 	await expect(page.getByRole('heading', { name: 'Fotos' })).toBeVisible();
 });
+
+test('signs in through the OpenID provider when the server has one', async ({ page }) => {
+	await fakeApi(page);
+	await page.route('**/api/auth/oidc', (route) =>
+		route.fulfill({
+			contentType: 'application/json',
+			body: JSON.stringify({ enabled: true, displayName: 'Authentik' })
+		})
+	);
+	await page.route('**/api/auth/oidc/exchange', (route) => {
+		const ok = route.request().postDataJSON().ticket === 't-1';
+		return route.fulfill({
+			status: ok ? 200 : 401,
+			contentType: 'application/json',
+			body: JSON.stringify(
+				ok
+					? {
+							token: 'token-1',
+							refreshToken: '',
+							user: { id: 'u-1', username: 'ana', role: 'User' }
+						}
+					: {}
+			)
+		});
+	});
+
+	await page.goto('/login');
+	await expect(page.getByRole('button', { name: 'Entrar con Authentik' })).toBeVisible();
+
+	// Back from the provider with a bad ticket: it says so and stays.
+	await page.goto('/login?oidc_ticket=nope');
+	await expect(page.getByRole('alert')).toHaveText(/No se ha podido entrar con el proveedor/);
+
+	await page.goto('/login?oidc_ticket=t-1');
+	await expect(page.getByRole('heading', { name: 'Fotos' })).toBeVisible();
+});
