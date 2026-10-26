@@ -465,6 +465,8 @@ test('subfolder tiles are resized from inside a folder too', async ({ page }) =>
 	const slider = page.getByRole('slider', { name: 'Tamaño de las tarjetas' });
 	const tile = page.getByRole('list', { name: 'Subcarpetas' }).getByRole('listitem').first();
 	const width = async () => (await tile.boundingBox())!.width;
+	// boundingBox() doesn't wait for the tile to be laid out: null until then.
+	await expect(tile).toBeVisible();
 	const before = await width();
 
 	// With the subfolders' other options, in the view options.
