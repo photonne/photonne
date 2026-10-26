@@ -496,6 +496,7 @@
     <string name="search_semantic_capped">Mostrando los %1$d más parecidos</string>
     <string name="search_semantic_unavailable">La búsqueda con IA no está disponible</string>
     <string name="search_clear_all">Limpiar</string>
+    <string name="search_pinned_remove">Quitar el filtro %1$s</string>
     <string name="search_empty_results">Sin resultados con esos criterios.</string>
     <string name="search_no_results">Sin resultados</string>
     <string name="search_filters_loading">Cargando filtros…</string>
@@ -1879,6 +1880,11 @@
     <string name="asset_detail_description">Descripción</string>
     <string name="asset_detail_description_placeholder">Añadir descripción</string>
     <string name="asset_detail_capture_date">Fecha de captura</string>
+    <string name="asset_detail_month_in_timeline">Ver ese mes en Fotos</string>
+    <string name="asset_detail_camera_photos">Ver las fotos hechas con esta cámara</string>
+    <string name="asset_detail_place_photos">Ver las fotos hechas aquí</string>
+    <string name="asset_detail_open_folder">Abrir la carpeta</string>
+    <string name="asset_detail_tag_photos">Ver las fotos con la etiqueta %1$s</string>
     <string name="asset_detail_open_info">Ver información</string>
     <string name="asset_detail_created">Creado</string>
     <string name="asset_detail_size">Tamaño</string>

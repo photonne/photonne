@@ -330,6 +330,32 @@ internal class AuthenticatedAppState(
         searchViewerReturn = returnPoint
     }
 
+    /** Leaves the viewer for the timeline at [date] (the info panel's "Ver ese mes en Fotos"). */
+    fun openTimelineFromViewer(date: kotlin.time.Instant) {
+        assetDetailStack = emptyList()
+        assetDetail = null
+        moreSubscreen = null
+        selectedTab = MainTab.Timeline
+        pendingJumpDate = date
+    }
+
+    /** Leaves the viewer for [folder], opened from the folders tab. */
+    fun openFolderFromViewer(folder: FolderSummary) {
+        assetDetailStack = emptyList()
+        assetDetail = null
+        moreSubscreen = null
+        selectedTab = MainTab.Folders
+        folderBackStack.clear()
+        selectedFolder = folder
+    }
+
+    /** Leaves the viewer for the map, already centred by the caller. */
+    fun openMapFromViewer() {
+        assetDetailStack = emptyList()
+        assetDetail = null
+        moreSubscreen = MoreSubscreen.Map
+    }
+
     fun searchBack() {
         searchViewerReturn?.let { returnTo ->
             searchViewerReturn = null

@@ -1,5 +1,6 @@
 package com.photonne.app.ui.search
 
+import com.photonne.app.data.search.PinnedSearchFilter
 import com.photonne.app.ui.util.withRestored
 import androidx.lifecycle.ViewModel
 import com.photonne.app.ui.util.LoadedPage
@@ -49,6 +50,8 @@ data class SearchUiState(
     val selectedPersonIds: Set<String> = emptySet(),
     val selectedObjectLabels: Set<String> = emptySet(),
     val selectedSceneLabels: Set<String> = emptySet(),
+    /** A tag, camera or place tapped in the viewer; see [PinnedSearchFilter]. */
+    val pinned: PinnedSearchFilter? = null,
     val results: List<TimelineItem> = emptyList(),
     val hasMore: Boolean = false,
     /** La semántica no pagina: true si la respuesta llenó el tope, es decir,
@@ -86,7 +89,8 @@ data class SearchUiState(
             selectedObjectLabels.isNotEmpty(),
             selectedSceneLabels.isNotEmpty(),
             ocrText.isNotBlank(),
-            mediaType != null
+            mediaType != null,
+            pinned != null
         ).count { it }
 
     val hasAnyCriteria: Boolean
@@ -224,6 +228,15 @@ class SearchViewModel(
     fun showResultsForObjectLabel(label: String) =
         showResultsFor(objectLabels = setOf(label))
 
+    /** A tag, camera or place tapped in the viewer: its photos, on their own. */
+    fun showResultsFor(pinned: PinnedSearchFilter) = showResultsFor(pinnedFilter = pinned)
+
+    /** The pinned chip's ✕: the search goes on without it. */
+    fun clearPinned() {
+        _state.update { it.copy(pinned = null, results = emptyList(), hasMore = false, selection = emptySet()) }
+        scheduleSearch(immediate = true)
+    }
+
     /** Persona tocada en la pantalla inicial de la búsqueda. Entra en la caché
      *  para que su chip de filtro tenga nombre. */
     fun showResultsForPerson(person: Person) {
@@ -235,7 +248,8 @@ class SearchViewModel(
     private fun showResultsFor(
         personIds: Set<String> = emptySet(),
         objectLabels: Set<String> = emptySet(),
-        sceneLabels: Set<String> = emptySet()
+        sceneLabels: Set<String> = emptySet(),
+        pinnedFilter: PinnedSearchFilter? = null
     ) {
         pendingSearch?.cancel()
         _state.update {
@@ -249,6 +263,7 @@ class SearchViewModel(
                 selectedPersonIds = personIds,
                 selectedObjectLabels = objectLabels,
                 selectedSceneLabels = sceneLabels,
+                pinned = pinnedFilter,
                 results = emptyList(),
                 hasMore = false,
                 semanticCapped = false,
@@ -386,6 +401,7 @@ class SearchViewModel(
                 selectedObjectLabels = emptySet(),
                 selectedSceneLabels = emptySet(),
                 selectedPersonIds = emptySet(),
+                pinned = null,
                 results = emptyList(),
                 hasMore = false,
                 // A loadMore in flight checks this flag before appending: left
@@ -423,7 +439,8 @@ class SearchViewModel(
                     sceneLabels = snapshot.selectedSceneLabels.toList(),
                     ocrText = snapshot.ocrText.takeIf { it.isNotBlank() },
                     mediaType = snapshot.mediaType?.wire,
-                    offset = snapshot.results.size
+                    offset = snapshot.results.size,
+                    pinned = snapshot.pinned
                 )
             }
                 .onSuccess { page ->
@@ -575,7 +592,8 @@ class SearchViewModel(
                         sceneLabels = snapshot.selectedSceneLabels.toList(),
                         ocrText = snapshot.ocrText.takeIf { it.isNotBlank() },
                         mediaType = snapshot.mediaType?.wire,
-                        offset = offset
+                        offset = offset,
+                        pinned = snapshot.pinned
                     ).let { page ->
                         val next = (offset ?: 0) + page.items.size
                         LoadedPage(page.items, page.hasMore && page.items.isNotEmpty(), next)

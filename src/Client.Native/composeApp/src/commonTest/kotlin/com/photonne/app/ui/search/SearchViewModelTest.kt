@@ -3,6 +3,7 @@ package com.photonne.app.ui.search
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.events.AssetMutationBus
+import com.photonne.app.data.search.PinnedSearchFilter
 import com.photonne.app.data.search.SearchRepository
 import com.photonne.app.ui.TrackedViewModels
 import com.photonne.app.ui.json
@@ -90,6 +91,41 @@ class SearchViewModelTest {
 
         vm.clearAll()
         assertEquals(null, vm.state.value.mediaType)
+    }
+
+    @Test
+    fun a_detail_tapped_in_the_viewer_searches_on_its_own_until_its_chip_goes() = vms.runTest {
+        val queries = mutableListOf<Map<String, String?>>()
+        val vm = viewModel { request ->
+            val p = request.url.parameters
+            queries += mapOf(
+                "tag" to p["tag"],
+                "cameraMake" to p["cameraMake"],
+                "cameraModel" to p["cameraModel"],
+                "placeId" to p["placeId"]
+            )
+            json("""{"items":[${timelineItemJson("x")}],"hasMore":false}""")
+        }
+        vm.toggleObjectLabel("dog")
+        vm.settled()
+
+        vm.showResultsFor(PinnedSearchFilter.Camera("Apple", "iPhone 15"))
+        val state = vm.settled()
+
+        // It replaces what was there: only the camera narrows the search.
+        assertTrue(state.selectedObjectLabels.isEmpty())
+        assertEquals(1, state.activeFilterCount)
+        assertEquals(
+            mapOf("tag" to null, "cameraMake" to "Apple", "cameraModel" to "iPhone 15", "placeId" to null),
+            queries.last()
+        )
+
+        vm.showResultsFor(PinnedSearchFilter.Place("p-1", "Madrid"))
+        vm.settled()
+        assertEquals("p-1", queries.last()["placeId"])
+
+        vm.clearPinned()
+        assertEquals(null, vm.state.value.pinned)
     }
 
     @Test

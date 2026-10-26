@@ -21,7 +21,8 @@ class SearchRepository(
         ocrText: String? = null,
         mediaType: String? = null,
         pageSize: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
+        pinned: PinnedSearchFilter? = null
     ): SearchResponse = api.searchAssets(
         q = query,
         from = from?.toString(),
@@ -32,7 +33,11 @@ class SearchRepository(
         textQuery = ocrText,
         mediaType = mediaType,
         pageSize = pageSize,
-        offset = offset
+        offset = offset,
+        tag = (pinned as? PinnedSearchFilter.Tag)?.name,
+        cameraMake = (pinned as? PinnedSearchFilter.Camera)?.make,
+        cameraModel = (pinned as? PinnedSearchFilter.Camera)?.model,
+        placeId = (pinned as? PinnedSearchFilter.Place)?.id
     )
 
     suspend fun semanticSearch(query: String, limit: Int? = null): SemanticSearchResponse =
@@ -46,4 +51,26 @@ class SearchRepository(
 
     suspend fun people(limit: Int = 80, search: String? = null): List<Person> =
         api.listPeople(search = search, limit = limit).items
+}
+
+/**
+ * A filter the viewer pins on a search when one of its details is tapped: the
+ * photos with a tag, taken with a camera, or taken at a place. There is no
+ * control for it in the filters sheet; its chip takes it off.
+ */
+sealed interface PinnedSearchFilter {
+    /** What its chip says. */
+    val label: String
+
+    data class Tag(val name: String) : PinnedSearchFilter {
+        override val label: String get() = "#$name"
+    }
+
+    data class Camera(val make: String?, val model: String) : PinnedSearchFilter {
+        override val label: String get() = listOfNotNull(make, model).joinToString(" ")
+    }
+
+    data class Place(val id: String, val name: String) : PinnedSearchFilter {
+        override val label: String get() = name
+    }
 }

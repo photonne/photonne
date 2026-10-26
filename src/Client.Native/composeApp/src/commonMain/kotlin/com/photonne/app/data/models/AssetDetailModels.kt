@@ -69,6 +69,8 @@ data class ExifData(
     val placeName: String? = null,
     /** ISO 3166-1 alfa-2 de [placeName]; el nombre del país lo pone el cliente. */
     val placeCountryCode: String? = null,
+    /** Id del lugar, para buscar las fotos hechas allí (servidores nuevos). */
+    val placeId: String? = null,
 ) {
     val cameraDisplay: String?
         get() = listOfNotNull(cameraMake, cameraModel)

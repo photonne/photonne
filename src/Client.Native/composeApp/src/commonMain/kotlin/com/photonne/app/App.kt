@@ -2,6 +2,7 @@
 
 package com.photonne.app
 
+import com.photonne.app.data.search.PinnedSearchFilter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -1984,6 +1985,34 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onSearchObject = { label ->
                             appState.openSearchFromViewer { searchViewModel.showResultsForObjectLabel(label) }
                         },
+                        metadataLinks = com.photonne.app.ui.asset.ViewerMetadataLinks(
+                            onTag = { tag ->
+                                appState.openSearchFromViewer {
+                                    searchViewModel.showResultsFor(PinnedSearchFilter.Tag(tag))
+                                }
+                            },
+                            onCamera = { make, model ->
+                                appState.openSearchFromViewer {
+                                    searchViewModel.showResultsFor(PinnedSearchFilter.Camera(make, model))
+                                }
+                            },
+                            onPlace = { placeId, name ->
+                                appState.openSearchFromViewer {
+                                    searchViewModel.showResultsFor(PinnedSearchFilter.Place(placeId, name))
+                                }
+                            },
+                            onFolder = { folderId ->
+                                coroutineScope.launch {
+                                    runCatching { foldersRepository.get(folderId) }
+                                        .onSuccess { folder -> appState.openFolderFromViewer(folder) }
+                                }
+                            },
+                            onMonth = { date -> appState.openTimelineFromViewer(date) },
+                            onMap = { lat, lon ->
+                                mapViewModel.focusOn(lat, lon)
+                                appState.openMapFromViewer()
+                            }
+                        ),
                         facesRevision = appState.assetFacesRevision,
                         onShare = { item -> actionsViewModel.shareDirectly(listOf(item.id)) },
                         onDownload = { item -> actionsViewModel.download(listOf(item.id)) },

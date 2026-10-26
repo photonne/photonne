@@ -413,6 +413,7 @@
     <string name="search_semantic_capped">Showing the %1$d closest matches</string>
     <string name="search_semantic_unavailable">AI search isn't available</string>
     <string name="search_clear_all">Clear</string>
+    <string name="search_pinned_remove">Remove the %1$s filter</string>
     <string name="search_empty_results">No matches for those criteria.</string>
     <string name="search_filters_loading">Loading filters…</string>
     <string name="search_date_range">Date range</string>
@@ -1869,6 +1870,11 @@
     <string name="asset_detail_description">Description</string>
     <string name="asset_detail_description_placeholder">Add a description</string>
     <string name="asset_detail_capture_date">Capture date</string>
+    <string name="asset_detail_month_in_timeline">See that month in Photos</string>
+    <string name="asset_detail_camera_photos">See the photos taken with this camera</string>
+    <string name="asset_detail_place_photos">See the photos taken here</string>
+    <string name="asset_detail_open_folder">Open the folder</string>
+    <string name="asset_detail_tag_photos">See the photos tagged %1$s</string>
     <string name="asset_detail_open_info">View info</string>
     <string name="asset_detail_created">Created</string>
     <string name="asset_detail_size">Size</string>

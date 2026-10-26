@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Zoom the map opens at on one photo's place (the viewer's minimap). */
+const val PLACE_ZOOM = 15
+
 data class MapUiState(
     val centerLat: Double = 20.0,
     val centerLng: Double = 0.0,
@@ -37,6 +40,8 @@ data class MapUiState(
     val isLoading: Boolean = false,
     val error: UiError? = null,
     val firstLoadComplete: Boolean = false,
+    /** The centre was asked for ([MapViewModel.focusOn]): the first load keeps it. */
+    val centerPinned: Boolean = false,
     /**
      * Clave de API de las teselas, leída del ajuste del servidor
      * (ServerSettings.MapTileApiKey). Null mientras no se ha cargado o si el
@@ -202,9 +207,10 @@ class MapViewModel(
                     _state.update {
                         it.copy(
                             points = points,
-                            centerLat = if (it.firstLoadComplete) it.centerLat else lat,
-                            centerLng = if (it.firstLoadComplete) it.centerLng else lng,
-                            zoom = if (it.firstLoadComplete) it.zoom else zoom,
+                            // A place asked for (the viewer's minimap) wins over the overview.
+                            centerLat = if (it.firstLoadComplete || it.centerPinned) it.centerLat else lat,
+                            centerLng = if (it.firstLoadComplete || it.centerPinned) it.centerLng else lng,
+                            zoom = if (it.firstLoadComplete || it.centerPinned) it.zoom else zoom,
                             isLoading = false,
                             firstLoadComplete = true
                         )
@@ -228,6 +234,13 @@ class MapViewModel(
 
     fun onCenterChanged(lat: Double, lng: Double) {
         _state.update { it.copy(centerLat = lat, centerLng = lng) }
+    }
+
+    /** Opens the map on a point (the viewer's minimap), even before its first load. */
+    fun focusOn(lat: Double, lng: Double, zoom: Int = PLACE_ZOOM) {
+        _state.update {
+            it.copy(centerLat = lat, centerLng = lng, zoom = zoom.coerceIn(MIN_ZOOM, MAX_ZOOM), centerPinned = true)
+        }
     }
 
     fun onZoomChanged(zoom: Int) {
