@@ -3179,6 +3179,50 @@
         ]
       }
     },
+    "/api/people/suggestions": {
+      "get": {
+        "tags": [
+          "People"
+        ],
+        "description": "Lists every pending face suggestion of the caller, strongest first, with the person each one points at",
+        "operationId": "ListFaceSuggestions",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaceSuggestionsPageResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/people/recluster": {
       "post": {
         "tags": [
@@ -13517,6 +13561,75 @@
               "number"
             ],
             "format": "float"
+          }
+        }
+      },
+      "FaceSuggestionItem": {
+        "required": [
+          "id",
+          "assetId",
+          "confidence",
+          "suggestedDistance",
+          "personId",
+          "personName",
+          "personCoverFaceId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "float"
+          },
+          "suggestedDistance": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "float"
+          },
+          "personId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "personName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "personCoverFaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "FaceSuggestionsPageResponse": {
+        "required": [
+          "total",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FaceSuggestionItem"
+            }
           }
         }
       },
