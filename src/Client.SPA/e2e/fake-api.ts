@@ -229,7 +229,7 @@ function detail(id: string, favorites: Map<string, boolean>) {
 		checksum: `sum-${id}`,
 		hasExif: true,
 		hasThumbnails: true,
-		folderId: null,
+		folderId: 'folder-camera',
 		folderPath: '/assets/users/ana/Camera',
 		exif: {
 			dateTaken: item.fileCreatedAt,
@@ -249,6 +249,7 @@ function detail(id: string, favorites: Map<string, boolean>) {
 			keywords: null,
 			software: null,
 			placeName: 'Barcelona',
+			placeId: 'place-bcn',
 			placeCountryCode: 'ES'
 		},
 		thumbnails: [],

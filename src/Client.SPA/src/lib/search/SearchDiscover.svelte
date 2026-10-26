@@ -14,9 +14,9 @@
 	import { thumbnailUrl } from '#lib/media.js';
 	import PersonAvatar from '#lib/people/PersonAvatar.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { emptySearch, searchParams, type SearchQuery } from './search-query.js';
+	import { searchHref } from './links.js';
+	import type { SearchQuery } from './search-query.js';
 	import { labelText } from './text.js';
-	import { appHref } from '#lib/navigation/href.js';
 
 	/**
 	 * What the search page offers before anything is typed: the people,
@@ -37,9 +37,7 @@
 	const topObjects = $derived((objects.data ?? []).slice(0, ROW));
 	const pending = $derived(people.isPending && objects.isPending && scenes.isPending);
 
-	function link(query: Partial<SearchQuery>) {
-		return `${appHref('/search')}?${searchParams({ ...emptySearch, semantic: false, ...query })}`;
-	}
+	const link = (query: Partial<SearchQuery>) => searchHref(query);
 </script>
 
 {#if pending}

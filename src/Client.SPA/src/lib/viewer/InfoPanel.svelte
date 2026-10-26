@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { createQuery } from '@tanstack/svelte-query';
 	import {
 		addAssetTags,
@@ -19,13 +20,21 @@
 	} from '#lib/api/generated/@tanstack/svelte-query.gen.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { formatBytes } from '#lib/format.js';
-	import { labelHref } from '#lib/library/explore-links.js';
+	import { labelHref, tagHref } from '#lib/library/explore-links.js';
+	import { appHref } from '#lib/navigation/href.js';
+	import { searchHref } from '#lib/search/links.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { hasName } from '#lib/people/people.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import { captureDateText } from './capture-date.js';
 	import DateEditor from './DateEditor.svelte';
-	import { objectLabels, recognizedText, relatedItems, sceneLabels } from './extras.js';
+	import {
+		objectLabels,
+		recognizedText,
+		relatedItems,
+		sceneLabels,
+		timelineMonthHref
+	} from './extras.js';
 	import { samePeoplePersonId } from './faces.js';
 	import { mapHref, osmHref, photoPosition } from './location.js';
 	import MiniMap from './MiniMap.svelte';
@@ -199,6 +208,9 @@
 			<h3>{m.info_date()}</h3>
 			<p class="date">{captureDateText(asset.capturedAt, getLocale())}</p>
 		{/if}
+		<a class="jump" href={timelineMonthHref(asset.capturedAt)}>
+			<Icon name="photos" size={16} />{m.viewer_date_in_timeline()}
+		</a>
 	</section>
 
 	<PanelSection id="tags" title={m.info_tags()}>
@@ -206,7 +218,7 @@
 			<ul class="chips">
 				{#each tags as tag (tag)}
 					<li class="chip static" class:removable={asset.canEdit}>
-						{tag}
+						<a href={tagHref(tag)} title={m.viewer_tag_photos({ tag })}>{tag}</a>
 						{#if asset.canEdit}
 							<button
 								type="button"
@@ -221,7 +233,9 @@
 					</li>
 				{/each}
 				{#each asset.autoTags as tag (tag)}
-					<li class="chip static auto">{tag}</li>
+					<li class="chip static auto">
+						<a href={tagHref(tag)} title={m.viewer_tag_photos({ tag })}>{tag}</a>
+					</li>
 				{/each}
 			</ul>
 		{/if}
@@ -270,16 +284,46 @@
 	{#if position || exif?.placeName}
 		<PanelSection id="place" title={m.info_location()}>
 			{#if position}
-				<MiniMap lat={position.lat} lng={position.lng} />
-				<div class="place">
-					<a href={osmHref(position)} target="_blank" rel="noopener noreferrer"
-						>{exif?.placeName ?? `${position.lat}, ${position.lng}`}</a
-					>
-					<a class="map-link" href={mapHref(position)}>
-						<Icon name="place" size={16} />
-						{m.viewer_map_open()}
-					</a>
+				<!-- A click on the picture opens the app's map there; keyboards and
+				     screen readers have "Ver en el mapa" below, the same place. -->
+				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+				<div class="minimap" onclick={() => position && goto(mapHref(position))}>
+					<MiniMap lat={position.lat} lng={position.lng} />
 				</div>
+				<div class="place">
+					{#if exif?.placeName && exif.placeId}
+						<a
+							href={searchHref({ place: exif.placeId, placeName: exif.placeName })}
+							title={m.viewer_place_photos({ place: exif.placeName })}>{exif.placeName}</a
+						>
+					{:else}
+						<a href={osmHref(position)} target="_blank" rel="noopener noreferrer"
+							>{exif?.placeName ?? `${position.lat}, ${position.lng}`}</a
+						>
+					{/if}
+					<span class="place-links">
+						<a class="map-link" href={mapHref(position)}>
+							<Icon name="place" size={16} />
+							{m.viewer_map_open()}
+						</a>
+						{#if exif?.placeId}
+							<!-- Directions are OpenStreetMap's: still a click away. -->
+							<a
+								class="osm"
+								href={osmHref(position)}
+								target="_blank"
+								rel="noopener noreferrer"
+								title={m.viewer_open_osm()}>OSM</a
+							>
+						{/if}
+					</span>
+				</div>
+			{:else if exif?.placeId}
+				<p>
+					<a href={searchHref({ place: exif.placeId, placeName: exif.placeName ?? '' })}
+						>{exif?.placeName}</a
+					>
+				</p>
 			{:else}
 				<p>{exif?.placeName}</p>
 			{/if}
@@ -295,11 +339,24 @@
 			</dd>
 			{#if asset.folderPath}
 				<dt>{m.info_folder()}</dt>
-				<dd>{asset.folderPath}</dd>
+				<dd>
+					{#if asset.folderId}
+						<a href={appHref(`/folders/${asset.folderId}`)}>{asset.folderPath}</a>
+					{:else}
+						{asset.folderPath}
+					{/if}
+				</dd>
 			{/if}
 			{#if camera || exposure}
 				<dt>{m.info_camera()}</dt>
-				{#if camera}<dd>{camera}</dd>{/if}
+				{#if camera && exif?.cameraModel}
+					<dd>
+						<a
+							href={searchHref({ camera: exif.cameraModel, make: exif.cameraMake ?? '' })}
+							title={m.viewer_camera_photos({ camera })}>{camera}</a
+						>
+					</dd>
+				{:else if camera}<dd>{camera}</dd>{/if}
 				{#if exposure}<dd class="muted">{exposure}</dd>{/if}
 			{/if}
 		</dl>
@@ -406,6 +463,29 @@
 		color: var(--color-text-muted);
 	}
 
+	/* The tag's name opens its photos; the chip around it stays a label. */
+	.chip.static a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.chip.static a:hover {
+		text-decoration: underline;
+	}
+
+	.jump {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		margin-top: var(--space-1);
+		font-size: var(--font-size-sm);
+	}
+
+	/* The minimap is a picture; a click on it opens the real map. */
+	.minimap {
+		cursor: pointer;
+	}
+
 	.remove {
 		display: grid;
 		place-items: center;
@@ -439,6 +519,17 @@
 		justify-content: space-between;
 		gap: var(--space-2);
 		font-size: var(--font-size-sm);
+	}
+
+	.place-links {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.osm {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-xs);
 	}
 
 	.map-link {

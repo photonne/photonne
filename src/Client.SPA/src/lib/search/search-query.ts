@@ -27,6 +27,14 @@ export interface SearchQuery {
 	folder: string;
 	/** Only photos or only videos; null is both. */
 	type: MediaType | null;
+	/** A whole tag name (a user tag or a structural one). */
+	tag: string;
+	/** The EXIF camera model, and its make when known. */
+	camera: string;
+	make: string;
+	/** A GeoNames place id, with the name to show (it isn't looked up). */
+	place: string;
+	placeName: string;
 }
 
 export type MediaType = 'image' | 'video';
@@ -41,7 +49,12 @@ export const emptySearch: SearchQuery = {
 	scenes: [],
 	ocr: '',
 	folder: '',
-	type: null
+	type: null,
+	tag: '',
+	camera: '',
+	make: '',
+	place: '',
+	placeName: ''
 };
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -70,7 +83,12 @@ export function parseSearch(params: URLSearchParams): SearchQuery {
 		scenes: list(params, 'scene'),
 		ocr: params.get('ocr')?.trim() ?? '',
 		folder: params.get('folder')?.trim() ?? '',
-		type: mediaType(params.get('type'))
+		type: mediaType(params.get('type')),
+		tag: params.get('tag')?.trim() ?? '',
+		camera: params.get('camera')?.trim() ?? '',
+		make: params.get('make')?.trim() ?? '',
+		place: params.get('place')?.trim() ?? '',
+		placeName: params.get('placeName')?.trim() ?? ''
 	};
 	const sem = params.get('sem');
 	query.semantic = sem === '1' || (sem !== '0' && filterCount(query) === 0);
@@ -99,6 +117,11 @@ export function searchParams(query: SearchQuery): URLSearchParams {
 	text('ocr', query.ocr);
 	text('folder', query.folder);
 	text('type', query.type);
+	text('tag', query.tag);
+	text('camera', query.camera);
+	if (query.camera) text('make', query.make);
+	text('place', query.place);
+	if (query.place) text('placeName', query.placeName);
 	return params;
 }
 
@@ -115,7 +138,10 @@ export function filterCount(query: SearchQuery) {
 		query.scenes.length,
 		query.ocr,
 		query.folder,
-		query.type
+		query.type,
+		query.tag,
+		query.camera,
+		query.place
 	].filter(Boolean).length;
 }
 
@@ -144,6 +170,10 @@ export function textSearchRequest(
 		textQuery: query.ocr || undefined,
 		folder: query.folder || undefined,
 		type: query.type ?? undefined,
+		tag: query.tag || undefined,
+		cameraModel: query.camera || undefined,
+		cameraMake: (query.camera && query.make) || undefined,
+		placeId: query.place || undefined,
 		pageSize,
 		offset: offset || undefined
 	};

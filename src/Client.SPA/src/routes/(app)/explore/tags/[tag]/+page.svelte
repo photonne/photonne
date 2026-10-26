@@ -7,26 +7,13 @@
 	const tag = $derived(page.params.tag ?? '');
 </script>
 
-<!-- The API has no exact tag filter: the text search matches tags (and also
-     names, paths, captions and recognised text that contain the word). -->
+<!-- The photos with exactly this tag (a user tag or a detected one). -->
 {#key tag}
 	<SearchPhotos
 		title={`#${tag}`}
-		filter={{ q: tag }}
+		filter={{ tag }}
 		emptyText={m.explore_label_no_photos()}
 		emptyHint={m.explore_label_no_photos_hint()}
 		crumb={{ href: appHref('/explore'), label: m.nav_explore() }}
-	>
-		<p class="note">{m.explore_tag_note()}</p>
-	</SearchPhotos>
+	/>
 {/key}
-
-<style>
-	.note {
-		margin: var(--space-1) 0 0;
-		max-width: 80ch;
-		padding: 0 var(--page-gutter) var(--space-2);
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-</style>
