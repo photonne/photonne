@@ -642,7 +642,9 @@ fun AssetDetailScreen(
             // a video start it without a tap, like the native gallery.
             val currentVideoUrl: String? = currentItem
                 ?.takeIf { it.isVideo && isVideoPlaybackSupported }
-                ?.let { it.localUri ?: "$apiBaseUrl/api/assets/${it.id}/content" }
+                // /playback: the server's H.264 copy when the original won't
+                // play smoothly here (HEVC, 4K, AVI…), the original otherwise.
+                ?.let { it.localUri ?: "$apiBaseUrl/api/assets/${it.id}/playback" }
             val currentVideoHeaders = if (currentItem?.localUri != null) emptyMap() else authHeaders
             val videoPlayback: VideoPlayback? = currentVideoUrl?.let { url ->
                 rememberVideoPlayback(url, currentVideoHeaders, autoPlay = true)
