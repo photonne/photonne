@@ -88,7 +88,7 @@ test('opens the photos of a tag', async ({ page }) => {
 
 	await expect(page.getByRole('heading', { name: '#viaje', level: 1 })).toBeVisible();
 	await expect(cells(page)).toHaveCount(14);
-	expect(libraryState(api.state).searches.at(-1)!.get('q')).toBe('viaje');
+	expect(libraryState(api.state).searches.at(-1)!.get('tag')).toBe('viaje');
 });
 
 test('opens a theme in full and one of its memories', async ({ page }) => {
