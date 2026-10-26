@@ -1711,6 +1711,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 selectionTopBar = {
                     AssetSelectionTopBar(
                         selectedCount = memorySelection.size,
+                        summary = com.photonne.app.ui.selection.rememberSelectionSummary(
+                            memory.items, memorySelection
+                        ),
                         totalCount = memory.items.size,
                         isMutating = memorySelectionState.isBulkMutating ||
                             actionsState.working != AssetActionWorking.Idle,

@@ -812,6 +812,8 @@ fun AssetSelectionTopBar(
     hazeState: HazeState? = null,
     /** Velo de la status bar, como el cromo flotante de la pantalla. */
     statusBarScrim: Boolean = true,
+    /** Bajo el recuento: fechas y tamaño de lo seleccionado ([selectionSummary]). */
+    summary: String? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     // "Select all" lives here, next to the count, because it controls the
@@ -827,7 +829,8 @@ fun AssetSelectionTopBar(
         isMutating = isMutating,
         onClose = onClose,
         hazeState = hazeState,
-        statusBarScrim = statusBarScrim
+        statusBarScrim = statusBarScrim,
+        subtitle = summary
     ) {
         if (onSelectAll != null && selectAllLoadedOnly && !allSelected) {
             TextButton(onClick = onSelectAll, enabled = !isMutating) {
@@ -871,6 +874,7 @@ internal fun SelectionTopChrome(
     onClose: () -> Unit,
     hazeState: HazeState? = null,
     statusBarScrim: Boolean = true,
+    subtitle: String? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -912,13 +916,23 @@ internal fun SelectionTopChrome(
                             contentDescription = stringResource(Res.string.selection_action_close)
                         )
                     }
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).padding(end = Spacing.xs)
-                    )
+                    Column(modifier = Modifier.weight(1f).padding(end = Spacing.xs)) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (subtitle != null) {
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                     actions()
                 }
             }
@@ -1838,7 +1852,8 @@ fun TrashSelectionTopBar(
     isMutating: Boolean,
     onClose: () -> Unit,
     onRestore: () -> Unit,
-    onPurge: () -> Unit
+    onPurge: () -> Unit,
+    summary: String? = null
 ) {
     // La papelera va en una columna ya apartada del cromo: sin fotos bajo la
     // status bar, sin velo (como su cromo flotante).
@@ -1846,6 +1861,7 @@ fun TrashSelectionTopBar(
         selectedCount = selectedCount,
         isMutating = isMutating,
         onClose = onClose,
+        summary = summary,
         statusBarScrim = false
     ) {
         TextButton(onClick = onRestore, enabled = !isMutating) {
