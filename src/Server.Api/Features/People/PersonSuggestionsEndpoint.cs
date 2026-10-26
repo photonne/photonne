@@ -155,3 +155,74 @@ public class DismissAllSuggestionsEndpoint : IEndpoint
 }
 
 public sealed record PersonSuggestionsPageResponse(int Total, List<PersonSuggestionItem> Items);
+
+/// <summary>One face of the global "¿Quién es?" queue, with the person it could be.</summary>
+public sealed record FaceSuggestionItem(
+    Guid Id,
+    Guid AssetId,
+    float Confidence,
+    float? SuggestedDistance,
+    Guid PersonId,
+    string? PersonName,
+    Guid? PersonCoverFaceId);
+
+public sealed record FaceSuggestionsPageResponse(int Total, List<FaceSuggestionItem> Items);
+
+/// <summary>
+/// Every pending face suggestion of the caller, whoever it points at: the
+/// "¿Quién es?" queue, so suggestions can be confirmed in one place instead of
+/// person by person. Strongest first; suggestions for hidden people are left
+/// out, as the people list leaves those people out. Each one is answered with
+/// <c>/api/faces/{id}/accept-suggestion</c> or <c>dismiss-suggestion</c>.
+/// </summary>
+public class ListFaceSuggestionsEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/people/suggestions", Handle)
+            .WithName("ListFaceSuggestions")
+            .WithTags("People")
+            .WithDescription("Lists every pending face suggestion of the caller, strongest first, with the person each one points at")
+            .RequireAuthorization();
+    }
+
+    private static async Task<Results<Ok<FaceSuggestionsPageResponse>, UnauthorizedHttpResult>> Handle(
+        [FromServices] ApplicationDbContext db,
+        [FromQuery] int? limit,
+        [FromQuery] int? offset,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
+
+        var q = db.UserFaceAssignments.AsNoTracking()
+            .Where(uf => uf.UserId == userId
+                        && uf.SuggestedPersonId != null
+                        && uf.PersonId == null
+                        && !uf.IsRejected
+                        && uf.SuggestedPerson!.OwnerId == userId
+                        && !uf.SuggestedPerson.IsHidden
+                        && uf.Face.Asset.DeletedAt == null
+                        && !uf.Face.Asset.IsFileMissing);
+
+        var total = await q.CountAsync(ct);
+
+        var items = await q
+            .OrderBy(uf => uf.SuggestedDistance)
+            .ThenByDescending(uf => uf.Face.Confidence)
+            .ThenBy(uf => uf.FaceId)
+            .Skip(Math.Max(0, offset ?? 0))
+            .Take(Math.Clamp(limit ?? 30, 1, 100))
+            .Select(uf => new FaceSuggestionItem(
+                uf.FaceId,
+                uf.Face.AssetId,
+                uf.Face.Confidence,
+                uf.SuggestedDistance,
+                uf.SuggestedPersonId!.Value,
+                uf.SuggestedPerson!.Name,
+                uf.SuggestedPerson.CoverFaceId))
+            .ToListAsync(ct);
+
+        return TypedResults.Ok(new FaceSuggestionsPageResponse(total, items));
+    }
+}
