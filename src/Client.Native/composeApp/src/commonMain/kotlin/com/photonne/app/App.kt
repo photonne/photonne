@@ -867,6 +867,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // Pendientes (fallos). Se consume una vez, también con la app ya abierta.
     // Funciones nuevas 3/3: también lo compartido desde otra app (Subida con
     // la cola ya cargada), los enlaces photonne:// y el aviso de actividad.
+    // Con la sesión abierta, un QR para conectar con un servidor no cambia
+    // nada: se descarta (no se queda esperando al próximo login).
+    val connectServer by com.photonne.app.ui.main.ExternalNavigation.connectServer
+        .collectAsStateWithLifecycle()
+    LaunchedEffect(connectServer) {
+        com.photonne.app.ui.main.ExternalNavigation.consumeConnectServer()
+    }
     val externalDestination by com.photonne.app.ui.main.ExternalNavigation.pending
         .collectAsStateWithLifecycle()
     LaunchedEffect(externalDestination) {

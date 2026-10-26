@@ -53,6 +53,29 @@ class LoginViewModel(
     private val _state = MutableStateFlow(initialState(config))
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
+    init {
+        // Un QR de Ajustes → App móvil (photonne://connect?server=…): el
+        // servidor se pone solo y se comprueba como si se hubiera escrito.
+        viewModelScope.launch {
+            com.photonne.app.ui.main.ExternalNavigation.connectServer.collect { server ->
+                if (server == null || _state.value.isSubmitting) return@collect
+                com.photonne.app.ui.main.ExternalNavigation.consumeConnectServer()
+                connectTo(server)
+            }
+        }
+    }
+
+    /** Pone [server] como dirección pública y la comprueba (el QR de la web). */
+    fun connectTo(server: String) {
+        if (_state.value.isSubmitting) return
+        _state.value = _state.value.copy(
+            step = LoginStep.ServerUrl,
+            serverUrl = server,
+            error = null
+        )
+        submitServerUrl()
+    }
+
     private fun initialState(config: PhotonneAppConfig): LoginUiState {
         val savedPublic = serverUrlStore.getPublic()
         val savedLocal = serverUrlStore.getLocal().orEmpty()
