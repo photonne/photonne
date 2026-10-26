@@ -68,6 +68,8 @@ public sealed class PhotonneApiFactory : WebApplicationFactory<Program>, IAsyncL
         builder.UseSetting("Jwt:Key", "test-jwt-key-please-ignore-0123456789abcdefghij");
         builder.UseSetting("Jwt:Issuer", "Photonne.Tests");
         builder.UseSetting("Jwt:Audience", "Photonne.Tests");
+        // The production PBKDF2 cost would double the suite's run time.
+        builder.UseSetting("Auth:PasswordHashIterations", "1000");
         builder.UseSetting("AdminUser:Username", AdminUsername);
         builder.UseSetting("AdminUser:Email", AdminEmail);
         builder.UseSetting("AdminUser:Password", AdminPassword);
