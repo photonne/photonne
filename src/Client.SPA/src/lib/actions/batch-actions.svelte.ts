@@ -12,6 +12,7 @@ import { getAssetDetailQueryKey } from '#lib/api/generated/@tanstack/svelte-quer
 import { invalidateLibrary, queryClient } from '#lib/api/query-client.js';
 import { announceAssetsMoved } from '#lib/albums/folder-moves.js';
 import { toasts } from '#lib/components/toasts.svelte.js';
+import { returnToRestored } from '#lib/library/viewer-flow.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { GridHost } from '#lib/timeline/grid-host.js';
 import type { Selection } from '#lib/timeline/selection.svelte.js';
@@ -134,6 +135,8 @@ export class BatchActions {
 						else {
 							invalidateLibrary();
 							this.#host.reload();
+							// Culling in the viewer: back to the photo it moved past.
+							await returnToRestored(assetIds);
 						}
 					}
 				}
