@@ -136,6 +136,14 @@
     <string name="album_leave_message">Perderás acceso a "%1$s". El propietario podrá invitarte de nuevo.</string>
     <string name="album_empty_title">Álbum vacío</string>
     <string name="album_empty_subtitle">Añade fotos a este álbum desde el visor.</string>
+    <string name="album_empty_subtitle_pick">Elige fotos de tu biblioteca o añádelas desde el visor.</string>
+    <string name="album_action_add_photos">Añadir fotos</string>
+    <string name="album_add_photos_title">Añadir fotos a «%1$s»</string>
+    <plurals name="album_add_photos_confirm">
+        <item quantity="one">Añadir %1$d foto</item>
+        <item quantity="other">Añadir %1$d fotos</item>
+    </plurals>
+    <string name="library_picker_hint">Toca las fotos que quieras</string>
     <string name="albums_empty_title">Aún no tienes álbumes</string>
     <string name="albums_empty_subtitle">Agrupa tus recuerdos en colecciones para encontrarlos antes.</string>
     <string name="albums_empty_action_create">Crear álbum</string>
@@ -372,6 +380,12 @@
     <string name="folders_empty_subtitle">Indexa una carpeta desde la app web para verla aquí.</string>
     <string name="folder_detail_empty_title">Carpeta vacía</string>
     <string name="folder_detail_empty_subtitle">Esta carpeta aún no tiene fotos ni subcarpetas.</string>
+    <string name="folder_action_bring_photos">Traer fotos</string>
+    <string name="folder_bring_photos_title">Mover fotos a «%1$s»</string>
+    <plurals name="folder_bring_photos_confirm">
+        <item quantity="one">Mover %1$d foto aquí</item>
+        <item quantity="other">Mover %1$d fotos aquí</item>
+    </plurals>
     <string name="folder_shared_badge">Compartida</string>
     <string name="folder_external_badge">Biblioteca externa</string>
     <string name="folders_scope_personal">Personales</string>

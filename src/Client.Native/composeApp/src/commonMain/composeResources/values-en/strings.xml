@@ -132,6 +132,14 @@
     <string name="album_leave_message">You will lose access to "%1$s". The owner can invite you back.</string>
     <string name="album_empty_title">Album empty</string>
     <string name="album_empty_subtitle">Add photos to this album from the asset viewer.</string>
+    <string name="album_empty_subtitle_pick">Choose photos from your library or add them from the viewer.</string>
+    <string name="album_action_add_photos">Add photos</string>
+    <string name="album_add_photos_title">Add photos to “%1$s”</string>
+    <plurals name="album_add_photos_confirm">
+        <item quantity="one">Add %1$d photo</item>
+        <item quantity="other">Add %1$d photos</item>
+    </plurals>
+    <string name="library_picker_hint">Tap the photos you want</string>
     <string name="albums_empty_title">No albums yet</string>
     <string name="albums_empty_subtitle">Group your memories into collections so they're easier to find.</string>
     <string name="albums_empty_action_create">Create album</string>
@@ -289,6 +297,12 @@
     <string name="folders_empty_subtitle">Index a folder from the web app to see it here.</string>
     <string name="folder_detail_empty_title">Empty folder</string>
     <string name="folder_detail_empty_subtitle">This folder has no photos or subfolders yet.</string>
+    <string name="folder_action_bring_photos">Bring photos</string>
+    <string name="folder_bring_photos_title">Move photos to “%1$s”</string>
+    <plurals name="folder_bring_photos_confirm">
+        <item quantity="one">Move %1$d photo here</item>
+        <item quantity="other">Move %1$d photos here</item>
+    </plurals>
     <string name="folder_shared_badge">Shared</string>
     <string name="folder_external_badge">External library</string>
     <string name="folders_scope_personal">Personal</string>

@@ -213,6 +213,20 @@ class AlbumDetailViewModel(
         }
     }
 
+    /**
+     * Adds photos chosen in the library picker and reloads the album (the
+     * server skips the ones already in). Whether it worked, for the picker.
+     */
+    suspend fun addFromLibrary(assetIds: List<String>): Boolean {
+        val albumId = _state.value.albumId ?: return false
+        return suspendRunCatching { repository.addAssetsBatch(albumId, assetIds) }
+            .onSuccess { refresh() }
+            .onFailure { error ->
+                _state.update { it.copy(error = errorFactory.from(error, "No se pudieron añadir las fotos")) }
+            }
+            .isSuccess
+    }
+
     fun setFavorite(assetId: String, isFavorite: Boolean) {
         _state.update { previous ->
             val updated = previous.items.map { item ->

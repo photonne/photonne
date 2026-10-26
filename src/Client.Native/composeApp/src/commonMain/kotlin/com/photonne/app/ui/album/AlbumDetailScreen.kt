@@ -1,5 +1,9 @@
 package com.photonne.app.ui.album
 
+import com.photonne.app.resources.album_empty_subtitle_pick
+import com.photonne.app.resources.album_action_add_photos
+import com.photonne.app.resources.album_add_photos_confirm
+import com.photonne.app.resources.album_add_photos_title
 import com.photonne.app.resources.album_hero_rules_edit
 import com.photonne.app.resources.album_hero_rules
 import com.photonne.app.resources.album_action_convert_manual
@@ -156,6 +160,19 @@ fun AlbumDetailScreen(
     val canReviewRemoved = !album.isSmart && (album.canWrite || album.isOwner)
     var reviewingRemoved by rememberSaveable { mutableStateOf(false) }
     var confirmingConvert by rememberSaveable { mutableStateOf(false) }
+    // "Añadir fotos": en un álbum normal que puedo editar (en uno inteligente manda la regla).
+    val canAddPhotos = !album.isSmart && (album.canWrite || album.isOwner)
+    var pickingPhotos by rememberSaveable { mutableStateOf(false) }
+    if (pickingPhotos) {
+        LibraryPicker(
+            title = stringResource(Res.string.album_add_photos_title, heroTitleFor(state, album)),
+            confirmLabel = { count -> pluralStringResource(Res.plurals.album_add_photos_confirm, count, count) },
+            onDismiss = { pickingPhotos = false },
+            onConfirm = { ids ->
+                viewModel.addFromLibrary(ids).also { added -> if (added) albumsViewModel.refresh() }
+            }
+        )
+    }
     if (confirmingConvert && onConvertToManual != null) {
         val count = if (state.albumId == album.id && !state.isLoading) state.items.size else album.assetCount
         com.photonne.app.ui.library.ConfirmActionDialog(
@@ -272,7 +289,11 @@ fun AlbumDetailScreen(
                     EmptyState(
                         icon = PhotonneIcons.Album,
                         title = stringResource(Res.string.album_empty_title),
-                        subtitle = stringResource(Res.string.album_empty_subtitle)
+                        subtitle = stringResource(
+                            if (canAddPhotos) Res.string.album_empty_subtitle_pick else Res.string.album_empty_subtitle
+                        ),
+                        actionLabel = if (canAddPhotos) stringResource(Res.string.album_action_add_photos) else null,
+                        onAction = if (canAddPhotos) { { pickingPhotos = true } } else null
                     )
                 }
             else -> Box(
@@ -416,6 +437,7 @@ fun AlbumDetailScreen(
                     onLeave = onLeave,
                     onVideoSummary = { summarising = true },
                     onConvertToManual = onConvertToManual?.let { { confirmingConvert = true } },
+                    onAddPhotos = if (canAddPhotos) { { pickingPhotos = true } } else null,
                     onReviewRemoved = if (canReviewRemoved) {
                         { reviewingRemoved = true }
                     } else null,
@@ -480,6 +502,8 @@ private fun AlbumDetailTopBar(
     onVideoSummary: () -> Unit,
     /** Null → sin "Convertir en álbum normal" en el menú. */
     onConvertToManual: (() -> Unit)? = null,
+    /** Null → sin "Añadir fotos" en el menú. */
+    onAddPhotos: (() -> Unit)? = null,
     /** Null → sin "Quitadas recientemente" en el menú. */
     onReviewRemoved: (() -> Unit)? = null,
     /**
@@ -548,6 +572,7 @@ private fun AlbumDetailTopBar(
                     onLeave = onLeave,
                     onVideoSummary = onVideoSummary,
                     onConvertToManual = onConvertToManual,
+                    onAddPhotos = onAddPhotos,
                     onReviewRemoved = onReviewRemoved
                 )
             }
@@ -733,6 +758,7 @@ private fun AlbumActionsOverflowMenu(
     onLeave: () -> Unit,
     onVideoSummary: () -> Unit,
     onConvertToManual: (() -> Unit)? = null,
+    onAddPhotos: (() -> Unit)? = null,
     onReviewRemoved: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
@@ -765,6 +791,13 @@ private fun AlbumActionsOverflowMenu(
                 },
                 onClick = { menuOpen = false; onTogglePin() }
             )
+            if (onAddPhotos != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.album_action_add_photos)) },
+                    leadingIcon = { Icon(PhotonneIcons.Add, contentDescription = null) },
+                    onClick = { menuOpen = false; onAddPhotos() }
+                )
+            }
             // Cualquiera que vea el álbum puede pedir su resumen: va a su biblioteca.
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.summaries_action_album)) },
@@ -852,3 +885,7 @@ private fun resolveAlbumCover(coverUrl: String, baseUrl: String): String {
     val sep = if (coverUrl.startsWith("/")) "" else "/"
     return "$baseUrl$sep$coverUrl"
 }
+
+/** The album's name as the hero shows it: the live one once this album is the open one. */
+private fun heroTitleFor(state: AlbumDetailUiState, album: AlbumSummary): String =
+    state.albumName?.takeIf { state.albumId == album.id } ?: album.name
