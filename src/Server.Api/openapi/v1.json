@@ -13241,6 +13241,13 @@
               "string"
             ]
           },
+          "placeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "placeCountryCode": {
             "type": [
               "null",

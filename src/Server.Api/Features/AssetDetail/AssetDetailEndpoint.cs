@@ -92,6 +92,7 @@ public class AssetDetailEndpoint : IEndpoint
                 // Lugar ya resuelto al indexar (PlaceId): un JOIN por clave
                 // primaria, sin geocodificar en cada petición.
                 PlaceName = asset.Exif.Place?.Name,
+                PlaceId = asset.Exif.PlaceId,
                 PlaceCountryCode = asset.Exif.Place?.CountryCode
             } : null,
             Thumbnails = asset.Thumbnails.Select(t => new ThumbnailInfoResponse
