@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Photonne.Server.Api.Shared.Data;
@@ -51,6 +52,7 @@ public class UserInitializationService
         {
             Console.WriteLine("[INIT] Admin existente detectado — saltando creación inicial.");
             await EnsurePrimaryAdminExistsAsync(cancellationToken);
+            await WarnAboutPlaceholderPasswordsAsync(cancellationToken);
             return;
         }
 
@@ -59,11 +61,19 @@ public class UserInitializationService
         var adminPassword = _configuration["AdminUser:Password"];
 
         if (string.IsNullOrWhiteSpace(adminUsername) ||
-            string.IsNullOrWhiteSpace(adminEmail) ||
-            string.IsNullOrWhiteSpace(adminPassword))
+            string.IsNullOrWhiteSpace(adminEmail))
         {
             Console.WriteLine("[INIT] No hay administradores y no se configuró AdminUser:* — saltando.");
             return;
+        }
+
+        // Without a password, or with one published in this repo, the admin gets
+        // a random one that is printed once: anyone could guess "admin123".
+        var generatedPassword = false;
+        if (string.IsNullOrWhiteSpace(adminPassword) || IsPlaceholderPassword(adminPassword))
+        {
+            adminPassword = GeneratePassword();
+            generatedPassword = true;
         }
 
         // Username becomes the on-disk folder name (/assets/users/{username}/...).
@@ -98,6 +108,64 @@ public class UserInitializationService
 
         Console.WriteLine(
             $"[INIT] Usuario administrador '{adminUsername}' creado exitosamente como admin principal.");
+        if (generatedPassword)
+        {
+            Console.WriteLine(
+                $"[INIT] ADMIN_PASSWORD no estaba definida o era un valor de ejemplo. Contraseña generada para '{adminUsername}': {adminPassword}");
+            Console.WriteLine("[INIT] Cámbiala en Ajustes → Seguridad después de entrar; no se volverá a mostrar.");
+        }
+    }
+
+    /// <summary>
+    /// Passwords that have shipped as defaults or examples in docker-compose,
+    /// appsettings, .env.example and the README.
+    /// </summary>
+    internal static readonly string[] PlaceholderPasswords =
+    [
+        "admin123",
+        "cambia_esto_por_password_seguro",
+        "contraseña-segura",
+    ];
+
+    internal static bool IsPlaceholderPassword(string password) =>
+        PlaceholderPasswords.Contains(password.Trim(), StringComparer.Ordinal);
+
+    /// <summary>
+    /// Four dash-separated groups of five, without look-alikes (0/O, 1/l/I) so
+    /// it can be typed from the log. Redrawn until it meets the password policy
+    /// (upper, lower, digit; the dashes are the special character).
+    /// </summary>
+    internal static string GeneratePassword()
+    {
+        const string alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        while (true)
+        {
+            var groups = Enumerable.Range(0, 4).Select(_ => RandomNumberGenerator.GetString(alphabet, 5));
+            var password = string.Join('-', groups);
+            if (password.Any(char.IsUpper) && password.Any(char.IsLower) && password.Any(char.IsDigit))
+                return password;
+        }
+    }
+
+    /// <summary>
+    /// Existing installs keep their admin, so a placeholder password stays until
+    /// someone changes it: say so on every boot.
+    /// </summary>
+    private async Task WarnAboutPlaceholderPasswordsAsync(CancellationToken cancellationToken)
+    {
+        var admins = await _dbContext.Users
+            .Where(u => u.Role == "Admin" && u.IsActive)
+            .Select(u => new { u.Username, u.PasswordHash })
+            .ToListAsync(cancellationToken);
+
+        foreach (var admin in admins)
+        {
+            if (PlaceholderPasswords.Any(p => _authService.VerifyPassword(p, admin.PasswordHash)))
+            {
+                Console.WriteLine(
+                    $"[WARN] El administrador '{admin.Username}' usa una contraseña de ejemplo pública. Cámbiala en Ajustes → Seguridad.");
+            }
+        }
     }
 
     /// <summary>

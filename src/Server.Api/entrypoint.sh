@@ -17,7 +17,7 @@ set -e
 
 PUID="${PUID:-1654}"
 PGID="${PGID:-1654}"
-DATA_DIRS="/data/assets /data/thumbnails"
+DATA_DIRS="/data/assets /data/thumbnails /data/config"
 
 if [ "$(id -u)" = "0" ]; then
     # Remap the app user to the requested ids so files created by the

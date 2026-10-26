@@ -112,7 +112,7 @@ cd photonne
 cp .env.example .env
 ```
 
-Edita `.env` y rellena al menos los valores marcados como obligatorios: `POSTGRES_PASSWORD`, `JWT_KEY` y `ADMIN_PASSWORD`. Puedes generar una clave JWT segura con:
+Edita `.env` y rellena al menos `POSTGRES_PASSWORD`. `JWT_KEY` y `ADMIN_PASSWORD` son opcionales: si los dejas vacíos, el servidor genera una clave JWT (en `CONFIG_HOST_PATH/jwt.key`) y una contraseña para el admin, que escribe una sola vez en el log (`docker compose logs photonne-api`). Los valores de ejemplo publicados (`TOKEN_SUPER_SECRET`, `admin123`…) se tratan como vacíos. Si prefieres fijar tú la clave JWT:
 
 ```bash
 openssl rand -base64 48
@@ -126,7 +126,7 @@ docker compose up -d
 
 Usa la imagen pre-construida de GitHub Container Registry (`ghcr.io/photonne/photonne:latest`). Levanta:
 - **PostgreSQL 17** (interno, sin puerto expuesto)
-- **PgAdmin 4** en `http://localhost:5050`
+- **PgAdmin 4** solo bajo demanda: `docker compose --profile pgadmin up -d` (en `http://127.0.0.1:5050`)
 - **Photonne API** en `http://localhost:1107`
 
 ### 4. Ejecutar en desarrollo (sin Docker)
@@ -169,7 +169,7 @@ El servidor de desarrollo de Vite hace de proxy de `/api`, así que el navegador
 | `POSTGRES_DB` | Nombre de la base de datos | `photonne` |
 | `POSTGRES_USER` | Usuario de PostgreSQL | `photonne_user` |
 | `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | `photonne_password` |
-| `Jwt__Key` | Clave secreta para JWT (mín. 32 caracteres) — usar `JWT_KEY` en `.env` | `TOKEN_SUPER_SECRET` |
+| `Jwt__Key` | Clave secreta para JWT (mín. 32 caracteres) — usar `JWT_KEY` en `.env`. Vacía o de ejemplo: se genera en `/data/config/jwt.key` | *(generada)* |
 | `Jwt__Issuer` | Emisor del token | `Photonne` |
 | `Jwt__Audience` | Audiencia del token | `Photonne` |
 | `HTTPS_REDIRECT` | Forzar redirección HTTPS | `false` |
@@ -179,9 +179,10 @@ El servidor de desarrollo de Vite hace de proxy de `/api`, así que el navegador
 | `PGADMIN_PASSWORD` | Contraseña de PgAdmin | `admin` |
 | `ASSETS_HOST_PATH` | Ruta absoluta del host montada como volumen de assets (ver [Rutas en el host](#rutas-en-el-host)) | `./photonne/data/assets` |
 | `THUMBNAILS_HOST_PATH` | Ruta absoluta del host montada como volumen de miniaturas | `./photonne/data/thumbnails` |
+| `CONFIG_HOST_PATH` | Ruta del host montada en `/data/config` (clave JWT generada) | `./data/config` |
 | `ADMIN_USERNAME` | Nombre de usuario del admin inicial | `admin` |
 | `ADMIN_EMAIL` | Email del admin inicial | `admin@photonne.local` |
-| `ADMIN_PASSWORD` | Contraseña del admin inicial | `admin123` |
+| `ADMIN_PASSWORD` | Contraseña del admin inicial. Vacía o de ejemplo: se genera y se escribe en el log | *(generada)* |
 | `ADMIN_FIRSTNAME` | Nombre del admin inicial | `Administrador` |
 | `ADMIN_LASTNAME` | Apellido del admin inicial | `Sistema` |
 
@@ -194,7 +195,7 @@ El admin inicial se configura mediante variables de entorno (ver tabla anterior)
   "AdminUser": {
     "Username": "admin",
     "Email": "admin@photonne.local",
-    "Password": "admin123",
+    "Password": "una-contraseña-larga",
     "FirstName": "Administrador",
     "LastName": "Sistema"
   }
@@ -221,15 +222,15 @@ POSTGRES_DB=photonne
 POSTGRES_USER=photonne_user
 POSTGRES_PASSWORD=photonne_password
 
-# JWT (cambiar en producción)
-JWT_KEY=clave-secreta-muy-larga-de-al-menos-32-caracteres
+# JWT (opcional; vacío = se genera una). Genera la tuya con: openssl rand -base64 48
+JWT_KEY=
 
 # Rutas de datos en el host (absolutas — ver "Rutas en el host" más abajo)
 ASSETS_HOST_PATH=/home/<TuUsuario>/photonne/data/assets
 THUMBNAILS_HOST_PATH=/home/<TuUsuario>/photonne/data/thumbnails
 
-# Admin inicial
-ADMIN_PASSWORD=contraseña-segura
+# Admin inicial (opcional; vacío = se genera y se escribe en el log)
+ADMIN_PASSWORD=
 ```
 
 ### Rutas en el host
