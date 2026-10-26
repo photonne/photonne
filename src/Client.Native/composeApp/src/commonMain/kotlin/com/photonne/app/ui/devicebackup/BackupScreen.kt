@@ -845,21 +845,30 @@ private fun BackupStatusCard(
 
 /**
  * Explains why a pending backlog isn't moving: auto-sync is on but its
- * constraints (Wi-Fi, charging) aren't met yet. Null when there's nothing
- * pending, a pass is already running, or auto-sync is off — in that last case
- * nothing is waiting, the user just has to press the button.
+ * constraints (Wi-Fi, charging) aren't met yet, as the device is now. Null
+ * when there's nothing pending, a pass is already running, or auto-sync is
+ * off — in that last case nothing is waiting, the user just has to press the
+ * button.
  */
 @Composable
 private fun waitingReasonLabel(state: DeviceBackupUiState, pendingCount: Int): String? {
+    val now = com.photonne.app.data.devicebackup.rememberDeviceConditions()
     if (pendingCount == 0) return null
     if (state.isSyncing || state.isCheckingHashes) return null
     val prefs = state.backgroundSync
     if (!prefs.enabled) return null
+    // Only what the device doesn't meet right now: on Wi-Fi it used to say
+    // "se subirá cuando haya Wi-Fi" all the same.
+    val unmet = com.photonne.app.data.devicebackup.unmetConditions(
+        requireWifi = prefs.requireWifi,
+        requireCharging = prefs.requireCharging,
+        now = now
+    )
     return when {
-        prefs.requireWifi && prefs.requireCharging ->
+        unmet.wifi && unmet.charging ->
             stringResource(Res.string.backup_status_waiting_wifi_charging)
-        prefs.requireWifi -> stringResource(Res.string.backup_status_waiting_wifi)
-        prefs.requireCharging -> stringResource(Res.string.backup_status_waiting_charging)
+        unmet.wifi -> stringResource(Res.string.backup_status_waiting_wifi)
+        unmet.charging -> stringResource(Res.string.backup_status_waiting_charging)
         else -> null
     }
 }

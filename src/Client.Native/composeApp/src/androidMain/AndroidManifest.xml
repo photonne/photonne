@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Saber si la red es ilimitada (Wi-Fi) para explicar por qué la copia espera. -->
+
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+ runtime permission; only used to surface background
          backup failures. If the user never grants it, the failure still
