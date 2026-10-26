@@ -59,6 +59,10 @@ public class AlbumsEndpoint : IEndpoint
             .WithName("UpdateAlbum")
             .WithDescription("Updates an album");
 
+        group.MapPost("{albumId:guid}/convert-to-manual", ConvertToManualAlbum)
+            .WithName("ConvertToManualAlbum")
+            .WithDescription("Turns a smart album into a manual one that keeps the photos it has now (owner only)");
+
         group.MapDelete("{albumId:guid}", DeleteAlbum)
             .WithName("DeleteAlbum")
             .WithDescription("Deletes an album");
@@ -681,6 +685,13 @@ public class AlbumsEndpoint : IEndpoint
             await materializer.MaterializeAsync(album.Id, cancellationToken);
         cache.Remove($"albums:{userId}");
 
+        return TypedResults.Ok(await BuildAlbumResponseAsync(dbContext, album, userId, cancellationToken));
+    }
+
+    /// <summary>The album as its edit endpoints return it; needs Permissions loaded.</summary>
+    private static async Task<AlbumResponse> BuildAlbumResponseAsync(
+        ApplicationDbContext dbContext, Album album, Guid userId, CancellationToken cancellationToken)
+    {
         var contents = (await LoadContentsAsync(dbContext, new[] { album }, cancellationToken))[album.Id];
 
         var response = new AlbumResponse
@@ -698,12 +709,76 @@ public class AlbumsEndpoint : IEndpoint
             CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
             CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions)
         };
-        var pin = await GetPinAsync(dbContext, albumId, userId, cancellationToken);
+        var pin = await GetPinAsync(dbContext, album.Id, userId, cancellationToken);
         response.IsPinned = pin != null;
         response.PinnedAt = pin?.PinnedAt;
         response.PinPosition = pin?.Position;
 
-        return TypedResults.Ok(response);
+        return response;
+    }
+
+    /// <summary>
+    /// Freezes a smart album into a manual one with the photos it has right
+    /// now: the rule goes, the members stay (newest first, the order the smart
+    /// album showed them) and can then be curated by hand. Owner only, like
+    /// the rule itself.
+    /// </summary>
+    private async Task<Results<Ok<AlbumResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>, BadRequest<ApiError>>> ConvertToManualAlbum(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
+        [FromServices] SmartAlbumMaterializer materializer,
+        [FromRoute] Guid albumId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        var (hasAccess, _, _, _) = await CheckAlbumPermissionsAsync(dbContext, albumId, userId, cancellationToken);
+        if (!hasAccess)
+        {
+            return TypedResults.NotFound(new ApiError($"Album with ID {albumId} not found", "album_not_found"));
+        }
+
+        var album = await dbContext.Albums
+            .Include(a => a.Permissions)
+            .FirstAsync(a => a.Id == albumId, cancellationToken);
+        if (album.OwnerId != userId)
+        {
+            return TypedResults.Forbid();
+        }
+        if (album.Kind != AlbumKind.Smart)
+        {
+            return TypedResults.BadRequest(new ApiError("Only smart albums can be converted", "not_smart_album"));
+        }
+
+        // Freeze what the rule matches now, not at the last sweep.
+        await materializer.MaterializeAsync(album.Id, cancellationToken);
+
+        var rows = await dbContext.AlbumAssets
+            .Where(aa => aa.AlbumId == album.Id)
+            .OrderByDescending(aa => aa.Asset.CapturedAt)
+            .ThenBy(aa => aa.AssetId)
+            .ToListAsync(cancellationToken);
+        for (var i = 0; i < rows.Count; i++)
+            rows[i].Order = i + 1;
+
+        album.Kind = AlbumKind.Manual;
+        album.SmartRule = null;
+        album.ResolveMode = SmartResolveMode.Dynamic;
+        album.LastMaterializedAt = null;
+        album.UpdatedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // The kind shows in every member's album list.
+        cache.Remove($"albums:{album.OwnerId}");
+        foreach (var permission in album.Permissions)
+            cache.Remove($"albums:{permission.UserId}");
+
+        return TypedResults.Ok(await BuildAlbumResponseAsync(dbContext, album, userId, cancellationToken));
     }
 
     private async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiError>>> DeleteAlbum(

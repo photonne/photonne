@@ -47,7 +47,9 @@ public static class SmartRuleCompiler
             "folder" => node.FolderIds is { Count: > 0 }
                 ? AssetConditions.FolderIn(node.FolderIds.ToHashSet())
                 : PredicateBuilder.False<Asset>(),
-            "daterange" => AssetConditions.CapturedBetween(node.From, node.To),
+            "daterange" => string.IsNullOrWhiteSpace(node.Last)
+                ? AssetConditions.CapturedBetween(node.From, node.To)
+                : AssetConditions.CapturedBetween(RollingWindowStart(node.Last, DateTime.UtcNow), null),
             "scene" => CompileLabels(node, AssetConditions.HasScene, defaultMatch: MatchAll),
             "object" => CompileLabels(node, AssetConditions.HasObject, defaultMatch: MatchAll),
             "tag" => CompileTag(node),
@@ -61,6 +63,28 @@ public static class SmartRuleCompiler
                 : AssetConditions.Text(node.Query),
             null or "" => throw new SmartRuleException("Rule node has neither 'op' nor 'type'."),
             _ => throw new SmartRuleException($"Unknown condition type '{node.Type}'.")
+        };
+    }
+
+    /// <summary>
+    /// First day of a rolling window ending today: "90d" is today and the 89
+    /// days before it, "6m" starts six months back, "1y" a year back. Capture
+    /// times are the camera's wall clock stored as UTC, so "today" is the UTC
+    /// date. The periodic sweep re-materializes the album, so it rolls on its own.
+    /// </summary>
+    internal static DateTime RollingWindowStart(string last, DateTime nowUtc)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(last.Trim(), "^([1-9][0-9]{0,3})([dmy])$");
+        if (!match.Success)
+            throw new SmartRuleException($"Invalid rolling date window '{last}' (expected e.g. 90d, 6m, 1y).");
+
+        var amount = int.Parse(match.Groups[1].Value);
+        var today = nowUtc.Date;
+        return match.Groups[2].Value switch
+        {
+            "d" => today.AddDays(1 - amount),
+            "m" => today.AddMonths(-amount),
+            _ => today.AddYears(-amount)
         };
     }
 

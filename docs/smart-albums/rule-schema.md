@@ -62,7 +62,9 @@ y filtrar `folderSet.Contains(a.FolderId)`. Personal vs compartida se deriva del
 { "type": "dateRange", "from": "2024-01-01", "to": "2024-12-31" }  // ISO date, cualquiera nullable
 ```
 Mapea a `SearchEndpoint.cs:88-102` sobre `Asset.CapturedAt` (indexado). `to` incluye el día completo.
-Futuro: `relative` (`"last": "90d"`) para álbumes rodantes ("últimos 3 meses").
+Ventana móvil: `{ "type": "dateRange", "last": "90d" }` (también `6m`, `1y`) son los últimos N días,
+meses o años hasta hoy (fecha UTC, como `CapturedAt`); si está, manda sobre `from`/`to`. El barrido
+periódico de `SmartAlbumMaterializationWorker` vuelve a materializar el álbum, así que rueda solo.
 
 ### `scene` — escenas (Places365)
 ```jsonc
