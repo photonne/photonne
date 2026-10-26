@@ -60,6 +60,23 @@ public sealed class TrashLifecycleTests : IntegrationTestBase
         Assert.NotNull(asset.DeletedAt);
     }
 
+    private sealed record TrashPage(List<TrashItem> Items);
+    private sealed record TrashItem(Guid Id, DateTime? DeletedAt);
+
+    [Fact]
+    public async Task TrashList_CarriesWhenEachItemWasDeleted()
+    {
+        var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
+        var assetId = await CreateAssetForUserAsync(alice);
+        await aliceClient.PostAsJsonAsync("/api/assets/delete", new DeleteRequest(new List<Guid> { assetId }));
+
+        var page = await aliceClient.GetFromJsonAsync<TrashPage>("/api/assets/trash?pageSize=50");
+
+        var item = Assert.Single(page!.Items);
+        Assert.Equal(assetId, item.Id);
+        Assert.NotNull(item.DeletedAt);
+    }
+
     [Fact]
     public async Task Delete_ReturnsForbidden_WhenAssetBelongsToAnotherUser()
     {

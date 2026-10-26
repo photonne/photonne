@@ -93,6 +93,7 @@ public class TrashListEndpoint : IEndpoint
             Height = asset.Exif?.Height,
             IsFavorite = asset.IsFavorite,
             IsArchived = asset.IsArchived,
+            DeletedAt = asset.DeletedAt,
             Tags = BuildTagList(asset),
             IsReadOnly = asset.ExternalLibraryId.HasValue
         }.WithThumbnailShape(asset)).ToList();
