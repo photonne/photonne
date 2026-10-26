@@ -37,6 +37,19 @@ import com.photonne.app.ui.main.LocalChromeHazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.pluralStringResource
 import com.photonne.app.ui.theme.Spacing
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.resources.memory_save_as_album
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.PhotonneIcons
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * A memory's assets, already loaded. Both surfaces reach the same screen from
@@ -87,7 +100,10 @@ fun MemoryDetailScreen(
     onApplySelection: (SelectionPatch) -> Unit = {},
     selectionTopBar: @Composable () -> Unit = {},
     selectionBottomBar: @Composable () -> Unit = {},
+    /** "Guardar como álbum" made one; null hides the action. */
+    onSavedAsAlbum: ((AlbumSummary) -> Unit)? = null,
 ) {
+    var savingAsAlbum by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
     val gestures = rememberAssetGridSelectionGestures(
         onApplySelection = onApplySelection,
@@ -120,6 +136,7 @@ fun MemoryDetailScreen(
                 MemoryHero(
                     memory = memory,
                     baseUrl = baseUrl,
+                    onSaveAsAlbum = onSavedAsAlbum?.let { { savingAsAlbum = true } },
                 )
             },
         )
@@ -166,12 +183,25 @@ fun MemoryDetailScreen(
             )
         }
     }
+
+    if (savingAsAlbum && onSavedAsAlbum != null) {
+        SaveMemoryAsAlbumSheet(
+            title = memory.title,
+            assetIds = memory.items.map { it.id },
+            onDismiss = { savingAsAlbum = false },
+            onSaved = { album ->
+                savingAsAlbum = false
+                onSavedAsAlbum(album)
+            }
+        )
+    }
 }
 
 @Composable
 private fun MemoryHero(
     memory: MemoryDetailContext,
     baseUrl: String,
+    onSaveAsAlbum: (() -> Unit)?,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         BoxWithConstraints(
@@ -199,15 +229,30 @@ private fun MemoryHero(
             )
         }
 
-        Text(
-            text = pluralStringResource(
-                Res.plurals.album_hero_photos,
-                memory.items.size,
-                memory.items.size,
-            ),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.md, bottom = Spacing.sm),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = Spacing.lg, end = Spacing.sm, top = Spacing.xs, bottom = Spacing.xxs),
+        ) {
+            Text(
+                text = pluralStringResource(
+                    Res.plurals.album_hero_photos,
+                    memory.items.size,
+                    memory.items.size,
+                ),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            // A memory is regenerated every night; an album stays.
+            if (onSaveAsAlbum != null && memory.items.isNotEmpty()) {
+                TextButton(onClick = onSaveAsAlbum) {
+                    Icon(PhotonneIcons.Album, contentDescription = null, modifier = Modifier.size(IconSize.sm))
+                    Spacer(Modifier.size(Spacing.xs))
+                    Text(stringResource(Res.string.memory_save_as_album))
+                }
+            }
+        }
     }
 }

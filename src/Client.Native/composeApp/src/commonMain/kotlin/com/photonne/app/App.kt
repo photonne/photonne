@@ -47,6 +47,8 @@ import com.photonne.app.resources.selection_favorite_removed_done
 import com.photonne.app.resources.selection_favorite_failed
 import com.photonne.app.resources.selection_deleted_permanently_done
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.memory_open_album
+import com.photonne.app.resources.memory_saved_as_album
 import com.photonne.app.resources.admin_system_enrichment_failures
 import com.photonne.app.resources.admin_section_settings
 import com.photonne.app.resources.admin_section_system
@@ -1709,6 +1711,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                 },
                 onBack = { appState.memoryDetail = null },
+                onSavedAsAlbum = { album ->
+                    albumsViewModel.refresh()
+                    coroutineScope.launch {
+                        snackbarController.show(
+                            message = org.jetbrains.compose.resources.getString(
+                                Res.string.memory_saved_as_album, album.name
+                            ),
+                            actionLabel = org.jetbrains.compose.resources.getString(Res.string.memory_open_album),
+                            onAction = {
+                                appState.memoryDetail = null
+                                appState.openAlbumFromCollections(album)
+                            }
+                        )
+                    }
+                },
                 selection = memorySelection,
                 onItemLongClick = { index ->
                     memory.items.getOrNull(index)?.let {

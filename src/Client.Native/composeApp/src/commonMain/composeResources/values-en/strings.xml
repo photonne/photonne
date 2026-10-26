@@ -2039,4 +2039,12 @@
     <string name="summaries_regenerate">Create again</string>
     <string name="summaries_close">Close</string>
     <string name="summaries_requested">Creating “%1$s”. We will let you know when it is ready.</string>
+    <string name="memory_save_as_album">Save as album</string>
+    <string name="memory_album_name">Album name</string>
+    <string name="memory_saved_as_album">Album “%1$s” created</string>
+    <string name="memory_open_album">Open</string>
+    <plurals name="memory_save_as_album_hint">
+        <item quantity="one">%1$d photo goes to a new album, which stays even if the memory changes.</item>
+        <item quantity="other">%1$d photos go to a new album, which stays even if the memory changes.</item>
+    </plurals>
 </resources>
