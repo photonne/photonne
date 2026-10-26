@@ -41,6 +41,8 @@ class AlbumsRepository(
 
     suspend fun smartRule(albumId: String): SmartAlbumRuleDetails = api.getSmartAlbumRule(albumId)
 
+    suspend fun convertToManual(albumId: String): AlbumSummary = api.convertAlbumToManual(albumId)
+
     suspend fun delete(albumId: String) {
         api.deleteAlbum(albumId)
     }

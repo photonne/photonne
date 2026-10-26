@@ -333,6 +333,9 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
             }
             appState.selectedTab == MainTab.Albums && appState.moreSubscreen == null -> {
                 val openedAlbum = appState.selectedAlbum
+                val convertedMessage = org.jetbrains.compose.resources.stringResource(
+                    com.photonne.app.resources.Res.string.album_converted
+                )
                 if (openedAlbum != null) {
                     AlbumDetailScreen(
                         album = openedAlbum,
@@ -375,6 +378,24 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
                         },
                         onLeave = { appState.showLeaveAlbum = true },
                         viewModel = albumDetailViewModel,
+                        onEditRules = if (openedAlbum.isSmart && openedAlbum.isOwner) {
+                            {
+                                appState.editingSmartAlbum = openedAlbum.copy(
+                                    name = albumDetailState.albumName ?: openedAlbum.name,
+                                    description = albumDetailState.albumDescription ?: openedAlbum.description,
+                                )
+                                appState.moreSubscreen = MoreSubscreen.SmartAlbumEditor
+                            }
+                        } else null,
+                        onConvertToManual = if (openedAlbum.isSmart && openedAlbum.isOwner) {
+                            {
+                                albumsViewModel.convertToManual(openedAlbum.id) { updated ->
+                                    appState.selectedAlbum = openedAlbum.copy(kind = updated.kind)
+                                    albumDetailViewModel.refresh()
+                                    snackbarController.show(convertedMessage)
+                                }
+                            }
+                        } else null,
                         immersive = albumDetailImmersive,
                         onChromeVisibleChange = { appState.albumDetailChromeVisible = it }
                     )

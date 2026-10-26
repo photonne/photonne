@@ -23,6 +23,8 @@ data class SmartRule(
     // ISO-8601 dates ("2024-01-01"); the server binds them to DateTime?.
     val from: String? = null,
     val to: String? = null,
+    /** Rolling window for "dateRange" ("90d", "6m", "1y"); wins over from/to. */
+    val last: String? = null,
     val labels: List<String>? = null,
     val userTagIds: List<String>? = null,
     val tagType: String? = null,

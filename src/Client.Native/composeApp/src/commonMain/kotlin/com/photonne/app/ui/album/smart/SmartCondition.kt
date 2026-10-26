@@ -5,6 +5,24 @@ import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.SmartRuleFolderRef
 import com.photonne.app.data.models.SmartRulePersonRef
 
+/** "The last [amount] days, months or years" of a dateRange condition ("90d" on the wire). */
+data class RollingWindow(val amount: Int, val period: Period) {
+    enum class Period(val wire: Char) { Days('d'), Months('m'), Years('y') }
+
+    val wire: String get() = "$amount${period.wire}"
+
+    companion object {
+        const val MAX_AMOUNT = 9999
+
+        fun parse(value: String): RollingWindow? {
+            val trimmed = value.trim()
+            val period = Period.entries.firstOrNull { it.wire == trimmed.lastOrNull() } ?: return null
+            val amount = trimmed.dropLast(1).takeIf { it.firstOrNull() != '0' }?.toIntOrNull() ?: return null
+            return if (amount in 1..MAX_AMOUNT) RollingWindow(amount, period) else null
+        }
+    }
+}
+
 /** A person the user picked, kept light for chip rendering (face-thumbnail based). */
 data class PersonRef(val id: String, val name: String, val coverFaceId: String?)
 
@@ -42,6 +60,8 @@ sealed interface SmartCondition {
         /** ISO date "yyyy-MM-dd"; either bound may be null (open-ended). */
         val from: String?,
         val to: String?,
+        /** A rolling window instead of the dates: the last [window] (wins over from/to). */
+        val window: RollingWindow? = null,
         override val key: String = "dateRange",
     ) : SmartCondition
 
@@ -77,7 +97,7 @@ sealed interface SmartCondition {
         get() = when (this) {
             is People -> people.isEmpty()
             is Folders -> folders.isEmpty()
-            is DateRange -> from == null && to == null
+            is DateRange -> window == null && from == null && to == null
             is Scenes -> labels.isEmpty()
             is Objects -> labels.isEmpty()
             is MediaType -> false
@@ -96,7 +116,9 @@ private fun SmartCondition.toRule(): SmartRule = when (this) {
         folderIds = folders.map { it.id },
         includeSubfolders = includeSubfolders,
     )
-    is SmartCondition.DateRange -> SmartRule(type = "dateRange", from = from, to = to)
+    is SmartCondition.DateRange ->
+        if (window != null) SmartRule(type = "dateRange", last = window.wire)
+        else SmartRule(type = "dateRange", from = from, to = to)
     is SmartCondition.Scenes -> SmartRule(type = "scene", match = if (matchAll) "all" else "any", labels = labels)
     is SmartCondition.Objects -> SmartRule(type = "object", match = if (matchAll) "all" else "any", labels = labels)
     is SmartCondition.MediaType -> SmartRule(type = "mediaType", mediaType = mediaType)
@@ -179,7 +201,12 @@ private fun SmartRule.toCondition(
             includeSubfolders = includeSubfolders ?: true,
         )
         // The server binds these to DateTime; keep only the date part the picker edits.
-        "daterange" -> SmartCondition.DateRange(from = from?.take(10), to = to?.take(10))
+        // A window this editor can't read stays empty and goes to `preserved`.
+        "daterange" -> if (last != null) {
+            RollingWindow.parse(last)?.let { SmartCondition.DateRange(from = null, to = null, window = it) }
+        } else {
+            SmartCondition.DateRange(from = from?.take(10), to = to?.take(10))
+        }
         "scene" -> SmartCondition.Scenes(labels.orEmpty(), matchAll = all)
         "object" -> SmartCondition.Objects(labels.orEmpty(), matchAll = all)
         "mediatype" -> when {
