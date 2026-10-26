@@ -3,7 +3,23 @@ package com.photonne.app.ui.utilities
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.CheckCircle
+import com.photonne.app.resources.action_undo
+import com.photonne.app.resources.selection_action_trash
+import com.photonne.app.resources.selection_deleted_permanently_done
+import com.photonne.app.resources.selection_trash_done
+import com.photonne.app.resources.trash_disabled_delete_confirm
+import com.photonne.app.resources.trash_disabled_delete_message
+import com.photonne.app.resources.trash_disabled_delete_title
+import com.photonne.app.resources.utilities_duplicates_confirm_title
+import com.photonne.app.resources.utilities_duplicates_confirm_message
+import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.main.LocalSnackbarController
+import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +85,14 @@ fun UtilitiesLargeFilesScreen(
     viewModel: UtilitiesLargeFilesViewModel,
     baseUrl: String,
     onAssetClick: (index: Int, items: List<TimelineItem>) -> Unit,
+    /** Restores from the trash the ids the undo just sent there. */
+    onUndoTrash: (List<String>) -> Unit = {},
+    /**
+     * The trash confirmation is open. It lives in the host because the button
+     * that opens it is the confirm capsule in place of the nav, as in Duplicados.
+     */
+    confirmOpen: Boolean = false,
+    onConfirmOpenChange: (Boolean) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val reservedTop = subscreenChromeReservedTop()
@@ -134,7 +158,14 @@ fun UtilitiesLargeFilesScreen(
                             modifier = Modifier.animateItem(),
                             item = item,
                             baseUrl = baseUrl,
-                            onClick = { onAssetClick(index, state.items) }
+                            isSelected = item.id in state.selection,
+                            // While choosing, a tap marks; otherwise it opens.
+                            // A long press starts choosing, as in the grids.
+                            onClick = {
+                                if (state.isSelectionActive) viewModel.toggle(item.id)
+                                else onAssetClick(index, state.items)
+                            },
+                            onLongClick = { viewModel.toggle(item.id) }
                         )
                     }
                 }
@@ -162,20 +193,89 @@ fun UtilitiesLargeFilesScreen(
                 onRetry = viewModel::refresh
             )
         }
-        SubscreenFloatingChrome(
-            title = title,
-            onBack = onBack,
-            scroll = SubscreenScroll(
-                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
-                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
-                isScrollInProgress = { listState.isScrollInProgress },
-                scrollToTopMinIndex = 4,
-                onScrollToTop = { listState.animateScrollToItem(0) }
-            ),
-            hazeState = hazeState,
-            onChromeVisibleChange = onChromeVisibleChange
-        )
+        // While choosing, the selection capsule (painted by the host) takes its place.
+        if (!state.isSelectionActive) {
+            SubscreenFloatingChrome(
+                title = title,
+                onBack = onBack,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                    firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                    isScrollInProgress = { listState.isScrollInProgress },
+                    scrollToTopMinIndex = 4,
+                    onScrollToTop = { listState.animateScrollToItem(0) }
+                ),
+                hazeState = hazeState,
+                onChromeVisibleChange = onChromeVisibleChange
+            )
+        }
     }
+
+    LargeFilesTrashConfirm(
+        open = confirmOpen,
+        state = state,
+        viewModel = viewModel,
+        onOpenChange = onConfirmOpenChange,
+        onUndoTrash = onUndoTrash
+    )
+}
+
+/** Trash (or delete, with the trash off) what is marked, with undo. */
+@Composable
+private fun LargeFilesTrashConfirm(
+    open: Boolean,
+    state: UtilitiesLargeFilesUiState,
+    viewModel: UtilitiesLargeFilesViewModel,
+    onOpenChange: (Boolean) -> Unit,
+    onUndoTrash: (List<String>) -> Unit
+) {
+    var confirmError by remember { mutableStateOf<String?>(null) }
+    val snackbar = LocalSnackbarController.current
+    val count = state.selection.size
+    val undoLabel = stringResource(Res.string.action_undo)
+    val trashEnabled = com.photonne.app.ui.actions.rememberServerTrashEnabled()
+    val doneMessage = pluralStringResource(
+        if (trashEnabled) Res.plurals.selection_trash_done
+        else Res.plurals.selection_deleted_permanently_done,
+        count,
+        count
+    )
+    if (!open) return
+    ConfirmActionDialog(
+        title = stringResource(
+            if (trashEnabled) Res.string.utilities_duplicates_confirm_title
+            else Res.string.trash_disabled_delete_title
+        ),
+        message = pluralStringResource(
+            if (trashEnabled) Res.plurals.utilities_duplicates_confirm_message
+            else Res.plurals.trash_disabled_delete_message,
+            count,
+            count
+        ),
+        confirmLabel = stringResource(
+            if (trashEnabled) Res.string.selection_action_trash
+            else Res.string.trash_disabled_delete_confirm
+        ),
+        isDestructive = true,
+        isSubmitting = state.isDeleting,
+        errorMessage = confirmError,
+        onDismiss = {
+            onOpenChange(false)
+            confirmError = null
+        },
+        onConfirm = {
+            confirmError = null
+            viewModel.deleteSelected { deleted, error ->
+                if (error != null) {
+                    confirmError = error.userMessage
+                } else {
+                    onOpenChange(false)
+                    if (trashEnabled) snackbar?.show(doneMessage, undoLabel) { onUndoTrash(deleted) }
+                    else snackbar?.show(doneMessage)
+                }
+            }
+        }
+    )
 }
 
 @Composable
@@ -206,17 +306,28 @@ private fun CountFilterRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LargeFileRow(
     item: TimelineItem,
     baseUrl: String,
+    isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier
+            .fillMaxWidth()
+            .border(
+                width = 2.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                shape = CardDefaults.shape
+            )
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
@@ -247,6 +358,18 @@ private fun LargeFileRow(
                             .align(Alignment.BottomStart)
                             .padding(Spacing.xxs)
                             .size(IconSize.sm)
+                    )
+                }
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(Spacing.xxs)
+                            .background(Color.White, shape = CircleShape)
+                            .size(IconSize.chip)
                     )
                 }
             }

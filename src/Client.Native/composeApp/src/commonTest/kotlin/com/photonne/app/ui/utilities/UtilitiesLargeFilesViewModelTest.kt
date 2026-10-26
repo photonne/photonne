@@ -57,4 +57,29 @@ class UtilitiesLargeFilesViewModelTest {
         assertEquals(100, state.count)
         assertEquals(listOf("big-100"), state.items.map { it.id })
     }
+
+    @Test
+    fun `the marked files go to the trash and leave the list`() = vms.runTest {
+        val api = testApi { request ->
+            if (request.method == io.ktor.http.HttpMethod.Get) {
+                json("[${timelineItemJson("a")},${timelineItemJson("b")},${timelineItemJson("c")}]")
+            } else json("{}")
+        }
+        val vm = vms.track(UtilitiesLargeFilesViewModel(
+            UtilitiesRepository(api), testErrorFactory(api), AssetMutationBus()
+        ))
+        vm.ensureLoaded()
+        vm.state.first { !it.isLoading && it.items.isNotEmpty() }
+
+        vm.toggleSelectAll()
+        assertEquals(setOf("a", "b", "c"), vm.state.value.selection)
+        vm.toggle("b")
+
+        val done = CompletableDeferred<List<String>>()
+        vm.deleteSelected { deleted, error -> if (error == null) done.complete(deleted) }
+
+        assertEquals(setOf("a", "c"), done.await().toSet())
+        assertEquals(listOf("b"), vm.state.value.items.map { it.id })
+        assertEquals(emptySet(), vm.state.value.selection)
+    }
 }

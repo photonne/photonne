@@ -269,6 +269,7 @@ internal class AuthenticatedAppState(
 
     // ---- Biblioteca, utilidades y sesión ----
     var showDuplicatesConfirm by mutableStateOf(false)
+    var showLargeFilesConfirm by mutableStateOf(false)
     var showUnarchiveAll by mutableStateOf(false)
     var showRestoreAllTrash by mutableStateOf(false)
     var showEmptyTrash by mutableStateOf(false)

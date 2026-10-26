@@ -913,6 +913,17 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     onChromeVisibleChange = { appState.subscreenChromeVisible = it },
                     viewModel = utilitiesLargeFilesViewModel,
                     baseUrl = apiBaseUrl,
+                    confirmOpen = appState.showLargeFilesConfirm,
+                    onConfirmOpenChange = { appState.showLargeFilesConfirm = it },
+                    onUndoTrash = { ids ->
+                        actionsViewModel.undoBulk(
+                            com.photonne.app.ui.actions.BulkUndoKind.Trash,
+                            ids
+                        ) {
+                            utilitiesLargeFilesViewModel.refresh()
+                            timelineViewModel.refresh()
+                        }
+                    },
                     onAssetClick = { index, items ->
                         appState.assetDetail = AssetDetailContext(
                             items = items,

@@ -649,6 +649,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val utilitiesDuplicatesStateRef = utilitiesDuplicatesViewModel.state.collectAsStateWithLifecycle()
     val utilitiesLargeFilesViewModel:
         com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel = koinViewModel()
+    val utilitiesLargeFilesStateRef = utilitiesLargeFilesViewModel.state.collectAsStateWithLifecycle()
+    val utilitiesLargeFilesState by utilitiesLargeFilesStateRef
     val utilitiesLocationsViewModel:
         com.photonne.app.ui.utilities.UtilitiesLocationsViewModel = koinViewModel()
     val exploreFacetsViewModel:
@@ -936,6 +938,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         (appState.moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive) ||
         (appState.moreSubscreen == MoreSubscreen.Videos && videosState.isSelectionActive) ||
         (appState.moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive) ||
+        (appState.moreSubscreen == MoreSubscreen.UtilitiesLargeFiles && utilitiesLargeFilesState.isSelectionActive) ||
         (appState.moreSubscreen == MoreSubscreen.Trash && appState.trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive) ||
         (appState.moreSubscreen == MoreSubscreen.People && appState.selectedPerson != null &&
             personDetailState.isSelectionActive) ||
@@ -1000,6 +1003,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 videosViewModel.clearSelection()
             appState.moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive ->
                 archivedViewModel.clearSelection()
+            appState.moreSubscreen == MoreSubscreen.UtilitiesLargeFiles && utilitiesLargeFilesState.isSelectionActive ->
+                utilitiesLargeFilesViewModel.clearSelection()
             appState.moreSubscreen == MoreSubscreen.Trash && appState.trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive ->
                 trashViewModel.clearSelection()
             appState.moreSubscreen == MoreSubscreen.People && appState.selectedPerson != null &&
@@ -1167,11 +1172,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         // a la cápsula de selección mientras haya algo seleccionado.
         MoreSubscreen.DeviceBackupPending -> deviceBackupState.selectedCount == 0
         MoreSubscreen.Trash -> !trashState.isSelectionActive
+        MoreSubscreen.UtilitiesLargeFiles -> !utilitiesLargeFilesState.isSelectionActive
         MoreSubscreen.DeviceBackup,
         MoreSubscreen.EnrichmentStatus,
         MoreSubscreen.Utilities,
         MoreSubscreen.UtilitiesDuplicates,
-        MoreSubscreen.UtilitiesLargeFiles,
         MoreSubscreen.UtilitiesLocations,
         MoreSubscreen.MyLinks,
         MoreSubscreen.OrganizeRule,
@@ -1282,6 +1287,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         uploadState = uploadStateRef,
         actionsState = actionsStateRef,
         utilitiesDuplicatesState = utilitiesDuplicatesStateRef,
+        utilitiesLargeFilesState = utilitiesLargeFilesStateRef,
+        utilitiesLargeFilesViewModel = utilitiesLargeFilesViewModel,
         timelineViewModel = timelineViewModel,
         albumsViewModel = albumsViewModel,
         albumDetailViewModel = albumDetailViewModel,

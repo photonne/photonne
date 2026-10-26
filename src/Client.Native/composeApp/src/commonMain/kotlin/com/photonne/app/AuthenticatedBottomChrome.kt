@@ -576,6 +576,24 @@ internal fun buildBottomBar(host: AuthenticatedChromeHost): (@Composable () -> U
                     )
                 }
             }
+            // Archivos grandes: la misma cápsula, con lo marcado y lo que ocupa.
+            appState.moreSubscreen == MoreSubscreen.UtilitiesLargeFiles &&
+                utilitiesLargeFilesState.isSelectionActive -> {
+                {
+                    com.photonne.app.ui.main.ConfirmCapsule(
+                        label = stringResource(
+                            Res.string.utilities_duplicates_action_delete,
+                            utilitiesLargeFilesState.selection.size,
+                            com.photonne.app.ui.format.humanBytes(utilitiesLargeFilesState.selectedBytes)
+                        ),
+                        enabled = !utilitiesLargeFilesState.isDeleting,
+                        isWorking = utilitiesLargeFilesState.isDeleting,
+                        icon = com.photonne.app.ui.theme.PhotonneIcons.Delete,
+                        destructive = true,
+                        onClick = { appState.showLargeFilesConfirm = true }
+                    )
+                }
+            }
             // Pendientes de copia: subir lo marcado es la acción de la pantalla,
             // con la misma cápsula que Duplicados (antes era el último FAB).
             appState.moreSubscreen == MoreSubscreen.DeviceBackupPending &&
