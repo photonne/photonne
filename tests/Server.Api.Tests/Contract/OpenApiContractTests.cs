@@ -62,8 +62,10 @@ public class OpenApiContractTests
             {
                 var responses = operation!["responses"]?.AsObject();
                 if (responses is null) continue;
+                // A redirect (the OpenID sign-in) has no 2xx at all: its declared 3xx is its type.
                 var described = responses.Any(r =>
-                    r.Key.StartsWith('2') && (r.Key != "200" || r.Value!["content"] is not null));
+                    (r.Key.StartsWith('2') && (r.Key != "200" || r.Value!["content"] is not null))
+                    || r.Key.StartsWith('3'));
                 if (!described) untyped.Add($"{method.ToUpperInvariant()} {path}");
             }
         }

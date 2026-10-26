@@ -181,6 +181,11 @@ El servidor de desarrollo de Vite hace de proxy de `/api`, así que el navegador
 | `THUMBNAILS_HOST_PATH` | Ruta absoluta del host montada como volumen de miniaturas | `./photonne/data/thumbnails` |
 | `CONFIG_HOST_PATH` | Ruta del host montada en `/data/config` (clave JWT generada) | `./data/config` |
 | `VIDEO_PLAYBACK_COPIES` | Genera copias H.264 (hasta 1080p) de los vídeos que no se reproducen en todas partes (HEVC, 4K, AVI, MKV…), de una en una, en `/data/thumbnails/.playback`. `false` en un servidor sin potencia para transcodificar | `true` |
+| `OIDC_ENABLED` | Inicio de sesión con un proveedor OpenID Connect (Authentik, Keycloak, Authelia…). URI de redirección a registrar: `<OIDC_PUBLIC_URL>/api/auth/oidc/callback` | `false` |
+| `OIDC_AUTHORITY` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | Emisor del proveedor y credenciales del cliente | *(vacío)* |
+| `OIDC_DISPLAY_NAME` | Texto del botón: «Entrar con …» | `SSO` |
+| `OIDC_AUTO_CREATE_USERS` | Crea la cuenta a quien el proveedor reconoce con correo verificado y no tiene una; si no, solo entran las cuentas existentes con ese correo | `false` |
+| `OIDC_PUBLIC_URL` | Dirección pública del servidor, para la URI de redirección (necesaria tras un proxy que no reenvía el esquema) | *(de la petición)* |
 | `ADMIN_USERNAME` | Nombre de usuario del admin inicial | `admin` |
 | `ADMIN_EMAIL` | Email del admin inicial | `admin@photonne.local` |
 | `ADMIN_PASSWORD` | Contraseña del admin inicial. Vacía o de ejemplo: se genera y se escribe en el log | *(generada)* |

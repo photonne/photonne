@@ -1524,6 +1524,10 @@ namespace Photonne.Server.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("OidcSubject")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -1562,6 +1566,10 @@ namespace Photonne.Server.Api.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("OidcSubject")
+                        .IsUnique()
+                        .HasFilter("\"OidcSubject\" IS NOT NULL");
 
                     b.HasIndex("Username")
                         .IsUnique();

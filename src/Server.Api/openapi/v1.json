@@ -9237,6 +9237,138 @@
         ]
       }
     },
+    "/api/auth/oidc": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "description": "Whether sign-in with an OpenID provider is on, and the provider\u0027s name for the button",
+        "operationId": "GetOidcConfig",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/oidc/start": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "description": "Sends the browser to the OpenID provider (client=web|app)",
+        "operationId": "StartOidc",
+        "parameters": [
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Found"
+          }
+        }
+      }
+    },
+    "/api/auth/oidc/callback": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "description": "Where the OpenID provider sends the browser back; redirects to the web or the app with a one-use ticket",
+        "operationId": "OidcCallback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          }
+        }
+      }
+    },
+    "/api/auth/oidc/exchange": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "description": "Turns the one-use ticket of an OpenID sign-in into a session, like /api/auth/login",
+        "operationId": "ExchangeOidcTicket",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/totp": {
       "get": {
         "tags": [
@@ -14990,6 +15122,43 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "OidcConfigResponse": {
+        "required": [
+          "enabled",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "OidcExchangeRequest": {
+        "required": [
+          "ticket",
+          "deviceId",
+          "refreshTokenInCookie"
+        ],
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "refreshTokenInCookie": {
+            "type": "boolean"
           }
         }
       },
