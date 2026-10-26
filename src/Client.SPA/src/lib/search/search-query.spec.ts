@@ -28,8 +28,39 @@ describe('search query', () => {
 			scenes: ['beach'],
 			ocr: 'factura',
 			folder: 'Viajes',
-			type: 'video'
+			type: 'video',
+			tag: '',
+			camera: '',
+			make: '',
+			place: '',
+			placeName: ''
 		});
+	});
+
+	it('reads and writes the tag, camera and place the viewer links to', () => {
+		const query = parseSearch(
+			new URLSearchParams('tag=Boda&camera=iPhone+15&make=Apple&place=p-1&placeName=Madrid')
+		);
+
+		expect(query).toMatchObject({
+			tag: 'Boda',
+			camera: 'iPhone 15',
+			make: 'Apple',
+			place: 'p-1',
+			placeName: 'Madrid',
+			// Filters alone mean a text search.
+			semantic: false
+		});
+		expect(filterCount(query)).toBe(3);
+		expect(textSearchRequest(query, 0, 50)).toMatchObject({
+			tag: 'Boda',
+			cameraModel: 'iPhone 15',
+			cameraMake: 'Apple',
+			placeId: 'p-1'
+		});
+		expect(searchParams(query).toString()).toBe(
+			'tag=Boda&camera=iPhone+15&make=Apple&place=p-1&placeName=Madrid'
+		);
 	});
 
 	it('ignores malformed dates, blanks and repeated values', () => {

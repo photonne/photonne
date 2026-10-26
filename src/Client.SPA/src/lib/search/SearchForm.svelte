@@ -168,6 +168,29 @@
 				remove: () => ({ ...query, folder: '' })
 			});
 		}
+		if (query.tag) {
+			list.push({
+				key: 'tag',
+				label: m.search_chip_tag({ tag: query.tag }),
+				remove: () => ({ ...query, tag: '' })
+			});
+		}
+		if (query.camera) {
+			list.push({
+				key: 'camera',
+				label: m.search_chip_camera({
+					camera: [query.make, query.camera].filter(Boolean).join(' ')
+				}),
+				remove: () => ({ ...query, camera: '', make: '' })
+			});
+		}
+		if (query.place) {
+			list.push({
+				key: 'place',
+				label: m.search_chip_place({ place: query.placeName || m.search_chip_place_unknown() }),
+				remove: () => ({ ...query, place: '', placeName: '' })
+			});
+		}
 		return list;
 	});
 </script>

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { appHref } from '#lib/navigation/href.js';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import AlbumPickerDialog from '#lib/actions/AlbumPickerDialog.svelte';
@@ -124,6 +126,20 @@
 		if (!grid || !restoring) return;
 		grid.restorePosition(restoring);
 		restoring = null;
+	});
+
+	// A link to a month (?month=yyyy-MM, the viewer's "Ver en Fotos"): scroll
+	// there once the grid is up, then drop it so a reload doesn't jump again.
+	let jumpedTo: string | null = null;
+	$effect(() => {
+		const month = page.url.searchParams.get('month');
+		if (!month || !/^\d{4}-\d{2}$/.test(month) || jumpedTo === month) return;
+		if (!grid || store.sections.length === 0) return;
+		jumpedTo = month;
+		untrack(() => void jumpTo(month));
+		const url = new URL(page.url.href);
+		url.searchParams.delete('month');
+		replaceState(url, page.state);
 	});
 
 	// --- Viewer (its place in the URL: see ViewerRoute) -----------------

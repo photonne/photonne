@@ -1,3 +1,4 @@
+import { appHref } from '#lib/navigation/href.js';
 import type {
 	ClassifiedSceneDto,
 	DetectedObjectDto,
@@ -57,4 +58,12 @@ export function relatedItems<T extends { id: string }>(
 	max = MAX_RELATED
 ) {
 	return items.filter((item) => item.id !== currentId).slice(0, max);
+}
+
+/**
+ * The timeline scrolled to the month a photo was taken in. Capture times are
+ * the camera's wall clock stored as UTC, so the month is read straight off it.
+ */
+export function timelineMonthHref(capturedAt: string) {
+	return `${appHref('/')}?month=${capturedAt.slice(0, 7)}`;
 }

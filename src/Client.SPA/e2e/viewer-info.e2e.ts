@@ -83,7 +83,8 @@ test('shows where the photo was taken and opens the map there', async ({ page })
 	const { panel } = await openPanel(page);
 
 	await expect(panel.getByRole('group', { name: 'Mapa del lugar de la foto' })).toBeVisible();
-	await expect(panel.getByRole('link', { name: 'Barcelona' })).toHaveAttribute(
+	// The place's name searches its photos; OpenStreetMap stays a link away.
+	await expect(panel.getByRole('link', { name: 'OSM' })).toHaveAttribute(
 		'href',
 		/openstreetmap\.org/
 	);
@@ -167,4 +168,34 @@ test('the panel closes from its own X', async ({ page }) => {
 		'aria-pressed',
 		'false'
 	);
+});
+
+test('links its tags, camera, folder, place and month to their photos', async ({ page }) => {
+	const { panel } = await openPanel(page, '2026-09-0');
+
+	await expect(panel.getByRole('link', { name: 'familia' })).toHaveAttribute(
+		'href',
+		'/explore/tags/familia'
+	);
+	await expect(panel.getByRole('link', { name: 'playa' })).toHaveAttribute(
+		'href',
+		'/explore/tags/playa'
+	);
+	await expect(panel.getByRole('link', { name: 'Apple iPhone 15' })).toHaveAttribute(
+		'href',
+		'/search?camera=iPhone+15&make=Apple'
+	);
+	await expect(panel.getByRole('link', { name: 'Barcelona' })).toHaveAttribute(
+		'href',
+		'/search?place=place-bcn&placeName=Barcelona'
+	);
+	await expect(panel.getByRole('link', { name: '/assets/users/ana/Camera' })).toHaveAttribute(
+		'href',
+		'/folders/folder-camera'
+	);
+
+	await panel.getByRole('link', { name: 'Ver ese mes en Fotos' }).click();
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+	await expect(page).toHaveURL(/\/$/);
+	await expect(page.getByRole('heading', { name: 'Septiembre de 2026' })).toBeInViewport();
 });
