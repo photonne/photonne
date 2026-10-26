@@ -30,6 +30,11 @@ public sealed class SmartRuleNode
     public bool? IncludeSubfolders { get; set; }
     public DateTime? From { get; set; }
     public DateTime? To { get; set; }
+    /// <summary>
+    /// Rolling window for "dateRange": "90d", "6m", "1y" (the last N days,
+    /// months or years up to today). Wins over From/To when set.
+    /// </summary>
+    public string? Last { get; set; }
     public List<string>? Labels { get; set; }
     public List<Guid>? UserTagIds { get; set; }
     public string? TagType { get; set; }

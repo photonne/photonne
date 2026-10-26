@@ -10236,6 +10236,63 @@
         ]
       }
     },
+    "/api/albums/{albumId}/convert-to-manual": {
+      "post": {
+        "tags": [
+          "Albums"
+        ],
+        "description": "Turns a smart album into a manual one that keeps the photos it has now (owner only)",
+        "operationId": "ConvertToManualAlbum",
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/albums/{albumId}/leave": {
       "post": {
         "tags": [
@@ -16805,6 +16862,12 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "last": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "labels": {
             "type": [
