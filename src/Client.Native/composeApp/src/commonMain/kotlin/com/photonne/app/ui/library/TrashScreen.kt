@@ -35,13 +35,20 @@ import com.photonne.app.resources.trash_action_empty
 import com.photonne.app.resources.trash_action_restore_all
 import com.photonne.app.resources.trash_empty_subtitle
 import com.photonne.app.resources.trash_empty_title
+import com.photonne.app.resources.trash_days_left
+import com.photonne.app.resources.trash_days_left_none
+import com.photonne.app.resources.trash_days_left_none_short
+import com.photonne.app.resources.trash_days_left_short
 import com.photonne.app.resources.trash_tab_personal
 import com.photonne.app.resources.trash_tab_shared
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.remember
+import com.photonne.app.data.actions.trashDaysLeft
+import com.photonne.app.ui.actions.rememberTrashRetentionDays
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.CellNote
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.selection.SelectionPatch
@@ -57,6 +64,8 @@ import com.photonne.app.ui.util.SegmentOption
 import com.photonne.app.ui.util.SegmentedChoiceRow
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import kotlin.time.Clock
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Tabs of the unified Trash screen: the user's own trash and the shared-folder trash. */
@@ -167,6 +176,7 @@ fun TrashScreen(
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     val gestures = rememberAssetGridSelectionGestures(onApplySelection)
+    val cellNote = rememberTrashDaysLeftNote()
 
     LaunchedEffect(Unit) { onLoad() }
 
@@ -205,6 +215,7 @@ fun TrashScreen(
                     isInitialLoading = state.isInitialLoading,
                     onLoadMore = onLoadMore,
                     dragSelect = gestures.dragSelect,
+                    cellNote = cellNote,
                     contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight()),
                     modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
@@ -220,6 +231,35 @@ fun TrashScreen(
                 selectionActive = state.isSelectionActive,
                 hazeState = hazeState,
             )
+        }
+    }
+}
+
+/**
+ * "20 d" on each cell (and "Se elimina en 20 días" for the screen reader) when
+ * the nightly cleanup purges the trash by age; null otherwise. The counts are
+ * read once per screen: a day boundary while it is open isn't worth a timer.
+ */
+@Composable
+private fun rememberTrashDaysLeftNote(): ((com.photonne.app.data.models.TimelineItem) -> CellNote?)? {
+    val retentionDays = rememberTrashRetentionDays() ?: return null
+    val now = remember(retentionDays) { Clock.System.now() }
+    val today = CellNote(
+        text = stringResource(Res.string.trash_days_left_none_short),
+        label = stringResource(Res.string.trash_days_left_none)
+    )
+    // Plurals need a composable call per count: resolve the whole range once.
+    val notes = (1..retentionDays).map { days ->
+        CellNote(
+            text = stringResource(Res.string.trash_days_left_short, days),
+            label = pluralStringResource(Res.plurals.trash_days_left, days, days)
+        )
+    }
+    return { item ->
+        when (val days = trashDaysLeft(item.deletedAt, retentionDays, now)) {
+            null -> null
+            0 -> today
+            else -> notes.getOrNull(days - 1) ?: notes.lastOrNull()
         }
     }
 }

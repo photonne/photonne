@@ -505,6 +505,13 @@
     <string name="trash_tab_shared">Compartida</string>
     <string name="trash_empty_title">La papelera está vacía</string>
     <string name="trash_empty_subtitle">Las fotos que muevas a la papelera aparecerán aquí hasta que las restaures o las elimines.</string>
+    <plurals name="trash_days_left">
+        <item quantity="one">Se elimina en %1$d día</item>
+        <item quantity="other">Se elimina en %1$d días</item>
+    </plurals>
+    <string name="trash_days_left_short">%1$d d</string>
+    <string name="trash_days_left_none">Se elimina en la próxima limpieza</string>
+    <string name="trash_days_left_none_short">Hoy</string>
     <string name="trash_action_restore">Restaurar</string>
     <string name="trash_action_restore_all">Restaurar todo</string>
     <string name="trash_action_delete_forever">Eliminar para siempre</string>

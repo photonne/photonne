@@ -421,6 +421,13 @@
     <string name="trash_tab_shared">Shared</string>
     <string name="trash_empty_title">Trash is empty</string>
     <string name="trash_empty_subtitle">Photos you move to the trash will appear here until you restore them or delete them forever.</string>
+    <plurals name="trash_days_left">
+        <item quantity="one">Deleted in %1$d day</item>
+        <item quantity="other">Deleted in %1$d days</item>
+    </plurals>
+    <string name="trash_days_left_short">%1$d d</string>
+    <string name="trash_days_left_none">Deleted at the next cleanup</string>
+    <string name="trash_days_left_none_short">Today</string>
     <string name="trash_action_restore">Restore</string>
     <string name="trash_action_restore_all">Restore all</string>
     <string name="trash_action_delete_forever">Delete forever</string>

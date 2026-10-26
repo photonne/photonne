@@ -20,3 +20,18 @@ fun rememberServerTrashEnabled(): Boolean {
     val enabled by policy.enabled.collectAsStateWithLifecycle()
     return enabled
 }
+
+/**
+ * Days the nightly cleanup keeps a trashed item, re-read when a screen that
+ * shows the trash appears; null when nothing purges it by age.
+ */
+@Composable
+fun rememberTrashRetentionDays(): Int? {
+    val policy: ServerTrashPolicy = koinInject()
+    LaunchedEffect(policy) {
+        policy.refresh()
+        policy.refreshRetention()
+    }
+    val days by policy.retentionDays.collectAsStateWithLifecycle()
+    return days
+}

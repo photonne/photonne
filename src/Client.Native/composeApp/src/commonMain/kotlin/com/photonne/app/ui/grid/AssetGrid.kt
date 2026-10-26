@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -82,6 +83,7 @@ import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneIcons
+import com.photonne.app.ui.theme.PillShape
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.onSecondaryClick
@@ -120,6 +122,8 @@ fun AssetGrid(
      * mutuamente y no entra ninguno.
      */
     dragSelect: AssetGridDragSelect? = null,
+    /** A short note on each cell (the trash's days left). */
+    cellNote: ((TimelineItem) -> CellNote?)? = null,
     header: (@Composable () -> Unit)? = null
 ) {
     LoadMoreEffect(
@@ -251,7 +255,8 @@ fun AssetGrid(
                         }
                     }
                 },
-                isSelected = asset.id in selectedIds
+                isSelected = asset.id in selectedIds,
+                note = cellNote?.invoke(asset)
             )
         }
         if (appendFailed) {
@@ -265,6 +270,10 @@ fun AssetGrid(
         }
     }
 }
+
+/** A short text on a grid cell ([text], drawn) and how it is read aloud ([label]). */
+@Immutable
+data class CellNote(val text: String, val label: String)
 
 /**
  * Configuración del arrastre en banda para [AssetGrid]. Se agrupa en un objeto
@@ -321,7 +330,9 @@ fun AssetGridCell(
      * fotos solo-dispositivo, que no se pueden seleccionar: sin la
      * atenuación nada indicaba por qué no respondían.
      */
-    dimmed: Boolean = false
+    dimmed: Boolean = false,
+    /** Drawn at the bottom start and read after the cell's description. */
+    note: CellNote? = null
 ) {
     val placeholder = remember(asset.dominantColor) { parseHexColor(asset.dominantColor) }
     val sharedScope = LocalSharedTransitionScope.current
@@ -378,13 +389,14 @@ fun AssetGridCell(
     val favoriteLabel = stringResource(Res.string.asset_a11y_favorite)
     val cellDescription = remember(
         asset.fileName, asset.isVideo, asset.isLivePhoto, asset.isFavorite,
-        videoLabel, livePhotoLabel, favoriteLabel
+        videoLabel, livePhotoLabel, favoriteLabel, note?.label
     ) {
         buildList {
             add(asset.fileName)
             if (asset.isVideo) add(videoLabel)
             if (asset.isLivePhoto) add(livePhotoLabel)
             if (asset.isFavorite) add(favoriteLabel)
+            note?.let { add(it.label) }
         }.joinToString(", ")
     }
     Box(
@@ -452,6 +464,18 @@ fun AssetGridCell(
                 icon = Icons.Outlined.MotionPhotosOn,
                 contentDescription = null,
                 modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs)
+            )
+        }
+        if (note != null) {
+            Text(
+                text = note.text,
+                style = MaterialTheme.typography.labelSmall,
+                color = PhotonneColors.onScrim,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(Spacing.xs)
+                    .background(PhotonneColors.scrimMedium, PillShape)
+                    .padding(horizontal = 6.dp, vertical = 1.dp)
             )
         }
         if (asset.isFavorite) {
