@@ -196,3 +196,16 @@ test('says on each photo how many days it has left before the cleanup', async ({
 	await expect(cells(page).first()).toHaveAccessibleName(/, Se elimina en 20 días$/);
 	await expect(page.locator('.note').first()).toHaveText('20 d');
 });
+
+test('sums up what the selection spans next to its count', async ({ page }) => {
+	await openTrash(page);
+
+	await cells(page)
+		.first()
+		.click({ modifiers: ['ControlOrMeta'] });
+	await cells(page)
+		.nth(1)
+		.click({ modifiers: ['ControlOrMeta'] });
+
+	await expect(page.locator('.summary')).toHaveText(/mar 2023 · 6,5 MB$/);
+});
