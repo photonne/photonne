@@ -32,6 +32,18 @@
 	"folders_edit_title": "Rename or move the folder",
 	"folders_empty": "This folder has no photos",
 	"folders_empty_hint": "Photos you upload or move into this folder show up here.",
+	"folders_move_photos_here": "Bring photos",
+	"folders_move_photos_to": "Move photos to “{name}”",
+	"folders_move_photos_confirm": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "Move {n} photo here",
+				"p=other": "Move {n} photos here"
+			}
+		}
+	],
 	"folders_empty_with_subfolders": "No photos of its own",
 	"folders_empty_with_subfolders_hint": "This folder’s photos are in its subfolders.",
 	"folders_error_exists": "There’s already a folder with that name there.",

@@ -5,6 +5,7 @@
 	import BatchActionBar from '#lib/actions/BatchActionBar.svelte';
 	import type { BatchActions } from '#lib/actions/batch-actions.svelte.js';
 	import FolderPickerDialog from '#lib/actions/FolderPickerDialog.svelte';
+	import LibraryPickerDialog from '#lib/actions/LibraryPickerDialog.svelte';
 	import {
 		apiErrorCode,
 		deleteFolder,
@@ -82,6 +83,8 @@
 	let removing = $state<Selection | null>(null);
 	/** The photos the folder picker is open for. */
 	let moving = $state<string[] | null>(null);
+	/** The library picker, to bring photos into this folder. */
+	let picking = $state(false);
 	let busy = $state(false);
 
 	const canWrite = $derived(folder?.canWrite ?? false);
@@ -233,6 +236,7 @@
 		emptyText={subfolders.length ? m.folders_empty_with_subfolders() : m.folders_empty()}
 		emptyHint={subfolders.length ? m.folders_empty_with_subfolders_hint() : m.folders_empty_hint()}
 		emptyIcon="folder"
+		emptyAction={canWrite && !isLibrary ? movePhotosAction : undefined}
 		viewerActions={['trash', 'album']}
 		collapsed={!photosShown}
 		viewOptionsExtra={subfolders.length && subfoldersShown ? subfolderOptions : undefined}
@@ -240,6 +244,14 @@
 		{#snippet toolbar()}
 			{#if folder}
 				{#if canWrite && !isLibrary}
+					<button
+						type="button"
+						class="btn sm tool"
+						title={m.folders_move_photos_here()}
+						onclick={() => (picking = true)}
+					>
+						<Icon name="add" size={18} /><span class="label">{m.folders_move_photos_here()}</span>
+					</button>
 					<button
 						type="button"
 						class="btn sm tool"
@@ -418,6 +430,24 @@
 		canLink={false}
 		onclose={() => (sharing = false)}
 		onchanged={() => invalidateFolders(queryClient, folderId)}
+	/>
+{/if}
+
+{#snippet movePhotosAction()}
+	<button type="button" class="btn primary" onclick={() => (picking = true)}>
+		<Icon name="add" size={18} />{m.folders_move_photos_here()}
+	</button>
+{/snippet}
+
+{#if picking && folder}
+	<LibraryPickerDialog
+		title={m.folders_move_photos_to({ name: folder.name })}
+		confirmLabel={(count) => m.folders_move_photos_confirm({ count })}
+		onconfirm={async (ids) => {
+			// Photos already here are skipped: moving them would be a no-op.
+			if (await moveAssets(queryClient, { assetIds: ids, from: null, to: folder })) picking = false;
+		}}
+		onclose={() => (picking = false)}
 	/>
 {/if}
 

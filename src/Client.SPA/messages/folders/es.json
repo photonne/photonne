@@ -32,6 +32,18 @@
 	"folders_edit_title": "Renombrar o mover la carpeta",
 	"folders_empty": "Esta carpeta no tiene fotos",
 	"folders_empty_hint": "Las fotos que subas o muevas a esta carpeta aparecerán aquí.",
+	"folders_move_photos_here": "Traer fotos",
+	"folders_move_photos_to": "Mover fotos a «{name}»",
+	"folders_move_photos_confirm": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "Mover {n} foto aquí",
+				"p=other": "Mover {n} fotos aquí"
+			}
+		}
+	],
 	"folders_empty_with_subfolders": "No hay fotos sueltas",
 	"folders_empty_with_subfolders_hint": "Las fotos de esta carpeta están en sus subcarpetas.",
 	"folders_error_exists": "Ya hay una carpeta con ese nombre ahí.",

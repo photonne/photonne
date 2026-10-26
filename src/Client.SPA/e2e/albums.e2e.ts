@@ -290,6 +290,33 @@ test.describe('album detail', () => {
 	});
 });
 
+test.describe('adding photos from the library', () => {
+	test('picks photos in the library picker and adds them', async ({ page }) => {
+		const state = await open(page, '/albums/album-1');
+
+		await page.getByRole('button', { name: 'Añadir fotos' }).click();
+		const dialog = page.getByRole('dialog', { name: 'Añadir fotos a «Vacaciones»' });
+		await expect(dialog.getByRole('button', { name: 'Añadir 0 fotos' })).toBeDisabled();
+		const picks = dialog.getByRole('button', { name: /^(Foto|Vídeo), / });
+		await picks.nth(0).click();
+		await picks.nth(1).click();
+		await expect(dialog).toContainText('2 seleccionados');
+		await dialog.getByRole('button', { name: 'Añadir 2 fotos' }).click();
+
+		await expect(dialog).toBeHidden();
+		await expect(page.getByText('2 fotos añadidas al álbum')).toBeVisible();
+		expect(calls(state, 'POST /api/albums/album-1/assets/batch')[0].body).toMatchObject({
+			assetIds: [expect.any(String), expect.any(String)]
+		});
+	});
+
+	test('is not offered in a smart album', async ({ page }) => {
+		await open(page, '/albums/album-2');
+		await expect(page.getByRole('heading', { name: 'Perros', level: 1 })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Añadir fotos' })).toBeHidden();
+	});
+});
+
 test.describe('smart albums', () => {
 	test('creates one from conditions with a live preview', async ({ page }) => {
 		const state = await open(page, '/albums');
