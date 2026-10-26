@@ -28,6 +28,7 @@ import com.photonne.app.ui.actions.AssetActionWorking
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.AssetSelectionTopBar
 import com.photonne.app.ui.main.MainTab
+import com.photonne.app.ui.selection.rememberSelectionSummary
 import com.photonne.app.ui.timeline.TimelineViewModel
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -133,6 +134,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 timelineState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = timelineState.selection.size,
+                    summary = rememberSelectionSummary(timelineState.loadedItems, timelineState.selection),
                     isMutating = timelineState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onClose = timelineViewModel::clearSelection
@@ -145,6 +147,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 albumDetailState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = albumDetailState.selection.size,
+                    summary = rememberSelectionSummary(albumDetailState.items, albumDetailState.selection),
                     totalCount = albumDetailState.items.size,
                     isMutating = albumDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
@@ -170,6 +173,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 folderDetailState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = folderDetailState.selection.size,
+                    summary = rememberSelectionSummary(folderDetailState.items, folderDetailState.selection),
                     totalCount = folderDetailState.items.size,
                     isMutating = folderDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
@@ -203,6 +207,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
             appState.selectedTab == MainTab.Search && searchState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = searchState.selection.size,
+                    summary = rememberSelectionSummary(searchState.results, searchState.selection),
                     totalCount = searchState.results.size,
                     isMutating = searchState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
@@ -242,6 +247,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 organizeInboxState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = organizeInboxState.selection.size,
+                    summary = rememberSelectionSummary(organizeInboxState.gridItems, organizeInboxState.selection),
                     totalCount = organizeInboxState.gridItems.size,
                     isMutating = organizeInboxState.isBulkMutating,
                     onClose = organizeInboxViewModel::clearSelection,
@@ -263,6 +269,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 )
                 AssetSelectionTopBar(
                     selectedCount = organizeExcludedState.selection.size,
+                    summary = rememberSelectionSummary(organizeExcludedState.items, organizeExcludedState.selection),
                     totalCount = organizeExcludedState.items.size,
                     isMutating = organizeExcludedState.isBulkMutating,
                     onClose = organizeExcludedViewModel::clearSelection,
@@ -290,6 +297,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 appState.selectedPerson != null && personDetailState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = personDetailState.selection.size,
+                    summary = rememberSelectionSummary(personDetailState.items, personDetailState.selection),
                     totalCount = personDetailState.items.size,
                     isMutating = personDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
@@ -301,6 +309,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 favoritesState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = favoritesState.selection.size,
+                    summary = rememberSelectionSummary(favoritesState.items, favoritesState.selection),
                     totalCount = favoritesState.items.size,
                     isMutating = favoritesState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
@@ -315,6 +324,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 videosState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = videosState.selection.size,
+                    summary = rememberSelectionSummary(videosState.items, videosState.selection),
                     totalCount = videosState.items.size,
                     isMutating = videosState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
@@ -329,6 +339,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 archivedState.isSelectionActive -> selectionChrome {
                 AssetSelectionTopBar(
                     selectedCount = archivedState.selection.size,
+                    summary = rememberSelectionSummary(archivedState.items, archivedState.selection),
                     totalCount = archivedState.items.size,
                     isMutating = archivedState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
@@ -345,6 +356,7 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                 trashState.isSelectionActive -> selectionChrome {
                 com.photonne.app.ui.main.TrashSelectionTopBar(
                     selectedCount = trashState.selection.size,
+                    summary = rememberSelectionSummary(trashState.items, trashState.selection),
                     isMutating = trashState.isBulkMutating,
                     onClose = trashViewModel::clearSelection,
                     onRestore = { trashViewModel.bulkRestore() },
