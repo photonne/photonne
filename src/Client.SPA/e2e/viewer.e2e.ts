@@ -135,7 +135,7 @@ test('a video sits below the bar and fits the screen, so its controls stay reach
 }) => {
 	await fakeApi(page, { signedIn: true });
 	// A real portrait clip (1080×1920), taller than the screen.
-	await page.route('**/api/assets/2026-09-5/content*', (route) =>
+	await page.route('**/api/assets/2026-09-5/playback*', (route) =>
 		route.fulfill({ path: new URL('./fakes/portrait.webm', import.meta.url).pathname })
 	);
 	await page.goto('/?asset=2026-09-5');

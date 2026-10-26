@@ -141,7 +141,7 @@ export async function fakeApi(
 					const key = path.split('/').at(-1)!;
 					return authorized ? json(route, 200, library.items(key)) : json(route, 401);
 				}
-				if (/^\/api\/assets\/[^/]+\/(thumbnail|content)$/.test(path)) {
+				if (/^\/api\/assets\/[^/]+\/(thumbnail|content|playback)$/.test(path)) {
 					return route.fulfill({
 						status: 200,
 						contentType: 'image/svg+xml',

@@ -207,7 +207,7 @@
 			{#key current.id}
 				{#if playsVideo}
 					<video
-						src="/api/assets/{current.id}/content"
+						src="/api/assets/{current.id}/playback"
 						poster={imageUrl(current)}
 						muted
 						playsinline
