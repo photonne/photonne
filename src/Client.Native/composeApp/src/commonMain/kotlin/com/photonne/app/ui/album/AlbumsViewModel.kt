@@ -501,6 +501,39 @@ class AlbumsViewModel(
         }
     }
 
+    /**
+     * Freezes a smart album into a manual one that keeps today's photos
+     * (owner only). [onSuccess] gets the album as the server reports it.
+     */
+    fun convertToManual(albumId: String, onSuccess: (AlbumSummary) -> Unit = {}) {
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.convertToManual(albumId) }
+                .onSuccess { updated ->
+                    // Only the kind changes: the response, like the update's,
+                    // carries no cover or previews, so the card keeps its own.
+                    _state.update { previous ->
+                        previous.copy(
+                            albums = previous.albums.map {
+                                if (it.id == updated.id) it.copy(kind = updated.kind) else it
+                            },
+                            isMutating = false
+                        )
+                    }
+                    onSuccess(updated)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            error = errorFactory.from(error, "No se pudo convertir el álbum")
+                        )
+                    }
+                }
+        }
+    }
+
     /** The detail screen renamed/re-described an album: see [withEditOf]. */
     fun applyEdit(updated: AlbumSummary) {
         _state.update { previous ->

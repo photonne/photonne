@@ -659,6 +659,16 @@
     </plurals>
     <string name="album_remove_confirm_message">Seguirán en tu biblioteca, y durante 30 días podrás devolverlas desde «Quitadas recientemente».</string>
     <string name="album_action_removed_recent">Quitadas recientemente</string>
+    <string name="album_action_convert_manual">Convertir en álbum normal</string>
+    <string name="album_convert_manual_title">¿Convertir en álbum normal?</string>
+    <plurals name="album_convert_manual_message">
+        <item quantity="one">Se queda con la %1$d foto que tiene ahora y deja de seguir sus reglas: lo nuevo ya no entrará solo, y podrás quitar fotos y ordenarlas a mano. No se puede deshacer.</item>
+        <item quantity="other">Se queda con las %1$d fotos que tiene ahora y deja de seguir sus reglas: lo nuevo ya no entrará solo, y podrás quitar fotos y ordenarlas a mano. No se puede deshacer.</item>
+    </plurals>
+    <string name="album_convert_manual_action">Convertir</string>
+    <string name="album_converted">Ahora es un álbum normal</string>
+    <string name="album_hero_rules">Reglas</string>
+    <string name="album_hero_rules_edit">Editar las reglas</string>
     <string name="album_removed_hint">Lo quitado en los últimos 30 días. Al restaurarlo vuelve a su sitio en el álbum.</string>
     <string name="album_removed_empty">No se ha quitado nada en los últimos 30 días.</string>
     <string name="album_removed_load_failed">No se ha podido cargar lo quitado.</string>
@@ -1754,6 +1764,25 @@
     <string name="smart_album_summary_date_none">Sin rango</string>
     <string name="smart_album_date_from">Desde</string>
     <string name="smart_album_date_to">Hasta</string>
+    <string name="smart_album_date_mode_between">Entre fechas</string>
+    <string name="smart_album_date_mode_last">De los últimos…</string>
+    <string name="smart_album_window_amount">Cantidad</string>
+    <string name="smart_album_window_days">Días</string>
+    <string name="smart_album_window_months">Meses</string>
+    <string name="smart_album_window_years">Años</string>
+    <string name="smart_album_window_hint">Cuenta hacia atrás desde hoy y se actualiza solo: lo que se queda fuera de la ventana sale del álbum.</string>
+    <plurals name="smart_album_summary_last_days">
+        <item quantity="one">Último día</item>
+        <item quantity="other">Últimos %1$d días</item>
+    </plurals>
+    <plurals name="smart_album_summary_last_months">
+        <item quantity="one">Último mes</item>
+        <item quantity="other">Últimos %1$d meses</item>
+    </plurals>
+    <plurals name="smart_album_summary_last_years">
+        <item quantity="one">Último año</item>
+        <item quantity="other">Últimos %1$d años</item>
+    </plurals>
     <string name="admin_settings_range_format">Entre %1$d y %2$d</string>
     <string name="admin_settings_load_failed">No se pudieron cargar los ajustes</string>
     <string name="admin_settings_discard_title">¿Descartar los cambios?</string>

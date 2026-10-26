@@ -1,5 +1,14 @@
 package com.photonne.app.ui.album
 
+import com.photonne.app.resources.album_hero_rules_edit
+import com.photonne.app.resources.album_hero_rules
+import com.photonne.app.resources.album_action_convert_manual
+import com.photonne.app.resources.album_convert_manual_action
+import com.photonne.app.resources.album_convert_manual_message
+import com.photonne.app.resources.album_convert_manual_title
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -109,6 +118,10 @@ fun AlbumDetailScreen(
     onManageMembers: () -> Unit,
     onLeave: () -> Unit,
     viewModel: AlbumDetailViewModel,
+    /** Opens the rule editor of a smart album the user owns; null hides the "Reglas" chip. */
+    onEditRules: (() -> Unit)? = null,
+    /** Freezes the smart album into a manual one; null hides the menu entry. */
+    onConvertToManual: (() -> Unit)? = null,
     /**
      * Immersive bottom nav: while true the photo grid drives the hide-on-scroll
      * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
@@ -142,6 +155,22 @@ fun AlbumDetailScreen(
     // inteligente, donde manda la regla).
     val canReviewRemoved = !album.isSmart && (album.canWrite || album.isOwner)
     var reviewingRemoved by rememberSaveable { mutableStateOf(false) }
+    var confirmingConvert by rememberSaveable { mutableStateOf(false) }
+    if (confirmingConvert && onConvertToManual != null) {
+        val count = if (state.albumId == album.id && !state.isLoading) state.items.size else album.assetCount
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.album_convert_manual_title),
+            message = pluralStringResource(Res.plurals.album_convert_manual_message, count, count),
+            confirmLabel = stringResource(Res.string.album_convert_manual_action),
+            isDestructive = false,
+            isSubmitting = false,
+            onDismiss = { confirmingConvert = false },
+            onConfirm = {
+                confirmingConvert = false
+                onConvertToManual()
+            }
+        )
+    }
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     var isScrubbing by remember { mutableStateOf(false) }
     // La misma barra se acopla arriba (sobre la portada del hero) y flota como
@@ -209,7 +238,8 @@ fun AlbumDetailScreen(
                 assetCount = heroAssetCount,
                 createdAt = album.createdAt,
                 isShared = album.isShared,
-                coverUrl = album.coverThumbnailUrl?.let { resolveAlbumCover(it, apiBaseUrl) }
+                coverUrl = album.coverThumbnailUrl?.let { resolveAlbumCover(it, apiBaseUrl) },
+                onEditRules = onEditRules
             )
         }
     }
@@ -385,6 +415,7 @@ fun AlbumDetailScreen(
                     onManageMembers = onManageMembers,
                     onLeave = onLeave,
                     onVideoSummary = { summarising = true },
+                    onConvertToManual = onConvertToManual?.let { { confirmingConvert = true } },
                     onReviewRemoved = if (canReviewRemoved) {
                         { reviewingRemoved = true }
                     } else null,
@@ -447,6 +478,8 @@ private fun AlbumDetailTopBar(
     onManageMembers: () -> Unit,
     onLeave: () -> Unit,
     onVideoSummary: () -> Unit,
+    /** Null → sin "Convertir en álbum normal" en el menú. */
+    onConvertToManual: (() -> Unit)? = null,
     /** Null → sin "Quitadas recientemente" en el menú. */
     onReviewRemoved: (() -> Unit)? = null,
     /**
@@ -514,6 +547,7 @@ private fun AlbumDetailTopBar(
                     onManageMembers = onManageMembers,
                     onLeave = onLeave,
                     onVideoSummary = onVideoSummary,
+                    onConvertToManual = onConvertToManual,
                     onReviewRemoved = onReviewRemoved
                 )
             }
@@ -535,7 +569,8 @@ private fun AlbumHero(
     assetCount: Int,
     createdAt: Instant,
     isShared: Boolean,
-    coverUrl: String?
+    coverUrl: String?,
+    onEditRules: (() -> Unit)? = null
 ) {
     Box(
         modifier = Modifier
@@ -637,6 +672,33 @@ private fun AlbumHero(
                     color = PhotonneColors.onScrimMuted
                 )
             }
+
+            // Las reglas viven detrás de este chip: abre el editor del álbum inteligente.
+            if (onEditRules != null) {
+                Spacer(Modifier.size(12.dp))
+                val rulesLabel = stringResource(Res.string.album_hero_rules_edit)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    modifier = Modifier
+                        .clip(com.photonne.app.ui.theme.PillShape)
+                        .background(PhotonneColors.scrimMedium)
+                        .clickable(onClickLabel = rulesLabel, onClick = onEditRules)
+                        .padding(horizontal = Spacing.md, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        tint = PhotonneColors.onScrim,
+                        modifier = Modifier.size(IconSize.sm)
+                    )
+                    Text(
+                        text = stringResource(Res.string.album_hero_rules),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = PhotonneColors.onScrim
+                    )
+                }
+            }
         }
     }
 }
@@ -670,6 +732,7 @@ private fun AlbumActionsOverflowMenu(
     onManageMembers: () -> Unit,
     onLeave: () -> Unit,
     onVideoSummary: () -> Unit,
+    onConvertToManual: (() -> Unit)? = null,
     onReviewRemoved: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
@@ -713,6 +776,13 @@ private fun AlbumActionsOverflowMenu(
                     text = { Text(stringResource(Res.string.action_edit)) },
                     leadingIcon = { Icon(PhotonneIcons.Edit, contentDescription = null) },
                     onClick = { menuOpen = false; onEdit() }
+                )
+            }
+            if (onConvertToManual != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.album_action_convert_manual)) },
+                    leadingIcon = { Icon(PhotonneIcons.Album, contentDescription = null) },
+                    onClick = { menuOpen = false; onConvertToManual() }
                 )
             }
             if (onReviewRemoved != null) {

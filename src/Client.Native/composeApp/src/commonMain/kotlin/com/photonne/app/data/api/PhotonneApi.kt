@@ -552,6 +552,8 @@ interface PhotonneApi {
         smartRule: SmartRule? = null,
     ): AlbumSummary
     suspend fun getSmartAlbumRule(albumId: String): SmartAlbumRuleDetails
+    /** Freezes a smart album into a manual one with its current photos (owner only). */
+    suspend fun convertAlbumToManual(albumId: String): AlbumSummary
     suspend fun deleteAlbum(albumId: String)
     suspend fun addAssetToAlbum(albumId: String, assetId: String)
     suspend fun addAssetsToAlbumBatch(albumId: String, assetIds: List<String>)
@@ -1602,6 +1604,14 @@ class PhotonneApiClient(
         val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId/rule")
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Smart album rule load failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun convertAlbumToManual(albumId: String): AlbumSummary {
+        val response: HttpResponse = client.post("$baseUrl/api/albums/$albumId/convert-to-manual")
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Album conversion failed (${response.status.value})")
         }
         return response.body()
     }

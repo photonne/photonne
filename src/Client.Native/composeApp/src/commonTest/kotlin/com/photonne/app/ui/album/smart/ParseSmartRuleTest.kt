@@ -93,4 +93,30 @@ class ParseSmartRuleTest {
             buildSmartRule(parsed.conditions, matchAll = true)!!.conditions!!.single())
         assertEquals(listOf(unknown), parsed.preserved)
     }
+
+    @Test
+    fun rollingWindow_roundTripsAsLast() {
+        val window = SmartCondition.DateRange(from = null, to = null, window = RollingWindow(6, RollingWindow.Period.Months))
+        val rule = buildSmartRule(listOf(window), matchAll = true)!!
+
+        assertEquals(SmartRule(type = "dateRange", last = "6m"), rule.conditions!!.single())
+        val parsed = parseSmartRule(details(rule), "?")
+        assertEquals(listOf<SmartCondition>(window), parsed.conditions)
+    }
+
+    @Test
+    fun unreadableWindow_isPreserved() {
+        val odd = SmartRule(type = "dateRange", last = "2w")
+        val parsed = parseSmartRule(details(SmartRule(op = "AND", conditions = listOf(odd))), "?")
+
+        assertTrue(parsed.conditions.isEmpty())
+        assertEquals(listOf(odd), parsed.preserved)
+    }
+
+    @Test
+    fun rollingWindow_parsesOnlyWhatTheServerAccepts() {
+        assertEquals(RollingWindow(90, RollingWindow.Period.Days), RollingWindow.parse("90d"))
+        assertEquals(RollingWindow(1, RollingWindow.Period.Years), RollingWindow.parse(" 1y "))
+        listOf("0d", "90", "-3m", "2w", "10000d", "05d").forEach { assertEquals(null, RollingWindow.parse(it), it) }
+    }
 }

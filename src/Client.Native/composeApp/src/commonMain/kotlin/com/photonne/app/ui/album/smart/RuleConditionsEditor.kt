@@ -101,6 +101,20 @@ import com.photonne.app.resources.smart_album_summary_date_from
 import com.photonne.app.resources.smart_album_summary_date_none
 import com.photonne.app.resources.smart_album_summary_date_range
 import com.photonne.app.resources.smart_album_summary_date_to
+import com.photonne.app.resources.smart_album_date_mode_between
+import com.photonne.app.resources.smart_album_date_mode_last
+import com.photonne.app.resources.smart_album_window_amount
+import com.photonne.app.resources.smart_album_window_days
+import com.photonne.app.resources.smart_album_window_hint
+import com.photonne.app.resources.smart_album_window_months
+import com.photonne.app.resources.smart_album_window_years
+import com.photonne.app.resources.smart_album_summary_last_days
+import com.photonne.app.resources.smart_album_summary_last_months
+import com.photonne.app.resources.smart_album_summary_last_years
+import com.photonne.app.ui.util.SegmentOption
+import com.photonne.app.ui.util.SegmentedChoiceRow
+import androidx.compose.ui.text.input.KeyboardType
+import org.jetbrains.compose.resources.pluralStringResource
 import com.photonne.app.resources.smart_album_summary_folders
 import com.photonne.app.resources.smart_album_summary_people_all
 import com.photonne.app.resources.smart_album_summary_people_any
@@ -365,6 +379,15 @@ private fun SmartCondition.summary(): String = when (this) {
         if (folders.isEmpty()) stringResource(Res.string.smart_album_no_selection)
         else stringResource(Res.string.smart_album_summary_folders, folders.joinToString(", ") { it.name })
     is SmartCondition.DateRange -> when {
+        window != null -> pluralStringResource(
+            when (window!!.period) {
+                RollingWindow.Period.Days -> Res.plurals.smart_album_summary_last_days
+                RollingWindow.Period.Months -> Res.plurals.smart_album_summary_last_months
+                RollingWindow.Period.Years -> Res.plurals.smart_album_summary_last_years
+            },
+            window!!.amount,
+            window!!.amount
+        )
         from != null && to != null -> stringResource(Res.string.smart_album_summary_date_range, from!!, to!!)
         from != null -> stringResource(Res.string.smart_album_summary_date_from, from!!)
         to != null -> stringResource(Res.string.smart_album_summary_date_to, to!!)
@@ -804,6 +827,12 @@ private fun DateRangeSheet(
     var from by remember { mutableStateOf(existing?.from) }
     var to by remember { mutableStateOf(existing?.to) }
     var picking by remember { mutableStateOf<Boolean?>(null) } // true = from, false = to
+    // Dos formas de acotar: entre dos fechas fijas, o "de los últimos N días,
+    // meses o años", que rueda sola (el servidor rematerializa el álbum).
+    var rolling by remember { mutableStateOf(existing?.window != null) }
+    var amountText by remember { mutableStateOf((existing?.window?.amount ?: 30).toString()) }
+    var period by remember { mutableStateOf(existing?.window?.period ?: RollingWindow.Period.Days) }
+    val amount = amountText.toIntOrNull()?.takeIf { it in 1..RollingWindow.MAX_AMOUNT }
 
     SelectSheetScaffold(
         title = stringResource(Res.string.smart_album_cond_dates),
@@ -811,24 +840,72 @@ private fun DateRangeSheet(
         isEmpty = false,
         emptyText = "",
         onDismiss = onDismiss,
-        onConfirm = { onConfirm(SmartCondition.DateRange(from, to)) },
-        confirmEnabled = from != null || to != null,
+        onConfirm = {
+            onConfirm(
+                if (rolling && amount != null) {
+                    SmartCondition.DateRange(from = null, to = null, window = RollingWindow(amount, period))
+                } else {
+                    SmartCondition.DateRange(from, to)
+                }
+            )
+        },
+        confirmEnabled = if (rolling) amount != null else from != null || to != null,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-            PickerField(
-                label = stringResource(Res.string.smart_album_date_from),
-                value = from,
-                icon = PhotonneIcons.Calendar,
-                onClick = { picking = true },
-                modifier = Modifier.weight(1f)
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            SegmentedChoiceRow(
+                options = listOf(
+                    SegmentOption(false, stringResource(Res.string.smart_album_date_mode_between)),
+                    SegmentOption(true, stringResource(Res.string.smart_album_date_mode_last))
+                ),
+                selected = rolling,
+                onSelect = { rolling = it }
             )
-            PickerField(
-                label = stringResource(Res.string.smart_album_date_to),
-                value = to,
-                icon = PhotonneIcons.Calendar,
-                onClick = { picking = false },
-                modifier = Modifier.weight(1f)
-            )
+            if (rolling) {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { text -> amountText = text.filter { it.isDigit() }.take(4) },
+                    label = { Text(stringResource(Res.string.smart_album_window_amount)) },
+                    singleLine = true,
+                    isError = amount == null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    listOf(
+                        RollingWindow.Period.Days to Res.string.smart_album_window_days,
+                        RollingWindow.Period.Months to Res.string.smart_album_window_months,
+                        RollingWindow.Period.Years to Res.string.smart_album_window_years
+                    ).forEach { (option, label) ->
+                        FilterChip(
+                            selected = period == option,
+                            onClick = { period = option },
+                            label = { Text(stringResource(label)) }
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(Res.string.smart_album_window_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    PickerField(
+                        label = stringResource(Res.string.smart_album_date_from),
+                        value = from,
+                        icon = PhotonneIcons.Calendar,
+                        onClick = { picking = true },
+                        modifier = Modifier.weight(1f)
+                    )
+                    PickerField(
+                        label = stringResource(Res.string.smart_album_date_to),
+                        value = to,
+                        icon = PhotonneIcons.Calendar,
+                        onClick = { picking = false },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
     }
 
