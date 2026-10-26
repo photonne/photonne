@@ -153,6 +153,7 @@ import com.photonne.app.resources.selection_action_favorite_add
 import com.photonne.app.resources.selection_action_favorite_remove
 import com.photonne.app.resources.asset_trash_title
 import com.photonne.app.resources.selection_count
+import com.photonne.app.resources.folder_action_bring_photos
 import com.photonne.app.resources.selection_label_add_to_album
 import com.photonne.app.resources.selection_label_deselect_all
 import com.photonne.app.resources.selection_label_download
@@ -1706,11 +1707,13 @@ fun RowScope.FolderDetailChromeActions(
     onToggleTimeline: () -> Unit = {},
     onCreateSubfolder: (() -> Unit)? = null,
     isPinned: Boolean = false,
-    onTogglePin: (() -> Unit)? = null
+    onTogglePin: (() -> Unit)? = null,
+    /** Opens the library picker to move photos into this folder; null hides it. */
+    onBringPhotos: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val hasMenu = onTogglePin != null || canEdit || canDelete || canManageMembers || canMove ||
-        canToggleTimeline
+        canToggleTimeline || onBringPhotos != null
     if (onCreateSubfolder != null) {
         CreateAction(
             icon = PhotonneIcons.NewFolder,
@@ -1727,6 +1730,13 @@ fun RowScope.FolderDetailChromeActions(
                 )
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                if (onBringPhotos != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.folder_action_bring_photos)) },
+                        leadingIcon = { Icon(PhotonneIcons.Add, contentDescription = null) },
+                        onClick = { menuOpen = false; onBringPhotos() }
+                    )
+                }
                 if (onTogglePin != null) {
                     DropdownMenuItem(
                         text = {

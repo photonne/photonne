@@ -461,6 +461,22 @@ class FolderDetailViewModel(
         }
     }
 
+    /**
+     * Moves photos chosen in the library picker into this folder. The move
+     * event reloads the folder ([onAssetsMoved]). Whether anything moved.
+     */
+    suspend fun bringFromLibrary(assetIds: List<String>): Boolean {
+        val folderId = _state.value.folderId ?: return false
+        return runCatching {
+            repository.moveAssets(sourceFolderId = null, targetFolderId = folderId, assetIds = assetIds)
+        }
+            .onFailure { error ->
+                _state.update { it.copy(error = errorFactory.from(error, "No se pudieron mover los archivos")) }
+            }
+            .getOrNull()
+            ?.let { it.moved > 0 } ?: false
+    }
+
     fun bulkArchive(onResult: (UiError?) -> Unit = {}) = runAssetBulk(
         action = { assetRepository.archive(it) },
         errorFallback = ErrorMessages.ARCHIVE_FAILED,

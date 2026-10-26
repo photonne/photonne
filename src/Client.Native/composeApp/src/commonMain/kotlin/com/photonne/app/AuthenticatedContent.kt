@@ -427,6 +427,28 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
             appState.selectedTab == MainTab.Folders && appState.moreSubscreen == null -> {
                 val openedFolder = appState.selectedFolder
                 if (openedFolder != null) {
+                    // "Traer fotos": el selector de la biblioteca mueve lo elegido a esta carpeta.
+                    var bringingPhotos by androidx.compose.runtime.saveable.rememberSaveable(openedFolder.id) {
+                        androidx.compose.runtime.mutableStateOf(false)
+                    }
+                    val bringPhotos: (() -> Unit)? = if (openedFolder.canWrite && openedFolder.externalLibraryId == null) {
+                        { bringingPhotos = true }
+                    } else null
+                    if (bringingPhotos) {
+                        com.photonne.app.ui.album.LibraryPicker(
+                            title = org.jetbrains.compose.resources.stringResource(
+                                com.photonne.app.resources.Res.string.folder_bring_photos_title,
+                                openedFolder.name.ifBlank { openedFolder.path }
+                            ),
+                            confirmLabel = { count ->
+                                org.jetbrains.compose.resources.pluralStringResource(
+                                    com.photonne.app.resources.Res.plurals.folder_bring_photos_confirm, count, count
+                                )
+                            },
+                            onDismiss = { bringingPhotos = false },
+                            onConfirm = { ids -> folderDetailViewModel.bringFromLibrary(ids) }
+                        )
+                    }
                     com.photonne.app.ui.folder.FolderDetailScreen(
                         folderId = openedFolder.id,
                         folderName = openedFolder.name.ifBlank { openedFolder.path },
@@ -508,9 +530,11 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
                                 },
                                 onCreateSubfolder = if (!openedIsExternal && openedFolder.canWrite) {
                                     { appState.showCreateFolder = true }
-                                } else null
+                                } else null,
+                                onBringPhotos = bringPhotos
                             )
                         },
+                        onBringPhotos = bringPhotos,
                         immersive = folderDetailImmersive,
                         onChromeVisibleChange = { appState.folderDetailChromeVisible = it }
                     )

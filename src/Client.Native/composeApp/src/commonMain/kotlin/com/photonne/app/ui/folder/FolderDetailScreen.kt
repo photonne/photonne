@@ -1,5 +1,6 @@
 package com.photonne.app.ui.folder
 
+import com.photonne.app.resources.folder_action_bring_photos
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +64,8 @@ fun FolderDetailScreen(
     onSubfolderLongPress: (FolderSummary) -> Unit,
     viewModel: FolderDetailViewModel,
     actions: @Composable RowScope.() -> Unit = {},
+    /** Opens the library picker from the empty folder; null = no button. */
+    onBringPhotos: (() -> Unit)? = null,
     /**
      * Immersive bottom nav: while true the photo grid drives the hide-on-scroll
      * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
@@ -127,7 +130,9 @@ fun FolderDetailScreen(
                     EmptyState(
                         icon = PhotonneIcons.Folder,
                         title = stringResource(Res.string.folder_detail_empty_title),
-                        subtitle = stringResource(Res.string.folder_detail_empty_subtitle)
+                        subtitle = stringResource(Res.string.folder_detail_empty_subtitle),
+                        actionLabel = onBringPhotos?.let { stringResource(Res.string.folder_action_bring_photos) },
+                        onAction = onBringPhotos
                     )
                 // Subcarpetas y assets comparten un único LazyVerticalGrid para que
                 // haya un solo scroll.
