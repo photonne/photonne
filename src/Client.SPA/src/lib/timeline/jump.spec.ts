@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { monthsOf, yearsWithPhotos } from './jump.js';
+import { monthsOf, yearTotal, yearsWithPhotos } from './jump.js';
 
 const months = [
 	{ key: '2026-09', count: 23 },
@@ -21,5 +21,17 @@ describe('monthsOf', () => {
 		expect(grid[0]).toEqual({ key: '2026-01', month: 1, count: 0 });
 		expect(grid[5]).toEqual({ key: '2026-06', month: 6, count: 60 });
 		expect(grid[8].count).toBe(23);
+	});
+});
+
+describe('yearTotal', () => {
+	it("adds up a year's months", () => {
+		const months = [
+			{ key: '2025-02', count: 3 },
+			{ key: '2025-11', count: 7 },
+			{ key: '2024-12', count: 10 }
+		];
+		expect(yearTotal(months, 2025)).toBe(10);
+		expect(yearTotal(months, 2023)).toBe(0);
 	});
 });
