@@ -225,6 +225,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::SearchRepository)
     single { com.photonne.app.data.search.RecentSearchStore(get()) }
     single { com.photonne.app.data.onboarding.WelcomeStore(get()) }
+    single { com.photonne.app.data.realtime.ServerEventsListener(get(), get()) }
     singleOf(::UploadRepository)
     singleOf(::MapRepository)
     singleOf(::PeopleRepository)

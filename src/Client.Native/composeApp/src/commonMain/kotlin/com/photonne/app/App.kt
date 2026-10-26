@@ -875,6 +875,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.main.ExternalNavigation.consumeConnectServer()
     }
     WelcomeHost(user.user, appState)
+    RealtimeHost(onNotifications = notificationsViewModel::onServerNotification)
     val externalDestination by com.photonne.app.ui.main.ExternalNavigation.pending
         .collectAsStateWithLifecycle()
     LaunchedEffect(externalDestination) {

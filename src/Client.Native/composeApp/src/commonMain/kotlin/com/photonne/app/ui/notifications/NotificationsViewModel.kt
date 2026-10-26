@@ -259,6 +259,18 @@ class NotificationsViewModel(
         }
     }
 
+    /**
+     * The server said a notification arrived (event stream): the bell's count
+     * now, without waiting for the next poll, and the list if it was loaded.
+     */
+    fun onServerNotification() {
+        viewModelScope.launch {
+            runCatching { repository.unreadCount() }
+                .onSuccess { count -> _state.update { it.copy(unreadCount = count) } }
+        }
+        if (_state.value.loaded) ensureLoaded()
+    }
+
     private fun startUnreadPolling() {
         viewModelScope.launch {
             while (true) {
