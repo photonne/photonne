@@ -128,6 +128,44 @@ public sealed class SearchFilterTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Tag_MatchesAWholeUserTagOrAStructuralOne()
+    {
+        var lib = await SeedAsync();
+        await WithDbContextAsync(async db =>
+        {
+            var tag = new UserTag { OwnerId = lib.Owner.Id, Name = "Cumpleaños", NormalizedName = "cumpleaños" };
+            db.UserTags.Add(tag);
+            db.AssetUserTags.Add(new AssetUserTag { AssetId = lib.BeachDog, UserTag = tag });
+            db.AssetTags.Add(new AssetTag { AssetId = lib.Mountain, TagType = AssetTagType.Panorama });
+            await db.SaveChangesAsync();
+        });
+
+        // Case and accents don't matter; a part of the name doesn't match.
+        Assert.Equal(new[] { lib.BeachDog }, await IdsAsync(lib.Client, "tag=cumpleanos"));
+        Assert.Empty(await IdsAsync(lib.Client, "tag=cumple"));
+        Assert.Equal(new[] { lib.Mountain }, await IdsAsync(lib.Client, "tag=Panorama"));
+    }
+
+    [Fact]
+    public async Task CameraAndPlace_MatchTheExif()
+    {
+        var lib = await SeedAsync();
+        var placeId = await WithDbContextAsync(async db =>
+        {
+            var place = new Place { GeonameId = 3117735, Name = "Madrid", CountryCode = "ES", Latitude = 40.4, Longitude = -3.7 };
+            db.Places.Add(place);
+            db.AssetExifs.Add(new AssetExif { AssetId = lib.BeachDog, CameraMake = "Apple", CameraModel = "iPhone 15 Pro", Place = place });
+            db.AssetExifs.Add(new AssetExif { AssetId = lib.Mountain, CameraMake = "Sony", CameraModel = "ILCE-7M4" });
+            await db.SaveChangesAsync();
+            return place.Id;
+        });
+
+        Assert.Equal(new[] { lib.BeachDog }, await IdsAsync(lib.Client, "cameraModel=iPhone%2015%20Pro"));
+        Assert.Empty(await IdsAsync(lib.Client, "cameraMake=Sony&cameraModel=iPhone%2015%20Pro"));
+        Assert.Equal(new[] { lib.BeachDog }, await IdsAsync(lib.Client, $"placeId={placeId}"));
+    }
+
+    [Fact]
     public async Task Text_MatchesFileName()
     {
         var lib = await SeedAsync();
