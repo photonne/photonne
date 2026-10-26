@@ -494,6 +494,10 @@ public class AlbumsEndpoint : IEndpoint
                         .Where(t => t.Size == ThumbnailSize.Small)
                         .Select(t => t.DominantColor)
                         .FirstOrDefault(),
+                    ThumbHash = a.Thumbnails
+                        .Where(t => t.Size == ThumbnailSize.Small)
+                        .Select(t => t.ThumbHash)
+                        .FirstOrDefault(),
                     AspectRatio = a.Thumbnails
                         .Where(t => t.Size == ThumbnailSize.Small && t.Height > 0)
                         .Select(t => (double?)t.Width / t.Height)
