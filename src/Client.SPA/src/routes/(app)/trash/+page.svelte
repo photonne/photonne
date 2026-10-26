@@ -8,6 +8,7 @@
 	import { LibraryActions } from '#lib/library/library-actions.svelte.js';
 	import { sharedTrashToTimeline } from '#lib/library/pages.js';
 	import ToolButton from '#lib/library/ToolButton.svelte';
+	import { daysLeft } from '#lib/library/trash-policy.js';
 	import { useTrashPolicy } from '#lib/library/trash-settings.svelte.js';
 	import TrashSelectionActions from '#lib/library/TrashSelectionActions.svelte';
 	import { leaveViewerThen } from '#lib/library/viewer-flow.js';
@@ -17,6 +18,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import CollectionView from '#lib/timeline/CollectionView.svelte';
 	import { PagedList } from '#lib/timeline/paged-list.svelte.js';
+	import type { CellNote, GridAsset } from '#lib/timeline/types.js';
 	import { ViewerRoute } from '#lib/viewer/viewer-route.svelte.js';
 
 	// Both come in the order they were deleted, newest first. A month header
@@ -93,6 +95,15 @@
 		return parts.join(' ');
 	}
 
+	// The shared trash follows the same nightly cleanup, so both show it.
+	function expiry(item: GridAsset): CellNote | null {
+		const days = daysLeft(item.deletedAt, policy.current.retentionDays);
+		if (days === null) return null;
+		return days === 0
+			? { text: m.trash_days_left_none_short(), label: m.trash_days_left_none() }
+			: { text: m.trash_days_left_short({ days }), label: m.trash_days_left({ days }) };
+	}
+
 	function formatQuota(mb: number) {
 		return mb >= 1024 ? `${Math.round((mb / 1024) * 10) / 10} GB` : `${mb} MB`;
 	}
@@ -111,6 +122,7 @@
 		emptyHint={scope === 'shared' ? m.trash_shared_empty_hint() : m.trash_empty_hint()}
 		emptyIcon="delete"
 		viewerActions={[]}
+		cellNote={expiry}
 		onnearend={() => list.more()}
 	>
 		{#snippet toolbar()}

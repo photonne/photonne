@@ -42,3 +42,21 @@ function positiveInt(value: string | undefined, fallback: number) {
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Whole days until the nightly cleanup purges an item trashed at `deletedAt`
+ * (it goes once it is older than the retention), rounded up; 0 means the next
+ * cleanup takes it. Null without a retention or a deletion date.
+ */
+export function daysLeft(
+	deletedAt: string | null | undefined,
+	retentionDays: number | null,
+	now = Date.now()
+): number | null {
+	if (!deletedAt || !retentionDays) return null;
+	const deleted = Date.parse(deletedAt);
+	if (Number.isNaN(deleted)) return null;
+	return Math.max(0, Math.ceil((deleted + retentionDays * DAY_MS - now) / DAY_MS));
+}

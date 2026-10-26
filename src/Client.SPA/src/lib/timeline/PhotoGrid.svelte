@@ -29,7 +29,7 @@
 	import Scrubber from './Scrubber.svelte';
 	import { rowYearMarkers, spreadMarkers, yearMarkers } from './scrubber.js';
 	import type { Selection } from './selection.svelte.js';
-	import type { GridAsset } from './types.js';
+	import type { CellNote, GridAsset } from './types.js';
 	import {
 		DEFAULT_SIZE,
 		rowHeightFor,
@@ -86,6 +86,8 @@
 		 * no placeholders for its unloaded pages) they cover the loaded ones.
 		 */
 		onloadsections?: (keys: string[]) => Promise<void>;
+		/** A short note on a cell (the days left in the trash). */
+		cellNote?: (item: T) => CellNote | null;
 	}
 
 	let {
@@ -107,7 +109,8 @@
 		sectionSubtitle,
 		onscrolled,
 		lead,
-		onloadsections
+		onloadsections,
+		cellNote
 	}: Props = $props();
 
 	const HEADER_HEIGHT = 52;
@@ -727,6 +730,7 @@
 						     a portrait column cell can be twice as tall as it is wide. -->
 						{@const size = thumbnailSizeFor(cell.height === undefined ? height : cell.width)}
 						{@const selected = selection.has(item.id)}
+						{@const note = cellNote?.(item) ?? null}
 						<div
 							class="cell"
 							class:selected
@@ -744,7 +748,7 @@
 								class="open"
 								data-id={item.id}
 								tabindex={cellTabIndex(item.id)}
-								aria-label={itemLabel(item)}
+								aria-label={note ? `${itemLabel(item)}, ${note.label}` : itemLabel(item)}
 								aria-pressed={selection.active ? selected : undefined}
 								draggable="true"
 								ondragstart={(event) => {
@@ -788,6 +792,9 @@
 								{#if item.isLivePhoto}<Icon name="livePhoto" size={16} />{/if}
 								{#if item.isVideo}<Icon name="play" size={18} />{/if}
 							</span>
+							{#if note}
+								<span class="note" aria-hidden="true">{note.text}</span>
+							{/if}
 						</div>
 					{/each}
 				{/if}
@@ -1079,6 +1086,19 @@
 	.selected .badges {
 		top: 6px;
 		right: 6px;
+	}
+
+	.note {
+		position: absolute;
+		bottom: 6px;
+		left: 6px;
+		padding: 1px 6px;
+		border-radius: var(--radius-pill);
+		background: rgb(0 0 0 / 0.55);
+		color: #fff;
+		font-size: var(--font-size-xs);
+		font-weight: 600;
+		pointer-events: none;
 	}
 
 	/* The floating pills, centred on the photos (the native FloatingDatePill

@@ -26,7 +26,7 @@
 	import PageChrome from '#lib/components/PageChrome.svelte';
 	import ViewOptions from './ViewOptions.svelte';
 	import { Selection } from './selection.svelte.js';
-	import type { GridAsset } from './types.js';
+	import type { CellNote, GridAsset } from './types.js';
 	import { sizeKeyDirection, WHEEL_STEP } from './zoom.js';
 
 	type Action = 'favorite' | 'album' | 'folder' | 'share' | 'download' | 'archive' | 'trash';
@@ -97,6 +97,8 @@
 		 * map's panel), the options among its own buttons.
 		 */
 		chrome?: 'page' | 'inline' | 'none';
+		/** A short note on each cell (the trash's days left). */
+		cellNote?: (item: GridAsset) => CellNote | null;
 	}
 
 	let {
@@ -123,7 +125,8 @@
 		sizeShortcuts = true,
 		sizeInToolbar = true,
 		selection: given,
-		chrome = 'page'
+		chrome = 'page',
+		cellNote
 	}: Props = $props();
 
 	// A bigger rendition for the banner when the server has one.
@@ -313,6 +316,7 @@
 				label={title}
 				sectionTitle={(key) => monthTitle(key.slice(0, 7))}
 				{itemLabel}
+				{cellNote}
 				onneedsection={() => {}}
 				onopen={(item) => viewer.open(item.id)}
 				{onnearend}
