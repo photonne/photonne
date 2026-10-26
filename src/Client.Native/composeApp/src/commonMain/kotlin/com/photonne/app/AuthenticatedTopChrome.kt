@@ -65,6 +65,8 @@ internal class AuthenticatedChromeHost(
     uploadState: State<com.photonne.app.ui.upload.UploadUiState>,
     actionsState: State<com.photonne.app.ui.actions.AssetActionsUiState>,
     utilitiesDuplicatesState: State<com.photonne.app.ui.utilities.UtilitiesDuplicatesUiState>,
+    utilitiesLargeFilesState: State<com.photonne.app.ui.utilities.UtilitiesLargeFilesUiState>,
+    val utilitiesLargeFilesViewModel: com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel,
     val timelineViewModel: com.photonne.app.ui.timeline.TimelineViewModel,
     val albumsViewModel: com.photonne.app.ui.album.AlbumsViewModel,
     val albumDetailViewModel: com.photonne.app.ui.album.AlbumDetailViewModel,
@@ -110,6 +112,7 @@ internal class AuthenticatedChromeHost(
     val uploadState by uploadState
     val actionsState by actionsState
     val utilitiesDuplicatesState by utilitiesDuplicatesState
+    val utilitiesLargeFilesState by utilitiesLargeFilesState
 }
 
 /**
@@ -348,6 +351,20 @@ internal fun buildSelectionTopChrome(host: AuthenticatedChromeHost): (@Composabl
                     // El servidor no da los ids de toda la lista: solo se
                     // puede seleccionar lo cargado, y así se rotula.
                     selectAllLoadedOnly = archivedState.hasMore
+                )
+            }
+            appState.moreSubscreen == MoreSubscreen.UtilitiesLargeFiles &&
+                utilitiesLargeFilesState.isSelectionActive -> selectionChrome {
+                AssetSelectionTopBar(
+                    selectedCount = utilitiesLargeFilesState.selection.size,
+                    summary = rememberSelectionSummary(
+                        utilitiesLargeFilesState.items,
+                        utilitiesLargeFilesState.selection
+                    ),
+                    totalCount = utilitiesLargeFilesState.items.size,
+                    isMutating = utilitiesLargeFilesState.isDeleting,
+                    onClose = utilitiesLargeFilesViewModel::clearSelection,
+                    onSelectAll = utilitiesLargeFilesViewModel::toggleSelectAll
                 )
             }
             // Personal tab in selection mode: restore/purge selected.

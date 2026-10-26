@@ -21,8 +21,13 @@ data class UtilitiesLargeFilesUiState(
     val isLoading: Boolean = false,
     val error: UiError? = null,
     val count: Int = DEFAULT_COUNT,
+    /** Files marked to go to the trash. */
+    val selection: Set<String> = emptySet(),
+    val isDeleting: Boolean = false,
 ) {
     val totalBytes: Long get() = items.sumOf { it.fileSize }
+    val isSelectionActive: Boolean get() = selection.isNotEmpty()
+    val selectedBytes: Long get() = items.filter { it.id in selection }.sumOf { it.fileSize }
 
     companion object {
         const val DEFAULT_COUNT = 50
@@ -67,7 +72,12 @@ class UtilitiesLargeFilesViewModel(
 
     private fun removeItems(assetIds: List<String>) {
         val ids = assetIds.toSet()
-        _state.update { current -> current.copy(items = current.items.filterNot { it.id in ids }) }
+        _state.update { current ->
+            current.copy(
+                items = current.items.filterNot { it.id in ids },
+                selection = current.selection - ids
+            )
+        }
     }
 
     fun ensureLoaded() {
@@ -97,7 +107,11 @@ class UtilitiesLargeFilesViewModel(
         loadJob = viewModelScope.launch {
             suspendRunCatching { repository.largeFiles(count) }
                 .onSuccess { items ->
-                    _state.update { it.copy(items = items, isLoading = false) }
+                    // What was marked and is still listed stays marked.
+                    val ids = items.mapTo(HashSet()) { it.id }
+                    _state.update {
+                        it.copy(items = items, isLoading = false, selection = it.selection.filterTo(HashSet()) { id -> id in ids })
+                    }
                 }
                 .onFailure { error ->
                     _state.update {
@@ -106,6 +120,47 @@ class UtilitiesLargeFilesViewModel(
                             error = errorFactory.from(error, "No se pudieron cargar los archivos grandes")
                         )
                     }
+                }
+        }
+    }
+
+    fun toggle(id: String) {
+        _state.update {
+            it.copy(selection = if (id in it.selection) it.selection - id else it.selection + id)
+        }
+    }
+
+    /** Everything listed, or nothing when everything already was. */
+    fun toggleSelectAll() {
+        _state.update {
+            val all = it.items.mapTo(HashSet()) { item -> item.id }
+            it.copy(selection = if (it.selection.containsAll(all)) emptySet() else all)
+        }
+    }
+
+    fun clearSelection() {
+        _state.update { it.copy(selection = emptySet()) }
+    }
+
+    /**
+     * Sends the marked files to the trash. The result goes to [onResult]
+     * (`error == null` → done, with the ids so the snackbar can undo), as in
+     * Duplicados.
+     */
+    fun deleteSelected(onResult: (deleted: List<String>, error: UiError?) -> Unit = { _, _ -> }) {
+        val selected = _state.value.selection.toList()
+        if (selected.isEmpty() || _state.value.isDeleting) return
+        _state.update { it.copy(isDeleting = true) }
+        viewModelScope.launch {
+            suspendRunCatching { repository.deleteAssets(selected) }
+                .onSuccess {
+                    _state.update { it.copy(isDeleting = false) }
+                    removeItems(selected)
+                    onResult(selected, null)
+                }
+                .onFailure { error ->
+                    _state.update { it.copy(isDeleting = false) }
+                    onResult(selected, errorFactory.from(error, "No se pudo eliminar"))
                 }
         }
     }
