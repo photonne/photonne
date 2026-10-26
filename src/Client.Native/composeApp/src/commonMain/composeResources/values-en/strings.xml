@@ -20,6 +20,9 @@
     <string name="memories_strip_see_all">See all memories</string>
     <string name="memories_entry_subtitle">People, trips and moments from past years</string>
     <string name="search_discover_see_all">See all</string>
+    <string name="search_recent_title">Recent</string>
+    <string name="search_recent_clear">Clear</string>
+    <string name="search_discover_places">Places</string>
     <string name="search_discover_map_subtitle">Your photos by where they were taken</string>
     <string name="search_discover_videos_subtitle">All your videos, newest first</string>
 

@@ -1,5 +1,6 @@
 package com.photonne.app.ui.search
 
+import com.photonne.app.data.search.PinnedSearchFilter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -99,6 +100,7 @@ fun SearchScreen(
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val recent by viewModel.recent.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.ensureFacetsLoaded() }
     com.photonne.app.ui.main.ResultSnackbar(
@@ -156,7 +158,13 @@ fun SearchScreen(
                             onPersonClick = viewModel::showResultsForPerson,
                             onSceneClick = viewModel::showResultsForSceneLabel,
                             onObjectClick = viewModel::showResultsForObjectLabel,
-                            modifier = Modifier.hazeSource(hazeState)
+                            modifier = Modifier.hazeSource(hazeState),
+                            recent = recent,
+                            onRecentClick = viewModel::applyRecent,
+                            onClearRecent = viewModel::clearRecent,
+                            onPlaceClick = { place ->
+                                viewModel.showResultsFor(PinnedSearchFilter.Place(place.id, place.name))
+                            }
                         )
                     state.results.isEmpty() ->
                         // Los chips de filtro siguen visibles con cero

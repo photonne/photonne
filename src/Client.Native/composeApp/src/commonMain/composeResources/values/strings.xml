@@ -20,6 +20,9 @@
     <string name="memories_strip_see_all">Ver todos los recuerdos</string>
     <string name="memories_entry_subtitle">Personas, viajes y momentos de otros años</string>
     <string name="search_discover_see_all">Ver todo</string>
+    <string name="search_recent_title">Recientes</string>
+    <string name="search_recent_clear">Borrar</string>
+    <string name="search_discover_places">Lugares</string>
     <string name="search_discover_map_subtitle">Tus fotos según dónde se hicieron</string>
     <string name="search_discover_videos_subtitle">Todos tus vídeos, del más reciente al más antiguo</string>
 
