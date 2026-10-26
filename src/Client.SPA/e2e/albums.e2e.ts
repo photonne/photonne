@@ -325,10 +325,9 @@ test.describe('smart albums', () => {
 
 	test('edits a rule and keeps the conditions it cannot show', async ({ page }) => {
 		const state = await open(page, '/albums/album-2');
-		await expect(page.getByText('Inteligente', { exact: true })).toBeVisible();
 
-		await page.getByRole('button', { name: 'Más acciones' }).click();
-		await page.getByRole('menuitem', { name: 'Editar álbum' }).click();
+		// The Reglas pill opens the rule editor.
+		await page.getByRole('button', { name: 'Editar las reglas del álbum inteligente' }).click();
 		const dialog = page.getByRole('dialog', { name: 'Editar álbum' });
 		await expect(dialog.getByText(/1 condición más que aquí no se muestra/)).toBeVisible();
 		await expect(dialog.getByRole('button', { name: 'Quitar dog' })).toBeVisible();
@@ -346,6 +345,40 @@ test.describe('smart albums', () => {
 				]
 			}
 		});
+	});
+
+	test('keeps the photos of a rolling window of months', async ({ page }) => {
+		const state = await open(page, '/albums/album-2');
+		await page.getByRole('button', { name: 'Editar las reglas del álbum inteligente' }).click();
+		const dialog = page.getByRole('dialog', { name: 'Editar álbum' });
+
+		await dialog.getByRole('button', { name: 'Añadir condición' }).click();
+		await page.getByRole('menuitem', { name: 'Fechas' }).click();
+		await dialog.getByRole('combobox', { name: 'Fotos', exact: true }).selectOption('last');
+		await dialog.getByRole('spinbutton', { name: 'Cantidad' }).fill('6');
+		await dialog.getByRole('combobox', { name: 'Unidad' }).selectOption('m');
+		await dialog.getByRole('button', { name: 'Guardar' }).click();
+
+		await expect(page.getByText('Cambios guardados')).toBeVisible();
+		expect(calls(state, 'PUT /api/albums/album-2')[0].body).toMatchObject({
+			smartRule: { conditions: [{}, { type: 'dateRange', last: '6m' }, {}] }
+		});
+	});
+
+	test('converts to a regular album that keeps its photos', async ({ page }) => {
+		const state = await open(page, '/albums/album-2');
+
+		await page.getByRole('button', { name: 'Más acciones' }).click();
+		await page.getByRole('menuitem', { name: 'Convertir en álbum normal' }).click();
+		const dialog = page.getByRole('dialog', { name: '¿Convertir en álbum normal?' });
+		await expect(dialog).toContainText('Se queda con las 4 fotos que tiene ahora');
+		await dialog.getByRole('button', { name: 'Convertir' }).click();
+
+		await expect(page.getByText('Ahora es un álbum normal')).toBeVisible();
+		expect(calls(state, 'POST /api/albums/album-2/convert-to-manual')).toHaveLength(1);
+		await expect(
+			page.getByRole('button', { name: 'Editar las reglas del álbum inteligente' })
+		).toBeHidden();
 	});
 
 	test('offers no removal: a rule decides what is inside', async ({ page }) => {

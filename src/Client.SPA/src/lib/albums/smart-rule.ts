@@ -11,7 +11,16 @@ import type { SmartRuleNode } from '#lib/api/index.js';
 export type Match = 'any' | 'all';
 
 export type Condition =
-	| { id: number; type: 'dateRange'; from: string; to: string }
+	| {
+			id: number;
+			type: 'dateRange';
+			/** Fixed dates, or a window that rolls with today ("the last 30 days"). */
+			mode: 'between' | 'last';
+			from: string;
+			to: string;
+			amount: number;
+			unit: WindowUnit;
+	  }
 	| { id: number; type: 'folder'; folderIds: string[]; includeSubfolders: boolean }
 	| { id: number; type: 'person'; personIds: string[]; match: Match }
 	| { id: number; type: 'object' | 'scene'; labels: string[]; match: Match }
@@ -21,6 +30,10 @@ export type Condition =
 	| { id: number; type: 'text' | 'ocr'; query: string };
 
 export type ConditionType = Condition['type'];
+
+/** The units of a rolling date window: days, months, years. */
+export const windowUnits = ['d', 'm', 'y'] as const;
+export type WindowUnit = (typeof windowUnits)[number];
 
 /** Conditions in the order the "Add condition" menu offers them. */
 export const conditionTypes: readonly ConditionType[] = [
@@ -61,7 +74,7 @@ export function newCondition(type: ConditionType): Condition {
 	const id = nextId++;
 	switch (type) {
 		case 'dateRange':
-			return { id, type, from: '', to: '' };
+			return { id, type, mode: 'between', from: '', to: '', amount: 30, unit: 'd' };
 		case 'folder':
 			return { id, type, folderIds: [], includeSubfolders: true };
 		case 'person':
@@ -96,10 +109,31 @@ export function toCondition(node: SmartRuleNode): Condition | null {
 	if (isLogical(node)) return null;
 	const id = nextId++;
 	switch (node.type?.toLowerCase()) {
-		case 'daterange':
+		case 'daterange': {
+			const window = /^([1-9]\d{0,3})([dmy])$/.exec(node.last?.trim() ?? '');
+			if (window) {
+				return {
+					id,
+					type: 'dateRange',
+					mode: 'last',
+					from: '',
+					to: '',
+					amount: Number(window[1]),
+					unit: window[2] as WindowUnit
+				};
+			}
 			return node.from || node.to
-				? { id, type: 'dateRange', from: dateOf(node.from), to: dateOf(node.to) }
+				? {
+						id,
+						type: 'dateRange',
+						mode: 'between',
+						from: dateOf(node.from),
+						to: dateOf(node.to),
+						amount: 30,
+						unit: 'd'
+					}
 				: null;
+		}
 		case 'folder':
 			return {
 				id,
@@ -160,7 +194,9 @@ export function parseRule(rule: SmartRuleNode | null | undefined): RuleModel {
 export function isComplete(condition: Condition) {
 	switch (condition.type) {
 		case 'dateRange':
-			return !!(condition.from || condition.to);
+			return condition.mode === 'last'
+				? Number.isInteger(condition.amount) && condition.amount >= 1 && condition.amount <= 9999
+				: !!(condition.from || condition.to);
 		case 'folder':
 			return condition.folderIds.length > 0;
 		case 'person':
@@ -179,11 +215,13 @@ export function isComplete(condition: Condition) {
 export function toNode(condition: Condition): SmartRuleNode {
 	switch (condition.type) {
 		case 'dateRange':
-			return {
-				type: 'dateRange',
-				from: condition.from ? `${condition.from}T00:00:00Z` : null,
-				to: condition.to ? `${condition.to}T00:00:00Z` : null
-			};
+			return condition.mode === 'last'
+				? { type: 'dateRange', last: `${condition.amount}${condition.unit}` }
+				: {
+						type: 'dateRange',
+						from: condition.from ? `${condition.from}T00:00:00Z` : null,
+						to: condition.to ? `${condition.to}T00:00:00Z` : null
+					};
 		case 'folder':
 			return {
 				type: 'folder',

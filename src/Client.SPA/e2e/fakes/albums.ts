@@ -356,6 +356,12 @@ const handle: FakeHandler = async (context) => {
 				return noContent();
 			}
 		}
+		if (sub === 'convert-to-manual' && method === 'POST') {
+			log();
+			found.kind = 'Manual';
+			delete s.rules[id];
+			return ok(found);
+		}
 		if (sub === 'assets' && !extra && method === 'GET') {
 			return ok(
 				(s.members[id] ?? []).flatMap((a) => (assets.has(a) ? [asset(assets.get(a)!)] : []))

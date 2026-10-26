@@ -31,7 +31,7 @@ describe('parseRule', () => {
 		expect(model.preserved).toEqual([]);
 		expect(withoutIds(model.conditions)).toEqual([
 			{ type: 'person', personIds: ['p1', 'p2'], match: 'all' },
-			{ type: 'dateRange', from: '2024-05-01', to: '' },
+			{ type: 'dateRange', mode: 'between', from: '2024-05-01', to: '', amount: 30, unit: 'd' },
 			{ type: 'mediaType', mediaType: 'Video' },
 			// Labels match "all" on the server when the rule doesn't say.
 			{ type: 'scene', labels: ['beach'], match: 'all' }
@@ -86,6 +86,26 @@ describe('buildRule', () => {
 		});
 	});
 
+	it('sends a rolling window as "last"', () => {
+		const range = newCondition('dateRange');
+		if (range.type === 'dateRange') {
+			range.mode = 'last';
+			range.amount = 6;
+			range.unit = 'm';
+		}
+		expect(buildRule({ op: 'AND', conditions: [range], preserved: [] })).toEqual({
+			op: 'AND',
+			conditions: [{ type: 'dateRange', last: '6m' }]
+		});
+	});
+
+	it('reads a rolling window back, and keeps one it cannot show', () => {
+		const rule = { op: 'AND', conditions: [{ type: 'dateRange', last: '90d' }] };
+		expect(buildRule(parseRule(rule))).toEqual(rule);
+		const odd = { type: 'dateRange', last: '2w' };
+		expect(parseRule({ op: 'AND', conditions: [odd] }).preserved).toEqual([odd]);
+	});
+
 	it('round-trips through parseRule', () => {
 		const rule = {
 			op: 'OR',
@@ -104,6 +124,9 @@ describe('isComplete', () => {
 	it('needs a value on conditions that pick things', () => {
 		expect(isComplete(newCondition('person'))).toBe(false);
 		expect(isComplete(newCondition('dateRange'))).toBe(false);
+		const window = newCondition('dateRange');
+		if (window.type === 'dateRange') window.mode = 'last';
+		expect(isComplete(window)).toBe(true);
 		expect(isComplete(newCondition('mediaType'))).toBe(true);
 		expect(isComplete(newCondition('favorite'))).toBe(true);
 	});
