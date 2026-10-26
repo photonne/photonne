@@ -126,6 +126,11 @@
 	const contentSrc = $derived(
 		`/api/assets/${assetId}/content${asset ? `?v=${asset.checksum}` : ''}`
 	);
+	// A video plays from its H.264 copy when the server made one (HEVC, 4K,
+	// AVI…), from the original otherwise: /playback picks.
+	const playbackSrc = $derived(
+		`/api/assets/${assetId}/playback${asset ? `?v=${asset.checksum}` : ''}`
+	);
 
 	// Everything past favourite, share and info waits in the "⋮" menu; the
 	// keys (S, Shift+F, Delete…) still work with it closed.
@@ -596,7 +601,7 @@
 							<!-- svelte-ignore a11y_media_has_caption -->
 							<video
 								bind:this={video}
-								src={contentSrc}
+								src={playbackSrc}
 								poster={previewSrc}
 								controls={!slideshow}
 								autoplay
