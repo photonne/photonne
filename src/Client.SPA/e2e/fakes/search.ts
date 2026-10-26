@@ -339,6 +339,23 @@ const handle: FakeHandler = async (context) => {
 	}
 	if (method === 'GET' && path === '/api/objects/labels') return send(200, objectLabels);
 	if (method === 'GET' && path === '/api/scenes/labels') return send(200, sceneLabels);
+	if (method === 'GET' && path === '/api/places')
+		return send(200, [
+			{
+				id: 'place-bcn',
+				name: 'Barcelona',
+				countryCode: 'ES',
+				assetCount: 42,
+				coverAssetId: '2026-09-0'
+			},
+			{
+				id: 'place-lis',
+				name: 'Lisboa',
+				countryCode: 'PT',
+				assetCount: 7,
+				coverAssetId: '2026-09-1'
+			}
+		]);
 
 	// --- Organize ----------------------------------------------------
 	if (method === 'GET' && path === '/api/organize/inbox/count') {

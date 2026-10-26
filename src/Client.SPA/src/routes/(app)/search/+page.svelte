@@ -7,6 +7,9 @@
 	import SearchDiscover from '#lib/search/SearchDiscover.svelte';
 	import SearchForm from '#lib/search/SearchForm.svelte';
 	import SearchResults from '#lib/search/SearchResults.svelte';
+	import { PeopleNames } from '#lib/search/people-names.svelte.js';
+	import { searchLabel } from '#lib/search/recent-label.js';
+	import { recentSearches } from '#lib/search/recent-searches.svelte.js';
 	import {
 		hasCriteria,
 		parseSearch,
@@ -23,7 +26,23 @@
 	// Once the semantic search says it's off, the words run through the text
 	// search instead (and say so) for the rest of the visit.
 	let semanticDown = $state(false);
+	const RECENT_DELAY_MS = 1500;
 	const semantic = $derived(query.semantic && !semanticDown);
+
+	// A search the user stays on for a moment joins "Recientes": not every
+	// word on the way there, which also navigate.
+	const names = new PeopleNames();
+	$effect(() => names.ensure(query.people));
+	$effect(() => {
+		if (!hasCriteria(query)) return;
+		const params = key;
+		const current = query;
+		const timer = setTimeout(
+			() => recentSearches.add({ params, label: searchLabel(current, (id) => names.name(id)) }),
+			RECENT_DELAY_MS
+		);
+		return () => clearTimeout(timer);
+	});
 
 	function search(next: SearchQuery) {
 		const params = searchParams(next).toString();
