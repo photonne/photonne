@@ -22,6 +22,19 @@ export function largest(assets: readonly TimelineResponse[]) {
 	return [...assets].sort((a, b) => b.fileSize - a.fileSize || byDate(a, b))[0];
 }
 
+const depth = (asset: TimelineResponse) => asset.fullPath.split('/').length;
+
+/**
+ * The copy worth keeping. The copies are byte for byte the same, so size says
+ * nothing: a favourite wins, then the one nearest the root (copies tend to
+ * live in "Backup/…" or "copia/…" subfolders), then the oldest.
+ */
+export function best(assets: readonly TimelineResponse[]) {
+	return [...assets].sort(
+		(a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite) || depth(a) - depth(b) || byDate(a, b)
+	)[0];
+}
+
 /** Keeps only `keeperId` in its group and marks the rest. */
 export function keepOnly(marked: Marked, group: Group, keeperId: string): Set<string> {
 	const next = new Set(marked);

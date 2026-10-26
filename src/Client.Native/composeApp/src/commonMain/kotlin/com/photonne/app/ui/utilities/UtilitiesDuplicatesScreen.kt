@@ -66,7 +66,14 @@ import com.photonne.app.resources.utilities_duplicates_confirm_message
 import com.photonne.app.resources.utilities_duplicates_confirm_title
 import com.photonne.app.resources.utilities_duplicates_empty
 import com.photonne.app.resources.utilities_duplicates_group_assets
+import com.photonne.app.resources.utilities_duplicates_favorite
+import com.photonne.app.resources.utilities_duplicates_keep_one
+import com.photonne.app.resources.utilities_duplicates_keep_only
 import com.photonne.app.resources.utilities_duplicates_open_detail
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import com.photonne.app.resources.utilities_duplicates_summary
 import com.photonne.app.ui.error.FullScreenError
 import com.photonne.app.ui.library.ConfirmActionDialog
@@ -107,6 +114,7 @@ fun UtilitiesDuplicatesScreen(
     var confirmError by remember { mutableStateOf<String?>(null) }
     val snackbar = LocalSnackbarController.current
     val undoLabel = stringResource(Res.string.action_undo)
+    val keepOneMessage = stringResource(Res.string.utilities_duplicates_keep_one)
     val trashDoneMessage = pluralStringResource(
         Res.plurals.selection_trash_done,
         state.totalSelectedCount,
@@ -193,8 +201,11 @@ fun UtilitiesDuplicatesScreen(
                                 view = view,
                                 baseUrl = baseUrl,
                                 onToggle = { assetId ->
-                                    viewModel.toggleAsset(view.group.hash, assetId)
+                                    if (!viewModel.toggleAsset(view.group.hash, assetId)) {
+                                        snackbar?.show(keepOneMessage)
+                                    }
                                 },
+                                onKeepOnly = { assetId -> viewModel.keepOnly(view.group.hash, assetId) },
                                 onOpenAsset = { index ->
                                     onOpenAsset(index, view.group.assets)
                                 }
@@ -278,8 +289,13 @@ private fun DuplicateGroupCard(
     view: DuplicateGroupView,
     baseUrl: String,
     onToggle: (String) -> Unit,
+    onKeepOnly: (String) -> Unit,
     onOpenAsset: (index: Int) -> Unit
 ) {
+    // What every copy's folder shares is muted; what sets each apart stands out.
+    val folders = remember(view.group.assets) {
+        splitFolders(view.group.assets.map { folderOf(it.fullPath) })
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -304,9 +320,11 @@ private fun DuplicateGroupCard(
                 if (index > 0) Spacer(Modifier.height(Spacing.sm))
                 DuplicateAssetRow(
                     asset = asset,
+                    folder = folders[index],
                     baseUrl = baseUrl,
                     isSelected = asset.id in view.selectedAssetIds,
                     onToggle = { onToggle(asset.id) },
+                    onKeepOnly = { onKeepOnly(asset.id) },
                     onOpen = { onOpenAsset(index) }
                 )
             }
@@ -317,9 +335,11 @@ private fun DuplicateGroupCard(
 @Composable
 private fun DuplicateAssetRow(
     asset: TimelineItem,
+    folder: FolderSplit,
     baseUrl: String,
     isSelected: Boolean,
     onToggle: () -> Unit,
+    onKeepOnly: () -> Unit,
     onOpen: () -> Unit
 ) {
     Row(
@@ -391,12 +411,23 @@ private fun DuplicateAssetRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                humanBytes(asset.fileSize),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    humanBytes(asset.fileSize),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1
+                )
+                if (asset.isFavorite) {
+                    Spacer(Modifier.size(6.dp))
+                    Icon(
+                        imageVector = PhotonneIcons.FavoriteActive,
+                        contentDescription = stringResource(Res.string.utilities_duplicates_favorite),
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(IconSize.xs)
+                    )
+                }
+            }
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
@@ -410,13 +441,30 @@ private fun DuplicateAssetRow(
                         .size(IconSize.xs)
                 )
                 Spacer(Modifier.size(4.dp))
+                val onSurface = MaterialTheme.colorScheme.onSurface
                 Text(
-                    asset.fullPath,
+                    buildAnnotatedString {
+                        append(folder.common)
+                        if (folder.own.isNotEmpty()) {
+                            withStyle(SpanStyle(color = onSurface, fontWeight = FontWeight.SemiBold)) {
+                                append(folder.own)
+                            }
+                        }
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
+                )
+            }
+            TextButton(
+                onClick = onKeepOnly,
+                contentPadding = PaddingValues(horizontal = Spacing.xs, vertical = 0.dp)
+            ) {
+                Text(
+                    stringResource(Res.string.utilities_duplicates_keep_only),
+                    style = MaterialTheme.typography.labelMedium
                 )
             }
         }

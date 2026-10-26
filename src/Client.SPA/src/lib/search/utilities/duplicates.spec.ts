@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TimelineResponse } from '#lib/api/index.js';
 import {
+	best,
 	splitFolders,
 	keepInAll,
 	keepOnly,
@@ -38,6 +39,17 @@ describe('duplicates review', () => {
 		expect(largest(groups[1].assets).id).toBe('b2');
 		// Equal sizes: the oldest of them.
 		expect(largest(groups[0].assets).id).toBe('a2');
+	});
+
+	it('picks a favourite, then the copy nearest the root, then the oldest', () => {
+		const copy = (id: string, fullPath: string, date: string, isFavorite = false) =>
+			({ id, fullPath, fileCreatedAt: date, fileSize: 1, isFavorite }) as TimelineResponse;
+		const old = copy('old', '/f/backup/x.jpg', '2024-01-01T00:00:00Z');
+		const shallow = copy('shallow', '/f/x.jpg', '2024-02-01T00:00:00Z');
+		const shallowOlder = copy('shallow-older', '/f/y.jpg', '2024-01-15T00:00:00Z');
+		expect(best([old, shallow, shallowOlder]).id).toBe('shallow-older');
+		const favourite = copy('fav', '/f/backup/deep/x.jpg', '2025-01-01T00:00:00Z', true);
+		expect(best([old, shallow, favourite]).id).toBe('fav');
 	});
 
 	it('keeps one copy per group and marks the rest', () => {

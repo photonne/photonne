@@ -16,12 +16,11 @@ import kotlinx.coroutines.launch
 
 /**
  * View state for a single duplicate group. We keep the asset list flat
- * but track per-asset selection here so the UI can offer "keep newest,
+ * but track per-asset selection here so the UI can offer "keep the best,
  * delete the rest" semantics — the most common cleanup intent.
  *
- * `wastedBytes` is the total minus the largest asset (the one we'd
- * keep if the user accepts auto-selection), exposing how much space
- * the user could reclaim by acting on this group.
+ * `wastedBytes` is what the marked copies take: the space the user would
+ * reclaim by acting on this group.
  */
 data class DuplicateGroupView(
     val group: UserDuplicateGroup,
@@ -134,36 +133,50 @@ class UtilitiesDuplicatesViewModel(
         }
     }
 
-    fun toggleAsset(groupHash: String, assetId: String) {
+    /**
+     * Marks or unmarks one copy. Returns false when it was refused: it was the
+     * last copy kept in its group, and a group always keeps one.
+     */
+    fun toggleAsset(groupHash: String, assetId: String): Boolean {
+        var accepted = true
         _state.update { current ->
             current.copy(
                 groups = current.groups.map { view ->
                     if (view.group.hash != groupHash) view
-                    else view.copy(
-                        selectedAssetIds = view.selectedAssetIds.toMutableSet().also { set ->
-                            if (assetId in set) set.remove(assetId) else set.add(assetId)
-                        }
-                    )
+                    else {
+                        val next = toggleCopy(view.group.assets, view.selectedAssetIds, assetId)
+                        accepted = next != view.selectedAssetIds
+                        view.copy(selectedAssetIds = next)
+                    }
+                }
+            )
+        }
+        return accepted
+    }
+
+    /** Keeps only [assetId] in its group: every other copy is marked. */
+    fun keepOnly(groupHash: String, assetId: String) {
+        _state.update { current ->
+            current.copy(
+                groups = current.groups.map { view ->
+                    if (view.group.hash != groupHash) view
+                    else view.copy(selectedAssetIds = keepOnlyCopy(view.group.assets, assetId))
                 }
             )
         }
     }
 
     /**
-     * Pre-selects every duplicate except the largest in each group, so
-     * the user can review and click "Delete" without having to tap
-     * through every asset individually.
+     * Pre-selects every copy but the best one in each group ([bestCopy]: a
+     * favourite, else the one nearest the root, else the oldest), so the user
+     * can review and delete without tapping through every copy.
      */
     fun autoSelectKeepingBest() {
         _state.update { current ->
             current.copy(
                 groups = current.groups.map { view ->
-                    val keep = view.group.assets.maxByOrNull { it.fileSize }?.id
-                    val selected = view.group.assets
-                        .map { it.id }
-                        .filter { it != keep }
-                        .toSet()
-                    view.copy(selectedAssetIds = selected)
+                    val keep = bestCopy(view.group.assets)?.id
+                    view.copy(selectedAssetIds = if (keep == null) emptySet() else keepOnlyCopy(view.group.assets, keep))
                 }
             )
         }

@@ -55,7 +55,8 @@
 		}
 	],
 	"utilities_keep_oldest": "Keep the oldest everywhere",
-	"utilities_keep_largest": "Keep the largest everywhere",
+	"utilities_keep_best": "Keep the best everywhere",
+	"utilities_favorite": "Favorite",
 	"utilities_unmark_all": "Unmark all",
 	"utilities_trash_marked": [
 		{
