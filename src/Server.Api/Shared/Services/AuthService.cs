@@ -22,6 +22,9 @@ public class AuthService : IAuthService
     {
         _configuration = configuration;
         _settingsService = settingsService;
+        _pbkdf2Iterations = int.TryParse(configuration["Auth:PasswordHashIterations"], out var iterations) && iterations > 0
+            ? iterations
+            : DefaultPbkdf2Iterations;
     }
 
     public async Task<string> GenerateTokenAsync(User user)
@@ -66,18 +69,62 @@ public class AuthService : IAuthService
         return Math.Clamp(minutes, MinSessionMinutes, MaxSessionMinutes);
     }
 
+    // PBKDF2-HMAC-SHA512 with the OWASP iteration count, stored as
+    // "pbkdf2-sha512$<iterations>$<salt>$<hash>" so the count can grow later.
+    // Auth:PasswordHashIterations only exists so the test suite, which logs in
+    // hundreds of times, doesn't spend minutes hashing.
+    private const string Pbkdf2Prefix = "pbkdf2-sha512$";
+    private const int DefaultPbkdf2Iterations = 210_000;
+    private readonly int _pbkdf2Iterations;
+    private const int SaltBytes = 16;
+    private const int HashBytes = 32;
+
     public string HashPassword(string password)
     {
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(hashedBytes);
+        var salt = RandomNumberGenerator.GetBytes(SaltBytes);
+        var hash = Pbkdf2(password, salt, _pbkdf2Iterations);
+        return $"{Pbkdf2Prefix}{_pbkdf2Iterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(hash)}";
     }
 
     public bool VerifyPassword(string password, string hash)
     {
-        var passwordHash = HashPassword(password);
-        return passwordHash == hash;
+        if (string.IsNullOrEmpty(hash)) return false;
+
+        if (!hash.StartsWith(Pbkdf2Prefix, StringComparison.Ordinal))
+        {
+            // Accounts from before PBKDF2: unsalted SHA-256. They move to the
+            // new format on their next login (NeedsRehash).
+            var legacy = SHA256.HashData(Encoding.UTF8.GetBytes(password));
+            try
+            {
+                return CryptographicOperations.FixedTimeEquals(legacy, Convert.FromBase64String(hash));
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
+        var parts = hash[Pbkdf2Prefix.Length..].Split('$');
+        if (parts.Length != 3 || !int.TryParse(parts[0], out var iterations) || iterations <= 0)
+            return false;
+        try
+        {
+            var salt = Convert.FromBase64String(parts[1]);
+            var expected = Convert.FromBase64String(parts[2]);
+            return CryptographicOperations.FixedTimeEquals(Pbkdf2(password, salt, iterations, expected.Length), expected);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
+
+    public bool NeedsRehash(string hash) =>
+        !hash.StartsWith($"{Pbkdf2Prefix}{_pbkdf2Iterations}$", StringComparison.Ordinal);
+
+    private static byte[] Pbkdf2(string password, byte[] salt, int iterations, int length = HashBytes) =>
+        Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), salt, iterations, HashAlgorithmName.SHA512, length);
 
     public (bool IsValid, string? ErrorMessage) ValidatePassword(string password)
     {

@@ -60,6 +60,12 @@ public class LoginEndpoint : IEndpoint
         // Actualizar último login
         user.LastLoginAt = DateTime.UtcNow;
 
+        // Hashes from before PBKDF2 are upgraded while we hold the password.
+        if (authService.NeedsRehash(user.PasswordHash))
+        {
+            user.PasswordHash = authService.HashPassword(request.Password);
+        }
+
         // Eliminar tokens previos del mismo dispositivo
         var existingTokens = await dbContext.RefreshTokens
             .Where(rt => rt.UserId == user.Id && rt.DeviceId == deviceId)
