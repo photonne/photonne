@@ -25,6 +25,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.Person
+import com.photonne.app.data.models.PlaceFacet
+import com.photonne.app.data.search.RecentSearch
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Icon
+import com.photonne.app.resources.search_discover_places
+import com.photonne.app.resources.search_recent_clear
+import com.photonne.app.resources.search_recent_title
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_section_objects
 import com.photonne.app.resources.explore_section_scenes
@@ -76,9 +86,14 @@ internal fun SearchDiscover(
     onPersonClick: (Person) -> Unit,
     onSceneClick: (String) -> Unit,
     onObjectClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    recent: List<RecentSearch> = emptyList(),
+    onRecentClick: (RecentSearch) -> Unit = {},
+    onClearRecent: () -> Unit = {},
+    onPlaceClick: (PlaceFacet) -> Unit = {}
 ) {
     val people = state.people.filterNot { it.isHidden }.take(DiscoverRowLimit)
+    val places = state.places.take(DiscoverRowLimit)
     val scenes = state.sceneLabels.take(DiscoverRowLimit)
     val objects = state.objectLabels.take(DiscoverRowLimit)
 
@@ -111,6 +126,44 @@ internal fun SearchDiscover(
                 )
             }
         }
+        if (recent.isNotEmpty()) {
+            item(key = "recent") {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = Spacing.xs, end = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SectionHeader(
+                            text = stringResource(Res.string.search_recent_title),
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = onClearRecent) {
+                            Text(stringResource(Res.string.search_recent_clear))
+                        }
+                    }
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = Spacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                    ) {
+                        items(recent, key = { it.toString() }) { entry ->
+                            AssistChip(
+                                onClick = { onRecentClick(entry) },
+                                label = {
+                                    Text(entry.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Outlined.History,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(AssistChipDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
         if (people.isNotEmpty()) {
             item(key = "people") {
                 DiscoverSection(
@@ -119,6 +172,29 @@ internal fun SearchDiscover(
                 ) {
                     items(people, key = { it.id }) { person ->
                         PersonChip(person = person, baseUrl = baseUrl, onClick = { onPersonClick(person) })
+                    }
+                }
+            }
+        }
+        if (places.isNotEmpty()) {
+            item(key = "places") {
+                // Sin "Ver todo": no hay una pantalla de lugares, la fila ya es el atajo.
+                Column(modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)) {
+                    SectionHeader(
+                        text = stringResource(Res.string.search_discover_places),
+                        modifier = Modifier.padding(horizontal = Spacing.xs, vertical = Spacing.sm)
+                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = Spacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                    ) {
+                        items(places, key = { it.id }) { place ->
+                            LabelTile(
+                                tile = ExploreLabelTile(place.name, place.assetCount, place.coverAssetId),
+                                baseUrl = baseUrl,
+                                onClick = { onPlaceClick(place) }
+                            )
+                        }
                     }
                 }
             }

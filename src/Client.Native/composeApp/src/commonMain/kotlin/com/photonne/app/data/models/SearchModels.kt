@@ -17,6 +17,16 @@ data class SceneLabel(
     @SerialName("coverAssetId") val coverAssetId: String? = null
 )
 
+/** A place (GeoNames city) the user's photos were taken in (`GET /api/places`). */
+@Serializable
+data class PlaceFacet(
+    val id: String,
+    val name: String,
+    val countryCode: String = "",
+    val assetCount: Int = 0,
+    val coverAssetId: String? = null
+)
+
 @Serializable
 data class Person(
     val id: String,

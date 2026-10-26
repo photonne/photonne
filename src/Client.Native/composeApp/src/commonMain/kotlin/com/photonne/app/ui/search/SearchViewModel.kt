@@ -1,5 +1,9 @@
 package com.photonne.app.ui.search
 
+import com.photonne.app.data.models.PlaceFacet
+import com.photonne.app.data.search.RecentSearchStore
+import com.photonne.app.data.search.RecentPinned
+import com.photonne.app.data.search.RecentSearch
 import com.photonne.app.data.search.PinnedSearchFilter
 import com.photonne.app.ui.util.withRestored
 import androidx.lifecycle.ViewModel
@@ -50,6 +54,8 @@ data class SearchUiState(
     val selectedPersonIds: Set<String> = emptySet(),
     val selectedObjectLabels: Set<String> = emptySet(),
     val selectedSceneLabels: Set<String> = emptySet(),
+    /** Places of the user's photos for the start screen (empty on old servers). */
+    val places: List<PlaceFacet> = emptyList(),
     /** A tag, camera or place tapped in the viewer; see [PinnedSearchFilter]. */
     val pinned: PinnedSearchFilter? = null,
     val results: List<TimelineItem> = emptyList(),
@@ -125,7 +131,11 @@ class SearchViewModel(
     private val albumsRepository: AlbumsRepository,
     private val errorFactory: UiErrorFactory,
     mutationBus: AssetMutationBus,
+    private val recentSearches: RecentSearchStore,
 ) : ViewModel() {
+
+    /** The searches run lately, for the start screen's "Recientes". */
+    val recent: StateFlow<List<RecentSearch>> = recentSearches.recent
 
     private val _state = MutableStateFlow(SearchUiState())
     val state: StateFlow<SearchUiState> = _state.asStateFlow()
@@ -516,13 +526,16 @@ class SearchViewModel(
                 )
             }
                 .onSuccess { (objects, scenes, people) ->
+                    // The places row is extra: if it fails, the rest still shows.
+                    val places = runCatching { repository.places() }.getOrDefault(emptyList())
                     _state.update {
                         it.copy(
                             facetsLoading = false,
                             facetsLoaded = true,
                             objectLabels = objects,
                             sceneLabels = scenes,
-                            people = people
+                            people = people,
+                            places = places
                         )
                     }
                 }
@@ -567,8 +580,72 @@ class SearchViewModel(
         pendingSearch = viewModelScope.launch {
             if (!immediate) delay(DEBOUNCE_MILLIS)
             runSearch(keepLoaded)
+            // A search the user stays on joins "Recientes"; the next one
+            // cancels this job, so the words typed on the way don't.
+            delay(RECENT_DELAY_MILLIS)
+            rememberSearch(_state.value)
         }
     }
+
+    private fun rememberSearch(state: SearchUiState) {
+        if (!state.hasCriteriaForMode || state.error != null) return
+        val semantic = state.mode == SearchMode.Semantic
+        val names = state.selectedPersonIds.map { id ->
+            (state.people.firstOrNull { it.id == id } ?: state.selectedPeopleCache[id])?.name ?: ""
+        }.filter { it.isNotBlank() }
+        val label = buildList {
+            if (state.query.isNotBlank()) add("«${state.query.trim()}»")
+            if (!semantic) {
+                addAll(names)
+                addAll(state.selectedObjectLabels)
+                addAll(state.selectedSceneLabels)
+                state.pinned?.let { add(it.label) }
+                if (state.ocrText.isNotBlank()) add("“${state.ocrText.trim()}”")
+            }
+        }.joinToString(" · ")
+        recentSearches.add(
+            RecentSearch(
+                label = label,
+                query = state.query.trim(),
+                semantic = semantic,
+                from = state.from?.toString().takeUnless { semantic },
+                to = state.to?.toString().takeUnless { semantic },
+                ocrText = if (semantic) "" else state.ocrText.trim(),
+                mediaType = state.mediaType?.wire.takeUnless { semantic },
+                personIds = if (semantic) emptyList() else state.selectedPersonIds.toList(),
+                objectLabels = if (semantic) emptyList() else state.selectedObjectLabels.toList(),
+                sceneLabels = if (semantic) emptyList() else state.selectedSceneLabels.toList(),
+                pinned = state.pinned?.takeUnless { semantic }?.let(RecentPinned::of)
+            )
+        )
+    }
+
+    /** A recent search tapped on the start screen: run it again as it was. */
+    fun applyRecent(entry: RecentSearch) {
+        pendingSearch?.cancel()
+        _state.update {
+            it.copy(
+                query = entry.query,
+                mode = if (entry.semantic) SearchMode.Semantic else SearchMode.Text,
+                from = entry.from?.let { day -> runCatching { LocalDate.parse(day) }.getOrNull() },
+                to = entry.to?.let { day -> runCatching { LocalDate.parse(day) }.getOrNull() },
+                ocrText = entry.ocrText,
+                mediaType = SearchMediaType.entries.firstOrNull { type -> type.wire == entry.mediaType },
+                selectedPersonIds = entry.personIds.toSet(),
+                selectedObjectLabels = entry.objectLabels.toSet(),
+                selectedSceneLabels = entry.sceneLabels.toSet(),
+                pinned = entry.pinned?.toFilter(),
+                results = emptyList(),
+                hasMore = false,
+                semanticCapped = false,
+                error = null,
+                selection = emptySet()
+            )
+        }
+        scheduleSearch(immediate = true)
+    }
+
+    fun clearRecent() = recentSearches.clear()
 
     private suspend fun runSearch(keepLoaded: Int = 0) {
         val snapshot = _state.value
@@ -689,6 +766,8 @@ class SearchViewModel(
             (error as? PhotonneApiException)?.serverCode == SEMANTIC_UNAVAILABLE_CODE
 
         private const val DEBOUNCE_MILLIS = 350L
+        /** How long a search must stay on screen to count as one the user ran. */
+        private const val RECENT_DELAY_MILLIS = 1_500L
         /** Tope de `/assets/search/semantic` (SemanticSearchEndpoint). */
         const val SEMANTIC_LIMIT = 200
     }

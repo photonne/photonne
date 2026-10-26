@@ -223,6 +223,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::FoldersRepository)
     singleOf(::AssetActionsRepository)
     singleOf(::SearchRepository)
+    single { com.photonne.app.data.search.RecentSearchStore(get()) }
     singleOf(::UploadRepository)
     singleOf(::MapRepository)
     singleOf(::PeopleRepository)

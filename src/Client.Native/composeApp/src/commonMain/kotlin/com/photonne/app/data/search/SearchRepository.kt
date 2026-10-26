@@ -49,6 +49,9 @@ class SearchRepository(
     suspend fun sceneLabels(limit: Int = 80, search: String? = null): List<SceneLabel> =
         api.listSceneLabels(q = search, limit = limit)
 
+    suspend fun places(limit: Int = 12): List<com.photonne.app.data.models.PlaceFacet> =
+        api.listPlaces(limit = limit)
+
     suspend fun people(limit: Int = 80, search: String? = null): List<Person> =
         api.listPeople(search = search, limit = limit).items
 }

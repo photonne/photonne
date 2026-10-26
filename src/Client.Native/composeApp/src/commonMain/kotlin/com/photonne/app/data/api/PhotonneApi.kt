@@ -813,6 +813,8 @@ interface PhotonneApi {
     suspend fun semanticSearch(q: String, limit: Int? = null): SemanticSearchResponse
     suspend fun listObjectLabels(q: String? = null, limit: Int? = null): List<ObjectLabel>
     suspend fun listSceneLabels(q: String? = null, limit: Int? = null): List<SceneLabel>
+    /** Places of the user's photos, most photographed first. Empty on a server without them. */
+    suspend fun listPlaces(limit: Int? = null): List<com.photonne.app.data.models.PlaceFacet>
     suspend fun listPeople(
         search: String? = null,
         includeHidden: Boolean = false,
@@ -2573,6 +2575,18 @@ class PhotonneApiClient(
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Scene labels fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun listPlaces(limit: Int?): List<com.photonne.app.data.models.PlaceFacet> {
+        val response: HttpResponse = client.get("$baseUrl/api/places") {
+            if (limit != null) parameter("limit", limit)
+        }
+        // Servers older than the places list: no row, not an error.
+        if (response.status == HttpStatusCode.NotFound) return emptyList()
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Places fetch failed (${response.status.value})")
         }
         return response.body()
     }

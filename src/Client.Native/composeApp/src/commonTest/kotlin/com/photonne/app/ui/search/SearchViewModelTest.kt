@@ -5,6 +5,8 @@ import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.events.AssetMutationBus
 import com.photonne.app.data.search.PinnedSearchFilter
 import com.photonne.app.data.search.SearchRepository
+import com.photonne.app.data.search.RecentSearchStore
+import com.russhwolf.settings.MapSettings
 import com.photonne.app.ui.TrackedViewModels
 import com.photonne.app.ui.json
 import com.photonne.app.ui.testApi
@@ -33,6 +35,7 @@ import kotlin.test.assertTrue
 class SearchViewModelTest {
 
     private val vms = TrackedViewModels()
+    private val recents = RecentSearchStore(MapSettings())
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -50,6 +53,7 @@ class SearchViewModelTest {
             albumsRepository = AlbumsRepository(api),
             errorFactory = testErrorFactory(api),
             mutationBus = AssetMutationBus(),
+            recentSearches = recents,
         ))
     }
 
