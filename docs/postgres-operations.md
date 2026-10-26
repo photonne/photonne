@@ -8,7 +8,7 @@ motivaron cada punto, para que no haya que redescubrirlos.
 
 ## El contenedor de Postgres
 
-La imagen es `pgvector/pgvector:pg17`. Hay dos ajustes que el compose del
+La imagen es `pgvector/pgvector:pg17` (o la 18, ver más abajo). Hay dos ajustes que el compose del
 repositorio ya lleva y que conviene mantener en cualquier compose propio:
 
 ```yaml
@@ -36,6 +36,55 @@ postgresql:
 Un dato útil para dimensionar: en el log de Postgres, cada
 `checkpoint complete: wrote N buffers (P%)` permite calcular `shared_buffers`
 como `N / P × 100 × 8 KB`. `126 buffers (0.8%)` son los 128 MB por defecto.
+
+## Pasar a PostgreSQL 18
+
+El compose usa `pgvector/pgvector:pg17` salvo que `.env` diga otra cosa con
+`POSTGRES_TAG`. Photonne funciona igual en 18 (la batería de pruebas del
+servidor pasa entera con
+`PHOTONNE_TEST_POSTGRES_IMAGE=pgvector/pgvector:pg18 dotnet test tests/Server.Api.Tests`),
+pero una versión mayor no lee los datos de la anterior: hay que volcarlos y
+restaurarlos. Una instalación nueva puede empezar directamente con
+`POSTGRES_TAG=pg18`.
+
+Con el compose del repositorio (el nombre del volumen lleva delante el del
+proyecto, normalmente el de la carpeta; compruébalo con `docker volume ls`):
+
+```bash
+# 1. Para la API y el servicio de ML; la base de datos sigue en marcha.
+docker compose stop photonne photonne-ml
+
+# 2. Vuelca todo con la versión que la escribió.
+docker exec photonne-db pg_dumpall -U photonne_user > photonne-pg17.sql
+
+# 3. Guarda el volumen viejo aparte por si hay que volver, y vacíalo.
+docker compose down
+docker volume create photonne_postgresql_data_pg17
+docker run --rm -v photonne_postgresql_data:/from -v photonne_postgresql_data_pg17:/to \
+  alpine sh -c 'cp -a /from/. /to/'
+docker volume rm photonne_postgresql_data
+
+# 4. Arranca Postgres 18 sobre un volumen nuevo y restaura.
+echo 'POSTGRES_TAG=pg18' >> .env
+docker compose up -d postgresql
+docker exec -i photonne-db psql -U photonne_user -d postgres < photonne-pg17.sql
+
+# 5. Todo lo demás.
+docker compose up -d
+```
+
+Al restaurar salen dos errores esperables, `role "photonne_user" already
+exists` y `database "photonne" already exists`: el contenedor nuevo ya los
+crea al arrancar y el volcado sigue con lo demás.
+
+El volcado restaura también los índices HNSW, que se reconstruyen durante
+el paso 4: cuenta con los mismos minutos de CPU que en la migración que los
+creó. Si algo sale mal, `POSTGRES_TAG=pg17` y el volumen guardado en el
+paso 3 (cópialo de vuelta igual que en ese paso) dejan todo como estaba.
+
+El compose ya fija `PGDATA=/var/lib/postgresql/data`: la imagen de 18 guarda
+los datos por defecto en `/var/lib/postgresql/18/docker` y se niega a
+arrancar con el volumen montado donde lo esperaba la 17.
 
 ## Migraciones al arrancar
 
