@@ -433,6 +433,17 @@ fun AssetGridCell(
                 selected = isSelected
             }
     ) {
+        // The ThumbHash sketch under the thumbnail: the shape and colours of
+        // the photo instead of a flat tile while it loads.
+        val sketch = rememberThumbHashBitmap(asset.thumbHash)
+        if (sketch != null) {
+            androidx.compose.foundation.Image(
+                bitmap = sketch,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         AssetThumbnailImage(
             item = asset,
             baseUrl = baseUrl,

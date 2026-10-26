@@ -25,6 +25,8 @@ data class TimelineItem(
     val isArchived: Boolean = false,
     val isFileMissing: Boolean = false,
     val dominantColor: String? = null,
+    /** Blurred sketch (base64 ThumbHash) to paint until the thumbnail loads. */
+    val thumbHash: String? = null,
     val isReadOnly: Boolean = false,
     // Local-only fields populated when the timeline is interleaved with
     // device-pending entries from the Backup module. The server never
