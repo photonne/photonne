@@ -25,6 +25,10 @@ services:
       - Ml__SceneClassification__Enabled=${SCENE_CLASSIFICATION_ENABLED:-${SCENE_RECOGNITION_ENABLED:-true}}
       - Ml__ServiceUrl=${ML_SERVICE_URL:-${FACE_SERVICE_URL:-http://photonne-ml:8000}}
       - Ml__TextRecognition__Enabled=${TEXT_RECOGNITION_ENABLED:-true}
+      # H.264 copies of the videos that don't play everywhere (HEVC, 4K,
+      # AVI…), one at a time, under /data/thumbnails/.playback. Off on a
+      # server too weak to transcode: the originals are played as they are.
+      - Video__PlaybackCopies=${VIDEO_PLAYBACK_COPIES:-true}
       # Run the server as this uid/gid (NAS convention). On boot the
       # entrypoint also fixes the ownership of /data/* so uploads can
       # always create their folders; set PHOTONNE_SKIP_CHOWN=1 to manage

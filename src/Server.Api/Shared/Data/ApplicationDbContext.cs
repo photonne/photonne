@@ -24,6 +24,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Asset> Assets { get; set; }
     public DbSet<AssetExif> AssetExifs { get; set; }
     public DbSet<AssetThumbnail> AssetThumbnails { get; set; }
+    public DbSet<AssetPlayback> AssetPlaybacks { get; set; }
     public DbSet<AssetTag> AssetTags { get; set; }
     public DbSet<UserTag> UserTags { get; set; }
     public DbSet<AssetUserTag> AssetUserTags { get; set; }
@@ -338,6 +339,16 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.AssetId);
             entity.HasIndex(e => new { e.AssetId, e.Size }).IsUnique();
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        modelBuilder.Entity<AssetPlayback>(entity =>
+        {
+            entity.HasKey(e => e.AssetId);
+            entity.HasOne(e => e.Asset)
+                .WithOne()
+                .HasForeignKey<AssetPlayback>(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.UpdatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure AssetTag entity

@@ -18,7 +18,7 @@ public static class MediaSessionCookie
 {
     public const string Name = "photonne_media";
 
-    private static readonly string[] MediaSuffixes = ["/thumbnail", "/content", "/motion"];
+    private static readonly string[] MediaSuffixes = ["/thumbnail", "/content", "/motion", "/playback"];
 
     public static void Append(HttpContext context, string accessToken)
     {

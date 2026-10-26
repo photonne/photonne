@@ -142,7 +142,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     var allowed = path.StartsWithSegments("/api/assets/pending", StringComparison.OrdinalIgnoreCase)
                         || (path.StartsWithSegments("/api/assets", StringComparison.OrdinalIgnoreCase)
                             && (path.Value!.EndsWith("/content", StringComparison.OrdinalIgnoreCase)
-                                || path.Value.EndsWith("/motion", StringComparison.OrdinalIgnoreCase)));
+                                || path.Value.EndsWith("/motion", StringComparison.OrdinalIgnoreCase)
+                                || path.Value.EndsWith("/playback", StringComparison.OrdinalIgnoreCase)));
                     if (allowed)
                     {
                         context.Token = accessToken;
