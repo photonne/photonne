@@ -10,6 +10,16 @@ export interface GridAsset extends GridItem {
 	isFavorite: boolean;
 	dominantColor: string | null;
 	thumbnailVersion: string | null;
+	/** Bytes on disk; absent where the source doesn't say (map points). */
+	fileSize?: number;
+	/** When it went to the trash; only trash listings carry it. */
+	deletedAt?: string | null;
+}
+
+/** A short text drawn on a cell (bottom left) and read with its label. */
+export interface CellNote {
+	text: string;
+	label: string;
 }
 
 export function toGridAsset(asset: TimelineResponse): GridAsset {
@@ -24,6 +34,8 @@ export function toGridAsset(asset: TimelineResponse): GridAsset {
 		isLivePhoto: asset.tags.includes('LivePhoto'),
 		isFavorite: asset.isFavorite,
 		dominantColor: asset.dominantColor ?? null,
-		thumbnailVersion: asset.thumbnailsGeneratedAt ?? null
+		thumbnailVersion: asset.thumbnailsGeneratedAt ?? null,
+		fileSize: asset.fileSize,
+		deletedAt: asset.deletedAt ?? null
 	};
 }

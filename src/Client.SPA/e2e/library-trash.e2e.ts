@@ -187,3 +187,12 @@ test('opens when a capture month comes back after another', async ({ page }) => 
 	await expect(page.getByRole('heading', { name: 'Marzo de 2023' })).toHaveCount(2);
 	await expect(page.getByRole('heading', { name: 'Julio de 2024' })).toBeVisible();
 });
+
+test('says on each photo how many days it has left before the cleanup', async ({ page }) => {
+	// The fake trashed everything on 1 October with a 30-day retention.
+	await page.clock.setFixedTime('2026-10-11T12:00:00Z');
+	await openTrash(page);
+
+	await expect(cells(page).first()).toHaveAccessibleName(/, Se elimina en 20 días$/);
+	await expect(page.locator('.note').first()).toHaveText('20 d');
+});

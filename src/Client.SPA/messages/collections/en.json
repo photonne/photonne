@@ -102,6 +102,19 @@
 	],
 	"trash_policy_keep_until_emptied": "Items stay in the trash until you restore them or empty it.",
 	"trash_policy_quota": "Above {size}, the oldest items are deleted first.",
+	"trash_days_left": [
+		{
+			"declarations": ["input days", "local p = days: plural", "local n = days: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "Deleted in {n} day",
+				"p=other": "Deleted in {n} days"
+			}
+		}
+	],
+	"trash_days_left_short": "{days} d",
+	"trash_days_left_none": "Deleted at the next cleanup",
+	"trash_days_left_none_short": "Today",
 	"memories_block_today": "On this day",
 	"memories_block_month": "This month in other years",
 	"memories_block_years": "Through the years",

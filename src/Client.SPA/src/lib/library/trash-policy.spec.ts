@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { trashPolicy } from './trash-policy.js';
+import { daysLeft, trashPolicy } from './trash-policy.js';
 
 describe('trashPolicy', () => {
 	it("uses the server's defaults when nothing is set", () => {
@@ -39,5 +39,25 @@ describe('trashPolicy', () => {
 			retentionDays: null,
 			maxQuotaMb: null
 		});
+	});
+});
+
+describe('daysLeft', () => {
+	const now = Date.parse('2026-10-26T12:00:00Z');
+
+	it('counts whole days left of the retention, rounding up', () => {
+		expect(daysLeft('2026-10-26T11:00:00Z', 30, now)).toBe(30);
+		expect(daysLeft('2026-10-20T12:00:00Z', 30, now)).toBe(24);
+		expect(daysLeft('2026-09-26T13:00:00Z', 30, now)).toBe(1);
+	});
+
+	it('is 0 once the retention has passed', () => {
+		expect(daysLeft('2026-09-01T00:00:00Z', 30, now)).toBe(0);
+	});
+
+	it('is null without a retention or a date', () => {
+		expect(daysLeft('2026-10-20T12:00:00Z', null, now)).toBeNull();
+		expect(daysLeft(null, 30, now)).toBeNull();
+		expect(daysLeft('nonsense', 30, now)).toBeNull();
 	});
 });

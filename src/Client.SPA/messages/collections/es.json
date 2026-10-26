@@ -102,6 +102,19 @@
 	],
 	"trash_policy_keep_until_emptied": "Lo que llega a la papelera se queda aquí hasta que lo restaures o la vacíes.",
 	"trash_policy_quota": "Si ocupa más de {size}, se eliminan primero los elementos más antiguos.",
+	"trash_days_left": [
+		{
+			"declarations": ["input days", "local p = days: plural", "local n = days: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "Se elimina en {n} día",
+				"p=other": "Se elimina en {n} días"
+			}
+		}
+	],
+	"trash_days_left_short": "{days} d",
+	"trash_days_left_none": "Se elimina en la próxima limpieza",
+	"trash_days_left_none_short": "Hoy",
 	"memories_block_today": "Un día como hoy",
 	"memories_block_month": "Este mes en otros años",
 	"memories_block_years": "A lo largo de los años",
