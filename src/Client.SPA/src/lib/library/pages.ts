@@ -49,6 +49,7 @@ export function sharedTrashToTimeline(item: SharedTrashItemResponse): TimelineRe
 		isArchived: false,
 		isFileMissing: false,
 		dominantColor: null,
+		thumbHash: null,
 		thumbnailsGeneratedAt: null,
 		aspectRatio: item.width && item.height ? item.width / item.height : null,
 		isReadOnly: false

@@ -203,6 +203,8 @@ export const library = {
 			width: 4000,
 			height: 3000,
 			dominantColor: null,
+			// Every other photo has its blurred sketch, as after the backfill.
+			thumbHash: i % 2 === 0 ? 'ofcFJYRA7JqD6iiwmzaaOQl4iMB/' : null,
 			thumbnailsGeneratedAt: '2026-10-01T00:00:00Z'
 		}));
 	}

@@ -30,6 +30,7 @@
 	import { rowYearMarkers, spreadMarkers, yearMarkers } from './scrubber.js';
 	import type { Selection } from './selection.svelte.js';
 	import type { CellNote, GridAsset } from './types.js';
+	import { thumbHashUrl } from './thumbhash.js';
 	import {
 		DEFAULT_SIZE,
 		rowHeightFor,
@@ -634,6 +635,11 @@
 		if (focusedId !== null) return id === focusedId ? 0 : -1;
 		return id === order[0] ? 0 : -1;
 	}
+
+	function sketchOf(item: GridAsset) {
+		const url = thumbHashUrl(item.thumbHash);
+		return url ? `url(${url})` : undefined;
+	}
 </script>
 
 {#snippet groupCheck(ids: readonly string[], title: string)}
@@ -741,6 +747,7 @@
 							style:width="{cell.width}px"
 							style:height="{height}px"
 							style:--placeholder={item.dominantColor ?? 'var(--color-placeholder)'}
+							style:--sketch={sketchOf(item)}
 							onpointerenter={() => onCellPointerEnter(item)}
 						>
 							<button
@@ -947,6 +954,10 @@
 		position: absolute;
 		overflow: hidden;
 		background: var(--placeholder);
+		/* The ThumbHash sketch under the thumbnail, until it loads. */
+		background-image: var(--sketch, none);
+		background-size: cover;
+		background-position: center;
 		transition:
 			background var(--duration-fast),
 			border-radius var(--duration-fast);
