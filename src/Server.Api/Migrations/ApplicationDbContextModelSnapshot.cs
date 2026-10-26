@@ -684,6 +684,10 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<int>("Size")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ThumbHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<int>("Width")
                         .HasColumnType("integer");
 

@@ -17533,6 +17533,7 @@
           "isArchived",
           "isFileMissing",
           "dominantColor",
+          "thumbHash",
           "thumbnailsGeneratedAt",
           "aspectRatio",
           "isReadOnly"
@@ -17620,6 +17621,12 @@
             "type": "boolean"
           },
           "dominantColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "thumbHash": {
             "type": [
               "null",
               "string"

@@ -474,8 +474,12 @@ public class ThumbnailGeneratorService
 
             // Extract dominant color from the small thumbnail — fast 16×16 pixel average
             string? dominantColor = null;
+            string? thumbHash = null;
             if (size == ThumbnailSize.Small)
+            {
                 dominantColor = ExtractDominantColor(thumbnail);
+                thumbHash = ComputeThumbHash(thumbnail);
+            }
 
             return (new AssetThumbnail
             {
@@ -486,7 +490,8 @@ public class ThumbnailGeneratorService
                 Height = height,
                 FileSize = fileInfo.Length,
                 Format = options.UseWebP ? "WebP" : "JPEG",
-                DominantColor = dominantColor
+                DominantColor = dominantColor,
+                ThumbHash = thumbHash
             }, null);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
@@ -526,6 +531,31 @@ public class ThumbnailGeneratorService
 
             if (count == 0) return null;
             return $"#{(byte)(r / count):X2}{(byte)(g / count):X2}{(byte)(b / count):X2}";
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The image's ThumbHash (base64), from a copy scaled to fit 100×100 —
+    /// the encoder's limit and more than its ~25 bytes can tell apart.
+    /// </summary>
+    public static string? ComputeThumbHash(Image image)
+    {
+        try
+        {
+            using var small = image.CloneAs<Rgba32>();
+            small.Mutate(ctx => ctx.Resize(new ResizeOptions
+            {
+                Size = new Size(100, 100),
+                Mode = ResizeMode.Max,
+                Sampler = KnownResamplers.Box
+            }));
+            var pixels = new byte[small.Width * small.Height * 4];
+            small.CopyPixelDataTo(pixels);
+            return Convert.ToBase64String(ThumbHash.FromRgba(small.Width, small.Height, pixels));
         }
         catch
         {

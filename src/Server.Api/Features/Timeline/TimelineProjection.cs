@@ -57,6 +57,10 @@ internal static class TimelineProjection
             .Where(t => t.Size == ThumbnailSize.Small)
             .Select(t => t.DominantColor)
             .FirstOrDefault(),
+        ThumbHash = a.Thumbnails
+            .Where(t => t.Size == ThumbnailSize.Small)
+            .Select(t => t.ThumbHash)
+            .FirstOrDefault(),
         AspectRatio = a.Thumbnails
             .Where(t => t.Size == ThumbnailSize.Small && t.Height > 0)
             .Select(t => (double?)t.Width / t.Height)
@@ -92,6 +96,7 @@ internal static class TimelineProjection
     {
         var small = asset.Thumbnails.FirstOrDefault(t => t.Size == ThumbnailSize.Small);
         response.DominantColor = small?.DominantColor;
+        response.ThumbHash = small?.ThumbHash;
         response.AspectRatio = small is { Height: > 0 } ? (double)small.Width / small.Height : null;
         response.ThumbnailsGeneratedAt = small?.CreatedAt;
         return response;

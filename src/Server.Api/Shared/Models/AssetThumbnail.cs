@@ -34,6 +34,14 @@ public class AssetThumbnail
     [MaxLength(7)]
     public string? DominantColor { get; set; }
 
+    /// <summary>
+    /// ThumbHash of the image, base64 (~30 chars): the blurred sketch the
+    /// clients paint while the thumbnail loads. Only populated for Small
+    /// thumbnails; older ones get it from <c>ThumbHashBackfillService</c>.
+    /// </summary>
+    [MaxLength(64)]
+    public string? ThumbHash { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
