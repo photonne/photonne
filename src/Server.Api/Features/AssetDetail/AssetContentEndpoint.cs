@@ -104,7 +104,7 @@ public class AssetContentEndpoint : IEndpoint
             lastModified: file.LastWriteTimeUtc, entityTag: etag, enableRangeProcessing: true);
     }
 
-    private string GetContentType(string extension, AssetType type)
+    internal static string GetContentType(string extension, AssetType type)
     {
         return extension switch
         {

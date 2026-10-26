@@ -578,6 +578,29 @@ namespace Photonne.Server.Api.Migrations
                     b.ToTable("AssetExifs");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetPlayback", b =>
+                {
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("AssetId");
+
+                    b.ToTable("AssetPlaybacks");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetRecognizedTextLine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1905,6 +1928,17 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Asset");
 
                     b.Navigation("Place");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetPlayback", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
+                        .WithOne()
+                        .HasForeignKey("Photonne.Server.Api.Shared.Models.AssetPlayback", "AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetRecognizedTextLine", b =>

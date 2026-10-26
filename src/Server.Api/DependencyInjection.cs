@@ -91,6 +91,8 @@ public static class DependencyInjection
         builder.Services.AddHostedService<SmartAlbumMaterializationWorker>();
         builder.Services.AddScoped<ThumbHashBackfill>();
         builder.Services.AddHostedService<ThumbHashBackfillWorker>();
+        builder.Services.AddScoped<Shared.Services.Video.VideoPlaybackService>();
+        builder.Services.AddHostedService<Shared.Services.Video.VideoPlaybackWorker>();
         builder.Services.AddSingleton<FaceClusteringQueue>();
         builder.Services.AddHostedService<FaceClusteringBackgroundService>();
 

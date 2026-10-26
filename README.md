@@ -180,6 +180,7 @@ El servidor de desarrollo de Vite hace de proxy de `/api`, así que el navegador
 | `ASSETS_HOST_PATH` | Ruta absoluta del host montada como volumen de assets (ver [Rutas en el host](#rutas-en-el-host)) | `./photonne/data/assets` |
 | `THUMBNAILS_HOST_PATH` | Ruta absoluta del host montada como volumen de miniaturas | `./photonne/data/thumbnails` |
 | `CONFIG_HOST_PATH` | Ruta del host montada en `/data/config` (clave JWT generada) | `./data/config` |
+| `VIDEO_PLAYBACK_COPIES` | Genera copias H.264 (hasta 1080p) de los vídeos que no se reproducen en todas partes (HEVC, 4K, AVI, MKV…), de una en una, en `/data/thumbnails/.playback`. `false` en un servidor sin potencia para transcodificar | `true` |
 | `ADMIN_USERNAME` | Nombre de usuario del admin inicial | `admin` |
 | `ADMIN_EMAIL` | Email del admin inicial | `admin@photonne.local` |
 | `ADMIN_PASSWORD` | Contraseña del admin inicial. Vacía o de ejemplo: se genera y se escribe en el log | *(generada)* |

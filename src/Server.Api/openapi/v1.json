@@ -5478,6 +5478,76 @@
         ]
       }
     },
+    "/api/assets/{assetId}/playback": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "description": "Gets the video to play: its H.264 playback copy when it has one, else the original",
+        "operationId": "GetAssetPlayback",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stream"
+                }
+              },
+              "video/quicktime": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stream"
+                }
+              },
+              "video/x-msvideo": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stream"
+                }
+              },
+              "video/x-matroska": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stream"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stream"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/assets/{assetId}/date/suggestion": {
       "get": {
         "tags": [
