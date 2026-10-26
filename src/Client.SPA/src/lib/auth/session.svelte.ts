@@ -1,5 +1,6 @@
 import {
 	apiErrorCode,
+	exchangeOidcTicket,
 	getCurrentUser,
 	login as loginRequest,
 	logout as logoutRequest,
@@ -103,6 +104,21 @@ export class Session {
 		}
 		if (response.status === 429) return 'rateLimited';
 		return 'server';
+	}
+
+	/** Finishes a sign-in through the OpenID provider: its one-use ticket for a session. */
+	async loginWithTicket(ticket: string): Promise<LoginFailure | null> {
+		const { data, response } = await exchangeOidcTicket({
+			body: { ticket, deviceId: getDeviceId(), refreshTokenInCookie: true }
+		});
+		if (!response) return 'network';
+		if (data?.token) {
+			this.#accessToken = data.token;
+			this.user = data.user;
+			this.status = 'signedIn';
+			return null;
+		}
+		return response.status === 401 ? 'invalidCredentials' : 'server';
 	}
 
 	async logout() {
