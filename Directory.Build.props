@@ -30,6 +30,6 @@
          OpenAPI salvo que la misma PR suba PhotonneMinClientVersion; ver
          docs/api-compatibilidad.md. -->
     <PhotonneMinClientVersion>1.159.0</PhotonneMinClientVersion>
-    <PhotonneMinServerVersion>1.159.0</PhotonneMinServerVersion>
+    <PhotonneMinServerVersion>2.10.0</PhotonneMinServerVersion>
   </PropertyGroup>
 </Project>
