@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fakeApi } from './fake-api';
+import { albumsApi } from './fakes/albums';
 import { libraryState } from './fakes/library';
 
 test.use({ locale: 'es-ES', viewport: { width: 1280, height: 800 } });
@@ -83,4 +84,27 @@ test('says when a memory no longer exists', async ({ page }) => {
 	await page.goto('/memories/gone');
 
 	await expect(page.getByText('Este recuerdo ya no existe')).toBeVisible();
+});
+
+test('keeps a memory as an album', async ({ page }) => {
+	const api = await fakeApi(page, { signedIn: true });
+	const albums = await albumsApi(page, api.state);
+	await page.goto('/memories/mem-today-1');
+	await expect(cells(page)).toHaveCount(6);
+
+	await page.getByRole('button', { name: 'Guardar como álbum' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Guardar como álbum' });
+	await expect(dialog.getByLabel('Nombre del álbum')).toHaveValue('Hace 2 años');
+	await expect(dialog).toContainText('6 fotos pasarán a un álbum nuevo');
+	await dialog.getByLabel('Nombre del álbum').fill('Lisboa 2024');
+	await dialog.getByRole('button', { name: 'Guardar' }).click();
+
+	await expect(dialog).toBeHidden();
+	await expect(page.getByText('Álbum «Lisboa 2024» creado')).toBeVisible();
+	const log = albums.log as { call: string; body?: unknown }[];
+	expect(log.find((entry) => entry.call === 'POST /api/albums')?.body).toMatchObject({
+		name: 'Lisboa 2024'
+	});
+	const batch = log.find((entry) => /^POST \/api\/albums\/[^/]+\/assets\/batch$/.test(entry.call));
+	expect((batch?.body as { assetIds: string[] }).assetIds).toHaveLength(6);
 });

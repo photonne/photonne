@@ -142,6 +142,25 @@
 	"memories_no_photos": "This memory has no photos left",
 	"memories_no_photos_hint": "Its photos were deleted or archived.",
 	"memories_play": "Play",
+	"memories_save_as_album": "Save as album",
+	"memories_save_as_album_hint": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} photo goes to a new album, which stays even if the memory changes.",
+				"countPlural=other": "{countFormatted} photos go to a new album, which stays even if the memory changes."
+			}
+		}
+	],
+	"memories_album_name": "Album name",
+	"memories_save": "Save",
+	"memories_saved_as_album": "Album “{name}” created",
+	"memories_open_album": "Open",
 	"memories_story_play": "Resume",
 	"memories_story_pause": "Pause",
 	"memories_story_replay": "Watch again",

@@ -2049,4 +2049,12 @@
     <string name="summaries_regenerate">Volver a crear</string>
     <string name="summaries_close">Cerrar</string>
     <string name="summaries_requested">Creando «%1$s». Te avisaremos cuando esté listo.</string>
+    <string name="memory_save_as_album">Guardar como álbum</string>
+    <string name="memory_album_name">Nombre del álbum</string>
+    <string name="memory_saved_as_album">Álbum «%1$s» creado</string>
+    <string name="memory_open_album">Abrir</string>
+    <plurals name="memory_save_as_album_hint">
+        <item quantity="one">%1$d foto pasará a un álbum nuevo, que se queda aunque el recuerdo cambie.</item>
+        <item quantity="other">%1$d fotos pasarán a un álbum nuevo, que se queda aunque el recuerdo cambie.</item>
+    </plurals>
 </resources>

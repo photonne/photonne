@@ -4,6 +4,7 @@
 	import { icons } from './icons.js';
 	import { memoryArea } from './memories.js';
 	import PageCrumbs from './PageCrumbs.svelte';
+	import SaveAsAlbumDialog from './SaveAsAlbumDialog.svelte';
 	import StoryPlayer from './StoryPlayer.svelte';
 	import ToolButton from './ToolButton.svelte';
 	import { appHref } from '#lib/navigation/href.js';
@@ -16,6 +17,7 @@
 	let memory = $state<MemoryDetailResponse | null>(null);
 	let missing = $state(false);
 	let playing = $state(false);
+	let saving = $state(false);
 
 	// The memory comes with its photos in one page, in the order the memory
 	// tells them (by time), under the months they span.
@@ -73,6 +75,12 @@
 			disabled={list.store.items.length === 0}
 			onclick={() => (playing = true)}
 		/>
+		<ToolButton
+			label={m.memories_save_as_album()}
+			icon="album"
+			disabled={list.store.items.length === 0}
+			onclick={() => (saving = true)}
+		/>
 	{/snippet}
 	{#snippet header()}
 		<PageCrumbs href={parent.href} label={parent.label} inset />
@@ -93,6 +101,14 @@
 		items={list.store.items}
 		{start}
 		onclose={() => (playing = false)}
+	/>
+{/if}
+
+{#if saving && memory}
+	<SaveAsAlbumDialog
+		name={memory.title}
+		assetIds={list.store.order}
+		onclose={() => (saving = false)}
 	/>
 {/if}
 
