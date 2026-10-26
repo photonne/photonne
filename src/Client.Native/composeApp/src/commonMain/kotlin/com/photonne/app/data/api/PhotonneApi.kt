@@ -436,7 +436,7 @@ interface PhotonneApi {
     /** Última release publicada (GET /api/version/latest-release). */
     suspend fun getLatestRelease(): LatestReleaseResponse
 
-    suspend fun login(username: String, password: String, deviceId: String): LoginResponse
+    suspend fun login(username: String, password: String, deviceId: String, totpCode: String? = null): LoginResponse
     /** Revokes [refreshToken] on the server (`POST /api/auth/logout`). */
     suspend fun logout(refreshToken: String)
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
@@ -1071,11 +1071,11 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun login(username: String, password: String, deviceId: String): LoginResponse {
+    override suspend fun login(username: String, password: String, deviceId: String, totpCode: String?): LoginResponse {
         val response: HttpResponse = client.post("$baseUrl/api/auth/login") {
             skipAuthRefresh()
             contentType(ContentType.Application.Json)
-            setBody(LoginRequest(username = username, password = password, deviceId = deviceId))
+            setBody(LoginRequest(username = username, password = password, deviceId = deviceId, totpCode = totpCode))
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Login failed (${response.status.value})")

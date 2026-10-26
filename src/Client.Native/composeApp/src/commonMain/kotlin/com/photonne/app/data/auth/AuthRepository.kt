@@ -24,9 +24,9 @@ class AuthRepository(
     private val activityNotifications: ActivityNotifications,
     private val timelineStore: TimelineBucketStore
 ) {
-    suspend fun login(username: String, password: String): Result<Unit> = runCatching {
+    suspend fun login(username: String, password: String, totpCode: String? = null): Result<Unit> = runCatching {
         val deviceId = tokenStorage.getDeviceId()
-        val response = api.login(username = username, password = password, deviceId = deviceId)
+        val response = api.login(username = username, password = password, deviceId = deviceId, totpCode = totpCode)
         tokenStorage.saveTokens(response.token, response.refreshToken)
         tokenStorage.saveUser(response.user)
         // Before publishing the session: the backup view model of the new

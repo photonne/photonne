@@ -2057,4 +2057,6 @@
     <string name="welcome_memories_title">See your memories</string>
     <string name="welcome_memories_text">Trips, this day in past years and the best of each year, prepared every night.</string>
     <string name="welcome_start">Get started</string>
+    <string name="login_totp_code">Verification code</string>
+    <string name="login_totp_hint">The 6-digit code from your authenticator app, or a recovery code.</string>
 </resources>

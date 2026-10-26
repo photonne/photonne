@@ -7,7 +7,9 @@ import kotlinx.serialization.Serializable
 data class LoginRequest(
     val username: String,
     val password: String,
-    val deviceId: String
+    val deviceId: String,
+    /** Two-step verification code (or a recovery code), for accounts that have it. */
+    val totpCode: String? = null
 )
 
 @Serializable
