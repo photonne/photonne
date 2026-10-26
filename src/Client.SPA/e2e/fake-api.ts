@@ -92,6 +92,14 @@ export async function fakeApi(
 					signedIn = true;
 					return json(route, 200, { token: 'token-1', refreshToken: '', user: me });
 				}
+				// eva has two-step verification: her code is 123456.
+				if (body.username === 'eva' && body.password === 'secreto') {
+					if (!body.totpCode) return json(route, 401, { error: 'Code', code: 'totp_required' });
+					if (body.totpCode !== '123456')
+						return json(route, 401, { error: 'Code', code: 'totp_invalid' });
+					signedIn = true;
+					return json(route, 200, { token: 'token-1', refreshToken: '', user: me });
+				}
 				return json(route, 401);
 			}
 			case 'POST /api/auth/logout':

@@ -9,6 +9,9 @@
 
 	let username = $state('');
 	let password = $state('');
+	let totpCode = $state('');
+	/** The password was right; the account wants its two-step code too. */
+	let askingCode = $state(false);
 	let submitting = $state(false);
 	let failure = $state<LoginFailure | null>(null);
 
@@ -16,6 +19,8 @@
 
 	const failureText: Record<LoginFailure, () => string> = {
 		invalidCredentials: m.login_error_invalid,
+		totpRequired: m.login_totp_hint,
+		totpInvalid: m.login_error_totp,
 		rateLimited: m.login_error_rate_limited,
 		network: m.login_error_network,
 		server: m.login_error_server
@@ -28,9 +33,21 @@
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		submitting = true;
-		failure = await session.login(username.trim(), password);
+		failure = await session.login(username.trim(), password, askingCode ? totpCode : undefined);
 		submitting = false;
-		if (failure === 'invalidCredentials') password = '';
+		if (failure === 'invalidCredentials') {
+			password = '';
+			askingCode = false;
+		}
+		if (failure === 'totpRequired') askingCode = true;
+		if (failure === 'totpInvalid') totpCode = '';
+	}
+
+	function backToPassword() {
+		askingCode = false;
+		totpCode = '';
+		password = '';
+		failure = null;
 	}
 </script>
 
@@ -43,37 +60,65 @@
 		<h1><Logo size={40} /></h1>
 		<p class="subtitle">{m.login_title()}</p>
 
-		<label>
-			<span>{m.login_username()}</span>
-			<!-- svelte-ignore a11y_autofocus -->
-			<input
-				name="username"
-				autocomplete="username"
-				autocapitalize="none"
-				spellcheck="false"
-				required
-				autofocus
-				bind:value={username}
-			/>
-		</label>
+		{#if askingCode}
+			<!-- Second step: the code from the authenticator app (or a recovery code). -->
+			<label>
+				<span>{m.login_totp_code()}</span>
+				<!-- svelte-ignore a11y_autofocus -->
+				<input
+					name="totp"
+					autocomplete="one-time-code"
+					inputmode="text"
+					autocapitalize="none"
+					spellcheck="false"
+					maxlength="20"
+					required
+					autofocus
+					bind:value={totpCode}
+				/>
+			</label>
+			{#if failure === 'totpInvalid'}
+				<p id="login-error" class="error" role="alert">{failureText[failure]()}</p>
+			{:else}
+				<p class="hint">{m.login_totp_hint()}</p>
+			{/if}
+			<button type="submit" disabled={submitting}>
+				{submitting ? m.login_submitting() : m.login_totp_submit()}
+			</button>
+			<button type="button" class="link" onclick={backToPassword}>{m.login_totp_back()}</button>
+		{:else}
+			<label>
+				<span>{m.login_username()}</span>
+				<!-- svelte-ignore a11y_autofocus -->
+				<input
+					name="username"
+					autocomplete="username"
+					autocapitalize="none"
+					spellcheck="false"
+					required
+					autofocus
+					bind:value={username}
+				/>
+			</label>
 
-		<label>
-			<span>{m.login_password()}</span>
-			<PasswordInput
-				name="password"
-				autocomplete="current-password"
-				required
-				bind:value={password}
-			/>
-		</label>
+			<label>
+				<span>{m.login_password()}</span>
+				<PasswordInput
+					name="password"
+					autocomplete="current-password"
+					required
+					bind:value={password}
+				/>
+			</label>
 
-		{#if failure}
-			<p id="login-error" class="error" role="alert">{failureText[failure]()}</p>
+			{#if failure}
+				<p id="login-error" class="error" role="alert">{failureText[failure]()}</p>
+			{/if}
+
+			<button type="submit" disabled={submitting}>
+				{submitting ? m.login_submitting() : m.login_submit()}
+			</button>
 		{/if}
-
-		<button type="submit" disabled={submitting}>
-			{submitting ? m.login_submitting() : m.login_submit()}
-		</button>
 	</form>
 </main>
 
@@ -122,6 +167,19 @@
 	label :global(input) {
 		min-height: var(--control-h-lg);
 		font-size: var(--font-size-md);
+	}
+
+	.hint {
+		margin: 0;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	button.link {
+		padding: 0;
+		background: none;
+		color: var(--color-accent);
+		font-weight: 500;
 	}
 
 	.error {

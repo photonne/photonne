@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { deleteUser, promoteToPrimaryAdmin, updateUser, type UserDto } from '#lib/api/index.js';
+	import {
+		deleteUser,
+		promoteToPrimaryAdmin,
+		resetUserTotp,
+		updateUser,
+		type UserDto
+	} from '#lib/api/index.js';
 	import {
 		getAdminStatsOptions,
 		getAdminStatsQueryKey,
@@ -62,7 +68,7 @@
 
 	let editing = $state<{ user: UserDto | null } | null>(null);
 	let resetting = $state<UserDto | null>(null);
-	let confirming = $state<{ kind: 'delete' | 'promote'; user: AdminUser } | null>(null);
+	let confirming = $state<{ kind: 'delete' | 'promote' | 'totp'; user: AdminUser } | null>(null);
 	let busy = $state(false);
 
 	const users = $derived.by((): AdminUser[] => {
@@ -167,7 +173,9 @@
 		const { error } =
 			kind === 'delete'
 				? await deleteUser({ path: { id: user.id } })
-				: await promoteToPrimaryAdmin({ path: { id: user.id } });
+				: kind === 'totp'
+					? await resetUserTotp({ path: { id: user.id } })
+					: await promoteToPrimaryAdmin({ path: { id: user.id } });
 		busy = false;
 		confirming = null;
 		if (error) {
@@ -177,7 +185,9 @@
 		toasts.show(
 			kind === 'delete'
 				? m.admin_users_deleted({ name: user.username })
-				: m.admin_users_promoted({ name: user.username })
+				: kind === 'totp'
+					? m.admin_users_totp_done({ name: user.username })
+					: m.admin_users_promoted({ name: user.username })
 		);
 		refresh();
 	}
@@ -199,6 +209,12 @@
 				label: m.admin_users_reset(),
 				icon: { path: adminIcons.key },
 				run: () => (resetting = user)
+			},
+			{
+				// For whoever lost both the phone and the recovery codes.
+				label: m.admin_users_totp(),
+				icon: 'lock',
+				run: () => (confirming = { kind: 'totp', user })
 			}
 		];
 		if (canChangeRoleOrStatus(user, me)) {
@@ -464,16 +480,22 @@
 		open={confirming !== null}
 		title={confirming?.kind === 'promote'
 			? m.admin_users_promote_title()
-			: m.admin_users_delete_title()}
+			: confirming?.kind === 'totp'
+				? m.admin_users_totp()
+				: m.admin_users_delete_title()}
 		confirmLabel={confirming?.kind === 'promote'
 			? m.admin_users_promote_confirm()
-			: m.admin_core_delete()}
-		danger={confirming?.kind !== 'promote'}
+			: confirming?.kind === 'totp'
+				? m.admin_users_totp_confirm()
+				: m.admin_core_delete()}
+		danger={confirming?.kind === 'delete'}
 		{busy}
 		onconfirm={confirm}
 		onclose={() => (confirming = null)}
 	>
-		{#if confirming?.kind === 'promote'}
+		{#if confirming?.kind === 'totp'}
+			<p>{m.admin_users_totp_body({ name: confirming.user.username })}</p>
+		{:else if confirming?.kind === 'promote'}
 			<p>{m.admin_users_promote_body({ name: confirming.user.username })}</p>
 			<p class="muted small">{m.admin_users_promote_note()}</p>
 		{:else if confirming}
