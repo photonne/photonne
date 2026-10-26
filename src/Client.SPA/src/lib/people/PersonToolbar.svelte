@@ -67,7 +67,11 @@
 	<Icon path={person.isHidden ? icons.visibility : icons.visibilityOff} />
 </button>
 
-<RenameDialog person={renaming} onclose={() => (renaming = null)} />
+<RenameDialog
+	person={renaming}
+	onclose={() => (renaming = null)}
+	onmerged={(target) => goto(appHref(`/people/${target.id}`), { replaceState: true })}
+/>
 <PersonPickerDialog
 	open={picking}
 	title={m.people_action_merge_with()}

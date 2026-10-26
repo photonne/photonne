@@ -61,6 +61,9 @@
 	"people_action_unhide": "Unhide",
 	"people_action_merge": "Merge",
 	"people_action_merge_with": "Merge with…",
+	"people_rename_namesake": "There is already a person called “{name}”. If it is the same person, merge them and their faces will be together.",
+	"people_rename_keep_apart": "Keep apart",
+	"people_rename_merge": "Merge",
 	"people_rename_title": "Rename",
 	"people_rename_label": "Name",
 	"people_rename_hint": "Leave it empty to remove the name.",
@@ -326,5 +329,20 @@
 	"people_empty_hint": "Once face recognition has gone through your photos, similar faces are grouped here.",
 	"people_more_failed": "Couldn’t load more.",
 	"people_retry": "Try again",
-	"people_faces_emptied": "{name} has no faces left and was removed."
+	"people_faces_emptied": "{name} has no faces left and was removed.",
+	"people_queue_title": "Who is this?",
+	"people_queue_empty": "No faces waiting",
+	"people_queue_empty_hint": "When recognition thinks a face belongs to someone with a name, it will ask you here.",
+	"people_queue_question": "Is it {name}?",
+	"people_queue_item": "Face {index}: is it {name}?",
+	"people_queue_intro": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "{n} face could belong to someone you already know.",
+				"p=other": "{n} faces could belong to someone you already know."
+			}
+		}
+	]
 }

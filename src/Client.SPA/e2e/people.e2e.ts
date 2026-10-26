@@ -293,3 +293,42 @@ test('an unknown person shows a way back', async ({ page }) => {
 	await page.getByRole('link', { name: 'Volver a Personas' }).click();
 	await expect(page).toHaveURL(/\/people$/);
 });
+
+test('answers the "who is it" queue of every person in one place', async ({ page }) => {
+	const api = await openPeople(page);
+
+	// Ana has three suggestions; Marta's don't count, she is hidden.
+	await page.getByRole('link', { name: /¿Quién es\?\s*3/ }).click();
+	await expect(page.getByRole('heading', { name: '¿Quién es?', level: 1 })).toBeVisible();
+	const queue = page.getByRole('list', { name: '¿Quién es?' });
+	await expect(queue.getByRole('group')).toHaveCount(3);
+	await expect(queue.getByRole('group').first()).toContainText('¿Es Ana?');
+
+	await queue.getByRole('button', { name: 'Es Ana', exact: true }).first().click();
+	await expect(queue.getByRole('group')).toHaveCount(2);
+	await expect
+		.poll(() => peopleState(api.state).faces.filter((f) => f.personId === 'person-ana').length)
+		.toBe(15);
+});
+
+test('renaming to a name already taken offers to merge them', async ({ page }) => {
+	const api = await openPeople(page);
+
+	const unnamed = grid(page)
+		.getByRole('link', { name: /^Sin nombre/ })
+		.first();
+	await unnamed.click({ modifiers: ['ControlOrMeta'] });
+	await page.getByRole('button', { name: 'Cambiar nombre' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Cambiar nombre' });
+	await dialog.getByLabel('Nombre').fill('luis');
+	await dialog.getByRole('button', { name: 'Guardar' }).click();
+
+	await expect(dialog.getByRole('alert')).toContainText('Ya hay una persona llamada «Luis»');
+	await dialog.getByRole('button', { name: 'Fusionar' }).click();
+
+	await expect(dialog).toBeHidden();
+	await expect
+		.poll(() => peopleState(api.state).people.some((p) => p.id === 'person-x1'))
+		.toBe(false);
+	await expect(card(page, 'Luis')).toBeVisible();
+});

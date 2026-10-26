@@ -61,6 +61,9 @@
 	"people_action_unhide": "Mostrar",
 	"people_action_merge": "Fusionar",
 	"people_action_merge_with": "Fusionar con…",
+	"people_rename_namesake": "Ya hay una persona llamada «{name}». Si es la misma, fusiónalas y sus caras quedarán juntas.",
+	"people_rename_keep_apart": "Mantener separadas",
+	"people_rename_merge": "Fusionar",
 	"people_rename_title": "Cambiar nombre",
 	"people_rename_label": "Nombre",
 	"people_rename_hint": "Déjalo vacío para quitarle el nombre.",
@@ -326,5 +329,20 @@
 	"people_empty_hint": "Cuando el reconocimiento facial analice tus fotos, las caras parecidas se agruparán aquí.",
 	"people_more_failed": "No se han podido cargar más.",
 	"people_retry": "Reintentar",
-	"people_faces_emptied": "{name} se ha quedado sin caras y se ha borrado."
+	"people_faces_emptied": "{name} se ha quedado sin caras y se ha borrado.",
+	"people_queue_title": "¿Quién es?",
+	"people_queue_empty": "No hay caras pendientes",
+	"people_queue_empty_hint": "Cuando el reconocimiento crea que una cara es de alguien que ya tiene nombre, te lo preguntará aquí.",
+	"people_queue_question": "¿Es {name}?",
+	"people_queue_item": "Cara {index}: ¿es {name}?",
+	"people_queue_intro": [
+		{
+			"declarations": ["input count", "local p = count: plural", "local n = count: number"],
+			"selectors": ["p"],
+			"match": {
+				"p=one": "Hay {n} cara que podría ser de alguien que ya conoces.",
+				"p=other": "Hay {n} caras que podrían ser de alguien que ya conoces."
+			}
+		}
+	]
 }
