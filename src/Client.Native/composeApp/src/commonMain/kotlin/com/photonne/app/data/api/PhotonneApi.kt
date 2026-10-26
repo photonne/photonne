@@ -437,6 +437,10 @@ interface PhotonneApi {
     suspend fun getLatestRelease(): LatestReleaseResponse
 
     suspend fun login(username: String, password: String, deviceId: String, totpCode: String? = null): LoginResponse
+    /** Sign-in through an OpenID provider: off on a server without one (or too old to know). */
+    suspend fun oidcConfig(): com.photonne.app.data.models.OidcConfig
+    /** The one-use ticket the provider's sign-in came back with, for a session. */
+    suspend fun exchangeOidcTicket(ticket: String, deviceId: String): LoginResponse
     /** Revokes [refreshToken] on the server (`POST /api/auth/logout`). */
     suspend fun logout(refreshToken: String)
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
@@ -1079,6 +1083,24 @@ class PhotonneApiClient(
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Login failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun oidcConfig(): com.photonne.app.data.models.OidcConfig {
+        val response: HttpResponse = client.get("$baseUrl/api/auth/oidc") { skipAuthRefresh() }
+        return if (response.status == HttpStatusCode.OK) response.body()
+        else com.photonne.app.data.models.OidcConfig()
+    }
+
+    override suspend fun exchangeOidcTicket(ticket: String, deviceId: String): LoginResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/auth/oidc/exchange") {
+            skipAuthRefresh()
+            contentType(ContentType.Application.Json)
+            setBody(com.photonne.app.data.models.OidcExchangeRequest(ticket = ticket, deviceId = deviceId))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Sign-in failed (${response.status.value})")
         }
         return response.body()
     }

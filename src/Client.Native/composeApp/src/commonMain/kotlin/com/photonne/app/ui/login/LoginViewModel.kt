@@ -36,6 +36,8 @@ data class LoginUiState(
     val rememberMe: Boolean = false,
     /** The password was right and the account has two-step verification: ask for its code. */
     val needsTotp: Boolean = false,
+    /** The OpenID provider's name for "Entrar con …"; null when the server has none. */
+    val oidcName: String? = null,
     val totpCode: String = "",
     val isSubmitting: Boolean = false,
     val error: UiError? = null,
@@ -57,6 +59,15 @@ class LoginViewModel(
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
     init {
+        if (_state.value.step == LoginStep.Credentials) loadOidc()
+        // Back from the OpenID provider in the browser: its ticket for a session.
+        viewModelScope.launch {
+            com.photonne.app.ui.main.ExternalNavigation.oidcReturn.collect { result ->
+                if (result == null || _state.value.isSubmitting) return@collect
+                com.photonne.app.ui.main.ExternalNavigation.consumeOidcReturn()
+                finishOidc(result)
+            }
+        }
         // Un QR de Ajustes → App móvil (photonne://connect?server=…): el
         // servidor se pone solo y se comprueba como si se hubiera escrito.
         viewModelScope.launch {
@@ -226,6 +237,47 @@ class LoginViewModel(
                 password = remembered?.password.orEmpty(),
                 rememberMe = remembered != null
             )
+            loadOidc()
+        }
+    }
+
+    private fun loadOidc() {
+        viewModelScope.launch {
+            val config = authRepository.oidcConfig()
+            _state.value = _state.value.copy(oidcName = if (config.enabled) config.displayName ?: "SSO" else null)
+        }
+    }
+
+    /** Opens the OpenID provider's sign-in in the browser; it comes back through photonne://oidc. */
+    fun startOidc() {
+        val base = runCatching { serverUrlStore.requireBaseUrl() }.getOrNull() ?: return
+        _state.value = _state.value.copy(error = null)
+        com.photonne.app.ui.util.openExternalUrl("$base/api/auth/oidc/start?client=app")
+    }
+
+    private fun finishOidc(result: com.photonne.app.ui.main.OidcReturn) {
+        val ticket = result.ticket
+        if (ticket == null) {
+            _state.value = _state.value.copy(
+                error = UiError(
+                    userMessage = if (result.error == "no_account")
+                        "El proveedor te conoce, pero no tienes cuenta en este servidor. Pídesela a quien lo administra."
+                    else "No se ha podido entrar con el proveedor"
+                )
+            )
+            return
+        }
+        _state.value = _state.value.copy(isSubmitting = true, error = null)
+        viewModelScope.launch {
+            val outcome = authRepository.loginWithTicket(ticket)
+            _state.value = if (outcome.isSuccess) {
+                _state.value.copy(isSubmitting = false)
+            } else {
+                _state.value.copy(
+                    isSubmitting = false,
+                    error = UiError(userMessage = "No se ha podido entrar con el proveedor")
+                )
+            }
         }
     }
 

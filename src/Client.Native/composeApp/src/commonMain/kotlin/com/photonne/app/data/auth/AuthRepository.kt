@@ -26,7 +26,20 @@ class AuthRepository(
 ) {
     suspend fun login(username: String, password: String, totpCode: String? = null): Result<Unit> = runCatching {
         val deviceId = tokenStorage.getDeviceId()
-        val response = api.login(username = username, password = password, deviceId = deviceId, totpCode = totpCode)
+        startSession(api.login(username = username, password = password, deviceId = deviceId, totpCode = totpCode))
+    }
+
+    /** Finishes a sign-in through the OpenID provider with the ticket it came back with. */
+    suspend fun loginWithTicket(ticket: String): Result<Unit> = runCatching {
+        startSession(api.exchangeOidcTicket(ticket, tokenStorage.getDeviceId()))
+    }
+
+    /** Whether the configured server offers sign-in through an OpenID provider; off when it can't be asked. */
+    suspend fun oidcConfig(): com.photonne.app.data.models.OidcConfig =
+        com.photonne.app.util.suspendRunCatching { api.oidcConfig() }
+            .getOrDefault(com.photonne.app.data.models.OidcConfig())
+
+    private suspend fun startSession(response: com.photonne.app.data.models.LoginResponse) {
         tokenStorage.saveTokens(response.token, response.refreshToken)
         tokenStorage.saveUser(response.user)
         // Before publishing the session: the backup view model of the new
