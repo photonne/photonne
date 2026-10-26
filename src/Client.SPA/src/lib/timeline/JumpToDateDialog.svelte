@@ -4,7 +4,7 @@
 	import { monthTitle } from '#lib/format.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
-	import { monthsOf, yearsWithPhotos, type MonthCount } from './jump.js';
+	import { monthsOf, yearTotal, yearsWithPhotos, type MonthCount } from './jump.js';
 
 	interface Props {
 		/** The timeline's months with their counts. */
@@ -36,7 +36,12 @@
 		<label class="year">
 			<span>{m.timeline_jump_year()}</span>
 			<select bind:value={year}>
-				{#each years as option (option)}<option value={option}>{option}</option>{/each}
+				{#each years as option (option)}<option value={option}
+						>{m.timeline_jump_year_option({
+							year: option,
+							count: count.format(yearTotal(months, option))
+						})}</option
+					>{/each}
 			</select>
 		</label>
 

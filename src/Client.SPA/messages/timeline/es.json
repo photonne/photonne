@@ -10,6 +10,7 @@
 	"timeline_jump_hint_short": "Ir a una fecha (G)",
 	"timeline_jump_title": "Ir a una fecha",
 	"timeline_jump_year": "Año",
+	"timeline_jump_year_option": "{year} · {count}",
 	"timeline_jump_months": "Meses de {year}",
 	"timeline_jump_month": [
 		{

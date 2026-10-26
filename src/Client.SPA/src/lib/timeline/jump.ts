@@ -19,3 +19,11 @@ export function monthsOf(months: readonly MonthCount[], year: number) {
 		return { key, month: index + 1, count: counts.get(key) ?? 0 };
 	});
 }
+
+/** Photos in `year`, from its months' counts. */
+export function yearTotal(months: readonly MonthCount[], year: number) {
+	const prefix = `${year}-`;
+	let total = 0;
+	for (const month of months) if (month.key.startsWith(prefix)) total += month.count;
+	return total;
+}

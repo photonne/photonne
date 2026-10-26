@@ -221,6 +221,10 @@ test('goes to a date with G, loading that month', async ({ page }) => {
 	const dialog = page.getByRole('dialog', { name: 'Ir a una fecha' });
 	await expect(dialog).toBeVisible();
 	await expect(dialog.getByRole('combobox', { name: 'Año' })).toHaveValue('2026');
+	// Each year says how many it holds.
+	await expect(
+		dialog.getByRole('combobox', { name: 'Año' }).getByRole('option').first()
+	).toHaveText(/^2026 · [\d.]+$/);
 	await expect(dialog.getByRole('button', { name: 'julio de 2026, sin fotos' })).toBeDisabled();
 
 	await dialog.getByRole('combobox', { name: 'Año' }).selectOption('2023');
