@@ -4718,6 +4718,46 @@
         }
       }
     },
+    "/api/users/{id}/totp/reset": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "description": "Turns a user\u0027s two-step verification off, for one who lost the phone and the codes (Admin only)",
+        "operationId": "ResetUserTotp",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/assets/download-options": {
       "post": {
         "tags": [
@@ -9178,6 +9218,153 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/totp": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "description": "Whether two-step verification is on for the caller, and how many recovery codes are left",
+        "operationId": "GetTotpStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/totp/setup": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "description": "Starts setting up two-step verification: a new secret for the authenticator app",
+        "operationId": "SetupTotp",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/totp/enable": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "description": "Turns two-step verification on after checking a code; returns the recovery codes, once",
+        "operationId": "EnableTotp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpRecoveryCodesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/totp/disable": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "description": "Turns two-step verification off, confirming the password",
+        "operationId": "DisableTotp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpDisableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "400": {
             "description": "Bad Request",
@@ -14170,6 +14357,12 @@
           },
           "refreshTokenInCookie": {
             "type": "boolean"
+          },
+          "totpCode": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -17774,6 +17967,73 @@
           }
         }
       },
+      "TotpCodeRequest": {
+        "required": [
+          "code"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "TotpDisableRequest": {
+        "required": [
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "TotpRecoveryCodesResponse": {
+        "required": [
+          "recoveryCodes"
+        ],
+        "type": "object",
+        "properties": {
+          "recoveryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TotpSetupResponse": {
+        "required": [
+          "secret",
+          "otpAuthUri"
+        ],
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string"
+          },
+          "otpAuthUri": {
+            "type": "string"
+          }
+        }
+      },
+      "TotpStatusResponse": {
+        "required": [
+          "enabled",
+          "recoveryCodesLeft"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "recoveryCodesLeft": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "TrashCleanupResult": {
         "required": [
           "success",
@@ -18893,6 +19153,9 @@
       "name": "Authentication"
     },
     {
+      "name": "Users"
+    },
+    {
       "name": "Admin"
     },
     {
@@ -18903,9 +19166,6 @@
     },
     {
       "name": "VideoSummaries"
-    },
-    {
-      "name": "Users"
     },
     {
       "name": "Settings"

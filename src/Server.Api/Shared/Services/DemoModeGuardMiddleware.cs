@@ -42,6 +42,10 @@ public sealed class DemoModeGuardMiddleware
         new Rule("POST",   @"^/api/libraries/[0-9a-fA-F\-]{36}/permissions/?$"),
         new Rule("DELETE", @"^/api/libraries/[0-9a-fA-F\-]{36}/permissions/[0-9a-fA-F\-]{36}/?$"),
         new Rule("GET",    @"^/api/libraries/[0-9a-fA-F\-]{36}/scan/stream/?$"),
+
+        // ── Two-step verification ──────────────────────────────────────────
+        // Turned on for the shared demo account it would lock everyone out.
+        new Rule("POST",   @"^/api/auth/totp/(setup|enable)/?$"),
     };
 
     public DemoModeGuardMiddleware(

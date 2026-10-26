@@ -1539,6 +1539,20 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<long?>("StorageQuotaBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("TotpEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<long?>("TotpLastStep")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TotpRecoveryCodes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("TotpSecret")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)

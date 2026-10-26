@@ -39,6 +39,19 @@ public class User
 
     public bool IsPrimaryAdmin { get; set; } = false;
 
+    // Two-step verification (TOTP). The secret is set while it's being set
+    // up and only counts once TotpEnabled; the recovery codes are SHA-256
+    // hashes separated by ';'; TotpLastStep stops a code being used twice.
+    [MaxLength(64)]
+    public string? TotpSecret { get; set; }
+
+    public bool TotpEnabled { get; set; }
+
+    [MaxLength(1000)]
+    public string? TotpRecoveryCodes { get; set; }
+
+    public long? TotpLastStep { get; set; }
+
     // Navigation properties
     public ICollection<FolderPermission> FolderPermissions { get; set; } = new List<FolderPermission>();
     public ICollection<Asset> Assets { get; set; } = new List<Asset>();
