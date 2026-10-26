@@ -5,7 +5,16 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import type { Selection } from './selection.svelte.js';
 
-	let { selection, actions }: { selection: Selection; actions?: Snippet } = $props();
+	let {
+		selection,
+		actions,
+		summary = null
+	}: {
+		selection: Selection;
+		actions?: Snippet;
+		/** What the selection spans ("12 mar – 3 abr 2024 · 1,2 GB"). */
+		summary?: string | null;
+	} = $props();
 
 	// While selecting, the actions take the place of the phone's tabs.
 	$effect(() => {
@@ -32,6 +41,9 @@
 				<Icon name="close" />
 			</button>
 			<span class="count" aria-live="polite">{m.selection_count({ count: selection.size })}</span>
+			{#if summary}
+				<span class="summary">{summary}</span>
+			{/if}
 		</div>
 		{#if actions}
 			<div class="actions glass">{@render actions()}</div>
@@ -114,6 +126,16 @@
 		font-size: var(--font-size-md);
 		font-weight: 650;
 		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.summary {
+		min-width: 0;
+		overflow: hidden;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+		font-variant-numeric: tabular-nums;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 

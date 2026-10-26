@@ -22,6 +22,7 @@
 	import type { ListStore } from './list-store.svelte.js';
 	import PhotoGrid from './PhotoGrid.svelte';
 	import SelectionBar from './SelectionBar.svelte';
+	import { selectionSummary } from './selection-summary.js';
 	import { collectionSize } from './size-preference.svelte.js';
 	import PageChrome from '#lib/components/PageChrome.svelte';
 	import ViewOptions from './ViewOptions.svelte';
@@ -273,7 +274,7 @@
 {/snippet}
 
 <div class="page">
-	<SelectionBar {selection}>
+	<SelectionBar {selection} summary={selectionSummary(store.itemsByIds(selection.ids))}>
 		{#snippet actions()}
 			{#if selectionActions}
 				{@render selectionActions(selection, batch)}

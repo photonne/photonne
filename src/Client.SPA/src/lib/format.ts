@@ -41,6 +41,17 @@ export function longDate(iso: string) {
 	);
 }
 
+/**
+ * "12 mar – 3 abr 2024", or one date when both fall on the same day; the
+ * shared parts are written once (Intl formatRange). UTC, like longDate.
+ */
+export function dateRange(fromIso: string, toIso: string) {
+	const format = formatter({ day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+	const from = new Date(fromIso);
+	const to = new Date(toIso);
+	return from > to ? format.formatRange(to, from) : format.formatRange(from, to);
+}
+
 /** "3,2 MB" in the user's language. */
 export function formatBytes(bytes: number) {
 	const units = ['B', 'KB', 'MB', 'GB', 'TB'];

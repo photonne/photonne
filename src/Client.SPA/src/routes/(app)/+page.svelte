@@ -23,6 +23,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { gridLayout } from '#lib/timeline/grid-layout-preference.svelte.js';
 	import PhotoGrid, { type GridPosition } from '#lib/timeline/PhotoGrid.svelte';
+	import { selectionSummary } from '#lib/timeline/selection-summary.js';
 	import SelectionBar from '#lib/timeline/SelectionBar.svelte';
 	import { Selection } from '#lib/timeline/selection.svelte.js';
 	import { TimelineStore } from '#lib/timeline/timeline-store.svelte.js';
@@ -228,7 +229,7 @@
 {/snippet}
 
 <div class="page">
-	<SelectionBar {selection}>
+	<SelectionBar {selection} summary={selectionSummary(store.itemsByIds(selection.ids))}>
 		{#snippet actions()}
 			<BatchActionBar actions={batch} {selection} />
 		{/snippet}
