@@ -663,6 +663,19 @@
     <string name="people_merge_confirm_title">Fusionar personas</string>
     <string name="people_merge_confirm_message">Las caras de %1$s pasarán a %2$s y %1$s desaparecerá de la lista. Esta acción no se puede deshacer.</string>
     <string name="people_merge_done">Personas fusionadas</string>
+    <string name="people_queue_title">¿Quién es?</string>
+    <string name="people_queue_empty">No queda ninguna cara por confirmar.</string>
+    <string name="people_queue_empty_hint">Cuando el reconocimiento encuentre caras parecidas a alguien con nombre, aparecerán aquí.</string>
+    <string name="people_queue_question">¿Es %1$s?</string>
+    <string name="people_queue_accept">Es %1$s</string>
+    <string name="people_queue_dismiss">No es %1$s</string>
+    <plurals name="people_queue_subtitle">
+        <item quantity="one">%1$d cara espera respuesta</item>
+        <item quantity="other">%1$d caras esperan respuesta</item>
+    </plurals>
+    <string name="people_rename_namesake">Ya hay alguien llamado %1$s. ¿Es la misma persona?</string>
+    <string name="people_rename_merge">Fusionar</string>
+    <string name="people_rename_keep_apart">Mantener separadas</string>
     <string name="member_remove_confirm_title">Quitar acceso</string>
     <string name="member_remove_confirm_message">%1$s dejará de tener acceso.</string>
     <string name="member_remove_confirm_action">Quitar</string>

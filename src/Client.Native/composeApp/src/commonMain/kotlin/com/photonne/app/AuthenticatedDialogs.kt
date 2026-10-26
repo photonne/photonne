@@ -1573,10 +1573,11 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
         if (appState.showRenamePerson && activePerson != null) {
             com.photonne.app.ui.people.RenamePersonDialog(
                 initialName = personDetailState.personName ?: activePerson.name,
-                isSubmitting = peopleState.isMutating,
-                errorMessage = peopleState.error?.userMessage,
+                isSubmitting = peopleState.isMutating || appState.isMerging,
+                errorMessage = peopleState.error?.userMessage ?: appState.mergeError,
                 onDismiss = {
                     appState.showRenamePerson = false
+                    appState.mergeError = null
                     peopleViewModel.clearError()
                 },
                 onConfirm = { name ->
@@ -1584,6 +1585,43 @@ private fun LibraryPeopleDialogs(host: AuthenticatedDialogsHost) {
                         personDetailViewModel.applyRename(name)
                         appState.selectedPerson = activePerson.copy(name = name)
                         appState.showRenamePerson = false
+                    }
+                },
+                findNamesake = { name ->
+                    com.photonne.app.ui.people.namesake(
+                        peopleRepository.list(includeHidden = true, limit = 20, search = name).items,
+                        name,
+                        exceptId = activePerson.id
+                    )
+                },
+                onMerge = { target ->
+                    appState.isMerging = true
+                    appState.mergeError = null
+                    coroutineScope.launch {
+                        // Giving the name of someone who exists = it's them: this
+                        // person's faces join theirs and the detail moves there.
+                        runCatching {
+                            peopleRepository.merge(
+                                targetPersonId = target.id,
+                                sourcePersonId = activePerson.id
+                            )
+                        }.onSuccess {
+                            appState.isMerging = false
+                            appState.showRenamePerson = false
+                            appState.selectedPerson = target
+                            personDetailViewModel.open(target.id, target.name)
+                            peopleViewModel.refresh()
+                            snackbarController.show(
+                                org.jetbrains.compose.resources.getString(
+                                    Res.string.people_merge_done
+                                )
+                            )
+                        }.onFailure { error ->
+                            appState.isMerging = false
+                            appState.mergeError = errorFactory
+                                .from(error, "No se pudo fusionar")
+                                .userMessage
+                        }
                     }
                 }
             )

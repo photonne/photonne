@@ -16,6 +16,8 @@ import kotlinx.coroutines.launch
 
 data class PersonSuggestionsUiState(
     val personId: String? = null,
+    /** The "¿Quién es?" queue of every person instead of one person's suggestions. */
+    val isQueue: Boolean = false,
     val personName: String? = null,
     val items: List<PersonSuggestion> = emptyList(),
     val total: Int = 0,
@@ -48,6 +50,27 @@ class PersonSuggestionsViewModel(
     private val _state = MutableStateFlow(PersonSuggestionsUiState())
     val state: StateFlow<PersonSuggestionsUiState> = _state.asStateFlow()
 
+    private val _queueCount = MutableStateFlow(0)
+
+    /** Faces waiting in "¿Quién es?", for the entry on the people screen. */
+    val queueCount: StateFlow<Int> = _queueCount.asStateFlow()
+
+    /** Re-reads [queueCount]; a failure keeps the last value (the entry is a shortcut). */
+    fun refreshQueueCount() {
+        viewModelScope.launch {
+            suspendRunCatching { repository.allSuggestions(limit = 1) }
+                .onSuccess { _queueCount.value = it.total }
+        }
+    }
+
+    /** Opens the "¿Quién es?" queue: every pending suggestion, of anyone. */
+    fun openQueue() {
+        if (_state.value.isQueue && _state.value.items.isNotEmpty()) return
+        _state.value = PersonSuggestionsUiState(isQueue = true, isInitialLoading = true)
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch { loadInternal(append = false) }
+    }
+
     /** The page being fetched. Opening another person (or refreshing) replaces
      *  it, so a slow page of the previous person can't land on this one. */
     private var loadJob: Job? = null
@@ -67,7 +90,7 @@ class PersonSuggestionsViewModel(
     }
 
     fun refresh() {
-        if (_state.value.personId == null) return
+        if (_state.value.personId == null && !_state.value.isQueue) return
         _state.update {
             it.copy(
                 isInitialLoading = it.items.isEmpty(),
@@ -88,12 +111,18 @@ class PersonSuggestionsViewModel(
     }
 
     private suspend fun loadInternal(append: Boolean) {
-        val personId = _state.value.personId ?: return
+        val queue = _state.value.isQueue
+        val personId = _state.value.personId
+        if (!queue && personId == null) return
         val offset = if (append) _state.value.items.size else 0
-        suspendRunCatching { repository.suggestions(personId = personId, offset = offset) }
+        suspendRunCatching {
+            if (queue) repository.allSuggestions(offset = offset)
+            else repository.suggestions(personId = personId!!, offset = offset)
+        }
             .onSuccess { page ->
+                if (queue && !append) _queueCount.value = page.total
                 _state.update { previous ->
-                    if (previous.personId != personId) return@update previous
+                    if (previous.personId != personId || previous.isQueue != queue) return@update previous
                     val merged = if (append) {
                         val existing = previous.items.mapTo(HashSet()) { it.id }
                         previous.items + page.items.filter { it.id !in existing }
@@ -110,7 +139,7 @@ class PersonSuggestionsViewModel(
             }
             .onFailure { error ->
                 _state.update {
-                    if (it.personId != personId) return@update it
+                    if (it.personId != personId || it.isQueue != queue) return@update it
                     if (append) {
                         it.copy(
                             isAppending = false,
@@ -234,6 +263,7 @@ class PersonSuggestionsViewModel(
     }
 
     private fun dropItem(faceId: String) {
+        if (_state.value.isQueue) _queueCount.value = (_queueCount.value - 1).coerceAtLeast(0)
         _state.update {
             it.copy(
                 items = it.items.filterNot { item -> item.id == faceId },

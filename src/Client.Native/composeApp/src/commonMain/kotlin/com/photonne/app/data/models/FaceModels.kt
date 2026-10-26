@@ -30,7 +30,11 @@ data class PersonSuggestion(
     val id: String,
     val assetId: String,
     val confidence: Float = 0f,
-    val suggestedDistance: Float? = null
+    val suggestedDistance: Float? = null,
+    /** Who it could be: only the "¿Quién es?" queue (`/api/people/suggestions`) sends it. */
+    val personId: String? = null,
+    val personName: String? = null,
+    val personCoverFaceId: String? = null
 )
 
 @Serializable

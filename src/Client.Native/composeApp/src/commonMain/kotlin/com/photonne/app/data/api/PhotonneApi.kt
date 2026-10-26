@@ -839,6 +839,8 @@ interface PhotonneApi {
         limit: Int? = null,
         offset: Int? = null
     ): PersonSuggestionsPage
+    /** Every pending suggestion, of anyone ("¿Quién es?"). Empty on servers without it. */
+    suspend fun listFaceSuggestions(limit: Int? = null, offset: Int? = null): PersonSuggestionsPage
     suspend fun acceptAllPersonSuggestions(personId: String): BulkSuggestionResult
     suspend fun dismissAllPersonSuggestions(personId: String): BulkSuggestionResult
     suspend fun acceptFaceSuggestion(faceId: String): AssignFaceResponse
@@ -2664,6 +2666,21 @@ class PhotonneApiClient(
         val response: HttpResponse = client.get("$baseUrl/api/people/$personId/suggestions") {
             if (limit != null) parameter("limit", limit)
             if (offset != null) parameter("offset", offset)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw response.apiException("Suggestions fetch failed (${response.status.value})")
+        }
+        return response.body()
+    }
+
+    override suspend fun listFaceSuggestions(limit: Int?, offset: Int?): PersonSuggestionsPage {
+        val response: HttpResponse = client.get("$baseUrl/api/people/suggestions") {
+            if (limit != null) parameter("limit", limit)
+            if (offset != null) parameter("offset", offset)
+        }
+        // An older server has no queue: "suggestions" isn't a person id there.
+        if (response.status == HttpStatusCode.NotFound || response.status == HttpStatusCode.MethodNotAllowed) {
+            return PersonSuggestionsPage()
         }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Suggestions fetch failed (${response.status.value})")

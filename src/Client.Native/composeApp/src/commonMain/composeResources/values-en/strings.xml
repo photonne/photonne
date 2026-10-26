@@ -560,6 +560,19 @@
     <string name="people_merge_confirm_title">Merge people</string>
     <string name="people_merge_confirm_message">The faces of %1$s will move to %2$s and %1$s will disappear from the list. This cannot be undone.</string>
     <string name="people_merge_done">People merged</string>
+    <string name="people_queue_title">Who is this?</string>
+    <string name="people_queue_empty">No faces left to confirm.</string>
+    <string name="people_queue_empty_hint">When recognition finds faces that look like someone with a name, they show up here.</string>
+    <string name="people_queue_question">Is this %1$s?</string>
+    <string name="people_queue_accept">It\'s %1$s</string>
+    <string name="people_queue_dismiss">It\'s not %1$s</string>
+    <plurals name="people_queue_subtitle">
+        <item quantity="one">%1$d face awaits an answer</item>
+        <item quantity="other">%1$d faces await an answer</item>
+    </plurals>
+    <string name="people_rename_namesake">Someone is already called %1$s. Is it the same person?</string>
+    <string name="people_rename_merge">Merge</string>
+    <string name="people_rename_keep_apart">Keep separate</string>
     <string name="member_remove_confirm_title">Remove access</string>
     <string name="member_remove_confirm_message">%1$s will no longer have access.</string>
     <string name="member_remove_confirm_action">Remove</string>
