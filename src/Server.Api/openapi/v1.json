@@ -2331,6 +2331,45 @@
         ]
       }
     },
+    "/api/places": {
+      "get": {
+        "tags": [
+          "Places"
+        ],
+        "description": "Lists the places the caller\u0027s photos were taken in, with counts, most photographed first",
+        "operationId": "ListPlaces",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlaceDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/assets/{id}/faces": {
       "get": {
         "tags": [
@@ -15303,6 +15342,36 @@
           }
         }
       },
+      "PlaceDto": {
+        "required": [
+          "id",
+          "name",
+          "countryCode",
+          "assetCount",
+          "coverAssetId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "assetCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "coverAssetId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "PreviewRequest": {
         "type": "object",
         "properties": {
@@ -18576,6 +18645,9 @@
     },
     {
       "name": "Scenes"
+    },
+    {
+      "name": "Places"
     },
     {
       "name": "Faces"
