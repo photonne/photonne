@@ -183,3 +183,17 @@ test('when zoomed, a navigator frames the part on screen and moves the view ther
 	await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
 	await expect(navigator).toHaveCount(0);
 });
+
+test('culling: Delete moves on, and Deshacer brings the photo back on screen', async ({ page }) => {
+	await openFirstPhoto(page);
+	await page.keyboard.press('ArrowRight');
+	await expect(page).toHaveURL(/\?asset=2026-09-1$/);
+
+	await page.keyboard.press('Delete');
+	await expect(page).toHaveURL(/\?asset=2026-09-2$/);
+	await expect(page.getByText('1 movida a la papelera')).toBeVisible();
+
+	await page.getByRole('button', { name: 'Deshacer' }).click();
+	await expect(page).toHaveURL(/\?asset=2026-09-1$/);
+	await expect(page.getByRole('dialog', { name: 'IMG_202609_1.jpg' })).toBeVisible();
+});
