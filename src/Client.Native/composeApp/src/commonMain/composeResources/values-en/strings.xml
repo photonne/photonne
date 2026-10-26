@@ -1561,7 +1561,7 @@
     <string name="utilities_duplicates_empty">No duplicates found.</string>
     <string name="utilities_duplicates_summary">%1$d groups · %2$s reclaimable</string>
     <string name="utilities_duplicates_group_assets">%1$d copies · %2$s total</string>
-    <string name="utilities_duplicates_action_auto_select">Keep the largest copy</string>
+    <string name="utilities_duplicates_action_auto_select">Keep the best copy of each group</string>
     <string name="utilities_duplicates_action_clear">Clear selection</string>
     <string name="utilities_duplicates_action_delete">Delete %1$d (%2$s)</string>
     <string name="utilities_duplicates_confirm_title">Move to trash</string>
@@ -1570,6 +1570,9 @@
         <item quantity="other">%1$d items will be moved to your trash. You can restore them from the web app.</item>
     </plurals>
     <string name="utilities_duplicates_open_detail">Open detail</string>
+    <string name="utilities_duplicates_keep_only">Keep only this one</string>
+    <string name="utilities_duplicates_keep_one">Every group keeps at least one copy</string>
+    <string name="utilities_duplicates_favorite">Favorite</string>
 
     <!-- Large files -->
     <string name="utilities_large_files_count_label">Show</string>

@@ -20,9 +20,9 @@
 	import { duplicatesPath, magicPath } from '#lib/search/icons.js';
 	import { directoryOf } from '#lib/search/text.js';
 	import {
+		best,
 		keepInAll,
 		keepOnly,
-		largest,
 		markedBytes,
 		oldest,
 		recoverableBytes,
@@ -109,12 +109,12 @@
 	<UtilityHeader title={m.utilities_duplicates()} lead={m.utilities_duplicates_lead()}>
 		{#snippet tools()}
 			{#if all.length > 0}
-				<button type="button" class="btn" onclick={() => (marked = keepInAll(all, oldest))}>
+				<button type="button" class="btn" onclick={() => (marked = keepInAll(all, best))}>
 					<Icon path={magicPath} size={18} />
-					{m.utilities_keep_oldest()}
+					{m.utilities_keep_best()}
 				</button>
-				<button type="button" class="btn" onclick={() => (marked = keepInAll(all, largest))}>
-					{m.utilities_keep_largest()}
+				<button type="button" class="btn" onclick={() => (marked = keepInAll(all, oldest))}>
+					{m.utilities_keep_oldest()}
 				</button>
 				<button
 					type="button"
@@ -205,7 +205,9 @@
 												>{/if}</span
 										>
 										<span class="details">
-											{[
+											{#if asset.isFavorite}<Icon name="favorite" size={14} />
+												{m.utilities_favorite()} ·
+											{/if}{[
 												dateTime(asset.fileCreatedAt),
 												formatBytes(asset.fileSize),
 												asset.width && asset.height ? `${asset.width}×${asset.height}` : null
