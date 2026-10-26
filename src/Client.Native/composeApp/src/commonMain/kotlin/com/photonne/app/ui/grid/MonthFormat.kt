@@ -15,3 +15,6 @@ expect fun formatLocalizedMonth(date: LocalDate): String
  * with the platform's own formatter like [formatLocalizedMonth].
  */
 expect fun formatLocalizedShortDate(date: LocalDate): String
+
+/** The month's short standalone name ("ene", "Jan"), for a month grid. */
+expect fun formatLocalizedMonthShort(date: LocalDate): String

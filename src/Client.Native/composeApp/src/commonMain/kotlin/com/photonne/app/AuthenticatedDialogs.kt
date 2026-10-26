@@ -214,6 +214,7 @@ private fun AlbumDialogs(host: AuthenticatedDialogsHost) {
     with(host) {
         if (appState.showJumpToDate) {
             com.photonne.app.ui.timeline.JumpToDateDialog(
+                buckets = timelineState.buckets,
                 onDismiss = { appState.showJumpToDate = false },
                 onConfirm = { date ->
                     appState.showJumpToDate = false

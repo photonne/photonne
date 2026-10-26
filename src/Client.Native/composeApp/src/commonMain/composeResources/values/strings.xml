@@ -27,7 +27,14 @@
     <string name="action_account">Cuenta</string>
     <string name="action_logout">Cerrar sesión</string>
     <string name="action_jump_to_date">Saltar a una fecha</string>
-    <string name="action_jump">Saltar</string>
+    <string name="timeline_jump_title">Ir a una fecha</string>
+    <string name="timeline_jump_hint">Los meses sin fotos aparecen desactivados.</string>
+    <string name="timeline_jump_year">Año</string>
+    <plurals name="timeline_jump_month">
+        <item quantity="one">%1$s, %2$s elemento</item>
+        <item quantity="other">%1$s, %2$s elementos</item>
+    </plurals>
+    <string name="timeline_jump_month_empty">%1$s, sin fotos</string>
     <string name="action_cancel">Cancelar</string>
     <string name="action_close">Cerrar</string>
     <string name="action_back">Atrás</string>

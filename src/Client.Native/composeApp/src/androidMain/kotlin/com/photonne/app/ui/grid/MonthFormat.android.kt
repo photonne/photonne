@@ -16,3 +16,9 @@ actual fun formatLocalizedShortDate(date: LocalDate): String =
     DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
         .withLocale(Locale.getDefault())
         .format(date.toJavaLocalDate())
+
+actual fun formatLocalizedMonthShort(date: LocalDate): String {
+    val locale = Locale.getDefault()
+    val raw = DateTimeFormatter.ofPattern("LLL", locale).format(date.toJavaLocalDate())
+    return raw.trimEnd('.').replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+}

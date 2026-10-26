@@ -43,3 +43,19 @@ actual fun formatLocalizedShortDate(date: LocalDate): String {
     }
     return formatter.stringFromDate(nsDate)
 }
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun formatLocalizedMonthShort(date: LocalDate): String {
+    val components = NSDateComponents().apply {
+        year = date.year.toLong()
+        month = date.monthNumber.toLong()
+        day = 1
+    }
+    val nsDate = NSCalendar.currentCalendar.dateFromComponents(components) ?: return date.monthNumber.toString()
+    val formatter = NSDateFormatter().apply {
+        locale = NSLocale.currentLocale
+        dateFormat = "LLL"
+    }
+    val raw = formatter.stringFromDate(nsDate).trimEnd('.')
+    return raw.replaceFirstChar { if (it.isLowerCase()) it.uppercase() else it.toString() }
+}
