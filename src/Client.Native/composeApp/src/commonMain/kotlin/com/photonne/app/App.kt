@@ -874,6 +874,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     LaunchedEffect(connectServer) {
         com.photonne.app.ui.main.ExternalNavigation.consumeConnectServer()
     }
+    WelcomeHost(user.user, appState)
     val externalDestination by com.photonne.app.ui.main.ExternalNavigation.pending
         .collectAsStateWithLifecycle()
     LaunchedEffect(externalDestination) {

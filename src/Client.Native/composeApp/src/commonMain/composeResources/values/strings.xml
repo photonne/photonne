@@ -2058,4 +2058,13 @@
         <item quantity="other">%1$d fotos pasarán a un álbum nuevo, que se queda aunque el recuerdo cambie.</item>
     </plurals>
     <string name="upload_item_progress">%1$s de %2$s</string>
+    <string name="welcome_title">Hola, %1$s</string>
+    <string name="welcome_lead">Tres cosas para empezar con buen pie. Puedes hacerlas ahora o cuando quieras desde Más.</string>
+    <string name="welcome_backup_title">Haz copia de las fotos del móvil</string>
+    <string name="welcome_backup_text">Elige qué carpetas subir y deja que se suban solas, con Wi-Fi o mientras carga.</string>
+    <string name="welcome_people_title">Pon nombre a las caras</string>
+    <string name="welcome_people_text">Con unos pocos nombres, Photonne reconoce a cada persona en el resto de tus fotos.</string>
+    <string name="welcome_memories_title">Mira tus recuerdos</string>
+    <string name="welcome_memories_text">Viajes, un día como hoy y lo mejor de cada año, preparados cada noche.</string>
+    <string name="welcome_start">Empezar</string>
 </resources>
