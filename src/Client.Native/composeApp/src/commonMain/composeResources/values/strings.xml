@@ -2057,4 +2057,5 @@
         <item quantity="one">%1$d foto pasará a un álbum nuevo, que se queda aunque el recuerdo cambie.</item>
         <item quantity="other">%1$d fotos pasarán a un álbum nuevo, que se queda aunque el recuerdo cambie.</item>
     </plurals>
+    <string name="upload_item_progress">%1$s de %2$s</string>
 </resources>

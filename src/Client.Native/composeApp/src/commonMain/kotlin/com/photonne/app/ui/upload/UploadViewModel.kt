@@ -45,6 +45,8 @@ data class UploadItem(
     /** A Live Photo's paired video; released together with [content]. */
     val motionClip: PickedMotionClip? = null,
     val status: UploadStatus = UploadStatus.Queued,
+    /** Bytes of the body already sent while Uploading, for a real progress bar. */
+    val sentBytes: Long = 0,
     val assetId: String? = null,
     val errorMessage: String? = null,
     /**
@@ -298,7 +300,7 @@ class UploadViewModel(
         _state.update {
             it.copy(
                 items = it.items.map { item ->
-                    if (item.id == itemId) item.copy(status = UploadStatus.Uploading) else item
+                    if (item.id == itemId) item.copy(status = UploadStatus.Uploading, sentBytes = 0) else item
                 }
             )
         }
@@ -310,12 +312,23 @@ class UploadViewModel(
                     // guess (PhotoKit only knows it once read).
                     content.open { source, sizeBytes ->
                         if (sizeBytes != current.sizeBytes) setSize(itemId, sizeBytes)
+                        var shownPercent = -1L
                         repository.uploadStream(
                             current.name,
                             current.mimeType,
                             source,
                             sizeBytes,
-                            fileModifiedAtMillis = current.lastModifiedMillis
+                            fileModifiedAtMillis = current.lastModifiedMillis,
+                            onProgress = { sent, total ->
+                                // One state update per percent, not per chunk.
+                                val percent = if (total > 0) sent * 100 / total else 0
+                                if (percent != shownPercent) {
+                                    shownPercent = percent
+                                    // [total] is the whole multipart body: scaled
+                                    // to the file, so "x de y" never passes y.
+                                    setSent(itemId, if (total > 0) sent * sizeBytes / total else sent)
+                                }
+                            }
                         )
                     }
                 }
@@ -398,6 +411,12 @@ class UploadViewModel(
             if (ex.status != 401) throw ex
             send()
         }
+
+    private fun setSent(itemId: Long, sentBytes: Long) {
+        _state.update {
+            it.copy(items = it.items.map { item -> if (item.id == itemId) item.copy(sentBytes = sentBytes) else item })
+        }
+    }
 
     private fun setSize(itemId: Long, sizeBytes: Long) {
         _state.update {

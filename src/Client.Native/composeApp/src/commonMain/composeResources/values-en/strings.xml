@@ -2047,4 +2047,5 @@
         <item quantity="one">%1$d photo goes to a new album, which stays even if the memory changes.</item>
         <item quantity="other">%1$d photos go to a new album, which stays even if the memory changes.</item>
     </plurals>
+    <string name="upload_item_progress">%1$s of %2$s</string>
 </resources>
