@@ -2048,4 +2048,13 @@
         <item quantity="other">%1$d photos go to a new album, which stays even if the memory changes.</item>
     </plurals>
     <string name="upload_item_progress">%1$s of %2$s</string>
+    <string name="welcome_title">Hi, %1$s</string>
+    <string name="welcome_lead">Three things to get off to a good start. Do them now or any time from More.</string>
+    <string name="welcome_backup_title">Back up the photos on your phone</string>
+    <string name="welcome_backup_text">Choose which folders to upload and let them go up on their own, on Wi-Fi or while charging.</string>
+    <string name="welcome_people_title">Name the faces</string>
+    <string name="welcome_people_text">With a few names, Photonne recognizes each person in the rest of your photos.</string>
+    <string name="welcome_memories_title">See your memories</string>
+    <string name="welcome_memories_text">Trips, this day in past years and the best of each year, prepared every night.</string>
+    <string name="welcome_start">Get started</string>
 </resources>

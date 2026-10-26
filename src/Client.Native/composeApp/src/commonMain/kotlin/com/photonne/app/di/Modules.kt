@@ -224,6 +224,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AssetActionsRepository)
     singleOf(::SearchRepository)
     single { com.photonne.app.data.search.RecentSearchStore(get()) }
+    single { com.photonne.app.data.onboarding.WelcomeStore(get()) }
     singleOf(::UploadRepository)
     singleOf(::MapRepository)
     singleOf(::PeopleRepository)
