@@ -621,6 +621,13 @@
 		gap: 2px;
 	}
 
+	/* A grid item is at least as wide as its content, and a name never wraps:
+	   without this, a long pinned name widens the column past the island
+	   instead of ending in an ellipsis. */
+	.sidebar li {
+		min-width: 0;
+	}
+
 	.sidebar a {
 		display: flex;
 		align-items: center;
@@ -733,6 +740,7 @@
 	   focus; the rail has no room for it. */
 	.sidebar .grip {
 		display: flex;
+		flex: none;
 		margin-inline-start: auto;
 		opacity: 0;
 		cursor: grab;

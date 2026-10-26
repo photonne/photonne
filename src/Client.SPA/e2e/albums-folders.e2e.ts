@@ -332,6 +332,23 @@ test('reorders the sidebar pins by dragging them, or with Alt and the arrows', a
 	]);
 });
 
+test('a pin with a long name ends in an ellipsis and keeps its handle inside the menu', async ({
+	page
+}) => {
+	const api = await fakeApi(page, { signedIn: true });
+	const state = await albumsApi(page, api.state);
+	state.albums[0].name = 'Vacaciones en la Costa Brava con toda la familia';
+	await page.goto('/albums/album-1');
+
+	const sidebar = page.getByRole('navigation', { name: 'Navegación principal' });
+	const pin = sidebar.locator('[data-pin]').first();
+	await pin.hover();
+	const menu = await sidebar.boundingBox();
+	const grip = await pin.locator('.grip').boundingBox();
+	expect(grip!.x + grip!.width).toBeLessThanOrEqual(menu!.x + menu!.width);
+	expect(await sidebar.evaluate((nav) => nav.scrollWidth - nav.clientWidth)).toBe(0);
+});
+
 test('a folder with subfolders and photos folds either section and shares the view', async ({
 	page
 }) => {
