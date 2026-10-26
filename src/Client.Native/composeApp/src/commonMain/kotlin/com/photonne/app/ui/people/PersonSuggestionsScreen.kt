@@ -1,5 +1,11 @@
 package com.photonne.app.ui.people
 
+import com.photonne.app.resources.people_queue_accept
+import com.photonne.app.resources.people_queue_dismiss
+import com.photonne.app.resources.people_queue_question
+import com.photonne.app.resources.people_queue_empty_hint
+import com.photonne.app.resources.people_queue_empty
+import com.photonne.app.resources.people_queue_title
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -114,7 +120,10 @@ fun PersonSuggestionsScreen(
             state.isEmpty ->
                 EmptyState(
                     icon = PhotonneIcons.FaceSuggestions,
-                    title = stringResource(Res.string.people_suggestions_empty),
+                    title = stringResource(
+                        if (state.isQueue) Res.string.people_queue_empty else Res.string.people_suggestions_empty
+                    ),
+                    subtitle = if (state.isQueue) stringResource(Res.string.people_queue_empty_hint) else null,
                     modifier = Modifier.padding(top = reservedTop)
                 )
             else -> {
@@ -158,7 +167,8 @@ fun PersonSuggestionsScreen(
         }
 
         SubscreenFloatingChrome(
-            title = stringResource(
+            title = if (state.isQueue) stringResource(Res.string.people_queue_title)
+            else stringResource(
                 Res.string.people_suggestions_title,
                 title.takeIf { it.isNotBlank() } ?: stringResource(Res.string.people_unnamed)
             ),
@@ -176,11 +186,14 @@ fun PersonSuggestionsScreen(
             hazeState = hazeState,
             onChromeVisibleChange = onChromeVisibleChange,
             actions = {
-                SuggestionsOverflowMenu(
-                    enabled = !isBulkMutating,
-                    onAcceptAll = onAcceptAll,
-                    onDismissAll = onDismissAll
-                )
+                // "Todas" acts on one person: the queue mixes several, so it has none.
+                if (!state.isQueue) {
+                    SuggestionsOverflowMenu(
+                        enabled = !isBulkMutating,
+                        onAcceptAll = onAcceptAll,
+                        onDismissAll = onDismissAll
+                    )
+                }
             }
         )
     }
@@ -252,6 +265,18 @@ private fun SuggestionCard(
                 }
             }
         }
+        // In the queue each face may be someone else: say who.
+        val who = suggestion.personId?.let {
+            suggestion.personName?.takeIf { name -> name.isNotBlank() } ?: stringResource(Res.string.people_unnamed)
+        }
+        if (who != null) {
+            Text(
+                text = stringResource(Res.string.people_queue_question, who),
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -259,14 +284,16 @@ private fun SuggestionCard(
             IconButton(onClick = onDismiss, enabled = !isPending) {
                 Icon(
                     PhotonneIcons.Close,
-                    contentDescription = stringResource(Res.string.people_suggestions_dismiss),
+                    contentDescription = if (who != null) stringResource(Res.string.people_queue_dismiss, who)
+                    else stringResource(Res.string.people_suggestions_dismiss),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
             IconButton(onClick = onAccept, enabled = !isPending) {
                 Icon(
                     PhotonneIcons.Check,
-                    contentDescription = stringResource(Res.string.people_suggestions_accept),
+                    contentDescription = if (who != null) stringResource(Res.string.people_queue_accept, who)
+                    else stringResource(Res.string.people_suggestions_accept),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }

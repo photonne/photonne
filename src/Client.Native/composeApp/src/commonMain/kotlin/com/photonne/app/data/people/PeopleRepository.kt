@@ -63,6 +63,10 @@ class PeopleRepository(
         offset: Int = 0
     ): PersonSuggestionsPage = api.listPersonSuggestions(personId, limit, offset)
 
+    /** The "¿Quién es?" queue: suggestions of every person, strongest first. */
+    suspend fun allSuggestions(limit: Int = 30, offset: Int = 0): PersonSuggestionsPage =
+        api.listFaceSuggestions(limit, offset)
+
     suspend fun acceptAllSuggestions(personId: String): BulkSuggestionResult =
         api.acceptAllPersonSuggestions(personId)
 

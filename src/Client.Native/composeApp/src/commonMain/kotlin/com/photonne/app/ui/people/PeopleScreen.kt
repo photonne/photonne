@@ -1,5 +1,9 @@
 package com.photonne.app.ui.people
 
+import org.jetbrains.compose.resources.pluralStringResource
+import com.photonne.app.ui.theme.EntryCard
+import com.photonne.app.resources.people_queue_subtitle
+import com.photonne.app.resources.people_queue_title
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -85,7 +89,10 @@ fun PeopleScreen(
     onToggleSearch: () -> Unit = {},
     onSearchChange: (String) -> Unit = {},
     onSortChange: (PeopleSort) -> Unit = {},
-    onChromeVisibleChange: (Boolean) -> Unit = {}
+    onChromeVisibleChange: (Boolean) -> Unit = {},
+    /** Faces waiting in "¿Quién es?"; with none, there is no entry. */
+    queueCount: Int = 0,
+    onOpenQueue: () -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     // Fuente de blur del cromo: la rejilla que scrollea por detrás, de la que
@@ -158,6 +165,20 @@ fun PeopleScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                     ) {
+                        if (queueCount > 0) {
+                            item(key = "queue", span = { GridItemSpan(maxLineSpan) }) {
+                                EntryCard(
+                                    icon = PhotonneIcons.FaceSuggestions,
+                                    title = stringResource(Res.string.people_queue_title),
+                                    subtitle = pluralStringResource(
+                                        Res.plurals.people_queue_subtitle, queueCount, queueCount
+                                    ),
+                                    onClick = onOpenQueue,
+                                    emphasized = true,
+                                    modifier = Modifier.padding(bottom = Spacing.xs)
+                                )
+                            }
+                        }
                         items(state.people, key = { it.id }) { person ->
                             PersonCard(
                                 modifier = Modifier.animateItem(),

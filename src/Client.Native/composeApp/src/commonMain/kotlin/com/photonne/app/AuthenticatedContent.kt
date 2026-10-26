@@ -1124,9 +1124,10 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
                     },
                     onLoadMore = personSuggestionsViewModel::loadMore,
                     onOpen = {
-                        appState.selectedPerson?.let {
-                            personSuggestionsViewModel.open(it.id, it.name)
-                        }
+                        // Without a person it is the "¿Quién es?" queue of everyone.
+                        val person = appState.selectedPerson
+                        if (person != null) personSuggestionsViewModel.open(person.id, person.name)
+                        else personSuggestionsViewModel.openQueue()
                     },
                     onBack = { appState.moreSubscreen = MoreSubscreen.People },
                     // Actúan también sobre las páginas no cargadas, así
@@ -1139,7 +1140,14 @@ private fun MoreSubscreenOverlay(host: AuthenticatedContentHost) {
             MoreSubscreen.People -> {
                 val person = appState.selectedPerson
                 if (person == null) {
+                    val queueCount by personSuggestionsViewModel.queueCount.collectAsStateWithLifecycle()
+                    LaunchedEffect(Unit) { personSuggestionsViewModel.refreshQueueCount() }
                     com.photonne.app.ui.people.PeopleScreen(
+                        queueCount = queueCount,
+                        onOpenQueue = {
+                            appState.selectedPerson = null
+                            appState.moreSubscreen = MoreSubscreen.PeopleSuggestions
+                        },
                         state = peopleState,
                         onPersonClick = { picked ->
                             appState.personFromCollections = false
