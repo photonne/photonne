@@ -167,3 +167,21 @@ test('a result opens in the viewer and Back returns to the results', async ({ pa
 	await expect(page.getByRole('dialog')).toHaveCount(0);
 	await expect(cells(page)).toHaveCount(7);
 });
+
+test('the start page offers places and the searches run lately', async ({ page }) => {
+	await open(page, '/search');
+
+	const places = page.getByRole('region', { name: 'Lugares' });
+	await expect(places.getByRole('link')).toHaveText([/Barcelona\s*42/, /Lisboa\s*7/]);
+	await places.getByRole('link', { name: /Barcelona/ }).click();
+	await expect(page).toHaveURL(/\/search\?place=place-bcn&placeName=Barcelona$/);
+	await expect(page.getByRole('button', { name: /En Barcelona/ })).toBeVisible();
+
+	// Staying on a search a moment keeps it among the recent ones.
+	await page.waitForTimeout(1800);
+	await page.goto('/search');
+	const recent = page.getByRole('region', { name: 'Recientes' });
+	await expect(recent.getByRole('link', { name: 'Barcelona' })).toBeVisible();
+	await recent.getByRole('button', { name: 'Borrar' }).click();
+	await expect(recent).toBeHidden();
+});
