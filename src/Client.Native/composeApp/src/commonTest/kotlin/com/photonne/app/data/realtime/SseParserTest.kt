@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 
 class SseParserTest {
     @Test
-    fun `names each event once it ends, across chunks, skipping comments`() {
+    fun `names each event once it ends across chunks and skips comments`() {
         val parser = SseParser()
         assertEquals(emptyList(), parser.push(": connected\n\nevent: lib".encodeToByteArray()))
         assertEquals(

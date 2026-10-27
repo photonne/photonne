@@ -29,7 +29,7 @@ class DuplicateChoiceTest {
     }
 
     @Test
-    fun `otherwise the copy closest to the root, then the oldest`() {
+    fun `otherwise the copy closest to the root and then the oldest`() {
         val group = listOf(
             copy("deep", "/fotos/backup/2024/x.jpg", day = 1),
             copy("new", "/fotos/x.jpg", day = 5),
