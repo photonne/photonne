@@ -126,6 +126,8 @@ fun AlbumDetailScreen(
     onEditRules: (() -> Unit)? = null,
     /** Freezes the smart album into a manual one; null hides the menu entry. */
     onConvertToManual: (() -> Unit)? = null,
+    /** Photos were added from here: the album list's count and cover are stale. */
+    onAlbumContentsChanged: () -> Unit = {},
     /**
      * Immersive bottom nav: while true the photo grid drives the hide-on-scroll
      * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
@@ -169,7 +171,7 @@ fun AlbumDetailScreen(
             confirmLabel = { count -> pluralStringResource(Res.plurals.album_add_photos_confirm, count, count) },
             onDismiss = { pickingPhotos = false },
             onConfirm = { ids ->
-                viewModel.addFromLibrary(ids).also { added -> if (added) albumsViewModel.refresh() }
+                viewModel.addFromLibrary(ids).also { added -> if (added) onAlbumContentsChanged() }
             }
         )
     }
