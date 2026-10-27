@@ -109,7 +109,7 @@ class LibraryPickerState(
 @Composable
 fun LibraryPicker(
     title: String,
-    confirmLabel: (Int) -> String,
+    confirmLabel: @Composable (Int) -> String,
     onDismiss: () -> Unit,
     onConfirm: suspend (List<String>) -> Boolean,
 ) {

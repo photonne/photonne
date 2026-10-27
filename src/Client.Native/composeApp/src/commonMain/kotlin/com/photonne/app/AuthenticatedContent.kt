@@ -16,6 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.photonne.app.resources.album_converted
+import com.photonne.app.resources.folder_bring_photos_confirm
+import com.photonne.app.resources.folder_bring_photos_title
 import com.photonne.app.resources.notifications_no_screen
 import com.photonne.app.resources.people_recluster_done
 import com.photonne.app.resources.people_recluster_done_none
@@ -387,6 +390,8 @@ internal fun AuthenticatedOverlayDestination(host: AuthenticatedContentHost) {
                                 appState.moreSubscreen = MoreSubscreen.SmartAlbumEditor
                             }
                         } else null,
+                        // Lo añadido desde la biblioteca cambia recuento y portada en la lista.
+                        onAlbumContentsChanged = albumsViewModel::refresh,
                         onConvertToManual = if (openedAlbum.isSmart && openedAlbum.isOwner) {
                             {
                                 albumsViewModel.convertToManual(openedAlbum.id) { updated ->
