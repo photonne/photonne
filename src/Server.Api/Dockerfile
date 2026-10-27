@@ -67,7 +67,7 @@ RUN set -eux; \
 # The SvelteKit SPA (src/Client.SPA), built to static files that the
 # server hosts from wwwroot. Its API client is generated from the committed
 # OpenAPI contract, so the build needs that file too.
-FROM node:22-alpine AS spa
+FROM node:26-alpine AS spa
 WORKDIR /src
 COPY src/Server.Api/openapi/v1.json src/Server.Api/openapi/v1.json
 COPY src/Client.SPA/package.json src/Client.SPA/package-lock.json src/Client.SPA/
