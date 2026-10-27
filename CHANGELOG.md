@@ -1,5 +1,46 @@
 # Changelog
 
+## [2.10.0](https://github.com/photonne/photonne/compare/server-v2.9.0...server-v2.10.0) (2026-10-27)
+
+
+### Novedades
+
+* Conectar la app móvil al servidor con un QR desde la web ([800a918](https://github.com/photonne/photonne/commit/800a918a906fc040c08fd5641bd080097bf1f46f))
+* Duplicados: conservar la mejor copia, «solo esta» y la carpeta que distingue cada copia ([2fd94fc](https://github.com/photonne/photonne/commit/2fd94fcad8be5376ece6831006270ffc4e66f4e7))
+* Guardar un recuerdo (un viaje, un año…) como álbum ([a5328fa](https://github.com/photonne/photonne/commit/a5328fa0bdd0f30d904bfddc224bcd8664d0c2ea))
+* **server:** Buscar por etiqueta, cámara y lugar ([7e302ab](https://github.com/photonne/photonne/commit/7e302ab2f43098a22a6497feb364d03f7c6f758b))
+* **server:** Cola de «¿Quién es?» con las sugerencias de caras de todas las personas ([267e27a](https://github.com/photonne/photonne/commit/267e27a1ef77bf73249221d3af6494768f342eeb))
+* **server:** Convertir un álbum inteligente en normal, y reglas de fecha móvil ([6838aca](https://github.com/photonne/photonne/commit/6838acafcb886fd219824917352f8db83b858ccc))
+* **server:** Copias H.264 de los vídeos que no se reproducen en todas partes ([5ea4f3b](https://github.com/photonne/photonne/commit/5ea4f3b2a3b29d9fe6a89fe8388d9bd90b6b8a4e))
+* **server:** El detalle de una foto dice el id de su lugar ([e37e5a6](https://github.com/photonne/photonne/commit/e37e5a65e6576237d9f433bb288800afc68ea4f3))
+* **server:** Entrar con un proveedor OpenID Connect ([bdac6e7](https://github.com/photonne/photonne/commit/bdac6e7029a3646e43dba1868ba677ad3b0996cb))
+* **server:** Flujo de eventos (SSE) para que los clientes recarguen solos ([767ccc5](https://github.com/photonne/photonne/commit/767ccc583e102c083f4bc6b2c2966b87883fb27e))
+* **server:** Lista de los lugares de mis fotos, con recuento y portada ([67f1547](https://github.com/photonne/photonne/commit/67f1547ae3e26d4724f1b7aebe417a4b04eb0627))
+* **server:** ThumbHash de cada miniatura para pintar un boceto mientras carga ([1477420](https://github.com/photonne/photonne/commit/1477420611bdf627722991b0de8d131acbde4c5e))
+* **server:** Verificación en dos pasos (TOTP) con códigos de recuperación ([79385c1](https://github.com/photonne/photonne/commit/79385c1fdd90f8426e82ea3f65009676b0044b4c))
+* **spa:** Al deshacer en el visor se vuelve a la foto recuperada ([6433f8a](https://github.com/photonne/photonne/commit/6433f8a7ef532cf84b0764581c7147b8665cd614))
+* **spa:** Añadir fotos desde dentro de un álbum o una carpeta ([8fc3eb4](https://github.com/photonne/photonne/commit/8fc3eb4dc87de5fd209b008703073400064b2165))
+* **spa:** Botón «Entrar con …» cuando el servidor tiene un proveedor OpenID ([21bc7cd](https://github.com/photonne/photonne/commit/21bc7cd0b19a5a25fe7a71054c21e220a37cff08))
+* **spa:** Cada año de «Ir a una fecha» dice cuántas fotos tiene ([3751694](https://github.com/photonne/photonne/commit/37516943a4777f259befda46eff31605cb7f2741))
+* **spa:** Cada foto de la papelera dice cuántos días le quedan ([aca16d1](https://github.com/photonne/photonne/commit/aca16d12ffe9d8ff510b6e7a58aaba9504aee588))
+* **spa:** Cola «¿Quién es?» y fusionar al dar un nombre que ya existe ([f66913f](https://github.com/photonne/photonne/commit/f66913f7d6292fb56cbc71b7bd18e4f1852332df))
+* **spa:** El visor y las historias reproducen los vídeos desde /playback ([a5abf2c](https://github.com/photonne/photonne/commit/a5abf2ce128f8a7177115e8e8ae340b896a4e2b1))
+* **spa:** La búsqueda empieza con las búsquedas recientes y los lugares ([e2cd51d](https://github.com/photonne/photonne/commit/e2cd51d3930a640c1c42064f6469a8d88f9b0ec1))
+* **spa:** La rejilla pinta el boceto ThumbHash de cada foto hasta que carga ([4ecd897](https://github.com/photonne/photonne/commit/4ecd8970da7118642b69ecbd9e76fd029e6b09da))
+* **spa:** La selección dice qué fechas abarca y cuánto ocupa ([c90a3b8](https://github.com/photonne/photonne/commit/c90a3b8946bbe29bf9d13fb7e7ba7eaf89e5a952))
+* **spa:** La web escucha el flujo de eventos y recarga lo que ha cambiado ([67056f7](https://github.com/photonne/photonne/commit/67056f79c9558d16c672c1faf15de568b47454b8))
+* **spa:** Los metadatos del visor llevan a sus fotos ([6829656](https://github.com/photonne/photonne/commit/6829656d8cff52bc14e4a5d90bb4731be8009de0))
+* **spa:** Reglas a un toque, convertir en álbum normal y fechas móviles en los álbumes inteligentes ([52eeb38](https://github.com/photonne/photonne/commit/52eeb3842fe1178375fe9aa1b3af9c4f703d7b0c))
+* **spa:** Verificación en dos pasos: entrar con código, activarla y quitarla ([af1cf74](https://github.com/photonne/photonne/commit/af1cf74625f7a4f7570d24b023e44c16f3eaf543))
+
+
+### Correcciones
+
+* **server:** Contraseñas de usuario con PBKDF2 y sal en lugar de SHA-256 sin sal ([9123f68](https://github.com/photonne/photonne/commit/9123f68dc371e1ef830effa9ab0229c4b88606f4))
+* **server:** La papelera dice cuándo se borró cada elemento ([dd2fed1](https://github.com/photonne/photonne/commit/dd2fed1fcc674f9b239e9e7af7b95f2c19731b47))
+* **server:** Sin clave JWT ni contraseña de admin de ejemplo, y pgAdmin solo bajo demanda ([74d4d2b](https://github.com/photonne/photonne/commit/74d4d2b8b5bfb07f39a13e0f4054a80864d42104))
+* **spa:** Los fijados con nombre largo no ensanchan el menú lateral ([315b364](https://github.com/photonne/photonne/commit/315b3645d5fb17844ead9a595e00007fda295e0f))
+
 ## [2.9.0](https://github.com/photonne/photonne/compare/server-v2.8.0...server-v2.9.0) (2026-10-25)
 
 
