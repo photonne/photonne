@@ -22,8 +22,17 @@ updates:
     commit-message:
       prefix: build(spa)
     groups:
+      # @vitest/browser-playwright pide la misma versión exacta de vitest, así
+      # que por separado sus mayores no instalan (#133, #134): van juntos.
+      vitest:
+        patterns: ["vitest", "@vitest/*", "vitest-browser-svelte"]
       npm-minor:
         update-types: [minor, patch]
+    ignore:
+      # La mayor de TypeScript espera a que SvelteKit, svelte-check y
+      # typescript-eslint la soporten (#137).
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: gradle
     directory: /src/Client.Native
@@ -59,6 +68,12 @@ updates:
       interval: monthly
     commit-message:
       prefix: build(docker)
+    ignore:
+      # La imagen CUDA tiene que casar con la que usa onnxruntime-gpu (CUDA 12,
+      # ver src/Server.Ml/requirements-gpu.txt); con otra, la GPU cae a CPU sin
+      # avisar (#128). Se sube a mano junto con onnxruntime-gpu.
+      - dependency-name: nvidia/cuda
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker-compose
     directory: /
