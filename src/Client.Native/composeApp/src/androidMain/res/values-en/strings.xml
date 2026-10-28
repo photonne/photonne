@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="memory_widget_label">Memories</string>
+    <string name="memory_widget_description">A memory from your library every day</string>
+    <string name="memory_widget_signed_out">Open Photonne to see your memories</string>
+    <string name="memory_widget_empty">No memories yet</string>
+</resources>

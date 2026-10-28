@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos que necesita el propio sistema Android (el selector de widgets y el
+     widget, que no pinta Compose). El resto de la app usa composeResources. -->
+<resources>
+    <string name="memory_widget_label">Recuerdos</string>
+    <string name="memory_widget_description">Un recuerdo de tu biblioteca cada día</string>
+    <string name="memory_widget_signed_out">Abre Photonne para ver tus recuerdos</string>
+    <string name="memory_widget_empty">Todavía no hay recuerdos</string>
+</resources>

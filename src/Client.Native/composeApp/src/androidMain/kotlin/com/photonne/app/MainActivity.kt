@@ -14,6 +14,7 @@ import com.photonne.app.ui.platform.OrientationController
 import com.photonne.app.ui.upload.MAX_SELECTION
 import com.photonne.app.ui.upload.describePickedFile
 import com.photonne.app.ui.upload.unreadablePickedFile
+import com.photonne.app.widget.MemoryWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,6 +34,15 @@ class MainActivity : ComponentActivity() {
         // es el mismo y volvería a saltar a la pantalla ya abandonada.
         if (savedInstanceState == null) routeFromIntent(intent)
         setContent { App() }
+    }
+
+    /**
+     * Al salir de la app el widget de Recuerdos se pone al día si hace rato que
+     * no se refresca: así refleja enseguida un inicio o un cierre de sesión.
+     */
+    override fun onStop() {
+        super.onStop()
+        MemoryWidget.refreshIfStale(this)
     }
 
     /** La app ya estaba abierta (singleTop): el toque en la notificación llega aquí. */

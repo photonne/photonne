@@ -118,6 +118,20 @@
             </intent-filter>
         </receiver>
 
+        <!-- Widget de Recuerdos (widget/MemoryWidget.kt). Las difusiones de
+             APPWIDGET_UPDATE las manda el sistema: no hace falta exportarlo. -->
+        <receiver
+            android:name=".widget.MemoryWidgetProvider"
+            android:exported="false"
+            android:label="@string/memory_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/memory_widget_info" />
+        </receiver>
+
         <!-- WorkManager vends this service; we only override it to declare the
              dataSync foreground type so setForeground() works on Android 14+.
              tools:node="merge" keeps WorkManager's own attributes intact. -->
