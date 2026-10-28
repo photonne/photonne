@@ -9,6 +9,7 @@ import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.data.models.TimelineItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +37,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -224,6 +229,22 @@ fun CollectionsScreen(
     LaunchedEffect(active) { if (active) onLoad() }
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
+    }
+    // Las secciones llegan a destiempo (recuerdos, personas, favoritos…) y el
+    // orden adaptativo cambia con los recuentos: el LazyColumn se ancla al
+    // primer elemento que vio y, si luego entra algo encima, la página aparece
+    // a media altura. Hasta que el usuario arrastre, se mantiene arriba.
+    var userScrolled by remember { mutableStateOf(false) }
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect {
+            if (it is DragInteraction.Start) userScrolled = true
+        }
+    }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                if (!userScrolled && (index != 0 || offset != 0)) listState.requestScrollToItem(0)
+            }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
