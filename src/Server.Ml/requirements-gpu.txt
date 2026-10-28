@@ -27,7 +27,7 @@ onnxruntime-gpu==1.26.0
 # pybind queda, por eso Dockerfile.gpu reinstala la rueda -gpu al final.
 onnxruntime==1.26.0
 numpy==2.5.4
-pillow==12.3.0
+pillow==13.0.0
 opencv-python-headless==5.0.0.93
 rapidocr-onnxruntime==1.4.4
 tokenizers==0.23.3
