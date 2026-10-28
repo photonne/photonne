@@ -18,7 +18,7 @@
     { "type": "docs", "section": "Documentación", "hidden": true },
     { "type": "style", "section": "Otros cambios", "hidden": true },
     { "type": "test", "section": "Otros cambios", "hidden": true },
-    { "type": "build", "section": "Otros cambios", "hidden": true },
+    { "type": "build", "section": "Dependencias" },
     { "type": "ci", "section": "Otros cambios", "hidden": true },
     { "type": "chore", "section": "Otros cambios", "hidden": true }
   ],
