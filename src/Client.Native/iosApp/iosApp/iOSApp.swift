@@ -7,6 +7,7 @@ struct iOSApp: App {
     // adaptor opts back in so AppDelegate.application(_:didFinishLaunching…)
     // gets called and can register the BGTaskScheduler handler.
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -15,6 +16,15 @@ struct iOSApp: App {
                 // ExternalNavigation, que la app consume (tras el login si hace falta).
                 .onOpenURL { url in
                     _ = ExternalNavigation.shared.handleUrl(url: url.absoluteString)
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    switch phase {
+                    case .active:
+                        // Lo que haya dejado la Share Extension va a la Subida.
+                        IosShareInbox.shared.drain()
+                    default:
+                        break
+                    }
                 }
         }
     }

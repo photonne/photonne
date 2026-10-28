@@ -246,7 +246,7 @@ private class PhotoKitContent(
  * A temp copy the picker made because iOS deletes the original as soon as
  * `loadFileRepresentation` returns. Streamed on each [open]; [release] deletes it.
  */
-private class TempFileContent(private val path: String) : PickedContent {
+internal class TempFileContent(private val path: String) : PickedContent {
     override suspend fun <T> open(block: suspend (source: Source, sizeBytes: Long) -> T): T {
         val file = Path(path)
         val size = SystemFileSystem.metadataOrNull(file)?.size
@@ -400,7 +400,7 @@ private fun topViewController(): UIViewController? {
     return vc
 }
 
-private const val MAX_SELECTION = 50
+internal const val MAX_SELECTION = 50
 
 /** Same scheme the image loader's PhotoKit fetcher reads (thumbnails of picked assets). */
 private const val PHOTOKIT_URI_PREFIX = "photokit:"
