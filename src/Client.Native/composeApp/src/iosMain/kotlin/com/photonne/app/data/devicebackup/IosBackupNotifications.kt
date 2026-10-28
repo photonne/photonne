@@ -36,12 +36,17 @@ object IosBackupNotifications {
 
     suspend fun notifyFailures(failed: Int) {
         if (failed <= 0 || !isAuthorized()) return
+        // En Kotlin/Native las propiedades de UNMutableNotificationContent se
+        // escriben con sus setters de Objective-C: `title = …` resuelve al val
+        // de solo lectura de UNNotificationContent.
         val content = UNMutableNotificationContent().apply {
-            title = getString(Res.string.backup_notification_failures_title)
-            body = getPluralString(Res.plurals.backup_notification_failures_text, failed, failed)
-            sound = UNNotificationSound.defaultSound
-            userInfo = mapOf<Any?, Any?>(
-                ExternalDestination.EXTRA_KEY to ExternalDestination.BackupPending.name
+            setTitle(getString(Res.string.backup_notification_failures_title))
+            setBody(getPluralString(Res.plurals.backup_notification_failures_text, failed, failed))
+            setSound(UNNotificationSound.defaultSound)
+            setUserInfo(
+                mapOf<Any?, Any?>(
+                    ExternalDestination.EXTRA_KEY to ExternalDestination.BackupPending.name
+                )
             )
         }
         val request = UNNotificationRequest.requestWithIdentifier(
