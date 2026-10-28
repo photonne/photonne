@@ -289,22 +289,24 @@ afectado: usa `tile.openstreetmap.org`, que no pide clave.
 ## Ideas mayores (funciones, no correcciones)
 
 - [ ] **Criba en el visor**: avanzar con Deshacer (depende del punto 10) y atajos de escritorio (Supr, A, F, flechas, Espacio).
-- [ ] **Salto por mes y año con recuentos** en lugar del `DatePicker` de días (`ui/timeline/JumpToDateDialog.kt`). El esqueleto de buckets ya tiene los datos.
+- [x] (`0a25b0b5`) **Salto por mes y año con recuentos** en lugar del `DatePicker` de días (`ui/timeline/JumpToDateDialog.kt`). El esqueleto de buckets ya tiene los datos.
 - [ ] **Píldora única de operaciones** (backup, escaneo, descarga, ZIP, mover) con progreso y Cancelar. Cubre los puntos 10 y 20.
-- [ ] **Resumen de selección**: rango de fechas y tamaño total junto al recuento, y "x/y" en la cabecera de mes.
-- [ ] **Pantalla inicial de búsqueda**: recientes y filas de personas, escenas, objetos y lugares. Las facetas ya se cargan (`ensureFacetsLoaded`).
-- [ ] **Nombrar a una persona ofrece fusionar** con un nombre existente.
-- [ ] **Cola global "¿Quién es?"** de sugerencias de caras. Hoy: Personas → persona → ⋮ → Sugerencias.
-- [ ] **Selector de fotos desde dentro del álbum o la carpeta.** Resuelve también el álbum vacío.
+- [x] **Resumen de selección**: rango de fechas y tamaño total junto al recuento, y "x/y" en la cabecera de mes. *Rango de fechas y tamaño (`471ef59c`); el "x/y" de la cabecera de mes queda por comprobar.*
+- [x] **Pantalla inicial de búsqueda**: recientes y filas de personas, escenas, objetos y lugares. Las facetas ya se cargan (`ensureFacetsLoaded`). *Parcial (`5d5d3698`): búsquedas recientes y lugares.*
+- [x] (`5c261a1c`) **Nombrar a una persona ofrece fusionar** con un nombre existente.
+- [x] (`5c261a1c`) **Cola global "¿Quién es?"** de sugerencias de caras. Hoy: Personas → persona → ⋮ → Sugerencias.
+- [x] (`7b567bfd`) **Selector de fotos desde dentro del álbum o la carpeta.** Resuelve también el álbum vacío.
 - [ ] **Portadas en carpetas** (`coverThumbnailUrl` desde el servidor) y orden, scrubber y fecha en el detalle de carpeta.
 - [ ] **Una sola hoja "Compartir" por álbum**: miembros, enlaces, QR, hoja del sistema al crear; en solicitudes de fotos, subidas por invitado.
-- [ ] **Álbumes inteligentes de primera**: distintivo, chip "Reglas" que abre el editor, "Convertir en álbum normal".
-- [ ] **"Reproducir recuerdo"** con el pase automático existente y "Guardar como álbum".
-- [ ] **Metadatos tocables en el panel de info** (etiqueta, cámara, carpeta, fecha → "ver en el timeline"); el minimapa abre el mapa de la app con el nombre del lugar (GeoNames ya está en el servidor).
-- [ ] **Bienvenida tras el primer login** (permiso de fotos, backup y buckets, notificaciones con su motivo).
-- [ ] **Descubrimiento del servidor en el login** (mDNS o QR desde el admin web) y "Probar conexión" por URL.
-- [ ] **Herramientas de limpieza como flujos**: Archivos grandes con selección múltiple, Duplicados con "quedarse con la mejor" y comparación, Papelera con "se borra en N días", crear carpeta en el destino del selector de mover.
-- [ ] **Pasada de ventana ancha**: nav en cápsula, Recuerdos y teselas de Más se estiran en escritorio y tablet.
+- [x] (`da4658ad`) **Álbumes inteligentes de primera**: distintivo, chip "Reglas" que abre el editor, "Convertir en álbum normal".
+- [x] **"Reproducir recuerdo"** con el pase automático existente y "Guardar como álbum". *Parcial (`a5328fa0`): "Guardar como álbum".*
+- [x] (`3932dce9`) **Metadatos tocables en el panel de info** (etiqueta, cámara, carpeta, fecha → "ver en el timeline"); el minimapa abre el mapa de la app con el nombre del lugar (GeoNames ya está en el servidor).
+- [x] (`55ebfb90`) **Bienvenida tras el primer login** (permiso de fotos, backup y buckets, notificaciones con su motivo).
+- [x] **Descubrimiento del servidor en el login** (mDNS o QR desde el admin web) y "Probar conexión" por URL. *Con QR desde la web (`800a918a`), sin mDNS.*
+- [x] **Herramientas de limpieza como flujos**: Archivos grandes con selección múltiple, Duplicados con "quedarse con la mejor" y comparación, Papelera con "se borra en N días", crear carpeta en el destino del selector de mover. *Archivos grandes (`87abf9e4`), Duplicados (`2fd94fca`), Papelera (`1fc99572`); el selector de carpeta ya ofrecía crear una (`FolderPickerDialog`).*
+- [x] **Pasada de ventana ancha**: nav en cápsula, Recuerdos y teselas de Más se estiran en escritorio y tablet. *A partir de 600 dp de ancho (tablet, plegable abierto) la nav pasa a una cápsula vertical en el lateral (`MainNavigationRail` en `ui/main/MainScaffold.kt`); Recuerdos y Más ya iban limitados con `contentWidth()`. Sin verificar en tablet real.*
+- [x] **Widget de Recuerdos en la pantalla de inicio (Android)**: la portada del recuerdo de "un día como hoy" (o uno de los mejores, distinto cada día) y tocarlo abre ese recuerdo (`photonne://memory/{id}`). `widget/MemoryWidget.kt`, con `RemoteViews` y WorkManager. Sin verificar en dispositivo.
+- [ ] **iOS: Share Extension, notificaciones del backup y widget de Recuerdos (WidgetKit).** Piden targets y App Group nuevos en Xcode.
 
 ---
 
