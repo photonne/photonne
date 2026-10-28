@@ -876,6 +876,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     WelcomeHost(user.user, appState)
     RealtimeHost(onNotifications = notificationsViewModel::onServerNotification)
+    // Recuerdo pedido desde el widget: se abre más abajo, donde ya existe el
+    // canal de snackbars para avisar si no se puede.
+    var externalMemoryId by remember { mutableStateOf<String?>(null) }
     val externalDestination by com.photonne.app.ui.main.ExternalNavigation.pending
         .collectAsStateWithLifecycle()
     LaunchedEffect(externalDestination) {
@@ -910,6 +913,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 appState.assetDetail = null
                 appState.selectedTab = MainTab.More
                 appState.moreSubscreen = MoreSubscreen.DeviceBackupPending
+            }
+            com.photonne.app.ui.main.ExternalDestination.Memory -> {
+                externalMemoryId = com.photonne.app.ui.main.ExternalNavigation.consumeMemoryId()
             }
             null -> Unit
         }
@@ -1424,6 +1430,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     val snackbarController = rememberSnackbarController()
+    // El widget de Recuerdos abre su recuerdo encima de lo que hubiera, igual
+    // que al tocarlo en Colecciones.
+    LaunchedEffect(externalMemoryId) {
+        val memoryId = externalMemoryId ?: return@LaunchedEffect
+        externalMemoryId = null
+        appState.assetDetail = null
+        sharedLinkViewModel.close()
+        memoryFeedViewModel.open(
+            memoryId = memoryId,
+            onError = { error -> snackbarController.show(error.userMessage) },
+            onLoaded = { detail ->
+                appState.memoryDetail = com.photonne.app.ui.memories.MemoryDetailContext(
+                    title = detail.title,
+                    subtitle = detail.subtitle,
+                    coverAssetId = detail.coverAssetId,
+                    items = detail.assets
+                )
+            }
+        )
+    }
     // Papelera del servidor (J5): el visor lo consulta al borrar para no
     // ofrecer Deshacer sobre un borrado definitivo.
     val serverTrashPolicy: com.photonne.app.data.actions.ServerTrashPolicy = koinInject()

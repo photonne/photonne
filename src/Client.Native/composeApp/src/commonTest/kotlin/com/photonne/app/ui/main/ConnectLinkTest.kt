@@ -35,4 +35,13 @@ class ConnectLinkTest {
         assertNull(ExternalNavigation.parseOidcUrl("photonne://oidc"))
         assertNull(ExternalNavigation.parseOidcUrl("photonne://connect?server=https%3A%2F%2Fx.com"))
     }
+
+    @Test
+    fun `the memories widget opens one memory by id`() {
+        val id = "3f2b6c1e-8d4a-4e1b-9c2d-5a6b7c8d9e0f"
+        assertEquals(id, ExternalNavigation.parseMemoryUrl(ExternalNavigation.memoryUrl(id)))
+        assertNull(ExternalNavigation.parseMemoryUrl("photonne://memory/"))
+        assertNull(ExternalNavigation.parseMemoryUrl("photonne://memory/a%2F..%2Fb"))
+        assertNull(ExternalNavigation.parseMemoryUrl("photonne://share/abc"))
+    }
 }

@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * Pantallas a las que se puede llegar desde fuera de la app (lote M4): una
  * notificación del sistema lleva el destino como extra del intent y la
  * plataforma lo publica aquí. También "Compartir con Photonne" desde otra app
- * y los enlaces `photonne://share/{token}` (funciones nuevas 3/3).
+ * y los enlaces `photonne://share/{token}` (funciones nuevas 3/3), y el widget
+ * de Recuerdos (`photonne://memory/{id}`).
  */
 enum class ExternalDestination {
     /** Pantalla de Backup (notificación de progreso). */
@@ -26,7 +27,10 @@ enum class ExternalDestination {
     SharedLink,
 
     /** Notificaciones (aviso local de actividad nueva del servidor). */
-    Notifications;
+    Notifications,
+
+    /** Un recuerdo concreto (`photonne://memory/{id}`): lo abre el widget de Recuerdos. */
+    Memory;
 
     companion object {
         /** Extra del intent (Android) / userInfo (iOS) que lleva el destino. */
@@ -61,6 +65,7 @@ object ExternalNavigation {
     // destino y se vacían al consumirlo.
     private var sharedFiles: List<PickedFile> = emptyList()
     private var sharedLink: SharedLinkTarget? = null
+    private var memoryId: String? = null
 
     private val _connectServer = MutableStateFlow<String?>(null)
 
@@ -122,6 +127,15 @@ object ExternalNavigation {
         return target
     }
 
+    fun consumeMemoryId(): String? {
+        val id = memoryId
+        memoryId = null
+        return id
+    }
+
+    /** El enlace que abre el recuerdo [id] (lo usa el widget de Recuerdos). */
+    fun memoryUrl(id: String): String = "$SCHEME://memory/$id"
+
     /**
      * Abre un enlace `photonne://share/{token}[?server=<origen>]`. Devuelve
      * false si la URL no es de este esquema o no trae un token válido.
@@ -133,6 +147,11 @@ object ExternalNavigation {
         }
         parseOidcUrl(url)?.let { result ->
             _oidcReturn.value = result
+            return true
+        }
+        parseMemoryUrl(url)?.let { id ->
+            memoryId = id
+            request(ExternalDestination.Memory)
             return true
         }
         val target = parseShareUrl(url) ?: return false
@@ -178,6 +197,16 @@ object ExternalNavigation {
                 it.startsWith("https://", ignoreCase = true) ||
                     it.startsWith("http://", ignoreCase = true)
             }
+
+    /** El id de `photonne://memory/{id}`, o null si no es eso. */
+    internal fun parseMemoryUrl(url: String): String? {
+        val prefix = "$SCHEME://memory/"
+        if (!url.startsWith(prefix, ignoreCase = true)) return null
+        val id = url.substring(prefix.length).takeWhile { it != '?' && it != '#' && it != '/' }
+        // Los ids del servidor son GUID: nada más entra en la ruta.
+        if (id.isEmpty() || !id.all { it.isLetterOrDigit() || it == '-' }) return null
+        return id
+    }
 
     internal fun parseShareUrl(url: String): SharedLinkTarget? {
         val prefix = "$SCHEME://share/"
