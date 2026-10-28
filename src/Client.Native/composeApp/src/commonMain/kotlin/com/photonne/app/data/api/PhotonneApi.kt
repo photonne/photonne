@@ -3553,7 +3553,15 @@ class PhotonneApiClient(
 
     override suspend fun utilitiesDuplicates():
         List<com.photonne.app.data.models.UserDuplicateGroup> {
-        val response: HttpResponse = client.get("$baseUrl/api/utilities/duplicates")
+        val response: HttpResponse = client.get("$baseUrl/api/utilities/duplicates") {
+            // Groups the checksums of the whole visible library server-side —
+            // same safety net as getTimeline() for large cold-cache runs.
+            timeout {
+                requestTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                socketTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                connectTimeoutMillis = PhotonneApi.TIMELINE_CONNECT_TIMEOUT_MS
+            }
+        }
         if (response.status != HttpStatusCode.OK) {
             throw response.apiException("Duplicates fetch failed")
         }
