@@ -8,10 +8,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -23,9 +25,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
@@ -242,9 +247,16 @@ fun MainScaffold(
     edgeToEdgeBottom: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val resolvedBottomBar = bottomBar ?: {
+    // Ventana ancha (tablet, plegable abierto, móvil en horizontal): la nav pasa
+    // a una cápsula vertical en el lateral y deja la parte de abajo libre. Las
+    // barras de selección siguen abajo, como en el móvil.
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    val useRail = maxWidth >= NavRailMinWindowWidth
+    val navigationBar: @Composable () -> Unit = {
         MainNavigationBar(selectedTab, onTabSelected, moreTabUnreadCount)
     }
+    val resolvedBottomBar: (@Composable () -> Unit)? =
+        bottomBar ?: navigationBar.takeIf { !useRail }
     // Fuente de blur compartida por el cromo flotante. La publica el composition
     // local para que la nav (y la barra de selección) difumine el contenido de la
     // pantalla activa aunque viva en un slot aparte del Scaffold: la nav es
@@ -256,54 +268,81 @@ fun MainScaffold(
     Scaffold(
         topBar = topBar,
         bottomBar = {
-            var barHeightPx by remember { mutableStateOf(0) }
-            // The bar only slides — no fade. Fading it out mid-slide read as a
-            // cut rather than as movement, so the capsule now travels the whole
-            // way out on a spring, which decelerates naturally instead of
-            // running a fixed curve to a hard stop.
-            //
-            // It travels a bit past its own height because the capsule's shadow
-            // draws *outside* its bounds: stopping at exactly barHeightPx would
-            // park that shadow on the screen edge as a faint halo (the alpha
-            // used to hide it).
-            val shadowSlackPx = with(LocalDensity.current) { 12.dp.toPx() }
-            val offsetY by animateFloatAsState(
-                targetValue = if (bottomBarVisible) 0f else barHeightPx + shadowSlackPx,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                ),
-                label = "bottomBarOffset"
-            )
-            Box(
-                modifier = Modifier
-                    .onSizeChanged { barHeightPx = it.height }
-                    .graphicsLayer { translationY = offsetY }
-            ) {
-                resolvedBottomBar()
-            }
+            resolvedBottomBar?.let { bar -> SlidingBottomBar(visible = bottomBarVisible, content = bar) }
         }
     ) { padding ->
         val layoutDirection = LocalLayoutDirection.current
-        val contentPadding = if (edgeToEdgeTop || edgeToEdgeBottom) {
-            PaddingValues(
-                start = padding.calculateStartPadding(layoutDirection),
-                top = if (edgeToEdgeTop) 0.dp else padding.calculateTopPadding(),
-                end = padding.calculateEndPadding(layoutDirection),
-                bottom = if (edgeToEdgeBottom) 0.dp else padding.calculateBottomPadding()
-            )
-        } else {
-            padding
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .hazeSource(chromeHazeState)
-        ) {
-            content()
+        // Con la barra lateral el contenido empieza donde acaba ella: no la tapa
+        // como la cápsula de abajo, así que nada tiene que reservarle hueco.
+        val railStart = WindowInsets.safeDrawing.only(WindowInsetsSides.Start)
+            .asPaddingValues().calculateStartPadding(layoutDirection)
+        val contentPadding = PaddingValues(
+            start = if (useRail) railStart + NavRailReservedWidth
+            else padding.calculateStartPadding(layoutDirection),
+            top = if (edgeToEdgeTop) 0.dp else padding.calculateTopPadding(),
+            end = padding.calculateEndPadding(layoutDirection),
+            bottom = if (edgeToEdgeBottom) 0.dp else padding.calculateBottomPadding()
+        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .hazeSource(chromeHazeState)
+            ) {
+                content()
+            }
+            if (useRail) {
+                MainNavigationRail(
+                    selectedTab = selectedTab,
+                    onTabSelected = onTabSelected,
+                    moreTabUnreadCount = moreTabUnreadCount,
+                    // Con una barra de selección abajo la nav del móvil desaparece;
+                    // aquí la barra lateral se queda (no mueve el contenido) pero
+                    // atenuada y sin responder, igual que si no estuviera.
+                    enabled = bottomBar == null,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = railStart + NavRailHorizontalMargin)
+                )
+            }
         }
     }
+    }
+    }
+}
+
+/**
+ * La barra de abajo (nav o barra de selección) que se desliza fuera de la
+ * pantalla cuando [visible] pasa a false. El hueco no cambia: solo se mueve.
+ */
+@Composable
+private fun SlidingBottomBar(visible: Boolean, content: @Composable () -> Unit) {
+    var barHeightPx by remember { mutableStateOf(0) }
+    // The bar only slides — no fade. Fading it out mid-slide read as a
+    // cut rather than as movement, so the capsule now travels the whole
+    // way out on a spring, which decelerates naturally instead of
+    // running a fixed curve to a hard stop.
+    //
+    // It travels a bit past its own height because the capsule's shadow
+    // draws *outside* its bounds: stopping at exactly barHeightPx would
+    // park that shadow on the screen edge as a faint halo (the alpha
+    // used to hide it).
+    val shadowSlackPx = with(LocalDensity.current) { 12.dp.toPx() }
+    val offsetY by animateFloatAsState(
+        targetValue = if (visible) 0f else barHeightPx + shadowSlackPx,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "bottomBarOffset"
+    )
+    Box(
+        modifier = Modifier
+            .onSizeChanged { barHeightPx = it.height }
+            .graphicsLayer { translationY = offsetY }
+    ) {
+        content()
     }
 }
 
@@ -355,6 +394,72 @@ internal fun floatingNavBarReservedHeight(): Dp =
         FloatingNavBarBottomMargin + CompactNavBarContentHeight +
         FloatingNavBarContentGap
 
+/**
+ * Una pestaña de la nav principal, la misma en la barra de abajo y en la lateral.
+ */
+private class NavEntry(
+    val tab: MainTab,
+    val selected: Boolean,
+    val label: String,
+    val icon: @Composable () -> Unit
+)
+
+@Composable
+private fun mainNavEntries(selectedTab: MainTab, moreTabUnreadCount: Int): List<NavEntry> {
+    val timelineActive = selectedTab == MainTab.Timeline
+    val collectionsActive = selectedTab.navTab() == MainTab.Collections
+    val moreActive = selectedTab == MainTab.More
+    return listOf(
+        NavEntry(
+            tab = MainTab.Timeline,
+            selected = timelineActive,
+            label = stringResource(Res.string.tab_timeline),
+            icon = {
+                Icon(
+                    if (timelineActive) PhotonneIcons.PhotosActive else PhotonneIcons.Photos,
+                    contentDescription = null
+                )
+            }
+        ),
+        NavEntry(
+            tab = MainTab.Collections,
+            selected = collectionsActive,
+            label = stringResource(Res.string.tab_collections),
+            icon = {
+                Icon(
+                    if (collectionsActive) PhotonneIcons.CollectionsActive
+                    else PhotonneIcons.Collections,
+                    contentDescription = null
+                )
+            }
+        ),
+        NavEntry(
+            tab = MainTab.More,
+            selected = moreActive,
+            label = stringResource(Res.string.tab_more),
+            icon = {
+                val moreIcon = if (moreActive) PhotonneIcons.MoreTabActive else PhotonneIcons.MoreTab
+                if (moreTabUnreadCount > 0) {
+                    BadgedBox(
+                        badge = {
+                            Badge {
+                                Text(
+                                    if (moreTabUnreadCount > 99) "99+"
+                                    else moreTabUnreadCount.toString()
+                                )
+                            }
+                        }
+                    ) {
+                        Icon(moreIcon, contentDescription = null)
+                    }
+                } else {
+                    Icon(moreIcon, contentDescription = null)
+                }
+            }
+        )
+    )
+}
+
 @Composable
 private fun MainNavigationBar(
     selectedTab: MainTab,
@@ -387,61 +492,82 @@ private fun MainNavigationBar(
                     .selectableGroup(),
                 horizontalGap = FloatingNavItemGap
             ) {
-                val timelineActive = selectedTab == MainTab.Timeline
-                FloatingNavBarItem(
-                    selected = timelineActive,
-                    onClick = { onTabSelected(MainTab.Timeline) },
-                    label = stringResource(Res.string.tab_timeline),
-                    icon = {
-                        Icon(
-                            if (timelineActive) PhotonneIcons.PhotosActive
-                            else PhotonneIcons.Photos,
-                            contentDescription = null
-                        )
-                    }
-                )
-                val collectionsActive = selectedTab.navTab() == MainTab.Collections
-                FloatingNavBarItem(
-                    selected = collectionsActive,
-                    onClick = { onTabSelected(MainTab.Collections) },
-                    label = stringResource(Res.string.tab_collections),
-                    icon = {
-                        Icon(
-                            if (collectionsActive) PhotonneIcons.CollectionsActive
-                            else PhotonneIcons.Collections,
-                            contentDescription = null
-                        )
-                    }
-                )
-                val moreActive = selectedTab == MainTab.More
-                FloatingNavBarItem(
-                    selected = moreActive,
-                    onClick = { onTabSelected(MainTab.More) },
-                    label = stringResource(Res.string.tab_more),
-                    icon = {
-                        val moreIcon = if (moreActive) PhotonneIcons.MoreTabActive else PhotonneIcons.MoreTab
-                        if (moreTabUnreadCount > 0) {
-                            BadgedBox(
-                                badge = {
-                                    Badge {
-                                        Text(
-                                            if (moreTabUnreadCount > 99) "99+"
-                                            else moreTabUnreadCount.toString()
-                                        )
-                                    }
-                                }
-                            ) {
-                                Icon(moreIcon, contentDescription = null)
-                            }
-                        } else {
-                            Icon(moreIcon, contentDescription = null)
-                        }
-                    }
-                )
+                mainNavEntries(selectedTab, moreTabUnreadCount).forEach { entry ->
+                    FloatingNavBarItem(
+                        selected = entry.selected,
+                        onClick = { onTabSelected(entry.tab) },
+                        label = entry.label,
+                        icon = entry.icon
+                    )
+                }
             }
         }
     }
 }
+
+// Barra lateral (ventana ancha). A partir de este ancho la nav sale de abajo: es
+// el corte de la clase de ancho "medium" de Material (tablet en vertical,
+// plegable abierto, móvil en horizontal).
+internal val NavRailMinWindowWidth = 600.dp
+// Cada pestaña de la barra lateral: ancho fijo (las etiquetas largas se cortan
+// con puntos suspensivos) y el mismo alto que la barra de abajo.
+private val NavRailItemWidth = 80.dp
+// Despega la cápsula del borde de la pantalla, como el margen de la de abajo.
+internal val NavRailHorizontalMargin = 12.dp
+// Lo que ocupa la barra lateral desde el borde seguro hasta el contenido: margen,
+// cápsula (ítem + aire a cada lado) y el mismo margen de separación.
+internal val NavRailReservedWidth =
+    NavRailHorizontalMargin + NavRailItemWidth + FloatingNavBarItemsPadding * 2 + NavRailHorizontalMargin
+
+/**
+ * La nav principal en vertical, para ventanas anchas: la misma cápsula de cristal
+ * y las mismas pestañas que [MainNavigationBar], apiladas y centradas en el lateral.
+ *
+ * @param enabled false mientras hay una barra de selección abajo: la barra se
+ *   queda (para no mover el contenido), atenuada y sin responder.
+ */
+@Composable
+private fun MainNavigationRail(
+    selectedTab: MainTab,
+    onTabSelected: (MainTab) -> Unit,
+    moreTabUnreadCount: Int,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    ChromePill(
+        modifier = modifier.graphicsLayer { alpha = if (enabled) 1f else DisabledNavAlpha },
+        elevation = ChromeElevation.nav
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(FloatingNavBarItemsPadding)
+                .selectableGroup(),
+            verticalArrangement = Arrangement.spacedBy(FloatingNavItemGap)
+        ) {
+            mainNavEntries(selectedTab, moreTabUnreadCount).forEach { entry ->
+                Box(
+                    modifier = Modifier
+                        .width(NavRailItemWidth)
+                        .height(CompactNavBarContentHeight - FloatingNavItemMargin * 2)
+                        .clip(PillShape)
+                        .background(if (entry.selected) chromeActivePillColor() else Color.Transparent)
+                        .selectable(
+                            selected = entry.selected,
+                            enabled = enabled,
+                            role = Role.Tab,
+                            onClick = { onTabSelected(entry.tab) }
+                        )
+                        .padding(horizontal = Spacing.xs),
+                    contentAlignment = Alignment.Center
+                ) {
+                    NavItemContent(label = entry.label, icon = entry.icon)
+                }
+            }
+        }
+    }
+}
+
+private const val DisabledNavAlpha = 0.38f
 
 /**
  * Fila que iguala a TODOS sus hijos al ancho del más ancho (mide el
@@ -526,21 +652,27 @@ private fun FloatingNavBarItem(
             .padding(horizontal = FloatingNavItemContentPadding),
         contentAlignment = Alignment.Center
     ) {
-        CompositionLocalProvider(
-            LocalContentColor provides MaterialTheme.colorScheme.onSurface
+        NavItemContent(label = label, icon = icon)
+    }
+}
+
+/** Icono y etiqueta de una pestaña, en blanco (`onSurface`) esté activa o no. */
+@Composable
+private fun NavItemContent(label: String, icon: @Composable () -> Unit) {
+    CompositionLocalProvider(
+        LocalContentColor provides MaterialTheme.colorScheme.onSurface
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
-            ) {
-                icon()
-                Text(
-                    label,
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            icon()
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
