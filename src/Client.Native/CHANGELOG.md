@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.5.0](https://github.com/photonne/photonne/compare/native-v2.4.0...native-v2.5.0) (2026-10-27)
+
+
+### Novedades
+
+* Conectar la app móvil al servidor con un QR desde la web ([800a918](https://github.com/photonne/photonne/commit/800a918a906fc040c08fd5641bd080097bf1f46f))
+* Duplicados: conservar la mejor copia, «solo esta» y la carpeta que distingue cada copia ([2fd94fc](https://github.com/photonne/photonne/commit/2fd94fcad8be5376ece6831006270ffc4e66f4e7))
+* Guardar un recuerdo (un viaje, un año…) como álbum ([a5328fa](https://github.com/photonne/photonne/commit/a5328fa0bdd0f30d904bfddc224bcd8664d0c2ea))
+* **native:** Añadir fotos desde dentro de un álbum o una carpeta ([7b567bf](https://github.com/photonne/photonne/commit/7b567bfdffc93dfcf653f6495c7983150d0f42e0))
+* **native:** Bienvenida tras el primer inicio de sesión ([55ebfb9](https://github.com/photonne/photonne/commit/55ebfb901c6698d3c570c93ee536c9053600d168))
+* **native:** Cada foto de la papelera dice cuántos días le quedan ([1fc9957](https://github.com/photonne/photonne/commit/1fc99572c8c2cc7d4659eb01ada87a166bcb9b7d))
+* **native:** Cola «¿Quién es?» y fusionar al dar un nombre que ya existe ([5c261a1](https://github.com/photonne/photonne/commit/5c261a1c70eb8f740714f33a30785e46d4696c4d))
+* **native:** El visor reproduce los vídeos desde /playback ([ba22326](https://github.com/photonne/photonne/commit/ba223261da36f8a5ed499b243b254f43fe903d01))
+* **native:** Entrar con el código de verificación en dos pasos ([1468eb8](https://github.com/photonne/photonne/commit/1468eb8581ac07470f85fa06b9e9ee1351de7547))
+* **native:** Entrar con el proveedor OpenID del servidor ([92c66d8](https://github.com/photonne/photonne/commit/92c66d85c3d797962799acffd27e5598dc7a1e40))
+* **native:** La app escucha el flujo de eventos y recarga lo que ha cambiado ([0283208](https://github.com/photonne/photonne/commit/0283208934d13656f6e3639856b61ee4dcb8b9ba))
+* **native:** La búsqueda empieza con las búsquedas recientes y los lugares ([5d5d369](https://github.com/photonne/photonne/commit/5d5d3698a3ba024f0237afac3253000fc1042224))
+* **native:** La copia dice que espera Wi-Fi o carga solo si de verdad falta ([b4dce5b](https://github.com/photonne/photonne/commit/b4dce5bf15606319e613d6d4f68ea0448fad700b))
+* **native:** La rejilla pinta el boceto ThumbHash de cada foto hasta que carga ([faca6c3](https://github.com/photonne/photonne/commit/faca6c3ed56f1c8e4145e94a5d72fad80dbfbaa1))
+* **native:** La selección dice qué fechas abarca y cuánto ocupa ([471ef59](https://github.com/photonne/photonne/commit/471ef59ca7ed34e8b2cc3a405235c91715953327))
+* **native:** Los metadatos del visor llevan a sus fotos ([3932dce](https://github.com/photonne/photonne/commit/3932dce91e4b6edf9cecfe1afb74a65ed369b948))
+* **native:** Progreso real de cada archivo en la subida manual ([c575688](https://github.com/photonne/photonne/commit/c575688d7ca553ddd478a84b7291615eb222f4f2))
+* **native:** Reglas a un toque, convertir en álbum normal y fechas móviles en los álbumes inteligentes ([da4658a](https://github.com/photonne/photonne/commit/da4658ad90c4312b3c54a46230c5404b255120cb))
+* **native:** Saltar a un mes con fotos, con los recuentos de cada mes y año ([0a25b0b](https://github.com/photonne/photonne/commit/0a25b0b5eaa4c779d61b76f52404ca958eae583a))
+* **native:** Selección múltiple en Archivos grandes para mandarlos a la papelera ([87abf9e](https://github.com/photonne/photonne/commit/87abf9e42986ebe8ca1f0db7e3f85420748e122e))
+
+
+### Correcciones
+
+* **native:** Compila: importa los textos usados y etiqueta del selector como @Composable ([18ebe52](https://github.com/photonne/photonne/commit/18ebe528a08a5fa16883f04cb16d57db929d9d4d))
+
 ## [2.4.0](https://github.com/photonne/photonne/compare/native-v2.3.0...native-v2.4.0) (2026-10-25)
 
 
