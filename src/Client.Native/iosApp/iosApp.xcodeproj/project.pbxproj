@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		7A6E0000000000000000000E /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7A6E00000000000000000002 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7A6E0000000000000000001B /* MemoryWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7A6E0000000000000000000F /* MemoryWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -17,6 +18,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 7A6E00000000000000000008;
 			remoteInfo = ShareExtension;
+		};
+		7A6E00000000000000000019 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 584EA3BA2FBA212C007A8B4D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7A6E00000000000000000015;
+			remoteInfo = MemoryWidget;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -28,6 +36,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				7A6E0000000000000000000E /* ShareExtension.appex in Embed Foundation Extensions */,
+				7A6E0000000000000000001B /* MemoryWidget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -37,6 +46,7 @@
 /* Begin PBXFileReference section */
 		584EA3C22FBA212C007A8B4D /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A6E00000000000000000002 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A6E0000000000000000000F /* MemoryWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MemoryWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -55,6 +65,14 @@
 				ShareExtension.entitlements,
 			);
 			target = 7A6E00000000000000000008 /* ShareExtension */;
+		};
+		7A6E00000000000000000011 /* Exceptions for "MemoryWidget" folder in "MemoryWidget" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				MemoryWidget.entitlements,
+			);
+			target = 7A6E00000000000000000015 /* MemoryWidget */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -75,6 +93,14 @@
 			path = ShareExtension;
 			sourceTree = "<group>";
 		};
+		7A6E00000000000000000010 /* MemoryWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7A6E00000000000000000011 /* Exceptions for "MemoryWidget" folder in "MemoryWidget" target */,
+			);
+			path = MemoryWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,6 +118,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7A6E00000000000000000013 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -99,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				7A6E00000000000000000003 /* ShareExtension */,
+				7A6E00000000000000000010 /* MemoryWidget */,
 				584EA3C42FBA212C007A8B4D /* iosApp */,
 				584EA3C32FBA212C007A8B4D /* Products */,
 			);
@@ -108,6 +142,7 @@
 			isa = PBXGroup;
 			children = (
 				7A6E00000000000000000002 /* ShareExtension.appex */,
+				7A6E0000000000000000000F /* MemoryWidget.appex */,
 				584EA3C22FBA212C007A8B4D /* iosApp.app */,
 			);
 			name = Products;
@@ -130,6 +165,7 @@
 			);
 			dependencies = (
 				7A6E0000000000000000000D /* PBXTargetDependency */,
+				7A6E0000000000000000001A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				584EA3C42FBA212C007A8B4D /* iosApp */,
@@ -163,6 +199,28 @@
 			productReference = 7A6E00000000000000000002 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		7A6E00000000000000000015 /* MemoryWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7A6E00000000000000000016 /* Build configuration list for PBXNativeTarget "MemoryWidget" */;
+			buildPhases = (
+				7A6E00000000000000000012 /* Sources */,
+				7A6E00000000000000000013 /* Frameworks */,
+				7A6E00000000000000000014 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7A6E00000000000000000010 /* MemoryWidget */,
+			);
+			name = MemoryWidget;
+			packageProductDependencies = (
+			);
+			productName = MemoryWidget;
+			productReference = 7A6E0000000000000000000F /* MemoryWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -177,6 +235,9 @@
 						CreatedOnToolsVersion = 26.5;
 					};
 					7A6E00000000000000000008 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					7A6E00000000000000000015 = {
 						CreatedOnToolsVersion = 26.5;
 					};
 				};
@@ -198,6 +259,7 @@
 			targets = (
 				584EA3C12FBA212C007A8B4D /* iosApp */,
 				7A6E00000000000000000008 /* ShareExtension */,
+				7A6E00000000000000000015 /* MemoryWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -211,6 +273,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		7A6E00000000000000000007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A6E00000000000000000014 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -255,6 +324,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7A6E00000000000000000012 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -262,6 +338,11 @@
 			isa = PBXTargetDependency;
 			target = 7A6E00000000000000000008 /* ShareExtension */;
 			targetProxy = 7A6E0000000000000000000C /* PBXContainerItemProxy */;
+		};
+		7A6E0000000000000000001A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7A6E00000000000000000015 /* MemoryWidget */;
+			targetProxy = 7A6E00000000000000000019 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -525,6 +606,60 @@
 			};
 			name = Release;
 		};
+		7A6E00000000000000000017 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MemoryWidget/MemoryWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2.5.1;
+				DEVELOPMENT_TEAM = ZUSGZTSQRK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MemoryWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Photonne;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.5.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photonne.app.MemoryWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		7A6E00000000000000000018 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MemoryWidget/MemoryWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2.5.1;
+				DEVELOPMENT_TEAM = ZUSGZTSQRK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MemoryWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Photonne;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.5.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photonne.app.MemoryWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -551,6 +686,15 @@
 			buildConfigurations = (
 				7A6E0000000000000000000A /* Debug */,
 				7A6E0000000000000000000B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7A6E00000000000000000016 /* Build configuration list for PBXNativeTarget "MemoryWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A6E00000000000000000017 /* Debug */,
+				7A6E00000000000000000018 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

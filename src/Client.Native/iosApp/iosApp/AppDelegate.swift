@@ -4,6 +4,7 @@ import Foundation
 import Network
 import UIKit
 import UserNotifications
+import WidgetKit
 
 /// Bridges UIKit's app lifecycle into the Kotlin shared module so the
 /// background sync flow can be wired up at launch.
@@ -88,6 +89,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         Task {
             let success = (try? await IosBackupBridge.shared.runBackup().boolValue) ?? false
+            // Aprovecha la ventana para poner al día el widget de Recuerdos.
+            if (try? await IosMemoryWidget.shared.refresh())?.boolValue == true {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
             completion.complete(success: success)
         }
     }
