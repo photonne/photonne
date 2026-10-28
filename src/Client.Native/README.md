@@ -37,9 +37,9 @@ el contenido que tiene debajo (blur real) y lo tiñe de gris, en vez de un color
 plano translúcido.
 
 El blur lo aporta [Haze](https://github.com/chrisbanes/haze)
-(`dev.chrisbanes.haze:haze`). **Está fijado en `1.5.4` a propósito**: es la última
-serie que apunta a Compose Multiplatform 1.7.x (la de este proyecto); la 1.6+ ya
-exige CMP 1.8. No la subas sin migrar CMP.
+(`dev.chrisbanes.haze:haze` + `dev.chrisbanes.haze:haze-blur`, serie 2.x). Desde Haze 2
+el blur vive en su propio módulo: el cristal se pinta con `hazeBlur(HazeInput.Sources(state),
+HazeBlurStyle { … })` en lugar del antiguo `hazeEffect(state) { … }`.
 
 ### Núcleo: `ui/main/ChromeBackdropTint.kt`
 
@@ -48,7 +48,7 @@ Es la fuente de verdad de todo el estilo:
 - `LocalChromeHazeState` — publica el `HazeState` compartido (la fuente de blur).
   Las cápsulas lo consumen aunque vivan en slots distintos del árbol.
 - `Modifier.chromeCapsuleBackdrop(baseColor, hazeState)` — pinta el cristal: si hay
-  fuente, un `hazeEffect` (blur + tinte); si no, cae a un gris sólido de reserva.
+  fuente, un `hazeBlur` (blur + tinte); si no, cae a un gris sólido de reserva.
 - `chromeBaseGray()` / `ChromeBaseGrayDark` (`0xFF242428`) / `ChromeBaseGrayLight`
   (`0xFFE9E9EE`) — el gris base del tinte, por tema.
 - `chromeActivePillColor()` — el velo del ítem activo de la nav.

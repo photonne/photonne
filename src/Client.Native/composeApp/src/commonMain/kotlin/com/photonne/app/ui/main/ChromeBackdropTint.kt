@@ -4,15 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 
 /**
  * El [HazeState] compartido que difumina el contenido por debajo del cromo
@@ -102,12 +105,15 @@ fun Modifier.chromeCapsuleBackdrop(
     val state = hazeState ?: LocalChromeHazeState.current
     val base = if (baseColor.isSpecified) baseColor else chromeBaseGray()
     if (state != null) {
-        hazeEffect(state) {
-            blurRadius = ChromeBlurRadius
-            backgroundColor = base
-            tints = listOf(HazeTint(base.copy(alpha = ChromeTintAlpha)))
-            noiseFactor = 0f
+        val style = remember(base) {
+            HazeBlurStyle {
+                blurRadius(ChromeBlurRadius)
+                backgroundColor(base)
+                colorEffects(listOf(HazeColorEffect.tint(base.copy(alpha = ChromeTintAlpha))))
+                noiseFactor(0f)
+            }
         }
+        hazeBlur(input = HazeInput.Sources(state), style = style)
     } else {
         background(base.copy(alpha = ChromeFallbackAlpha))
     }

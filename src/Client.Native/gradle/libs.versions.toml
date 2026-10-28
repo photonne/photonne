@@ -66,6 +66,7 @@ coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.re
 coil-video = { module = "io.coil-kt.coil3:coil-video", version.ref = "coil" }
 
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
+haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 
