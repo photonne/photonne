@@ -1,10 +1,10 @@
-fastapi==0.141.1
-uvicorn[standard]==0.52.4
-pydantic==2.13.5
-insightface==2.0
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.1
+insightface==2.1
 onnxruntime==1.29.0
-numpy==2.5.3
-pillow==12.3.0
+numpy==2.5.4
+pillow==13.0.0
 opencv-python-headless==5.0.0.93
 rapidocr-onnxruntime==1.4.4
-tokenizers==0.23.2
+tokenizers==0.23.3

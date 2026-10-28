@@ -54,7 +54,7 @@ jobs:
       prs: ${{ steps.rp.outputs.prs }}
     steps:
       - id: rp
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
 

@@ -13,10 +13,10 @@
 # subir la base de Dockerfile.gpu y dejar fuera a esos hosts.
 #
 # El resto de pines sí van en paralelo con requirements.txt — actualízalos juntos.
-fastapi==0.141.1
-uvicorn[standard]==0.52.4
-pydantic==2.13.5
-insightface==2.0
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.1
+insightface==2.1
 onnxruntime-gpu==1.26.0
 # rapidocr-onnxruntime depende en duro de `onnxruntime>=1.7.0`, así que la rueda de
 # CPU entra igual y se instala en el MISMO directorio de paquete que la de GPU. Sin
@@ -26,8 +26,8 @@ onnxruntime-gpu==1.26.0
 # Que coincidan NO basta para tener CUDA: el orden de instalación decide qué
 # pybind queda, por eso Dockerfile.gpu reinstala la rueda -gpu al final.
 onnxruntime==1.26.0
-numpy==2.5.3
-pillow==12.3.0
+numpy==2.5.4
+pillow==13.0.0
 opencv-python-headless==5.0.0.93
 rapidocr-onnxruntime==1.4.4
-tokenizers==0.23.2
+tokenizers==0.23.3
