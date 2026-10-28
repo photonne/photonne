@@ -118,6 +118,7 @@ kotlin {
             implementation(libs.coil.network.ktor)
 
             implementation(libs.haze)
+            implementation(libs.haze.blur)
 
             implementation(libs.uuid)
         }
