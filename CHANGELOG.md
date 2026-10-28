@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.10.1](https://github.com/photonne/photonne/compare/server-v2.10.0...server-v2.10.1) (2026-10-28)
+
+
+### Dependencias
+
+* **docker:** bump node from 22-alpine to 26-alpine in /src/Server.Api ([#127](https://github.com/photonne/photonne/issues/127)) ([58a5d37](https://github.com/photonne/photonne/commit/58a5d37e4b8297f2386b31ddd6742a2ecde0a31a))
+* **server:** Bump Magick.NET-Q8-AnyCPU from 14.17.1 to 15.0.0 ([#139](https://github.com/photonne/photonne/issues/139)) ([16a4a48](https://github.com/photonne/photonne/commit/16a4a484bf0c23d556e2fb552e38787383dbbb57))
+* **server:** Bump the nuget-minor group with 14 updates ([#138](https://github.com/photonne/photonne/issues/138)) ([d38c08e](https://github.com/photonne/photonne/commit/d38c08e05e2753d11d885f946192409197b0f07e))
+* **spa:** bump @types/node from 22.20.5 to 26.6.5 in /src/Client.SPA ([#135](https://github.com/photonne/photonne/issues/135)) ([3a58abf](https://github.com/photonne/photonne/commit/3a58abf8c4598514a5ad9911556e9eed8122367f))
+* **spa:** bump the npm-minor group in /src/Client.SPA with 13 updates ([#132](https://github.com/photonne/photonne/issues/132)) ([902666c](https://github.com/photonne/photonne/commit/902666cd97747d68fe6d33761781f3c1f8537651))
+* **spa:** Sube vitest, @vitest/browser-playwright y vitest-browser-svelte juntos a vitest 5 ([#142](https://github.com/photonne/photonne/issues/142)) ([2538cf0](https://github.com/photonne/photonne/commit/2538cf0846653fdcb11ba4e437f9ba43d4163e1b))
+
 ## [2.10.0](https://github.com/photonne/photonne/compare/server-v2.9.0...server-v2.10.0) (2026-10-27)
 
 
