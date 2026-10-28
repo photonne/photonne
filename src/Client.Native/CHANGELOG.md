@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.6.0](https://github.com/photonne/photonne/compare/native-v2.5.1...native-v2.6.0) (2026-10-28)
+
+
+### Novedades
+
+* **native:** Compartir con Photonne desde Fotos y otras apps en iOS ([6e9d286](https://github.com/photonne/photonne/commit/6e9d286417cbe59693a879b570238c6d4478ea62))
+* **native:** En tablet la navegación pasa a una barra lateral ([edea517](https://github.com/photonne/photonne/commit/edea517803c2c72c1638b0ae871f8605e999871c))
+* **native:** iOS avisa cuando la copia en segundo plano deja archivos sin subir ([e512763](https://github.com/photonne/photonne/commit/e512763f47e1e19c1c8d26fbe45ada3e0becbbed))
+* **native:** Widget de Recuerdos en la pantalla de inicio de Android ([d06286e](https://github.com/photonne/photonne/commit/d06286e68e499c89e71df956644bc49695184e5f))
+* **native:** Widget de Recuerdos en la pantalla de inicio de iOS ([7a3427a](https://github.com/photonne/photonne/commit/7a3427a2bd5ab748cb9b39b819242c408281f52c))
+
+
+### Correcciones
+
+* **native:** Escribe el contenido de la notificación de iOS con sus setters ([327e52f](https://github.com/photonne/photonne/commit/327e52f6bd46ca9e1bf833a4fb5aac324de6e8b7))
+
 ## [2.5.1](https://github.com/photonne/photonne/compare/native-v2.5.0...native-v2.5.1) (2026-10-28)
 
 
