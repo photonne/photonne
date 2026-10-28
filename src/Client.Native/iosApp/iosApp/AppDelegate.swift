@@ -3,6 +3,7 @@ import ComposeApp
 import Foundation
 import Network
 import UIKit
+import UserNotifications
 
 /// Bridges UIKit's app lifecycle into the Kotlin shared module so the
 /// background sync flow can be wired up at launch.
@@ -32,6 +33,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // start it) never runs and the handler below would crash on get().
         let baseUrl = Bundle.main.object(forInfoDictionaryKey: "PhotonneApiBaseUrl") as? String
         MainViewControllerKt.startPhotonneKoin(apiBaseUrl: baseUrl, useFakeMemories: false)
+        // El toque en una notificación local (fallos del backup) abre su
+        // pantalla: el delegado tiene que estar puesto antes de que acabe el
+        // arranque, también cuando iOS lanza la app desde la notificación.
+        UNUserNotificationCenter.current().delegate = self
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: AppDelegate.taskIdentifier,
             using: nil
@@ -85,6 +90,30 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             let success = (try? await IosBackupBridge.shared.runBackup().boolValue) ?? false
             completion.complete(success: success)
         }
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    /// Tocar la notificación abre el destino que lleva en `userInfo`
+    /// (p. ej. Backup → Pendientes), como el extra del intent en Android.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let key = response.notification.request.content
+            .userInfo[IosNotificationRouter.shared.userInfoKey] as? String
+        IosNotificationRouter.shared.open(destinationKey: key)
+        completionHandler()
+    }
+
+    /// Con la app abierta también se enseña (el backup puede acabar justo entonces).
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list])
     }
 }
 

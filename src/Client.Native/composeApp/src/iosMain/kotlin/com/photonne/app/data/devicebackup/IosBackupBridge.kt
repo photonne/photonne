@@ -110,6 +110,9 @@ object IosBackupBridge : KoinComponent {
                 "[IosBackup] done — total=${outcome.total} uploaded=${outcome.uploaded} " +
                     "skipped=${outcome.skipped} failed=${outcome.failed}"
             )
+            // Como en Android: silencio si fue bien, un aviso si quedaron archivos.
+            runCatching { IosBackupNotifications.notifyFailures(outcome.failed) }
+                .onFailure { NSLog("[IosBackup] failure notification failed: ${it.message}") }
             true
         } catch (ex: Throwable) {
             NSLog("[IosBackup] crashed: ${ex.message}")
