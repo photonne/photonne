@@ -461,10 +461,11 @@ changelog de su componente y calcula su siguiente versión:
 |---|---|
 | algún `<tipo>!: ...` o footer `BREAKING CHANGE:` | major |
 | algún `feat: ...` / `feat(scope): ...` | minor |
-| solo `fix:`, `perf:`, `refactor:`, `revert:` | patch |
+| solo `fix:`, `perf:`, `refactor:`, `revert:`, `build:` | patch |
 
-`docs:`, `chore:`, `ci:`, `test:`, `build:` y `style:` por sí solos no abren
-release.
+`build:` son las actualizaciones de dependencias (Dependabot) y salen en la
+sección "Dependencias" del changelog. `docs:`, `chore:`, `ci:`, `test:` y
+`style:` por sí solos no abren release.
 
 **Publicar un componente = hacer merge de su PR**, cuando quieras y sin tocar
 los demás. Al hacerlo, release-please etiqueta el commit y crea la release como

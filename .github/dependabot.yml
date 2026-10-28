@@ -1,7 +1,8 @@
 # Actualizaciones de dependencias. Una PR al mes por ecosistema, con las
 # versiones menores y de parche agrupadas; las mayores llegan cada una en su PR
-# porque suelen pedir cambios. Los mensajes siguen Conventional Commits para
-# que release-please no las cuente como novedades (build no sale en el changelog).
+# porque suelen pedir cambios. Los mensajes siguen Conventional Commits con el
+# tipo build: release-please las lista en la sección "Dependencias" del changelog
+# y abren release de parche; las de ci (actions) no.
 version: 2
 
 updates:
