@@ -69,11 +69,13 @@ updates:
     commit-message:
       prefix: build(docker)
     ignore:
-      # La imagen CUDA tiene que casar con la que usa onnxruntime-gpu (CUDA 12,
-      # ver src/Server.Ml/requirements-gpu.txt); con otra, la GPU cae a CPU sin
-      # avisar (#128). Se sube a mano junto con onnxruntime-gpu.
+      # La imagen CUDA se sube a mano. Las mayores tienen que casar con
+      # onnxruntime-gpu (CUDA 12, ver src/Server.Ml/requirements-gpu.txt): con
+      # otra, la GPU cae a CPU sin avisar (#128). Las menores suben el driver
+      # mínimo del host (12.9 pide driver 575+ en GeForce y quita la rama 470,
+      # ver Dockerfile.gpu) sin aportar nada (#144). Solo pasan los parches 12.8.x.
       - dependency-name: nvidia/cuda
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: docker-compose
     directory: /
