@@ -153,6 +153,19 @@ Es el camino más largo (14 días como mínimo), así que va primero.
 Ya hecho: App ID explícito `com.photonne.app` registrado y ficha de App Store
 Connect apuntando a él.
 
+**Desde la versión con extensiones** (Compartir con Photonne y widget de
+Recuerdos), antes de archivar hay que tener en el portal de desarrollador:
+
+- El App Group **`group.com.photonne.app`**, activado en los tres App IDs.
+- Dos App IDs más: **`com.photonne.app.ShareExtension`** y
+  **`com.photonne.app.MemoryWidget`**.
+
+Con la firma automática Xcode los registra al archivar (Signing &
+Capabilities de cada target lo muestra); si falla, se crean a mano en
+Certificates, Identifiers & Profiles. Los tres targets llevan su
+`.entitlements` con el grupo (`iosApp/iosApp.entitlements`,
+`ShareExtension/…` y `MemoryWidget/…`).
+
 1. **Archivar** desde un commit con versión nueva (dos builds con la misma
    versión chocan):
    - Abre `src/Client.Native/iosApp/iosApp.xcodeproj`.
