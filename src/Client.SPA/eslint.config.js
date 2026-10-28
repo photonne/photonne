@@ -36,6 +36,12 @@ export default defineConfig(
 	{
 		// Override or add rule settings here, such as:
 		// 'svelte/button-has-type': 'error'
-		rules: {}
+		rules: {
+			// eslint-plugin-svelte 3.23.1 turned this on for SvelteKit 3. App links
+			// go through appHref() (lib/navigation/href.ts), which calls resolve(),
+			// but the rule can't see through a helper; the rest are API or external
+			// URLs, which resolve() isn't for.
+			'svelte/no-navigation-without-resolve': 'off'
+		}
 	}
 );
