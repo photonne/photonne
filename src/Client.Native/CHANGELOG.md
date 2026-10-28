@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.1](https://github.com/photonne/photonne/compare/native-v2.5.0...native-v2.5.1) (2026-10-28)
+
+
+### Dependencias
+
+* **native:** bump dev.chrisbanes.haze:haze from 1.7.3 to 2.0.1 in /src/Client.Native ([#141](https://github.com/photonne/photonne/issues/141)) ([0f040b0](https://github.com/photonne/photonne/commit/0f040b090e7e07b459af6f54215004b818d7b653))
+* **native:** bump the gradle-minor group ([#140](https://github.com/photonne/photonne/issues/140)) ([fa52804](https://github.com/photonne/photonne/commit/fa5280416ceb6c71eed534bbdcf2cbcb542b782e))
+
 ## [2.5.0](https://github.com/photonne/photonne/compare/native-v2.4.0...native-v2.5.0) (2026-10-27)
 
 
