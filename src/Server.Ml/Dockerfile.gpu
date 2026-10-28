@@ -113,7 +113,7 @@ RUN echo "[build] /export bake status:" \
 # la imagen de CPU. Ubuntu 24.04 trae Python 3.12 de serie, la versión que
 # necesita numpy 2.5, y eso nos quita de encima el PPA de deadsnakes que hacía
 # falta en 22.04.
-FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
+FROM nvidia/cuda:12.9.2-cudnn-runtime-ubuntu24.04
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
